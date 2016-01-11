@@ -300,6 +300,23 @@
     <match>with code 403</match>
     <description>ModSecurity rejected a query</description>
   </rule>
+
+    <!--
+    Shellshock detected
+    Pattern: "(){:;};" (with spaces)
+    Code: 400
+    Decoder: web-accesslog_decoders.xml
+
+    Examples:
+    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 404 292 "-" "() { :;};/usr/bin/perl ..."
+    -->
+    <rule id="30412" level="6">
+        <if_sid>31101</if_sid>
+        <regex>"\(\)\s*{\s*:;\s*}\s*;</regex>
+        <description>Shellshock attack attempt</description>
+        <group>attack,pci_dss_11.4,</group>
+    </rule>
+
 </group> <!-- ERROR_LOG,APACHE -->
 
 <!-- EOF -->

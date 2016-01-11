@@ -25,38 +25,38 @@
 # (All of them must match for it to return true).
 
 # http://technet2.microsoft.com/windowsserver/en/library/486896ba-dfa1-4850-9875-13764f749bba1033.mspx?mfr=true
-[Disabled Registry tools set] [any] []
+[Disabled Registry tools set {PCI_DSS: 10.6.1}] [any] []
 r:HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableRegistryTools -> 1;
 r:HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableRegistryTools -> 1;
 
 # http://support.microsoft.com/kb/825750
-[DCOM disabled] [any] []
+[DCOM disabled {PCI_DSS: 10.6.1}] [any] []
 r:HKEY_LOCAL_MACHINE\Software\Microsoft\OLE -> EnableDCOM -> N;
 
 # http://web.mit.edu/is/topics/windows/server/winmitedu/security.html
-[LM authentication allowed (weak passwords)] [any] []
+[LM authentication allowed (weak passwords) {PCI_DSS: 10.6.1} {PCI_DSS: 11.4}] [any] []
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\LSA -> LMCompatibilityLevel -> 0;
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\LSA -> LMCompatibilityLevel -> 1;
 
 # http://research.eeye.com/html/alerts/AL20060813.html
 # Disabled by some Malwares (sometimes by McAfee and Symantec
 # security center too).
-[Firewall/Anti Virus notification disabled] [any] []
+[Firewall/Anti Virus notification disabled {PCI_DSS: 10.6.1}] [any] []
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Security Center -> FirewallDisableNotify -> !0;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Security Center -> antivirusoverride -> !0;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Security Center -> firewalldisablenotify -> !0;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Security Center -> firewalldisableoverride -> !0;
 
 # Checking for the microsoft firewall.
-[Microsoft Firewall disabled] [all] []
+[Microsoft Firewall disabled {PCI_DSS: 10.6.1} {PCI_DSS: 1.4}] [all] []
 r:HKEY_LOCAL_MACHINE\software\policies\microsoft\windowsfirewall\domainprofile -> enablefirewall -> 0;
 r:HKEY_LOCAL_MACHINE\software\policies\microsoft\windowsfirewall\standardprofile -> enablefirewall -> 0;
 
 #http://web.mit.edu/is/topics/windows/server/winmitedu/security.html
-[Null sessions allowed] [any] []
+[Null sessions allowed {PCI_DSS: 11.4}] [any] []
 r:HKLM\System\CurrentControlSet\Control\Lsa -> RestrictAnonymous -> 0;
 
-[Error reporting disabled] [any] [http://windowsir.blogspot.com/2007/04/something-new-to-look-for.html]
+[Error reporting disabled {PCI_DSS: 10.6.1}] [any] [http://windowsir.blogspot.com/2007/04/something-new-to-look-for.html]
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PCHealth\ErrorReporting -> DoReport -> 0;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PCHealth\ErrorReporting -> IncludeKernelFaults -> 0;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PCHealth\ErrorReporting -> IncludeMicrosoftApps -> 0;
@@ -65,9 +65,9 @@ r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PCHealth\ErrorReporting -> IncludeShutdo
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PCHealth\ErrorReporting -> ShowUI -> 0;
 
 # http://support.microsoft.com/default.aspx?scid=315231
-[Automatic Logon enabled] [any] [http://support.microsoft.com/default.aspx?scid=315231]
+[Automatic Logon enabled {PCI_DSS: 10.6.1}] [any] [http://support.microsoft.com/default.aspx?scid=315231]
 r:HKLM\SOFTWARE\Microsoft\WindowsNT\CurrentVersion\Winlogon -> DefaultPassword;
 r:HKLM\SOFTWARE\Microsoft\WindowsNT\CurrentVersion\Winlogon -> AutoAdminLogon -> 1;
 
-[Winpcap packet filter driver found] [any] []
+[Winpcap packet filter driver found {PCI_DSS: 10.6.1}] [any] []
 f:%WINDIR%\System32\drivers\npf.sys;

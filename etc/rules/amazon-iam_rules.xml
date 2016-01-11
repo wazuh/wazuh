@@ -1,0 +1,263 @@
+<!--
+  -  Amazon IAM rules
+  -  v1.0 2016/01/05
+  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
+  -  jose@wazuh.com
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+-->
+
+<!-- amazon-iam messages -->
+
+<group name="Amazon-iam,">
+
+    <rule id="80250" level="0">
+        <decoded_as>AmazonAWS-signin</decoded_as>
+        <description>Amazon sign in alerts.</description>
+    </rule>
+
+    <rule id="80251" level="2">
+        <if_sid>80250</if_sid>
+        <action>ConsoleLogin</action>
+        <description>Amazon-signin: User Login Success</description>
+        <group>amazon,authentication_success</group>
+    </rule>
+
+    <rule id="80252" level="5">
+        <if_sid>80251</if_sid>
+        <match>'ConsoleLogin': u'Failure'</match>
+        <description>Amazon-signin: User Login failed</description>
+        <group>amazon,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="80253" level="10" frequency="4" timeframe="360">
+        <if_matched_sid>80252</if_matched_sid>
+        <description>Possible breakin attempt (high number of login attempts).</description>
+        <group>amazon,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    </rule>
+
+
+    <rule id="80260" level="0">
+        <decoded_as>AmazonAWS-iam</decoded_as>
+        <description>Amazon IAM alerts.</description>
+    </rule>
+
+    <rule id="80261" level="2">
+        <if_sid>80260</if_sid>
+        <action>CreateUser</action>
+        <description>Amazon-iam: User created</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80262" level="5">
+        <if_sid>80261</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: User creation denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80263" level="2">
+        <if_sid>80260</if_sid>
+        <action>AddUserToGroup</action>
+        <description>Amazon-iam: User added to a group</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80264" level="5">
+        <if_sid>80263</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: User added to a group denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80265" level="2">
+        <if_sid>80260</if_sid>
+        <action>RemoveUserFromGroup</action>
+        <description>Amazon-iam: User removed from a group</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80266" level="5">
+        <if_sid>80265</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: User removed from a group denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80267" level="2">
+        <if_sid>80260</if_sid>
+        <action>UpdateAccessKey</action>
+        <description>Amazon-iam: Access key updated</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80268" level="5">
+        <if_sid>80267</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: Access key updated denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80269" level="2">
+        <if_sid>80260</if_sid>
+        <action>AttachGroupPolicy</action>
+        <description>Amazon-iam: Group policy attached to a group</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80270" level="5">
+        <if_sid>80269</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: Group policy attached to a group denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80271" level="2">
+        <if_sid>80260</if_sid>
+        <action>DetachGroupPolicy</action>
+        <description>Amazon-iam: Group policy deattached to a group</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80272" level="5">
+        <if_sid>80271</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: Group policy deattached to a group denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80273" level="2">
+        <if_sid>80260</if_sid>
+        <action>AttachUserPolicy</action>
+        <description>Amazon-iam: User policy attached to a user</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80274" level="5">
+        <if_sid>80273</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: User policy attached to a user denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80275" level="2">
+        <if_sid>80260</if_sid>
+        <action>DetachUserPolicy</action>
+        <description>Amazon-iam: User policy deattached to a user</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80276" level="5">
+        <if_sid>80275</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: User policy deattached to a user denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80277" level="2">
+        <if_sid>80260</if_sid>
+        <action>AttachRolePolicy</action>
+        <description>Amazon-iam: Rule policy attached to a user</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80278" level="5">
+        <if_sid>80277</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: Rule policy attached to a user denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80279" level="2">
+        <if_sid>80260</if_sid>
+        <action>DetachRolePolicy</action>
+        <description>Amazon-iam: Rule policy deattached to a user</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80280" level="5">
+        <if_sid>80279</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: Rule policy deattached to a user denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80281" level="2">
+        <if_sid>80260</if_sid>
+        <action>CreateGroup</action>
+        <description>Amazon-iam: Group created</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80282" level="5">
+        <if_sid>80281</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: Group creation denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80283" level="2">
+        <if_sid>80260</if_sid>
+        <action>CreateRole</action>
+        <description>Amazon-iam: Role created</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80284" level="5">
+        <if_sid>80283</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: Role creation denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80285" level="2">
+        <if_sid>80260</if_sid>
+        <action>CreatePolicy</action>
+        <description>Amazon-iam: Policy created</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80286" level="5">
+        <if_sid>80285</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: Policy creation denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80287" level="2">
+        <if_sid>80260</if_sid>
+        <action>UpdateAccountPasswordPolicy</action>
+        <description>Amazon-iam: Policy password account update</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80288" level="5">
+        <if_sid>80287</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-iam: Policy password account update denied</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80289" level="2">
+        <if_sid>80260</if_sid>
+        <action>CreateAccountAlias</action>
+        <description>Amazon-iam: Account alias created</description>
+        <group>amazon</group>
+    </rule> 
+
+    <rule id="80290" level="2">
+        <if_sid>80260</if_sid>
+        <action>DeleteAccountAlias</action>
+        <description>Amazon-iam: Account alias deleted</description>
+        <group>amazon</group>
+    </rule>
+
+    <rule id="80291" level="2">
+        <if_sid>80260</if_sid>
+        <action>UpdateInstanceAlias</action>
+        <description>Amazon-iam: Account alias updated</description>
+        <group>amazon</group>
+    </rule>
+
+</group>
+
+<!-- amazon-iam -->

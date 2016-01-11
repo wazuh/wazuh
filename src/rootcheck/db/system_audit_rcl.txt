@@ -54,44 +54,44 @@ f:$php.ini -> r:^display_errors = On;
 ## Looking for common web exploits files (might indicate that you are owned).
 ## There are not specific, like the above.
 ## Using http://www.ossec.net/wiki/index.php/WebAttacks_links as a reference.
-[Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+[Web exploits (uncommon file name inside htdocs) - Possible compromise  {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
 d:$web_dirs -> ^.yop$;
 
-[Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+[Web exploits (uncommon file name inside htdocs) - Possible compromise {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
 d:$web_dirs -> ^id$;
 
-[Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+[Web exploits (uncommon file name inside htdocs) - Possible compromise {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
 d:$web_dirs -> ^.ssh$;
 
-[Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+[Web exploits (uncommon file name inside htdocs) - Possible compromise {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
 d:$web_dirs -> ^...$;
 
-[Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+[Web exploits (uncommon file name inside htdocs) - Possible compromise {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
 d:$web_dirs -> ^.shell$;
 
 ## Looking for outdated Web applications
 ## Taken from http://sucuri.net/latest-versions
-[Web vulnerability - Outdated WordPress installation] [any] [http://sucuri.net/latest-versions]
+[Web vulnerability - Outdated WordPress installation {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] [http://sucuri.net/latest-versions]
 d:$web_dirs -> ^version.php$ -> r:^\.wp_version && >:$wp_version = '3.2.1';
 
-[Web vulnerability - Outdated Joomla (v1.0) installation] [any] [http://sucuri.net/latest-versions]
+[Web vulnerability - Outdated Joomla (v1.0) installation {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] [http://sucuri.net/latest-versions]
 d:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:'1.0';
 
-#[Web vulnerability - Outdated Joomla (v1.5) installation] [any] [http://sucuri.net/latest-versions]
+#[Web vulnerability - Outdated Joomla (v1.5) installation {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] [http://sucuri.net/latest-versions]
 #d:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:'1.5' && r:'23'
 
-[Web vulnerability - Outdated osCommerce (v2.2) installation] [any] [http://sucuri.net/latest-versions]
+[Web vulnerability - Outdated osCommerce (v2.2) installation {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] [http://sucuri.net/latest-versions]
 d:$web_dirs -> ^application_top.php$ -> r:'osCommerce 2.2-;
 
 ## Looking for known backdoors
-[Web vulnerability - Backdoors / Web based malware found - eval(base64_decode] [any] []
+[Web vulnerability - Backdoors / Web based malware found - eval(base64_decode {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] []
 d:$web_dirs -> .php$ -> r:eval\(base64_decode\(\paWYo;
 
-[Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST] [any] []
+[Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] []
 d:$web_dirs -> .php$ -> r:eval\(base64_decode\(\S_POST;
 
-[Web vulnerability - .htaccess file compromised] [any] [http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html]
+[Web vulnerability - .htaccess file compromised {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] [http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html]
 d:$web_dirs -> ^.htaccess$ -> r:RewriteCond \S+HTTP_REFERERS \S+google;
 
-[Web vulnerability - .htaccess file compromised - auto append] [any] [http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html]
+[Web vulnerability - .htaccess file compromised - auto append {PCI_DSS: 6.5} {PCI_DSS: 6.6} {PCI_DSS: 11.4}] [any] [http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html]
 d:$web_dirs -> ^.htaccess$ -> r:php_value auto_append_file;
