@@ -24,7 +24,7 @@
 # Multiple patterns can be specified by using " && " between them.
 # (All of them must match for it to return true).
 
-[Chat/IM/VoIP - Skype] [any] []
+[Chat/IM/VoIP - Skype {PCI_DSS: 10.6.1}] [any] []
 f:\Program Files\Skype\Phone;
 f:\Documents and Settings\All Users\Documents\My Skype Pictures;
 f:\Documents and Settings\Skype;
@@ -33,14 +33,14 @@ r:HKLM\SOFTWARE\Skype;
 r:HKEY_LOCAL_MACHINE\Software\Policies\Skype;
 p:r:Skype.exe;
 
-[Chat/IM - Yahoo] [any] []
+[Chat/IM - Yahoo {PCI_DSS: 10.6.1}] [any] []
 f:\Documents and Settings\All Users\Start Menu\Programs\Yahoo! Messenger;
 r:HKLM\SOFTWARE\Yahoo;
 
-[Chat/IM - ICQ] [any] []
+[Chat/IM - ICQ {PCI_DSS: 10.6.1}] [any] []
 r:HKEY_CURRENT_USER\Software\Mirabilis\ICQ;
 
-[Chat/IM - AOL] [any] [http://www.aol.com]
+[Chat/IM - AOL {PCI_DSS: 10.6.1}] [any] [http://www.aol.com]
 r:HKEY_LOCAL_MACHINE\SOFTWARE\America Online\AOL Instant Messenger;
 r:HKEY_CLASSES_ROOT\aim\shell\open\command;
 r:HKEY_CLASSES_ROOT\AIM.Protocol;
@@ -48,26 +48,26 @@ r:HKEY_CLASSES_ROOT\MIME\Database\Content Type\application/x-aim;
 f:\Program Files\AIM95;
 p:r:aim.exe;
 
-[Chat/IM - MSN] [any] [http://www.msn.com]
+[Chat/IM - MSN {PCI_DSS: 10.6.1}] [any] [http://www.msn.com]
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\MSNMessenger;
 r:HKEY_CURRENT_USER\SOFTWARE\Microsoft\MSNMessenger;
 f:\Program Files\MSN Messenger;
 f:\Program Files\Messenger;
 p:r:msnmsgr.exe;
 
-[Chat/IM - ICQ] [any] [http://www.icq.com]
+[Chat/IM - ICQ {PCI_DSS: 10.6.1}] [any] [http://www.icq.com]
 r:HKLM\SOFTWARE\Mirabilis\ICQ;
 
-[P2P - UTorrent] [any] []
+[P2P - UTorrent {PCI_DSS: 10.6.1}] [any] []
 p:r:utorrent.exe;
 
-[P2P - LimeWire] [any] []
+[P2P - LimeWire {PCI_DSS: 11.4}] [any] []
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Limewire;
 r:HKLM\software\microsoft\windows\currentversion\run -> limeshop;
 f:\Program Files\limewire;
 f:\Program Files\limeshop;
 
-[P2P/Adware - Kazaa] [any] []
+[P2P/Adware - Kazaa {PCI_DSS: 11.4}] [any] []
 f:\Program Files\kazaa;
 f:\Documents and Settings\All Users\Start Menu\Programs\kazaa;
 f:\Documents and Settings\All Users\DESKTOP\Kazaa Media Desktop.lnk;
@@ -78,7 +78,7 @@ r:HKEY_CURRENT_USER\SOFTWARE\KAZAA;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\MICROSOFT\WINDOWS\CURRENTVERSION\RUN\KAZAA;
 
 # http://vil.nai.com/vil/content/v_135023.htm
-[Adware - RxToolBar] [any] [http://vil.nai.com/vil/content/v_135023.htm]
+[Adware - RxToolBar {PCI_DSS: 11.4}] [any] [http://vil.nai.com/vil/content/v_135023.htm]
 r:HKEY_CURRENT_USER\Software\Infotechnics;
 r:HKEY_CURRENT_USER\Software\Infotechnics\RX Toolbar;
 r:HKEY_CURRENT_USER\Software\RX Toolbar;
@@ -87,7 +87,7 @@ r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\RX Toolbar;
 f:\Program Files\RXToolBar;
 
 # http://btfaq.com/serve/cache/18.html
-[P2P - BitTorrent] [any] [http://btfaq.com/serve/cache/18.html]
+[P2P - BitTorrent {PCI_DSS: 10.6.1}] [any] [http://btfaq.com/serve/cache/18.html]
 f:\Program Files\BitTorrent;
 r:HKEY_CLASSES_ROOT\.torrent;
 r:HKEY_CLASSES_ROOT\MIME\Database\Content Type\application/x-bittorrent;
@@ -95,7 +95,7 @@ r:HKEY_CLASSES_ROOT\bittorrent;
 r:HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\BitTorrent;
 
 # http://www.gotomypc.com
-[Remote Access - GoToMyPC] [any] []
+[Remote Access - GoToMyPC {PCI_DSS: 10.6.1}] [any] []
 f:\Program Files\Citrix\GoToMyPC;
 f:\Program Files\Citrix\GoToMyPC\g2svc.exe;
 f:\Program Files\Citrix\GoToMyPC\g2comm.exe;
@@ -106,20 +106,20 @@ r:HKEY_LOCAL_MACHINE\system\currentcontrolset\services\gotomypc;
 p:r:g2svc.exe;
 p:r:g2pre.exe;
 
-[Spyware - Twain Tec Spyware] [any] []
+[Spyware - Twain Tec Spyware {PCI_DSS: 11.4}] [any] []
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Classes\TwaintecDll.TwaintecDllObj.1;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\twaintech;
 f:%WINDIR%\twaintec.dll;
 
 # http://www.symantec.com/security_response/writeup.jsp?docid=2004-062611-4548-99&tabid=2
-[Spyware - SpyBuddy] [any] []
+[Spyware - SpyBuddy {PCI_DSS: 11.4}] [any] []
 f:\Program Files\ExploreAnywhere\SpyBuddy\sb32mon.exe;
 f:\Program Files\ExploreAnywhere\SpyBuddy;
 f:\Program Files\ExploreAnywhere;
 f:%WINDIR%\System32\sysicept.dll;
 r:HKEY_LOCAL_MACHINE\Software\ExploreAnywhere Software\SpyBuddy;
 
-[Spyware - InternetOptimizer] [any] []
+[Spyware - InternetOptimizer {PCI_DSS: 11.4}] [any] []
 r:HKLM\SOFTWARE\Avenue Media;
 r:HKEY_CLASSES_ROOT\\safesurfinghelper.iebho.1;
 r:HKEY_CLASSES_ROOT\\safesurfinghelper.iebho;

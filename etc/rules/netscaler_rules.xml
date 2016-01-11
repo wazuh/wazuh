@@ -1,22 +1,15 @@
-<!-- netscaler_rules.xml, v1.0 2015/10/27
+<!--
+  -  netscaler rules
+  -  v1.1 2015/01/07
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  jesus@wazuh.com
-  -  
-  -  Copyright (C) 2009-2011 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -->
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+-->
 
 <!-- Netscaler messages -->
 <!-- 
 ID: 80100 - 80200 
-id (Decoder): AAA, UI, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, ACL, TRANSFORM, APPFW_RESP, AAATM, PITBOSS, CVPN
+id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, ACL, TRANSFORM, APPFW_RESP, AAATM, PITBOSS, CVPN
 -->
 <group name="netscaler,">
 
@@ -44,40 +37,42 @@ id (Decoder): AAA, UI, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, ACL, TR
     </rule> 
     
     <!--
-    UI CMD_EXECUTED
+    UI CMD_EXECUTED | API CMD_EXECUTED
     02/14/2012: 14:32:35 GMT CUA30070LBN6202 PPE-1 : UI CMD_EXECUTED 427 :  User ******** - Remote_ip 10.31.66.1 - Command "bind system global SYSLOG -priority 0" - Status "... error ..."
     02/14/2012: 14:32:35 GMT CUA30070LBN6202 PPE-1 : UI CMD_EXECUTED 427 :  User ******** - Remote_ip 10.31.66.1 - Command "bind system global SYSLOG -priority 0" - Status "Success"
+    01/05/2016: 22:09:54 GMT SERVER 0-PPE-0 : API CMD_EXECUTED 12345678 0 :  User nsroot - Remote_ip 10.10.10.10 - Command "ls" - Status "Success"
+    01/05/2016: 22:09:54 GMT SERVER 0-PPE-0 : API CMD_EXECUTED 12345678 0 :  User nsroot - Remote_ip 10.10.10.10 - Command "ls" - Status "... error ..."
     -->
     <rule id="80103" level="2">
         <if_sid>80100</if_sid>
-        <match>UI CMD_EXECUTED</match>
+        <match>UI CMD_EXECUTED|API CMD_EXECUTED</match>
         <status>Success</status>
-        <description>Netscaler: UI command executed</description>
-        <group>netscaler-ui,</group> 
+        <description>Netscaler: UI/API command executed</description>
+        <group>netscaler-cmd,</group> 
     </rule>
     
     <rule id="80104" level="4">
         <if_sid>80100</if_sid>
-        <match>UI CMD_EXECUTED</match>
+        <match>UI CMD_EXECUTED|API CMD_EXECUTED</match>
         <status>Error</status>
-        <description>Netscaler: UI command executed failed</description>
-        <group>netscaler-ui,</group> 
+        <description>Netscaler: UI/API command executed failed</description>
+        <group>netscaler-cmd,</group> 
     </rule>
     
     <rule id="80105" level="10" frequency="6">
         <if_matched_sid>80104</if_matched_sid>
         <same_source_ip />
         <description>Netscaler: Multiple commands failed</description>
-        <group>netscaler-ui,pci_dss_10.2.2,pci_dss_10.6.1,</group>
+        <group>netscaler-cmd,pci_dss_10.2.2,pci_dss_10.6.1,</group>
     </rule> 
     
     <!-- 02/14/2012: 14:32:35 GMT CUA30070LBN6202 PPE-1 : UI CMD_EXECUTED 427 :  User ******** - Remote_ip 10.31.66.1 - Command "delete TEST" - Status "Success" -->
     <rule id="80106" level="10">
         <if_sid>80100</if_sid>
-        <match>UI CMD_EXECUTED</match>
+        <match>UI CMD_EXECUTED|API CMD_EXECUTED</match>
         <regex>Command "(\.*delete\.*)"</regex>
-        <description>Netscaler: UI dangerous command</description>
-        <group>netscaler-ui,</group> 
+        <description>Netscaler: UI/API dangerous command</description>
+        <group>netscaler-cmd,</group> 
     </rule>
     
     <!--SSLVPN LOGIN
@@ -418,30 +413,32 @@ id (Decoder): AAA, UI, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, ACL, TR
     UI CMD_EXECUTED
     Aug  9 13:39:56 aaaaa.com 08/09/2013:20:39:56 GMT a-nss-aa PPE-0 : UI CMD_EXECUTED 2649891 :  User nsroot - Remote_ip xx.xxx.xxx.xx - Command "login" - Status "Success"
     Aug  9 13:39:56 aaaaa.com 08/09/2013:20:39:56 GMT a-nss-aa PPE-0 : UI CMD_EXECUTED 2649891 :  User nsroot - Remote_ip xx.xxx.xxx.xx - Command "login" - Status "ERROR: Invalid username or password"
+    01/05/2016: 22:09:54 GMT SERVER 0-PPE-0 : API CMD_EXECUTED 12345678 0 :  User nsroot - Remote_ip 10.10.10.10 - Command "login nsroot ********" - Status "ERROR: Invalid username or password"
+    01/05/2016: 22:09:54 GMT SERVER 0-PPE-0 : API CMD_EXECUTED 12345678 0 :  User nsroot - Remote_ip 10.10.10.10 - Command "login nsroot ********" - Status "Success"
     -->
     <rule id="80138" level="3">
         <if_sid>80100</if_sid>
-        <match>UI CMD_EXECUTED</match>
-        <action>login</action>
+        <match>UI CMD_EXECUTED|API CMD_EXECUTED</match>
+        <regex>Command "login</regex>
         <status>Success</status>
-        <description>Netscaler: UI login succeeds</description>
-        <group>netscaler-ui,authentication_success,pci_dss_10.2.5,</group> 
+        <description>Netscaler: UI/API login succeeds</description>
+        <group>netscaler-cmd,authentication_success,pci_dss_10.2.5,</group> 
     </rule>
     
     <rule id="80139" level="6">
         <if_sid>80100</if_sid>
-        <match>UI CMD_EXECUTED</match>
-        <action>login</action>
+        <match>UI CMD_EXECUTED|API CMD_EXECUTED</match>
+        <regex>Command "login</regex>
         <status>Error</status>
-        <description>Netscaler: UI login failed</description>
-        <group>authentication_failed,netscaler-ui,pci_dss_10.2.4,pci_dss_10.2.5,</group> 
+        <description>Netscaler: UI/API login failed</description>
+        <group>authentication_failed,netscaler-cmd,pci_dss_10.2.4,pci_dss_10.2.5,</group> 
     </rule>
     
     <rule id="80140" level="10" frequency="6">
         <if_matched_sid>80139</if_matched_sid>
         <same_source_ip />
-        <description>Netscaler: Multiple UI login failed</description>
-        <group>authentication_failures,netscaler-ui,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
+        <description>Netscaler: Multiple UI/API login failed</description>
+        <group>authentication_failures,netscaler-cmd,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
     </rule> 
 
 </group>
