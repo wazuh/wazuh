@@ -23,7 +23,7 @@ Wazuh team is currently supporting OSSEC enterprise users, and decided to develo
 ## Documentation
 
 * [Full documentation](http://documentation.wazuh.com)
-* [OSSEC Wazuh fork installation guide](http://documentation.wazuh.com/ossec_wazuh.html)
+* [OSSEC Wazuh fork installation guide](http://documentation.wazuh.com/en/latest/ossec_wazuh.html)
 
 ## Branches
 
