@@ -16,7 +16,7 @@ AmazonAWS-ec2-fields:
 -->
 
 <decoder name="AmazonAWS-ec2">
-    <prematch>^"AmazonAWS"\.+"eventSource":"ec2.amazonaws.com"</prematch>
+    <prematch>^"AmazonAWS"\.+"eventSource":"ec2.amazonaws.com"|\.+"eventSource":"elasticloadbalancing.amazonaws.com"</prematch>
 </decoder>
 
 <decoder name="AmazonAWS-ec2-fields">
