@@ -24,13 +24,13 @@ void randombytes(void *ptr, size_t length)
         failed = 1;
     }
 #else
-    int fh;
-    if ((fh = open("/dev/urandom", O_RDONLY)) >= 0 || (fh = open("/dev/random", O_RDONLY)) >= 0) {
+    static int fh = -1;
+
+    if (fh >= 0 || (fh = open("/dev/urandom", O_RDONLY)) >= 0 || (fh = open("/dev/random", O_RDONLY)) >= 0) {
         const ssize_t ret = read(fh, ptr, length);
         if (ret < 0 || (size_t) ret != length) {
             failed = 1;
         }
-        close(fh);
     } else {
         failed = 1;
     }
