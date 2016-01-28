@@ -1,0 +1,63 @@
+OSSEC HIDS Notification.
+2006 May 25 17:07:58
+
+Received From: (gaucha) 200.255.5.5->/var/log/maillog
+Rule: 6254 fired (level 10) -> "Multiple attempts to send e-mail from invalid/unkonown sender domain.'"
+Portion of the log(s):
+
+sm-mta[20900]: k4PK8NYf020900: ruleset=check_mail, arg1=<brbomaquinas@brbom.com>, relay=200-138-41-205.ctame705.dsl.brasiltelecom.net.br [200.138.41.205] (may be forged), reject=553 5.1.8 <brbomaquinas@brbom.com>... Domain of sender address brbomaquinas@brbom.com does not exist
+sm-mta[20881]: k4PK8FOQ020881: ruleset=check_mail, arg1=<brbomaquinas@brbom.com>, relay=200-138-41-205.ctame705.dsl.brasiltelecom.net.br [200.138.41.205] (may be forged), reject=553 5.1.8 <brbomaquinas@brbom.com>... Domain of sender address brbomaquinas@brbom.com does not exist
+sm-mta[20867]: k4PK86E0020867: ruleset=check_mail, arg1=<brbomaquinas@brbom.com>, relay=200-138-41-205.ctame705.dsl.brasiltelecom.net.br [200.138.41.205] (may be forged), reject=553 5.1.8 <brbomaquinas@brbom.com>... Domain of sender address brbomaquinas@brbom.com does not exist
+
+
+
+
+OSSEC HIDS Notification.
+2006 May 25 16:40:15
+
+Received From: (gaucha) 200.255.5.5->/var/log/maillog
+Rule: 6253 fired (level 10) -> "Multiple relaying attepmts for spam.'"
+Portion of the log(s):
+
+sm-mta[14582]: k4PJeY7S014582: ruleset=check_rcpt, arg1=<andre.pereira@gerdau.com.br>, relay=200-207-91-189.speedycti.com.br [200.207.91.189] (may be forged), reject=550 5.7.1 <andre.pereira@gerdau.com.br>... Relaying denied. IP name possibly forged [200.207.91.189]
+sm-mta[14582]: k4PJeY7S014582: ruleset=check_rcpt, arg1=<andre.nichele@gerdau.com.br>, relay=200-207-91-189.speedycti.com.br [200.207.91.189] (may be forged), reject=550 5.7.1 <andre.nichele@gerdau.com.br>... Relaying denied. IP name possibly forged [200.207.91.189]
+sm-mta[14582]: k4PJeY7S014582: ruleset=check_rcpt, arg1=<andre.celiberto@gerdau.com.br>, relay=200-207-91-189.speedycti.com.br [200.207.91.189] (may be forged), reject=550 5.7.1 <andre.celiberto@gerdau.com.br>... Relaying denied. IP name possibly forged [200.207.91.189]
+
+
+
+ --END OF NOTIFICATION
+
+
+
+OSSEC HIDS Notification.
+2006 May 24 20:25:21
+
+Received From: (gaucha) 200.255.5.5->/var/log/maillog
+Rule: 6253 fired (level 10) -> "Multiple relaying attepmts for spam.'"
+Portion of the log(s):
+
+sm-mta[22707]: ruleset=check_relay, arg1=[201.29.120.119], arg2=127.0.0.4, relay=120119.user.veloxzone.com.br [201.29.120.119] (may be forged), reject=550 5.7.1 Rejected: 201.29.120.119 listed at sbl-xbl.spamhaus.org
+sm-mta[22675]: ruleset=check_relay, arg1=[201.29.120.119], arg2=127.0.0.4, relay=120119.user.veloxzone.com.br [201.29.120.119] (may be forged), reject=550 5.7.1 Rejected: 201.29.120.119 listed at sbl-xbl.spamhaus.org
+sm-mta[22653]: ruleset=check_relay, arg1=[201.29.120.119], arg2=127.0.0.4, relay=120119.user.veloxzone.com.br [201.29.120.119] (may be forged), reject=550 5.7.1 Rejected: 201.29.120.119 listed at sbl-xbl.spamhaus.org
+sm-mta[22625]: ruleset=check_relay, arg1=[201.29.120.119], arg2=127.0.0.4, relay=120119.user.veloxzone.com.br [201.29.120.119] (may be forged), reject=550 5.7.1 Rejected: 201.29.120.119 listed at sbl-xbl.spamhaus.org
+
+
+
+
+OSSEC HIDS Notification.
+2006 May 25 03:13:08
+
+Received From: (gaucha) 200.255.5.5->/var/log/maillog
+Rule: 6253 fired (level 10) -> "Multiple relaying attepmts for spam.'"
+Portion of the log(s):
+
+sm-mta[21399]: ruleset=check_relay, arg1=[201.24.166.179], arg2=127.0.0.5, relay=201-24-166-179.gnace703.dsl.brasiltelecom.net.br [201.24.166.179] (may be forged), reject=550 5.7.1 Rejected: 201.24.166.179 listed at sbl-xbl.spamhaus.org
+sm-mta[21392]: ruleset=check_relay, arg1=[201.24.166.179], arg2=127.0.0.5, relay=201-24-166-179.gnace703.dsl.brasiltelecom.net.br [201.24.166.179] (may be forged), reject=550 5.7.1 Rejected: 201.24.166.179 listed at sbl-xbl.spamhaus.org
+sm-mta[21377]: ruleset=check_relay, arg1=[201.24.166.179], arg2=127.0.0.5, relay=201-24-166-179.gnace703.dsl.brasiltelecom.net.br [201.24.166.179] (may be forged), reject=550 5.7.1 Rejected: 201.24.166.179 listed at sbl-xbl.spamhaus.org
+sm-mta[21373]: ruleset=check_relay, arg1=[201.24.166.179], arg2=127.0.0.5, relay=201-24-166-179.gnace703.dsl.brasiltelecom.net.br [201.24.166.179] (may be forged), reject=550 5.7.1 Rejected: 201.24.166.179 listed at sbl-xbl.spamhaus.org
+
+
+
+ --END OF NOTIFICATION
+  
+
