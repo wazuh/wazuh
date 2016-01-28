@@ -1,0 +1,4 @@
+Jan  6 13:40:28 drew named[128838]: denied update from [24.64.63.195].41151 for in-addr.arpa
+Jan  6 13:40:47 drew named[128838]: denied update from [24.64.63.195].41858 for in-addr.arpa
+unapproved update from [132.174.25.169].1848 for 174.132.in-addr.arpa
+Dec 31 00:01:31 valhalla named[7885]: client 192.168.1.231#1142: update 'hayaletgemi.edu/IN' denied

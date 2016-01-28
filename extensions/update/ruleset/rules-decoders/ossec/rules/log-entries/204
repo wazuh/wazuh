@@ -1,0 +1,4 @@
+rpc.mountd: refused mount request from 10.0.0.12 for /home2/files (/): no export entry
+Jan 12 08:20:00 gateway rpc.mountd: refused mount request from test.bscnet.com for /mnt (/): no export entry
+Jul  5 12:00:53 lili rpc.mountd: refused mount request from enigma for /bin (/): no export entry
+Jul  5 12:01:03 lili rpc.mountd: refused mount request from enigma for /etc (/): no export entry

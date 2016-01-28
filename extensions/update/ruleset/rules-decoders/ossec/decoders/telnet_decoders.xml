@@ -1,0 +1,47 @@
+<!-- @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+
+
+<!--
+   - Allowed fields:
+   - location - where the log came from (only on FTS)
+   - srcuser  - extracts the source username
+   - dstuser  - extracts the destination (target) username
+   - user     - an alias to dstuser (only one of the two can be used)
+   - srcip    - source ip
+   - dstip    - dst ip
+   - srcport  - source port
+   - dstport  - destination port
+   - protocol - protocol
+   - id       - event id
+   - url      - url of the event
+   - action   - event action (deny, drop, accept, etc)
+   - status   - event status (success, failure, etc)
+   - extra_data     - Any extra data
+  -->
+
+  
+<!--
+ - Telnet decoder
+ - Will extract the srcip
+ - Examples:
+ - May 31 12:33:44 queen telnetd[9876]: warning: can't verify hostname:
+   gethostbyname(131.1.satis-tl.ru) failed
+ - May 29 21:12:18 queen telnetd[6474]: refused connect from 81.215.42.27
+ - Jun  1 23:02:07 queen telnetd[62948]: connect from external.example.net
+ - Jun  1 23:02:07 queen telnetd[62948]: ttloop:  read: A connection with a remote socket was reset by that socket.
+ - Jun  2 09:54:28 valhalla in.telnetd[19723]: [ID 927837 local2.info] connect from external.example.net
+ - Jun  2 09:54:28 valhalla telnetd[19723]: [ID 485252 daemon.info] ttloop:  peer died: Error 0
+ -->
+<decoder name="telnetd">
+  <program_name>^telnetd|^in.telnetd</program_name>
+</decoder>
+
+<decoder name="telnetd-ip">
+  <parent>telnetd</parent>
+  <regex>from (\d+.\d+.\d+.\d+)$</regex>
+  <order>srcip</order>
+</decoder>

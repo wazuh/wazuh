@@ -1,0 +1,10 @@
+# freebsd invalid physical login
+login: 1 LOGIN FAILURE ON ttyv0
+login: 1 LOGIN FAILURE ON ttyv0, root
+
+# saslauthd
+saslauthd[113]: do_auth         : auth failure: [user=SERVERWEB\Administrador] [service=smtp] [realm=] [mech=shadow] [reason=Unknown]
+
+# Strange sshd logs
+sshd[7386]: error: Bad prime description in line 73
+sshd[8143]: error: Bad prime description in line 73
