@@ -63,5 +63,6 @@
     <include>clam_av_rules.xml</include>
     <include>dropbear_rules.xml</include>
     <include>sysmon_rules.xml</include>
+    <include>auditd_rules.xml</include>
     <include>local_rules.xml</include>
   </rules>  

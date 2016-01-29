@@ -133,8 +133,13 @@ Install()
     cp -pr ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
     chmod 640 ${INSTALLDIR}${OSSEC_INIT}
 
-
-    # If update_rules is set, we need to tweak
+    # Install Wazuh ruleset updater
+    if [ "X$INSTYPE" = "Xserver" ]; then
+        if [ "X${INSTALLDIR}" = "X/var/ossec" ]; then
+            install_ruleset_updater
+        fi
+    fi
+   # If update_rules is set, we need to tweak
     # ossec.conf to read the new signatures.
     if [ "X${update_rules}" = "Xyes" ]; then
         UpdateOSSECRules
@@ -959,6 +964,7 @@ main()
     . ./src/init/language.sh
     . ./src/init/functions.sh
     . ./src/init/init.sh
+    . ./src/init/wazuh.sh
     . ${TEMPLATE}/${LANGUAGE}/messages.txt
 
 

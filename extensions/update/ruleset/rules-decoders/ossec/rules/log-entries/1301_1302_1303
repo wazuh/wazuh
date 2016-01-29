@@ -1,0 +1,34 @@
+May 21 10:24:54 niban useradd[6070]: new group: name=test, gid=5006 
+May 28 10:48:29 niban useradd[32421]: new group: name=logr, gid=12000 
+Jun 16 09:53:44 niban useradd[5721]: new group: name=test2, gid=12001 
+Aug  4 15:11:23 niban groupadd[26459]: new group: name=osaudit, gid=12002 
+Aug  4 15:14:14 niban groupadd[26477]: new group: name=osaudit, gid=12002 
+Aug  5 08:57:10 niban groupadd[30279]: new group: name=osaudit, gid=12002 
+Aug  5 09:44:53 niban groupadd[32676]: new group: name=osaudit, gid=12002 
+Aug  5 09:47:52 niban groupadd[642]: new group: name=osaudit, gid=12002 
+Feb  4 14:21:45 niban adduser[26287]: new group: name=test123, gid=12003 
+Apr  5 16:06:49 niban adduser[16143]: new group: name=port, gid=12003 
+Apr  5 16:20:28 niban groupadd[16193]: new group: name=port1, gid=12004 
+Apr  5 16:20:29 niban groupadd[16194]: new group: name=port2, gid=12005 
+
+May 28 10:48:29 niban useradd[32421]: new user: name=logr, uid=12000, gid=12000, home=/home/logr, shell=/bin/bash 
+Jun 16 09:53:44 niban useradd[5721]: new user: name=test2, uid=12001, gid=12001, home=/home/test2, shell=/bin/bash 
+Aug  5 09:33:06 niban useradd[32213]: new user: name=osaudit, uid=12002, gid=12002, home=/var/osaudit, shell=/sbin/nologin 
+Aug  5 09:47:52 niban useradd[643]: new user: name=osaudit, uid=12002, gid=12002, home=/var/osaudit, shell=/sbin/nologin 
+Feb  4 14:21:45 niban adduser[26287]: new user: name=test123, uid=12003, gid=12003, home=/home/test123, shell=/bin/bash 
+Apr  5 16:06:49 niban adduser[16143]: new user: name=port, uid=12003, gid=12003, home=/home/port, shell=/bin/bash 
+Apr  5 16:17:35 niban adduser[16164]: new user: name=port2, uid=12004, gid=0, home=/home/port2, shell=/bin/bash 
+Apr  5 16:18:25 niban adduser[16166]: new user: name=port3, uid=12005, gid=1336, home=/home/port3, shell=/bin/bash 
+Apr  5 16:19:49 niban adduser[16188]: new user: name=port4, uid=12006, gid=0, home=/home/port4, shell=/bin/bash 
+
+May 28 10:48:07 niban userdel[32416]: delete user `logr' 
+Aug  5 09:43:27 niban userdel[32657]: delete user `osaudit' 
+Feb  4 14:27:13 niban userdel[26300]: delete user `test123' 
+
+May 28 10:48:13 niban groupdel[32417]: remove group `logr' 
+Aug  4 15:13:08 niban groupdel[26461]: remove group `osaudit' 
+Aug  4 15:15:31 niban groupdel[26821]: remove group `osaudit' 
+Aug  5 09:43:27 niban userdel[32657]: remove group `osaudit' 
+Aug  5 09:47:08 niban groupdel[631]: remove group `osaudit' 
+Feb  4 14:27:13 niban userdel[26300]: remove group `test123' 
+

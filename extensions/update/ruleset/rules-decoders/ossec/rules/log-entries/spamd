@@ -1,0 +1,19 @@
+A clean mail:
+
+Mar 19 08:21:13 h780152 spamd[11565]: connection from localhost [127.0.0.1] at port 49144
+Mar 19 08:21:13 h780152 spamd[11565]: checking message <20060318231614.f9991a2d.johnxj@comcast.net> for root:98.
+Mar 19 08:21:14 h780152 spamd[11565]: clean message (0.0/6.0) for root:98 in 1.6 seconds, 3347 bytes.
+Mar 19 08:21:14 h780152 spamd[11565]: result: .  0 - AWL,FORGED_RCVD_HELO scantime=1.6,size=3347,mid=<20060318231614.f9991a2d.johnxj@comcast.net>,autolearn=ham
+Mar 19 08:21:14 h780152 qmail-scanner[25042]: Clear:RC:0(217.72.192.234):SA:0(0.0/6.0): 1.681359 3302 sylpheed-admin@good-day.net peter@ifup.de [sylpheed:27685]_Sync_two_copies_of_Sylpheed <20060318231614.f9991a2d.johnxj@comcast.net> 1142752873.25044-0.ifup.de:898
+
+
+and a recogniced spam:
+
+Mar 19 08:36:33 h780152 spamd[18424]: connection from localhost [127.0.0.1] at port 49145
+Mar 19 08:36:33 h780152 spamd[18424]: checking message <3388717865.3821662804@douglas.co.za> for root:98.
+Mar 19 08:36:37 h780152 spamd[18424]: identified spam (8.1/6.0) for root:98 in 4.2 seconds, 1432 bytes.
+Mar 19 08:36:37 h780152 spamd[18424]: result: Y  8 - FORGED_RCVD_HELO,INFO_TLD,RCVD_BY_IP,RCVD_IN_XBL,URIBL_SBL,URIBL_SC_SURBL,URIBL_WS_SURBL scantime=4.2,size=1432,mid=<3388717865.3821662804@douglas.co.za>,autolearn=no
+Mar 19 08:36:37 h780152 qmail-scanner[31528]: Clear:RC:0(213.165.64.100):SA:1(8.1/6.0): 4.195255 1371 srs0=k3bc=5k=douglas.co.za=deonegqf@gmx.net peter@ifup.de $E}{UALLYY_EXPLICIT:_Group_glorious_teens_hardcoore <3388717865.3821662804@douglas.co.za> 1142753793.31530-0.ifup.de:134
+
+
+Thanks Peter

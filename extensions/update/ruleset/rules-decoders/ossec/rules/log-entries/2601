@@ -1,0 +1,4 @@
+pptpd[7282]: GRE: read(fd=7,buffer=80567c0,len=8260) from network failed: status = -1 error = Protocol not available
+pptpd[7293]: GRE: read(fd=7,buffer=80567c0,len=8260) from network failed: status = -1 error = Protocol not available
+pptpd[7510]: GRE: read(fd=7,buffer=80567c0,len=8260) from network failed: status = -1 error = Protocol not available
+pptpd[8916]: GRE: read(fd=7,buffer=80567c0,len=8260) from network failed: status = -1 error = Protocol not available

@@ -1,0 +1,42 @@
+<!-- @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+
+
+<!--
+   - Allowed fields:
+   - location - where the log came from (only on FTS)
+   - srcuser  - extracts the source username
+   - dstuser  - extracts the destination (target) username
+   - user     - an alias to dstuser (only one of the two can be used)
+   - srcip    - source ip
+   - dstip    - dst ip
+   - srcport  - source port
+   - dstport  - destination port
+   - protocol - protocol
+   - id       - event id
+   - url      - url of the event
+   - action   - event action (deny, drop, accept, etc)
+   - status   - event status (success, failure, etc)
+   - extra_data     - Any extra data
+  -->
+
+
+<!-- Nginx error log decoder.
+  - Will extract the srcip.
+  - Examples:
+  - 2009/09/15 20:55:40 [error] 63858#0: *3663 open() "/srv/www/ossec.net/robots.txt" failed (2: No such file or directory), client: 1.2.3.4, server: ossec.net, request: "GET /robots.txt HTTP/1.1", host: "www.ossec.net"
+  - 2009/09/15 19:51:07 [error] 37992#0: accept() failed (53: Software caused connection abort)
+  -->
+<decoder name="nginx-errorlog">
+  <prematch>^20\d\d/\d\d/\d\d \d\d:\d\d:\d\d [</prematch>
+</decoder>
+
+<decoder name="nginx-errorlog-ip">
+  <parent>nginx-errorlog</parent>
+  <prematch offset="after_parent">, client: \S+, server: \S+, request: "\S+ </prematch>
+  <regex offset="after_parent">, client: (\d+.\d+.\d+.\d+), </regex>
+  <order>srcip</order>
+</decoder>

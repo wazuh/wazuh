@@ -1,0 +1,29 @@
+Dec  7 13:52:12 casal in.telnetd[27798]: refused connect from unknown
+Dec  7 13:52:12 casal in.telnetd[27798]: refused connect from unknown
+Jan 22 10:37:41 frontend-0 ypserv[832]: refused connect from
+127.0.0.1:868
+Feb 21 15:14:29 my_ftp_host in.ftpd[32374]: refused connect from
+XX.XX.XX.67
+Feb 21 15:14:36 my_ftp_host in.ftpd[32375]: refused connect from
+XX.XX.XX.67 
+Jan 12 20:48:29 elrond sshd[19734]: refused connect from accsys.elink.net.au (203.31.101.11)
+
+Jan 14 18:29:26 elrond sshd[26895]: refused connect from pD952714D.dip.t-dialin.net (217.82.113.77)
+
+Jan 18 21:46:26 elrond sshd[9370]: refused connect from root@cops2.inf.ethz.ch (129.132.134.179)
+
+Jan 19 19:34:06 elrond sshd[12580]: refused connect from r88m211.cybercable.tm.fr (195.132.88.211)
+
+Jan 23 13:13:49 elrond sshd[25980]: refused connect from pD9527D56.dip.t-dialin.net (217.82.125.86)
+
+Jan 24 19:26:26 elrond sshd[30479]: refused connect from pD95279BD.dip.t-dialin.net (217.82.121.189)
+
+Jan 27 07:33:48 elrond sshd[7899]: refused connect from root@194.213.255.84 (194.213.255.84)
+
+Jan 31 20:48:07 elrond sshd[26946]: refused connect from wwwstud.hsk.no (158.36.81.145)
+
+Feb  1 01:30:49 elrond sshd[27872]: refused connect from co101359-a.olden1.ov.nl.home.com (213.51.84.16)
+
+Feb  4 07:06:59 elrond sshd[7766]: refused connect from moosrose.onlineunit.de (195.254.38.131) 
+
+Feb 10 22:22:49 elrond sshd[2592]: refused connect from root@62.138.38.142 (62.138.38.142)

@@ -1,0 +1,40 @@
+<!-- @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+
+
+<!--
+   - Allowed fields:
+   - location - where the log came from (only on FTS)
+   - srcuser  - extracts the source username
+   - dstuser  - extracts the destination (target) username
+   - user     - an alias to dstuser (only one of the two can be used)
+   - srcip    - source ip
+   - dstip    - dst ip
+   - srcport  - source port
+   - dstport  - destination port
+   - protocol - protocol
+   - id       - event id
+   - url      - url of the event
+   - action   - event action (deny, drop, accept, etc)
+   - status   - event status (success, failure, etc)
+   - extra_data     - Any extra data
+  -->
+
+
+<!-- Suhosin decoder.
+  - Will extract the attack name and srcip.
+  - Examples:
+  - suhosin[76366]: ALERT - canary mismatch on efree() - heap overflow detected (attacker '200.139.164.149', file 'xyz')
+  - suhosin[24239]: ALERT - configured request variable value length limit exceeded - dropped variable 'introtext' (attacker '192.168.1.2', file '/var/www/site/administrator/index2.php')
+  - suhosin[32150]: ALERT - configured POST variable limit exceeded - dropped variable 'setting[sg_allow_delete_empty_group]' (attacker '32.104.x.y', file '/home/htdocs/admincp/options.php')
+  -->
+<decoder name="suhosin">
+  <program_name>^suhosin</program_name>
+  <type>ids</type>
+  <regex>^ALERT - (\.+) \(attacker '(\d+.\d+.\d+.\d+)', </regex>
+  <order>id, srcip</order>
+  <fts>name, location, id</fts>
+</decoder>

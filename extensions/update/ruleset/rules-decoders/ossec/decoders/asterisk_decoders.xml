@@ -1,0 +1,64 @@
+<!-- @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+
+
+<!--
+   - Allowed fields:
+   - location - where the log came from (only on FTS)
+   - srcuser  - extracts the source username
+   - dstuser  - extracts the destination (target) username
+   - user     - an alias to dstuser (only one of the two can be used)
+   - srcip    - source ip
+   - dstip    - dst ip
+   - srcport  - source port
+   - dstport  - destination port
+   - protocol - protocol
+   - id       - event id
+   - url      - url of the event
+   - action   - event action (deny, drop, accept, etc)
+   - status   - event status (success, failure, etc)
+   - extra_data     - Any extra data
+  -->
+
+
+<!-- Asterisk logs
+  - Examples:
+  - Dec 16 18:02:04 asterisk1 asterisk[31774]: NOTICE[31787]:
+  chan_sip.c:11242 in handle_request_register: Registration from
+  '"503"<sip:503@192.168.1.107>' failed for '192.168.1.137' - Wrong
+  password
+  -->
+<decoder name="asterisk">
+  <program_name>^asterisk</program_name>
+</decoder>
+
+<decoder name="asterisk-hijacking">
+  <parent>asterisk</parent>
+  <prematch>^WARNING[\d+]: \S+ in \S+: Don't know </prematch>
+  <regex offset="after_prematch">^\S+ how to respond via '(\w+/\d.\d/\w+)'</regex>
+  <order>user</order>
+</decoder>
+
+<decoder name="asterisk-denied">
+  <parent>asterisk</parent>
+  <prematch>^NOTICE[\d+]: \S+ in \S+: Registration from </prematch>
+  <regex offset="after_prematch">^\S+ failed for '(\d+.\d+.\d+.\d+)'</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="asterisk-denied2">
+  <parent>asterisk</parent>
+  <prematch>Registration from </prematch>
+  <regex offset="after_prematch">failed for '(\d+.\d+.\d+.\d+)'</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="asterisk-iax-authentication-denied">
+  <parent>asterisk</parent>
+  <prematch>^NOTICE[\d+]: \S+ in \S+: Host </prematch>
+  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) failed MD5 authentication for (\S+)</regex>
+  <order>srcip, user</order>
+</decoder>
