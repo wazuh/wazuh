@@ -23,3 +23,20 @@ All notable changes to this project will be documented in this file.
 - Wazuh ruleset updated to 1.0.2
 - Extensions: Improved Kibana dashboards
 - Extensions: Improved Windows deployment script
+
+
+## [v1.0.2] - 2016-01-29
+
+### Added
+
+- Added Wazuh Ruleset updater
+- Added extensions files to support ELK Stack latest versions (ES 2.x, LS 2.1, Kibana 4.3)
+
+### Changed
+
+- Upgraded rules to Wazuh Ruleset v1.05
+- Fixed crash in reportd
+- Fixed Windows EventChannel syntaxis issue
+- Fixed manage_agents bulk option bug. No more "randombytes" errors.
+- Windows deployment script improved
+
