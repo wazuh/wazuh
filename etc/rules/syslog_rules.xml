@@ -493,7 +493,7 @@
 
 
 <!-- Sudo messages -->
-<group name="syslog,sudo">
+<group name="syslog,sudo,">
   <rule id="5400" level="0" noalert="1">
     <decoded_as>sudo</decoded_as>
     <description>Initial group for sudo messages</description>
