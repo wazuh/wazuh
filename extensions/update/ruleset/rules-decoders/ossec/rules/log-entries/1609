@@ -1,0 +1,7 @@
+a.out[347] attempt to execute code on stack by uid 555
+Nov 12 18:47:01 foo.bar.baz /usr/dt/bin/rpc.ttdbserverd[646]: _Tt_file_system::findBestMountPoint -- max_match_entry is null, aborting...
+Nov 12 18:47:01 foo.bar.baz inetd[143]: /usr/dt/bin/rpc.ttdbserverd: Segmentation Fault - core dumped
+Nov 12 18:47:02 foo.bar.baz unix: rpc.ttdbserverd[1932] attempt to execute code on stack by uid 0
+Nov 12 18:47:02 foo.bar.baz inetd[143]: /usr/dt/bin/rpc.ttdbserverd: Segmentation Fault - core dumped
+Nov 12 18:47:03 foo.bar.baz unix: rpc.ttdbserverd[1934] attempt to execute code on stack by uid 0
+Nov 12 18:47:03 foo.bar.baz inetd[143]: /usr/dt/bin/rpc.ttdbserverd: Segmentation Fault - core dumped

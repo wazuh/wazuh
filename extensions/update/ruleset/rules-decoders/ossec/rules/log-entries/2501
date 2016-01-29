@@ -1,0 +1,28 @@
+Nov 9 05:00:07 ensim
+proftpd[21141]: ensim.domain.com
+(p50832E46.dip.t-dialin.net[80.131
+.46.70]) - FTP session opened.
+Nov 9 05:00:09 ensim
+proftpd[21141]: ensim.domain.com
+(p50832E46.dip.t-dialin.net[80.131
+.46.70]) - no such user
+'anonymous'
+Nov 9 05:00:14 ensim
+proftpd[21141]: ensim.domain.com
+(p50832E46.dip.t-dialin.net[80.131
+.46.70]) - FTP session closed.
+Nov 9 06:12:41 ensim
+proftpd[24994]: ensim.domain.com
+(ool-18bba13b.dyn.optonline.net[24
+.187.161.59]) - FTP session
+opened.
+Nov 9 06:12:41 ensim
+proftpd[24994]: ensim.domain.com
+(ool-18bba13b.dyn.optonline.net[24
+.187.161.59]) - no such user
+'vgodz'
+Nov 9 06:12:41 ensim
+proftpd[24994]: ensim.domain.com
+(ool-18bba13b.dyn.optonline.net[24
+.187.161.59]) - FTP session
+closed.

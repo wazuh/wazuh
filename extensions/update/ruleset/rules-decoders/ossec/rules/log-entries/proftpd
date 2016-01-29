@@ -1,0 +1,68 @@
+May 21 20:20:44 slacker proftpd[25526] slacker.lab.ossec.net: ProFTPD 1.2.10 (stable) (built Tue Aug 2 22:33:07 PDT 2005) standalone mode STARTUP
+May 21 20:21:18 slacker proftpd[25530] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session opened.
+May 21 20:21:21 slacker proftpd[25530] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): no such user 'a'
+May 21 20:21:21 slacker proftpd[25530] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): USER a: no such user found from 192.168.2.10 [192.168.2.10] to 192.168.2.32:21
+May 21 20:22:14 slacker proftpd[25530] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session closed.
+May 21 20:22:15 slacker proftpd[25556] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session opened.
+May 21 20:22:28 slacker proftpd[25556] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): USER dcid: Login successful.
+May 21 20:22:35 slacker proftpd[25556] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session closed.
+May 21 20:22:42 slacker proftpd[25557] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session opened.
+May 21 20:22:44 slacker proftpd[25557] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): USER dcid (Login failed): Incorrect password.
+May 21 20:22:46 slacker proftpd[25557] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session closed.
+
+May 30 14:41:52 valhalla proftpd[11727]: valhalla.ahmetozturk.name.tr (85.103.201.222[85.103.201.222]) - unable to find open port in PassivePorts range 65532-65533: defaulting to INPORT_ANY
+May 30 15:39:27 valhalla proftpd[13464]: valhalla.ahmetozturk.name.tr (212.156.175.130[212.156.175.130]) - unable to find open port in PassivePorts range 65532-65533: defaulting to INPORT_ANY
+
+
+May 29 18:49:42 valhalla proftpd[16661]: valhalla.ahmetozturk.name.tr (85.103.107.214[85.103.107.214]) - Refused PORT 192,168,1,33,4,83 (address mismatch)
+May 31 13:11:38 valhalla proftpd[10486]: valhalla.ahmetozturk.name.tr (85.102.240.252[85.102.240.252]) - Refused PORT 10,0,65,23,19,139 (address mismatch)
+
+
+Jun  1 11:51:24 valhalla proftpd[7301]: valhalla.ahmetozturk.name.tr (81.215.6.178[81.215.6.178]) - Maximum login attempts (3) exceeded
+Jun  1 11:51:24 valhalla proftpd[7301]: valhalla.ahmetozturk.name.tr (81.215.6.178[81.215.6.178]) - Maximum login attempts (3) exceeded
+
+
+
+May 29 11:27:28 hayaletgemi proftpd[4874]: warning: host name/name mismatch: www.ahmetozturk.name.tr != nil.alannim.com
+Jun  3 07:48:10 hayaletgemi proftpd[1026]: warning: host name/address mismatch: 216.117.134.168 != nameservices.net
+
+
+Jun  2 15:07:14 hayaletgemi proftpd[458988]: warning: can't verify hostname: gethostbyname(designstudio) failed
+Jun  3 15:35:28 hayaletgemi proftpd[696376]: warning: can't verify hostname: gethostbyname(dsl.dynamic859612386.ttnet.net.tr) failed
+
+
+
+May 30 17:06:40 queen proftpd[1769554]: connect from 212.146.159.45
+May 30 21:46:50 queen proftpd[2142266]: connect from 88.224.90.235
+
+
+May 30 21:04:35 valhalla proftpd[22104]: valhalla.ahmetozturk.name.tr (85.97.67.160[85.97.67.160]) - FTP no transfer timeout, disconnected
+May 30 22:53:09 valhalla proftpd[24395]: valhalla.ahmetozturk.name.tr (88.240.52.97[88.240.52.97]) - FTP no transfer timeout, disconnected
+
+
+May 31 06:50:39 valhalla proftpd[345]: valhalla.ahmetozturk.name.tr (217.20.94.150[217.20.94.150]) - FTP login timed out, disconnected
+May 31 15:13:38 valhalla proftpd[14273]: valhalla.ahmetozturk.name.tr (85.104.215.80[85.104.215.80]) - FTP login timed out, disconnected
+
+
+
+May 31 11:26:23 valhalla proftpd[6399]: valhalla.ahmetozturk.name.tr (88.226.116.196[88.226.116.196]) - FTP session idle timeout, disconnected.
+May 31 13:10:54 valhalla proftpd[8987]: valhalla.ahmetozturk.name.tr (85.104.215.80[85.104.215.80]) - FTP session idle timeout, disconnected.
+
+
+May 30 13:44:57 valhalla proftpd[8521]: valhalla.ahmetozturk.name.tr (84.134.231.103[84.134.231.103]) - Data transfer stall timeout: 3600 seconds
+Jun  3 08:24:13 valhalla proftpd[24038]: valhalla.ahmetozturk.name.tr (85.104.252.16[85.104.252.16]) - Data transfer stall timeout: 3600 seconds
+
+
+May 29 15:13:37 whale proftpd[4555]: whale.ahmetozturk.name.tr (dsl85-105-3059.ttnet.net.tr[85.105.10.139]) - ProFTPD terminating (signal 11)
+May 29 15:13:53 whale proftpd[4592]: whale.ahmetozturk.name.tr (dsl85-105-3059.ttnet.net.tr[85.105.10.139]) - ProFTPD terminating (signal 11)
+
+
+May 30 17:21:53 whale proftpd[2056246]: whale.ahmetozturk.name.tr (193.140.92.250[193.140.92.250]) - Reallocating sreaddir buffer from 10 entries to 20 entries
+May 30 17:21:53 whale proftpd[2056246]: whale.ahmetozturk.name.tr (193.140.92.250[193.140.92.250]) - Reallocating sreaddir buffer from 20 entries to 40 entries
+May 30 17:21:53 whale proftpd[2056246]: whale.ahmetozturk.name.tr (193.140.92.250[193.140.92.250]) - Reallocating sreaddir buffer from 40 entries to 80 entries
+May 30 17:21:53 whale proftpd[2056246]: whale.ahmetozturk.name.tr (193.140.92.250[193.140.92.250]) - Reallocating sreaddir buffer from 80 entries to 160 entries
+May 30 17:21:53 whale proftpd[2056246]: whale.ahmetozturk.name.tr (193.140.92.250[193.140.92.250]) - Reallocating sreaddir buffer from 160 entries to 320 entries
+
+
+May 30 16:22:39 whale proftpd[25749]: whale.ahmetozturk.name.tr (adsl85-105-30850.tt.net.tr[85.105.10.222]) - listen() failed in inet_listen(): Address already in use
+May 31 13:21:13 whale proftpd[15942]: whale.ahmetozturk.name.tr (adsl85-105-30850.tt.net.tr[85.105.10.222]) - listen() failed in inet_listen(): Address already in use

@@ -1,0 +1,53 @@
+<!-- @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+
+
+<!--
+   - Allowed fields:
+   - location - where the log came from (only on FTS)
+   - srcuser  - extracts the source username
+   - dstuser  - extracts the destination (target) username
+   - user     - an alias to dstuser (only one of the two can be used)
+   - srcip    - source ip
+   - dstip    - dst ip
+   - srcport  - source port
+   - dstport  - destination port
+   - protocol - protocol
+   - id       - event id
+   - url      - url of the event
+   - action   - event action (deny, drop, accept, etc)
+   - status   - event status (success, failure, etc)
+   - extra_data     - Any extra data
+  -->
+
+
+<!-- Postfix  decoder.
+  - Will extract the srcip
+  - Examples:
+  - postfix/smtpd[32297]: NOQUEUE: reject: RCPT from unknown[213.255.237.245]: 554
+    <ce101@ce.metu.edu.tr>: Relay access denied; from=<kryonomm@yahoo.com>
+    to=<e10445@jubiipost.dk> proto=SMTP helo=<SM01.net>
+  - postfix/smtpd[27712]: NOQUEUE: reject: MAIL from localhost[127.0.0.1]: 452 Insufficient system storage
+ -->
+
+<decoder name="postfix">
+  <program_name>^postfix</program_name>
+</decoder>
+
+<decoder name="postfix-reject">
+  <use_own_name>true</use_own_name>
+  <parent>postfix</parent>
+  <prematch>^NOQUEUE: reject: \w\w\w\w from </prematch>
+  <regex offset="after_prematch">[(\d+.\d+.\d+.\d+)]: (\d+) </regex>
+  <order>srcip,id</order>
+</decoder>
+
+<decoder name="postfix-sasl">
+  <parent>postfix</parent>
+  <prematch>^warning: \S+: SASL </prematch>
+  <regex>^warning: \S+[(\d+.\d+.\d+.\d+)]:</regex>
+  <order>srcip</order>
+</decoder>

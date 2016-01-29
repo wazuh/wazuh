@@ -1,0 +1,18 @@
+su[2921936]: succeeded: ttyq4 changing from root to ldap
+su[2921936]: failed: ttyq4 changing from root to ldap
+su: failed: ttyq# changing from <user> to root 
+su[234]: BAD SU ger to fwmaster on /dev/ttyp0
+Sep 11 01:40:59 bogus.com su: ericx to root on /dev/ttyu0
+Sep 12 18:40:02 bogus.com su: BAD su rachel on /dev/ttyp1
+
+Feb 14 17:20:27 niban su(pam_unix)[23164]: authentication failure; logname= uid=1342 euid=0 tty= ruser=dcid rhost=  user=osaudit
+May  4 11:17:42 niban su(pam_unix)[2298]: authentication failure; logname= uid=1342 euid=0 tty= ruser=dcid rhost=  user=root
+May  4 11:18:52 niban su(pam_unix)[2307]: authentication failure; logname= uid=1342 euid=0 tty= ruser=dcid rhost=  user=test
+
+Jun  8 09:01:01 niban su(pam_unix)[1313]: session opened for user root by (uid=1342)
+Jun  9 13:32:14 niban su(pam_unix)[1338]: session opened for user root by (uid=1342)
+#Slack:
+Jul  5 00:30:21 lili su[2190]: + pts/4 dcid-root
+Jul  5 12:13:15 lili su[2614]: Authentication failed for root
+Jul  5 12:13:15 lili su[2614]: - pts/6 dcid-root
+
