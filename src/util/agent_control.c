@@ -235,21 +235,42 @@ int main(int argc, char **argv)
 
     /* List available agents */
     if (list_agents) {
+        cJSON *root = NULL;
+        cJSON *agents = NULL;
+        
         if (!csv_output && !json_output) {
             printf("\nOSSEC HIDS %s. List of available agents:",
                    ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n",
                    shost);
 		} else if(json_output){
-				printf("{\"error\":0, \"response\":[ { \"id\" : \"000\", \"name\" : \"%s (server)\", \"ip\": \"127.0.0.1\", \"status\" : \"Active/Local\" }",shost);
+                cJSON *first = cJSON_CreateObject();
+                root = cJSON_CreateObject();
+                agents = cJSON_CreateArray();
+                
+                if (!(first && root && agents))
+                    exit(1);
+                
+                cJSON_AddNumberToObject(root, "error", 0);
+                cJSON_AddItemToObject(root, "response", agents);
+                
+                cJSON_AddStringToObject(first, "id", "000");
+                cJSON_AddStringToObject(first, "name", shost);
+                cJSON_AddStringToObject(first, "ip", "127.0.0.1");
+                cJSON_AddStringToObject(first, "status", "Active/Local");
+                cJSON_AddItemToArray(agents, first);
         } else {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
-        print_agents(1, active_only, csv_output, json_output);
+        
+        print_agents(1, active_only, csv_output, agents);
 		// Closing JSON Object array
-		if(json_output)
-			 printf("] }");
-		else
+		if(json_output) {
+			 char *render = cJSON_PrintUnformatted(root);
+             printf("%s", render);
+             cJSON_Delete(root);
+             free(render);
+        } else
 			printf("\n");
         exit(0);
     }
