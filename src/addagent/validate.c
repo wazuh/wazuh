@@ -44,7 +44,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
         while (IDExist(nid)) {
             i++;
             snprintf(nid, 6, "%d", i);
-            if (i >= 4000) {
+            if (i >= (MAX_AGENTS + 1024)) {
                 return (NULL);
             }
         }
