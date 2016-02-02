@@ -19,6 +19,10 @@ static char *trimwhitespace(char *str)
 {
     char *end;
 
+    /* Null pointer? */
+    if (!str)
+        return NULL;
+
     /* Trim leading space */
     while (isspace(*str)) {
         str++;
@@ -274,7 +278,7 @@ int k_bulkload(const char *cmdbulk)
     char name[FILE_SIZE + 1];
     char id[FILE_SIZE + 1];
     char ip[FILE_SIZE + 1];
-    char delims[] = ",";
+    char delims[] = AGENT_FILE_DELIMS;
     char *token = NULL;
 
     /* Check if we can open the input file */
@@ -306,6 +310,10 @@ int k_bulkload(const char *cmdbulk)
 
         memset(name, '\0', FILE_SIZE + 1);
         token = strtok(NULL, delims);
+
+        if (!token)
+            ErrorExit(SYNTAX_ERROR, cmdbulk);
+
         strncpy(name, trimwhitespace(token), FILE_SIZE - 1);
 
 #ifndef WIN32
