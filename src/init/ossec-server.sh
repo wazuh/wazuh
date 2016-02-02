@@ -41,7 +41,7 @@ checkpid()
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
             ps -p $j |grep ossec >/dev/null 2>&1
             if [ ! $? = 0 ]; then
-                if [ $USE_JSON == false ]; then
+                if [ $USE_JSON = false ]; then
                     echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
                 fi
                 rm ${DIR}/var/run/${i}-${j}.pid
@@ -161,32 +161,32 @@ status()
 {
     RETVAL=0
     first=true
-    if [ $USE_JSON == true ]; then
+    if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"response":['
     fi
     for i in ${DAEMONS}; do
-        if [ $USE_JSON == true ] && [ $first == false ]; then
+        if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
             first=false
         fi
         pstatus ${i};
         if [ $? = 0 ]; then
-            if [ $USE_JSON == true ]; then
+            if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
             else
                 echo "${i} not running..."
             fi
             RETVAL=1
         else
-            if [ $USE_JSON == true ]; then
+            if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"running"}'
             else
                 echo "${i} is running..."
             fi
         fi
     done
-    if [ $USE_JSON == true ]; then
+    if [ $USE_JSON = true ]; then
         echo -n ']}'
     fi
     exit $RETVAL
@@ -198,7 +198,7 @@ testconfig()
     for i in ${SDAEMONS}; do
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
-            if [ $USE_JSON == true ]; then
+            if [ $USE_JSON = true ]; then
                 echo -n '{"error":1,"description":"'${i}': Configuration error."}'
             else
                 echo "${i}: Configuration error. Exiting"
@@ -214,12 +214,12 @@ start()
 {
     SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
 
-    if [ $USE_JSON == false ]; then
+    if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION (by $AUTHOR)..."
     fi
     echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
-        if [ $USE_JSON == true ]; then
+        if [ $USE_JSON = true ]; then
             echo  -n'{"error":1,"description":"OSSEC analysisd: Testing rules failed. Configuration error."}'
         else
             echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
@@ -231,24 +231,24 @@ start()
 
     # We actually start them now.
     first=true
-    if [ $USE_JSON == true ]; then
+    if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"response":['
     fi
     for i in ${SDAEMONS}; do
-        if [ $USE_JSON == true ] && [ $first == false ]; then
+        if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
             first=false
         fi
         pstatus ${i};
         if [ $? = 0 ]; then
-            if [ $USE_JSON == true ]; then
+            if [ $USE_JSON = true ]; then
                 ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
             else
                 ${DIR}/bin/${i} ${DEBUG_CLI};
             fi
             if [ $? != 0 ]; then
-                if [ $USE_JSON == true ]; then
+                if [ $USE_JSON = true ]; then
                     echo -n '{"daemon":"'${i}'","status":"error"}'
                 else
                     echo "${i} did not start correctly.";
@@ -256,13 +256,13 @@ start()
                 unlock;
                 exit 1;
             fi
-            if [ $USE_JSON == true ]; then
+            if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"running"}'
             else
                 echo "Started ${i}..."
             fi
         else
-            if [ $USE_JSON == true ]; then
+            if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"running"}'
             else
                 echo "${i} already running..."
@@ -275,7 +275,7 @@ start()
     sleep 2;
     unlock;
 
-    if [ $USE_JSON == true ]; then
+    if [ $USE_JSON = true ]; then
         echo -n ']}'
     else
         echo "Completed."
@@ -296,7 +296,7 @@ pstatus()
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
             ps -p $j |grep ossec >/dev/null 2>&1
             if [ ! $? = 0 ]; then
-                if [ $USE_JSON == false ]; then
+                if [ $USE_JSON = false ]; then
                     echo "${pfile}: Process $j not used by ossec, removing .."
                 fi
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
@@ -318,25 +318,25 @@ stopa()
     lock;
     checkpid;
     first=true
-    if [ $USE_JSON == true ]; then
+    if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"response":['
     fi
     for i in ${DAEMONS}; do
-        if [ $USE_JSON == true ] && [ $first == false ]; then
+        if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
             first=false
         fi
         pstatus ${i};
         if [ $? = 1 ]; then
-            if [ $USE_JSON == true ]; then
+            if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"killed"}'
             else
                 echo "Killing ${i} .. ";
             fi
             kill `cat ${DIR}/var/run/${i}*.pid`;
         else
-            if [ $USE_JSON == true ]; then
+            if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
             else
                 echo "${i} not running ..";
@@ -346,7 +346,7 @@ stopa()
     done
 
     unlock;
-    if [ $USE_JSON == true ]; then
+    if [ $USE_JSON = true ]; then
         echo -n ']}'
     else
         echo "$NAME $VERSION Stopped"
@@ -355,7 +355,7 @@ stopa()
 
 ### MAIN HERE ###
 
-if [ "$1" == "-j" ]; then
+if [ "$1" = "-j" ]; then
     USE_JSON=true
     action=$2
     arg=$3
