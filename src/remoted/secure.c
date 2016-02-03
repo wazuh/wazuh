@@ -110,22 +110,22 @@ void HandleSecure()
 
             agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
             
-	    if (agentid == -1) {
+            if (agentid == -1) {
                 if (check_keyupdate()) {
                     agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
                     if (agentid == -1) {
-                        merror(ENC_IP_ERROR, ARGV0, srcip);
+                        merror(ENC_IP_ERROR, ARGV0, buffer + 1, srcip);
                         continue;
                     }
                 } else {
-                    merror(ENC_IP_ERROR, ARGV0, srcip);
+                    merror(ENC_IP_ERROR, ARGV0, buffer + 1, srcip);
                     continue;
                 }
             }
         } else {
             agentid = OS_IsAllowedIP(&keys, srcip);
 	       
- 	    if (agentid < 0) {
+            if (agentid < 0) {
                 if (check_keyupdate()) {
                     agentid = OS_IsAllowedIP(&keys, srcip);
                     if (agentid == -1) {
@@ -138,8 +138,7 @@ void HandleSecure()
                 }
             }
             tmp_msg = buffer;
-            
-	}
+        }
 
         /* Decrypt the message */
         tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg,
