@@ -19,7 +19,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
 static int _do_print_syscheck(FILE *fp, int all_files, int csv_output) __attribute__((nonnull));
 static int _do_get_rootcheckscan(FILE *fp) __attribute__((nonnull));
 static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
-                               int csv_output, int show_last) __attribute__((nonnull));
+                               int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
 #endif /* !WIN32*/
 
 static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info) __attribute__((nonnull(2, 3)));
@@ -497,9 +497,9 @@ static int _do_get_rootcheckscan(FILE *fp)
     return ((int)time(NULL));
 }
 
-/* Print syscheck db (of modified files) */
+/* Print rootcheck db */
 static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
-                               int csv_output, int show_last)
+                               int csv_output, cJSON *json_output, int show_last)
 {
     int i = 0;
     int f_found = 0;
@@ -533,7 +533,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
 
     fseek(fp, 0, SEEK_SET);
 
-    if (!csv_output) {
+    if (!(csv_output || json_output)) {
         if (show_last) {
             tm_time = localtime(&time_last_scan);
             strftime(read_day, 23, "%Y %h %d %T", tm_time);
@@ -610,7 +610,27 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
         tm_time = localtime((time_t *)&i_time);
         strftime(old_day, 23, "%Y %h %d %T", tm_time);
 
-        if (!csv_output) {
+        if (json_output) {
+            cJSON *event = cJSON_CreateObject();
+            cJSON_AddStringToObject(event, "status", resolved == 0 ? "outstanding" : "resolved");
+            cJSON_AddStringToObject(event, "readDay", read_day);
+            cJSON_AddStringToObject(event, "oldDay", old_day);
+
+            if (ns_events[i])
+                cJSON_AddStringToObject(event, "event", tmp_str);
+            else {
+                char json_buffer[OS_MAXSTR + 1];
+                snprintf(json_buffer, OS_MAXSTR, "%s%s", ns_events[i], tmp_str);
+                cJSON_AddStringToObject(event, "event", json_buffer);
+            }
+
+            cJSON_AddItemToArray(json_output, event);
+        } else if (csv_output) {
+            printf("%s,%s,%s,%s%s\n", resolved == 0 ? "outstanding" : "resolved",
+                   read_day, old_day,
+                   ns_events[i] != NULL ? "" : "System Audit: ",
+                   tmp_str);
+        } else {
             if (!show_last) {
                 printf("%s (first time detected: %s)\n", read_day, old_day);
             }
@@ -620,17 +640,12 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
             } else {
                 printf("System Audit: %s\n\n", tmp_str);
             }
-        } else {
-            printf("%s,%s,%s,%s%s\n", resolved == 0 ? "outstanding" : "resolved",
-                   read_day, old_day,
-                   ns_events[i] != NULL ? "" : "System Audit: ",
-                   tmp_str);
         }
 
         f_found++;
     }
 
-    if (!f_found && !csv_output) {
+    if (!f_found && !(csv_output || json_output)) {
         printf("** No entries found.\n");
     }
 
@@ -638,8 +653,8 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
 }
 
 /* Print rootcheck db */
-int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname, int resolved,
-                    int csv_output, int show_last)
+int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname,
+                    int resolved, int csv_output, cJSON *json_output, int show_last)
 {
     int ltime = 0;
     FILE *fp;
@@ -668,15 +683,15 @@ int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname, i
         ltime = _do_get_rootcheckscan(fp);
         if (!fname) {
             if (resolved == 1) {
-                _do_print_rootcheck(fp, 1, ltime, csv_output, 0);
+                _do_print_rootcheck(fp, 1, ltime, csv_output, json_output, 0);
             } else if (resolved == 2) {
-                _do_print_rootcheck(fp, 0, ltime, csv_output, show_last);
+                _do_print_rootcheck(fp, 0, ltime, csv_output, json_output, show_last);
             } else {
-                _do_print_rootcheck(fp, 1, ltime, csv_output, 0);
-                _do_print_rootcheck(fp, 0, ltime, csv_output, show_last);
+                _do_print_rootcheck(fp, 1, ltime, csv_output, json_output, 0);
+                _do_print_rootcheck(fp, 0, ltime, csv_output, json_output, show_last);
             }
-        } else {
         }
+
         fclose(fp);
     }
 
