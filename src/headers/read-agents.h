@@ -25,7 +25,7 @@ typedef struct _agent_info {
 
 /* Print syscheck db (of modified files) */
 int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname, int print_registry,
-                   int all_files, int csv_output, int update_counter);
+                   int all_files, int csv_output, cJSON *json_output, int update_counter);
 
 /* Print rootcheck db */
 int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname, int resolved,
