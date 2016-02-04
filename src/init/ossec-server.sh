@@ -199,7 +199,7 @@ testconfig()
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
-                echo -n '{"error":1,"description":"'${i}': Configuration error."}'
+                echo -n '{"error":20,"description":"'${i}': Configuration error."}'
             else
                 echo "${i}: Configuration error. Exiting"
             fi
@@ -220,7 +220,7 @@ start()
     echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
         if [ $USE_JSON = true ]; then
-            echo  -n'{"error":1,"description":"OSSEC analysisd: Testing rules failed. Configuration error."}'
+            echo  -n'{"error":21,"description":"OSSEC analysisd: Testing rules failed. Configuration error."}'
         else
             echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
         fi
@@ -398,4 +398,3 @@ disable)
 *)
     help
 esac
-
