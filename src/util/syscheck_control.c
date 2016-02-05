@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     int active_only = 0, csv_output = 0, json_output = 0;
 
     char shost[512];
-    cJSON *json_root;
+    cJSON *json_root = NULL;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -165,13 +165,11 @@ int main(int argc, char **argv)
         cJSON *json_agents = NULL;
 
         if (json_output) {
-            char buffer[1024];
             cJSON *first = cJSON_CreateObject();
             json_agents = cJSON_CreateArray();
             cJSON_AddNumberToObject(json_root, "error", 0);
             cJSON_AddStringToObject(first, "id", "000");
-            snprintf(buffer, 1023, "%s (server)", shost);
-            cJSON_AddStringToObject(first, "name", buffer);
+            cJSON_AddStringToObject(first, "name", shost);
             cJSON_AddStringToObject(first, "ip", "127.0.0.1");
             cJSON_AddStringToObject(first, "status", "Active");
             cJSON_AddItemToArray(json_agents, first);
@@ -354,7 +352,7 @@ int main(int argc, char **argv)
             if (i < 0) {
                 if (json_output) {
                     char buffer[1024];
-                    cJSON_AddNumberToObject(json_root, "error", 32);
+                    cJSON_AddNumberToObject(json_root, "error", 33);
                     snprintf(buffer, 1023, "Invalid agent id '%s'.", agent_id);
                     cJSON_AddStringToObject(json_root, "description", buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
@@ -404,7 +402,7 @@ int main(int argc, char **argv)
     }
 
     if (json_output) {
-        cJSON_AddNumberToObject(json_root, "error", 10);
+        cJSON_AddNumberToObject(json_root, "error", 30);
         cJSON_AddStringToObject(json_root, "description", "Invalid argument combination");
         printf("%s", cJSON_PrintUnformatted(json_root));
         exit(1);
