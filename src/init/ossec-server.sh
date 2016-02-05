@@ -217,7 +217,7 @@ start()
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION (by $AUTHOR)..."
     fi
-    echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
+    ${DIR}/bin/ossec-logtest -t > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
         if [ $USE_JSON = true ]; then
             echo -n '{"error":21,"description":"OSSEC analysisd: Testing rules failed. Configuration error."}'
