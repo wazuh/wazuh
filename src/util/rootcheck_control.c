@@ -214,6 +214,7 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
+                cJSON_AddStringToObject(json_root, "response", "Policy and auditing database updated");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf("\n** Policy and auditing database updated.\n\n");
@@ -235,6 +236,7 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
+                cJSON_AddStringToObject(json_root, "response", "Policy and auditing database updated");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf("\n** Policy and auditing database updated.\n\n");
@@ -269,6 +271,7 @@ int main(int argc, char **argv)
 
             if (json_output) {
                  cJSON_AddNumberToObject(json_root, "error", 0);
+                 cJSON_AddStringToObject(json_root, "response", "Policy and auditing database updated");
                  printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf("\n** Policy and auditing database updated.\n\n");
