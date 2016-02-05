@@ -220,7 +220,7 @@ start()
     echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
         if [ $USE_JSON = true ]; then
-            echo  -n'{"error":21,"description":"OSSEC analysisd: Testing rules failed. Configuration error."}'
+            echo -n '{"error":21,"description":"OSSEC analysisd: Testing rules failed. Configuration error."}'
         else
             echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
         fi
@@ -374,7 +374,11 @@ stop)
     ;;
 restart)
     testconfig
-    stopa
+    if [ $USE_JSON = true ]; then
+        stopa > /dev/null 2>&1
+    else
+        stopa
+    fi
     sleep 1;
     start
     ;;
