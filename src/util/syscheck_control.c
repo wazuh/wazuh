@@ -185,8 +185,9 @@ int main(int argc, char **argv)
 
         if (json_output) {
             cJSON_AddItemToObject(json_root, "response", json_agents);
-            printf(json_output ? cJSON_PrintUnformatted(json_root) : "\n");
-        }
+            printf("%s", cJSON_PrintUnformatted(json_root));
+        } else
+            printf("\n");
 
         exit(0);
     }
