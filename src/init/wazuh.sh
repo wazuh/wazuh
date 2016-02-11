@@ -12,3 +12,11 @@ install_ruleset_updater()
     chmod +x $INSTALLDIR/update/ruleset/ossec_ruleset.py
     return 0;
 }
+patch_version(){
+        rm -rf $DIRECTORY/etc/shared/ssh > /dev/null 2>&1
+}
+WazuhSetup(){
+    install_ruleset_updater
+    patch_version
+}
+

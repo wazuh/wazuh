@@ -136,7 +136,7 @@ Install()
     # Install Wazuh ruleset updater
     if [ "X$INSTYPE" = "Xserver" ]; then
         if [ "X${INSTALLDIR}" = "X/var/ossec" ]; then
-            install_ruleset_updater
+		WazuhSetup
         fi
     fi
    # If update_rules is set, we need to tweak
