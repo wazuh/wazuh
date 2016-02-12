@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "sec.h"
+#include "external/cJSON/cJSON.h"
 
 /** Prototypes **/
 
@@ -37,7 +38,7 @@ char *getFullnameById(const char *id);
 char *OS_AddNewAgent(const char *name, const char *ip, const char *id);
 
 /* Print available agents */
-int print_agents(int print_status, int active_only, int csv_output, int json_output);
+int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output);
 int list_agents(int cmdlist);
 
 /* Clear a line */
@@ -59,6 +60,7 @@ extern fpos_t fp_pos;
 
 /* Internal strings */
 #define QUIT                "\\q"
+#define AGENT_FILE_DELIMS   ","
 
 /* Print agents */
 #define PRINT_AVAILABLE     "\nAvailable agents: \n"
@@ -92,6 +94,7 @@ extern fpos_t fp_pos;
 #define INVALID_ID      "\n** Invalid ID '%s' given. ID must be numeric (max 8 digits).\n\n"
 #define INVALID_NAME    "\n** Invalid name '%s' given. Name must contain only alphanumeric characters (min=2, max=32).\n\n"
 #define NO_DEFAULT      "\n** Could not get default ID. Ran out of IDs to try with a max of '%d'. Either need to raise max agents or clean out client.keys.\n\n"
+#define SYNTAX_ERROR    "\n** Syntax error at file %s\n\n"
 
 /* Remove agent */
 #define REMOVE_ID       "Provide the ID of the agent to be removed (or '\\q' to quit): "

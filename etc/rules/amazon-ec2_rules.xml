@@ -514,42 +514,42 @@
     <rule id="80385" level="2">
         <if_sid>80300</if_sid>
         <action>CreateTags</action>
-        <description>Amazon-ec2: Create Tags</description>
+        <description>Amazon-ec2-vpc: Create Tags</description>
         <group>amazon,</group>
     </rule>
 
     <rule id="80386" level="5">
         <if_sid>80384</if_sid>
         <match>"errorCode":"Client.UnauthorizedOperation"</match>
-        <description>Amazon-ec2: Create Tags Unauthorized</description>
+        <description>Amazon-ec2-vpc: Create Tags Unauthorized</description>
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
     <rule id="80387" level="5">
         <if_sid>80384</if_sid>
         <match>"errorCode":"</match>
-        <description>Amazon-ec2: Create Tags error</description>
+        <description>Amazon-ec2-vpc: Create Tags error</description>
         <group>amazon,</group>
     </rule>
 
     <rule id="80388" level="2">
         <if_sid>80300</if_sid>
         <action>DeleteTags</action>
-        <description>Amazon-ec2: Delete Tags</description>
+        <description>Amazon-ec2-vpc: Delete Tags</description>
         <group>amazon,</group>
     </rule>
 
     <rule id="80389" level="5">
         <if_sid>80388</if_sid>
         <match>"errorCode":"Client.UnauthorizedOperation"</match>
-        <description>Amazon-ec2: Delete Tags Unauthorized</description>
+        <description>Amazon-ec2-vpc: Delete Tags Unauthorized</description>
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
     <rule id="80390" level="5">
         <if_sid>80388</if_sid>
         <match>"errorCode":"</match>
-        <description>Amazon-ec2: Delete Tags error</description>
+        <description>Amazon-ec2-vpc: Delete Tags error</description>
         <group>amazon,</group>
     </rule>
 
@@ -938,5 +938,189 @@
         <group>amazon,</group>
     </rule>
 
+    <rule id="80446" level="2">
+        <if_sid>80300</if_sid>
+        <action>AssociateAddress</action>
+        <description>Amazon-ec2: Associate Elastic IP's Address</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="80447" level="5">
+        <if_sid>80445</if_sid>
+        <match>"errorCode":"AccessDenied"</match>
+        <description>Amazon-ec2: Associate Elastic IP's Address Access Denied</description>
+        <group>amazon,pci_dss_10.2.4,</group>
+    </rule>
+
+   <rule id="80448" level="5">
+        <if_sid>80445</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-ec2: Associate Elastic IP's Address error</description>
+        <group>amazon,</group>
+    </rule>
+
 </group>
 <!-- amazon-ec2 -->
+<group name="Amazon-vpc,">
+
+    <rule id="81000" level="2">
+        <if_sid>80300</if_sid>
+        <action>CreateVpc</action>
+        <description>Amazon-vpc: Vpc Created</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81001" level="5">
+        <if_sid>81000</if_sid>
+        <match>"errorCode":"Client.UnauthorizedOperation"</match>
+        <description>Amazon-Vpc: Vpc Created Unauthorized Operation</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81002" level="5">
+        <if_sid>81000</if_sid>
+        <match>"errorCode":"Client.VpcLimitExceeded"</match>
+        <description>Amazon-Vpc: Vpc Limit Exceeded</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81003" level="5">
+        <if_sid>81000</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-vpc: Vpc create error</description>
+        <group>amazon,</group>
+     </rule>
+
+   <rule id="81004" level="2">
+        <if_sid>80300</if_sid>
+        <action>AssociateDhcpOptions</action>
+        <description>Amazon-vpc: Asssociate Dhcp Options</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81005" level="5">
+        <if_sid>81004</if_sid>
+        <match>"errorCode":"Client.UnauthorizedOperation"</match>
+        <description>Amazon-Vpc: Associate Dhcp Options Unauthorized Operation</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81006" level="5">
+        <if_sid>81004</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-vpc: Associate Dhcp Options error</description>
+        <group>amazon,</group>
+     </rule>
+
+    <rule id="81007" level="2">
+        <if_sid>80300</if_sid>
+        <action>CreateSubnet</action>
+        <description>Amazon-vpc: Crete Subnet</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81008" level="5">
+        <if_sid>81007</if_sid>
+        <match>"errorCode":"Client.UnauthorizedOperation"</match>
+        <description>Amazon-Vpc: Crete Subnet Unauthorized Operation</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81009" level="5">
+        <if_sid>81007</if_sid>
+        <match>"errorCode":"Client.InvalidSubnet.Range"</match>
+        <description>Amazon-Vpc: Crete Subnet Invalid Subnet range</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81010" level="5">
+        <if_sid>81007</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-vpc: Crete Subnet  error</description>
+        <group>amazon,</group>
+     </rule>
+
+    <rule id="81011" level="2">
+        <if_sid>80300</if_sid>
+        <action>ModifySubnetAttribute</action>
+        <description>Amazon-vpc: Modify Subnet Attribute</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81012" level="5">
+        <if_sid>81011</if_sid>
+        <match>"errorCode":"Client.UnauthorizedOperation"</match>
+        <description>Amazon-Vpc: Crete Subnet Unauthorized Operation</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81013" level="5">
+        <if_sid>81011</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-vpc: Modify Subnet Attribute error</description>
+        <group>amazon,</group>
+     </rule>
+
+    <rule id="81014" level="2">
+        <if_sid>80300</if_sid>
+        <action>CreateRouteTable</action>
+        <description>Amazon-vpc: Create Route Table</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81015" level="5">
+        <if_sid>81014</if_sid>
+        <match>"errorCode":"Client.UnauthorizedOperation"</match>
+        <description>Amazon-Vpc: Create Route Table Unauthorized Operation</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+   <rule id="81016" level="5">
+        <if_sid>81014</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-vpc: Create Route Table error</description>
+        <group>amazon,</group>
+     </rule>
+
+    <rule id="81017" level="2">
+        <if_sid>80300</if_sid>
+        <action>AssociateRouteTable</action>
+        <description>Amazon-vpc: Associate Route Table</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81018" level="5">
+        <if_sid>81017</if_sid>
+        <match>"errorCode":"Client.UnauthorizedOperation"</match>
+        <description>Amazon-Vpc: Associate Route Table Unauthorized Operation</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81019" level="5">
+        <if_sid>81017</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-vpc: Create Route Table error</description>
+        <group>amazon,</group>
+     </rule>
+
+    <rule id="81020" level="2">
+        <if_sid>80300</if_sid>
+        <action>DisassociateRouteTable</action>
+        <description>Amazon-vpc: Disassociate Route Table</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81021" level="5">
+        <if_sid>81020</if_sid>
+        <match>"errorCode":"Client.UnauthorizedOperation"</match>
+        <description>Amazon-Vpc: Disassociate Route Table Unauthorized Operation</description>
+        <group>amazon,pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="81022" level="5">
+        <if_sid>81020</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-vpc: Create Route Table error</description>
+        <group>amazon,</group>
+     </rule>
+</group>
