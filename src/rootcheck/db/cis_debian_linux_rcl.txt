@@ -161,7 +161,7 @@ f:/proc/sys/net/ipv6/ip_forward -> 1;
 [CIS - Debian Linux - 7.1 - Partition /var without 'nodev' set {CIS: 7.1 Debian Linux} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/etc/fstab -> !r:^# && r:ext2|ext3 && r:/var && !r:nodev;
 
-[CIS - Debian Linux - 7.1 - Partition /tmp without 'nodev' set {CIS: 7.1 Debian Linux}] {PCI_DSS: 2.2.4} [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
+[CIS - Debian Linux - 7.1 - Partition /tmp without 'nodev' set {CIS: 7.1 Debian Linux} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/etc/fstab -> !r:^# && r:ext2|ext3 && r:/tmp && !r:nodev;
 
 [CIS - Debian Linux - 7.1 - Partition /opt without 'nodev' set {CIS: 7.1 Debian Linux} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
@@ -181,7 +181,7 @@ f:/etc/fstab -> !r:^# && r:/media && r:user;
 
 
 # Section 8 - Access and authentication
-[CIS - Debian Linux - 8.8 - LILO Password not set {CIS: 8.8 Debian Linux} {PCI_DSS: 2.2.4}]  [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
+[CIS - Debian Linux - 8.8 - LILO Password not set {CIS: 8.8 Debian Linux} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/etc/lilo.conf -> !r:^# && !r:restricted;
 f:/etc/lilo.conf -> !r:^# && !r:password=;
 
@@ -191,5 +191,5 @@ f:/boot/grub/menu.lst -> !r:^# && !r:password;
 [CIS - Debian Linux - 9.2 - Account with empty password present {CIS: 9.2 Debian Linux} {PCI_DSS: 10.2.5}] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/etc/shadow -> r:^\w+::;
 
-[CIS - Debian Linux - 13.11 - Non-root account with uid 0 {CIS: 13.11 Debian Linux} {PCI_DSS: 10.2.5}]  [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
+[CIS - Debian Linux - 13.11 - Non-root account with uid 0 {CIS: 13.11 Debian Linux} {PCI_DSS: 10.2.5}] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;

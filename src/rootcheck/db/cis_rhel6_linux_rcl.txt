@@ -388,7 +388,7 @@ f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;
 f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;
 
 # 4.2.2 Disable ICMP Redirect Acceptance (Scored)
-#CIS - RHEL6 - 4.2.2 - Network parameters - ICMP redirects accepted {CIS: 1.1.1 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+#[CIS - RHEL6 - 4.2.2 - Network parameters - ICMP redirects accepted {CIS: 1.1.1 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 #f:/proc/sys/net/ipv4/conf/all/accept_redirects -> 1;
 #f:/proc/sys/net/ipv4/conf/default/accept_redirects -> 1;
 
