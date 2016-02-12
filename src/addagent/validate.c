@@ -44,7 +44,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
         while (IDExist(nid)) {
             i++;
             snprintf(nid, 6, "%d", i);
-            if (i >= 4000) {
+            if (i >= (MAX_AGENTS + 1024)) {
                 return (NULL);
             }
         }
@@ -297,7 +297,7 @@ int NameExist(const char *u_name)
 }
 
 /* Print available agents */
-int print_agents(int print_status, int active_only, int csv_output, int json_output)
+int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output)
 {
     int total = 0;
     FILE *fp;
@@ -352,9 +352,18 @@ int print_agents(int print_status, int active_only, int csv_output, int json_out
 
                         if (csv_output) {
                             printf("%s,%s,%s,%s,\n", line_read, name, ip, print_agent_status(agt_status));
-			}else if (json_output) {
-			   printf(", { \"id\" : \"%s\", \"name\" : \"%s\", \"ip\": \"%s\", \"status\" : \"%s\" }",line_read, name, ip, print_agent_status(agt_status));
-			} else {
+                        } else if (json_output) {
+                            cJSON *json_agent = cJSON_CreateObject();
+                          
+                            if (!json_agent)
+                                return 0;
+                            
+                            cJSON_AddStringToObject(json_agent, "id", line_read);
+                            cJSON_AddStringToObject(json_agent, "name", name);
+                            cJSON_AddStringToObject(json_agent, "ip", ip);
+                            cJSON_AddStringToObject(json_agent, "status", print_agent_status(agt_status));
+                            cJSON_AddItemToArray(json_output, json_agent);
+                        } else {
                             printf(PRINT_AGENT_STATUS, line_read, name, ip, print_agent_status(agt_status));
                         }
                     } else {
