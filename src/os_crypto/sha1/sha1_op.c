@@ -36,7 +36,7 @@ int OS_SHA1_File(const char *fname, os_sha1 output)
     memset(output, 0, 65);
     buf[2049] = '\0';
 
-    fp = fopen(fname, "r");
+    fp = fopen(fname, "rb");
     if (!fp) {
         return (-1);
     }
@@ -58,4 +58,3 @@ int OS_SHA1_File(const char *fname, os_sha1 output)
 
     return (0);
 }
-
