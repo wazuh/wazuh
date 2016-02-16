@@ -381,7 +381,7 @@ int remove_agent(int json_output)
                 char buffer[1024];
                 cJSON *json_root = cJSON_CreateObject();
                 snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", user_input);
-                cJSON_AddNumberToObject(json_root, "error", 77);
+                cJSON_AddNumberToObject(json_root, "error", 78);
                 cJSON_AddStringToObject(json_root, "description", buffer);
                 printf("%s", cJSON_PrintUnformatted(json_root));
                 exit(1);
@@ -437,7 +437,7 @@ int remove_agent(int json_output)
                     char buffer[1024];
                     cJSON *json_root = cJSON_CreateObject();
                     snprintf(buffer, 1023, "Could not chmod object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
-                    cJSON_AddNumberToObject(json_root, "error", 75);
+                    cJSON_AddNumberToObject(json_root, "error", 71);
                     cJSON_AddStringToObject(json_root, "description", buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
