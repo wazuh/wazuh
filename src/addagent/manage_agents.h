@@ -21,11 +21,11 @@ char *encode_base64(int size, char *src);
 char *read_from_user(void);
 
 /* Add or remove an agent */
-int add_agent(void);
-int remove_agent(void);
+int add_agent(int json_output);
+int remove_agent(int json_output);
 
 /* Extract or import a key */
-int k_extract(const char *cmdextract);
+int k_extract(const char *cmdextract, int json_output);
 int k_import(const char *cmdimport);
 int k_bulkload(const char *cmdbulk);
 
@@ -141,4 +141,3 @@ extern fpos_t fp_pos;
 #define GMF_ERROR       ARGV0 ": Could not run GetModuleFileName.\n"
 #define GMF_BUFF_ERROR  ARGV0 ": Could not get path because it is too long and was shrunk by (%d) characters with a max of (%d).\n"
 #define GMF_UNKN_ERROR  ARGV0 ": Could not run GetModuleFileName which returned (%ld).\n"
-

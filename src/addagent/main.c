@@ -30,13 +30,16 @@ static int setenv(const char *name, const char *val, __attribute__((unused)) int
 static void helpmsg()
 {
     print_header();
-    print_out("  %s: -[Vhl] [-e id] [-r id] [-i id] [-f file]", ARGV0);
+    print_out("  %s: -[Vhlj] [-a <ip> -n <name>] [-e id] [-r id] [-i id] [-f file]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
-    print_out("    -l          List available agents.");
+    print_out("    -j          Use JSON output");
+    print_out("    -l          List available agents");
+    print_out("    -a <ip>     Add new agent");
     print_out("    -e <id>     Extracts key for an agent (Manager only)");
     print_out("    -r <id>     Remove an agent (Manager only)");
     print_out("    -i <id>     Import authentication key (Agent only)");
+    print_out("    -n <name>   Name for new agent");
     print_out("    -f <file>   Bulk generate client keys from file (Manager only)");
     print_out("                <file> contains lines in IP,NAME format");
     exit(1);
@@ -73,7 +76,7 @@ static void manage_shutdown(__attribute__((unused)) int sig)
 int main(int argc, char **argv)
 {
     char *user_msg;
-    int c = 0, cmdlist = 0;
+    int c = 0, cmdlist = 0, json_output = 0;
     const char *cmdexport = NULL;
     const char *cmdimport = NULL;
     const char *cmdbulk = NULL;
@@ -91,7 +94,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vhle:r:i:f:")) != -1) {
+    while ((c = getopt(argc, argv, "Vhle:r:i:f:ja:n:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -142,6 +145,22 @@ int main(int argc, char **argv)
                 break;
             case 'l':
                 cmdlist = 1;
+                break;
+            case 'j':
+                json_output = 1;
+                break;
+            case 'a':
+                if (!optarg)
+                    ErrorExit("%s: -a needs an argument.", ARGV0);
+                setenv("OSSEC_ACTION", "a", 1);
+                setenv("OSSEC_ACTION_CONFIRMED", "y", 1);
+                setenv("OSSEC_AGENT_IP", optarg, 1);
+                setenv("OSSEC_AGENT_ID", "0", 1);
+            break;
+            case 'n':
+                if (!optarg)
+                    ErrorExit("%s: -n needs an argument.", ARGV0);
+                setenv("OSSEC_AGENT_NAME", optarg, 1);
                 break;
             default:
                 helpmsg();
@@ -223,7 +242,7 @@ int main(int argc, char **argv)
         k_import(cmdimport);
         exit(0);
     } else if (cmdexport) {
-        k_extract(cmdexport);
+        k_extract(cmdexport, json_output);
         exit(0);
     } else if (cmdbulk) {
         k_bulkload(cmdbulk);
@@ -233,7 +252,9 @@ int main(int argc, char **argv)
     /* Little shell */
     while (1) {
         int leave_s = 0;
-        print_banner();
+
+        if (!json_output)
+            print_banner();
 
         /* Get ACTION from the environment. If ACTION is specified,
          * we must set leave_s = 1 to ensure that the loop will end */
@@ -248,11 +269,11 @@ int main(int argc, char **argv)
         switch (user_msg[0]) {
             case 'A':
             case 'a':
-                add_agent();
+                add_agent(json_output);
                 break;
             case 'e':
             case 'E':
-                k_extract(NULL);
+                k_extract(NULL, json_output);
                 break;
             case 'i':
             case 'I':
@@ -264,7 +285,7 @@ int main(int argc, char **argv)
                 break;
             case 'r':
             case 'R':
-                remove_agent();
+                remove_agent(json_output);
                 break;
             case 'q':
             case 'Q':
@@ -285,13 +306,15 @@ int main(int argc, char **argv)
         continue;
     }
 
-    if (restart_necessary) {
-        printf(MUST_RESTART);
-    } else {
-        printf("\n");
+    if (!json_output) {
+        if (restart_necessary) {
+            printf(MUST_RESTART);
+        } else {
+            printf("\n");
+        }
+
+        printf(EXIT);
     }
-    printf(EXIT);
 
     return (0);
 }
-
