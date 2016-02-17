@@ -36,6 +36,7 @@ int main()
 
 #include <sys/wait.h>
 #include "auth.h"
+#include "os_crypto/md5/md5_op.h"
 
 /* TODO: Pulled this value out of the sky, may or may not be sane */
 #define POOL_SIZE 512
@@ -61,11 +62,42 @@ static void help_authd()
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
+    print_out("    -n          Disable shared password authentication (not recommended).\n");
     print_out("    -v <path>   Full path to CA certificate used to verify clients");
     print_out("    -x <path>   Full path to server certificate");
     print_out("    -k <path>   Full path to server key");
     print_out(" ");
     exit(1);
+}
+
+/* Generates a random and temporary shared pass to be used by the agents. */
+char *__generatetmppass()
+{
+    int rand1;
+    int rand2;
+    os_md5 md1;
+    char *fstring = NULL;
+    char str1[STR_SIZE +1];
+    char *muname = NULL;
+
+    #ifndef WIN32
+        #ifdef __OpenBSD__
+        srandomdev();
+        #else
+        srandom(time(0) + getpid() + getppid());
+        #endif
+    #else
+        srandom(time(0) + getpid());
+    #endif
+
+    rand1 = random();
+    rand2 = random();
+    muname = getuname();
+
+    snprintf(str1, STR_SIZE, "%d%d%s%d",(int)time(0), rand1, muname, rand2);
+    OS_MD5_Str(str1, md1);
+    fstring = strdup(md1);
+    return(fstring);
 }
 
 /* Function to use with SSL on non blocking socket,
@@ -99,6 +131,7 @@ static void clean_exit(SSL_CTX *ctx, int sock)
 int main(int argc, char **argv)
 {
     FILE *fp;
+    char *authpass = NULL;
     /* Bucket to keep pids in */
     int process_pool[POOL_SIZE];
     /* Count of pids we are wait()ing on */
@@ -125,7 +158,10 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:")) != -1) {
+    /* Getting temporary pass. */
+    authpass = __generatetmppass();
+
+    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:n")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -154,6 +190,8 @@ int main(int argc, char **argv)
             case 't':
                 test_config = 1;
                 break;
+            case 'n':
+                authpass = NULL;
             case 'p':
                 if (!optarg) {
                     ErrorExit("%s: -%c needs an argument", ARGV0, c);
@@ -223,6 +261,30 @@ int main(int argc, char **argv)
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
+
+    /* Checking if there is a custom password file */
+    fp = fopen(AUTHDPASS_PATH, "r");
+    buf[0] = '\0';
+    if (fp) {
+        buf[4096] = '\0';
+        fgets(buf, 4095, fp);
+        if (strlen(buf) > 2) {
+            authpass = buf;
+        }
+        fclose(fp);
+    }
+
+    if (buf[0] != '\0') {
+        verbose("Accepting connections. Using password specified on file: %s",AUTHDPASS_PATH);
+    }
+    else if (authpass) {
+        verbose("Accepting connections. Random password chosen for agent authentication: %s", authpass);
+    }
+    else {
+        verbose("Accepting insecure connections. No password required (not recommended)");
+    }
+
+    /* Getting SSL cert. */
 
     fp = fopen(KEYSFILE_PATH, "a");
     if (!fp) {
@@ -300,6 +362,7 @@ int main(int argc, char **argv)
                 } while (ret <= 0);
 
                 verbose("%s: INFO: New connection from %s", ARGV0, srcip);
+                buf[0] = '\0';
 
                 do {
                     ret = SSL_read(ssl, buf, sizeof(buf));
@@ -311,8 +374,32 @@ int main(int argc, char **argv)
                 } while (ret <= 0);
 
                 int parseok = 0;
-                if (strncmp(buf, "OSSEC A:'", 9) == 0) {
-                    char *tmpstr = buf;
+                char *tmpstr = buf;
+
+                /* Checking for shared password authentication. */
+                if(authpass) {
+                    /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
+                    if (strncmp(tmpstr, "OSSEC PASS:", 12) == 0) {
+                        tmpstr = tmpstr + 12;
+                        if (strlen(tmpstr) > strlen(authpass) && strncmp(tmpstr, authpass, strlen(authpass)) == 0) {
+                            tmpstr = tmpstr + strlen(authpass);
+                            if (*tmpstr == ' ') {
+                                tmpstr++;
+                                parseok = 1;
+                            }
+                        }
+                    }
+                    if (parseok == 0) {
+                        merror("%s: ERROR: Invalid password provided by %s. Closing connection.", ARGV0, srcip);
+                        SSL_CTX_free(ctx);
+                        close(client_sock);
+                        exit(0);
+                    }
+                }
+
+                /* Checking for action A (add agent) */
+                parseok = 0;
+                if (strncmp(tmpstr, "OSSEC A:'", 9) == 0) {
                     agentname = tmpstr + 9;
                     tmpstr += 9;
                     while (*tmpstr != '\0') {
@@ -400,4 +487,3 @@ int main(int argc, char **argv)
     return (0);
 }
 #endif /* LIBOPENSSL_ENABLED */
-
