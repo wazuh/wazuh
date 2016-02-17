@@ -75,7 +75,11 @@ char *__generatetmppass()
 {
     int rand1;
     int rand2;
+    char *rand3;
+    char *rand4;
     os_md5 md1;
+    os_md5 md3;
+    os_md5 md4;
     char *fstring = NULL;
     char str1[STR_SIZE +1];
     char *muname = NULL;
@@ -92,9 +96,16 @@ char *__generatetmppass()
 
     rand1 = random();
     rand2 = random();
+
+    rand3 = GetRandomNoise();
+    rand4 = GetRandomNoise();
+
+    OS_MD5_Str(rand3, md3);
+    OS_MD5_Str(rand4, md4);
+
     muname = getuname();
 
-    snprintf(str1, STR_SIZE, "%d%d%s%d",(int)time(0), rand1, muname, rand2);
+    snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, muname, rand2, md3, md4);
     OS_MD5_Str(str1, md1);
     fstring = strdup(md1);
     return(fstring);

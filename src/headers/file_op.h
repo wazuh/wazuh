@@ -25,6 +25,8 @@ int IsDir(const char *file) __attribute__((nonnull));
 
 int CreatePID(const char *name, int pid) __attribute__((nonnull));
 
+char *GetRandomNoise();
+
 int DeletePID(const char *name) __attribute__((nonnull));
 
 int MergeFiles(const char *finalpath, char **files) __attribute__((nonnull));
@@ -58,4 +60,3 @@ int isVista;
 #endif
 
 #endif /* __FILE_H */
-
