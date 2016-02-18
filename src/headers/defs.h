@@ -58,6 +58,11 @@ http://www.ossec.net/main/license/\n"
 #define MAX_AGENTS  256
 #endif
 
+/* First ID assigned by authd */
+#ifndef AUTHD_FIRST_ID
+#define AUTHD_FIRST_ID  1024
+#endif
+
 /* Notify the manager */
 #define NOTIFY_TIME     600 /* ... every 600 seconds (10 minutes) */
 
