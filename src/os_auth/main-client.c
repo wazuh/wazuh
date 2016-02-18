@@ -59,7 +59,7 @@ static void help_agent_auth()
     print_out("    -v <path>   Full path to CA certificate used to verify the server");
     print_out("    -x <path>   Full path to agent certificate");
     print_out("    -k <path>   Full path to agent key");
-    print_out("    -P <path>   Authorization password")
+    print_out("    -P <path>   Authorization password");
     print_out(" ");
     exit(1);
 }
@@ -164,10 +164,11 @@ int main(int argc, char **argv)
                 agent_key = optarg;
                 break;
             case 'P':
-            if (!optarg)
-                ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
 
-            authpass = optarg;
+                authpass = optarg;
+                break;
             default:
                 help_agent_auth();
                 break;
@@ -249,9 +250,9 @@ int main(int argc, char **argv)
 
         if (fp) {
             buf[4096] = '\0';
-            fgets(buf, 4095, fp);
+            char *ret = fgets(buf, 4095, fp);
 
-            if (strlen(buf) > 2) {
+            if (ret && strlen(buf) > 2) {
                 authpass = buf;
             }
 
