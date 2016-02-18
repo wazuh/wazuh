@@ -169,9 +169,6 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    /* Getting temporary pass. */
-    authpass = __generatetmppass();
-
     while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:n")) != -1) {
         switch (c) {
             case 'V':
@@ -278,21 +275,27 @@ int main(int argc, char **argv)
     buf[0] = '\0';
     if (fp) {
         buf[4096] = '\0';
-        fgets(buf, 4095, fp);
-        if (strlen(buf) > 2) {
-            authpass = buf;
+        char *ret = fgets(buf, 4095, fp);
+
+        if (ret && strlen(buf) > 2) {
+            /* Remove newline */
+            buf[strlen(buf) - 1] = '\0';
+            authpass = strdup(buf);
         }
+
         fclose(fp);
     }
 
-    if (buf[0] != '\0') {
+    if (buf[0] != '\0')
         verbose("Accepting connections. Using password specified on file: %s",AUTHDPASS_PATH);
-    }
-    else if (authpass) {
-        verbose("Accepting connections. Random password chosen for agent authentication: %s", authpass);
-    }
     else {
-        verbose("Accepting insecure connections. No password required (not recommended)");
+        /* Getting temporary pass. */
+        authpass = __generatetmppass();
+
+        if (authpass)
+            verbose("Accepting connections. Random password chosen for agent authentication: %s", authpass);
+        else
+            verbose("Accepting insecure connections. No password required (not recommended)");
     }
 
     /* Getting SSL cert. */
@@ -317,9 +320,10 @@ int main(int argc, char **argv)
         merror("%s: Unable to bind to port %d", ARGV0, port);
         exit(1);
     }
-    fcntl(sock, F_SETFL, O_NONBLOCK);
 
+    fcntl(sock, F_SETFL, O_NONBLOCK);
     debug1("%s: DEBUG: Going into listening mode.", ARGV0);
+
     while (1) {
         /* No need to completely pin the cpu, 100ms should be fast enough */
         usleep(100 * 1000);
@@ -371,7 +375,6 @@ int main(int argc, char **argv)
                     }
 
                 } while (ret <= 0);
-
                 verbose("%s: INFO: New connection from %s", ARGV0, srcip);
                 buf[0] = '\0';
 
@@ -390,10 +393,12 @@ int main(int argc, char **argv)
                 /* Checking for shared password authentication. */
                 if(authpass) {
                     /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
-                    if (strncmp(tmpstr, "OSSEC PASS:", 12) == 0) {
+                    if (strncmp(tmpstr, "OSSEC PASS: ", 12) == 0) {
                         tmpstr = tmpstr + 12;
+
                         if (strlen(tmpstr) > strlen(authpass) && strncmp(tmpstr, authpass, strlen(authpass)) == 0) {
-                            tmpstr = tmpstr + strlen(authpass);
+                            tmpstr += strlen(authpass);
+
                             if (*tmpstr == ' ') {
                                 tmpstr++;
                                 parseok = 1;
