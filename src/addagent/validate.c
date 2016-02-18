@@ -24,7 +24,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     char *muname;
     char *finals;
 
-    char nid[9];
+    char nid[9] = { '\0' }, nid_p[9] = { '\0' };
 
     srandom_init();
 
@@ -37,17 +37,32 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
 
     free(muname);
 
-    nid[8] = '\0';
     if (id == NULL) {
-        int i = 1024;
-        snprintf(nid, 6, "%d", i);
-        while (IDExist(nid)) {
-            i++;
-            snprintf(nid, 6, "%d", i);
-            if (i >= (MAX_AGENTS + 1024)) {
-                return (NULL);
-            }
+        int i = AUTHD_FIRST_ID;
+        int j = MAX_AGENTS + AUTHD_FIRST_ID;
+        int m = (i + j) / 2;
+
+        snprintf(nid, 8, "%d", m);
+        snprintf(nid_p, 8, "%d", m - 1);
+
+        /* Dichotomic search */
+
+        while (1) {
+            if (IDExist(nid)) {
+                if (m == i)
+                    return NULL;
+
+                i = m;
+            } else if (!IDExist(nid_p) && m > i )
+                j = m;
+            else
+                break;
+
+            m = (i + j) / 2;
+            snprintf(nid, 8, "%d", m);
+            snprintf(nid_p, 8, "%d", m - 1);
         }
+
         id = nid;
     }
 
@@ -354,10 +369,10 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
                             printf("%s,%s,%s,%s,\n", line_read, name, ip, print_agent_status(agt_status));
                         } else if (json_output) {
                             cJSON *json_agent = cJSON_CreateObject();
-                          
+
                             if (!json_agent)
                                 return 0;
-                            
+
                             cJSON_AddStringToObject(json_agent, "id", line_read);
                             cJSON_AddStringToObject(json_agent, "name", name);
                             cJSON_AddStringToObject(json_agent, "ip", ip);
@@ -416,4 +431,3 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
 
     return (0);
 }
-
