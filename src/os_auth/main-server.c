@@ -59,6 +59,7 @@ static void help_authd()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -i          Use client's source IP address");
+    print_out("    -f          Force creation of agent with existing IP (remove old)");
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
@@ -148,6 +149,9 @@ int main(int argc, char **argv)
     /* Count of pids we are wait()ing on */
     int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
     int use_pass = 1;
+    int force_add = 0;
+    char *ip_exist;
+    char *remove_pending = NULL;
     gid_t gid;
     int client_sock = 0, sock = 0, port = DEFAULT_PORT, ret = 0;
     const char *dir  = DEFAULTDIR;
@@ -170,7 +174,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:n")) != -1) {
+    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:nf")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -228,6 +232,9 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -%c needs an argument", ARGV0, c);
                 }
                 server_key = optarg;
+                break;
+            case 'f':
+                force_add = 1;
                 break;
             default:
                 help_authd();
@@ -449,7 +456,7 @@ int main(int argc, char **argv)
                         exit(0);
                     }
 
-                    /* Check for duplicate names */
+                    /* Check for duplicated names */
                     strncpy(fname, agentname, 2048);
                     while (NameExist(fname)) {
                         snprintf(fname, 2048, "%s%d", agentname, acount);
@@ -466,13 +473,35 @@ int main(int argc, char **argv)
                     }
                     agentname = fname;
 
-                    /* Add the new agent */
+                    /* Check for duplicated IP */
+
                     if (use_ip_address) {
-                        finalkey = OS_AddNewAgent(agentname, srcip, NULL);
-                    } else {
-                        finalkey = OS_AddNewAgent(agentname, NULL, NULL);
+                        ip_exist = IPExist(srcip);
+                        if (ip_exist) {
+                            if (force_add)
+                                remove_pending = ip_exist;
+                            else {
+                                merror("%s: ERROR: Duplicated IP %s (duplicated)", ARGV0, srcip);
+                                snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
+                                SSL_write(ssl, response, strlen(response));
+                                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                                SSL_write(ssl, response, strlen(response));
+                                sleep(1);
+                                exit(0);
+                            }
+                        }
                     }
-                    if (!finalkey) {
+
+                    /* Add the new agent */
+                    if (use_ip_address)
+                        finalkey = OS_AddNewAgent(agentname, srcip, NULL);
+                    else
+                        finalkey = OS_AddNewAgent(agentname, NULL, NULL);
+
+                    if (finalkey) {
+                        if (remove_pending)
+                            OS_RemoveAgent(remove_pending);
+                    } else {
                         merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
                         snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
                         SSL_write(ssl, response, strlen(response));
