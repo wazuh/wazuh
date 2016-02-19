@@ -83,6 +83,32 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     return (finals);
 }
 
+int OS_RemoveAgent(const char *u_id) {
+    FILE *fp;
+    int id_exist;
+
+    id_exist = IDExist(u_id);
+
+    if (!id_exist)
+        return 0;
+
+    fp = fopen(isChroot() ? AUTH_FILE : KEYSFILE_PATH, "r+");
+    if (!fp)
+        return 0;
+
+#ifndef WIN32
+    chmod(AUTH_FILE, 0440);
+#endif
+
+    /* Remove the agent, but keep the id */
+    fsetpos(fp, &fp_pos);
+    fprintf(fp, "%s #*#*#*#*#*#*#*#*#*#*#", u_id);
+    fclose(fp);
+
+    /* Remove counter for ID */
+    OS_RemoveCounter(u_id);
+    return 1;
+}
 
 int OS_IsValidID(const char *id)
 {
@@ -309,6 +335,63 @@ int NameExist(const char *u_name)
 
     fclose(fp);
     return (0);
+}
+
+char *IPExist(const char *u_ip)
+{
+    FILE *fp;
+    char *name, *ip, *pass;
+    char line_read[FILE_SIZE + 1];
+    line_read[FILE_SIZE] = '\0';
+
+    if (!(u_ip && strncmp(u_ip, "any", 3)))
+        return NULL;
+
+    if (isChroot())
+        fp = fopen(AUTH_FILE, "r");
+    else
+        fp = fopen(KEYSFILE_PATH, "r");
+
+    if (!fp)
+        return NULL;
+
+    fseek(fp, 0, SEEK_SET);
+    fgetpos(fp, &fp_pos);
+
+    while (fgets(line_read, FILE_SIZE - 1, fp) != NULL) {
+        if (line_read[0] == '#') {
+            continue;
+        }
+
+        name = strchr(line_read, ' ');
+        if (name) {
+            name++;
+
+            if (*name == '#') {
+                continue;
+            }
+
+            ip = strchr(name, ' ');
+            if (ip) {
+                ip++;
+
+                pass = strchr(ip, ' ');
+                if (pass) {
+                    *pass = '\0';
+                    if (strcmp(u_ip, ip) == 0) {
+                        fclose(fp);
+                        name[-1] = '\0';
+                        return strdup(line_read);
+                    }
+                }
+            }
+        }
+
+        fgetpos(fp, &fp_pos);
+    }
+
+    fclose(fp);
+    return NULL;
 }
 
 /* Print available agents */

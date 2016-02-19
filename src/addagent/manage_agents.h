@@ -34,8 +34,10 @@ int OS_IsValidName(const char *u_name);
 int OS_IsValidID(const char *id);
 int IDExist(const char *id);
 int NameExist(const char *u_name);
+char *IPExist(const char *u_ip);
 char *getFullnameById(const char *id);
 char *OS_AddNewAgent(const char *name, const char *ip, const char *id);
+int OS_RemoveAgent(const char *id);
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output);
