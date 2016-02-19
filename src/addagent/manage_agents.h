@@ -90,6 +90,7 @@ extern fpos_t fp_pos;
 #define ADD_ERROR_ID    "\n** ID '%s' already present. They must be unique.\n\n"
 #define ADD_ERROR_NAME  "\n** Name '%s' already present. Please enter a new name.\n\n"
 #define IP_ERROR        "\n** Invalid IP '%s'. Please enter a valid IP Address.\n\n"
+#define IP_DUP_ERROR    "\n** Duplicated IP '%s'. Please enter an unique IP Address.\n\n"
 #define NO_AGENT        "\n** No agent available. You need to add one first.\n"
 #define NO_ID           "\n** Invalid ID '%s' given. ID is not present.\n"
 #define NO_KEY          "\n** Invalid authentication key. Starting over again.\n"
