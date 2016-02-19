@@ -83,6 +83,9 @@ int add_agent(int json_output)
     os_ip c_ip;
     c_ip.ip = NULL;
 
+    char *ip_exist = NULL;
+    char *remove_pending = NULL;
+
     /* Check if we can open the auth_file */
     fp = fopen(AUTH_FILE, "a");
     if (!fp) {
@@ -199,6 +202,22 @@ int add_agent(int json_output)
         if (!OS_IsValidIP(ip, &c_ip)) {
             printf(IP_ERROR, ip);
             _ip = NULL;
+        } else if ((ip_exist = IPExist(ip))) {
+            const char *env_remove_dup = getenv("OSSEC_REMOVE_DUPLICATED");
+            if (env_remove_dup && !strcmp(env_remove_dup, "y")) {
+                remove_pending = ip_exist;
+            } else {
+                if (json_output) {
+                    cJSON *json_root = cJSON_CreateObject();
+                    cJSON_AddNumberToObject(json_root, "error", 79);
+                    cJSON_AddStringToObject(json_root, "description", "Duplicated IP for agent");
+                    printf("%s", cJSON_PrintUnformatted(json_root));
+                    exit(1);
+                } else {
+                    printf(IP_DUP_ERROR, ip);
+                    _ip = NULL;
+                }
+            }
         }
 
     } while (!_ip);
@@ -316,8 +335,10 @@ int add_agent(int json_output)
             OS_MD5_Str(str1, md1);
 
             fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
-
             fclose(fp);
+
+            if (remove_pending)
+                OS_RemoveAgent(remove_pending);
 
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
