@@ -147,6 +147,7 @@ int main(int argc, char **argv)
     int process_pool[POOL_SIZE];
     /* Count of pids we are wait()ing on */
     int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
+    int use_pass = 1;
     gid_t gid;
     int client_sock = 0, sock = 0, port = DEFAULT_PORT, ret = 0;
     const char *dir  = DEFAULTDIR;
@@ -199,7 +200,8 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             case 'n':
-                authpass = NULL;
+                use_pass = 0;
+                break;
             case 'p':
                 if (!optarg) {
                     ErrorExit("%s: -%c needs an argument", ARGV0, c);
@@ -270,33 +272,33 @@ int main(int argc, char **argv)
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
-    /* Checking if there is a custom password file */
-    fp = fopen(AUTHDPASS_PATH, "r");
-    buf[0] = '\0';
-    if (fp) {
-        buf[4096] = '\0';
-        char *ret = fgets(buf, 4095, fp);
+    if (use_pass) {
 
-        if (ret && strlen(buf) > 2) {
-            /* Remove newline */
-            buf[strlen(buf) - 1] = '\0';
-            authpass = strdup(buf);
+        /* Checking if there is a custom password file */
+        fp = fopen(AUTHDPASS_PATH, "r");
+        buf[0] = '\0';
+        if (fp) {
+            buf[4096] = '\0';
+            char *ret = fgets(buf, 4095, fp);
+
+            if (ret && strlen(buf) > 2) {
+                /* Remove newline */
+                buf[strlen(buf) - 1] = '\0';
+                authpass = strdup(buf);
+            }
+
+            fclose(fp);
         }
 
-        fclose(fp);
-    }
-
-    if (buf[0] != '\0')
-        verbose("Accepting connections. Using password specified on file: %s",AUTHDPASS_PATH);
-    else {
-        /* Getting temporary pass. */
-        authpass = __generatetmppass();
-
-        if (authpass)
+        if (buf[0] != '\0')
+            verbose("Accepting connections. Using password specified on file: %s",AUTHDPASS_PATH);
+        else {
+            /* Getting temporary pass. */
+            authpass = __generatetmppass();
             verbose("Accepting connections. Random password chosen for agent authentication: %s", authpass);
-        else
-            verbose("Accepting insecure connections. No password required (not recommended)");
-    }
+        }
+    } else
+        verbose("Accepting insecure connections. No password required (not recommended)");
 
     /* Getting SSL cert. */
 
