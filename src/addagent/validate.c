@@ -344,7 +344,7 @@ char *IPExist(const char *u_ip)
     char line_read[FILE_SIZE + 1];
     line_read[FILE_SIZE] = '\0';
 
-    if (!(u_ip && strncmp(u_ip, "any", 3)))
+    if (!(u_ip && strncmp(u_ip, "any", 3)) || strchr(u_ip, '/'))
         return NULL;
 
     if (isChroot())
