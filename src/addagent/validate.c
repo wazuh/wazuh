@@ -86,6 +86,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
 int OS_RemoveAgent(const char *u_id) {
     FILE *fp;
     int id_exist;
+    char *full_name;
 
     id_exist = IDExist(u_id);
 
@@ -104,6 +105,10 @@ int OS_RemoveAgent(const char *u_id) {
     fsetpos(fp, &fp_pos);
     fprintf(fp, "%s #*#*#*#*#*#*#*#*#*#*#", u_id);
     fclose(fp);
+
+    full_name = getFullnameById(u_id);
+    if (full_name)
+        delete_agentinfo(full_name);
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
