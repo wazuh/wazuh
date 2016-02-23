@@ -252,7 +252,7 @@ void OS_ReadKeys(keystore *keys)
 
     /* Check if there are any agents available */
     if (keys->keysize == 0) {
-        ErrorExit(NO_REM_CONN, __local_name);
+        merror(NO_REM_CONN, __local_name);
     }
 
     /* Add additional entry for sender == keysize */
@@ -418,4 +418,3 @@ int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
 
     return (-1);
 }
-
