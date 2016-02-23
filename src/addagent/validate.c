@@ -7,6 +7,7 @@
  * Foundation
  */
 
+#include <time.h>
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 
@@ -66,7 +67,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
         id = nid;
     }
 
-    fp = fopen(KEYSFILE_PATH, "a");
+    fp = fopen(AUTH_FILE, "a");
     if (!fp) {
         return (NULL);
     }
@@ -93,7 +94,7 @@ int OS_RemoveAgent(const char *u_id) {
     if (!id_exist)
         return 0;
 
-    fp = fopen(isChroot() ? AUTH_FILE : KEYSFILE_PATH, "r+");
+    fp = fopen(AUTH_FILE, "r+");
     if (!fp)
         return 0;
 
@@ -342,6 +343,7 @@ int NameExist(const char *u_name)
     return (0);
 }
 
+/* Returns the ID of an agent, or NULL if not found */
 char *IPExist(const char *u_ip)
 {
     FILE *fp;
@@ -397,6 +399,24 @@ char *IPExist(const char *u_ip)
 
     fclose(fp);
     return NULL;
+}
+
+/* Returns the number of seconds since last agent connection, or -1 if error. */
+double OS_AgentAntiquity(const char *id)
+{
+    struct stat file_stat;
+    char file_name[OS_FLSIZE];
+    char *full_name = getFullnameById(id);
+
+    if (!full_name)
+        return -1;
+
+    snprintf(file_name, OS_FLSIZE - 1, "%s/%s", AGENTINFO_DIR, full_name);
+
+    if (stat(file_name, &file_stat) < 0)
+        return -1;
+
+    return difftime(time(NULL), file_stat.st_mtim.tv_sec);
 }
 
 /* Print available agents */
