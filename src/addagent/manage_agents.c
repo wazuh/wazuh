@@ -341,12 +341,14 @@ int add_agent(int json_output)
                 OS_RemoveAgent(remove_pending);
 
             if (json_output) {
+                char buffer[1024];
                 cJSON *json_root = cJSON_CreateObject();
+                snprintf(buffer, 1023, "Agent added with ID %s", id);
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddStringToObject(json_root, "response", "Agent added");
+                cJSON_AddStringToObject(json_root, "response", buffer);
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
-                printf(AGENT_ADD);
+                printf(AGENT_ADD, id);
 
             restart_necessary = 1;
             break;

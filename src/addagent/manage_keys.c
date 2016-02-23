@@ -456,7 +456,7 @@ int k_bulkload(const char *cmdbulk)
         fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
         fclose(fp);
 
-        printf(AGENT_ADD);
+        printf(AGENT_ADD, id);
         restart_necessary = 1;
 
 cleanup:
