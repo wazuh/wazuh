@@ -79,7 +79,7 @@ extern fpos_t fp_pos;
 #define AGENT_INFO      "Agent information:\n   ID:%s\n   Name:%s\n   " \
                         "IP Address:%s\n\n"
 #define ADD_CONFIRM     "Confirm adding it?(y/n): "
-#define AGENT_ADD       "Agent added.\n"
+#define AGENT_ADD       "Agent added with ID %s.\n"
 #define ADDED           "Added.\n"
 #define ADD_NOT         "Not Adding.\n"
 #define PRESS_ENTER     "** Press ENTER to return to the main menu.\n"
