@@ -113,14 +113,27 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             os_strdup(node[i]->content, logf[pl].file);
             logf[pl].command = logf[pl].file;
         } else if (strcmp(node[i]->element, xml_localfile_frequency) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
 
-            logf[pl].ign = atoi(node[i]->content);
+            if(strcmp(node[i]->content,  "hourly") == 0)
+            {
+                logf[pl].ign = 3600;
+            }
+            else if(strcmp(node[i]->content,  "daily") == 0)
+            {
+                logf[pl].ign = 86400;
+            }
+            else
+            {
+
+                if (!OS_StrIsNum(node[i]->content)) {
+                    merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+
+                logf[pl].ign = atoi(node[i]->content);
+            }
         } else if (strcmp(node[i]->element, xml_localfile_location) == 0) {
-#ifdef WIN32
+        #ifdef WIN32
             /* Expand variables on Windows */
             if (strchr(node[i]->content, '%')) {
                 int expandreturn = 0;
@@ -136,7 +149,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     os_strdup(newfile, node[i]->content);
                 }
             }
-#endif
+        #endif
 
             /* This is a glob*
              * We will call this file multiple times until
