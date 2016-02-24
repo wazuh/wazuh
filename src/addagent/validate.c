@@ -7,6 +7,7 @@
  * Foundation
  */
 
+#include <time.h>
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 
@@ -24,7 +25,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     char *muname;
     char *finals;
 
-    char nid[9];
+    char nid[9] = { '\0' }, nid_p[9] = { '\0' };
 
     srandom_init();
 
@@ -37,21 +38,36 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
 
     free(muname);
 
-    nid[8] = '\0';
     if (id == NULL) {
-        int i = 1024;
-        snprintf(nid, 6, "%d", i);
-        while (IDExist(nid)) {
-            i++;
-            snprintf(nid, 6, "%d", i);
-            if (i >= (MAX_AGENTS + 1024)) {
-                return (NULL);
-            }
+        int i = AUTHD_FIRST_ID;
+        int j = MAX_AGENTS + AUTHD_FIRST_ID;
+        int m = (i + j) / 2;
+
+        snprintf(nid, 8, "%d", m);
+        snprintf(nid_p, 8, "%d", m - 1);
+
+        /* Dichotomic search */
+
+        while (1) {
+            if (IDExist(nid)) {
+                if (m == i)
+                    return NULL;
+
+                i = m;
+            } else if (!IDExist(nid_p) && m > i )
+                j = m;
+            else
+                break;
+
+            m = (i + j) / 2;
+            snprintf(nid, 8, "%d", m);
+            snprintf(nid_p, 8, "%d", m - 1);
         }
+
         id = nid;
     }
 
-    fp = fopen(KEYSFILE_PATH, "a");
+    fp = fopen(AUTH_FILE, "a");
     if (!fp) {
         return (NULL);
     }
@@ -68,6 +84,37 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     return (finals);
 }
 
+int OS_RemoveAgent(const char *u_id) {
+    FILE *fp;
+    int id_exist;
+    char *full_name;
+
+    id_exist = IDExist(u_id);
+
+    if (!id_exist)
+        return 0;
+
+    fp = fopen(AUTH_FILE, "r+");
+    if (!fp)
+        return 0;
+
+#ifndef WIN32
+    chmod(AUTH_FILE, 0440);
+#endif
+
+    /* Remove the agent, but keep the id */
+    fsetpos(fp, &fp_pos);
+    fprintf(fp, "%s #*#*#*#*#*#*#*#*#*#*#", u_id);
+    fclose(fp);
+
+    full_name = getFullnameById(u_id);
+    if (full_name)
+        delete_agentinfo(full_name);
+
+    /* Remove counter for ID */
+    OS_RemoveCounter(u_id);
+    return 1;
+}
 
 int OS_IsValidID(const char *id)
 {
@@ -296,6 +343,82 @@ int NameExist(const char *u_name)
     return (0);
 }
 
+/* Returns the ID of an agent, or NULL if not found */
+char *IPExist(const char *u_ip)
+{
+    FILE *fp;
+    char *name, *ip, *pass;
+    char line_read[FILE_SIZE + 1];
+    line_read[FILE_SIZE] = '\0';
+
+    if (!(u_ip && strncmp(u_ip, "any", 3)) || strchr(u_ip, '/'))
+        return NULL;
+
+    if (isChroot())
+        fp = fopen(AUTH_FILE, "r");
+    else
+        fp = fopen(KEYSFILE_PATH, "r");
+
+    if (!fp)
+        return NULL;
+
+    fseek(fp, 0, SEEK_SET);
+    fgetpos(fp, &fp_pos);
+
+    while (fgets(line_read, FILE_SIZE - 1, fp) != NULL) {
+        if (line_read[0] == '#') {
+            continue;
+        }
+
+        name = strchr(line_read, ' ');
+        if (name) {
+            name++;
+
+            if (*name == '#') {
+                continue;
+            }
+
+            ip = strchr(name, ' ');
+            if (ip) {
+                ip++;
+
+                pass = strchr(ip, ' ');
+                if (pass) {
+                    *pass = '\0';
+                    if (strcmp(u_ip, ip) == 0) {
+                        fclose(fp);
+                        name[-1] = '\0';
+                        return strdup(line_read);
+                    }
+                }
+            }
+        }
+
+        fgetpos(fp, &fp_pos);
+    }
+
+    fclose(fp);
+    return NULL;
+}
+
+/* Returns the number of seconds since last agent connection, or -1 if error. */
+double OS_AgentAntiquity(const char *id)
+{
+    struct stat file_stat;
+    char file_name[OS_FLSIZE];
+    char *full_name = getFullnameById(id);
+
+    if (!full_name)
+        return -1;
+
+    snprintf(file_name, OS_FLSIZE - 1, "%s/%s", AGENTINFO_DIR, full_name);
+
+    if (stat(file_name, &file_stat) < 0)
+        return -1;
+
+    return difftime(time(NULL), file_stat.st_mtim.tv_sec);
+}
+
 /* Print available agents */
 int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output)
 {
@@ -354,10 +477,10 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
                             printf("%s,%s,%s,%s,\n", line_read, name, ip, print_agent_status(agt_status));
                         } else if (json_output) {
                             cJSON *json_agent = cJSON_CreateObject();
-                          
+
                             if (!json_agent)
                                 return 0;
-                            
+
                             cJSON_AddStringToObject(json_agent, "id", line_read);
                             cJSON_AddStringToObject(json_agent, "name", name);
                             cJSON_AddStringToObject(json_agent, "ip", ip);
@@ -416,4 +539,3 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
 
     return (0);
 }
-

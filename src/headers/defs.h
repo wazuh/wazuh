@@ -58,6 +58,11 @@ http://www.ossec.net/main/license/\n"
 #define MAX_AGENTS  256
 #endif
 
+/* First ID assigned by authd */
+#ifndef AUTHD_FIRST_ID
+#define AUTHD_FIRST_ID  1024
+#endif
+
 /* Notify the manager */
 #define NOTIFY_TIME     600 /* ... every 600 seconds (10 minutes) */
 
@@ -187,7 +192,9 @@ http://www.ossec.net/main/license/\n"
 /* Authentication keys file */
 #ifndef WIN32
 #define KEYS_FILE       "/etc/client.keys"
+#define AUTHD_PASS      "/etc/authd.pass"
 #define KEYSFILE_PATH   DEFAULTDIR KEYS_FILE
+#define AUTHDPASS_PATH  DEFAULTDIR AUTHD_PASS
 #else
 #define KEYS_FILE       "client.keys"
 #define KEYSFILE_PATH   KEYS_FILE
@@ -302,4 +309,3 @@ http://www.ossec.net/main/license/\n"
 #endif
 
 #endif /* __OS_HEADERS */
-

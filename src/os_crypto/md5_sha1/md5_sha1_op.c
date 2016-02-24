@@ -34,7 +34,7 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
 
     /* Use prefilter_cmd if set */
     if (prefilter_cmd == NULL) {
-        fp = fopen(fname, "r");
+        fp = fopen(fname, "rb");
         if (!fp) {
             return (-1);
         }
@@ -86,4 +86,3 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
 
     return (0);
 }
-
