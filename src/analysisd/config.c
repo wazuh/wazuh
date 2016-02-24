@@ -34,7 +34,7 @@ int GlobalConf(const char *cfgfile)
     Config.zeromq_output = 0;
     Config.zeromq_output_uri = NULL;
     Config.jsonout_output = 0;
-    Config.memorysize = 1024;
+    Config.memorysize = 8192;
     Config.mailnotify = -1;
     Config.keeplogdate = 0;
     Config.syscheck_alert_new = 0;
@@ -66,10 +66,9 @@ int GlobalConf(const char *cfgfile)
     }
 
     /* Minimum memory size */
-    if (Config.memorysize < 64) {
-        Config.memorysize = 64;
+    if (Config.memorysize < 2048) {
+        Config.memorysize = 2048;
     }
 
     return (0);
 }
-
