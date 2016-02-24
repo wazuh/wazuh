@@ -171,55 +171,57 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     continue;
                 }
 
-                /* Check for strftime on globs too */
-                if (strchr(g.gl_pathv[glob_offset], '%')) {
-                    struct tm *p;
-                    time_t l_time = time(0);
-                    char lfile[OS_FLSIZE + 1];
-                    size_t ret;
 
-                    p = localtime(&l_time);
+                while(g.gl_pathv[glob_offset] != NULL)
+                {
+                    /* Check for strftime on globs too */
+                    if (strchr(g.gl_pathv[glob_offset], '%')) {
+                        struct tm *p;
+                        time_t l_time = time(0);
+                        char lfile[OS_FLSIZE + 1];
+                        size_t ret;
 
-                    lfile[OS_FLSIZE] = '\0';
-                    ret = strftime(lfile, OS_FLSIZE, g.gl_pathv[glob_offset], p);
-                    if (ret == 0) {
-                        merror(PARSE_ERROR, __local_name, g.gl_pathv[glob_offset]);
-                        return (OS_INVALID);
+                        p = localtime(&l_time);
+
+                        lfile[OS_FLSIZE] = '\0';
+                        ret = strftime(lfile, OS_FLSIZE, g.gl_pathv[glob_offset], p);
+                        if (ret == 0) {
+                            merror(PARSE_ERROR, __local_name, g.gl_pathv[glob_offset]);
+                            return (OS_INVALID);
+                        }
+
+                        os_strdup(g.gl_pathv[glob_offset], logf[pl].ffile);
+                        os_strdup(g.gl_pathv[glob_offset], logf[pl].file);
+                    } else {
+                        os_strdup(g.gl_pathv[glob_offset], logf[pl].file);
                     }
 
-                    os_strdup(g.gl_pathv[glob_offset], logf[pl].ffile);
-                    os_strdup(g.gl_pathv[glob_offset], logf[pl].file);
-                } else {
-                    os_strdup(g.gl_pathv[glob_offset], logf[pl].file);
+                    glob_offset++;
+
+                    /* Now we need to create another file entry */
+                    pl++;
+                    os_realloc(logf, (pl +2)*sizeof(logreader), log_config->config);
+                    logf = log_config->config;
+
+                    logf[pl].file = NULL;
+                    logf[pl].alias = NULL;
+                    logf[pl].logformat = NULL;
+                    logf[pl].fp = NULL;
+                    logf[pl].ffile = NULL;
+
+                    logf[pl +1].file = NULL;
+                    logf[pl +1].alias = NULL;
+                    logf[pl +1].logformat = NULL;
                 }
 
 
-                glob_offset++;
                 globfree(&g);
-
-                /* Now we need to create another file entry */
-                pl++;
-                os_realloc(logf, (pl + 2)*sizeof(logreader), log_config->config);
-                logf = log_config->config;
-
-                logf[pl].file = NULL;
-                logf[pl].alias = NULL;
-                logf[pl].logformat = NULL;
-                logf[pl].fp = NULL;
-                logf[pl].ffile = NULL;
-
-                logf[pl + 1].file = NULL;
-                logf[pl + 1].alias = NULL;
-                logf[pl + 1].logformat = NULL;
-
-                /* We can not increment the file count in here */
-                continue;
             } else if (strchr(node[i]->content, '%'))
-#else
+            #else
             if (strchr(node[i]->content, '%'))
-#endif /* WIN32 */
+            #endif /* WIN32 */
 
-                /* We need the format file (based on date) */
+            /* We need the format file (based on date) */
             {
                 struct tm *p;
                 time_t l_time = time(0);
