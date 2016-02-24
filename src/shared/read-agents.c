@@ -869,6 +869,9 @@ int delete_agentinfo(const char *name)
     /* Delete syscheck */
     delete_syscheck(sk_name, sk_ip, 1);
 
+    /* Delete rootcheck */
+    delete_rootcheck(sk_name, sk_ip, 1);
+
     return (1);
 }
 

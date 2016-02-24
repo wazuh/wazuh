@@ -52,7 +52,7 @@ int main(int argc, char **argv)
     int active_only = 0, csv_output = 0, json_output = 0;
 
     char shost[512];
-    cJSON *json_root;
+    cJSON *json_root = NULL;
 
     /* Set the name */
     OS_SetName(ARGV0);
