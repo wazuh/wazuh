@@ -24,7 +24,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     char str2[STR_SIZE + 1];
     char *muname;
     char *finals;
-    char nid[9] = { '\0' }, nid_p[9] = { '\0' };
+    char nid[9] = { '\0' };
 
     srandom_init();
     muname = getuname();
@@ -37,6 +37,17 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     free(muname);
 
     if (id == NULL) {
+#ifdef REUSE_ID
+        int i = 1024;
+        snprintf(nid, 6, "%d", i);
+        while (IDExist(nid)) {
+            i++;
+            snprintf(nid, 6, "%d", i);
+            if (i >= (MAX_AGENTS + 1024))
+                return (NULL);
+        }
+#else
+        char nid_p[9] = { '\0' };
         int i = AUTHD_FIRST_ID;
         int j = MAX_AGENTS + AUTHD_FIRST_ID;
         int m = (i + j) / 2;
@@ -61,7 +72,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
             snprintf(nid, 8, "%d", m);
             snprintf(nid_p, 8, "%d", m - 1);
         }
-
+#endif
         id = nid;
     }
 
