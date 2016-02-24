@@ -7,6 +7,7 @@ EXTERNAL_LUA=external/lua/
 EXTERNAL_ZLIB=external/zlib-1.2.8/
 LUA_PLAT=posix
 MAXAGENTS?=2048
+REUSE_ID?=no
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
@@ -40,6 +41,10 @@ DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
 DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
 DEFINES+=-D${uname_S}
+
+ifneq (,$(filter ${REUSE_ID},yes y Y 1))
+	DEFINES+=-DREUSE_ID
+endif
 
 OSSEC_LDFLAGS=${LDFLAGS} -lm
 
@@ -500,6 +505,7 @@ help: failtarget
 	@echo "   make DEBUG=1          Build with symbols and without optimization"
 	@echo "   make PREFIX=/path     Install OSSEC to '/path'. Defaults to /var/ossec"
 	@echo "   make MAXAGENTS=NUMBER Set the number of maximum agents to NUMBER. Defaults to 2048"
+	@echo "   make REUSE_ID=yes     Enables agent ID re-use"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql  Build with MYSQL Support"
@@ -524,6 +530,7 @@ settings:
 	@echo "    DEBUGAD           ${DEBUGAD}"
 	@echo "    PREFIX:           ${PREFIX}"
 	@echo "    MAXAGENTS:        ${MAXAGENTS}"
+	@echo "    REUSE_ID:         ${REUSE_ID}"
 	@echo "    DATABASE:         ${DATABASE}"
 	@echo "    ONEWAY:           ${ONEWAY}"
 	@echo "    CLEANFULL:        ${CLEANFULL}"

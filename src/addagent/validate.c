@@ -24,11 +24,9 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     char str2[STR_SIZE + 1];
     char *muname;
     char *finals;
-
     char nid[9] = { '\0' }, nid_p[9] = { '\0' };
 
     srandom_init();
-
     muname = getuname();
 
     snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, (int)random(), muname);
@@ -95,6 +93,7 @@ int OS_RemoveAgent(const char *u_id) {
         return 0;
 
     fp = fopen(AUTH_FILE, "r+");
+
     if (!fp)
         return 0;
 
@@ -102,9 +101,48 @@ int OS_RemoveAgent(const char *u_id) {
     chmod(AUTH_FILE, 0440);
 #endif
 
+#ifdef REUSE_ID
+    long fp_seek;
+    size_t fp_read;
+    char *buffer;
+    char buf_discard[OS_BUFFER_SIZE];
+    struct stat fp_stat;
+
+    if (stat(AUTH_FILE, &fp_stat) < 0) {
+        fclose(fp);
+        return 0;
+    }
+
+    buffer = malloc(fp_stat.st_size);
+    if (!buffer) {
+        fclose(fp);
+        return 0;
+    }
+
+    fsetpos(fp, &fp_pos);
+    fp_seek = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    fp_read = fread(buffer, sizeof(char), fp_seek, fp);
+    fgets(buf_discard, OS_BUFFER_SIZE - 1, fp);
+
+    if (!feof(fp))
+        fp_read += fread(buffer + fp_read, sizeof(char), fp_stat.st_size, fp);
+
+    fclose(fp);
+    fp = fopen(AUTH_FILE, "w");
+
+    if (!fp) {
+        free(buffer);
+        return 0;
+    }
+
+    fwrite(buffer, sizeof(char), fp_read, fp);
+
+#else
     /* Remove the agent, but keep the id */
     fsetpos(fp, &fp_pos);
     fprintf(fp, "%s #*#*#*#*#*#*#*#*#*#*#", u_id);
+#endif
     fclose(fp);
 
     full_name = getFullnameById(u_id);
