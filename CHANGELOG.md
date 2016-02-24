@@ -1,6 +1,33 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v1.0.4] - 2016-02-24
+​
+### Added
+
+- JSON output for manage_agents.
+- Increased analysis daemon's memory size.
+- Authd: Added password authorization.
+- Authd: Boost speed performance at assignation of ID for agents
+- Authd: New option -f *sec*. Force addding new agent (even with duplicated IP) if it was not active for the last *sec* seconds.
+- manage_agents: new option -d. Force adding new agent (even with duplicated IP)
+- manage_agents: Printing new agent ID on adding.
+
+### Changed
+
+- Authd and manage_agents won't add agents with duplicated IP.
+
+### Fixed
+
+- Solved duplicate IP conflicts on client.keys which prevented the new agent to connect.
+- Hashing files in binary mode. Solved some problems related to integrity checksums on Windows.
+- Fixed issue that made console programs not to work on Windows.
+
+### Removed
+
+- RESTful API no longer included in extensions/api folder. Available now at https://github.com/wazuh/wazuh-API
+  
+
 ## [v1.0.3] - 2016-02-11
 
 ### Added
@@ -16,7 +43,6 @@ All notable changes to this project will be documented in this file.
 - Folders are no longer included on etc/shared
 - Fixes typos on rootcheck files
 - Kibana dashboards fixes
-
 
 ## [v1.0.2] - 2016-01-29
 
