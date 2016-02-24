@@ -377,7 +377,6 @@ int add_agent(int json_output)
 
 int remove_agent(int json_output)
 {
-    FILE *fp;
     char *user_input;
     char u_id[FILE_SIZE + 1];
     int id_exist;
@@ -463,14 +462,13 @@ int remove_agent(int json_output)
                 return (1);
             }
 
-            fp = fopen(AUTH_FILE, "r+");
-            if (!fp) {
+            if (!OS_RemoveAgent(u_id)) {
                 free(full_name);
 
                 if (json_output) {
                     char buffer[1024];
                     cJSON *json_root = cJSON_CreateObject();
-                    snprintf(buffer, 1023, "Could not chmod object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+                    snprintf(buffer, 1023, "Could not open object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
                     cJSON_AddNumberToObject(json_root, "error", 71);
                     cJSON_AddStringToObject(json_root, "description", buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
@@ -478,19 +476,7 @@ int remove_agent(int json_output)
                 } else
                     ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
             }
-#ifndef WIN32
-            chmod(AUTH_FILE, 0440);
-#endif
 
-            /* Remove the agent, but keep the id */
-            fsetpos(fp, &fp_pos);
-            fprintf(fp, "%s #*#*#*#*#*#*#*#*#*#*#", u_id);
-
-            fclose(fp);
-
-            /* Remove counter for ID */
-            delete_agentinfo(full_name);
-            OS_RemoveCounter(u_id);
             free(full_name);
             full_name = NULL;
 

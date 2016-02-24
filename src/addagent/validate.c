@@ -86,6 +86,11 @@ int OS_RemoveAgent(const char *u_id) {
     FILE *fp;
     int id_exist;
     char *full_name;
+    long fp_seek;
+    size_t fp_read;
+    char *buffer;
+    char buf_curline[OS_BUFFER_SIZE];
+    struct stat fp_stat;
 
     id_exist = IDExist(u_id);
 
@@ -101,19 +106,12 @@ int OS_RemoveAgent(const char *u_id) {
     chmod(AUTH_FILE, 0440);
 #endif
 
-#ifdef REUSE_ID
-    long fp_seek;
-    size_t fp_read;
-    char *buffer;
-    char buf_discard[OS_BUFFER_SIZE];
-    struct stat fp_stat;
-
     if (stat(AUTH_FILE, &fp_stat) < 0) {
         fclose(fp);
         return 0;
     }
 
-    buffer = malloc(fp_stat.st_size);
+    buffer = malloc(fp_stat.st_size + 1);
     if (!buffer) {
         fclose(fp);
         return 0;
@@ -123,7 +121,26 @@ int OS_RemoveAgent(const char *u_id) {
     fp_seek = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     fp_read = fread(buffer, sizeof(char), fp_seek, fp);
-    fgets(buf_discard, OS_BUFFER_SIZE - 1, fp);
+
+    fgets(buf_curline, OS_BUFFER_SIZE - 2, fp);
+
+#ifndef REUSE_ID
+    char *ptr_name = strchr(buf_curline, ' ');
+
+    if (!ptr_name) {
+        free(buffer);
+        fclose(fp);
+        return 0;
+    }
+
+    ptr_name++;
+
+    memmove(ptr_name + 1, ptr_name, strlen(ptr_name) + 1);
+    *ptr_name = '!';
+    size_t curline_len = strlen(buf_curline);
+    memcpy(buffer + fp_read, buf_curline, curline_len);
+    fp_read += curline_len;
+#endif
 
     if (!feof(fp))
         fp_read += fread(buffer + fp_read, sizeof(char), fp_stat.st_size, fp);
@@ -137,12 +154,6 @@ int OS_RemoveAgent(const char *u_id) {
     }
 
     fwrite(buffer, sizeof(char), fp_read, fp);
-
-#else
-    /* Remove the agent, but keep the id */
-    fsetpos(fp, &fp_pos);
-    fprintf(fp, "%s #*#*#*#*#*#*#*#*#*#*#", u_id);
-#endif
     fclose(fp);
 
     full_name = getFullnameById(u_id);
@@ -217,7 +228,7 @@ char *getFullnameById(const char *id)
             name++;
 
             /* Removed entry */
-            if (*name == '#') {
+            if (*name == '#' || *name == '!') {
                 continue;
             }
 
@@ -361,7 +372,7 @@ int NameExist(const char *u_name)
             char *ip;
             name++;
 
-            if (*name == '#') {
+            if (*name == '#' || *name == '!') {
                 continue;
             }
 
@@ -412,7 +423,7 @@ char *IPExist(const char *u_ip)
         if (name) {
             name++;
 
-            if (*name == '#') {
+            if (*name == '#' || *name == '!') {
                 continue;
             }
 
@@ -488,7 +499,7 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
             name++;
 
             /* Removed agent */
-            if (*name == '#') {
+            if (*name == '#' || *name == '!') {
                 continue;
             }
 
