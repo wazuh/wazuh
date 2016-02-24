@@ -524,9 +524,14 @@ int main(int argc, char **argv)
                     }
 
                     /* Add the new agent */
-                    if (use_ip_address)
-                        finalkey = OS_AddNewAgent(agentname, srcip, NULL);
-                    else
+                    if (use_ip_address) {
+#ifdef REUSE_ID
+                        if (id_exist)
+                            finalkey = OS_AddNewAgent(agentname, srcip, id_exist);
+                        else
+#endif
+                            finalkey = OS_AddNewAgent(agentname, srcip, NULL);
+                    } else
                         finalkey = OS_AddNewAgent(agentname, NULL, NULL);
 
                     if (!finalkey) {
