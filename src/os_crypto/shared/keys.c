@@ -192,7 +192,7 @@ void OS_ReadKeys(keystore *keys)
         strncpy(id, valid_str, KEYSIZE - 1);
 
         /* Removed entry */
-        if (*tmp_str == '#') {
+        if (*tmp_str == '#' || *tmp_str == '!') {
             continue;
         }
 
