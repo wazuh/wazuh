@@ -171,7 +171,8 @@ int main(int argc, char **argv)
         if (fork() == 0) {
             /* On the child */
             debug1("%s: DEBUG: Forking remoted: '%d'.", ARGV0, i);
-            HandleRemote(i, uid);
+            logr.position = i;
+            HandleRemote(uid);
         } else {
             i++;
             continue;
@@ -180,4 +181,3 @@ int main(int argc, char **argv)
 
     return (0);
 }
-

@@ -20,9 +20,11 @@
 void *receiver_thread(__attribute__((unused)) void *none)
 {
     int recv_b;
+    int sock;
 
     char file[OS_SIZE_1024 + 1];
     char buffer[OS_MAXSTR + 1];
+    char srcip[IPSIZE + 1];
 
     char cleartext[OS_MAXSTR + 1];
     char *tmp_msg;
@@ -66,8 +68,14 @@ void *receiver_thread(__attribute__((unused)) void *none)
             continue;
         }
 
+        if (agt->protocol == TCP_PROTO) {
+            OS_AcceptTCP(agt->sock, srcip, IPSIZE);
+        } else {
+            sock = agt->sock;
+        }
+
         /* Read until no more messages are available */
-        while ((recv_b = recv(agt->sock, buffer, OS_SIZE_1024, 0)) > 0) {
+        while ((recv_b = recv(sock, buffer, OS_SIZE_1024, 0)) > 0) {
             /* Id of zero -- only one key allowed */
             tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1);
             if (tmp_msg == NULL) {
@@ -213,6 +221,10 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 merror("%s: WARN: Unknown message received. No action defined.",
                        ARGV0);
             }
+        }
+        
+        if (agt->protocol == TCP_PROTO) {
+            close(sock);
         }
     }
 

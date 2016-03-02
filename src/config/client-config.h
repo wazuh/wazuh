@@ -14,7 +14,8 @@
 typedef struct _agent {
     int port;
     int m_queue;
-    int sock;
+    int sock; /* Socket for UDP and receiving over TCP */
+    int sock_r; /* Remote socket, for sending over TCP */
     int execdq;
     int rip_id;
     char *lip;
@@ -22,7 +23,7 @@ typedef struct _agent {
     int notify_time;
     int max_time_reconnect_try;
     char *profile;
+    int protocol;
 } agent;
 
 #endif /* __CAGENTD_H */
-

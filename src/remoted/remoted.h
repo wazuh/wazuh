@@ -14,6 +14,7 @@
 #define ARGV0 "ossec-remoted"
 #endif
 
+#include "config/config.h"
 #include "config/remote-config.h"
 #include "sec.h"
 
@@ -23,7 +24,7 @@
 int RemotedConfig(const char *cfgfile, remoted *cfg);
 
 /* Handle Remote connections */
-void HandleRemote(int position, int uid) __attribute__((noreturn));
+void HandleRemote(int uid) __attribute__((noreturn));
 
 /* Handle Syslog */
 void HandleSyslog(void) __attribute__((noreturn));
@@ -32,7 +33,7 @@ void HandleSyslog(void) __attribute__((noreturn));
 void HandleSyslogTCP(void) __attribute__((noreturn));
 
 /* Handle Secure connections */
-void HandleSecure(void) __attribute__((noreturn));
+void HandleSecure(int procotol) __attribute__((noreturn));
 
 /* Forward active response events */
 void *AR_Forward(void *arg) __attribute__((noreturn));
@@ -47,7 +48,7 @@ void *wait_for_msgs(void *none);
 void save_controlmsg(unsigned int agentid, char *msg);
 
 /* Send message to agent */
-int send_msg(unsigned int agentid, const char *msg);
+int send_msg(unsigned int agentid, const char *msg, int reply);
 
 /* Initializing send_msg */
 void send_msg_init(void);

@@ -38,9 +38,6 @@ int main()
 #include "auth.h"
 #include "os_crypto/md5/md5_op.h"
 
-/* TODO: Pulled this value out of the sky, may or may not be sane */
-#define POOL_SIZE 512
-
 /* Prototypes */
 static void help_authd(void) __attribute((noreturn));
 static int ssl_error(const SSL *ssl, int ret);

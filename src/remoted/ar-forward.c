@@ -119,7 +119,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             if (ar_location & ALL_AGENTS) {
                 unsigned int i;
                 for (i = 0; i < keys.keysize; i++) {
-                    send_msg(i, msg_to_send);
+                    send_msg(i, msg_to_send, 0);
                 }
             }
 
@@ -132,7 +132,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                     continue;
                 }
 
-                send_msg((unsigned)agent_id, msg_to_send);
+                send_msg((unsigned)agent_id, msg_to_send, 0);
             }
 
             /* Send to a pre-defined agent */
@@ -147,7 +147,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                     continue;
                 }
 
-                send_msg((unsigned)agent_id, msg_to_send);
+                send_msg((unsigned)agent_id, msg_to_send, 0);
             }
 
             /* Lock use of keys */
