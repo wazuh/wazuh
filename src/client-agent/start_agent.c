@@ -37,7 +37,6 @@ int connect_server(int initial_id)
                     agt->rip[rc],
                     agt->port);
         }
-
     }
 
     while (agt->rip[rc]) {
@@ -81,13 +80,11 @@ int connect_server(int initial_id)
                 agt->rip[rc],
                 agt->port);
 
-        /* IPv6 address */
-        if (strchr(tmp_str, ':') != NULL) {
-            verbose("%s: INFO: Using IPv6 (%s).", ARGV0, tmp_str);
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 1);
+        if (agt->protocol == UDP_PROTO) {
+            agt->sock = OS_ConnectUDP(agt->port, tmp_str, strchr(tmp_str, ':') != NULL);
+            agt->sock_r = agt->sock;
         } else {
-            verbose("%s: INFO: Using IPv4 (%s).", ARGV0, tmp_str);
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 0);
+            agt->sock = OS_ConnectTCP(agt->port, tmp_str, strchr(tmp_str, ':') != NULL);
         }
 
         if (agt->sock < 0) {
@@ -120,6 +117,19 @@ int connect_server(int initial_id)
 #endif
 
             agt->rip_id = rc;
+
+            if (agt->protocol == TCP_PROTO) {
+                close(agt->sock);
+                agt->sock = OS_Bindporttcp(agt->port, agt->lip, !agt->lip || strchr(agt->lip, ':') != NULL);
+
+                if (agt->sock < 0) {
+                    merror(CONNS_ERROR, ARGV0, agt->lip);
+                    return 0;
+                }
+
+                listen(agt->sock, BACKLOG);
+            }
+
             return (1);
         }
     }
@@ -155,7 +165,7 @@ void start_agent(int is_startup)
         attempts = 0;
 
         /* Read until our reply comes back */
-        while (((recv_b = recv(agt->sock, buffer, OS_MAXSTR,
+        while (((recv_b = recv(agt->sock_r, buffer, OS_MAXSTR,
                                MSG_DONTWAIT)) >= 0) || (attempts <= 5)) {
             if (recv_b <= 0) {
                 /* Sleep five seconds before trying to get the reply from
@@ -229,4 +239,3 @@ void start_agent(int is_startup)
 
     return;
 }
-

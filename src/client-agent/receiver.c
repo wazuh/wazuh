@@ -27,13 +27,21 @@ void *receive_msg()
     ssize_t recv_b;
     char buffer[OS_MAXSTR + 1];
     char cleartext[OS_MAXSTR + 1];
+    char srcip[IPSIZE + 1];
     char *tmp_msg;
+    int sock;
 
     memset(cleartext, '\0', OS_MAXSTR + 1);
     memset(buffer, '\0', OS_MAXSTR + 1);
 
+    if (agt->protocol == TCP_PROTO) {
+        sock = OS_AcceptTCP(agt->sock, srcip, IPSIZE);
+    } else {
+        sock = agt->sock;
+    }
+
     /* Read until no more messages are available */
-    while ((recv_b = recv(agt->sock, buffer, OS_SIZE_1024, MSG_DONTWAIT)) > 0) {
+    while ((recv_b = recv(sock, buffer, OS_SIZE_1024, MSG_DONTWAIT)) > 0) {
         buffer[recv_b] = '\0';
 
         tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1);
@@ -191,6 +199,10 @@ void *receive_msg()
             merror("%s: WARN: Unknown message received. No action defined.",
                    ARGV0);
         }
+    }
+
+    if (agt->protocol == TCP_PROTO) {
+        close(sock);
     }
 
     return (NULL);

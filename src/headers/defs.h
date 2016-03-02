@@ -33,6 +33,8 @@
 #define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size          */
 #define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
 #define IPSIZE          16              /* IP Address size              */
+#define POOL_SIZE       512	            /* Max number of children       */
+#define BACKLOG         SOMAXCONN       /* Socket input queue length    */
 
 /* Some global names */
 #define __ossec_name    "OSSEC HIDS"
