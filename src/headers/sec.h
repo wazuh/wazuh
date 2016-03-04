@@ -24,6 +24,7 @@ typedef struct _keyentry {
     char *name;
 
     os_ip *ip;
+    int sock;
     struct sockaddr_in peer_info;
     FILE *fp;
 } keyentry;

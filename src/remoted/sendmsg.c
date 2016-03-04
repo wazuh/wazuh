@@ -84,11 +84,11 @@ void send_msg_init()
 /* Send message to an agent
  * Returns -1 on error
  */
-int send_msg(unsigned int agentid, const char *msg, int reply)
+int send_msg(unsigned int agentid, const char *msg)
 {
-    size_t msg_size;
+    ssize_t msg_size;
+    int send_b;
     char crypt_msg[OS_MAXSTR + 1];
-    int sock;
 
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[agentid]->rcvd < (time(0) - (2 * NOTIFY_TIME))) {
@@ -101,18 +101,6 @@ int send_msg(unsigned int agentid, const char *msg, int reply)
         return (-1);
     }
 
-    if (logr.proto[logr.position] == TCP_PROTO && !reply) {
-        char *ip = inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr);
-        sock = OS_ConnectTCP(logr.port[logr.position], ip, strchr(ip, ':') != NULL);
-
-        if (sock < 0) {
-            merror(CONNS_ERROR, ARGV0, ip);
-            return (-1);
-        }
-    } else {
-        sock = logr.sock;
-    }
-
     /* Lock before using */
     if (pthread_mutex_lock(&sendmsg_mutex) != 0) {
         merror(MUTEX_ERROR, ARGV0);
@@ -120,9 +108,16 @@ int send_msg(unsigned int agentid, const char *msg, int reply)
     }
 
     /* Send initial message */
-    if (sendto(sock, crypt_msg, msg_size, 0,
+    if (logr.proto[logr.position] == UDP_PROTO) {
+        send_b = sendto(logr.sock, crypt_msg, msg_size, 0,
                (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
-               logr.peer_size) < 0) {
+               logr.peer_size);
+    } else {
+        send(keys.keyentries[agentid]->sock, (char*)&msg_size, sizeof(msg_size), 0);
+        send_b = send(keys.keyentries[agentid]->sock, crypt_msg, msg_size, 0);
+    }
+
+    if (send_b < 0) {
         merror(SEND_ERROR, ARGV0, keys.keyentries[agentid]->id);
     }
 
@@ -130,10 +125,6 @@ int send_msg(unsigned int agentid, const char *msg, int reply)
     if (pthread_mutex_unlock(&sendmsg_mutex) != 0) {
         merror(MUTEX_ERROR, ARGV0);
         return (-1);
-    }
-
-    if (logr.proto[logr.position] == TCP_PROTO && !reply) {
-        close(sock);
     }
 
     return (0);

@@ -14,8 +14,7 @@
 typedef struct _agent {
     int port;
     int m_queue;
-    int sock; /* Socket for UDP and receiving over TCP */
-    int sock_r; /* Remote socket, for sending over TCP */
+    int sock;
     int execdq;
     int rip_id;
     char *lip;

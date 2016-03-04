@@ -70,7 +70,7 @@ void HandleRemote(int uid)
 
     /* If secure connection, deal with it */
     if (logr.conn[position] == SECURE_CONN) {
-        HandleSecure(logr.proto[position]);
+        HandleSecure();
     }
 
     else if (logr.proto[position] == TCP_PROTO) {
