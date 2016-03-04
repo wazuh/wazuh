@@ -52,18 +52,18 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-    
-    send_msg(agentid, msg_ack, 1);
-    
+
+    send_msg(agentid, msg_ack);
+
     /* Check if there is a keep alive already for this agent */
     if (_keep_alive[agentid] && _msg[agentid] &&
             (strcmp(_msg[agentid], r_msg) == 0)) {
-        
+
         utimes(_keep_alive[agentid], NULL);
     }
 
     else if (strcmp(r_msg, HC_STARTUP) == 0) {
-        
+
         return;
     }
 
@@ -71,11 +71,11 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         FILE *fp;
         char *uname = r_msg;
         char *random_leftovers;
-        
+
         /* Lock mutex */
         if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
             merror(MUTEX_ERROR, ARGV0);
-            
+
             return;
         }
 
@@ -88,7 +88,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         /* Unlock mutex */
         if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
             merror(MUTEX_ERROR, ARGV0);
-            
+
             return;
         }
 
@@ -110,13 +110,13 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         if (!_keep_alive[agentid]) {
             char agent_file[OS_SIZE_1024 + 1];
             agent_file[OS_SIZE_1024] = '\0';
-            
+
             /* Write to the agent file */
             snprintf(agent_file, OS_SIZE_1024, "%s/%s-%s",
                      AGENTINFO_DIR,
                      keys.keyentries[agentid]->name,
                      keys.keyentries[agentid]->ip->ip);
-             
+
             os_strdup(agent_file, _keep_alive[agentid]);
         }
 
@@ -126,13 +126,13 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             fprintf(fp, "%s\n", uname);
             fclose(fp);
         }
-        
+
     }
 
     /* Lock now to notify of change */
     if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
         merror(MUTEX_ERROR, ARGV0);
-        
+
         return;
     }
 
@@ -146,10 +146,10 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     /* Unlock mutex */
     if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
         merror(MUTEX_ERROR, ARGV0);
-        
+
         return;
     }
-    
+
     return;
 }
 
@@ -284,7 +284,7 @@ static int send_file_toagent(unsigned int agentid, const char *name, const char 
     /* Send the file name first */
     snprintf(buf, OS_SIZE_1024, "%s%s%s %s\n",
              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
-    if (send_msg(agentid, buf, 0) == -1) {
+    if (send_msg(agentid, buf) == -1) {
         merror(SEC_ERROR, ARGV0);
         fclose(fp);
         return (-1);
@@ -294,7 +294,7 @@ static int send_file_toagent(unsigned int agentid, const char *name, const char 
     while ((n = fread(buf, 1, 900, fp)) > 0) {
         buf[n] = '\0';
 
-        if (send_msg(agentid, buf, 0) == -1) {
+        if (send_msg(agentid, buf) == -1) {
             merror(SEC_ERROR, ARGV0);
             fclose(fp);
             return (-1);
@@ -310,7 +310,7 @@ static int send_file_toagent(unsigned int agentid, const char *name, const char 
 
     /* Send the message to close the file */
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
-    if (send_msg(agentid, buf, 0) == -1) {
+    if (send_msg(agentid, buf) == -1) {
         merror(SEC_ERROR, ARGV0);
         fclose(fp);
         return (-1);

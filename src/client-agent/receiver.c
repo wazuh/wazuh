@@ -24,24 +24,37 @@ static char file[OS_SIZE_1024 + 1] = "";
 /* Receive events from the server */
 void *receive_msg()
 {
-    ssize_t recv_b;
+    ssize_t recv_b, length;
     char buffer[OS_MAXSTR + 1];
     char cleartext[OS_MAXSTR + 1];
-    char srcip[IPSIZE + 1];
     char *tmp_msg;
-    int sock;
 
     memset(cleartext, '\0', OS_MAXSTR + 1);
     memset(buffer, '\0', OS_MAXSTR + 1);
 
-    if (agt->protocol == TCP_PROTO) {
-        sock = OS_AcceptTCP(agt->sock, srcip, IPSIZE);
-    } else {
-        sock = agt->sock;
-    }
-
     /* Read until no more messages are available */
-    while ((recv_b = recv(sock, buffer, OS_SIZE_1024, MSG_DONTWAIT)) > 0) {
+    while (1) {
+        if (agt->protocol == TCP_PROTO) {
+            recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_DONTWAIT);
+
+            if (recv_b <= 0)
+                break;
+
+            recv_b = recv(agt->sock, buffer, length, 0);
+
+            if (recv_b != length) {
+                merror(RECV_ERROR, ARGV0);
+                continue;
+            }
+
+        } else {
+            recv_b = recv(agt->sock, buffer, OS_SIZE_1024, MSG_DONTWAIT);
+
+            if (recv_b <= 0) {
+                break;
+            }
+        }
+
         buffer[recv_b] = '\0';
 
         tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1);
@@ -49,6 +62,8 @@ void *receive_msg()
             merror(MSG_ERROR, ARGV0, agt->rip[agt->rip_id]);
             continue;
         }
+
+        printf("recv(): %s\n", tmp_msg);
 
         /* Check for commands */
         if (IsValidHeader(tmp_msg)) {
@@ -199,10 +214,6 @@ void *receive_msg()
             merror("%s: WARN: Unknown message received. No action defined.",
                    ARGV0);
         }
-    }
-
-    if (agt->protocol == TCP_PROTO) {
-        close(sock);
     }
 
     return (NULL);

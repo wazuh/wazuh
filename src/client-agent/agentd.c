@@ -53,7 +53,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     maxfd = agt->m_queue;
     agt->sock = -1;
-    agt->sock_r = -1;
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {

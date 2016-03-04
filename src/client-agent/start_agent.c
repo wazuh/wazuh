@@ -82,7 +82,6 @@ int connect_server(int initial_id)
 
         if (agt->protocol == UDP_PROTO) {
             agt->sock = OS_ConnectUDP(agt->port, tmp_str, strchr(tmp_str, ':') != NULL);
-            agt->sock_r = agt->sock;
         } else {
             agt->sock = OS_ConnectTCP(agt->port, tmp_str, strchr(tmp_str, ':') != NULL);
         }
@@ -117,19 +116,6 @@ int connect_server(int initial_id)
 #endif
 
             agt->rip_id = rc;
-
-            if (agt->protocol == TCP_PROTO) {
-                close(agt->sock);
-                agt->sock = OS_Bindporttcp(agt->port, agt->lip, !agt->lip || strchr(agt->lip, ':') != NULL);
-
-                if (agt->sock < 0) {
-                    merror(CONNS_ERROR, ARGV0, agt->lip);
-                    return 0;
-                }
-
-                listen(agt->sock, BACKLOG);
-            }
-
             return (1);
         }
     }
@@ -140,7 +126,7 @@ int connect_server(int initial_id)
 /* Send synchronization message to the server and wait for the ack */
 void start_agent(int is_startup)
 {
-    ssize_t recv_b = 0;
+    ssize_t recv_b = 0, length;
     unsigned int attempts = 0, g_attempts = 1;
 
     char *tmp_msg;
@@ -165,8 +151,22 @@ void start_agent(int is_startup)
         attempts = 0;
 
         /* Read until our reply comes back */
-        while (((recv_b = recv(agt->sock_r, buffer, OS_MAXSTR,
-                               MSG_DONTWAIT)) >= 0) || (attempts <= 5)) {
+        while (attempts <= 5) {
+            if (agt->protocol == TCP_PROTO) {
+                recv_b = recv(agt->sock, (char*)&length, sizeof(length), 0);
+
+                if (recv_b > 0) {
+                    recv_b = recv(agt->sock, buffer, length, 0);
+
+                    if (recv_b != length) {
+                        merror(RECV_ERROR, ARGV0);
+                        continue;
+                    }
+                }
+            } else {
+                recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
+            }
+
             if (recv_b <= 0) {
                 /* Sleep five seconds before trying to get the reply from
                  * the server again
