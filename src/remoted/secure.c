@@ -23,7 +23,8 @@ void HandleSecure()
     int n_events, epoll_fd = 0;
     char buffer[OS_MAXSTR + 1];
     char srcip[IPSIZE + 1];
-    ssize_t recv_b, length;
+    ssize_t recv_b;
+    netsize_t length;
     struct sockaddr_in peer_info;
     struct epoll_event request, *events;
 

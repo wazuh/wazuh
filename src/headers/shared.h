@@ -39,6 +39,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/param.h>
+#include <stdint.h>
 
 #ifndef WIN32
 #include <sys/wait.h>
@@ -93,6 +94,8 @@
 #endif
 
 /* Global portability code */
+
+typedef int32_t netsize_t;
 
 #ifdef SOLARIS
 #include <limits.h>
