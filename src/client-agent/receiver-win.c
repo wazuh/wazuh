@@ -19,7 +19,8 @@
 /* Receive events from the server */
 void *receiver_thread(__attribute__((unused)) void *none)
 {
-    ssize_t recv_b, length;
+    ssize_t recv_b;
+    netsize_t length;
 
     char file[OS_SIZE_1024 + 1];
     char buffer[OS_MAXSTR + 1];

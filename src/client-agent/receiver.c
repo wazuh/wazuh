@@ -24,7 +24,8 @@ static char file[OS_SIZE_1024 + 1] = "";
 /* Receive events from the server */
 void *receive_msg()
 {
-    ssize_t recv_b, length;
+    ssize_t recv_b;
+    netsize_t length;
     char buffer[OS_MAXSTR + 1];
     char cleartext[OS_MAXSTR + 1];
     char *tmp_msg;

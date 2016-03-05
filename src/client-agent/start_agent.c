@@ -126,7 +126,8 @@ int connect_server(int initial_id)
 /* Send synchronization message to the server and wait for the ack */
 void start_agent(int is_startup)
 {
-    ssize_t recv_b = 0, length;
+    ssize_t recv_b = 0;
+    netsize_t length;
     unsigned int attempts = 0, g_attempts = 1;
 
     char *tmp_msg;

@@ -87,6 +87,7 @@ void send_msg_init()
 int send_msg(unsigned int agentid, const char *msg)
 {
     ssize_t msg_size;
+    netsize_t length;
     int send_b;
     char crypt_msg[OS_MAXSTR + 1];
 
@@ -113,7 +114,8 @@ int send_msg(unsigned int agentid, const char *msg)
                (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
                logr.peer_size);
     } else {
-        send(keys.keyentries[agentid]->sock, (char*)&msg_size, sizeof(msg_size), 0);
+        length = msg_size;
+        send(keys.keyentries[agentid]->sock, (char*)&length, sizeof(length), 0);
         send_b = send(keys.keyentries[agentid]->sock, crypt_msg, msg_size, 0);
     }
 
