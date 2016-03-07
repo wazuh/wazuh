@@ -22,10 +22,11 @@ static char file[OS_SIZE_1024 + 1] = "";
 
 
 /* Receive events from the server */
-void *receive_msg()
+int receive_msg()
 {
     ssize_t recv_b;
     netsize_t length;
+    int reads = 0;
     char buffer[OS_MAXSTR + 1];
     char cleartext[OS_MAXSTR + 1];
     char *tmp_msg;
@@ -36,10 +37,17 @@ void *receive_msg()
     /* Read until no more messages are available */
     while (1) {
         if (agt->protocol == TCP_PROTO) {
+            /* Only one read per call */
+            if (reads++) {
+                break;
+            }
+            
             recv_b = recv(agt->sock, (char*)&length, sizeof(length), 0);
 
-            if (recv_b <= 0)
-                break;
+            /* Manager disconnected */
+            if (recv_b <= 0) {
+                return -1;
+            }
 
             recv_b = recv(agt->sock, buffer, length, 0);
 
@@ -63,8 +71,6 @@ void *receive_msg()
             merror(MSG_ERROR, ARGV0, agt->rip[agt->rip_id]);
             continue;
         }
-
-        printf("recv(): %s\n", tmp_msg);
 
         /* Check for commands */
         if (IsValidHeader(tmp_msg)) {
@@ -217,6 +223,6 @@ void *receive_msg()
         }
     }
 
-    return (NULL);
+    return 0;
 }
 

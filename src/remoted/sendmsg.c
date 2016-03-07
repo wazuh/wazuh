@@ -86,9 +86,8 @@ void send_msg_init()
  */
 int send_msg(unsigned int agentid, const char *msg)
 {
-    ssize_t msg_size;
+    ssize_t msg_size, send_b;
     netsize_t length;
-    int send_b;
     char crypt_msg[OS_MAXSTR + 1];
 
     /* If we don't have the agent id, ignore it */
