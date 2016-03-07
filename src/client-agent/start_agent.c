@@ -177,6 +177,12 @@ void start_agent(int is_startup)
 
                 /* Send message again (after three attempts) */
                 if (attempts >= 3) {
+                    if (agt->protocol == TCP_PROTO) {
+                        if (!connect_server(agt->rip_id)) {
+                            continue;
+                        }
+                    }
+
                     send_msg(0, msg);
                 }
 
