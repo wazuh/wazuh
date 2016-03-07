@@ -24,7 +24,7 @@ remoted logr;
 void HandleRemote(int uid)
 {
     int position = logr.position;
-    
+
     /* If syslog connection and allowips is not defined, exit */
     if (logr.conn[position] == SYSLOG_CONN) {
         if (logr.allowips == NULL) {

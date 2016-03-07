@@ -73,7 +73,10 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     random();
 
-    /* Connect UDP */
+    /* Ignore SIGPIPE, it will be detected on recv */
+    signal(SIGPIPE, SIG_IGN);
+
+    /* Connect remote */
     rc = 0;
     while (rc < agt->rip_id) {
         verbose("%s: INFO: Server IP Address: %s", ARGV0, agt->rip[rc]);

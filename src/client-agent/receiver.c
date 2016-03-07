@@ -36,7 +36,7 @@ void *receive_msg()
     /* Read until no more messages are available */
     while (1) {
         if (agt->protocol == TCP_PROTO) {
-            recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_DONTWAIT);
+            recv_b = recv(agt->sock, (char*)&length, sizeof(length), 0);
 
             if (recv_b <= 0)
                 break;

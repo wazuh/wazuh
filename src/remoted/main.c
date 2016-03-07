@@ -159,6 +159,9 @@ int main(int argc, char **argv)
     /* Start the signal manipulation */
     StartSIG(ARGV0);
 
+    /* Ignore SIGPIPE, it will be detected on recv */
+    signal(SIGPIPE, SIG_IGN);
+
     random();
 
     /* Start up message */

@@ -90,7 +90,7 @@
 #define INVALID_TIME    "%s(1240): ERROR: Invalid time format: '%s'."
 #define INVALID_DAY     "%s(1241): ERROR: Invalid day format: '%s'."
 #define ACCEPT_ERROR    "%s(1242): ERROR: Couldn't accept TCP connections."
-#define RECV_ERROR      "%s(1243): ERROR: Couldn't receive message from agent."
+#define RECV_ERROR      "%s(1243): ERROR: Couldn't receive message from peer."
 
 #define MAILQ_ERROR     "%s(1221): ERROR: No Mail queue at %s"
 #define IMSG_ERROR      "%s(1222): ERROR: Invalid msg: %s"
