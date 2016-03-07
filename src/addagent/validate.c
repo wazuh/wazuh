@@ -401,6 +401,7 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
+#ifndef WIN32
 /* Returns the number of seconds since last agent connection, or -1 if error. */
 double OS_AgentAntiquity(const char *id)
 {
@@ -418,6 +419,7 @@ double OS_AgentAntiquity(const char *id)
 
     return difftime(time(NULL), file_stat.st_mtim.tv_sec);
 }
+#endif /* WIN32 */
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output)
