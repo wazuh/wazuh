@@ -70,12 +70,12 @@ void *receiver_thread(__attribute__((unused)) void *none)
         /* Read until no more messages are available */
         while (1) {
             if (agt->protocol == TCP_PROTO) {
-                recv_b = recv(agt->sock, (char*)&length, sizeof(length), 0);
+                recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
 
                 if (recv_b <= 0)
                     break;
 
-                recv_b = recv(agt->sock, buffer, length, 0);
+                recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
                 if (recv_b != length) {
                     merror(RECV_ERROR, ARGV0);

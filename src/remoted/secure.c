@@ -13,7 +13,7 @@
 #include "remoted.h"
 
 /* Handle each message received */
-static void HandleSecureMessage();
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client);
 
 /* Handle secure connections */
 void HandleSecure()
@@ -22,7 +22,6 @@ void HandleSecure()
     int sock_client;
     int n_events, epoll_fd = 0;
     char buffer[OS_MAXSTR + 1];
-    char srcip[IPSIZE + 1];
     ssize_t recv_b;
     netsize_t length;
     struct sockaddr_in peer_info;
@@ -93,7 +92,7 @@ void HandleSecure()
             int i;
             for (i = 0; i < n_events; i++) {
                 if (events[i].data.fd == logr.sock) {
-                    sock_client = OS_AcceptTCP(logr.sock, srcip, IPSIZE);
+                    sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
                         ErrorExit(ACCEPT_ERROR, ARGV0);
                     }
@@ -104,7 +103,7 @@ void HandleSecure()
                     }
                 } else {
                     sock_client = events[i].data.fd;
-                    recv_b = recv(sock_client, (char*)&length, sizeof(length), 0);
+                    recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
 
                     /* Nothing received */
                     if (recv_b <= 0) {
@@ -117,46 +116,41 @@ void HandleSecure()
                         continue;
                     }
 
-                    recv_b = recv(sock_client, buffer, length, 0);
+                    getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size);
+                    recv_b = recv(sock_client, buffer, length, MSG_WAITALL);
 
                     if (recv_b != length) {
                         merror(RECV_ERROR, ARGV0);
                         continue;
                     } else {
-                        HandleSecureMessage(buffer, recv_b, srcip, &sock_client);
+                        HandleSecureMessage(buffer, recv_b, &peer_info, sock_client);
                     }
                 }
             }
         } else {
             recv_b = recvfrom(logr.sock, buffer, OS_MAXSTR, 0, (struct sockaddr *)&peer_info, &logr.peer_size);
 
-            /* Set the source IP */
-            strncpy(srcip, inet_ntoa(peer_info.sin_addr), IPSIZE);
-            srcip[IPSIZE] = '\0';
-
             /* Nothing received */
             if (recv_b <= 0) {
                 continue;
             } else {
-                HandleSecureMessage(buffer, recv_b, srcip, &peer_info);
+                HandleSecureMessage(buffer, recv_b, &peer_info, -1);
             }
         }
     }
 }
 
-static void HandleSecureMessage(char *buffer, int recv_b, char *srcip, void *peer) {
-    struct sockaddr_in *peer_info;
-    int agentid, sock_client = -1;
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client) {
+    int agentid;
     int protocol = logr.proto[logr.position];
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
+    char srcip[IPSIZE + 1];
     char *tmp_msg;
-
-    if (protocol == TCP_PROTO) {
-        sock_client = *(int*)peer;
-    } else {
-        peer_info = (struct sockaddr_in *)peer;
-    }
+    
+    /* Set the source IP */
+    strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
+    srcip[IPSIZE] = '\0';
 
     /* Initialize some variables */
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
