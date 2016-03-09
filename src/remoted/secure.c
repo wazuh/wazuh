@@ -110,7 +110,7 @@ void HandleSecure()
 
                     /* Nothing received */
                     if (recv_b <= 0 || length > OS_MAXSTR) {
-                        if (recv_b < 0) {
+                        if (recv_b <= 0) {
                             verbose("%s: INFO: Agent at %s disconnected.", ARGV0, inet_ntoa(peer_info.sin_addr));
                         } else {
                             merror(RECV_ERROR, ARGV0);
