@@ -83,6 +83,10 @@ int connect_server(int initial_id)
         if (agt->protocol == UDP_PROTO) {
             agt->sock = OS_ConnectUDP(agt->port, tmp_str, strchr(tmp_str, ':') != NULL);
         } else {
+            if (agt->sock >= 0) {
+                close(agt->sock);
+            }
+
             agt->sock = OS_ConnectTCP(agt->port, tmp_str, strchr(tmp_str, ':') != NULL);
         }
 
@@ -109,10 +113,12 @@ int connect_server(int initial_id)
 #endif
 
 #ifdef WIN32
-            int bmode = 1;
+            if (agt->protocol == UDP_PROTO) {
+                int bmode = 1;
 
-            /* Set socket to non-blocking */
-            ioctlsocket(agt->sock, FIONBIO, (u_long FAR *) &bmode);
+                /* Set socket to non-blocking */
+                ioctlsocket(agt->sock, FIONBIO, (u_long FAR *) &bmode);
+            }
 #endif
 
             agt->rip_id = rc;

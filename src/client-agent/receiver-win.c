@@ -21,7 +21,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 {
     ssize_t recv_b;
     netsize_t length;
-
+    int reads;
     char file[OS_SIZE_1024 + 1];
     char buffer[OS_MAXSTR + 1];
 
@@ -67,19 +67,29 @@ void *receiver_thread(__attribute__((unused)) void *none)
             continue;
         }
 
+        reads = 0;
+
         /* Read until no more messages are available */
         while (1) {
             if (agt->protocol == TCP_PROTO) {
+                /* Only one read per call */
+                if (reads++) {
+                    break;
+                }
+
                 recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
 
-                if (recv_b <= 0)
+                if (recv_b <= 0) {
+                    merror(LOST_ERROR, ARGV0);
+                    start_agent(0);
                     break;
+                }
 
                 recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
                 if (recv_b != length) {
                     merror(RECV_ERROR, ARGV0);
-                    continue;
+                    break;
                 }
             } else {
                 recv_b = recv(agt->sock, buffer, OS_SIZE_1024, 0);
