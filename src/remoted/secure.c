@@ -106,10 +106,16 @@ void HandleSecure()
                     sock_client = events[i].data.fd;
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
                     getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size);
+                    debug2("%s: DEBUG: recv(): length=%d [%zu]", ARGV0, length, recv_b);
 
                     /* Nothing received */
-                    if (recv_b <= 0) {
-                        verbose("%s: INFO: Agent at %s disconnected.", ARGV0, inet_ntoa(peer_info.sin_addr));
+                    if (recv_b <= 0 || length > OS_MAXSTR) {
+                        if (recv_b < 0) {
+                            verbose("%s: INFO: Agent at %s disconnected.", ARGV0, inet_ntoa(peer_info.sin_addr));
+                        } else {
+                            merror(RECV_ERROR, ARGV0);
+                        }
+
                         request.data.fd = sock_client;
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
                             ErrorExit(EPOLL_ERROR, ARGV0);
@@ -123,6 +129,13 @@ void HandleSecure()
 
                     if (recv_b != length) {
                         merror(RECV_ERROR, ARGV0);
+                        request.data.fd = sock_client;
+
+                        if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
+                            ErrorExit(EPOLL_ERROR, ARGV0);
+                        }
+
+                        close(sock_client);
                         continue;
                     } else {
                         HandleSecureMessage(buffer, recv_b, &peer_info, sock_client);
@@ -149,7 +162,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1];
     char *tmp_msg;
-    
+
     /* Set the source IP */
     strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
     srcip[IPSIZE] = '\0';
