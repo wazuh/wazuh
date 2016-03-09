@@ -96,7 +96,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
         if ((agt->execdq = StartMQ(EXECQUEUE, WRITE)) < 0) {
-            merror("%s: INFO: Unable to connect to the active response "
+            merror("%s: ERROR: Unable to connect to the active response "
                    "queue (disabled).", ARGV0);
             agt->execdq = -1;
         }

@@ -97,6 +97,7 @@ void HandleSecure()
                         ErrorExit(ACCEPT_ERROR, ARGV0);
                     }
 
+                    verbose("%s: INFO: New agent connected at %s.", ARGV0, inet_ntoa(peer_info.sin_addr));
                     request.data.fd = sock_client;
                     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_client, &request) < 0) {
                         ErrorExit(EPOLL_ERROR, ARGV0);
@@ -104,9 +105,11 @@ void HandleSecure()
                 } else {
                     sock_client = events[i].data.fd;
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
+                    getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size);
 
                     /* Nothing received */
                     if (recv_b <= 0) {
+                        verbose("%s: INFO: Agent at %s disconnected.", ARGV0, inet_ntoa(peer_info.sin_addr));
                         request.data.fd = sock_client;
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
                             ErrorExit(EPOLL_ERROR, ARGV0);
@@ -116,7 +119,6 @@ void HandleSecure()
                         continue;
                     }
 
-                    getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size);
                     recv_b = recv(sock_client, buffer, length, MSG_WAITALL);
 
                     if (recv_b != length) {
