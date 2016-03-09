@@ -438,7 +438,9 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
             sleep(1);
         }
     } else {
-        if (OS_SendTCPbySize(agt->sock, _ssize, crypt_msg) < 0) {
+        netsize_t length = _ssize;
+        
+        if (OS_SendTCPbySize(agt->sock, sizeof(length), (void*)&length) < 0) {
             merror(SEND_ERROR, ARGV0, "server");
             sleep(1);
         }
@@ -538,6 +540,13 @@ void send_win32_info(time_t curr_time)
             sleep(1);
         }
     } else {
+        netsize_t length = msg_size;
+        
+        if (OS_SendTCPbySize(agt->sock, sizeof(length), (void*)&length) < 0) {
+            merror(SEND_ERROR, ARGV0, "server");
+            sleep(1);
+        }
+        
         if (OS_SendTCPbySize(agt->sock, msg_size, crypt_msg) < 0) {
             merror(SEND_ERROR, ARGV0, "server");
             sleep(1);
