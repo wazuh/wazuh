@@ -225,7 +225,7 @@ void start_agent(int is_startup)
         /* If we have more than one server, try all */
         if (agt->rip[1]) {
             int curr_rip = agt->rip_id;
-            merror("%s: INFO: Trying next server ip in the line: '%s'.", ARGV0,
+            verbose("%s: INFO: Trying next server ip in the line: '%s'.", ARGV0,
                    agt->rip[agt->rip_id + 1] != NULL ? agt->rip[agt->rip_id + 1] : agt->rip[0]);
             connect_server(agt->rip_id + 1);
 
