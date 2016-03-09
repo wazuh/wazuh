@@ -167,7 +167,7 @@ void start_agent(int is_startup)
 
                     if (recv_b != length) {
                         merror(RECV_ERROR, ARGV0);
-                        continue;
+                        recv_b = 0;
                     }
                 }
             } else {
