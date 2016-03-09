@@ -241,7 +241,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     if (IsValidHeader(tmp_msg)) {
         /* We need to save the peerinfo if it is a control msg */
         if (protocol == UDP_PROTO) {
-            memcpy(&keys.keyentries[agentid]->peer_info, &peer_info, logr.peer_size);
+            memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         } else {
             keys.keyentries[agentid]->sock = sock_client;
         }
