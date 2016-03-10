@@ -97,7 +97,7 @@ void HandleSecure()
                         ErrorExit(ACCEPT_ERROR, ARGV0);
                     }
 
-                    verbose("%s: INFO: New agent connected at %s.", ARGV0, inet_ntoa(peer_info.sin_addr));
+                    debug1("%s: DEBUG: New TCP connection at %s.", ARGV0, inet_ntoa(peer_info.sin_addr));
                     request.data.fd = sock_client;
                     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_client, &request) < 0) {
                         ErrorExit(EPOLL_ERROR, ARGV0);
@@ -111,7 +111,7 @@ void HandleSecure()
                     /* Nothing received */
                     if (recv_b <= 0 || length > OS_MAXSTR) {
                         if (recv_b <= 0) {
-                            verbose("%s: INFO: Agent at %s disconnected.", ARGV0, inet_ntoa(peer_info.sin_addr));
+                            debug1("%s: DEBUG: TCP peer at %s disconnected.", ARGV0, inet_ntoa(peer_info.sin_addr));
                         } else {
                             merror(RECV_ERROR, ARGV0);
                         }

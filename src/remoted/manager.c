@@ -63,7 +63,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     }
 
     else if (strcmp(r_msg, HC_STARTUP) == 0) {
-
+        verbose("%s: INFO: Agent %s connected at %s.", ARGV0, keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
         return;
     }
 
@@ -126,7 +126,6 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             fprintf(fp, "%s\n", uname);
             fclose(fp);
         }
-
     }
 
     /* Lock now to notify of change */
