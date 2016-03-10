@@ -101,7 +101,9 @@ Install()
 
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} build 
+        # Add DATABASE=pgsql or DATABASE=mysql to add support for database
+        # alert entry
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} build
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"
@@ -113,7 +115,7 @@ Install()
         UpdateStopOSSEC
     fi
 
-    ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install 
+    ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install
 
     cd ../
 
