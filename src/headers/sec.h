@@ -67,6 +67,9 @@ void OS_StartCounter(keystore *keys) __attribute((nonnull));
 /* Remove counter for id */
 void OS_RemoveCounter(const char *id) __attribute((nonnull));
 
+/* Configure to pass if keys file is empty */
+void OS_PassEmptyKeyfile();
+
 
 /** Function prototypes -- agent authorization **/
 

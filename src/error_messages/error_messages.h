@@ -127,6 +127,7 @@
 
 /* remoted */
 #define NO_REM_CONN     "%s(1750): ERROR: No remote connection configured. Exiting."
+#define NO_CLIENT_KEYS  "%s(1751): ERROR: File client.keys not found or empty."
 
 /* 1760 - 1769 -- reserved for maild */
 
