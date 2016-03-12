@@ -128,6 +128,20 @@ int Start_win32_Syscheck()
         r++;
     }
 
+    /* Print ignores. */
+    if(syscheck.ignore)
+	for (r = 0; syscheck.ignore[r] != NULL; r++)
+	    verbose("%s: INFO: ignoring: '%s'",
+		ARGV0, syscheck.ignore[r]);
+
+    /* Print files with no diff. */
+    r = 0;
+    while (syscheck.nodiff[r] != NULL) {
+            verbose("%s: INFO: No diff for file: '%s'",
+                    ARGV0, syscheck.nodiff[r]);
+            r++;
+    }
+
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
 
@@ -294,6 +308,20 @@ int main(int argc, char **argv)
         verbose("%s: INFO: Monitoring directory: '%s'.",
                 ARGV0, syscheck.dir[r]);
         r++;
+    }
+
+    /* Print ignores. */
+    if(syscheck.ignore)
+	for (r = 0; syscheck.ignore[r] != NULL; r++)
+	    verbose("%s: INFO: ignoring: '%s'",
+		ARGV0, syscheck.ignore[r]);
+
+    /* Print files with no diff. */
+    r = 0;
+    while (syscheck.nodiff[r] != NULL) {
+            verbose("%s: INFO: No diff for file: '%s'",
+                    ARGV0, syscheck.nodiff[r]);
+            r++;
     }
 
     /* Check directories set for real time */
