@@ -443,6 +443,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_scan_on_start = "scan_on_start";
     const char *xml_prefilter_cmd = "prefilter_cmd";
     const char *xml_skip_nfs = "skip_nfs";
+    const char *xml_nodiff = "nodiff";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -452,6 +453,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
 
     syscheck_config *syscheck;
     syscheck = (syscheck_config *)configp;
+    unsigned int nodiff_size = 0;
 
     while (node[i]) {
         if (!node[i]->element) {
@@ -688,6 +690,75 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 os_strdup(node[i]->content, syscheck->registry_ignore[ign_size]);
             }
 #endif
+        /* Getting file/dir nodiff */
+        } else if (strcmp(node[i]->element,xml_nodiff) == 0) {
+#ifdef WIN32
+            /* For Windows, we attempt to expand environment variables */
+            char *new_nodiff = NULL;
+            os_calloc(2048, sizeof(char), new_nodiff);
+
+            ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047);
+
+            free(node[i]->content);
+            node[i]->content = new_nodiff;
+#endif
+            /* Add if regex */
+            if (node[i]->attributes && node[i]->values) {
+                if (node[i]->attributes[0] && node[i]->values[0] &&
+                        (strcmp(node[i]->attributes[0], "type") == 0) &&
+                        (strcmp(node[i]->values[0], "sregex") == 0)) {
+                    OSMatch *mt_pt;
+                    if (!syscheck->nodiff_regex) {
+                        os_calloc(2, sizeof(OSMatch *), syscheck->nodiff_regex);
+                        syscheck->nodiff_regex[0] = NULL;
+                        syscheck->nodiff_regex[1] = NULL;
+                    } else {
+                        while (syscheck->nodiff_regex[nodiff_size] != NULL) {
+                            nodiff_size++;
+                        }
+
+                        os_realloc(syscheck->nodiff_regex,
+                                   sizeof(OSMatch *) * (nodiff_size + 2),
+                                   syscheck->nodiff_regex);
+                        syscheck->nodiff_regex[nodiff_size + 1] = NULL;
+                    }
+                    os_calloc(1, sizeof(OSMatch),
+                              syscheck->nodiff_regex[nodiff_size]);
+                    verbose("Found nodiff regex node %s", node[i]->content);
+                    if (!OSMatch_Compile(node[i]->content,
+                                         syscheck->nodiff_regex[nodiff_size], 0)) {
+                        mt_pt = (OSMatch *)syscheck->nodiff_regex[nodiff_size];
+                        merror(REGEX_COMPILE, __local_name, node[i]->content,
+                               mt_pt->error);
+                        return (0);
+                    }
+                    verbose("Found nodiff regex node %s OK?", node[i]->content);
+                    verbose("Found nodiff regex size %d", nodiff_size);
+                    verbose("Set nodiff regex: %s", syscheck->nodiff_regex[nodiff_size]->patterns);
+                } else {
+                    merror(SK_INV_ATTR, __local_name, node[i]->attributes[0]);
+                    return (OS_INVALID);
+                }
+            }
+
+            /* Add if simple entry -- check for duplicates */
+            else if (!os_IsStrOnArray(node[i]->content, syscheck->nodiff)) {
+                if (!syscheck->nodiff) {
+                    os_calloc(2, sizeof(char *), syscheck->nodiff);
+                    syscheck->nodiff[0] = NULL;
+                    syscheck->nodiff[1] = NULL;
+                } else {
+                    while (syscheck->nodiff[nodiff_size] != NULL) {
+                        nodiff_size++;
+                    }
+
+                    os_realloc(syscheck->nodiff,
+                               sizeof(char *) * (nodiff_size + 2),
+                               syscheck->nodiff);
+                    syscheck->nodiff[nodiff_size + 1] = NULL;
+                }
+                os_strdup(node[i]->content, syscheck->nodiff[nodiff_size]);
+            }
         } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
             /* auto_ignore is not read here */
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
