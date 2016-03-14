@@ -49,21 +49,22 @@ static pthread_cond_t awake_mutex;
 void save_controlmsg(unsigned int agentid, char *r_msg)
 {
     char msg_ack[OS_FLSIZE + 1];
+    char buffer[OS_FLSIZE + 1];
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-    
+
     send_msg(agentid, msg_ack);
-    
+
     /* Check if there is a keep alive already for this agent */
     if (_keep_alive[agentid] && _msg[agentid] &&
             (strcmp(_msg[agentid], r_msg) == 0)) {
-        
+
         utimes(_keep_alive[agentid], NULL);
     }
 
     else if (strcmp(r_msg, HC_STARTUP) == 0) {
-        
+
         return;
     }
 
@@ -71,11 +72,11 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         FILE *fp;
         char *uname = r_msg;
         char *random_leftovers;
-        
+
         /* Lock mutex */
         if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
             merror(MUTEX_ERROR, ARGV0);
-            
+
             return;
         }
 
@@ -88,7 +89,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         /* Unlock mutex */
         if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
             merror(MUTEX_ERROR, ARGV0);
-            
+
             return;
         }
 
@@ -110,29 +111,40 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         if (!_keep_alive[agentid]) {
             char agent_file[OS_SIZE_1024 + 1];
             agent_file[OS_SIZE_1024] = '\0';
-            
+
             /* Write to the agent file */
             snprintf(agent_file, OS_SIZE_1024, "%s/%s-%s",
                      AGENTINFO_DIR,
                      keys.keyentries[agentid]->name,
                      keys.keyentries[agentid]->ip->ip);
-             
+
             os_strdup(agent_file, _keep_alive[agentid]);
+        }
+
+        /* Get timestamp from the file */
+        fp = fopen(_keep_alive[agentid], "r");
+        if (fp) {
+            /* First line: discard */
+            fgets(buffer, OS_FLSIZE, fp);
+            /* Second line: timestamp */
+            fgets(buffer, OS_FLSIZE, fp);
+            fclose(fp);
+        } else {
+            *buffer = 0;
         }
 
         /* Write to the file */
         fp = fopen(_keep_alive[agentid], "w");
         if (fp) {
-            fprintf(fp, "%s\n", uname);
+            fprintf(fp, "%s\n%s", uname, buffer);
             fclose(fp);
         }
-        
     }
 
     /* Lock now to notify of change */
     if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
         merror(MUTEX_ERROR, ARGV0);
-        
+
         return;
     }
 
@@ -146,10 +158,10 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     /* Unlock mutex */
     if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
         merror(MUTEX_ERROR, ARGV0);
-        
+
         return;
     }
-    
+
     return;
 }
 

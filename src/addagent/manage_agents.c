@@ -68,6 +68,8 @@ int add_agent(int json_output)
     FILE *fp;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
+    char agentinfo_path[OS_FLSIZE];
+    char timestamp[40];
 
     os_md5 md1;
     os_md5 md2;
@@ -350,6 +352,20 @@ int add_agent(int json_output)
 
             fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
             fclose(fp);
+
+            snprintf(agentinfo_path, OS_FLSIZE, "%s/%s-%s", AGENTINFO_DIR, name, ip);
+            fp = fopen(agentinfo_path, "w");
+
+            if (fp) {
+                strftime(timestamp, 40, "%F %T", localtime(&time3));
+                fprintf(fp, "\n%s\n", timestamp);
+                fclose(fp);
+#ifndef WIN32
+                chmod(agentinfo_path, 0660);
+#endif
+            } else {
+                merror("%s: ERROR: Couldn't write on agent-info file.", ARGV0);
+            }
 
             if (json_output) {
                 char buffer[1024];
