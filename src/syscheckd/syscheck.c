@@ -134,12 +134,15 @@ int Start_win32_Syscheck()
 	    verbose("%s: INFO: ignoring: '%s'",
 		ARGV0, syscheck.ignore[r]);
 
+
     /* Print files with no diff. */
-    r = 0;
-    while (syscheck.nodiff[r] != NULL) {
+    if (syscheck.nodiff){
+        r = 0;
+        while (syscheck.nodiff[r] != NULL) {
             verbose("%s: INFO: No diff for file: '%s'",
                     ARGV0, syscheck.nodiff[r]);
             r++;
+        }
     }
 
     /* Start up message */
@@ -317,11 +320,13 @@ int main(int argc, char **argv)
 		ARGV0, syscheck.ignore[r]);
 
     /* Print files with no diff. */
-    r = 0;
-    while (syscheck.nodiff[r] != NULL) {
+    if (syscheck.nodiff){
+        r = 0;
+        while (syscheck.nodiff[r] != NULL) {
             verbose("%s: INFO: No diff for file: '%s'",
                     ARGV0, syscheck.nodiff[r]);
             r++;
+        }
     }
 
     /* Check directories set for real time */
