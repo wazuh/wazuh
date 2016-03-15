@@ -357,7 +357,7 @@ int add_agent(int json_output)
             fp = fopen(agentinfo_path, "w");
 
             if (fp) {
-                strftime(timestamp, 40, "%F %T", localtime(&time3));
+                strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&time3));
                 fprintf(fp, "\n%s\n", timestamp);
                 fclose(fp);
 #ifndef WIN32

@@ -11,6 +11,13 @@
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 
+#ifdef WIN32
+    #define chmod(x,y)
+    #define mkdir(x,y) 0
+    #define link(x,y)
+    #define difftime(x,y) 0
+#endif
+
 /* Global variables */
 fpos_t fp_pos;
 
@@ -103,12 +110,10 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
 
     if (fp) {
         timer = time(NULL);
-        strftime(timestamp, 40, "%F %T", localtime(&timer));
+        strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&timer));
         fprintf(fp, "\n%s\n", timestamp);
         fclose(fp);
-#ifndef WIN32
         chmod(agentinfo_path, 0660);
-#endif
     } else {
         merror("%s: ERROR: Couldn't write on agent-info file.", ARGV0);
     }
@@ -137,9 +142,7 @@ int OS_RemoveAgent(const char *u_id) {
     if (!fp)
         return 0;
 
-#ifndef WIN32
     chmod(AUTH_FILE, 0440);
-#endif
 
     if (stat(AUTH_FILE, &fp_stat) < 0) {
         fclose(fp);
@@ -624,7 +627,7 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
 }
 
 /* Backup agent information before force deleting */
-void OS_BackupAgentInfo(const char *id) 
+void OS_BackupAgentInfo(const char *id)
 {
     char path_backup[OS_FLSIZE];
     char path_src[OS_FLSIZE];
@@ -633,42 +636,42 @@ void OS_BackupAgentInfo(const char *id)
     char *name = getFullnameById(id);
     char *ip;
     time_t timer = time(NULL);
-    
+
     if (!name) {
         merror("%s: ERROR: Agent id %s not found.", ARGV0, id);
         return;
     }
-    
+
     snprintf(path_src, OS_FLSIZE, "%s/%s", AGENTINFO_DIR, name);
 
     ip = strchr(name, '-');
     *(ip++) = 0;
-    
-    strftime(timestamp, 40, "%Y-%m-%d %T", localtime(&timer));
+
+    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&timer));
     snprintf(path_backup, OS_FLSIZE, "%s/%s-%s %s", AGNBACKUP_DIR, name, ip, timestamp);
- 
+
     if (mkdir(path_backup, 0750) >= 0) {
         /* agent-info */
         snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
         link(path_src, path_dst);
-        
+
         /* syscheck */
         snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck", SYSCHECK_DIR, name, ip);
         snprintf(path_dst, OS_FLSIZE, "%s/syscheck", path_backup);
         link(path_src, path_dst);
-        
+
         snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck.cpt", SYSCHECK_DIR, name, ip);
         snprintf(path_dst, OS_FLSIZE, "%s/syscheck.cpt", path_backup);
         link(path_src, path_dst);
-        
+
         snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck-registry", SYSCHECK_DIR, name, ip);
         snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry", path_backup);
         link(path_src, path_dst);
-        
+
         snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck-registry.cpt", SYSCHECK_DIR, name, ip);
         snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry.cpt", path_backup);
         link(path_src, path_dst);
-        
+
         /* rootcheck */
         snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
         snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
@@ -676,6 +679,6 @@ void OS_BackupAgentInfo(const char *id)
     } else {
         merror("%s: ERROR: Couldn't create backup directory.", ARGV0);
     }
-    
+
     free(name);
 }
