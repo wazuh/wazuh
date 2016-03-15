@@ -214,10 +214,10 @@ int add_agent(int json_output)
             }
 
             if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
-                /* TODO: Save backup */
 #ifdef REUSE_ID
                 strncpy(id, id_exist, FILE_SIZE);
 #endif
+                OS_BackupAgentInfo(id_exist);
                 OS_RemoveAgent(id_exist);
             } else {
                 /* TODO: Send alert */
