@@ -39,6 +39,7 @@ char *getFullnameById(const char *id);
 char *OS_AddNewAgent(const char *name, const char *ip, const char *id);
 int OS_RemoveAgent(const char *id);
 double OS_AgentAntiquity(const char *id);
+void OS_BackupAgentInfo(const char *id);
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output);

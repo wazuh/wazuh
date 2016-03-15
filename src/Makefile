@@ -484,6 +484,8 @@ endif
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
 
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
+	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
 
 	rm -f ${PREFIX}/etc/shared/merged.mg
 
