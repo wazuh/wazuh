@@ -21,6 +21,7 @@
 /* Queues for additional log types */
 #define MYSQL_MQ        'a'
 #define POSTGRESQL_MQ   'b'
+#define AUTH_MQ         'c'
 
 int StartMQ(const char *key, short int type) __attribute__((nonnull));
 

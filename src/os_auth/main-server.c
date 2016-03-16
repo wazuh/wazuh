@@ -145,6 +145,7 @@ int main(int argc, char **argv)
     int process_pool[POOL_SIZE];
     /* Count of pids we are wait()ing on */
     int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
+    int m_queue = 0;
     int use_pass = 1;
     int force_antiquity = -1;
     char *id_exist;
@@ -347,6 +348,11 @@ int main(int argc, char **argv)
 
     nowChroot();
 
+    /* Queue for sending alerts */
+    if ((m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+        merror("%s: ERROR: Can't connect to queue.", ARGV0);
+    }
+
     while (1) {
         /* No need to completely pin the cpu, 100ms should be fast enough */
         usleep(100 * 1000);
@@ -492,25 +498,23 @@ int main(int argc, char **argv)
                     if (use_ip_address) {
                         id_exist = IPExist(srcip);
                         if (id_exist) {
-                            if (force_antiquity >= 0) {
-                                double antiquity = OS_AgentAntiquity(id_exist);
-                                if (antiquity >= force_antiquity || antiquity < 0) {
-                                    /* TODO: Backup info-agent, syscheck and rootcheck */
-                                    OS_RemoveAgent(id_exist);
-                                } else {
-                                    /* TODO: Send alert */
-                                    merror("%s: ERROR: Duplicated IP %s (another active)", ARGV0, srcip);
-                                    snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
-                                    SSL_write(ssl, response, strlen(response));
-                                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                                    SSL_write(ssl, response, strlen(response));
-                                    sleep(1);
-                                    exit(0);
-                                }
-
+                            double antiquity = OS_AgentAntiquity(id_exist);
+                            if (force_antiquity >= 0 && (antiquity >= force_antiquity || antiquity < 0)) {
+                                verbose("INFO: Duplicated IP. Saving backup");
+                                OS_BackupAgentInfo(id_exist);
+                                OS_RemoveAgent(id_exist);
                             } else {
                                 merror("%s: ERROR: Duplicated IP %s", ARGV0, srcip);
                                 snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
+
+                                if (m_queue >= 0) {
+                                    char buffer[64];
+                                    snprintf(buffer, 64, "ossec: Duplicated IP %s", srcip);
+                                    if (SendMSG(m_queue, buffer, "ossec-authd", AUTH_MQ) < 0) {
+                                        merror("%s: ERROR: Can't send event across socket.", ARGV0);
+                                    }
+                                }
+
                                 SSL_write(ssl, response, strlen(response));
                                 snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
                                 SSL_write(ssl, response, strlen(response));
@@ -521,9 +525,14 @@ int main(int argc, char **argv)
                     }
 
                     /* Add the new agent */
-                    if (use_ip_address)
-                        finalkey = OS_AddNewAgent(agentname, srcip, NULL);
-                    else
+                    if (use_ip_address) {
+#ifdef REUSE_ID
+                        if (id_exist)
+                            finalkey = OS_AddNewAgent(agentname, srcip, id_exist);
+                        else
+#endif
+                            finalkey = OS_AddNewAgent(agentname, srcip, NULL);
+                    } else
                         finalkey = OS_AddNewAgent(agentname, NULL, NULL);
 
                     if (!finalkey) {
