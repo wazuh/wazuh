@@ -126,6 +126,9 @@ http://www.ossec.net/main/license/\n"
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
+/* Backup directory for agents */
+#define AGNBACKUP_DIR    "/backup/agents"
+
 /* Diff queue */
 #define DIFF_DIR        "/queue/diff"
 #define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
