@@ -220,7 +220,6 @@ int add_agent(int json_output)
                 OS_BackupAgentInfo(id_exist);
                 OS_RemoveAgent(id_exist);
             } else {
-                /* TODO: Send alert */
                 if (json_output) {
                     cJSON *json_root = cJSON_CreateObject();
                     cJSON_AddNumberToObject(json_root, "error", 79);

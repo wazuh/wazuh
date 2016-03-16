@@ -58,3 +58,11 @@
   <program_name>^ossec$</program_name>
   <plugin_decoder>OSSECAlert_Decoder</plugin_decoder>
 </decoder>
+
+<decoder name="ossec-authd">
+  <parent>ossec</parent>
+  <type>ossec</type>
+  <prematch offset="after_parent">^Duplicated IP</prematch>
+  <regex offset="after_prematch">^ (\S+)$</regex>
+  <order>srcip</order>
+</decoder>
