@@ -172,6 +172,11 @@ http://www.ossec.net/main/license/\n"
 #define AGENTLESSPASS       "/agentless/.passlist"
 #define AGENTLESS_ENTRYDIR  "/queue/agentless"
 
+/* Integration directory. */
+#define INTEGRATORDIR "/integrations"
+#define INTEGRATORDIRPATH    DEFAULTDIR INTEGRATORDIR
+
+
 /* Internal definitions files */
 #ifndef WIN32
 #define OSSEC_DEFINES   "/etc/internal_options.conf"

@@ -41,6 +41,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osclient = "client";                    /* Agent Config  */
     const char *oscommand = "command";                  /* ? Config      */
     const char *osreports = "reports";                  /* Server Config */
+    const char *osintegratord = "integration";          /* Server Config */
     const char *osactive_response = "active-response";  /* Agent Config  */
 
     while (node[i]) {
@@ -67,6 +68,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, oscsyslogd) == 0) {
             if ((modules & CSYSLOGD) && (Read_CSyslog(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if(strcmp(node[i]->element, osintegratord) == 0) {
+            if((modules & CINTEGRATORD) && (Read_Integrator(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oscagentless) == 0) {
@@ -300,4 +305,3 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     OS_ClearXML(&xml);
     return (0);
 }
-
