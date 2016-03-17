@@ -203,7 +203,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                         /* Nothing to be done */
                     }
 
-                    else if (OS_MD5_File(file, currently_md5) < 0) {
+                    else if (OS_MD5_File(file, currently_md5, OS_TEXT) < 0) {
                         /* Remove file */
                         unlink(file);
                         file[0] = '\0';

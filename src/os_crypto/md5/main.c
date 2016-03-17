@@ -34,4 +34,3 @@ int main(int argc, char **argv)
     printf("MD5Sum for \"%s\" is: %s\n", argv[2], filesum);
     return (0);
 }
-

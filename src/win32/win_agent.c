@@ -517,7 +517,7 @@ void send_win32_info(time_t curr_time)
     /* Create message */
     if (File_DateofChange(AGENTCONFIGINT) > 0) {
         os_md5 md5sum;
-        if (OS_MD5_File(AGENTCONFIGINT, md5sum) != 0) {
+        if (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) != 0) {
             snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s", __win32_uname, __win32_shared);
         } else {
             snprintf(tmp_msg, OS_SIZE_1024, "#!-%s / %s\n%s", __win32_uname, md5sum, __win32_shared);
