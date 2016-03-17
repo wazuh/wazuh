@@ -18,6 +18,9 @@
 #define READ    1
 #define WRITE   2
 
+#define OS_BINARY  0
+#define OS_TEXT    1
+
 /* Size limit control */
 #define OS_SIZE_8192    8192
 #define OS_SIZE_6144    6144

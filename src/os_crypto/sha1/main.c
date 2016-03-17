@@ -19,7 +19,7 @@ int main(int argc, char **argv)
         usage(argv);
     }
 
-    if (OS_SHA1_File(argv[1], filesum) == 0) {
+    if (OS_SHA1_File(argv[1], filesum, OS_BINARY) == 0) {
         printf("SHA1Sum for \"%s\" is: %s\n", argv[1], filesum);
     } else {
         printf("SHA1Sum for \"%s\" failed\n", argv[1]);

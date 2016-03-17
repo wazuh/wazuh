@@ -290,7 +290,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
         /* Generate checksum of the values */
         fclose(checksum_fp);
 
-        if (OS_MD5_SHA1_File(SYS_REG_TMP, syscheck.prefilter_cmd, mf_sum, sf_sum) == -1) {
+        if (OS_MD5_SHA1_File(SYS_REG_TMP, syscheck.prefilter_cmd, mf_sum, sf_sum, OS_TEXT) == -1) {
             merror(FOPEN_ERROR, ARGV0, SYS_REG_TMP, errno, strerror(errno));
             return;
         }

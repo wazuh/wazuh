@@ -235,7 +235,7 @@ static void c_files()
             continue;
         }
 
-        if (OS_MD5_File(tmp_dir, md5sum) != 0) {
+        if (OS_MD5_File(tmp_dir, md5sum, OS_TEXT) != 0) {
             merror("%s: Error accessing file '%s'", ARGV0, tmp_dir);
             continue;
         }
@@ -264,7 +264,7 @@ static void c_files()
 
     closedir(dp);
 
-    if (OS_MD5_File(SHAREDCFG_FILE, md5sum) != 0) {
+    if (OS_MD5_File(SHAREDCFG_FILE, md5sum, OS_TEXT) != 0) {
         merror("%s: Error accessing file '%s'", ARGV0, SHAREDCFG_FILE);
         f_sum[0]->sum[0] = '\0';
     }

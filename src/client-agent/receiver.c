@@ -41,7 +41,7 @@ int receive_msg()
             if (reads++) {
                 break;
             }
-            
+
             recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
 
             /* Manager disconnected */
@@ -179,7 +179,7 @@ int receive_msg()
                     /* Nothing to be done */
                 }
 
-                else if (OS_MD5_File(file, currently_md5) < 0) {
+                else if (OS_MD5_File(file, currently_md5, OS_TEXT) < 0) {
                     /* Remove file */
                     unlink(file);
                     file[0] = '\0';
