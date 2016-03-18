@@ -5,7 +5,7 @@
 #include "../md5/md5_op.h"
 #include "../sha1/sha1_op.h"
 #include "md5_sha1_op.h"
-
+#include "headers/defs.h"
 
 void usage(char **argv)
 {
@@ -33,3 +33,5 @@ int main(int argc, char **argv)
     printf("MD5Sha1Sum for \"%s\" is: %s - %s\n", argv[2], filesum1, filesum2);
     return (0);
 }
+
+
