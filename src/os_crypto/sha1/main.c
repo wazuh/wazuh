@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "sha1_op.h"
-
+#include "headers/defs.h"
 
 void usage(char **argv)
 {

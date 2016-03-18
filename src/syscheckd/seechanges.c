@@ -232,7 +232,7 @@ char *seechanges_addfile(const char *filename)
     );
 
     /* If the file is not there, rename new location to last location */
-    if (OS_MD5_File(old_location, md5sum_old, OS_TEXT) != 0) {
+    if (OS_MD5_File(old_location, md5sum_old, OS_BINARY) != 0) {
         seechanges_createpath(old_location);
         if (seechanges_dupfile(filename, old_location) != 1) {
             merror(RENAME_ERROR, ARGV0, filename, old_location, errno, strerror(errno));
@@ -241,7 +241,7 @@ char *seechanges_addfile(const char *filename)
     }
 
     /* Get md5sum of the new file */
-    if (OS_MD5_File(filename, md5sum_new, OS_TEXT) != 0) {
+    if (OS_MD5_File(filename, md5sum_new, OS_BINARY) != 0) {
         return (NULL);
     }
 
