@@ -485,11 +485,11 @@ endif
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
 
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
 	
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
-	install -m 640 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
+	install -m 750 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations
 	touch ${PREFIX}/logs/integrations.log
 	chmod 640 ${PREFIX}/logs/integrations.log
 	chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
