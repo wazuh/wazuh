@@ -39,6 +39,7 @@ int main(int argc, char **argv)
     int test_config = 0;
     int uid = 0;
     int gid = 0;
+    int run_foreground = 0;
 
     /* Highly recommended not to run as root. However, some integrations
      * may require it. */
@@ -52,9 +53,9 @@ int main(int argc, char **argv)
     /* Setting the name */
     OS_SetName(ARGV0);
 
-    while((c = getopt(argc, argv, "vdhtu:g:")) != -1){
+    while((c = getopt(argc, argv, "vdhtfu:g:")) != -1){
         switch(c){
-            case 'v':
+            case 'V':
                 print_version();
                 break;
             case 'h':
@@ -75,6 +76,9 @@ int main(int argc, char **argv)
                 break;
             case 't':
                 test_config = 1;
+                break;
+            case 'f':
+                run_foreground = 1;
                 break;
             default:
                 help(ARGV0);
@@ -104,8 +108,11 @@ int main(int argc, char **argv)
     i = getpid();
 
     /* Going on daemon mode */
-    nowDaemon();
-    goDaemonLight();
+
+    if (!run_foreground) {
+        nowDaemon();
+        goDaemonLight();
+    }
 
     /* Not configured */
     if(!integrator_config || !integrator_config[0])
