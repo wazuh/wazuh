@@ -12,7 +12,7 @@
 #include "config/global-config.h"
 #include "config/config.h"
 
-void *OS_ReadIntegratorConf(char *cfgfile, IntegratorConfig **integrator_config)
+void **OS_ReadIntegratorConf(char *cfgfile, IntegratorConfig ***integrator_config)
 {
     int modules = 0;
 
@@ -20,11 +20,11 @@ void *OS_ReadIntegratorConf(char *cfgfile, IntegratorConfig **integrator_config)
     modules |= CINTEGRATORD;
 
     /* Reading configuration */
-    if(ReadConfig(modules, cfgfile, &integrator_config, NULL) < 0)
+    if(ReadConfig(modules, cfgfile, integrator_config, NULL) < 0)
     {
         ErrorExit(CONFIG_ERROR, ARGV0, cfgfile);
         return(NULL);
     }
 
-    return(integrator_config);
+    return *integrator_config;
 }
