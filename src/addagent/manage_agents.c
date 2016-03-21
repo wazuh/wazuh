@@ -367,11 +367,12 @@ int add_agent(int json_output)
             }
 
             if (json_output) {
-                char buffer[1024];
                 cJSON *json_root = cJSON_CreateObject();
-                snprintf(buffer, 1023, "Agent added with ID %s", id);
+                cJSON *json_response = cJSON_CreateObject();
+                cJSON_AddStringToObject(json_response, "id", id);
+                cJSON_AddStringToObject(json_response, "message", "Agent added");
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddStringToObject(json_root, "response", buffer);
+                cJSON_AddItemToObject(json_root, "response", json_response);
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf(AGENT_ADD, id);
