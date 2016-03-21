@@ -228,6 +228,7 @@ int add_agent(int json_output)
                     exit(1);
                 } else {
                     printf(IP_DUP_ERROR, ip);
+                    setenv("OSSEC_AGENT_IP", "", 1);
                     _ip = NULL;
                 }
             }
