@@ -35,6 +35,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     os_realloc(integrator_config, (s + 2) * sizeof(IntegratorConfig *), integrator_config);
     os_calloc(1, sizeof(IntegratorConfig), integrator_config[s]);
     integrator_config[s + 1] = NULL;
+    *(IntegratorConfig ***)config = integrator_config;
 
     /* Zeroing the elements. */
     integrator_config[s]->name = NULL;

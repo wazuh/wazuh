@@ -16,7 +16,7 @@
 /** Prototypes **/
 
 /* Read syslog config */
-void *OS_ReadIntegratorConf(char *cfgfile, IntegratorConfig **integrator_config);
+void **OS_ReadIntegratorConf(char *cfgfile, IntegratorConfig ***integrator_config);
 
 /* Database inserting main function */
 void OS_IntegratorD(IntegratorConfig **integrator_config);

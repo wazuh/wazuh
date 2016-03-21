@@ -98,7 +98,13 @@ int main(int argc, char **argv)
     }
 
     /* Reading configuration */
-    integrator_config = OS_ReadIntegratorConf(cfg, integrator_config);
+    if(!OS_ReadIntegratorConf(cfg, &integrator_config) || !integrator_config[0])
+    {
+        /* Not configured */
+        verbose("%s: INFO: Remote integrations not configured. "
+                "Clean exit.", ARGV0);
+        exit(0);
+    }
 
     /* Exit here if test config is set */
     if(test_config)
@@ -112,14 +118,6 @@ int main(int argc, char **argv)
     if (!run_foreground) {
         nowDaemon();
         goDaemonLight();
-    }
-
-    /* Not configured */
-    if(!integrator_config || !integrator_config[0])
-    {
-        verbose("%s: INFO: Remote integrations not configured. "
-                "Clean exit.", ARGV0);
-        exit(0);
     }
 
     /* Creating some randoness  */
