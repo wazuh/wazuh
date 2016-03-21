@@ -21,7 +21,7 @@ fi
 NAME="OSSEC HIDS"
 VERSION="v2.8"
 AUTHOR="Trend Micro Inc."
-DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON}"
+DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -97,8 +97,8 @@ enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug]"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 
@@ -108,14 +108,16 @@ enable()
         echo "CSYSLOG_DAEMON=ossec-csyslogd" >> ${PLIST};
     elif [ "X$2" = "Xagentless" ]; then
         echo "AGENTLESS_DAEMON=ossec-agentlessd" >> ${PLIST};
+    elif [ "X$2" = "Xintegrator" ]; then
+        echo "INTEGRATOR_DAEMON=ossec-integratord" >> ${PLIST};
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug]"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 }
@@ -125,8 +127,8 @@ disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 disable [database|client-syslog|agentless,debug]"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 disable [database|client-syslog|agentless,debug|integrator]"
         exit 1;
     fi
 
@@ -136,14 +138,16 @@ disable()
         echo "CSYSLOG_DAEMON=\"\"" >> ${PLIST};
     elif [ "X$2" = "Xagentless" ]; then
         echo "AGENTLESS_DAEMON=\"\"" >> ${PLIST};
+    elif [ "X$2" = "Xintegrator" ]; then
+        echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug]"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 }

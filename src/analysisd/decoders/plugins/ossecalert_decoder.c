@@ -65,7 +65,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
     /* Get rule structure */
     rule_pointer = (RuleInfo *) OSHash_Get(Config.g_rules_hash, oa_id);
     if (!rule_pointer) {
-        merror("%s: WARN: Rule id '%s' not found internally.", ARGV0, oa_id);
+        merror("%s: WARN: Rule id '%s' not found internally: %s", ARGV0, oa_id, lf->log);
         *tmp_str = ' ';
         return (NULL);
     }
@@ -148,4 +148,3 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
 
     return (NULL);
 }
-

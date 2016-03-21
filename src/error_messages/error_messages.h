@@ -245,6 +245,9 @@
 /* Syslog output */
 #define XML_INV_CSYSLOG "%s(5301): ERROR: Invalid client-syslog configuration."
 
+/* Integrator daemon */
+#define XML_INV_INTEGRATOR "%s(5302): ERROR: Invalid integratord configuration."
+
 /* Agentless */
 #define XML_INV_AGENTLESS   "%s(7101): ERROR: Invalid agentless configuration."
 #define XML_INV_MISSFREQ    "%s(7102): ERROR: Frequency not set for the periodic option."
