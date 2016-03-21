@@ -1,0 +1,47 @@
+#!/bin/sh
+# Pagerduty Integration
+# Author: Daniel B. Cid
+# Last modified: Jan 19, 2015
+
+ALERTFILE=$1
+APIKEY=$2
+WEBHOOK=$3
+
+LOCAL=`dirname $0`;
+SERVER=`hostname`
+cd $LOCAL
+cd ../
+PWD=`pwd`
+
+
+# Logging the call
+echo "`date` $0 $1 $2 $3" >> ${PWD}/logs/integrations.log
+
+
+# IP Address must be provided
+if [ "x${APIKEY}" = "x" ]; then
+   echo "$0: Missing argument <alertfile> <unused> (webhook)" 
+   exit 1;
+fi
+
+
+ls $ALERTFILE >/dev/null 2>&1
+if [ ! $? = 0 ]; then
+    echo "$0: Missing file: <alertfile>"
+    exit 1;
+fi
+
+
+. $ALERTFILE 
+postfile=`mktemp`
+
+
+#echo 'payload={"username":"OSSEC2slack Integration from '$alertlocation'", "icon_emoji": ":ghost:", "text": "OSSEC Alert\n```'$alertdate $alertlocation'\nRule:'$ruleid' (level '$alertlevel'): '$ruledescription'\nIP:'$srcip'\n'$alertlog'\n```"}' > $postfile
+echo '{ "service_key": "'$APIKEY'", "incident_key": "Alert: '$alertdate' / Rule: '$ruleid'", "event_type": "trigger", "description": "OSSEC Alert: '$ruledescription'", "client": "OSSEC IDS", "client_url": "http://dcid.me/ossec", "details": { "location": "'$alertlocation'", "Rule":"'$ruleid'", "Description":"'$ruledescription'", "Log":"'$alertlog'"} } ' > $postfile
+
+curl -H "Content-type: application/json" -X POST --data @$postfile "https://events.pagerduty.com/generic/2010-04-15/create_event.json"
+
+
+rm -f $postfile
+
+exit 0;
