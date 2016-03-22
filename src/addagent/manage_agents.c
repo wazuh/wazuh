@@ -16,6 +16,17 @@
 #include "external/cJSON/cJSON.h"
 #include <stdlib.h>
 
+#if defined(__MINGW32__)
+static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
+{
+    int len = strlen(name) + strlen(val) + 2;
+    char *str = (char *)malloc(len);
+    snprintf(str, len, "%s=%s", name, val);
+    putenv(str);
+    return 0;
+}
+#endif
+
 /* Global variables */
 int restart_necessary;
 time_t time1;
