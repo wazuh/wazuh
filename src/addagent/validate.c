@@ -14,7 +14,7 @@
 #ifdef WIN32
     #define chmod(x,y)
     #define mkdir(x,y) 0
-    #define link(x,y)
+    #define link(x,y) 0
     #define difftime(x,y) 0
 #endif
 
@@ -160,7 +160,9 @@ int OS_RemoveAgent(const char *u_id) {
     fseek(fp, 0, SEEK_SET);
     fp_read = fread(buffer, sizeof(char), fp_seek, fp);
 
-    fgets(buf_curline, OS_BUFFER_SIZE - 2, fp);
+    if (!fgets(buf_curline, OS_BUFFER_SIZE - 2, fp)) {
+        return 0;
+    }
 
 #ifndef REUSE_ID
     char *ptr_name = strchr(buf_curline, ' ');
@@ -636,6 +638,7 @@ void OS_BackupAgentInfo(const char *id)
     char *name = getFullnameById(id);
     char *ip;
     time_t timer = time(NULL);
+    int status = 0;
 
     if (!name) {
         merror("%s: ERROR: Agent id %s not found.", ARGV0, id);
@@ -653,29 +656,33 @@ void OS_BackupAgentInfo(const char *id)
     if (mkdir(path_backup, 0750) >= 0) {
         /* agent-info */
         snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
-        link(path_src, path_dst);
+        status += link(path_src, path_dst);
 
         /* syscheck */
         snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck", SYSCHECK_DIR, name, ip);
         snprintf(path_dst, OS_FLSIZE, "%s/syscheck", path_backup);
-        link(path_src, path_dst);
+        status += link(path_src, path_dst);
 
         snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck.cpt", SYSCHECK_DIR, name, ip);
         snprintf(path_dst, OS_FLSIZE, "%s/syscheck.cpt", path_backup);
-        link(path_src, path_dst);
+        status += link(path_src, path_dst);
 
         snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck-registry", SYSCHECK_DIR, name, ip);
         snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry", path_backup);
-        link(path_src, path_dst);
+        status += link(path_src, path_dst);
 
         snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck-registry.cpt", SYSCHECK_DIR, name, ip);
         snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry.cpt", path_backup);
-        link(path_src, path_dst);
+        status += link(path_src, path_dst);
 
         /* rootcheck */
         snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
         snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
-        link(path_src, path_dst);
+        status += link(path_src, path_dst);
+
+        if (status < 0) {
+            merror("%s: ERROR: Couln't create some backup files.", ARGV0);
+        }
     } else {
         merror("%s: ERROR: Couldn't create backup directory.", ARGV0);
     }
