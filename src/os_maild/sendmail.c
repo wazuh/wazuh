@@ -425,6 +425,13 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     snprintf(snd_msg, 127, FROM, mail->from);
     OS_SendTCP(socket, snd_msg);
 
+    /* Send reply-to if set */
+    if (mail->reply_to){
+        memset(snd_msg, '\0', 128);
+        snprintf(snd_msg, 127, REPLYTO, mail->reply_to);
+        OS_SendTCP(socket, snd_msg);
+    }
+
     /* Add CCs */
     if (mail->to[1]) {
         i = 1;
