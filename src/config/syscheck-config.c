@@ -724,7 +724,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                     }
                     os_calloc(1, sizeof(OSMatch),
                               syscheck->nodiff_regex[nodiff_size]);
-                    verbose("Found nodiff regex node %s", node[i]->content);
+                    debug1("Found nodiff regex node %s", node[i]->content);
                     if (!OSMatch_Compile(node[i]->content,
                                          syscheck->nodiff_regex[nodiff_size], 0)) {
                         mt_pt = (OSMatch *)syscheck->nodiff_regex[nodiff_size];
@@ -732,9 +732,8 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                                mt_pt->error);
                         return (0);
                     }
-                    verbose("Found nodiff regex node %s OK?", node[i]->content);
-                    verbose("Found nodiff regex size %d", nodiff_size);
-                    verbose("Set nodiff regex: %s", syscheck->nodiff_regex[nodiff_size]->patterns);
+                    debug1("Found nodiff regex node %s OK?", node[i]->content);
+                    debug1("Found nodiff regex size %d", nodiff_size);
                 } else {
                     merror(SK_INV_ATTR, __local_name, node[i]->attributes[0]);
                     return (OS_INVALID);
