@@ -293,7 +293,7 @@ int k_extract(const char *cmdextract, int json_output)
 
     if (json_output) {
         cJSON_AddNumberToObject(json_root, "error", 0);
-        cJSON_AddStringToObject(json_root, "response", b64_enc);
+        cJSON_AddStringToObject(json_root, "data", b64_enc);
         printf("%s", cJSON_PrintUnformatted(json_root));
     } else
         printf(EXTRACT_MSG, n_id, b64_enc);
