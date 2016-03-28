@@ -282,7 +282,7 @@ int main(int argc, char **argv)
             if (agt_id < 0) {
                 if(json_output){
                     cJSON_AddNumberToObject(root, "error", 40);
-                    cJSON_AddStringToObject(root, "description", "Invalid agent id");
+                    cJSON_AddStringToObject(root, "message", "Invalid agent id");
                     printf("%s",cJSON_PrintUnformatted(root));
                     cJSON_Delete(root);
                     exit(0);
@@ -408,7 +408,7 @@ int main(int argc, char **argv)
         if (arq < 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 41);
-                cJSON_AddStringToObject(root, "description", "Unable to connect to remoted");
+                cJSON_AddStringToObject(root, "message", "Unable to connect to remoted");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -431,7 +431,7 @@ int main(int argc, char **argv)
         } else {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 42);
-                cJSON_AddStringToObject(root, "description", "Unable to restart syscheck on all agents");
+                cJSON_AddStringToObject(root, "message", "Unable to restart syscheck on all agents");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -464,7 +464,7 @@ int main(int argc, char **argv)
         if (arq < 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 43);
-                cJSON_AddStringToObject(root, "description", "Unable to connect to remoted");
+                cJSON_AddStringToObject(root, "message", "Unable to connect to remoted");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -486,7 +486,7 @@ int main(int argc, char **argv)
         } else {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 44);
-                cJSON_AddStringToObject(root, "description", "Unable to restart syscheck on agent");
+                cJSON_AddStringToObject(root, "message", "Unable to restart syscheck on agent");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -506,7 +506,7 @@ int main(int argc, char **argv)
         if (arq < 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 45);
-                cJSON_AddStringToObject(root, "description", "Unable to connect to remoted");
+                cJSON_AddStringToObject(root, "message", "Unable to connect to remoted");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -528,7 +528,7 @@ int main(int argc, char **argv)
         } else {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 46);
-                cJSON_AddStringToObject(root, "description", "Unable to restart agent");
+                cJSON_AddStringToObject(root, "message", "Unable to restart agent");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
