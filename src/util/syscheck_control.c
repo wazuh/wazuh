@@ -205,7 +205,7 @@ int main(int argc, char **argv)
                     char buffer[1024];
                     cJSON_AddNumberToObject(json_root, "error", 31);
                     snprintf(buffer, 1023, "%s: Unable to open: '%s'", ARGV0, SYSCHECK_DIR);
-                    cJSON_AddStringToObject(json_root, "description", buffer);
+                    cJSON_AddStringToObject(json_root, "message", buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else
@@ -291,7 +291,7 @@ int main(int argc, char **argv)
                     char buffer[1024];
                     cJSON_AddNumberToObject(json_root, "error", 32);
                     snprintf(buffer, 1023, "Invalid agent id '%s'.", agent_id);
-                    cJSON_AddStringToObject(json_root, "description", buffer);
+                    cJSON_AddStringToObject(json_root, "message", buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else {
@@ -355,7 +355,7 @@ int main(int argc, char **argv)
                     char buffer[1024];
                     cJSON_AddNumberToObject(json_root, "error", 33);
                     snprintf(buffer, 1023, "Invalid agent id '%s'.", agent_id);
-                    cJSON_AddStringToObject(json_root, "description", buffer);
+                    cJSON_AddStringToObject(json_root, "message", buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else {
@@ -404,7 +404,7 @@ int main(int argc, char **argv)
 
     if (json_output) {
         cJSON_AddNumberToObject(json_root, "error", 30);
-        cJSON_AddStringToObject(json_root, "description", "Invalid argument combination");
+        cJSON_AddStringToObject(json_root, "message", "Invalid argument combination");
         printf("%s", cJSON_PrintUnformatted(json_root));
         exit(1);
     } else {

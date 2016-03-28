@@ -107,7 +107,7 @@ int add_agent(int json_output)
             cJSON *json_root = cJSON_CreateObject();
             snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
             cJSON_AddNumberToObject(json_root, "error", 71);
-            cJSON_AddStringToObject(json_root, "description", buffer);
+            cJSON_AddStringToObject(json_root, "message", buffer);
             printf("%s", cJSON_PrintUnformatted(json_root));
             exit(1);
         } else
@@ -122,7 +122,7 @@ int add_agent(int json_output)
             cJSON *json_root = cJSON_CreateObject();
             snprintf(buffer, 1023, "Could not chmod object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
             cJSON_AddNumberToObject(json_root, "error", 71);
-            cJSON_AddStringToObject(json_root, "description", buffer);
+            cJSON_AddStringToObject(json_root, "message", buffer);
             printf("%s", cJSON_PrintUnformatted(json_root));
             exit(1);
         } else
@@ -160,10 +160,10 @@ int add_agent(int json_output)
 
                 if (NameExist(_name)) {
                     cJSON_AddNumberToObject(json_root, "error", 75);
-                    cJSON_AddStringToObject(json_root, "description", "Name already present");
+                    cJSON_AddStringToObject(json_root, "message", "Name already present");
                 } else {
                     cJSON_AddNumberToObject(json_root, "error", 76);
-                    cJSON_AddStringToObject(json_root, "description", "Invalid name for agent");
+                    cJSON_AddStringToObject(json_root, "message", "Invalid name for agent");
                 }
 
                 printf("%s", cJSON_PrintUnformatted(json_root));
@@ -205,7 +205,7 @@ int add_agent(int json_output)
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
                 cJSON_AddNumberToObject(json_root, "error", 77);
-                cJSON_AddStringToObject(json_root, "description", "Invalid IP for agent");
+                cJSON_AddStringToObject(json_root, "message", "Invalid IP for agent");
                 printf("%s", cJSON_PrintUnformatted(json_root));
                 exit(1);
             } else
@@ -241,7 +241,7 @@ int add_agent(int json_output)
                 if (json_output) {
                     cJSON *json_root = cJSON_CreateObject();
                     cJSON_AddNumberToObject(json_root, "error", 79);
-                    cJSON_AddStringToObject(json_root, "description", "Duplicated IP for agent");
+                    cJSON_AddStringToObject(json_root, "message", "Duplicated IP for agent");
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else {
@@ -341,7 +341,7 @@ int add_agent(int json_output)
                     cJSON *json_root = cJSON_CreateObject();
                     snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", KEYS_FILE, errno, strerror(errno));
                     cJSON_AddNumberToObject(json_root, "error", 71);
-                    cJSON_AddStringToObject(json_root, "description", buffer);
+                    cJSON_AddStringToObject(json_root, "message", buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else
@@ -450,7 +450,7 @@ int remove_agent(int json_output)
                 cJSON *json_root = cJSON_CreateObject();
                 snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", user_input);
                 cJSON_AddNumberToObject(json_root, "error", 78);
-                cJSON_AddStringToObject(json_root, "description", buffer);
+                cJSON_AddStringToObject(json_root, "message", buffer);
                 printf("%s", cJSON_PrintUnformatted(json_root));
                 exit(1);
             } else
@@ -488,7 +488,7 @@ int remove_agent(int json_output)
                     cJSON *json_root = cJSON_CreateObject();
                     snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", u_id);
                     cJSON_AddNumberToObject(json_root, "error", 78);
-                    cJSON_AddStringToObject(json_root, "description", buffer);
+                    cJSON_AddStringToObject(json_root, "message", buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else
@@ -505,7 +505,7 @@ int remove_agent(int json_output)
                     cJSON *json_root = cJSON_CreateObject();
                     snprintf(buffer, 1023, "Could not open object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
                     cJSON_AddNumberToObject(json_root, "error", 71);
-                    cJSON_AddStringToObject(json_root, "description", buffer);
+                    cJSON_AddStringToObject(json_root, "message", buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else
