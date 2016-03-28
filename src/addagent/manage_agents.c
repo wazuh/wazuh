@@ -387,11 +387,11 @@ int add_agent(int json_output)
 
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
-                cJSON *json_response = cJSON_CreateObject();
-                cJSON_AddStringToObject(json_response, "id", id);
-                cJSON_AddStringToObject(json_response, "message", "Agent added");
+                cJSON *json_data = cJSON_CreateObject();
+                cJSON_AddStringToObject(json_data, "id", id);
+                cJSON_AddStringToObject(json_data, "message", "Agent added");
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddItemToObject(json_root, "response", json_response);
+                cJSON_AddItemToObject(json_root, "data", json_data);
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf(AGENT_ADD, id);
@@ -518,7 +518,7 @@ int remove_agent(int json_output)
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddStringToObject(json_root, "response", "Agent removed");
+                cJSON_AddStringToObject(json_root, "data", "Agent removed");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf(REMOVE_DONE, u_id);

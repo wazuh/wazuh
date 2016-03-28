@@ -184,7 +184,7 @@ int main(int argc, char **argv)
         print_agents(1, active_only, csv_output, json_agents);
 
         if (json_output) {
-            cJSON_AddItemToObject(json_root, "response", json_agents);
+            cJSON_AddItemToObject(json_root, "data", json_agents);
             printf("%s", cJSON_PrintUnformatted(json_root));
         } else
             printf("\n");
@@ -238,7 +238,7 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddStringToObject(json_root, "response", "Integrity check database updated");
+                cJSON_AddStringToObject(json_root, "data", "Integrity check database updated");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf("\n** Integrity check database updated.\n\n");
@@ -270,7 +270,7 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddStringToObject(json_root, "response", "Integrity check database updated");
+                cJSON_AddStringToObject(json_root, "data", "Integrity check database updated");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf("\n** Integrity check database updated.\n\n");
@@ -306,7 +306,7 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddStringToObject(json_root, "response", "Integrity check database updated");
+                cJSON_AddStringToObject(json_root, "data", "Integrity check database updated");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf("\n** Integrity check database updated.\n\n");
@@ -395,7 +395,7 @@ int main(int argc, char **argv)
 
         if (json_output) {
             cJSON_AddNumberToObject(json_root, "error", 0);
-            cJSON_AddItemToObject(json_root, "response", json_entries);
+            cJSON_AddItemToObject(json_root, "data", json_entries);
             printf("%s", cJSON_PrintUnformatted(json_root));
         }
 
