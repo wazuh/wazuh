@@ -1024,7 +1024,7 @@ Jan  8 19:32:41 tp.lan dropbear[15165]: Pubkey auth succeeded for 'root' with ke
 <!-- OpenBSD smtpd decoders -->
 
 <decoder name="smtpd">
-  <program_name>smtpd</program_name>
+  <program_name>^smtpd</program_name>
 </decoder>
 
 <decoder name="smtpd-client">
