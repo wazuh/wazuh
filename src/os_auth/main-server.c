@@ -48,7 +48,7 @@ static void clean_exit(SSL_CTX *ctx, int sock) __attribute__((noreturn));
 static void help_authd()
 {
     print_header();
-    print_out("  %s: -[Vhdti] [-f sec] [-g group] [-D dir] [-p port] [-v path] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[Vhdtin] [-f sec] [-g group] [-D dir] [-p port] [-v path] [-x path] [-k path]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
