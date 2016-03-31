@@ -313,15 +313,15 @@ int Start_Hour()
     /* Get maximum/minimum diffs */
     maxdiff = getDefine_Int("analysisd",
                             "stats_maxdiff",
-                            10, 99999);
+                            10, 999999);
 
     mindiff = getDefine_Int("analysisd",
                             "stats_mindiff",
-                            10, 99999);
+                            10, 999999);
 
     percent_diff = getDefine_Int("analysisd",
                                  "stats_percent_diff",
-                                 5, 999);
+                                 5, 9999);
 
     /* Last three messages
      * They are used to keep track of the last
