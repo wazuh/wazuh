@@ -48,7 +48,7 @@ static void clean_exit(SSL_CTX *ctx, int sock) __attribute__((noreturn));
 static void help_authd()
 {
     print_header();
-    print_out("  %s: -[Vhdtin] [-f sec] [-g group] [-D dir] [-p port] [-v path] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[Vhdti] [-f sec] [-g group] [-D dir] [-p port] [-P] [-v path] [-x path] [-k path]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -60,7 +60,7 @@ static void help_authd()
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
-    print_out("    -n          Disable shared password authentication (not recommended).\n");
+    print_out("    -P          Enable shared password authentication (at %s or random).", AUTHDPASS_PATH);
     print_out("    -v <path>   Full path to CA certificate used to verify clients");
     print_out("    -x <path>   Full path to server certificate");
     print_out("    -k <path>   Full path to server key");
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
     /* Count of pids we are wait()ing on */
     int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
     int m_queue = 0;
-    int use_pass = 1;
+    int use_pass = 0;
     int force_antiquity = -1;
     char *id_exist;
     gid_t gid;
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:nf:")) != -1) {
+    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:Pf:")) != -1) {
         char *end;
 
         switch (c) {
@@ -202,8 +202,8 @@ int main(int argc, char **argv)
             case 't':
                 test_config = 1;
                 break;
-            case 'n':
-                use_pass = 0;
+            case 'P':
+                use_pass = 1;
                 break;
             case 'p':
                 if (!optarg) {
@@ -304,14 +304,14 @@ int main(int argc, char **argv)
         }
 
         if (buf[0] != '\0')
-            verbose("Accepting connections. Using password specified on file: %s",AUTHDPASS_PATH);
+            verbose("Accepting connections. Using password specified on file: %s", AUTHDPASS_PATH);
         else {
             /* Getting temporary pass. */
             authpass = __generatetmppass();
             verbose("Accepting connections. Random password chosen for agent authentication: %s", authpass);
         }
     } else
-        verbose("Accepting insecure connections. No password required (not recommended)");
+        verbose("Accepting insecure connections. No password required.");
 
     /* Getting SSL cert. */
 
