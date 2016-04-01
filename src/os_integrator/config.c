@@ -26,5 +26,5 @@ void **OS_ReadIntegratorConf(char *cfgfile, IntegratorConfig ***integrator_confi
         return(NULL);
     }
 
-    return *integrator_config;
+    return (void**)*integrator_config;
 }
