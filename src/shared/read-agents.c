@@ -328,7 +328,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
                 json_entry = cJSON_CreateObject();
                 json_attrs = cJSON_CreateObject();
 
-                cJSON_AddStringToObject(json_entry, "readDay", read_day);
+                cJSON_AddStringToObject(json_entry, "date", read_day);
                 cJSON_AddStringToObject(json_entry, "file", changed_file_name);
                 cJSON_AddNumberToObject(json_entry, "changes", number_changes);
 
@@ -453,7 +453,7 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
 
             if (json_output) {
                 cJSON *entry = cJSON_CreateObject();
-                cJSON_AddStringToObject(entry, "readDay", read_day);
+                cJSON_AddStringToObject(entry, "date", read_day);
                 cJSON_AddStringToObject(entry, "file", changed_file_name);
                 cJSON_AddNumberToObject(entry, "changes", number_changes);
                 cJSON_AddItemToArray(json_output, entry);
