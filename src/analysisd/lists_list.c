@@ -224,6 +224,9 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
             vpos = cdb_datapos(&lrule->db->cdb);
             vlen = cdb_datalen(&lrule->db->cdb);
             val = (char *) malloc(vlen);
+            if(val == NULL) {
+                return(0);
+            }
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
             result = OSMatch_Execute(val, vlen, lrule->matcher);
             free(val);
