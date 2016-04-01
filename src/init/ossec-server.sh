@@ -166,7 +166,7 @@ status()
     RETVAL=0
     first=true
     if [ $USE_JSON = true ]; then
-        echo -n '{"error":0,"response":['
+        echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
         if [ $USE_JSON = true ] && [ $first = false ]; then
@@ -203,7 +203,7 @@ testconfig()
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
-                echo -n '{"error":20,"description":"'${i}': Configuration error."}'
+                echo -n '{"error":20,"message":"'${i}': Configuration error."}'
             else
                 echo "${i}: Configuration error. Exiting"
             fi
@@ -224,7 +224,7 @@ start()
     ${DIR}/bin/ossec-logtest -t > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
         if [ $USE_JSON = true ]; then
-            echo -n '{"error":21,"description":"OSSEC analysisd: Testing rules failed. Configuration error."}'
+            echo -n '{"error":21,"message":"OSSEC analysisd: Testing rules failed. Configuration error."}'
         else
             echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
         fi
@@ -236,7 +236,7 @@ start()
     # We actually start them now.
     first=true
     if [ $USE_JSON = true ]; then
-        echo -n '{"error":0,"response":['
+        echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
         if [ $USE_JSON = true ] && [ $first = false ]; then
@@ -323,7 +323,7 @@ stopa()
     checkpid;
     first=true
     if [ $USE_JSON = true ]; then
-        echo -n '{"error":0,"response":['
+        echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
         if [ $USE_JSON = true ] && [ $first = false ]; then
