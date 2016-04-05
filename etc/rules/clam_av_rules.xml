@@ -1,4 +1,8 @@
-
+<!--
+  -  Updated by Wazuh
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
+-->
 <group name="clamd,freshclam,">
 
   <rule id="52500" level="0" noalert="1">
