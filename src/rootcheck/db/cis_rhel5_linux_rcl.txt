@@ -1,5 +1,7 @@
 # OSSEC Linux Audit - (C) 2014
 #
+# PCI Tagging by Wazuh <ossec@wazuh.com>.
+#
 # Released under the same license as OSSEC.
 # More details at the LICENSE file included with OSSEC or online
 # at: http://www.ossec.net/en/licensing.html

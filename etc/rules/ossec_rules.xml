@@ -11,6 +11,9 @@
   -  Foundation.
   -
   -  License details: http://www.ossec.net/en/licensing.html
+  -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -->
 
 
@@ -127,7 +130,7 @@
     <description>System Audit: Vulnerable web application found.</description>
     <group>rootcheck</group>
   </rule>
-  
+
   <rule id="520" level="3">
     <if_sid>500</if_sid>
     <match>Duplicated IP</match>

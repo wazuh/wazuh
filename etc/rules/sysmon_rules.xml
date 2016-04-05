@@ -11,6 +11,9 @@
   -  status = Image
   -  url = Hash
   -  extra_data = ParentImage
+  -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -->
   
 <group name="sysmon_process-anomalies,">
