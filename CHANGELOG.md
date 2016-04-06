@@ -1,6 +1,41 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v1.1] - 2016-04-06
+
+### Added
+
+- Re-usage of agent ID in manage_agents and authd, with time limit.
+- Implementation of TCP-based remote communication.
+  - Recovering lost connections, with host-name updating.
+  - Logging when a new agent is connected.
+- Added option to avoid manager from exiting when there are no keys.
+- Backup of the information about an agent that's going to be deleted.
+- Alerting if Authd can't add an agent because of a duplicated IP.
+- Integrator with Slack and PagerDuty.
+- Simplified keywords for the option "frequency".
+- Added custom Reply-to e-mail header.
+- Added option to syscheck to avoid showing diffs on some files.
+
+### Changed
+
+- client.keys: No longer overwrite the name of an agent with "#-#-#-" to mark it as deleted. Instead, the name will appear with a starting "!".
+- API: Distinction between duplicated and invalid name for agent.
+- Stop the "ERROR: No such file or directory" for Apache.
+- Changed defaults to analysisd event counter.
+- Authd won't use password by default.
+- Changed name of fields at JSON output from binaries.
+
+### Fixed
+
+- Fixed merged.mg push on Windows Agent
+- Fixed Windows agent compilation issue
+- Fixed glob broken implementation.
+- Fixed memory corruption on the OSSEC alert decoder.
+- Fixed command "useradd" on OpenBSD.
+- Fixed some PostgreSQL issues.
+- Allow to disable syscheck:check_perm after enable check_all.
+
 ## [v1.0.4] - 2016-02-24
 ​
 ### Added
