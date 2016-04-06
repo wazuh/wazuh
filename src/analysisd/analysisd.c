@@ -1407,8 +1407,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* If it is a context rule, search for it */
     if (rule->context == 1) {
         if (!(rule->context_opts & SAME_DODIFF)) {
-            if (!rule->event_search(lf, rule)) {
-                return (NULL);
+            if (rule->event_search) {
+                if (!rule->event_search(lf, rule)) {
+                    return (NULL);
+                }
             }
         }
     }
