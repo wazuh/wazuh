@@ -219,6 +219,9 @@ http://www.ossec.net/main/license/\n"
 #define AUTH_FILE       KEYS_FILE
 #endif
 
+/* Timestamp file */
+#define TIMESTAMP_FILE  "/queue/agents-timestamp"
+
 /* Shared config directory */
 #ifndef WIN32
 #define SHAREDCFG_DIR   "/etc/shared"

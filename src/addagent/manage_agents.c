@@ -368,6 +368,7 @@ int add_agent(int json_output)
 
             fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
             fclose(fp);
+            OS_AddAgentTimestamp(id, name, ip, time3);
 
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();

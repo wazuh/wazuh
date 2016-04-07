@@ -95,8 +95,8 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
         snprintf(finals, 2048, "%s %s %s %s%s", id, name, ip, md1, md2);
     }
     fprintf(fp, "%s\n", finals);
-
     fclose(fp);
+    OS_AddAgentTimestamp(id, name, ip, time(0));
     return (finals);
 }
 
@@ -174,12 +174,15 @@ int OS_RemoveAgent(const char *u_id) {
 
     fwrite(buffer, sizeof(char), fp_read, fp);
     fclose(fp);
+    free(buffer);
 
     if (full_name)
         delete_agentinfo(full_name);
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
+
+    OS_RemoveAgentTimestamp(u_id);
     return 1;
 }
 
@@ -667,4 +670,69 @@ void OS_BackupAgentInfo(const char *id)
     }
 
     free(name);
+}
+
+void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now)
+{
+    FILE *fp;
+    char timestamp[40];
+
+    fp = fopen(TIMESTAMP_FILE, "a");
+
+    if (!fp) {
+        merror("%s: ERROR: Couldn't open timetamp file.", ARGV0);
+        return;
+    }
+
+    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&now));
+    fprintf(fp, "%s %s %s %s\n", id, name, ip, timestamp);
+    fclose(fp);
+}
+
+void OS_RemoveAgentTimestamp(const char *id)
+{
+    FILE *fp;
+    char *buffer;
+    char line[OS_BUFFER_SIZE];
+    int idlen = strlen(id);
+    int pos = 0;
+    struct stat fp_stat;
+
+    if (stat(AUTH_FILE, &fp_stat) < 0) {
+        return 0;
+    }
+
+    fp = fopen(TIMESTAMP_FILE, "r");
+
+    if (!fp) {
+        return;
+    }
+
+    buffer = (char*)malloc(fp_stat.st_size + 1);
+
+    if (!buffer) {
+        fclose(fp);
+    }
+
+    while (fgets(line, OS_BUFFER_SIZE, fp)) {
+        printf("Linea: %s\n", line);
+
+        if (strncmp(id, line, idlen)) {
+            strcpy(&buffer[pos], line);
+            pos += strlen(line);
+        }
+    }
+
+    fclose(fp);
+    fp = fopen(TIMESTAMP_FILE, "w");
+
+    if (!fp) {
+        merror("%s: ERROR: Couldn't open timetamp file.", ARGV0);
+        free(buffer);
+        return;
+    }
+
+    fprintf(fp, "%s", buffer);
+    fclose(fp);
+    free(buffer);
 }
