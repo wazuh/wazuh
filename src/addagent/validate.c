@@ -32,9 +32,6 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     char *muname;
     char *finals;
     char nid[9] = { '\0' };
-    char agentinfo_path[OS_FLSIZE];
-    char timestamp[40];
-    time_t timer;
 
     srandom_init();
     muname = getuname();
@@ -98,26 +95,8 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
         snprintf(finals, 2048, "%s %s %s %s%s", id, name, ip, md1, md2);
     }
     fprintf(fp, "%s\n", finals);
+
     fclose(fp);
-
-    if (ip == NULL) {
-        snprintf(agentinfo_path, OS_FLSIZE, "%s/%s-any", AGENTINFO_DIR, name);
-    } else {
-        snprintf(agentinfo_path, OS_FLSIZE, "%s/%s-%s", AGENTINFO_DIR, name, ip);
-    }
-
-    fp = fopen(agentinfo_path, "w");
-
-    if (fp) {
-        timer = time(NULL);
-        strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&timer));
-        fprintf(fp, "\n%s\n", timestamp);
-        fclose(fp);
-        chmod(agentinfo_path, 0660);
-    } else {
-        merror("%s: ERROR: Couldn't write on agent-info file.", ARGV0);
-    }
-
     return (finals);
 }
 
