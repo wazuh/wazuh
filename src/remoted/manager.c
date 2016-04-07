@@ -49,7 +49,6 @@ static pthread_cond_t awake_mutex;
 void save_controlmsg(unsigned int agentid, char *r_msg)
 {
     char msg_ack[OS_FLSIZE + 1];
-    char buffer[OS_FLSIZE + 1];
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
@@ -121,24 +120,13 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             os_strdup(agent_file, _keep_alive[agentid]);
         }
 
-        /* Get timestamp from the file */
-        fp = fopen(_keep_alive[agentid], "r");
-        if (fp) {
-            /* First line: discard */
-            fgets(buffer, OS_FLSIZE, fp);
-            /* Second line: timestamp */
-            fgets(buffer, OS_FLSIZE, fp);
-            fclose(fp);
-        } else {
-            *buffer = 0;
-        }
-
         /* Write to the file */
         fp = fopen(_keep_alive[agentid], "w");
         if (fp) {
-            fprintf(fp, "%s\n%s", uname, buffer);
+            fprintf(fp, "%s\n", uname);
             fclose(fp);
         }
+
     }
 
     /* Lock now to notify of change */
