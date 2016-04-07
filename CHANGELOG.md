@@ -6,9 +6,6 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Re-usage of agent ID in manage_agents and authd, with time limit.
-- Implementation of TCP-based remote communication.
-  - Recovering lost connections, with host-name updating.
-  - Logging when a new agent is connected.
 - Added option to avoid manager from exiting when there are no keys.
 - Backup of the information about an agent that's going to be deleted.
 - Alerting if Authd can't add an agent because of a duplicated IP.
