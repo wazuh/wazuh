@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Simplified keywords for the option "frequency".
 - Added custom Reply-to e-mail header.
 - Added option to syscheck to avoid showing diffs on some files.
+- Created agents-timestamp file to save the agents' date of adding.
 
 ### Changed
 
