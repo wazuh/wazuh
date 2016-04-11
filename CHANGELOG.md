@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Changed defaults to analysisd event counter.
 - Authd won't use password by default.
 - Changed name of fields at JSON output from binaries.
+- Upgraded rules to Wazuh Ruleset v1.07
 
 ### Fixed
 
