@@ -715,8 +715,6 @@ void OS_RemoveAgentTimestamp(const char *id)
     }
 
     while (fgets(line, OS_BUFFER_SIZE, fp)) {
-        printf("Linea: %s\n", line);
-
         if (strncmp(id, line, idlen)) {
             strcpy(&buffer[pos], line);
             pos += strlen(line);
