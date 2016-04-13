@@ -181,7 +181,7 @@ int main(int argc, char **argv)
                 if (json_output) {
                     cJSON_AddNumberToObject(json_root, "error", 11);
                     snprintf(json_buffer, 1023, "%s: Unable to open: '%s'", ARGV0, ROOTCHECK_DIR);
-                    cJSON_AddStringToObject(json_root, "description", json_buffer);
+                    cJSON_AddStringToObject(json_root, "message", json_buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else
@@ -214,7 +214,7 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddStringToObject(json_root, "response", "Policy and auditing database updated");
+                cJSON_AddStringToObject(json_root, "data", "Policy and auditing database updated");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf("\n** Policy and auditing database updated.\n\n");
@@ -236,7 +236,7 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddStringToObject(json_root, "response", "Policy and auditing database updated");
+                cJSON_AddStringToObject(json_root, "data", "Policy and auditing database updated");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf("\n** Policy and auditing database updated.\n\n");
@@ -256,7 +256,7 @@ int main(int argc, char **argv)
                 if (json_output) {
                     cJSON_AddNumberToObject(json_root, "error", 12);
                     snprintf(json_buffer, 1023, "Invalid agent id '%s'.", agent_id);
-                    cJSON_AddStringToObject(json_root, "description", json_buffer);
+                    cJSON_AddStringToObject(json_root, "message", json_buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else {
@@ -271,7 +271,7 @@ int main(int argc, char **argv)
 
             if (json_output) {
                  cJSON_AddNumberToObject(json_root, "error", 0);
-                 cJSON_AddStringToObject(json_root, "response", "Policy and auditing database updated");
+                 cJSON_AddStringToObject(json_root, "data", "Policy and auditing database updated");
                  printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf("\n** Policy and auditing database updated.\n\n");
@@ -302,7 +302,7 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddItemToObject(json_root, "response", json_events);
+                cJSON_AddItemToObject(json_root, "data", json_events);
                 printf("%s", cJSON_PrintUnformatted(json_root));
             }
         } else {
@@ -314,7 +314,7 @@ int main(int argc, char **argv)
                     char json_buffer[1024];
                     snprintf(json_buffer, 1023, "Invalid agent id '%s'", agent_id);
                     cJSON_AddNumberToObject(json_root, "error", 13);
-                    cJSON_AddStringToObject(json_root, "description", json_buffer);
+                    cJSON_AddStringToObject(json_root, "message", json_buffer);
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else {
@@ -342,7 +342,7 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddItemToObject(json_root, "response", json_events);
+                cJSON_AddItemToObject(json_root, "data", json_events);
                 printf("%s", cJSON_PrintUnformatted(json_root));
             }
         }
@@ -352,7 +352,7 @@ int main(int argc, char **argv)
 
     if (json_output) {
         cJSON_AddNumberToObject(json_root, "error", 10);
-        cJSON_AddStringToObject(json_root, "description", "Invalid argument combination");
+        cJSON_AddStringToObject(json_root, "message", "Invalid argument combination");
         printf("%s", cJSON_PrintUnformatted(json_root));
         exit(1);
     } else {

@@ -30,6 +30,7 @@ int ClientConf(const char *cfgfile)
     agt->rip_id = 0;
     agt->execdq = 0;
     agt->profile = NULL;
+    agt->protocol = UDP_PROTO;
 
     modules |= CCLIENT;
 
@@ -39,4 +40,3 @@ int ClientConf(const char *cfgfile)
 
     return (1);
 }
-

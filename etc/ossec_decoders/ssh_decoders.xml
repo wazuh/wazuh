@@ -191,3 +191,17 @@
   <regex>user "uid=(\S+),ou=\w+,dc=\w+,dc=\w+"</regex>
   <order>user</order>
 </decoder>
+
+<decoder name="sshd-negotiate">
+  <parent>sshd</parent>
+  <prematch offset="after_parent">fatal: Unable to negotiate with </prematch>
+  <regex offset="after_prematch">^(\S+) port (\d+): |^(\S+): </regex>
+  <order>srcip, srcport</order>
+</decoder>
+
+<decoder name="sshd-pam-host-user">
+  <parent>sshd</parent>
+  <prematch>rhost=\S+\s+user=\S+</prematch>
+  <regex>rhost=(\S+)\s+user=(\S+)</regex>
+  <order>srcip, user</order>
+</decoder>

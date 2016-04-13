@@ -126,6 +126,11 @@ int main(int argc, char **argv)
         /* Not configured */
         exit(0);
     }
+    
+    /* Don't exit when client.keys empty (if set) */
+    if (getDefine_Int("remoted", "pass_empty_keyfile", 0, 1)) {
+        OS_PassEmptyKeyfile();
+    }
 
     /* Check if the user and group given are valid */
     uid = Privsep_GetUser(user);
@@ -159,6 +164,9 @@ int main(int argc, char **argv)
     /* Start the signal manipulation */
     StartSIG(ARGV0);
 
+    /* Ignore SIGPIPE, it will be detected on recv */
+    signal(SIGPIPE, SIG_IGN);
+
     random();
 
     /* Start up message */
@@ -171,7 +179,8 @@ int main(int argc, char **argv)
         if (fork() == 0) {
             /* On the child */
             debug1("%s: DEBUG: Forking remoted: '%d'.", ARGV0, i);
-            HandleRemote(i, uid);
+            logr.position = i;
+            HandleRemote(uid);
         } else {
             i++;
             continue;
@@ -180,4 +189,3 @@ int main(int argc, char **argv)
 
     return (0);
 }
-

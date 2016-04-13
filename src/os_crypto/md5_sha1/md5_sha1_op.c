@@ -15,8 +15,7 @@
 #include "../sha1/sha.h"
 #include "headers/defs.h"
 
-
-int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output)
+int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, int mode)
 {
     size_t n;
     FILE *fp;
@@ -34,7 +33,7 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
 
     /* Use prefilter_cmd if set */
     if (prefilter_cmd == NULL) {
-        fp = fopen(fname, "rb");
+        fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
         if (!fp) {
             return (-1);
         }

@@ -205,7 +205,7 @@ int k_extract(const char *cmdextract, int json_output)
                 char buffer[1024];
                 snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", user_input);
                 cJSON_AddNumberToObject(json_root, "error", 70);
-                cJSON_AddStringToObject(json_root, "description", buffer);
+                cJSON_AddStringToObject(json_root, "message", buffer);
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
                 printf(NO_ID, user_input);
@@ -244,7 +244,7 @@ int k_extract(const char *cmdextract, int json_output)
             char buffer[1024];
             snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
             cJSON_AddNumberToObject(json_root, "error", 71);
-            cJSON_AddStringToObject(json_root, "description", buffer);
+            cJSON_AddStringToObject(json_root, "message", buffer);
             printf("%s", cJSON_PrintUnformatted(json_root));
             exit(1);
         } else
@@ -254,7 +254,7 @@ int k_extract(const char *cmdextract, int json_output)
     if (fsetpos(fp, &fp_pos)) {
         if (json_output) {
             cJSON_AddNumberToObject(json_root, "error", 72);
-            cJSON_AddStringToObject(json_root, "description", "Can not set fileposition");
+            cJSON_AddStringToObject(json_root, "message", "Can not set fileposition");
             printf("%s", cJSON_PrintUnformatted(json_root));
         } else
             merror("%s: Can not set fileposition.", ARGV0);
@@ -268,7 +268,7 @@ int k_extract(const char *cmdextract, int json_output)
     if (fgets(line_read, FILE_SIZE, fp) == NULL) {
         if (json_output) {
             cJSON_AddNumberToObject(json_root, "error", 73);
-            cJSON_AddStringToObject(json_root, "description", "Unable to handle keys file");
+            cJSON_AddStringToObject(json_root, "message", "Unable to handle keys file");
             printf("%s", cJSON_PrintUnformatted(json_root));
         } else
             printf(ERROR_KEYS);
@@ -282,7 +282,7 @@ int k_extract(const char *cmdextract, int json_output)
     if (b64_enc == NULL) {
         if (json_output) {
             cJSON_AddNumberToObject(json_root, "error", 74);
-            cJSON_AddStringToObject(json_root, "description", "Unable to extract agent key");
+            cJSON_AddStringToObject(json_root, "message", "Unable to extract agent key");
             printf("%s", cJSON_PrintUnformatted(json_root));
         } else
             printf(EXTRACT_ERROR);
@@ -293,7 +293,7 @@ int k_extract(const char *cmdextract, int json_output)
 
     if (json_output) {
         cJSON_AddNumberToObject(json_root, "error", 0);
-        cJSON_AddStringToObject(json_root, "response", b64_enc);
+        cJSON_AddStringToObject(json_root, "data", b64_enc);
         printf("%s", cJSON_PrintUnformatted(json_root));
     } else
         printf(EXTRACT_MSG, n_id, b64_enc);

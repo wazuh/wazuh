@@ -11,6 +11,13 @@
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 
+#ifdef WIN32
+    #define chmod(x,y)
+    #define mkdir(x,y) 0
+    #define link(x,y) 0
+    #define difftime(x,y) 0
+#endif
+
 /* Global variables */
 fpos_t fp_pos;
 
@@ -24,11 +31,9 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     char str2[STR_SIZE + 1];
     char *muname;
     char *finals;
-
-    char nid[9] = { '\0' }, nid_p[9] = { '\0' };
+    char nid[9] = { '\0' };
 
     srandom_init();
-
     muname = getuname();
 
     snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, (int)random(), muname);
@@ -39,6 +44,17 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     free(muname);
 
     if (id == NULL) {
+#ifdef REUSE_ID
+        int i = 1024;
+        snprintf(nid, 6, "%d", i);
+        while (IDExist(nid)) {
+            i++;
+            snprintf(nid, 6, "%d", i);
+            if (i >= (MAX_AGENTS + 1024))
+                return (NULL);
+        }
+#else
+        char nid_p[9] = { '\0' };
         int i = AUTHD_FIRST_ID;
         int j = MAX_AGENTS + AUTHD_FIRST_ID;
         int m = (i + j) / 2;
@@ -63,7 +79,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
             snprintf(nid, 8, "%d", m);
             snprintf(nid_p, 8, "%d", m - 1);
         }
-
+#endif
         id = nid;
     }
 
@@ -79,8 +95,8 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
         snprintf(finals, 2048, "%s %s %s %s%s", id, name, ip, md1, md2);
     }
     fprintf(fp, "%s\n", finals);
-
     fclose(fp);
+    OS_AddAgentTimestamp(id, name, ip, time(0));
     return (finals);
 }
 
@@ -88,31 +104,85 @@ int OS_RemoveAgent(const char *u_id) {
     FILE *fp;
     int id_exist;
     char *full_name;
+    long fp_seek;
+    size_t fp_read;
+    char *buffer;
+    char buf_curline[OS_BUFFER_SIZE];
+    struct stat fp_stat;
 
     id_exist = IDExist(u_id);
 
     if (!id_exist)
         return 0;
 
+    full_name = getFullnameById(u_id);
     fp = fopen(AUTH_FILE, "r+");
+
     if (!fp)
         return 0;
 
-#ifndef WIN32
     chmod(AUTH_FILE, 0440);
+
+    if (stat(AUTH_FILE, &fp_stat) < 0) {
+        fclose(fp);
+        return 0;
+    }
+
+    buffer = malloc(fp_stat.st_size + 1);
+    if (!buffer) {
+        fclose(fp);
+        return 0;
+    }
+
+    fsetpos(fp, &fp_pos);
+    fp_seek = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    fp_read = fread(buffer, sizeof(char), fp_seek, fp);
+
+    if (!fgets(buf_curline, OS_BUFFER_SIZE - 2, fp)) {
+        return 0;
+    }
+
+#ifndef REUSE_ID
+    char *ptr_name = strchr(buf_curline, ' ');
+
+    if (!ptr_name) {
+        free(buffer);
+        fclose(fp);
+        return 0;
+    }
+
+    ptr_name++;
+
+    memmove(ptr_name + 1, ptr_name, strlen(ptr_name) + 1);
+    *ptr_name = '!';
+    size_t curline_len = strlen(buf_curline);
+    memcpy(buffer + fp_read, buf_curline, curline_len);
+    fp_read += curline_len;
 #endif
 
-    /* Remove the agent, but keep the id */
-    fsetpos(fp, &fp_pos);
-    fprintf(fp, "%s #*#*#*#*#*#*#*#*#*#*#", u_id);
-    fclose(fp);
+    if (!feof(fp))
+        fp_read += fread(buffer + fp_read, sizeof(char), fp_stat.st_size, fp);
 
-    full_name = getFullnameById(u_id);
+    fclose(fp);
+    fp = fopen(AUTH_FILE, "w");
+
+    if (!fp) {
+        free(buffer);
+        return 0;
+    }
+
+    fwrite(buffer, sizeof(char), fp_read, fp);
+    fclose(fp);
+    free(buffer);
+
     if (full_name)
         delete_agentinfo(full_name);
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
+
+    OS_RemoveAgentTimestamp(u_id);
     return 1;
 }
 
@@ -179,7 +249,7 @@ char *getFullnameById(const char *id)
             name++;
 
             /* Removed entry */
-            if (*name == '#') {
+            if (*name == '#' || *name == '!') {
                 continue;
             }
 
@@ -323,7 +393,7 @@ int NameExist(const char *u_name)
             char *ip;
             name++;
 
-            if (*name == '#') {
+            if (*name == '#' || *name == '!') {
                 continue;
             }
 
@@ -374,7 +444,7 @@ char *IPExist(const char *u_ip)
         if (name) {
             name++;
 
-            if (*name == '#') {
+            if (*name == '#' || *name == '!') {
                 continue;
             }
 
@@ -450,7 +520,7 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
             name++;
 
             /* Removed agent */
-            if (*name == '#') {
+            if (*name == '#' || *name == '!') {
                 continue;
             }
 
@@ -538,4 +608,129 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
     }
 
     return (0);
+}
+
+/* Backup agent information before force deleting */
+void OS_BackupAgentInfo(const char *id)
+{
+    char path_backup[OS_FLSIZE];
+    char path_src[OS_FLSIZE];
+    char path_dst[OS_FLSIZE];
+    char timestamp[40];
+    char *name = getFullnameById(id);
+    char *ip;
+    time_t timer = time(NULL);
+    int status = 0;
+
+    if (!name) {
+        merror("%s: ERROR: Agent id %s not found.", ARGV0, id);
+        return;
+    }
+
+    snprintf(path_src, OS_FLSIZE, "%s/%s", AGENTINFO_DIR, name);
+
+    ip = strchr(name, '-');
+    *(ip++) = 0;
+
+    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&timer));
+    snprintf(path_backup, OS_FLSIZE, "%s/%s-%s %s", AGNBACKUP_DIR, name, ip, timestamp);
+
+    if (mkdir(path_backup, 0750) >= 0) {
+        /* agent-info */
+        snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
+        status += link(path_src, path_dst);
+
+        /* syscheck */
+        snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck", SYSCHECK_DIR, name, ip);
+        snprintf(path_dst, OS_FLSIZE, "%s/syscheck", path_backup);
+        status += link(path_src, path_dst);
+
+        snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck.cpt", SYSCHECK_DIR, name, ip);
+        snprintf(path_dst, OS_FLSIZE, "%s/syscheck.cpt", path_backup);
+        status += link(path_src, path_dst);
+
+        snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck-registry", SYSCHECK_DIR, name, ip);
+        snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry", path_backup);
+        status += link(path_src, path_dst);
+
+        snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck-registry.cpt", SYSCHECK_DIR, name, ip);
+        snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry.cpt", path_backup);
+        status += link(path_src, path_dst);
+
+        /* rootcheck */
+        snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
+        snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
+        status += link(path_src, path_dst);
+
+        if (status < 0) {
+            merror("%s: ERROR: Couln't create some backup files.", ARGV0);
+        }
+    } else {
+        merror("%s: ERROR: Couldn't create backup directory.", ARGV0);
+    }
+
+    free(name);
+}
+
+void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now)
+{
+    FILE *fp;
+    char timestamp[40];
+
+    fp = fopen(TIMESTAMP_FILE, "a");
+
+    if (!fp) {
+        merror("%s: ERROR: Couldn't open timetamp file.", ARGV0);
+        return;
+    }
+
+    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&now));
+    fprintf(fp, "%s %s %s %s\n", id, name, ip, timestamp);
+    fclose(fp);
+}
+
+void OS_RemoveAgentTimestamp(const char *id)
+{
+    FILE *fp;
+    char *buffer;
+    char line[OS_BUFFER_SIZE];
+    int idlen = strlen(id);
+    int pos = 0;
+    struct stat fp_stat;
+
+    if (stat(AUTH_FILE, &fp_stat) < 0) {
+        return 0;
+    }
+
+    fp = fopen(TIMESTAMP_FILE, "r");
+
+    if (!fp) {
+        return;
+    }
+
+    buffer = (char*)malloc(fp_stat.st_size + 1);
+
+    if (!buffer) {
+        fclose(fp);
+    }
+
+    while (fgets(line, OS_BUFFER_SIZE, fp)) {
+        if (strncmp(id, line, idlen)) {
+            strcpy(&buffer[pos], line);
+            pos += strlen(line);
+        }
+    }
+
+    fclose(fp);
+    fp = fopen(TIMESTAMP_FILE, "w");
+
+    if (!fp) {
+        merror("%s: ERROR: Couldn't open timetamp file.", ARGV0);
+        free(buffer);
+        return;
+    }
+
+    fprintf(fp, "%s", buffer);
+    fclose(fp);
+    free(buffer);
 }

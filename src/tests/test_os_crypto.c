@@ -60,7 +60,7 @@ START_TEST(test_md5file)
     close(fd);
 
     os_md5 buffer;
-    ck_assert_int_eq(OS_MD5_File(file_name, buffer), 0);
+    ck_assert_int_eq(OS_MD5_File(file_name, buffer, OS_TEXT), 0);
 
     ck_assert_str_eq(buffer, string_md5);
 }
@@ -69,7 +69,7 @@ END_TEST
 START_TEST(test_md5file_fail)
 {
     os_md5 buffer;
-    ck_assert_int_eq(OS_MD5_File("not_existing_file", buffer), -1);
+    ck_assert_int_eq(OS_MD5_File("not_existing_file", buffer, OS_TEXT), -1);
 }
 END_TEST
 
@@ -87,7 +87,7 @@ START_TEST(test_sha1file)
     close(fd);
 
     os_sha1 buffer;
-    ck_assert_int_eq(OS_SHA1_File(file_name, buffer), 0);
+    ck_assert_int_eq(OS_SHA1_File(file_name, buffer, OS_TEXT), 0);
 
     ck_assert_str_eq(buffer, string_sha1);
 }
@@ -96,7 +96,7 @@ END_TEST
 START_TEST(test_sha1file_fail)
 {
     os_sha1 buffer;
-    ck_assert_int_eq(OS_SHA1_File("not_existing_file", buffer), -1);
+    ck_assert_int_eq(OS_SHA1_File("not_existing_file", buffer, OS_TEXT), -1);
 }
 END_TEST
 
@@ -117,7 +117,7 @@ START_TEST(test_md5sha1file)
     os_md5 md5buffer;
     os_sha1 sha1buffer;
 
-    ck_assert_int_eq(OS_MD5_SHA1_File(file_name, NULL, md5buffer, sha1buffer), 0);
+    ck_assert_int_eq(OS_MD5_SHA1_File(file_name, NULL, md5buffer, sha1buffer, OS_TEXT), 0);
 
     ck_assert_str_eq(md5buffer, string_md5);
     ck_assert_str_eq(sha1buffer, string_sha1);
@@ -141,7 +141,7 @@ START_TEST(test_md5sha1cmdfile)
     os_md5 md5buffer;
     os_sha1 sha1buffer;
 
-    ck_assert_int_eq(OS_MD5_SHA1_File(file_name, "cat ", md5buffer, sha1buffer), 0);
+    ck_assert_int_eq(OS_MD5_SHA1_File(file_name, "cat ", md5buffer, sha1buffer, OS_TEXT), 0);
 
     ck_assert_str_eq(md5buffer, string_md5);
     ck_assert_str_eq(sha1buffer, string_sha1);
@@ -153,7 +153,7 @@ START_TEST(test_md5sha1cmdfile_fail)
     os_md5 md5buffer;
     os_sha1 sha1buffer;
 
-    ck_assert_int_eq(OS_MD5_SHA1_File("not_existing_file", NULL, md5buffer, sha1buffer), -1);
+    ck_assert_int_eq(OS_MD5_SHA1_File("not_existing_file", NULL, md5buffer, sha1buffer, OS_TEXT), -1);
 }
 END_TEST
 

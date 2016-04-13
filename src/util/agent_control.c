@@ -250,7 +250,7 @@ int main(int argc, char **argv)
                     exit(1);
 
                 cJSON_AddNumberToObject(root, "error", 0);
-                cJSON_AddItemToObject(root, "response", agents);
+                cJSON_AddItemToObject(root, "data", agents);
 
                 cJSON_AddStringToObject(first, "id", "000");
                 cJSON_AddStringToObject(first, "name", shost);
@@ -282,7 +282,7 @@ int main(int argc, char **argv)
             if (agt_id < 0) {
                 if(json_output){
                     cJSON_AddNumberToObject(root, "error", 40);
-                    cJSON_AddStringToObject(root, "description", "Invalid agent id");
+                    cJSON_AddStringToObject(root, "message", "Invalid agent id");
                     printf("%s",cJSON_PrintUnformatted(root));
                     cJSON_Delete(root);
                     exit(0);
@@ -305,7 +305,7 @@ int main(int argc, char **argv)
         agent_info *agt_info;
         final_ip[128] = '\0';
         final_mask[128] = '\0';
-        cJSON *response = cJSON_CreateObject();
+        cJSON *json_data = cJSON_CreateObject();
 
         if (!csv_output && !json_output) {
             printf("\nOSSEC HIDS %s. Agent information:", ARGV0);
@@ -329,10 +329,10 @@ int main(int argc, char **argv)
                 printf("   IP address: %s\n", final_ip);
                 printf("   Status:     %s\n\n", print_agent_status(agt_status));
             }else if(json_output){
-                cJSON_AddStringToObject(response, "id", keys.keyentries[agt_id]->id);
-                cJSON_AddStringToObject(response, "name", keys.keyentries[agt_id]->name);
-                cJSON_AddStringToObject(response, "ip", final_ip);
-                cJSON_AddStringToObject(response, "status", print_agent_status(agt_status));
+                cJSON_AddStringToObject(json_data, "id", keys.keyentries[agt_id]->id);
+                cJSON_AddStringToObject(json_data, "name", keys.keyentries[agt_id]->name);
+                cJSON_AddStringToObject(json_data, "ip", final_ip);
+                cJSON_AddStringToObject(json_data, "status", print_agent_status(agt_status));
             } else {
                 printf("%s,%s,%s,%s,",
                        keys.keyentries[agt_id]->id,
@@ -350,10 +350,10 @@ int main(int argc, char **argv)
                 printf("   IP address: 127.0.0.1\n");
                 printf("   Status:     %s/Local\n\n", print_agent_status(agt_status));
             }else if(json_output){
-                cJSON_AddStringToObject(response, "id", "000");
-                cJSON_AddStringToObject(response, "name", shost);
-                cJSON_AddStringToObject(response, "ip", "127.0.0.1");
-                cJSON_AddStringToObject(response, "status", print_agent_status(agt_status));
+                cJSON_AddStringToObject(json_data, "id", "000");
+                cJSON_AddStringToObject(json_data, "name", shost);
+                cJSON_AddStringToObject(json_data, "ip", "127.0.0.1");
+                cJSON_AddStringToObject(json_data, "status", print_agent_status(agt_status));
             } else {
                 printf("000,%s,127.0.0.1,%s/Local,",
                        shost,
@@ -376,13 +376,13 @@ int main(int argc, char **argv)
                 printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
             }
         }else if(json_output){
-                cJSON_AddStringToObject(response, "os", agt_info->os);
-                cJSON_AddStringToObject(response, "version", agt_info->version);
-                cJSON_AddStringToObject(response, "lastKeepAlive", agt_info->last_keepalive);
-                cJSON_AddStringToObject(response, "syscheckTime", agt_info->syscheck_time);
-                cJSON_AddStringToObject(response, "syscheckEndTime", end_time ? agt_info->syscheck_endtime : "");
-                cJSON_AddStringToObject(response, "rootcheckTime", agt_info->rootcheck_time);
-                cJSON_AddStringToObject(response, "rootcheckEndTime", end_time ? agt_info->rootcheck_endtime : "");
+                cJSON_AddStringToObject(json_data, "os", agt_info->os);
+                cJSON_AddStringToObject(json_data, "version", agt_info->version);
+                cJSON_AddStringToObject(json_data, "lastKeepAlive", agt_info->last_keepalive);
+                cJSON_AddStringToObject(json_data, "syscheckTime", agt_info->syscheck_time);
+                cJSON_AddStringToObject(json_data, "syscheckEndTime", end_time ? agt_info->syscheck_endtime : "");
+                cJSON_AddStringToObject(json_data, "rootcheckTime", agt_info->rootcheck_time);
+                cJSON_AddStringToObject(json_data, "rootcheckEndTime", end_time ? agt_info->rootcheck_endtime : "");
         } else {
             printf("%s,%s,%s,%s,%s,\n",
                    agt_info->os,
@@ -393,7 +393,7 @@ int main(int argc, char **argv)
         }
         if(json_output){
             cJSON_AddNumberToObject(root, "error", 0);
-            cJSON_AddItemToObject(root, "response", response);
+            cJSON_AddItemToObject(root, "data", json_data);
             printf("%s",cJSON_PrintUnformatted(root));
             cJSON_Delete(root);
         }
@@ -408,7 +408,7 @@ int main(int argc, char **argv)
         if (arq < 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 41);
-                cJSON_AddStringToObject(root, "description", "Unable to connect to remoted");
+                cJSON_AddStringToObject(root, "message", "Unable to connect to remoted");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -422,7 +422,7 @@ int main(int argc, char **argv)
         if (send_msg_to_agent(arq, HC_SK_RESTART, NULL, NULL) == 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 0);
-                cJSON_AddStringToObject(root, "response", "Restarting Syscheck/Rootcheck on all agents");
+                cJSON_AddStringToObject(root, "data", "Restarting Syscheck/Rootcheck on all agents");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -431,7 +431,7 @@ int main(int argc, char **argv)
         } else {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 42);
-                cJSON_AddStringToObject(root, "description", "Unable to restart syscheck on all agents");
+                cJSON_AddStringToObject(root, "message", "Unable to restart syscheck on all agents");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -449,7 +449,7 @@ int main(int argc, char **argv)
             os_set_restart_syscheck();
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 0);
-                cJSON_AddStringToObject(root, "response", "Restarting Syscheck/Rootcheck locally");
+                cJSON_AddStringToObject(root, "data", "Restarting Syscheck/Rootcheck locally");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -464,7 +464,7 @@ int main(int argc, char **argv)
         if (arq < 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 43);
-                cJSON_AddStringToObject(root, "description", "Unable to connect to remoted");
+                cJSON_AddStringToObject(root, "message", "Unable to connect to remoted");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -477,7 +477,7 @@ int main(int argc, char **argv)
         if (send_msg_to_agent(arq, HC_SK_RESTART, agent_id, NULL) == 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 0);
-                cJSON_AddStringToObject(root, "response", "Restarting Syscheck/Rootcheck on agent");
+                cJSON_AddStringToObject(root, "data", "Restarting Syscheck/Rootcheck on agent");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -486,7 +486,7 @@ int main(int argc, char **argv)
         } else {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 44);
-                cJSON_AddStringToObject(root, "description", "Unable to restart syscheck on agent");
+                cJSON_AddStringToObject(root, "message", "Unable to restart syscheck on agent");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -506,7 +506,7 @@ int main(int argc, char **argv)
         if (arq < 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 45);
-                cJSON_AddStringToObject(root, "description", "Unable to connect to remoted");
+                cJSON_AddStringToObject(root, "message", "Unable to connect to remoted");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -519,7 +519,7 @@ int main(int argc, char **argv)
         if (send_msg_to_agent(arq, "restart-ossec0", agent_id, "null") == 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 0);
-                cJSON_AddStringToObject(root, "response", "Restarting agent");
+                cJSON_AddStringToObject(root, "data", "Restarting agent");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
@@ -528,7 +528,7 @@ int main(int argc, char **argv)
         } else {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 46);
-                cJSON_AddStringToObject(root, "description", "Unable to restart agent");
+                cJSON_AddStringToObject(root, "message", "Unable to restart agent");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{

@@ -369,8 +369,11 @@ char *GetRandomNoise()
     }
 
     buf[2048] = '\0';
-    fread(buf, 1, 2048, fp);
-    return(strdup(buf));
+    if (fread(buf, 1, 2048, fp) == 2048) {
+        return(strdup(buf));
+    } else {
+        return NULL;
+    }
 }
 
 int DeletePID(const char *name)

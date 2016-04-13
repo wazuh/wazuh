@@ -8,6 +8,9 @@
   -  and/or modify it under the terms of the GNU General Public
   -  License (version 3) as published by the FSF - Free Software
   -  Foundation.
+  -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -->
 
 <var name="MCAFEE_ERROR">^259$|^100$|^1000$|^1001$|^1002$|^1003$|^1004$|^1005$|^1006$|^1007$|^1008$|^5003$|^5005$|^5008$|^5010$|^5011$|^5019$|^5020$|^5021$|^5022$|^5030$|^5031$|^5032$|^5033$|^5034$|^5035$|^5046$|^5047$|^5048$|^5049$|^5051$|^5054$|^5057$|^5059$|^5060$|^5063$|^5063$</var>

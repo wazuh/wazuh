@@ -86,7 +86,8 @@ void send_msg_init()
  */
 int send_msg(unsigned int agentid, const char *msg)
 {
-    size_t msg_size;
+    ssize_t msg_size, send_b;
+    netsize_t length;
     char crypt_msg[OS_MAXSTR + 1];
 
     /* If we don't have the agent id, ignore it */
@@ -107,9 +108,17 @@ int send_msg(unsigned int agentid, const char *msg)
     }
 
     /* Send initial message */
-    if (sendto(logr.sock, crypt_msg, msg_size, 0,
+    if (logr.proto[logr.position] == UDP_PROTO) {
+        send_b = sendto(logr.sock, crypt_msg, msg_size, 0,
                (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
-               logr.peer_size) < 0) {
+               logr.peer_size);
+    } else {
+        length = msg_size;
+        send(keys.keyentries[agentid]->sock, (char*)&length, sizeof(length), 0);
+        send_b = send(keys.keyentries[agentid]->sock, crypt_msg, msg_size, 0);
+    }
+
+    if (send_b < 0) {
         merror(SEND_ERROR, ARGV0, keys.keyentries[agentid]->id);
     }
 

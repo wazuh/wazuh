@@ -2,7 +2,7 @@ How Remoted works:
 
 Three daemons (forked):
 
--Secured (udp port 1514)
+-Secured (tcp/udp port 1514)
 -Syslogd (udp port 514)
 -Syslogd (tcp port 514)
 

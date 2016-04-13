@@ -30,7 +30,7 @@ static int setenv(const char *name, const char *val, __attribute__((unused)) int
 static void helpmsg()
 {
     print_header();
-    print_out("  %s: -[Vhlj] [-a <ip> -n <name>] [-d] [-e id] [-r id] [-i id] [-f file]", ARGV0);
+    print_out("  %s: -[Vhlj] [-a <ip> -n <name>] [-d sec] [-e id] [-r id] [-i id] [-f file]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -j          Use JSON output");
@@ -40,7 +40,7 @@ static void helpmsg()
     print_out("    -r <id>     Remove an agent (Manager only)");
     print_out("    -i <id>     Import authentication key (Agent only)");
     print_out("    -n <name>   Name for new agent");
-    print_out("    -d          Remove old agents with duplicated IP (on adding)");
+    print_out("    -d <sec>    Remove agents with duplicated IP if disconnected since <sec> seconds");
     print_out("    -f <file>   Bulk generate client keys from file (Manager only)");
     print_out("                <file> contains lines in IP,NAME format");
     exit(1);
@@ -78,6 +78,8 @@ int main(int argc, char **argv)
 {
     char *user_msg;
     int c = 0, cmdlist = 0, json_output = 0;
+    int force_antiquity;
+    char *end;
     const char *cmdexport = NULL;
     const char *cmdimport = NULL;
     const char *cmdbulk = NULL;
@@ -95,7 +97,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vhle:r:i:f:ja:n:d")) != -1) {
+    while ((c = getopt(argc, argv, "Vhle:r:i:f:ja:n:d:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -167,7 +169,15 @@ int main(int argc, char **argv)
                 setenv("OSSEC_AGENT_NAME", optarg, 1);
                 break;
             case 'd':
-                setenv("OSSEC_REMOVE_DUPLICATED", "y", 1);
+                if (!optarg)
+                    ErrorExit("%s: -d needs an argument.", ARGV0);
+
+                force_antiquity = strtol(optarg, &end, 10);
+
+                if (optarg == end || force_antiquity < 0)
+                    ErrorExit("%s: Invalid number for -d", ARGV0);
+
+                setenv("OSSEC_REMOVE_DUPLICATED", optarg, 1);
                 break;
             default:
                 helpmsg();

@@ -4,6 +4,9 @@
   -  Author: Ahmet Ozturk
   -  Author: Daniel B. Cid
   -  License: http://www.ossec.net/en/licensing.html
+  -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -->
 
 <var name="POSTFIX_FREQ">6</var>      
@@ -53,14 +56,14 @@
     <description>(504: Command parameter not implemented).</description>
     <group>spam,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
-  
+
   <rule id="3306" level="6">
     <if_sid>3301, 3302</if_sid>
     <match> blocked using </match>
     <description>IP Address black-listed by anti-spam (blocked).</description>
     <group>spam,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
-  
+
   <rule id="3320" level="0">
     <decoded_as>postfix</decoded_as>
     <description>Grouping of the postfix rules.</description>
@@ -92,6 +95,13 @@
     <if_sid>3320</if_sid>
     <match>^daemon started </match>
     <description>Postfix started.</description>
+  </rule>
+
+  <rule id="3335" level="6">
+    <if_sid>3320</if_sid>
+    <match>^too many </match>
+    <description>Postfix: too many errors after RCPT from unkown</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
 
   <rule id="3333" level="7">
@@ -159,4 +169,31 @@
     <match>^clamsmtpd: </match>
     <description>Grouping of the clamsmtpd rules.</description>
   </rule>
+
+  <rule id="3395" level="0">
+    <description>Grouping of the postfix warning rules.</description>
+    <decoded_as>postfix-warning</decoded_as> 
+  </rule>
+
+  <rule id="3396" level="6">
+    <if_sid>3395</if_sid>
+    <match>verification</match>
+    <description>Postfix: hostname verification failed</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,</group>
+  </rule>
+
+  <rule id="3397" level="6">
+    <if_sid>3395</if_sid>
+    <match>RBL</match>
+    <description>Postfix: RBL lookup error: Host or domain name not found</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,</group>
+  </rule>
+
+  <rule id="3398" level="6">
+    <if_sid>3395</if_sid>
+    <match>MAIL</match>
+    <description>Postfix: Illegal address from unknown sender</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,</group>
+  </rule>
+  
 </group> <!-- SYSLOG,POSTFIX -->

@@ -41,6 +41,30 @@ int is_text(magic_t cookie, const void *buf, size_t len)
 }
 #endif
 
+/* Return TRUE if the file name match one of the ``nodiff`` entries.
+   Return FALSE otherwise */
+int is_nodiff(const char *filename){
+    if (syscheck.nodiff){
+        int i;
+        for (i = 0; syscheck.nodiff[i] != NULL; i++){
+            if (strncasecmp(syscheck.nodiff[i], filename,
+                            strlen(filename)) == 0) {
+                return (TRUE);
+            }
+        }
+    }
+    if (syscheck.nodiff_regex) {
+        int i;
+        for (i = 0; syscheck.nodiff_regex[i] != NULL; i++) {
+            if (OSMatch_Execute(filename, strlen(filename),
+                                syscheck.nodiff_regex[i])) {
+                 return (TRUE);
+            }
+        }
+    }
+    return (FALSE);
+}
+
 /* Generate diffs alerts */
 static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 {
@@ -232,7 +256,7 @@ char *seechanges_addfile(const char *filename)
     );
 
     /* If the file is not there, rename new location to last location */
-    if (OS_MD5_File(old_location, md5sum_old) != 0) {
+    if (OS_MD5_File(old_location, md5sum_old, OS_BINARY) != 0) {
         seechanges_createpath(old_location);
         if (seechanges_dupfile(filename, old_location) != 1) {
             merror(RENAME_ERROR, ARGV0, filename, old_location, errno, strerror(errno));
@@ -241,7 +265,7 @@ char *seechanges_addfile(const char *filename)
     }
 
     /* Get md5sum of the new file */
-    if (OS_MD5_File(filename, md5sum_new) != 0) {
+    if (OS_MD5_File(filename, md5sum_new, OS_BINARY) != 0) {
         return (NULL);
     }
 
@@ -333,23 +357,38 @@ char *seechanges_addfile(const char *filename)
         goto cleanup;
     }
 
-    /* Run diff */
-    snprintf(
-        diff_cmd,
-        2048,
-        "diff \"%s\" \"%s\" > \"%s\" 2> /dev/null",
-        new_tmp,
-        old_tmp,
-        diff_tmp
-    );
+    if (is_nodiff((filename))) {
+        /* Dont leak sensible data with a diff hanging around */
+        FILE *fdiff;
+        char* nodiff_message = "<Diff truncated because nodiff option>";
+        fdiff = fopen(diff_location, "w");
+        if (!fdiff){
+            merror("%s: ERROR: Unable to open file for writing `%s`", ARGV0, diff_location);
+            goto cleanup;
+        }
+        fwrite(nodiff_message, strlen(nodiff_message) + 1, 1, fdiff);
+        fclose(fdiff);
+        /* Success */
+        status = 0;
+    } else {
+        /* OK, run diff */
+        snprintf(
+            diff_cmd,
+            2048,
+            "diff \"%s\" \"%s\" > \"%s\" 2> /dev/null",
+            new_tmp,
+            old_tmp,
+            diff_tmp
+        );
 
-    if (system(diff_cmd) != 256) {
-        merror("%s: ERROR: Unable to run diff for %s", ARGV0, filename);
-        goto cleanup;
-    }
+        if (system(diff_cmd) != 256) {
+            merror("%s: ERROR: Unable to run `%s`", ARGV0, diff_cmd);
+            goto cleanup;
+        }
 
-    /* Success */
-    status = 0;
+        /* Success */
+        status = 0;
+    };
 
 cleanup:
     unlink(old_tmp);

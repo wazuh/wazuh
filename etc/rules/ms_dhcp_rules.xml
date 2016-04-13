@@ -4,6 +4,9 @@
   -  Microsoft Windows 2003 ipv4, Windows 2008 ipv4/ipv6 DHCP rules for OSSEC.
   -  Author: phishphreek@gmail.com
   -  License: http://www.ossec.net/en/licensing.html (http://gplv3.fsf.org)
+  -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -->
 
   

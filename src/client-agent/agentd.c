@@ -73,7 +73,10 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     random();
 
-    /* Connect UDP */
+    /* Ignore SIGPIPE, it will be detected on recv */
+    signal(SIGPIPE, SIG_IGN);
+
+    /* Connect remote */
     rc = 0;
     while (rc < agt->rip_id) {
         verbose("%s: INFO: Server IP Address: %s", ARGV0, agt->rip[rc]);
@@ -93,7 +96,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
         if ((agt->execdq = StartMQ(EXECQUEUE, WRITE)) < 0) {
-            merror("%s: INFO: Unable to connect to the active response "
+            merror("%s: ERROR: Unable to connect to the active response "
                    "queue (disabled).", ARGV0);
             agt->execdq = -1;
         }
@@ -118,6 +121,14 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Monitor loop */
     while (1) {
+
+        /* Continuously send notifications */
+        run_notify();
+
+        if (agt->sock > maxfd - 1) {
+            maxfd = agt->sock + 1;
+        }
+
         /* Monitor all available sockets from here */
         FD_ZERO(&fdset);
         FD_SET(agt->sock, &fdset);
@@ -125,9 +136,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
         fdtimeout.tv_sec = 1;
         fdtimeout.tv_usec = 0;
-
-        /* Continuously send notifications */
-        run_notify();
 
         /* Wait with a timeout for any descriptor */
         rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
@@ -139,7 +147,10 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
         /* For the receiver */
         if (FD_ISSET(agt->sock, &fdset)) {
-            receive_msg();
+            if (receive_msg() < 0) {
+                merror(LOST_ERROR, ARGV0);
+                start_agent(0);
+            }
         }
 
         /* For the forwarder */

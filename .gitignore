@@ -40,6 +40,7 @@ src/ossec-regex
 src/ossec-remoted
 src/ossec-reportd
 src/ossec-syscheckd
+src/ossec-integratord
 src/rootcheck_control
 src/syscheck_control
 src/syscheck_update

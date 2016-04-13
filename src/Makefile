@@ -7,6 +7,7 @@ EXTERNAL_LUA=external/lua/
 EXTERNAL_ZLIB=external/zlib-1.2.8/
 LUA_PLAT=posix
 MAXAGENTS?=2048
+REUSE_ID?=no
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
@@ -40,6 +41,10 @@ DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
 DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
 DEFINES+=-D${uname_S}
+
+ifneq (,$(filter ${REUSE_ID},yes y Y 1))
+	DEFINES+=-DREUSE_ID
+endif
 
 OSSEC_LDFLAGS=${LDFLAGS} -lm
 
@@ -455,6 +460,7 @@ install-server-generic: install-common
 	install -m 0550 -o root -g 0 agent_control ${PREFIX}/bin/
 	install -m 0550 -o root -g 0 syscheck_control ${PREFIX}/bin/
 	install -m 0550 -o root -g 0 rootcheck_control ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 ossec-integratord ${PREFIX}/bin/
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
@@ -479,6 +485,14 @@ endif
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
 
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
+	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
+	
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
+	install -m 750 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations
+	touch ${PREFIX}/logs/integrations.log
+	chmod 640 ${PREFIX}/logs/integrations.log
+	chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
 
 	rm -f ${PREFIX}/etc/shared/merged.mg
 
@@ -500,6 +514,7 @@ help: failtarget
 	@echo "   make DEBUG=1          Build with symbols and without optimization"
 	@echo "   make PREFIX=/path     Install OSSEC to '/path'. Defaults to /var/ossec"
 	@echo "   make MAXAGENTS=NUMBER Set the number of maximum agents to NUMBER. Defaults to 2048"
+	@echo "   make REUSE_ID=yes     Enables agent ID re-use"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql  Build with MYSQL Support"
@@ -524,6 +539,7 @@ settings:
 	@echo "    DEBUGAD           ${DEBUGAD}"
 	@echo "    PREFIX:           ${PREFIX}"
 	@echo "    MAXAGENTS:        ${MAXAGENTS}"
+	@echo "    REUSE_ID:         ${REUSE_ID}"
 	@echo "    DATABASE:         ${DATABASE}"
 	@echo "    ONEWAY:           ${ONEWAY}"
 	@echo "    CLEANFULL:        ${CLEANFULL}"
@@ -576,6 +592,7 @@ BUILD_SERVER+=ossec-analysisd
 BUILD_SERVER+=ossec-logtest
 BUILD_SERVER+=ossec-makelists
 BUILD_SERVER+=ossec-dbd
+BUILD_SERVER+=ossec-integratord
 
 BUILD_AGENT+=external
 BUILD_AGENT+=ossec-agentd
@@ -1015,6 +1032,17 @@ agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/chec
 ossec-authd: addagent/validate.o os_auth/main-server.o os_auth/ssl.o os_auth/check_cert.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${JSON_INCLUDE} -I./os_auth $^ ${OSSEC_LDFLAGS} -o $@
 
+#### integratord #####
+
+integrator_c := ${wildcard os_integrator/*.c}
+integrator_o := $(integrator_c:.c=.o)
+
+os_integrator/%.o: os_integrator/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS}  -I./os_integrator -DARGV0=\"ossec-integratord\" -c $^ -o $@
+
+ossec-integratord: ${integrator_o} ${ossec_libs}
+	${OSSEC_CCBIN} ${OSSEC_CFLAGS} -I./os_integrator $^ ${OSSEC_LDFLAGS} -o $@
+
 #### analysisd #####
 
 cdb_c := ${wildcard analysisd/cdb/*.c}
@@ -1293,6 +1321,7 @@ clean-internals:
 	rm -f ${os_auth_o} ossec-authd agent-auth
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
+	rm -f ${integrator_o} ossec-integratord
 
 clean-windows:
 	rm -f win32/LICENSE.txt

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # OSSEC Ruleset Update
 
-# v2.3 2016/02/12
+# v2.3.1 2016/04/05
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # jesus@wazuh.com
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -602,6 +602,40 @@ def download_ruleset():
     ruleset_version = get_ruleset_version()
 
 
+def copy_ruleset(directory):
+    # New ruleset
+    if not os.path.exists(directory):
+        logger.log("Error - Directory doest not exist: '{0}'.\nExit.".format(directory))
+        sys.exit(2)
+
+    old_extracted_files = "{0}/ossec-rules/".format(downloads_directory)
+    if os.path.exists(old_extracted_files):
+        shutil.rmtree(old_extracted_files)
+
+    # Copy to downloads directory
+    if not os.path.exists(downloads_directory):
+        os.makedirs(downloads_directory)
+
+    shutil.copytree(directory, "{0}/ossec-rules".format(downloads_directory))
+
+    # Check new ruleset
+    check_files = ["rootcheck", "rules-decoders", "VERSION"]
+    for cf in check_files:
+        if not os.path.exists("{0}/ossec-rules/{1}".format(downloads_directory, cf)):
+            logger.log("Error - '{0}' doest not exist at '{1}'.\nExit.".format(cf, directory))
+            sys.exit(2)
+
+    # Update main directory
+    shutil.copyfile("{0}/ossec-rules/VERSION".format(downloads_directory), version_path)
+
+    new_python_script = "{0}/ossec-rules/ossec_ruleset.py".format(downloads_directory)
+    if os.path.isfile(new_python_script):
+        shutil.copyfile(new_python_script, script_path)
+
+    global ruleset_version
+    ruleset_version = get_ruleset_version()
+
+
 def get_ruleset_to_update(no_checks=False):
     ruleset_update = {"rules": [], "rootchecks": []}
     rules_update = []
@@ -916,7 +950,7 @@ def setup_ruleset_r(target_rules, activated_rules):
 
         # special case: auditd, usb
         if item == "ossec":
-            special_cases = ["auditd", "usb"]
+            special_cases = ["auditd", "usb", "opensmtpd"]
             for special_case in special_cases:
                 if not regex_in_file("\s*<include>{0}_rules.xml</include>".format(special_case), "{0}/etc/ossec.conf".format(ossec_path)):
                     if not activating_shown:
@@ -976,7 +1010,7 @@ def clean_directory():
 
 def usage():
     msg = """
-OSSEC Wazuh Ruleset Update v2.3
+OSSEC Wazuh Ruleset Update v2.3.1
 Github repository: https://github.com/wazuh/ossec-rules
 Full documentation: http://documentation.wazuh.com/en/latest/ossec_ruleset.html
 
@@ -1004,6 +1038,7 @@ Backups:
 
 Additional Params:
 \t-f, --force-update\tForce to update all rules and rootchecks. By default, only it is updated the new/changed rules/rootchecks.
+\t-d, --directory\tUse the ruleset specified at 'directory'. Directory structure should be the same that ossec-rules repository.
 
 Configuration file syntax using option -A:
 \t# Commented line
@@ -1043,6 +1078,7 @@ if __name__ == "__main__":
     restart_args = 0
     action_backups = False
     action_force = False
+    action_download = "download"  # download, path
 
     # Capture Cntrl + C
     signal.signal(signal.SIGINT, signal_handler)
@@ -1054,9 +1090,9 @@ if __name__ == "__main__":
 
     # Check arguments
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "rcb:aA:sSfh",
-                                   ["rules", "rootchecks", "backups=", "activate", "activate-file=", "restart", "no-restart", "force-update", "help"])
-        if len(opts) > 4:
+        opts, args = getopt.getopt(sys.argv[1:], "rcb:aA:sSfd:h",
+                                   ["rules", "rootchecks", "backups=", "activate", "activate-file=", "restart", "no-restart", "force-update", "directory", "help"])
+        if len(opts) > 5:
             print("Incorrect number of arguments.\nTry './ossec_ruleset.py --help' for more information.")
             sys.exit()
     except getopt.GetoptError as err:
@@ -1090,6 +1126,8 @@ if __name__ == "__main__":
             restart_args += 1
         elif o in ("-f", "--force-update"):
             action_force = True
+        elif o in ("-d", "--directory"):
+            action_download = a
         elif o in ("-h", "--help"):
             usage()
             sys.exit()
@@ -1152,8 +1190,12 @@ if __name__ == "__main__":
         logger.log("\t[Done]")
 
         # Download ruleset
-        logger.log("\nDownloading new ruleset.")
-        download_ruleset()
+        if action_download == "download":
+            logger.log("\nDownloading new ruleset.")
+            download_ruleset()
+        else:
+            logger.log("\nObtaining new ruleset.")
+            copy_ruleset(action_download)
         logger.log("\t[Done]")
 
         # Checks
