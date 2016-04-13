@@ -22,9 +22,11 @@ static char file[OS_SIZE_1024 + 1] = "";
 
 
 /* Receive events from the server */
-void *receive_msg()
+int receive_msg()
 {
     ssize_t recv_b;
+    netsize_t length;
+    int reads = 0;
     char buffer[OS_MAXSTR + 1];
     char cleartext[OS_MAXSTR + 1];
     char *tmp_msg;
@@ -33,7 +35,35 @@ void *receive_msg()
     memset(buffer, '\0', OS_MAXSTR + 1);
 
     /* Read until no more messages are available */
-    while ((recv_b = recv(agt->sock, buffer, OS_SIZE_1024, MSG_DONTWAIT)) > 0) {
+    while (1) {
+        if (agt->protocol == TCP_PROTO) {
+            /* Only one read per call */
+            if (reads++) {
+                break;
+            }
+
+            recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
+
+            /* Manager disconnected */
+            if (recv_b <= 0) {
+                return -1;
+            }
+
+            recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
+
+            if (recv_b != length) {
+                merror(RECV_ERROR, ARGV0);
+                continue;
+            }
+
+        } else {
+            recv_b = recv(agt->sock, buffer, OS_SIZE_1024, MSG_DONTWAIT);
+
+            if (recv_b <= 0) {
+                break;
+            }
+        }
+
         buffer[recv_b] = '\0';
 
         tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1);
@@ -149,7 +179,7 @@ void *receive_msg()
                     /* Nothing to be done */
                 }
 
-                else if (OS_MD5_File(file, currently_md5) < 0) {
+                else if (OS_MD5_File(file, currently_md5, OS_TEXT) < 0) {
                     /* Remove file */
                     unlink(file);
                     file[0] = '\0';
@@ -193,6 +223,6 @@ void *receive_msg()
         }
     }
 
-    return (NULL);
+    return 0;
 }
 

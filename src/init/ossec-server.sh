@@ -21,7 +21,7 @@ fi
 NAME="OSSEC HIDS"
 VERSION="v2.8"
 AUTHOR="Trend Micro Inc."
-DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON}"
+DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 USE_JSON=false
 
 [ -f /etc/ossec-init.conf ] && . /etc/ossec-init.conf;
@@ -106,8 +106,8 @@ enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug]"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 
@@ -117,14 +117,16 @@ enable()
         echo "CSYSLOG_DAEMON=ossec-csyslogd" >> ${PLIST};
     elif [ "X$2" = "Xagentless" ]; then
         echo "AGENTLESS_DAEMON=ossec-agentlessd" >> ${PLIST};
+    elif [ "X$2" = "Xintegrator" ]; then
+        echo "INTEGRATOR_DAEMON=ossec-integratord" >> ${PLIST};
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug]"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 }
@@ -134,8 +136,8 @@ disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug]"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 
@@ -145,14 +147,16 @@ disable()
         echo "CSYSLOG_DAEMON=\"\"" >> ${PLIST};
     elif [ "X$2" = "Xagentless" ]; then
         echo "AGENTLESS_DAEMON=\"\"" >> ${PLIST};
+    elif [ "X$2" = "Xintegrator" ]; then
+        echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug]"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 }
@@ -162,7 +166,7 @@ status()
     RETVAL=0
     first=true
     if [ $USE_JSON = true ]; then
-        echo -n '{"error":0,"response":['
+        echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
         if [ $USE_JSON = true ] && [ $first = false ]; then
@@ -199,7 +203,7 @@ testconfig()
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
-                echo -n '{"error":20,"description":"'${i}': Configuration error."}'
+                echo -n '{"error":20,"message":"'${i}': Configuration error."}'
             else
                 echo "${i}: Configuration error. Exiting"
             fi
@@ -212,7 +216,7 @@ testconfig()
 # Start function
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
+    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
 
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION (by $AUTHOR)..."
@@ -220,7 +224,7 @@ start()
     ${DIR}/bin/ossec-logtest -t > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
         if [ $USE_JSON = true ]; then
-            echo -n '{"error":21,"description":"OSSEC analysisd: Testing rules failed. Configuration error."}'
+            echo -n '{"error":21,"message":"OSSEC analysisd: Testing rules failed. Configuration error."}'
         else
             echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
         fi
@@ -232,7 +236,7 @@ start()
     # We actually start them now.
     first=true
     if [ $USE_JSON = true ]; then
-        echo -n '{"error":0,"response":['
+        echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
         if [ $USE_JSON = true ] && [ $first = false ]; then
@@ -319,7 +323,7 @@ stopa()
     checkpid;
     first=true
     if [ $USE_JSON = true ]; then
-        echo -n '{"error":0,"response":['
+        echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
         if [ $USE_JSON = true ] && [ $first = false ]; then

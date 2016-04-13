@@ -15,8 +15,10 @@
 /* Send a message to the server */
 int send_msg(int agentid, const char *msg)
 {
-    size_t msg_size;
+    ssize_t msg_size;
+    netsize_t length;
     char crypt_msg[OS_MAXSTR + 1];
+    int recv_b;
 
     msg_size = CreateSecMSG(&keys, msg, crypt_msg, agentid);
     if (msg_size == 0) {
@@ -25,7 +27,15 @@ int send_msg(int agentid, const char *msg)
     }
 
     /* Send msg_size of crypt_msg */
-    if (OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0) {
+    if (agt->protocol == UDP_PROTO) {
+        recv_b = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
+    } else {
+        length = msg_size;
+        OS_SendTCPbySize(agt->sock, sizeof(length), (char *)&length);
+        recv_b = OS_SendTCPbySize(agt->sock, msg_size, crypt_msg);
+    }
+
+    if (recv_b < 0) {
         merror(SEND_ERROR, ARGV0, "server");
         sleep(1);
         return (-1);
@@ -33,4 +43,3 @@ int send_msg(int agentid, const char *msg)
 
     return (0);
 }
-

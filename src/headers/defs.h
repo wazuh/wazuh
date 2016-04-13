@@ -18,6 +18,9 @@
 #define READ    1
 #define WRITE   2
 
+#define OS_BINARY  0
+#define OS_TEXT    1
+
 /* Size limit control */
 #define OS_SIZE_8192    8192
 #define OS_SIZE_6144    6144
@@ -33,6 +36,10 @@
 #define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size          */
 #define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
 #define IPSIZE          16              /* IP Address size              */
+#define POOL_SIZE       512	            /* Max number of children       */
+#define BACKLOG         32              /* Socket input queue length    */
+#define MAX_EVENTS      1024            /* Max number of epoll events   */
+#define EPOLL_MILLIS    -1              /* Epoll wait time              */
 
 /* Some global names */
 #define __ossec_name    "OSSEC HIDS"
@@ -122,6 +129,9 @@ http://www.ossec.net/main/license/\n"
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
+/* Backup directory for agents */
+#define AGNBACKUP_DIR    "/backup/agents"
+
 /* Diff queue */
 #define DIFF_DIR        "/queue/diff"
 #define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
@@ -165,6 +175,11 @@ http://www.ossec.net/main/license/\n"
 #define AGENTLESSPASS       "/agentless/.passlist"
 #define AGENTLESS_ENTRYDIR  "/queue/agentless"
 
+/* Integration directory. */
+#define INTEGRATORDIR "/integrations"
+#define INTEGRATORDIRPATH    DEFAULTDIR INTEGRATORDIR
+
+
 /* Internal definitions files */
 #ifndef WIN32
 #define OSSEC_DEFINES   "/etc/internal_options.conf"
@@ -203,6 +218,9 @@ http://www.ossec.net/main/license/\n"
 #ifndef AUTH_FILE
 #define AUTH_FILE       KEYS_FILE
 #endif
+
+/* Timestamp file */
+#define TIMESTAMP_FILE  "/queue/agents-timestamp"
 
 /* Shared config directory */
 #ifndef WIN32

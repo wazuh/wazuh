@@ -192,7 +192,7 @@ static int check_diff_file(const char *host, const char *script)
              DIFF_LAST_FILE);
 
     /* If the file is not there, rename new location to last location */
-    if (OS_MD5_File(old_location, md5sum_old) != 0) {
+    if (OS_MD5_File(old_location, md5sum_old, OS_TEXT) != 0) {
         if (rename(new_location, old_location) != 0) {
             merror(RENAME_ERROR, ARGV0, new_location, old_location, errno, strerror(errno));
         }
@@ -200,7 +200,7 @@ static int check_diff_file(const char *host, const char *script)
     }
 
     /* Get md5sum of the new file */
-    if (OS_MD5_File(new_location, md5sum_new) != 0) {
+    if (OS_MD5_File(new_location, md5sum_new, OS_TEXT) != 0) {
         merror("%s: ERROR: Invalid internal state (missing '%s').",
                ARGV0, new_location);
         return (0);

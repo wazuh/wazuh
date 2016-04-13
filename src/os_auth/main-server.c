@@ -38,9 +38,6 @@ int main()
 #include "auth.h"
 #include "os_crypto/md5/md5_op.h"
 
-/* TODO: Pulled this value out of the sky, may or may not be sane */
-#define POOL_SIZE 512
-
 /* Prototypes */
 static void help_authd(void) __attribute((noreturn));
 static int ssl_error(const SSL *ssl, int ret);
@@ -51,7 +48,7 @@ static void clean_exit(SSL_CTX *ctx, int sock) __attribute__((noreturn));
 static void help_authd()
 {
     print_header();
-    print_out("  %s: -[Vhdti] [-f sec] [-g group] [-D dir] [-p port] [-v path] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[Vhdti] [-f sec] [-g group] [-D dir] [-p port] [-P] [-v path] [-x path] [-k path]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -63,7 +60,7 @@ static void help_authd()
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
-    print_out("    -n          Disable shared password authentication (not recommended).\n");
+    print_out("    -P          Enable shared password authentication (at %s or random).", AUTHDPASS_PATH);
     print_out("    -v <path>   Full path to CA certificate used to verify clients");
     print_out("    -x <path>   Full path to server certificate");
     print_out("    -k <path>   Full path to server key");
@@ -148,7 +145,8 @@ int main(int argc, char **argv)
     int process_pool[POOL_SIZE];
     /* Count of pids we are wait()ing on */
     int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
-    int use_pass = 1;
+    int m_queue = 0;
+    int use_pass = 0;
     int force_antiquity = -1;
     char *id_exist;
     gid_t gid;
@@ -173,7 +171,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:nf:")) != -1) {
+    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:Pf:")) != -1) {
         char *end;
 
         switch (c) {
@@ -204,8 +202,8 @@ int main(int argc, char **argv)
             case 't':
                 test_config = 1;
                 break;
-            case 'n':
-                use_pass = 0;
+            case 'P':
+                use_pass = 1;
                 break;
             case 'p':
                 if (!optarg) {
@@ -306,14 +304,14 @@ int main(int argc, char **argv)
         }
 
         if (buf[0] != '\0')
-            verbose("Accepting connections. Using password specified on file: %s",AUTHDPASS_PATH);
+            verbose("Accepting connections. Using password specified on file: %s", AUTHDPASS_PATH);
         else {
             /* Getting temporary pass. */
             authpass = __generatetmppass();
             verbose("Accepting connections. Random password chosen for agent authentication: %s", authpass);
         }
     } else
-        verbose("Accepting insecure connections. No password required (not recommended)");
+        verbose("Accepting insecure connections. No password required.");
 
     /* Getting SSL cert. */
 
@@ -349,6 +347,11 @@ int main(int argc, char **argv)
         ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
 
     nowChroot();
+
+    /* Queue for sending alerts */
+    if ((m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+        merror("%s: ERROR: Can't connect to queue.", ARGV0);
+    }
 
     while (1) {
         /* No need to completely pin the cpu, 100ms should be fast enough */
@@ -495,25 +498,23 @@ int main(int argc, char **argv)
                     if (use_ip_address) {
                         id_exist = IPExist(srcip);
                         if (id_exist) {
-                            if (force_antiquity >= 0) {
-                                double antiquity = OS_AgentAntiquity(id_exist);
-                                if (antiquity >= force_antiquity || antiquity < 0) {
-                                    /* TODO: Backup info-agent, syscheck and rootcheck */
-                                    OS_RemoveAgent(id_exist);
-                                } else {
-                                    /* TODO: Send alert */
-                                    merror("%s: ERROR: Duplicated IP %s (another active)", ARGV0, srcip);
-                                    snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
-                                    SSL_write(ssl, response, strlen(response));
-                                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                                    SSL_write(ssl, response, strlen(response));
-                                    sleep(1);
-                                    exit(0);
-                                }
-
+                            double antiquity = OS_AgentAntiquity(id_exist);
+                            if (force_antiquity >= 0 && (antiquity >= force_antiquity || antiquity < 0)) {
+                                verbose("INFO: Duplicated IP. Saving backup");
+                                OS_BackupAgentInfo(id_exist);
+                                OS_RemoveAgent(id_exist);
                             } else {
                                 merror("%s: ERROR: Duplicated IP %s", ARGV0, srcip);
                                 snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
+
+                                if (m_queue >= 0) {
+                                    char buffer[64];
+                                    snprintf(buffer, 64, "ossec: Duplicated IP %s", srcip);
+                                    if (SendMSG(m_queue, buffer, "ossec-authd", AUTH_MQ) < 0) {
+                                        merror("%s: ERROR: Can't send event across socket.", ARGV0);
+                                    }
+                                }
+
                                 SSL_write(ssl, response, strlen(response));
                                 snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
                                 SSL_write(ssl, response, strlen(response));
@@ -524,9 +525,14 @@ int main(int argc, char **argv)
                     }
 
                     /* Add the new agent */
-                    if (use_ip_address)
-                        finalkey = OS_AddNewAgent(agentname, srcip, NULL);
-                    else
+                    if (use_ip_address) {
+#ifdef REUSE_ID
+                        if (id_exist)
+                            finalkey = OS_AddNewAgent(agentname, srcip, id_exist);
+                        else
+#endif
+                            finalkey = OS_AddNewAgent(agentname, srcip, NULL);
+                    } else
                         finalkey = OS_AddNewAgent(agentname, NULL, NULL);
 
                     if (!finalkey) {

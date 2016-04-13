@@ -100,7 +100,7 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
     }
 
     if (_proto == IPPROTO_TCP) {
-        if (listen(ossock, 32) < 0) {
+        if (listen(ossock, BACKLOG) < 0) {
             OS_CloseSocket(ossock);
             return (OS_SOCKTERR);
         }

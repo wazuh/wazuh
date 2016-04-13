@@ -178,7 +178,7 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
     /* Generate final SQL */
     snprintf(sql_query, OS_SIZE_8192,
              "INSERT INTO "
-             "alert(server_id,rule_id,level,timestamp,location_id,src_ip,src_port,dst_ip,dst_port,alertid,user,full_log) "
+             "alert(server_id,rule_id,level,timestamp,location_id,src_ip,src_port,dst_ip,dst_port,alertid,\"user\",full_log) "
              "VALUES ('%u', '%u','%u','%u', '%u', '%lu', '%u', '%lu', '%u', '%s', '%s', '%s')",
              db_config->server_id, al_data->rule,
              al_data->level,
@@ -199,4 +199,3 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
     db_config->alert_id++;
     return (1);
 }
-

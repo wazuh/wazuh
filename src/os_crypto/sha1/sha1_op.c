@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "sha1_op.h"
+#include "headers/defs.h"
 
 /* OpenSSL SHA-1
  * Only use if OpenSSL is not available
@@ -25,7 +26,7 @@
 #include "sha_locl.h"
 
 
-int OS_SHA1_File(const char *fname, os_sha1 output)
+int OS_SHA1_File(const char *fname, os_sha1 output, int mode)
 {
     SHA_CTX c;
     FILE *fp;
@@ -36,7 +37,7 @@ int OS_SHA1_File(const char *fname, os_sha1 output)
     memset(output, 0, 65);
     buf[2049] = '\0';
 
-    fp = fopen(fname, "rb");
+    fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return (-1);
     }

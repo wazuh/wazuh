@@ -22,7 +22,7 @@ typedef struct _agent {
     int notify_time;
     int max_time_reconnect_try;
     char *profile;
+    int protocol;
 } agent;
 
 #endif /* __CAGENTD_H */
-
