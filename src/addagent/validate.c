@@ -486,7 +486,7 @@ double OS_AgentAntiquity(const char *id)
     if (stat(file_name, &file_stat) < 0)
         return -1;
 
-    return difftime(time(NULL), file_stat.st_mtim.tv_sec);
+    return difftime(time(NULL), file_stat.st_mtime);
 }
 
 /* Print available agents */
@@ -699,7 +699,7 @@ void OS_RemoveAgentTimestamp(const char *id)
     struct stat fp_stat;
 
     if (stat(AUTH_FILE, &fp_stat) < 0) {
-        return 0;
+        return;
     }
 
     fp = fopen(TIMESTAMP_FILE, "r");
