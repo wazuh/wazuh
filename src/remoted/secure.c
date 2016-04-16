@@ -7,7 +7,13 @@
  * Foundation
  */
 
+#ifndef __MACH__
 #include <sys/epoll.h>
+#else
+#include <sys/types.h>
+#include <sys/event.h>
+#endif /* __MACH__ */
+
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
@@ -20,12 +26,22 @@ void HandleSecure()
 {
     const int protocol = logr.proto[logr.position];
     int sock_client;
-    int n_events, epoll_fd = 0;
+    int n_events;
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
     netsize_t length;
     struct sockaddr_in peer_info;
+
+#ifdef __MACH__
+    const struct timespec TS_ZERO = { 0, 0 };
+    struct timespec ts_timeout = { EPOLL_MILLIS / 1000, (EPOLL_MILLIS % 1000) * 1000000 };
+    struct timespec *p_timeout = EPOLL_MILLIS < 0 ? NULL : &ts_timeout;
+    int kqueue_fd = 0;
+    struct kevent request, *events;
+#else
+    int epoll_fd = 0;
     struct epoll_event request, *events;
+#endif /* __MACH__ */
 
     /* Send msg init */
     send_msg_init();
@@ -67,6 +83,18 @@ void HandleSecure()
     memset(buffer, '\0', OS_MAXSTR + 1);
 
     if (protocol == TCP_PROTO) {
+#ifdef __MACH__
+        os_calloc(MAX_EVENTS, sizeof(struct kevent), events);
+        kqueue_fd = kqueue();
+
+        if (kqueue_fd < 0) {
+            ErrorExit(KQUEUE_ERROR, ARGV0);
+        }
+
+        EV_SET(&request, logr.sock, EVFILT_READ, EV_ADD, 0, 0, 0);
+        kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO);
+
+#else
         os_calloc(MAX_EVENTS, sizeof(struct epoll_event), events);
         epoll_fd = epoll_create(MAX_EVENTS);
 
@@ -80,6 +108,7 @@ void HandleSecure()
         if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, logr.sock, &request) < 0) {
             ErrorExit(EPOLL_ERROR, ARGV0);
         }
+#endif /* __MACH__ */
     } else {
         events = NULL;
     }
@@ -87,23 +116,37 @@ void HandleSecure()
     while (1) {
         /* Receive message  */
         if (protocol == TCP_PROTO) {
+#ifdef __MACH__
+            n_events = kevent(kqueue_fd, NULL, 0, events, MAX_EVENTS, p_timeout);
+#else
             n_events = epoll_wait(epoll_fd, events, MAX_EVENTS, EPOLL_MILLIS);
+#endif /* __MACH__ */
 
             int i;
             for (i = 0; i < n_events; i++) {
-                if (events[i].data.fd == logr.sock) {
+#ifdef __MACH__
+                int fd = events[i].ident;
+#else
+                int fd = events[i].data.fd;
+#endif /* __MACH__ */
+                if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
                         ErrorExit(ACCEPT_ERROR, ARGV0);
                     }
 
                     debug1("%s: DEBUG: New TCP connection at %s.", ARGV0, inet_ntoa(peer_info.sin_addr));
+#ifdef __MACH__
+                    EV_SET(&request, sock_client, EVFILT_READ, EV_ADD, 0, 0, 0);
+                    kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO);
+#else
                     request.data.fd = sock_client;
                     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_client, &request) < 0) {
                         ErrorExit(EPOLL_ERROR, ARGV0);
                     }
+#endif /* __MACH__ */
                 } else {
-                    sock_client = events[i].data.fd;
+                    sock_client = fd;
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
                     getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size);
                     debug2("%s: DEBUG: recv(): length=%d [%zu]", ARGV0, length, recv_b);
@@ -115,11 +158,13 @@ void HandleSecure()
                         } else {
                             merror(RECV_ERROR, ARGV0);
                         }
-
+#ifndef __MACH__
+                        /* Kernel event is automatically deleted when closed */
                         request.data.fd = sock_client;
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
                             ErrorExit(EPOLL_ERROR, ARGV0);
                         }
+#endif /* !__MACH__ */
 
                         close(sock_client);
                         continue;
@@ -129,12 +174,12 @@ void HandleSecure()
 
                     if (recv_b != length) {
                         merror(RECV_ERROR, ARGV0);
+#ifndef __MACH__
                         request.data.fd = sock_client;
-
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
                             ErrorExit(EPOLL_ERROR, ARGV0);
                         }
-
+#endif /* !__MACH__ */
                         close(sock_client);
                         continue;
                     } else {
