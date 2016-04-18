@@ -663,7 +663,7 @@ void OS_BackupAgentInfo(const char *id)
         status += link(path_src, path_dst);
 
         if (status < 0) {
-            merror("%s: ERROR: Couln't create some backup files.", ARGV0);
+            debug1("%s: Couln't create some backup files.", ARGV0);
         }
     } else {
         merror("%s: ERROR: Couldn't create backup directory.", ARGV0);
