@@ -626,12 +626,10 @@ void OS_BackupAgentInfo(const char *id)
         return;
     }
 
-    snprintf(path_src, OS_FLSIZE, "%s/%s", AGENTINFO_DIR, name);
-
     ip = strchr(name, '-');
     *(ip++) = 0;
 
-    path_backup = OS_CreateBackupDir(name, ip, timer);
+    path_backup = OS_CreateBackupDir(id, name, ip, timer);
 
     if (!path_backup) {
         merror("%s: ERROR: Couldn't create backup directory.", ARGV0);
@@ -639,6 +637,7 @@ void OS_BackupAgentInfo(const char *id)
     }
 
     /* agent-info */
+    snprintf(path_src, OS_FLSIZE, "%s/%s", AGENTINFO_DIR, name);
     snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
     status += link(path_src, path_dst);
 
@@ -677,15 +676,14 @@ void OS_BackupAgentInfo(const char *id)
     free(path_backup);
 }
 
-char* OS_CreateBackupDir(const char *name, const char *ip, time_t now) {
+char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now) {
     char path[OS_FLSIZE + 1];
-    char tm_date[40];
-    char tm_time[40];
+    char timestamp[40];
 
     /* Directory for year ^*/
 
-    strftime(tm_date, 40, "%Y", localtime(&now));
-    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, tm_date);
+    strftime(timestamp, 40, "%Y", localtime(&now));
+    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
         if (mkdir(path, 0750) < 0) {
@@ -695,8 +693,8 @@ char* OS_CreateBackupDir(const char *name, const char *ip, time_t now) {
 
     /* Directory for month */
 
-    strftime(tm_date, 40, "%Y/%b", localtime(&now));
-    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, tm_date);
+    strftime(timestamp, 40, "%Y/%b", localtime(&now));
+    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
         if (mkdir(path, 0750) < 0) {
@@ -706,8 +704,8 @@ char* OS_CreateBackupDir(const char *name, const char *ip, time_t now) {
 
     /* Directory for day */
 
-    strftime(tm_date, 40, "%Y/%b/%d", localtime(&now));
-    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, tm_date);
+    strftime(timestamp, 40, "%Y/%b/%d", localtime(&now));
+    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
         if (mkdir(path, 0750) < 0) {
@@ -716,13 +714,25 @@ char* OS_CreateBackupDir(const char *name, const char *ip, time_t now) {
     }
 
     /* Directory for agent */
+    
+    int acount = 1;
+    char tag[10] = { 0 };
+    
+    while (1) {
+        snprintf(path, OS_FLSIZE, "%s/%s/%s %s-%s%s", AGNBACKUP_DIR, timestamp, id, name, ip, tag);
 
-    strftime(tm_time, 40, "%H-%M-%S", localtime(&now));
-    snprintf(path, OS_FLSIZE, "%s/%s/%s-%s %s", AGNBACKUP_DIR, tm_date, name, ip, tm_time);
-
-    if (IsDir(path) != 0) {
-        if (mkdir(path, 0750) < 0) {
-            return NULL;
+        if (IsDir(path) != 0) {
+            if (mkdir(path, 0750) < 0) {
+                return NULL;
+            } else {
+                break;
+            }
+        } else {
+            if (++acount > MAX_TAG_COUNTER) {
+                return NULL;
+            } else {
+                snprintf(tag, 10, " %03d", acount);
+            }
         }
     }
 

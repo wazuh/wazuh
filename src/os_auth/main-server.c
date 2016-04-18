@@ -515,7 +515,7 @@ int main(int argc, char **argv)
                     while (NameExist(fname)) {
                         snprintf(fname, 2048, "%s%d", agentname, acount);
                         acount++;
-                        if (acount > 256) {
+                        if (acount > MAX_TAG_COUNTER) {
                             merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
                             snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
                             SSL_write(ssl, response, strlen(response));
