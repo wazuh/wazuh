@@ -708,11 +708,7 @@ void OS_RemoveAgentTimestamp(const char *id)
         return;
     }
 
-    buffer = (char*)malloc(fp_stat.st_size + 1);
-
-    if (!buffer) {
-        fclose(fp);
-    }
+    os_calloc(fp_stat.st_size + 1, sizeof(char), buffer);
 
     while (fgets(line, OS_BUFFER_SIZE, fp)) {
         if (strncmp(id, line, idlen)) {
