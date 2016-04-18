@@ -485,7 +485,7 @@ int main(int argc, char **argv)
                             double antiquity = OS_AgentAntiquity(id_exist);
                             
                             if (force_antiquity >= 0 && (antiquity >= force_antiquity || antiquity < 0)) {
-                                verbose("INFO: Duplicated IP. Saving backup");
+                                verbose("INFO: Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
                                 OS_BackupAgentInfo(id_exist);
                                 OS_RemoveAgent(id_exist);
                             } else {
