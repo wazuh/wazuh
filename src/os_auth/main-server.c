@@ -466,6 +466,7 @@ int main(int argc, char **argv)
                     char *finalkey = NULL;
                     response[2048] = '\0';
                     fname[2048] = '\0';
+                    
                     if (!OS_IsValidName(agentname)) {
                         merror("%s: ERROR: Invalid agent name: %s from %s", ARGV0, agentname, srcip);
                         snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
@@ -476,29 +477,13 @@ int main(int argc, char **argv)
                         exit(0);
                     }
 
-                    /* Check for duplicated names */
-                    strncpy(fname, agentname, 2048);
-                    while (NameExist(fname)) {
-                        snprintf(fname, 2048, "%s%d", agentname, acount);
-                        acount++;
-                        if (acount > 256) {
-                            merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
-                            snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                            SSL_write(ssl, response, strlen(response));
-                            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                            SSL_write(ssl, response, strlen(response));
-                            sleep(1);
-                            exit(0);
-                        }
-                    }
-                    agentname = fname;
-
                     /* Check for duplicated IP */
 
                     if (use_ip_address) {
                         id_exist = IPExist(srcip);
                         if (id_exist) {
                             double antiquity = OS_AgentAntiquity(id_exist);
+                            
                             if (force_antiquity >= 0 && (antiquity >= force_antiquity || antiquity < 0)) {
                                 verbose("INFO: Duplicated IP. Saving backup");
                                 OS_BackupAgentInfo(id_exist);
@@ -523,6 +508,25 @@ int main(int argc, char **argv)
                             }
                         }
                     }
+                    
+                    /* Check for duplicated names */
+                    strncpy(fname, agentname, 2048);
+                    
+                    while (NameExist(fname)) {
+                        snprintf(fname, 2048, "%s%d", agentname, acount);
+                        acount++;
+                        if (acount > 256) {
+                            merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
+                            snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
+                            SSL_write(ssl, response, strlen(response));
+                            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                            SSL_write(ssl, response, strlen(response));
+                            sleep(1);
+                            exit(0);
+                        }
+                    }
+                    
+                    agentname = fname;
 
                     /* Add the new agent */
                     if (use_ip_address) {
