@@ -613,10 +613,9 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
 /* Backup agent information before force deleting */
 void OS_BackupAgentInfo(const char *id)
 {
-    char path_backup[OS_FLSIZE];
+    char *path_backup;
     char path_src[OS_FLSIZE];
     char path_dst[OS_FLSIZE];
-    char timestamp[40];
     char *name = getFullnameById(id);
     char *ip;
     time_t timer = time(NULL);
@@ -632,44 +631,104 @@ void OS_BackupAgentInfo(const char *id)
     ip = strchr(name, '-');
     *(ip++) = 0;
 
-    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&timer));
-    snprintf(path_backup, OS_FLSIZE, "%s/%s-%s %s", AGNBACKUP_DIR, name, ip, timestamp);
+    path_backup = OS_CreateBackupDir(name, ip, timer);
 
-    if (mkdir(path_backup, 0750) >= 0) {
-        /* agent-info */
-        snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
-        status += link(path_src, path_dst);
-
-        /* syscheck */
-        snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck", SYSCHECK_DIR, name, ip);
-        snprintf(path_dst, OS_FLSIZE, "%s/syscheck", path_backup);
-        status += link(path_src, path_dst);
-
-        snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck.cpt", SYSCHECK_DIR, name, ip);
-        snprintf(path_dst, OS_FLSIZE, "%s/syscheck.cpt", path_backup);
-        status += link(path_src, path_dst);
-
-        snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck-registry", SYSCHECK_DIR, name, ip);
-        snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry", path_backup);
-        status += link(path_src, path_dst);
-
-        snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck-registry.cpt", SYSCHECK_DIR, name, ip);
-        snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry.cpt", path_backup);
-        status += link(path_src, path_dst);
-
-        /* rootcheck */
-        snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
-        snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
-        status += link(path_src, path_dst);
-
-        if (status < 0) {
-            debug1("%s: Couln't create some backup files.", ARGV0);
-        }
-    } else {
+    if (!path_backup) {
         merror("%s: ERROR: Couldn't create backup directory.", ARGV0);
+        return;
+    }
+
+    /* agent-info */
+    snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
+    status += link(path_src, path_dst);
+
+    /* syscheck */
+    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck", SYSCHECK_DIR, name, ip);
+    snprintf(path_dst, OS_FLSIZE, "%s/syscheck", path_backup);
+    status += link(path_src, path_dst);
+
+    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck.cpt", SYSCHECK_DIR, name, ip);
+    snprintf(path_dst, OS_FLSIZE, "%s/syscheck.cpt", path_backup);
+    status += link(path_src, path_dst);
+
+    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck-registry", SYSCHECK_DIR, name, ip);
+    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry", path_backup);
+    status += link(path_src, path_dst);
+
+    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck-registry.cpt", SYSCHECK_DIR, name, ip);
+    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry.cpt", path_backup);
+    status += link(path_src, path_dst);
+
+    /* rootcheck */
+    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
+    snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
+    status += link(path_src, path_dst);
+
+    if (status < 0) {
+        debug1("%s: Couldn't create some backup files.", ARGV0);
+
+        if (status == -6) {
+            debug1("%s: Backup directory empty. Removing %s", ARGV0, path_backup);
+            rmdir(path_backup);
+        }
     }
 
     free(name);
+    free(path_backup);
+}
+
+char* OS_CreateBackupDir(const char *name, const char *ip, time_t now) {
+    char path[OS_FLSIZE + 1];
+    char tm_date[40];
+    char tm_time[40];
+
+    /* Directory for year ^*/
+
+    strftime(tm_date, 40, "%Y", localtime(&now));
+    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, tm_date);
+
+    if (IsDir(path) != 0) {
+        if (mkdir(path, 0750) < 0) {
+            return NULL;
+        }
+    }
+
+    /* Directory for month */
+
+    strftime(tm_date, 40, "%Y/%b", localtime(&now));
+    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, tm_date);
+
+    if (IsDir(path) != 0) {
+        if (mkdir(path, 0750) < 0) {
+            return NULL;
+        }
+    }
+
+    /* Directory for day */
+
+    strftime(tm_date, 40, "%Y/%b/%d", localtime(&now));
+    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, tm_date);
+
+    if (IsDir(path) != 0) {
+        if (mkdir(path, 0750) < 0) {
+            return NULL;
+        }
+    }
+
+    /* Directory for agent */
+
+    strftime(tm_time, 40, "%H-%M-%S", localtime(&now));
+    snprintf(path, OS_FLSIZE, "%s/%s/%s-%s %s", AGNBACKUP_DIR, tm_date, name, ip, tm_time);
+
+    if (IsDir(path) != 0) {
+        if (mkdir(path, 0750) < 0) {
+            return NULL;
+        }
+    }
+
+    char *retval;
+    os_strdup(path, retval);
+    return retval;
 }
 
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now)
