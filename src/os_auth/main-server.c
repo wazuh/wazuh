@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     int m_queue = 0;
     int use_pass = 0;
     int force_antiquity = -1;
-    char *id_exist;
+    char *id_exist = NULL;
     gid_t gid;
     int client_sock = 0, sock = 0, port = DEFAULT_PORT, ret = 0;
     const char *dir  = DEFAULTDIR;
