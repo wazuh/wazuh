@@ -749,7 +749,7 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
     fp = fopen(TIMESTAMP_FILE, "a");
 
     if (!fp) {
-        merror("%s: ERROR: Couldn't open timetamp file.", ARGV0);
+        merror("%s: ERROR: Couldn't open timestamp file.", ARGV0);
         return;
     }
 
@@ -781,7 +781,7 @@ void OS_RemoveAgentTimestamp(const char *id)
 
     while (fgets(line, OS_BUFFER_SIZE, fp)) {
         if (strncmp(id, line, idlen)) {
-            strcpy(&buffer[pos], line);
+            strncpy(&buffer[pos], line, fp_stat.st_size - pos);
             pos += strlen(line);
         }
     }
