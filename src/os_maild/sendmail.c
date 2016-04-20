@@ -57,8 +57,13 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
     /* Connect to the SMTP server */
     socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver, 0);
+
     if (socket < 0) {
         return (socket);
+    }
+
+    if (OS_SetRecvTimeout(socket, SOCK_RECV_TIME0) < 0) {
+        merror("%s: ERROR: Couldn't set receiving timeout for socket.");
     }
 
     /* Receive the banner */
@@ -271,6 +276,10 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver, 0);
     if (socket < 0) {
         return (socket);
+    }
+
+    if (OS_SetRecvTimeout(socket, SOCK_RECV_TIME0) < 0) {
+        merror("%s: ERROR: Couldn't set receiving timeout for socket.");
     }
 
     /* Receive the banner */
