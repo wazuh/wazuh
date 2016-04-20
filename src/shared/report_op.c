@@ -116,7 +116,9 @@ static int _os_report_check_filters(const alert_data *al_data, const report_filt
         }
     }
     if (r_filter->srcip) {
-
+        if(!al_data->srcip) {
+            return(0);
+        }
         if (al_data->srcip) {
             if (!strstr(al_data->srcip, r_filter->srcip)) {
                 return (0);
@@ -126,6 +128,9 @@ static int _os_report_check_filters(const alert_data *al_data, const report_filt
         }
     }
     if (r_filter->user) {
+        if(!al_data->user) {
+            return(0);
+        }
         if (al_data->user) {
             if (!strstr(al_data->user, r_filter->user)) {
                 return (0);
@@ -135,6 +140,9 @@ static int _os_report_check_filters(const alert_data *al_data, const report_filt
         }
     }
     if (r_filter->files) {
+        if(!al_data->filename) {
+            return(0);
+        }
         if (al_data->filename) {
             if (!strstr(al_data->filename, r_filter->files)) {
                 return (0);
