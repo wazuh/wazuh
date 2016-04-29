@@ -46,7 +46,7 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 	DEFINES+=-DREUSE_ID
 endif
 
-OSSEC_LDFLAGS=${LDFLAGS} -lm
+OSSEC_LDFLAGS=${LDFLAGS} -lm -lrt
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -379,12 +379,17 @@ install-common: build
 	install -m 0550 -o root -g 0 external/lua/src/ossec-luac ${PREFIX}/bin/
 	install -m 0550 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
 	install -m 0550 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
+	install -m 0550 -o root -g 0 wazuh-moduled ${PREFIX}/bin/
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
+
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/policies
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
 	install -m 0440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
@@ -487,7 +492,7 @@ endif
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
-	
+
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
 	install -m 750 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations
 	touch ${PREFIX}/logs/integrations.log
@@ -593,6 +598,7 @@ BUILD_SERVER+=ossec-logtest
 BUILD_SERVER+=ossec-makelists
 BUILD_SERVER+=ossec-dbd
 BUILD_SERVER+=ossec-integratord
+BUILD_SERVER+=wazuh-moduled
 
 BUILD_AGENT+=external
 BUILD_AGENT+=ossec-agentd
@@ -603,6 +609,7 @@ BUILD_AGENT+=ossec-logcollector
 BUILD_AGENT+=ossec-syscheckd
 BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
+BUILD_AGENT+=wazuh-moduled
 
 .PHONY: server local hybrid agent
 ifeq (${MAKECMDGOALS},server)
@@ -702,7 +709,7 @@ libcJSON.a: ${cjson_o}
 #### OSSEC Libs ####
 ####################
 
-ossec_libs = os_crypto.a config.a shared.a os_net.a os_regex.a os_xml.a
+ossec_libs = os_crypto.a config.a wmodules.a shared.a os_net.a os_regex.a os_xml.a
 
 #### os_xml ########
 
@@ -750,6 +757,18 @@ shared/%.o: shared/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
 shared.a: ${shared_o}
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
+
+#### Wazuh modules ##
+
+wmodules_c := $(wildcard wazuh_modules/wm*.c)
+wmodules_o := $(wmodules_c:.c=.o)
+
+wazuh_modules/%.o: wazuh_modules/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+wmodules.a: ${wmodules_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
@@ -1148,7 +1167,13 @@ ossec-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${fo
 ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
+### wazuh-moduled ##
 
+wmoduled_c := wazuh_modules/main.c
+wmoduled_o := $(wmoduled_c:.c=.o)
+
+wazuh-moduled: ${wmoduled_o} ${ossec_libs}
+	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 ####################
 #### test ##########
@@ -1156,7 +1181,7 @@ ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} aler
 
 CFLAGS_TEST = -g -O0 --coverage
 
-LDFLAGS_TEST = -lcheck -lm -pthread -lrt
+LDFLAGS_TEST = -lcheck -lm -pthread
 
 ifdef TEST
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
@@ -1322,6 +1347,7 @@ clean-internals:
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
 	rm -f ${integrator_o} ossec-integratord
+	rm -f ${wmoduled_o} ${wmodules_o} wazuh-moduled
 
 clean-windows:
 	rm -f win32/LICENSE.txt
