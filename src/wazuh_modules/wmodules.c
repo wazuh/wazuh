@@ -1,0 +1,88 @@
+/*
+ * Wazuh Module Manager
+ * Wazuh Inc.
+ * April 27, 2016
+ */
+
+#include "wmodules.h"
+
+int wm_flag_reload = 0;     // Flag to reload configuration.
+wmodule *wmodules = NULL;   // Config: linked list of all modules.
+
+// Check general configuration
+
+void wm_check() {
+    wmodule *i;
+    wmodule *j;
+
+    // Check that a configuration exists
+
+    if (!wmodules)
+        ErrorExit("%s: WARN: No configuration defined. Exiting...", ARGV0);
+
+    // Check that there aren't two modules of the same type
+
+    for (i = wmodules->next; i; i = i->next)
+        for (j = wmodules; j != i; j = j->next)
+            
+            // Names are pointer to constant strings
+            if (i->context->name == j->context->name)
+                ErrorExit("%s: ERROR: Some modules with the same type '%s' found.", ARGV0, i->context->name);
+}
+
+// Destroy configuration data
+
+void wm_destroy() {
+    wmodule *next_module;
+
+    while (wmodules) {
+        next_module = wmodules->next;
+        wmodules->context->destroy(wmodules->data);
+        free(wmodules);
+        wmodules = next_module;
+    }
+}
+
+// Concatenate strings with optional separator
+
+int wm_strcat(char **str1, const char *str2, char sep) {
+    size_t len1;
+    size_t len2;
+
+    if (str2) {
+        len2 = strlen(str2);
+
+        if (*str1) {
+            len1 = strlen(*str1);
+            os_realloc(*str1, len1 + len2 + (sep ? 2 : 1), *str1);
+
+            if (sep)
+                memcpy(*str1 + (len1++), &sep, 1);
+        } else {
+            len1 = 0;
+            os_malloc(len2 + 1, *str1);
+        }
+
+        memcpy(*str1 + len1, str2, len2 + 1);
+        return 0;
+    } else
+        return -1;
+}
+
+// Compare two strings, trimming whitespaces of s1
+
+char* wm_strtrim(char *string) {    
+    int i;
+    
+    while (*string == ' ')
+        string++;
+    
+    i = strlen(string);
+    
+    if (i) {
+        for (i--; string[i] == ' '; i--);
+        string[i + 1] = '\0';
+    }
+
+    return string;
+}
