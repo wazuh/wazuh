@@ -31,6 +31,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     // Create module
 
     os_calloc(1, sizeof(wm_oscap), oscap);
+    oscap->flags.skip_result = WM_DEF_SKIP_RESULT;
     module->context = &WM_OSCAP_CONTEXT;
     module->data = oscap;
 
@@ -60,6 +61,8 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 os_calloc(1, sizeof(wm_oscap_policy), cur_policy);
                 oscap->policies = cur_policy;
             }
+
+            cur_policy->flags.skip_result = WM_DEF_SKIP_RESULT;
 
             // Parse policy attributes
 
