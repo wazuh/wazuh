@@ -9,7 +9,7 @@
 static const char *XML_NAME = "name";
 static const char *XML_TIMEOUT = "timeout";
 static const char *XML_INTERVAL = "interval";
-static const char *XML_FILE = "file";
+static const char *XML_POLICY = "policy";
 static const char *XML_PROFILE = "profile";
 static const char *XML_SKIP_RESULT = "skip-result";
 static const char *XML_SKIP_SEVERITY = "skip-severity";
@@ -25,7 +25,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     int j = 0;
     xml_node **children = NULL;
     wm_oscap *oscap;
-    wm_oscap_file *cur_file = NULL;
+    wm_oscap_policy *cur_policy = NULL;
     wm_oscap_profile *cur_profile;
 
     // Create module
@@ -48,28 +48,28 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
-        } else if (!strcmp(nodes[i]->element, XML_FILE)) {
+        } else if (!strcmp(nodes[i]->element, XML_POLICY)) {
 
-            // Create file node
+            // Create policy node
 
-            if (cur_file) {
-                os_calloc(1, sizeof(wm_oscap_file), cur_file->next);
-                cur_file = cur_file->next;
+            if (cur_policy) {
+                os_calloc(1, sizeof(wm_oscap_policy), cur_policy->next);
+                cur_policy = cur_policy->next;
             } else {
-                // First file
-                os_calloc(1, sizeof(wm_oscap_file), cur_file);
-                oscap->files = cur_file;
+                // First policy
+                os_calloc(1, sizeof(wm_oscap_policy), cur_policy);
+                oscap->policies = cur_policy;
             }
 
-            // Parse file attributes
+            // Parse policy attributes
 
             for (j = 0; nodes[i]->attributes[j]; j++) {
                 if (!strcmp(nodes[i]->attributes[j], XML_NAME))
-                    cur_file->name = strdup(nodes[i]->values[j]);
+                    cur_policy->name = strdup(nodes[i]->values[j]);
                 else if (!strcmp(nodes[i]->attributes[j], XML_TIMEOUT)) {
-                    cur_file->timeout = strtoul(nodes[i]->values[j], NULL, 0);
+                    cur_policy->timeout = strtoul(nodes[i]->values[j], NULL, 0);
 
-                    if (cur_file->timeout == 0 || cur_file->timeout == UINT_MAX) {
+                    if (cur_policy->timeout == 0 || cur_policy->timeout == UINT_MAX) {
                         merror("%s: ERROR: Invalid timeout at module '%s'", __local_name, WM_OSCAP_CONTEXT.name);
                         return OS_INVALID;
                     }
@@ -80,12 +80,12 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 }
             }
 
-            if (!cur_file->name) {
+            if (!cur_policy->name) {
                 merror("%s: ERROR: No such attribute '%s' at module '%s'.", __local_name, XML_NAME, WM_OSCAP_CONTEXT.name);
                 return OS_INVALID;
             }
 
-            // Expand file children (optional)
+            // Expand policy children (optional)
 
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
                 continue;
@@ -108,22 +108,22 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     } else {
                         // First profile
                         os_calloc(1, sizeof(wm_oscap_profile), cur_profile);
-                        cur_file->profiles = cur_profile;
+                        cur_policy->profiles = cur_profile;
                     }
 
                     cur_profile->name = strdup(children[j]->content);
                 } else if (!strcmp(children[j]->element, XML_SKIP_RESULT)) {
-                    cur_file->flags.custom_result_flags = 1;
+                    cur_policy->flags.custom_result_flags = 1;
 
-                    if (wm_oscap_parse_skip_result(children[j]->content, &cur_file->flags) < 0) {
+                    if (wm_oscap_parse_skip_result(children[j]->content, &cur_policy->flags) < 0) {
                         merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_SKIP_RESULT, WM_OSCAP_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(children[j]->element, XML_SKIP_SEVERITY)) {
-                    cur_file->flags.custom_severity_flags = 1;
+                    cur_policy->flags.custom_severity_flags = 1;
 
-                    if (wm_oscap_parse_skip_severity(children[j]->content, &cur_file->flags) < 0) {
+                    if (wm_oscap_parse_skip_severity(children[j]->content, &cur_policy->flags) < 0) {
                         merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_SKIP_SEVERITY, WM_OSCAP_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;

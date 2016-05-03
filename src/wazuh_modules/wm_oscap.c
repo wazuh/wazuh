@@ -14,7 +14,7 @@ static void wm_oscap_setup(wm_oscap *_oscap);       // Setup module
 static void wm_oscap_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_oscap_check();                       // Check configuration, disable flag
 static void wm_oscap_reload();                      // Reload configuration
-static void wm_oscap_run(wm_oscap_file *file);      // Run an OpenSCAP file
+static void wm_oscap_run(wm_oscap_policy *policy);  // Run an OpenSCAP policy
 static void wm_oscap_info();                        // Show module info
 static void wm_oscap_destroy(wm_oscap *oscap);      // Destroy data
 
@@ -31,7 +31,7 @@ const wm_context WM_OSCAP_CONTEXT = {
 // OpenSCAP module main function. It won't return.
 
 void wm_oscap_main(wm_oscap *_oscap) {
-    wm_oscap_file *file;
+    wm_oscap_policy *policy;
     struct timespec tp[2];
 
     // Check configuration and show debug information
@@ -49,9 +49,9 @@ void wm_oscap_main(wm_oscap *_oscap) {
 
         clock_gettime(CLOCK_MONOTONIC, &tp[0]);
 
-        for (file = oscap->files; file; file = file->next)
-            if (!file->flags.error)
-                wm_oscap_run(file);
+        for (policy = oscap->policies; policy; policy = policy->next)
+            if (!policy->flags.error)
+                wm_oscap_run(policy);
 
         clock_gettime(CLOCK_MONOTONIC, &tp[1]);
 
@@ -103,10 +103,10 @@ void wm_oscap_cleanup() {
     verbose("%s: INFO: Module finished.", WM_OSCAP_LOGTAG);
 }
 
-// Run an OpenSCAP file
+// Run an OpenSCAP policy
 
-void wm_oscap_run(wm_oscap_file *file) {
-    const char* cmd[10] = { "/var/ossec/wmodules/oscap/oscap.py", "--file", file->name };
+void wm_oscap_run(wm_oscap_policy *policy) {
+    const char* cmd[10] = { "/var/ossec/wmodules/oscap/oscap.py", "--policy", policy->name };
     int argi = 3;
     int status;
     char *output;
@@ -118,7 +118,7 @@ void wm_oscap_run(wm_oscap_file *file) {
 
     // Create arguments
 
-    for (profile = file->profiles; profile; profile = profile->next)
+    for (profile = policy->profiles; profile; profile = profile->next)
         wm_strcat(&arg_profiles, profile->name, ',');
 
     if (arg_profiles) {
@@ -126,13 +126,13 @@ void wm_oscap_run(wm_oscap_file *file) {
         cmd[argi++] = arg_profiles;
     }
 
-    if (file->flags.skip_result_pass)
+    if (policy->flags.skip_result_pass)
         wm_strcat(&arg_skip_result, "pass", ',');
-    if (file->flags.skip_result_fail)
+    if (policy->flags.skip_result_fail)
         wm_strcat(&arg_skip_result, "fail", ',');
-    if (file->flags.skip_result_notchecked)
+    if (policy->flags.skip_result_notchecked)
         wm_strcat(&arg_skip_result, "notchecked", ',');
-    if (file->flags.skip_result_notapplicable)
+    if (policy->flags.skip_result_notapplicable)
         wm_strcat(&arg_skip_result, "notapplicable", ',');
 
     if (arg_skip_result) {
@@ -140,11 +140,11 @@ void wm_oscap_run(wm_oscap_file *file) {
         cmd[argi++] = arg_skip_result;
     }
 
-    if (file->flags.skip_severity_low)
+    if (policy->flags.skip_severity_low)
         wm_strcat(&arg_skip_severity, "low", ',');
-    if (file->flags.skip_severity_medium)
+    if (policy->flags.skip_severity_medium)
         wm_strcat(&arg_skip_severity, "medium", ',');
-    if (file->flags.skip_severity_high)
+    if (policy->flags.skip_severity_high)
         wm_strcat(&arg_skip_severity, "high", ',');
 
     if (arg_skip_severity) {
@@ -155,19 +155,19 @@ void wm_oscap_run(wm_oscap_file *file) {
     // Execute
 
     debug1("Launching command: %s", cmd[0]);
-    output = wm_exec((char * const *)cmd, &status, file->timeout);
+    output = wm_exec((char * const *)cmd, &status, policy->timeout);
     debug1("Command finished.");
 
     if (!output) {
         if (wm_exec_timeout()) {
             wm_strcat(&output, "oscap: ERROR: Timeout expired.", '\0');
-            merror("%s: ERROR: Timeout expired executing '%s'.", WM_OSCAP_LOGTAG, file->name);
+            merror("%s: ERROR: Timeout expired executing '%s'.", WM_OSCAP_LOGTAG, policy->name);
         } else
             merror("%s: ERROR: Internal calling.", WM_OSCAP_LOGTAG);
 
     } else if (status > 0) {
-        merror("%s: WARN: Ignoring file '%s' due to error.", WM_OSCAP_LOGTAG, file->name);
-        file->flags.error = 1;
+        merror("%s: WARN: Ignoring policy '%s' due to error.", WM_OSCAP_LOGTAG, policy->name);
+        policy->flags.error = 1;
     }
 
     for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n"))
@@ -182,30 +182,30 @@ void wm_oscap_run(wm_oscap_file *file) {
 // Check configuration
 
 void wm_oscap_check() {
-    wm_oscap_file *file;
+    wm_oscap_policy *policy;
 
-    // Check if files
+    // Check if policies
 
-    if (!oscap->files)
-        ErrorExit("%s: WARN: No files defined. Exiting...", WM_OSCAP_LOGTAG);
+    if (!oscap->policies)
+        ErrorExit("%s: WARN: No policies defined. Exiting...", WM_OSCAP_LOGTAG);
 
     // Check if interval
 
     if (!oscap->interval)
         oscap->interval = WM_DEF_INTERVAL;
 
-    // Check timeout and flags for files
+    // Check timeout and flags for policies
 
-    for (file = oscap->files; file; file = file->next) {
-        if (!file->timeout)
-            if (!(file->timeout = oscap->timeout))
-                file->timeout = WM_DEF_TIMEOUT;
+    for (policy = oscap->policies; policy; policy = policy->next) {
+        if (!policy->timeout)
+            if (!(policy->timeout = oscap->timeout))
+                policy->timeout = WM_DEF_TIMEOUT;
 
-        if (!file->flags.custom_result_flags)
-            file->flags.skip_result = oscap->flags.skip_result;
+        if (!policy->flags.custom_result_flags)
+            policy->flags.skip_result = oscap->flags.skip_result;
 
-        if (!file->flags.custom_severity_flags)
-            file->flags.skip_severity = oscap->flags.skip_severity;
+        if (!policy->flags.custom_severity_flags)
+            policy->flags.skip_severity = oscap->flags.skip_severity;
     }
 }
 
@@ -243,25 +243,25 @@ void wm_oscap_reload() {
 // Show module info
 
 void wm_oscap_info() {
-    wm_oscap_file *file;
+    wm_oscap_policy *policy;
     wm_oscap_profile *profile;
 
     verbose("%s: INFO: SHOW_MODULE_OSCAP: ----", WM_OSCAP_LOGTAG);
     verbose("%s: INFO: Timeout: %d", WM_OSCAP_LOGTAG, oscap->timeout);
-    verbose("%s: INFO: Files:", WM_OSCAP_LOGTAG);
+    verbose("%s: INFO: Policies:", WM_OSCAP_LOGTAG);
 
-    for (file = (wm_oscap_file*)oscap->files; file; file = file->next){
-        verbose("%s: INFO: [%s]", WM_OSCAP_LOGTAG, file->name);
+    for (policy = (wm_oscap_policy*)oscap->policies; policy; policy = policy->next){
+        verbose("%s: INFO: [%s]", WM_OSCAP_LOGTAG, policy->name);
 
         verbose("%s: INFO: \tSkip result:", WM_OSCAP_LOGTAG);
-        verbose("%s: INFO: \t\t[Pass: %d] [Fail: %d] [NotChecked: %d] [NotApplicable: %d]", WM_OSCAP_LOGTAG, file->flags.skip_result_pass, file->flags.skip_result_fail, file->flags.skip_result_notchecked, file->flags.skip_result_notapplicable);
+        verbose("%s: INFO: \t\t[Pass: %d] [Fail: %d] [NotChecked: %d] [NotApplicable: %d]", WM_OSCAP_LOGTAG, policy->flags.skip_result_pass, policy->flags.skip_result_fail, policy->flags.skip_result_notchecked, policy->flags.skip_result_notapplicable);
 
         verbose("%s: INFO: \tSkip severity:", WM_OSCAP_LOGTAG);
-        verbose("%s: INFO: \t\t[Low: %d] [Medium: %d] [High: %d]", WM_OSCAP_LOGTAG, file->flags.skip_severity_low, file->flags.skip_severity_medium, file->flags.skip_severity_high);
+        verbose("%s: INFO: \t\t[Low: %d] [Medium: %d] [High: %d]", WM_OSCAP_LOGTAG, policy->flags.skip_severity_low, policy->flags.skip_severity_medium, policy->flags.skip_severity_high);
 
         verbose("%s: INFO: \tProfiles:", WM_OSCAP_LOGTAG);
 
-        for (profile = (wm_oscap_profile*)file->profiles; profile; profile = profile->next)
+        for (profile = (wm_oscap_profile*)policy->profiles; profile; profile = profile->next)
             verbose("%s: INFO: \t\tName: %s", WM_OSCAP_LOGTAG, profile->name);
     }
 
@@ -271,26 +271,26 @@ void wm_oscap_info() {
 // Destroy data
 
 void wm_oscap_destroy(wm_oscap *oscap) {
-    wm_oscap_file *cur_file;
-    wm_oscap_file *next_file;
+    wm_oscap_policy *cur_policy;
+    wm_oscap_policy *next_policy;
     wm_oscap_profile *cur_profile;
     wm_oscap_profile *next_profile;
 
-    // Delete files
+    // Delete policies
 
-    for (cur_file = oscap->files; cur_file; cur_file = next_file) {
+    for (cur_policy = oscap->policies; cur_policy; cur_policy = next_policy) {
 
         // Delete profiles
 
-        for (cur_profile = cur_file->profiles; cur_profile; cur_profile = next_profile) {
+        for (cur_profile = cur_policy->profiles; cur_profile; cur_profile = next_profile) {
             next_profile = cur_profile->next;
             free(cur_profile->name);
             free(cur_profile);
         }
 
-        next_file = cur_file->next;
-        free(cur_file->name);
-        free(cur_file);
+        next_policy = cur_policy->next;
+        free(cur_policy->name);
+        free(cur_policy);
     }
 
     free(oscap);
