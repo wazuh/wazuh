@@ -39,19 +39,19 @@ typedef union wm_oscap_flags {
     };
 } wm_oscap_flags;
 
-typedef struct wm_oscap_file {
-    char *name;                     // Profile name (string)
+typedef struct wm_oscap_policy {
+    char *name;                     // Policy name (string)
     wm_oscap_profile *profiles;     // Profiles (linked list)
     wm_oscap_flags flags;           // Flags
     unsigned int timeout;           // Execution time limit (seconds)
-    struct wm_oscap_file *next;     // Pointer to next
-} wm_oscap_file;
+    struct wm_oscap_policy *next;   // Pointer to next
+} wm_oscap_policy;
 
 typedef struct wm_oscap {
     unsigned int interval;          // Default ime interval between cycles
     unsigned int timeout;           // Default execution time limit (seconds)
     wm_oscap_flags flags;           // Default flags
-    wm_oscap_file *files;           // Files (linked list)
+    wm_oscap_policy *policies;      // Policies (linked list)
 } wm_oscap;
 
 extern const wm_context WM_OSCAP_CONTEXT;   // Context
