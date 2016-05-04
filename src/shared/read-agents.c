@@ -371,7 +371,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
         }
     }
 
-    if (!f_found) {
+    if (!(f_found || csv_output || json_output)) {
         printf("\n** No entries found.\n");
     }
 
