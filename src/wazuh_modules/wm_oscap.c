@@ -106,7 +106,7 @@ void wm_oscap_cleanup() {
 // Run an OpenSCAP policy
 
 void wm_oscap_run(wm_oscap_policy *policy) {
-    const char* cmd[10] = { "/var/ossec/wmodules/oscap/oscap.py", "--policy", policy->name };
+    const char* cmd[10] = { WM_OSCAP_SCRIPT_PATH, "--policy", policy->name };
     int argi = 3;
     int status;
     char *output;
