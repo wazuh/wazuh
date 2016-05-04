@@ -12,6 +12,8 @@
 #define WM_DEF_SKIP_RESULT  0b1101  // Default results to skip (pass,not*)
 
 #define WM_OSCAP_LOGTAG ARGV0 ":oscap"
+#define WM_OSCAP_DEFAULT_DIR WM_DEFAULT_DIR "/oscap"
+#define WM_OSCAP_SCRIPT_PATH WM_OSCAP_DEFAULT_DIR "/oscap.py"
 
 typedef struct wm_oscap_profile {
     char *name;                     // Profile name (string)

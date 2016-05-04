@@ -14,8 +14,9 @@
 #include "shared.h"
 #include "config/config.h"
 
-#define WM_STRING_MAX 1048576           // Max. dynamic string size.
-#define WM_BUFFER_MAX 1024              // Max. static buffer size.
+#define WM_DEFAULT_DIR  DEFAULTDIR "/wodles"    // Default modules directory
+#define WM_STRING_MAX   1048576                 // Max. dynamic string size.
+#define WM_BUFFER_MAX   1024                    // Max. static buffer size.
 
 typedef void (*wm_routine)(void*);      // Standard routine pointer
 
