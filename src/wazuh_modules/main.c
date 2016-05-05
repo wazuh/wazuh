@@ -9,10 +9,9 @@
 static void wm_help();                  // Print help.
 static void wm_setup();                 // Setup function. Exits on error.
 static void wm_cleanup();               // Cleanup function, called on exiting.
-static void wm_onsignal(int signum);    // Action on signal.
+static void wm_handler(int signum);     // Action on signal.
 
 static int flag_foreground = 0;         // Running in foreground.
-static int nchildren = 0;               // Number of running child processes.
 
 // Main function
 
@@ -22,6 +21,7 @@ int main(int argc, char **argv)
     int debug = 0;
     int test_config = 0;
     wmodule *cur_module;
+    pthread_attr_t attr;
 
     // Get command line options
 
@@ -68,30 +68,19 @@ int main(int argc, char **argv)
     verbose("%s: INFO: Process started.", ARGV0);
 
     // Run modules
+    
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        switch (fork()) {
-        case -1: // Error
-            ErrorExit("%s: ERROR: fork(): %s", ARGV0, strerror(errno));
-
-        case 0: // Child
-            if (CreatePID(ARGV0, getpid()) < 0)
-                merror("%s: ERROR: Couldn't create PID file for child: (%s)", ARGV0, strerror(errno));
-
-            cur_module->context->main(cur_module->data);
-            break;
-
-        default: // Parent
-            nchildren++;
-
-            // If foreground, don't exit
-
-            if (flag_foreground)
-                while (1)
-                    pause();
-        }
+        int error = pthread_create(&cur_module->thread, &attr, cur_module->context->start, cur_module->data);
+        
+        if (error)
+            ErrorExit("%s: ERROR: fork(): %s", ARGV0, strerror(error));
     }
-
+    
+    pthread_attr_destroy(&attr);
+    pthread_exit(NULL);
     return EXIT_SUCCESS;
 }
 
@@ -115,7 +104,7 @@ void wm_help()
 
 void wm_setup()
 {
-    struct sigaction action = { .sa_handler = wm_onsignal };
+    struct sigaction action = { .sa_handler = wm_handler };
 
     // Read configuration
 
@@ -152,26 +141,15 @@ void wm_setup()
 
 void wm_cleanup()
 {
-    // If the parent runs in foreground, kill children
-
-    if (flag_foreground && getpid() == getsid(0)) {
-        killpg(0, SIGTERM);
-
-        while (nchildren--)
-            wait(NULL);
-    }
-
     // Delete PID file
 
     if (DeletePID(ARGV0) < 0)
         merror("%s: ERROR: Couldn't delete PID file.", ARGV0);
-
-    wm_destroy();
 }
 
 // Action on signal
 
-void wm_onsignal(int signum)
+void wm_handler(int signum)
 {
     switch (signum) {
     case SIGHUP:

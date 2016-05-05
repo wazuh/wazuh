@@ -11,6 +11,7 @@
 #define ARGV0 "wazuh-moduled"
 #endif // ARGV0
 
+#include <pthread.h>
 #include "shared.h"
 #include "config/config.h"
 
@@ -21,21 +22,22 @@
 #define WM_IO_WRITE     0
 #define WM_IO_READ      1
 
-typedef void (*wm_routine)(void*);      // Standard routine pointer
+typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
 // Module context: this should be defined for every module
 
 typedef struct wm_context {
     const char *name;                   // Name for module
-    wm_routine main;                    // Main function
+    wm_routine start;                   // Main function
     wm_routine destroy;                 // Destructor
 } wm_context;
 
 // Main module structure
 
 typedef struct wmodule {
-    const wm_context *context;          // Context (module-dependant)
-    void *data;                         // Data (module-dependent)
+    pthread_t thread;                   // Thread ID
+    const wm_context *context;          // Context (common structure)
+    void *data;                         // Data (module-dependent structure)
     struct wmodule *next;               // Pointer to next module
 } wmodule;
 
