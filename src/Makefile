@@ -52,7 +52,7 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-lpthread
+		OSSEC_LDFLAGS+=-pthread
 #		OSSEC_LDFLAGS+=-lmagic
 else
 ifeq (${uname_S},AIX)
@@ -129,7 +129,7 @@ ifneq (,$(filter ${ONEWAY},yes y Y 1))
 endif
 
 OSSEC_CFLAGS+=${DEFINES}
-OSSEC_CFLAGS+=-Wall -Wextra
+OSSEC_CFLAGS+=-pipe -Wall -Wextra
 OSSEC_CFLAGS+=-I./ -I./headers/
 
 
@@ -754,7 +754,7 @@ shared_c := $(wildcard shared/*.c)
 shared_o := $(shared_c:.c=.o)
 
 shared/%.o: shared/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-remoted\" -pthread -c $^ -o $@
 
 shared.a: ${shared_o}
 	${OSSEC_LINK} $@ $^

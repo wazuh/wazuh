@@ -9,14 +9,14 @@
 static wm_oscap *oscap;                             // Pointer to configuration
 static int queue_fd;                                // Output queue file descriptor
 
-static void wm_oscap_main(wm_oscap *_oscap);        // Module main function. It won't return
+static void* wm_oscap_main(wm_oscap *_oscap);       // Module main function. It won't return
 static void wm_oscap_setup(wm_oscap *_oscap);       // Setup module
 static void wm_oscap_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_oscap_check();                       // Check configuration, disable flag
-static void wm_oscap_reload();                      // Reload configuration
+//static void wm_oscap_reload();                      // Reload configuration
 static void wm_oscap_run(wm_oscap_policy *policy);  // Run an OpenSCAP policy
 static void wm_oscap_info();                        // Show module info
-static void wm_oscap_destroy(wm_oscap *oscap);      // Destroy data
+static void wm_oscap_destroy(wm_oscap *oscap);     // Destroy data
 
 const char *WM_OSCAP_LOCATION = "wodle:open-scap";  // Location field for event sending
 
@@ -30,7 +30,7 @@ const wm_context WM_OSCAP_CONTEXT = {
 
 // OpenSCAP module main function. It won't return.
 
-void wm_oscap_main(wm_oscap *_oscap) {
+void* wm_oscap_main(wm_oscap *_oscap) {
     wm_oscap_policy *policy;
     struct timespec tp[2];
 
@@ -42,8 +42,6 @@ void wm_oscap_main(wm_oscap *_oscap) {
     // Main loop
 
     while (1) {
-        if (wm_flag_reload)
-            wm_oscap_reload();
 
         // Get time and execute
 
@@ -74,7 +72,7 @@ void wm_oscap_main(wm_oscap *_oscap) {
             merror("%s: ERROR: Interval overtaken.", WM_OSCAP_LOGTAG);
     }
 
-    exit(EXIT_SUCCESS);
+    return NULL;
 }
 
 // Setup module
@@ -209,7 +207,7 @@ void wm_oscap_check() {
     }
 }
 
-// Reload configuration, disable flag
+/* Reload configuration, disable flag
 
 void wm_oscap_reload() {
     wmodule *cur_wm;
@@ -238,7 +236,7 @@ void wm_oscap_reload() {
         ErrorExit("%s: WARN: No configuration for OpenSCAP after reloading. Exiting...", WM_OSCAP_LOGTAG);
 
     wm_oscap_check();
-}
+} */
 
 // Show module info
 
