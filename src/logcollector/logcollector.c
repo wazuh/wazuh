@@ -391,25 +391,26 @@ void LogCollectorStart()
             if (logff[i].fp) {
 #ifndef WIN32
 
-		/* To help detect a file rollover, temporarily open the file a second time.
- 		 * Previously the fstat would work on "cached" file data, but this should 
- 		 * ensure it's fresh when hardlinks are used (like alerts.log).
- 		 */
-		FILE *tf;
-		tf = fopen(logff[i].file, "r");
-		if(tf == NULL) {
-			merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
-		}
+                /* To help detect a file rollover, temporarily open the file a second time.
+                 * Previously the fstat would work on "cached" file data, but this should 
+                 * ensure it's fresh when hardlinks are used (like alerts.log).
+                 */
+                FILE *tf;
+                tf = fopen(logff[i].file, "r");
+                if(tf == NULL) {
+                    merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
+                }
 
-                if ((fstat(fileno(tf), &tmp_stat)) == -1) {
+                else if ((fstat(fileno(tf), &tmp_stat)) == -1) {
                     fclose(logff[i].fp);
+                    fclose(tf);
                     logff[i].fp = NULL;
 
                     merror(FSTAT_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
                 }
-		if(fclose(tf) == EOF) {
-			merror("Closing the temporary file %s did not work (%d): %s", logff[i].file, errno, strerror(errno));
-		}
+                else if (fclose(tf) == EOF) {
+                    merror("Closing the temporary file %s did not work (%d): %s", logff[i].file, errno, strerror(errno));
+                }
 #else
                 BY_HANDLE_FILE_INFORMATION lpFileInformation;
                 HANDLE h1;
