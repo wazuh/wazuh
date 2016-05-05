@@ -43,7 +43,6 @@ short eval_bool2(char *str, short default_val)
 int Read_Rootcheck_Config(const char *cfgfile)
 {
     OS_XML xml;
-    char *str = NULL;
 
     /* XML Definitions */
     const char *(xml_base_dir[]) = {xml_rootcheck, "base_directory", NULL};
@@ -58,6 +57,7 @@ int Read_Rootcheck_Config(const char *cfgfile)
     const char *(xml_readall[]) = {xml_rootcheck, "readall", NULL};
 #ifdef OSSECHIDS
     const char *(xml_time[]) = {xml_rootcheck, "frequency", NULL};
+    char *str = NULL;
 #endif
     const char *(xml_check_dev[]) = {xml_rootcheck, "check_dev", NULL};
     const char *(xml_check_files[]) = {xml_rootcheck, "check_files", NULL};

@@ -63,7 +63,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     }
 
     if (OS_SetRecvTimeout(socket, SOCK_RECV_TIME0) < 0) {
-        merror("%s: ERROR: Couldn't set receiving timeout for socket.");
+        merror("%s: ERROR: Couldn't set receiving timeout for socket.", ARGV0);
     }
 
     /* Receive the banner */
@@ -279,7 +279,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     }
 
     if (OS_SetRecvTimeout(socket, SOCK_RECV_TIME0) < 0) {
-        merror("%s: ERROR: Couldn't set receiving timeout for socket.");
+        merror("%s: ERROR: Couldn't set receiving timeout for socket.", ARGV0);
     }
 
     /* Receive the banner */
