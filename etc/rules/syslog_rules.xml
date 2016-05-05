@@ -529,6 +529,13 @@
     <description>Three failed attempts to run sudo</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
+  
+    <rule id="5405" level="5">
+        <if_sid>5400</if_sid>
+        <match>user NOT in sudoers</match>
+        <description>Unauthorized user attempted to use sudo.</description>
+    </rule>
+  
 </group> <!-- SYSLOG, SUDO -->
 
 

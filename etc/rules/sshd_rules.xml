@@ -360,7 +360,7 @@
   <rule id="5750" level="0">
     <decoded_as>sshd</decoded_as>
     <if_sid>5700</if_sid>
-    <match>Unable to negotiate with </match>
+    <match>Unable to negotiate with |Unable to negotiate a key</match>
     <description>sshd could not negotiate with client.</description>
   </rule>
 
@@ -373,7 +373,7 @@
 
   <rule id="5752" level="2">
     <if_sid>5750</if_sid>
-    <match>no matching key exchange method found.</match>
+    <match>no matching key exchange method found.|Unable to negotiate a key exchange method</match>
     <description>Client did not offer an acceptable key exchange method.</description>
   </rule>
 
