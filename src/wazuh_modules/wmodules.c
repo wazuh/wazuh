@@ -86,3 +86,21 @@ char* wm_strtrim(char *string) {
 
     return string;
 }
+
+// Load or save the running state
+
+int wm_state_io(const wm_context *context, int op, void *state, size_t size) {
+    char path[PATH_MAX] = { '\0' };
+    size_t bytes;
+    FILE *file;
+    
+    snprintf(path, PATH_MAX, "%s/%s", WM_STATE_DIR, context->name);
+    
+    if (!(file = fopen(path, op == WM_IO_WRITE ? "w" : "r")))
+        return -1;
+    
+    bytes = WM_IO_WRITE ? fwrite(state, size, 1, file) : fread(state, size, 1, file);
+    fclose(file);
+    
+    return (bytes == size) - 1;    
+}

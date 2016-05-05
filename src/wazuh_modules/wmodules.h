@@ -14,9 +14,12 @@
 #include "shared.h"
 #include "config/config.h"
 
-#define WM_DEFAULT_DIR  DEFAULTDIR "/wodles"    // Default modules directory
-#define WM_STRING_MAX   1048576                 // Max. dynamic string size.
-#define WM_BUFFER_MAX   1024                    // Max. static buffer size.
+#define WM_DEFAULT_DIR  DEFAULTDIR "/wodles"        // Default modules directory.
+#define WM_STATE_DIR    DEFAULTDIR "/var/wodles"    // Default directory for states.
+#define WM_STRING_MAX   1048576                     // Max. dynamic string size.
+#define WM_BUFFER_MAX   1024                        // Max. static buffer size.
+#define WM_IO_WRITE     0
+#define WM_IO_READ      1
 
 typedef void (*wm_routine)(void*);      // Standard routine pointer
 
@@ -69,5 +72,11 @@ int wm_strcat(char **str1, const char *str2, char sep);
 
 // Trim whitespaces from string
 char* wm_strtrim(char *string);
+
+/* Load or save the running state
+ * op: WM_IO_READ | WM_IO_WRITE
+ * Returns 0 if success, or 1 if fail.
+ */
+int wm_state_io(const wm_context *context, int op, void *state, size_t size);
 
 #endif // W_MODULES

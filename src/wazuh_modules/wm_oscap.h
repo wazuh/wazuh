@@ -50,10 +50,15 @@ typedef struct wm_oscap_policy {
     struct wm_oscap_policy *next;   // Pointer to next
 } wm_oscap_policy;
 
+typedef struct wm_oscap_state {
+    time_t rem_interval;            // Reimaining sleeping interval
+} wm_oscap_state;
+
 typedef struct wm_oscap {
     unsigned int interval;          // Default ime interval between cycles
     unsigned int timeout;           // Default execution time limit (seconds)
     wm_oscap_flags flags;           // Default flags
+    wm_oscap_state state;           // Running state
     wm_oscap_policy *policies;      // Policies (linked list)
 } wm_oscap;
 
