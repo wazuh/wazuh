@@ -338,7 +338,7 @@ SetupLogs()
       echo "" >> $NEWCONFIG
       echo "  <localfile>" >> $NEWCONFIG
       echo "    <log_format>command</log_format>" >> $NEWCONFIG
-      echo "    <command>df -h</command>" >> $NEWCONFIG
+      echo "    <command>df -P</command>" >> $NEWCONFIG
       echo "  </localfile>" >> $NEWCONFIG
       echo "" >> $NEWCONFIG
       echo "  <localfile>" >> $NEWCONFIG
