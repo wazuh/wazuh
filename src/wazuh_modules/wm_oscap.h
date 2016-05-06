@@ -33,6 +33,7 @@ typedef union wm_oscap_flags {
 
         unsigned int custom_result_flags:1;
         unsigned int custom_severity_flags:1;
+        unsigned int scan_on_start:1;
         unsigned int error:1;
     };
 
@@ -51,11 +52,11 @@ typedef struct wm_oscap_policy {
 } wm_oscap_policy;
 
 typedef struct wm_oscap_state {
-    time_t rem_interval;            // Reimaining sleeping interval
+    time_t next_time;               // Absolute time for next scan
 } wm_oscap_state;
 
 typedef struct wm_oscap {
-    unsigned int interval;          // Default ime interval between cycles
+    unsigned int interval;          // Default time interval between cycles
     unsigned int timeout;           // Default execution time limit (seconds)
     wm_oscap_flags flags;           // Default flags
     wm_oscap_state state;           // Running state
