@@ -9,7 +9,7 @@
 static wm_oscap *oscap;                             // Pointer to configuration
 static int queue_fd;                                // Output queue file descriptor
 
-static void* wm_oscap_main(wm_oscap *_oscap);       // Module main function. It won't return
+static void* wm_oscap_main(wm_oscap *oscap);        // Module main function. It won't return
 static void wm_oscap_setup(wm_oscap *_oscap);       // Setup module
 static void wm_oscap_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_oscap_check();                       // Check configuration, disable flag
@@ -30,46 +30,44 @@ const wm_context WM_OSCAP_CONTEXT = {
 
 // OpenSCAP module main function. It won't return.
 
-void* wm_oscap_main(wm_oscap *_oscap) {
+void* wm_oscap_main(wm_oscap *oscap) {
     wm_oscap_policy *policy;
-    struct timespec tp[2];
+    time_t time_start;
+    time_t time_sleep = 0;
 
     // Check configuration and show debug information
 
-    wm_oscap_setup(_oscap);
+    wm_oscap_setup(oscap);
     verbose("%s: INFO: Module started.", WM_OSCAP_LOGTAG);
 
     // Main loop
 
     while (1) {
-
+        
         // Get time and execute
+        time_start = time(NULL);
+            
+        if (oscap->flags.scan_on_start && !oscap->state.next_time) {
+            for (policy = oscap->policies; policy; policy = policy->next)
+                if (!policy->flags.error)
+                    wm_oscap_run(policy);
 
-        clock_gettime(CLOCK_MONOTONIC, &tp[0]);
-
-        for (policy = oscap->policies; policy; policy = policy->next)
-            if (!policy->flags.error)
-                wm_oscap_run(policy);
-
-        clock_gettime(CLOCK_MONOTONIC, &tp[1]);
-
-        /* Sleep
-         * sleep = interval - (t1 - t0)
-         * sleep = interval + t0 - t1
-         */
-
-        tp[0].tv_sec += oscap->interval - tp[1].tv_sec;
-        tp[0].tv_nsec -= tp[1].tv_nsec;
-
-        if (tp[0].tv_nsec < 0) {
-            tp[0].tv_nsec += 1e9;
-            tp[0].tv_sec--;
+            time_sleep = time(NULL) - time_start;
+        }
+        
+        if (oscap->interval >= time_sleep) {
+            time_sleep = oscap->interval - time_sleep;
+            oscap->state.next_time = oscap->interval + time_start;
+        } else {
+            merror("%s: ERROR: Interval overtaken.", WM_OSCAP_LOGTAG);
+            time_sleep = oscap->state.next_time = 0;
         }
 
-        if (tp[0].tv_sec > 0 || (tp[0].tv_sec == 0 && tp[0].tv_nsec > 0))
-            clock_nanosleep(CLOCK_MONOTONIC, 0, &tp[0], NULL);
-        else
-            merror("%s: ERROR: Interval overtaken.", WM_OSCAP_LOGTAG);
+        if (wm_state_io(&WM_OSCAP_CONTEXT, WM_IO_WRITE, &oscap->state, sizeof(oscap->state)) < 0)
+            merror("%s: ERROR: Couldn't save running state.", WM_OSCAP_LOGTAG);
+
+        // If time_sleep=0, yield CPU
+        sleep(time_sleep);
     }
 
     return NULL;
@@ -80,6 +78,11 @@ void* wm_oscap_main(wm_oscap *_oscap) {
 void wm_oscap_setup(wm_oscap *_oscap) {
     oscap = _oscap;
     wm_oscap_check();
+
+    // Read running state
+
+    if (wm_state_io(&WM_OSCAP_CONTEXT, WM_IO_READ, &oscap->state, sizeof(oscap->state)) < 0)
+        memset(&oscap->state, 0, sizeof(oscap->state));
 
     if (isDebug())
         wm_oscap_info();

@@ -32,6 +32,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
     os_calloc(1, sizeof(wm_oscap), oscap);
     oscap->flags.skip_result = WM_DEF_SKIP_RESULT;
+    oscap->flags.scan_on_start = 1;
     module->context = &WM_OSCAP_CONTEXT;
     module->data = oscap;
 
