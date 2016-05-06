@@ -217,6 +217,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     memset(srcmsg, '\0', OS_FLSIZE + 1);
     tmp_msg = NULL;
 
+    check_keyupdate();
+
     /* Get a valid agent id */
     if (buffer[0] == '!') {
         tmp_msg = buffer;
@@ -242,31 +244,15 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
 
         if (agentid == -1) {
-            if (check_keyupdate()) {
-                agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
-                if (agentid == -1) {
-                    merror(ENC_IP_ERROR, ARGV0, buffer + 1, srcip);
-                    return;
-                }
-            } else {
-                merror(ENC_IP_ERROR, ARGV0, buffer + 1, srcip);
-                return;
-            }
+            merror(ENC_IP_ERROR, ARGV0, buffer + 1, srcip);
+            return;
         }
     } else {
         agentid = OS_IsAllowedIP(&keys, srcip);
 
         if (agentid < 0) {
-            if (check_keyupdate()) {
-                agentid = OS_IsAllowedIP(&keys, srcip);
-                if (agentid == -1) {
-                    merror(DENYIP_WARN, ARGV0, srcip);
-                    return;
-                }
-            } else {
-                merror(DENYIP_WARN, ARGV0, srcip);
-                return;
-            }
+            merror(DENYIP_WARN, ARGV0, srcip);
+            return;
         }
         tmp_msg = buffer;
     }
