@@ -105,7 +105,6 @@ void wm_oscap_cleanup() {
 }
 
 // Run an OpenSCAP policy
-ç
 
 void wm_oscap_run(wm_oscap_eval *eval) {
     const char* cmd[10] = { WM_OSCAP_SCRIPT_PATH, "--policy", eval->policy };
