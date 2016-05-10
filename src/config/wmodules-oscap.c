@@ -6,10 +6,10 @@
 
 #include "wazuh_modules/wmodules.h"
 
-static const char *XML_NAME = "name";
+static const char *XML_EVAL = "eval";
+static const char *XML_POLICY = "policy";
 static const char *XML_TIMEOUT = "timeout";
 static const char *XML_INTERVAL = "interval";
-static const char *XML_POLICY = "policy";
 static const char *XML_PROFILE = "profile";
 static const char *XML_SKIP_RESULT = "skip-result";
 static const char *XML_SKIP_SEVERITY = "skip-severity";
@@ -25,7 +25,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     int j = 0;
     xml_node **children = NULL;
     wm_oscap *oscap;
-    wm_oscap_policy *cur_policy = NULL;
+    wm_oscap_eval *cur_eval = NULL;
     wm_oscap_profile *cur_profile;
 
     // Create module
@@ -50,30 +50,31 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
-        } else if (!strcmp(nodes[i]->element, XML_POLICY)) {
+ 
+        } else if (!strcmp(nodes[i]->element, XML_EVAL)) {
 
             // Create policy node
 
-            if (cur_policy) {
-                os_calloc(1, sizeof(wm_oscap_policy), cur_policy->next);
-                cur_policy = cur_policy->next;
+            if (cur_eval) {
+                os_calloc(1, sizeof(wm_oscap_eval), cur_eval->next);
+                cur_eval = cur_eval->next;
             } else {
                 // First policy
-                os_calloc(1, sizeof(wm_oscap_policy), cur_policy);
-                oscap->policies = cur_policy;
+                os_calloc(1, sizeof(wm_oscap_eval), cur_eval);
+                oscap->evals = cur_eval;
             }
 
-            cur_policy->flags.skip_result = WM_DEF_SKIP_RESULT;
+            cur_eval->flags.skip_result = WM_DEF_SKIP_RESULT;
 
             // Parse policy attributes
 
             for (j = 0; nodes[i]->attributes[j]; j++) {
-                if (!strcmp(nodes[i]->attributes[j], XML_NAME))
-                    cur_policy->name = strdup(nodes[i]->values[j]);
+                if (!strcmp(nodes[i]->attributes[j], XML_POLICY))
+                    cur_eval->name = strdup(nodes[i]->values[j]);
                 else if (!strcmp(nodes[i]->attributes[j], XML_TIMEOUT)) {
-                    cur_policy->timeout = strtoul(nodes[i]->values[j], NULL, 0);
+                    cur_eval->timeout = strtoul(nodes[i]->values[j], NULL, 0);
 
-                    if (cur_policy->timeout == 0 || cur_policy->timeout == UINT_MAX) {
+                    if (cur_eval->timeout == 0 || cur_eval->timeout == UINT_MAX) {
                         merror("%s: ERROR: Invalid timeout at module '%s'", __local_name, WM_OSCAP_CONTEXT.name);
                         return OS_INVALID;
                     }
@@ -84,8 +85,8 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 }
             }
 
-            if (!cur_policy->name) {
-                merror("%s: ERROR: No such attribute '%s' at module '%s'.", __local_name, XML_NAME, WM_OSCAP_CONTEXT.name);
+            if (!cur_eval->name) {
+                merror("%s: ERROR: No such attribute '%s' at module '%s'.", __local_name, XML_POLICY, WM_OSCAP_CONTEXT.name);
                 return OS_INVALID;
             }
 
@@ -112,22 +113,22 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     } else {
                         // First profile
                         os_calloc(1, sizeof(wm_oscap_profile), cur_profile);
-                        cur_policy->profiles = cur_profile;
+                        cur_eval->profiles = cur_profile;
                     }
 
                     cur_profile->name = strdup(children[j]->content);
                 } else if (!strcmp(children[j]->element, XML_SKIP_RESULT)) {
-                    cur_policy->flags.custom_result_flags = 1;
+                    cur_eval->flags.custom_result_flags = 1;
 
-                    if (wm_oscap_parse_skip_result(children[j]->content, &cur_policy->flags) < 0) {
+                    if (wm_oscap_parse_skip_result(children[j]->content, &cur_eval->flags) < 0) {
                         merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_SKIP_RESULT, WM_OSCAP_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(children[j]->element, XML_SKIP_SEVERITY)) {
-                    cur_policy->flags.custom_severity_flags = 1;
+                    cur_eval->flags.custom_severity_flags = 1;
 
-                    if (wm_oscap_parse_skip_severity(children[j]->content, &cur_policy->flags) < 0) {
+                    if (wm_oscap_parse_skip_severity(children[j]->content, &cur_eval->flags) < 0) {
                         merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_SKIP_SEVERITY, WM_OSCAP_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
@@ -211,6 +212,16 @@ int wm_oscap_parse_skip_result(const char *content, wm_oscap_flags *flags)
             flags->skip_result_notchecked = 1;
         else if (!strcmp(token, "notapplicable"))
             flags->skip_result_notapplicable = 1;
+        else if (!strcmp(token, "fixed"))
+            flags->skip_result_fixed = 1;
+        else if (!strcmp(token, "informational"))
+            flags->skip_result_informational = 1;
+        else if (!strcmp(token, "error"))
+            flags->skip_result_error = 1;
+        else if (!strcmp(token, "unknown"))
+            flags->skip_result_unknown = 1;
+        else if (!strcmp(token, "notselected"))
+            flags->skip_result_notselected = 1;
         else {
             free(string);
             return -1;
