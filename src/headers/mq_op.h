@@ -17,6 +17,7 @@
 #define SECURE_MQ       '4'
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
+#define WODLE_MQ    '10'
 
 /* Queues for additional log types */
 #define MYSQL_MQ        'a'
