@@ -26,6 +26,11 @@ typedef union wm_oscap_flags {
         unsigned int skip_result_fail:1;
         unsigned int skip_result_notchecked:1;
         unsigned int skip_result_notapplicable:1;
+        unsigned int skip_result_fixed:1;
+        unsigned int skip_result_informational:1;
+        unsigned int skip_result_error:1;
+        unsigned int skip_result_unknown:1;
+        unsigned int skip_result_notselected:1;
 
         unsigned int skip_severity_low:1;
         unsigned int skip_severity_medium:1;
@@ -38,18 +43,18 @@ typedef union wm_oscap_flags {
     };
 
     struct {
-        unsigned int skip_result:4;
+        unsigned int skip_result:9;
         unsigned int skip_severity:3;
     };
 } wm_oscap_flags;
 
-typedef struct wm_oscap_policy {
-    char *name;                     // Policy name (string)
+typedef struct wm_oscap_eval {
+    char *policy;                     // Policy name (string)
     wm_oscap_profile *profiles;     // Profiles (linked list)
     wm_oscap_flags flags;           // Flags
     unsigned int timeout;           // Execution time limit (seconds)
-    struct wm_oscap_policy *next;   // Pointer to next
-} wm_oscap_policy;
+    struct wm_oscap_eval *next;   // Pointer to next
+} wm_oscap_eval;
 
 typedef struct wm_oscap_state {
     time_t next_time;               // Absolute time for next scan
@@ -60,7 +65,7 @@ typedef struct wm_oscap {
     unsigned int timeout;           // Default execution time limit (seconds)
     wm_oscap_flags flags;           // Default flags
     wm_oscap_state state;           // Running state
-    wm_oscap_policy *policies;      // Policies (linked list)
+    wm_oscap_eval *evals;      // Evaluations (linked list)
 } wm_oscap;
 
 extern const wm_context WM_OSCAP_CONTEXT;   // Context
