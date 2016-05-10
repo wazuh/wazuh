@@ -18,7 +18,7 @@ static void wm_oscap_run(wm_oscap_eval *eval);  // Run an OpenSCAP policy
 static void wm_oscap_info();                        // Show module info
 static void wm_oscap_destroy(wm_oscap *oscap);     // Destroy data
 
-const char *WM_OSCAP_LOCATION = "wodle:open-scap";  // Location field for event sending
+const char *WM_OSCAP_LOCATION = "wodle_open-scap";  // Location field for event sending
 
 // OpenSCAP module context definition
 
