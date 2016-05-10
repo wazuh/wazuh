@@ -50,7 +50,6 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
- 
         } else if (!strcmp(nodes[i]->element, XML_EVAL)) {
 
             // Create policy node
@@ -70,7 +69,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             for (j = 0; nodes[i]->attributes[j]; j++) {
                 if (!strcmp(nodes[i]->attributes[j], XML_POLICY))
-                    cur_eval->name = strdup(nodes[i]->values[j]);
+                    cur_eval->policy = strdup(nodes[i]->values[j]);
                 else if (!strcmp(nodes[i]->attributes[j], XML_TIMEOUT)) {
                     cur_eval->timeout = strtoul(nodes[i]->values[j], NULL, 0);
 
@@ -85,7 +84,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 }
             }
 
-            if (!cur_eval->name) {
+            if (!cur_eval->policy) {
                 merror("%s: ERROR: No such attribute '%s' at module '%s'.", __local_name, XML_POLICY, WM_OSCAP_CONTEXT.name);
                 return OS_INVALID;
             }
