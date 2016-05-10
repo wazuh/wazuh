@@ -182,7 +182,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     }
 
     for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n"))
-        SendMSG(queue_fd, line, WM_OSCAP_LOCATION, LOCALFILE_MQ);
+        SendMSG(queue_fd, line, WM_OSCAP_LOCATION, WODLE_MQ);
 
     free(output);
     free(arg_profiles);
