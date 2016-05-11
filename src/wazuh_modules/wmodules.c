@@ -9,25 +9,65 @@
 int wm_flag_reload = 0;     // Flag to reload configuration.
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 
+/* Function to remove duplicates from a unsorted linked list */
+void removeDuplicates(wmodule *start)
+{
+  wmodule *ptr1, *ptr2, *dup;
+  ptr1 = start;
+
+  while(ptr1 != NULL && ptr1->next != NULL)
+  {
+     ptr2 = ptr1;
+
+     while(ptr2->next != NULL)
+     {
+       if(ptr1->context->name == ptr2->next->context->name)
+       {
+          dup = ptr2->next;
+          ptr2->next = ptr2->next->next;
+          free(dup);
+       }
+       else {
+          ptr2 = ptr2->next;
+       }
+     }
+     ptr1 = ptr1->next;
+  }
+}
+
 // Check general configuration
 
 void wm_check() {
     wmodule *i;
     wmodule *j;
+    wmodule *prev;
 
     // Check that a configuration exists
 
     if (!wmodules)
         ErrorExit("%s: WARN: No configuration defined. Exiting...", ARGV0);
 
-    // Check that there aren't two modules of the same type
+    // Get the last module of the same type
 
-    for (i = wmodules->next; i; i = i->next)
-        for (j = wmodules; j != i; j = j->next)
-            
-            // Names are pointer to constant strings
-            if (i->context->name == j->context->name)
-                ErrorExit("%s: ERROR: Some modules with the same type '%s' found.", ARGV0, i->context->name);
+    for (i = wmodules->next; i; i = i->next){
+        prev = wmodules;
+        for (j = wmodules; j != i; j = j->next){
+
+            if (i->context->name == j->context->name){
+                if(j == wmodules)
+                    wmodules = j->next;
+                else
+                    prev->next = j->next;
+
+                j->context->destroy(j->data);
+                free(j);
+
+                j = prev;
+            }
+            else
+                prev = j;
+        }
+    }
 }
 
 // Destroy configuration data
@@ -71,14 +111,14 @@ int wm_strcat(char **str1, const char *str2, char sep) {
 
 // Compare two strings, trimming whitespaces of s1
 
-char* wm_strtrim(char *string) {    
+char* wm_strtrim(char *string) {
     int i;
-    
+
     while (*string == ' ')
         string++;
-    
+
     i = strlen(string);
-    
+
     if (i) {
         for (i--; string[i] == ' '; i--);
         string[i + 1] = '\0';
@@ -93,14 +133,14 @@ int wm_state_io(const wm_context *context, int op, void *state, size_t size) {
     char path[PATH_MAX] = { '\0' };
     size_t nmemb;
     FILE *file;
-    
+
     snprintf(path, PATH_MAX, "%s/%s", WM_STATE_DIR, context->name);
-    
+
     if (!(file = fopen(path, op == WM_IO_WRITE ? "w" : "r")))
         return -1;
-    
+
     nmemb = (op == WM_IO_WRITE) ? fwrite(state, size, 1, file) : fread(state, size, 1, file);
     fclose(file);
-    
-    return nmemb - 1;    
+
+    return nmemb - 1;
 }

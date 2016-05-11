@@ -68,17 +68,17 @@ int main(int argc, char **argv)
     verbose("%s: INFO: Process started.", ARGV0);
 
     // Run modules
-    
+
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         int error = pthread_create(&cur_module->thread, &attr, cur_module->context->start, cur_module->data);
-        
+
         if (error)
             ErrorExit("%s: ERROR: fork(): %s", ARGV0, strerror(error));
     }
-    
+
     pthread_attr_destroy(&attr);
     pthread_exit(NULL);
     return EXIT_SUCCESS;
@@ -105,11 +105,17 @@ void wm_help()
 void wm_setup()
 {
     struct sigaction action = { .sa_handler = wm_handler };
+    int modules = CWMODULE;
 
-    // Read configuration
-
+    // Read configuration: ossec.conf
     if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, NULL) < 0)
         exit(EXIT_FAILURE);
+
+#ifdef CLIENT
+    /* Read shared config */
+    modules |= CAGENT_CONFIG;
+    ReadConfig(modules, AGENTCONFIG, &wmodules, NULL);
+#endif
 
     wm_check();
 
