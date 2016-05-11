@@ -9,31 +9,6 @@
 int wm_flag_reload = 0;     // Flag to reload configuration.
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 
-/* Function to remove duplicates from a unsorted linked list */
-void removeDuplicates(wmodule *start)
-{
-  wmodule *ptr1, *ptr2, *dup;
-  ptr1 = start;
-
-  while(ptr1 != NULL && ptr1->next != NULL)
-  {
-     ptr2 = ptr1;
-
-     while(ptr2->next != NULL)
-     {
-       if(ptr1->context->name == ptr2->next->context->name)
-       {
-          dup = ptr2->next;
-          ptr2->next = ptr2->next->next;
-          free(dup);
-       }
-       else {
-          ptr2 = ptr2->next;
-       }
-     }
-     ptr1 = ptr1->next;
-  }
-}
 
 // Check general configuration
 
