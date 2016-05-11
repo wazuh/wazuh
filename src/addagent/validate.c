@@ -116,7 +116,7 @@ int OS_RemoveAgent(const char *u_id) {
         return 0;
 
     full_name = getFullnameById(u_id);
-    fp = fopen(AUTH_FILE, "r+");
+    fp = fopen(AUTH_FILE, "r");
 
     if (!fp)
         return 0;
