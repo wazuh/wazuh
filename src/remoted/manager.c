@@ -63,7 +63,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     }
 
     else if (strcmp(r_msg, HC_STARTUP) == 0) {
-        verbose("%s: INFO: Agent %s connected at %s.", ARGV0, keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
+        debug1("%s: DEBUG: Agent %s sent HC_STARTUP from %s.", ARGV0, keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
         return;
     }
 
