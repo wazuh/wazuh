@@ -1,6 +1,35 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v1.1] - 2016-05-11
+
+### Added
+
+- Query of max number of agents on agent_control.
+- Timeout for maild in order to avoid it to hang.
+- Updated decoders, ruleset and rootchecks from Wazuh Ruleset v1.0.8.
+- Update changes from OSSEC Project.
+
+### Changed
+
+- Avoid authd to rename agent if overplaced.
+- Changed some log messages.
+- Reordered directories for agent backups.
+- Don't exit when client.keys is empty by default.
+- Check and reload keys file on every reception.
+
+### Fixed
+
+- Fixed JSON output at rootcheck_control.
+- Fixed agent compilation on OS X.
+- Fixed memory issue on removing timestamps.
+- Fixed segmentation fault at reported.
+- Fixed segmentation fault at logcollector.
+
+### Removed
+
+- Removed old rootcheck options.
+
 ## [v1.1] - 2016-04-06
 
 ### Added
@@ -60,7 +89,7 @@ All notable changes to this project will be documented in this file.
 ### Removed
 
 - RESTful API no longer included in extensions/api folder. Available now at https://github.com/wazuh/wazuh-API
-  
+
 
 ## [v1.0.3] - 2016-02-11
 
