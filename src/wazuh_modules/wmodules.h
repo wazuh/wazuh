@@ -21,6 +21,7 @@
 #define WM_BUFFER_MAX   1024                        // Max. static buffer size.
 #define WM_IO_WRITE     0
 #define WM_IO_READ      1
+#define WM_ERROR_TIMEOUT 1                          // Error code for timeout
 
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
@@ -56,11 +57,13 @@ void wm_destroy();
 
 /* Execute command with timeout of secs. Status can be NULL.
  *
- * argv is a string array that must finish with NULL
- * Returns dynamic string. Caller is responsible for freeing it!
- * On error, returns NULL, and status may be defined or not.
+ * command is a mutable string.
+ * output is a pointer to dynamic string. Caller is responsible for freeing it!
+ * On success, return 0. On another error, returns -1.
+ * If the called program timed-out, returns WM_ERROR_TIMEOUT and output may
+ * contain data.
  */
-char* wm_exec(char* const *argv, int *status, int secs);
+int wm_exec(char *command, char **output, int *status, int secs);
 
 // Check whether the last execution timed out
 int wm_exec_timeout();
@@ -74,6 +77,9 @@ int wm_strcat(char **str1, const char *str2, char sep);
 
 // Trim whitespaces from string
 char* wm_strtrim(char *string);
+
+// Split string containing white-spaced tokens into NULL-ended string array
+char** wm_strsplit(char *string);
 
 /* Load or save the running state
  * op: WM_IO_READ | WM_IO_WRITE

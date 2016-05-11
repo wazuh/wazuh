@@ -104,17 +104,14 @@ void wm_help()
 
 void wm_setup()
 {
-    struct sigaction action = { .sa_handler = wm_handler };
-    int modules = CWMODULE;
-
     // Read configuration: ossec.conf
+
     if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, NULL) < 0)
         exit(EXIT_FAILURE);
 
 #ifdef CLIENT
-    /* Read shared config */
-    modules |= CAGENT_CONFIG;
-    ReadConfig(modules, AGENTCONFIG, &wmodules, NULL);
+    // Read configuration: agent.conf
+    ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, NULL);
 #endif
 
     wm_check();
@@ -134,12 +131,12 @@ void wm_setup()
     // Signal management
 
     atexit(wm_cleanup);
-    sigaction(SIGTERM, &action, NULL);
-    sigaction(SIGUSR1, &action, NULL);
+    signal(SIGTERM, wm_handler);
+    signal(SIGUSR1, wm_handler);
 
     if (flag_foreground) {
-        sigaction(SIGHUP, &action, NULL);
-        sigaction(SIGINT, &action, NULL);
+        signal(SIGHUP, wm_handler);
+        signal(SIGINT, wm_handler);
     }
 }
 

@@ -6,195 +6,176 @@
 
 #include "wmodules.h"
 
-static volatile int flag_timeout = -1;  // Flag: child process expired its runtime
+// Data structure to share with the reader thread
 
-// Check whether the last execution timed out
-
-int wm_exec_timeout() {
-    return flag_timeout;
-}
+typedef struct ThreadInfo {
+#ifdef WIN32
+    CHAR *output;
+    HANDLE pipe;
+#else
+    pthread_mutex_t mutex;
+    pthread_cond_t finished;
+    int pipe;
+    char *output;
+#endif
+} ThreadInfo;
 
 #ifdef WIN32
 
 // Windows version -------------------------------------------------------------
 
-typedef struct ThreadArgs {
-    CHAR *output;
-    HANDLE pipe;
-} ThreadArgs;
-
-// Reading thread's start point
-static DWORD WINAPI Reader(LPVOID args);
-
-// Join string array to single whitespace-separated string
-static LPSTR JoinArgs(char* const *argv);
+static DWORD WINAPI Reader(LPVOID args);    // Reading thread's start point
 
 // Execute command with timeout of secs
 
-char* wm_exec(char* const *argv, int *status, int secs) {
+int wm_exec(char *command, char **output, int *status, int secs) {
     HANDLE thread;
     STARTUPINFO sinfo = { 0 };
     PROCESS_INFORMATION pinfo = { 0 };
-    LPSTR command = JoinArgs(argv);
-    ThreadArgs threadargs = { 0 };
-    DWORD exitcode;
+    ThreadInfo tinfo = { 0 };
+    int retval = 0;
 
     sinfo.cb = sizeof(STARTUPINFO);
     sinfo.dwFlags = STARTF_USESTDHANDLES;
 
     // Create stdout pipe and make it inheritable
 
-    if (!CreatePipe(&threadargs.pipe, &sinfo.hStdOutput, NULL, 0)) {
+    if (!CreatePipe(&tinfo.pipe, &sinfo.hStdOutput, NULL, 0)) {
         merror("%s: ERROR: CreatePipe()", ARGV0);
-        return NULL;
+        return -1;
     }
 
     sinfo.hStdError = sinfo.hStdOutput;
 
     if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
         merror("%s: ERROR: SetHandleInformation()", ARGV0);
-        return NULL;
+        return -1;
     }
 
     // Create child process and close inherited pipes
 
     if (!CreateProcess(NULL, command, NULL, NULL, TRUE, 0, NULL, NULL, &sinfo, &pinfo)) {
         merror("%s: ERROR: CreateProcess(): %ld", ARGV0, GetLastError());
-        return NULL;
+        return -1;
     }
 
     CloseHandle(sinfo.hStdOutput);
 
     // Create reading thread
 
-    thread = CreateThread(NULL, 0, Reader, &threadargs, 0, NULL);
+    thread = CreateThread(NULL, 0, Reader, &tinfo, 0, NULL);
 
     if (!thread) {
         merror("%s: ERROR: CreateThread(): %ld", ARGV0, GetLastError());
-        return NULL;
+        return -1;
     }
 
     // Get output
 
     switch (WaitForSingleObject(pinfo.hProcess, secs * 1000)) {
     case 0:
-        WaitForSingleObject(thread, INFINITE);
-
-        if (!threadargs.output)
-            threadargs.output = strdup("");
+        if (status) {
+            DWORD exitcode;
+            GetExitCodeProcess(pinfo.hProcess, &exitcode);
+            *status = exitcode;
+        }
 
         break;
+
     case WAIT_TIMEOUT:
         TerminateProcess(pinfo.hProcess, 1);
-        WaitForSingleObject(pinfo.hProcess, INFINITE);
-        WaitForSingleObject(thread, INFINITE);
-
-        if (threadargs.output) {
-            free(threadargs.output);
-            threadargs.output = NULL;
-        }
+        retval = WM_ERROR_TIMEOUT;
         break;
+
     default:
         merror("%s: ERROR: WaitForSingleObject()", ARGV0);
         TerminateProcess(pinfo.hProcess, 1);
-        WaitForSingleObject(thread, INFINITE);
-
-        if (!threadargs.output)
-            threadargs.output = strdup("");
+        retval = -1;
     }
 
-    // Get status and cleanup
+    // Output
 
-    GetExitCodeProcess(pinfo.hProcess, &exitcode);
-    *status = exitcode;
+    WaitForSingleObject(thread, INFINITE);
 
-    CloseHandle(threadargs.pipe);
+    if (retval >= 0)
+        *output = tinfo.output ? tinfo.output : strdup("");
+    else
+        free(tinfo.output);
+
+    // Cleanup
+
     CloseHandle(thread);
     CloseHandle(pinfo.hProcess);
     CloseHandle(pinfo.hThread);
 
-    free(command);
-
-    return threadargs.output;
+    return retval;
 }
 
 // Reading thread's start point
 
 DWORD WINAPI Reader(LPVOID args) {
-    ThreadArgs *thread = (ThreadArgs *)args;
+    ThreadInfo *tinfo = (ThreadInfo *)args;
     CHAR buffer[WM_BUFFER_MAX + 1];
     DWORD length = 0;
     DWORD nbytes;
 
-    while (ReadFile(thread->pipe, buffer, 1024, &nbytes, NULL)) {
+    while (ReadFile(tinfo->pipe, buffer, 1024, &nbytes, NULL)) {
         if (nbytes > 0) {
             int nextsize = length + nbytes;
 
-            if (nbytes > WM_STRING_MAX) {
+            if (nextsize <= WM_STRING_MAX) {
+                tinfo->output = (char*)realloc(tinfo->output, nextsize + 1);
+                memcpy(tinfo->output + length, buffer, nbytes);
+                length = nextsize;
+            } else {
                 merror("%s: WARN: String limit reached.", ARGV0);
-                thread->output[length] = '\0';
-                return 1;
+                break;
             }
-
-            thread->output = (char*)realloc(thread->output, nextsize + 1);
-            memcpy(thread->output + length, buffer, nbytes);
-            length = nextsize;
-        } else
+        }
+        else
             break;
     }
 
-    thread->output[length] = '\0';
+    if (tinfo->output)
+        tinfo->output[length] = '\0';
+
+    CloseHandle(tinfo->pipe);
     return 0;
-}
-
-// Join string array to single whitespace-separated string
-
-LPSTR JoinArgs(char* const *argv) {
-    int i;
-    char *output = NULL;
-
-    for (i = 0; argv[i]; i++)
-        wm_strcat(&output, argv[i], ' ');
-
-    return output;
 }
 
 #else
 
 // Unix version ----------------------------------------------------------------
 
-static void start_timer(int secs);      // Start timer and reset timeout flag
-static void stop_timer();               // Stop timer
-static void timer_handler(int signum);  // Handler for SIGALRM
-
-static timer_t timerid;                 // Timer identifier
+void* reader(void *args);   // Reading thread's start point
 
 // Execute command with timeout of secs
 
-char* wm_exec(char* const *argv, int *status, int secs)
+int wm_exec(char *command, char **output, int *status, int secs)
 {
-    static char * const envp[] = { NULL };
-    char buffer[WM_BUFFER_MAX + 1];
-    char *output = NULL;
+    static char* const envp[] = { NULL };
+    char **argv = wm_strsplit(command);
     pid_t pid;
-    int length = 0;
-    int nbytes;
     int pipe_fd[2];
+    ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL };
+    pthread_t thread;
+    struct timespec timeout = { 0 };
+    int retval = 0;
 
     // Create pipe for child's stdout
 
     if (pipe(pipe_fd) < 0)
-        return NULL;
+        return -1;
 
     // Fork
 
-    pid = fork();
-
-    switch (pid) {
+    switch (pid = fork()) {
     case -1:
 
         // Error
-        return NULL;
+
+        merror("%s: ERROR: fork()", ARGV0);
+        return -1;
 
     case 0:
 
@@ -205,7 +186,7 @@ char* wm_exec(char* const *argv, int *status, int secs)
         dup2(pipe_fd[1], STDERR_FILENO);
 
         if (execve(argv[0], argv, envp) < 0)
-            return NULL;
+            return -1;
 
         // Child won't return
 
@@ -214,77 +195,95 @@ char* wm_exec(char* const *argv, int *status, int secs)
         // Parent
 
         close(pipe_fd[1]);
-        start_timer(secs);
+        tinfo.pipe = pipe_fd[0];
 
-        while (!flag_timeout && (nbytes = read(pipe_fd[0], buffer, WM_BUFFER_MAX)) > 0) {
-            int nextsize = length + nbytes;
+        pthread_mutex_lock(&tinfo.mutex);
 
-            if (nextsize > WM_STRING_MAX) {
-                merror("%s: WARN: String limit reached.", ARGV0);
+        if (pthread_create(&thread, NULL, reader, &tinfo)) {
+            merror("%s: ERROR: Couldn't create reading thread.", ARGV0);
+            return -1;
+        }
+
+        clock_gettime(CLOCK_REALTIME, &timeout);
+        timeout.tv_sec += secs;
+
+        switch (pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout)) {
+        case 0:
+            switch (waitpid(pid, status, WNOHANG)) {
+            case -1:
+                merror("%s: ERROR: waitpid()", ARGV0);
+                retval = -1;
                 break;
+
+            case 0:
+                merror("%s: WARN: Subprocess was killed.", ARGV0);
+                kill(pid, SIGKILL);
+                break;
+
+            default:
+                if (status)
+                    *status = WEXITSTATUS(*status);
             }
 
-            os_realloc(output, nextsize + 1, output);
-            memcpy(output + length, buffer, nbytes);
+            break;
+
+        case ETIMEDOUT:
+            kill(pid, SIGKILL);
+            retval = WM_ERROR_TIMEOUT;
+            break;
+
+        default:
+            merror("%s: ERROR: pthread_cond_timedwait()", ARGV0);
+            kill(pid, SIGKILL);
+            retval = -1;
+        }
+
+        pthread_mutex_unlock(&tinfo.mutex);
+        pthread_join(thread, NULL);
+
+        if (retval >= 0)
+            *output = tinfo.output ? tinfo.output : strdup("");
+        else
+            free(tinfo.output);
+
+        pthread_mutex_destroy(&tinfo.mutex);
+        pthread_cond_destroy(&tinfo.finished);
+        free(argv);
+
+        return retval;
+    }
+}
+
+// Reading thread's start point
+
+void* reader(void *args) {
+    ThreadInfo *tinfo = (ThreadInfo *)args;
+    char buffer[WM_BUFFER_MAX + 1];
+    int length = 0;
+    int nbytes;
+
+    while ((nbytes = read(tinfo->pipe, buffer, WM_BUFFER_MAX)) > 0) {
+        int nextsize = length + nbytes;
+
+        if (nextsize <= WM_STRING_MAX) {
+            tinfo->output = (char*)realloc(tinfo->output, nextsize + 1);
+            memcpy(tinfo->output + length, buffer, nbytes);
             length = nextsize;
-        }
-
-        stop_timer();
-        kill(pid, SIGKILL);
-
-        if (flag_timeout) {
-            if (output) {
-                free(output);
-                output = NULL;
-            }
         } else {
-            if (output)
-                output[length] = '\0';
-            else
-                output = strdup("");
+            merror("%s: WARN: String limit reached.", ARGV0);
+            break;
         }
-
-        waitpid(pid, status, 0);
-        *status = WEXITSTATUS(*status);
-        close(pipe_fd[0]);
-
-        return output;
-    }
-}
-
-// Start timer and reset timeout flag
-
-void start_timer(int secs) {
-    struct itimerspec value = { .it_interval = { 0, 0 }, .it_value = { secs, 0 } };
-
-    // If this is the first time, create timer
-
-    if (flag_timeout == -1) {
-        const struct sigaction action = { .sa_handler = timer_handler };
-        struct sigevent event = { .sigev_notify = SIGEV_SIGNAL, .sigev_signo = SIGALRM };
-
-        sigaction(SIGALRM, &action, NULL);
-        timer_create(CLOCK_MONOTONIC, &event, &timerid);
     }
 
-    flag_timeout = 0;
-    timer_settime(timerid, 0, &value, NULL);
-}
+    if (tinfo->output)
+        tinfo->output[length] = '\0';
 
-// Stop timer
+    pthread_mutex_lock(&tinfo->mutex);
+    pthread_cond_signal(&tinfo->finished);
+    pthread_mutex_unlock(&tinfo->mutex);
 
-void stop_timer() {
-    struct itimerspec value = { .it_interval = { 0, 0 }, .it_value = { 0, 0 } };
-    timer_settime(timerid, 0, &value, NULL);
-}
-
-// Handler for SIGALRM
-
-void timer_handler(int signum)
-{
-    if (signum == SIGALRM) {
-        flag_timeout = 1;
-    }
+    close(tinfo->pipe);
+    return NULL;
 }
 
 #endif // WIN32
