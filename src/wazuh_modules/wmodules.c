@@ -9,7 +9,6 @@
 int wm_flag_reload = 0;     // Flag to reload configuration.
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 
-
 // Check general configuration
 
 void wm_check() {
@@ -24,19 +23,18 @@ void wm_check() {
 
     // Get the last module of the same type
 
-    for (i = wmodules->next; i; i = i->next){
+    for (i = wmodules->next; i; i = i->next) {
         prev = wmodules;
-        for (j = wmodules; j != i; j = j->next){
 
-            if (i->context->name == j->context->name){
-                if(j == wmodules)
+        for (j = wmodules; j != i; j = j->next) {
+            if (i->context->name == j->context->name) {
+                if (j == wmodules)
                     wmodules = j->next;
                 else
                     prev->next = j->next;
 
                 j->context->destroy(j->data);
                 free(j);
-
                 j = prev;
             }
             else
@@ -100,6 +98,25 @@ char* wm_strtrim(char *string) {
     }
 
     return string;
+}
+
+// Split string containing white-spaced tokens into NULL-ended string array
+
+char** wm_strsplit(char *string) {
+    char **output;
+    int n = 2;
+    char *c;
+
+    for (c = string; (c = strchr(c, ' ')); c++)
+        n++;
+
+    output = (char**)calloc(n, sizeof(char*));
+    n = 0;
+
+    for (c = strtok(string, " "); c; c = strtok(NULL, " "))
+        output[n++] = c;
+
+    return output;
 }
 
 // Load or save the running state

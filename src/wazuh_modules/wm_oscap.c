@@ -55,7 +55,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
             time_sleep = time(NULL) - time_start;
         }
         
-        if (oscap->interval >= time_sleep) {
+        if ((time_t)oscap->interval >= time_sleep) {
             time_sleep = oscap->interval - time_sleep;
             oscap->state.next_time = oscap->interval + time_start;
         } else {
@@ -107,8 +107,7 @@ void wm_oscap_cleanup() {
 // Run an OpenSCAP policy
 
 void wm_oscap_run(wm_oscap_eval *eval) {
-    const char* cmd[10] = { WM_OSCAP_SCRIPT_PATH, "--policy", eval->policy };
-    int argi = 3;
+    char *command = NULL;
     int status;
     char *output;
     char *line;
@@ -118,13 +117,17 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     wm_oscap_profile *profile;
 
     // Create arguments
+    
+    wm_strcat(&command, WM_OSCAP_SCRIPT_PATH, '\0');
+    wm_strcat(&command, "--policy", ' ');
+    wm_strcat(&command, eval->policy, ' ');
 
     for (profile = eval->profiles; profile; profile = profile->next)
         wm_strcat(&arg_profiles, profile->name, ',');
 
     if (arg_profiles) {
-        cmd[argi++] = "--profiles";
-        cmd[argi++] = arg_profiles;
+        wm_strcat(&command, "--profiles", ' ');
+        wm_strcat(&command, arg_profiles, ' ');
     }
 
     if (eval->flags.skip_result_pass)
@@ -147,8 +150,8 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         wm_strcat(&arg_skip_result, "notselected", ',');
 
     if (arg_skip_result) {
-        cmd[argi++] = "--skip-result";
-        cmd[argi++] = arg_skip_result;
+        wm_strcat(&command, "--skip-result", ' ');
+        wm_strcat(&command, arg_skip_result, ' ');
     }
 
     if (eval->flags.skip_severity_low)
@@ -159,32 +162,35 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         wm_strcat(&arg_skip_severity, "high", ',');
 
     if (arg_skip_severity) {
-        cmd[argi++] = "--skip-severity";
-        cmd[argi++] = arg_skip_severity;
+        wm_strcat(&command, "--skip-severity", ' ');
+        wm_strcat(&command, arg_skip_severity, ' ');
     }
 
     // Execute
 
-    debug1("Launching command: %s", cmd[0]);
-    output = wm_exec((char * const *)cmd, &status, eval->timeout);
-    debug1("Command finished.");
-
-    if (!output) {
-        if (wm_exec_timeout()) {
-            wm_strcat(&output, "oscap: ERROR: Timeout expired.", '\0');
-            merror("%s: ERROR: Timeout expired executing '%s'.", WM_OSCAP_LOGTAG, eval->policy);
-        } else
-            merror("%s: ERROR: Internal calling.", WM_OSCAP_LOGTAG);
-
-    } else if (status > 0) {
-        merror("%s: WARN: Ignoring policy '%s' due to error.", WM_OSCAP_LOGTAG, eval->policy);
-        eval->flags.error = 1;
+    debug1("Launching command: %s", command);
+    
+    switch (wm_exec(command, &output, &status, eval->timeout)) {
+    case 0:
+        if (status > 0) {
+            merror("%s: WARN: Ignoring policy '%s' due to error.", WM_OSCAP_LOGTAG, eval->policy);
+            eval->flags.error = 1;
+        }
+    case WM_ERROR_TIMEOUT:
+        free(output);
+        wm_strcat(&output, "oscap: ERROR: Timeout expired.", '\0');
+        merror("%s: ERROR: Timeout expired executing '%s'.", WM_OSCAP_LOGTAG, eval->policy);
+        break;
+        
+    default:
+        merror("%s: ERROR: Internal calling.", WM_OSCAP_LOGTAG);
     }
 
     for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n"))
         SendMSG(queue_fd, line, WM_OSCAP_LOCATION, WODLE_MQ);
 
     free(output);
+    free(command);
     free(arg_profiles);
     free(arg_skip_result);
     free(arg_skip_severity);
