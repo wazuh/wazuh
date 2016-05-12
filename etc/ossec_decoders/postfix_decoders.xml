@@ -45,7 +45,7 @@
   <use_own_name>true</use_own_name>
   <parent>postfix</parent>
   <prematch>^NOQUEUE: reject: \w\w\w\w from </prematch>
-  <regex offset="after_prematch">[(\d+.\d+.\d+.\d+)]: (\d+) </regex>
+  <regex offset="after_prematch">[(\S+)]: (\d+) |[(\S+)]:(\d+): </regex>
   <order>srcip,id</order>
 </decoder>
 
