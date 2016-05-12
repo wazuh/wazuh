@@ -49,11 +49,10 @@ endif
 OSSEC_LDFLAGS=${LDFLAGS} -lm
 
 ifneq (${TARGET},winagent)
-		OSSEC_LDFLAGS+=-lrt
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread -lrt
 #		OSSEC_LDFLAGS+=-lmagic
 else
 ifeq (${uname_S},AIX)

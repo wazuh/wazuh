@@ -6,6 +6,11 @@
 
 #include "wmodules.h"
 
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
 // Data structure to share with the reader thread
 
 typedef struct ThreadInfo {
@@ -149,6 +154,22 @@ DWORD WINAPI Reader(LPVOID args) {
 
 void* reader(void *args);   // Reading thread's start point
 
+// Work-around for OS X
+
+static inline void get_time(struct timespec *ts) {
+#ifdef __MACH__
+    clock_serv_t cclock;
+    mach_timespec_t mts;
+    host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+    clock_get_time(cclock, &mts);
+    mach_port_deallocate(mach_task_self(), cclock);
+    ts->tv_sec = mts.tv_sec;
+    ts->tv_nsec = mts.tv_nsec;
+#else
+    clock_gettime(CLOCK_REALTIME, ts);
+#endif
+}
+
 // Execute command with timeout of secs
 
 int wm_exec(char *command, char **output, int *status, int secs)
@@ -159,7 +180,7 @@ int wm_exec(char *command, char **output, int *status, int secs)
     int pipe_fd[2];
     ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL };
     pthread_t thread;
-    struct timespec timeout = { 0 };
+    struct timespec timeout = { 0, 0 };
     int retval = 0;
 
     // Create pipe for child's stdout
@@ -204,7 +225,7 @@ int wm_exec(char *command, char **output, int *status, int secs)
             return -1;
         }
 
-        clock_gettime(CLOCK_REALTIME, &timeout);
+        get_time(&timeout);
         timeout.tv_sec += secs;
 
         switch (pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout)) {
