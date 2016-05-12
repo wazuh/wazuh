@@ -214,7 +214,8 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         break;
 
     default:
-        merror("%s: ERROR: Internal calling.", WM_OSCAP_LOGTAG);
+        merror("%s: ERROR: Internal calling. Exiting...", WM_OSCAP_LOGTAG);
+        pthread_exit(NULL);
     }
 
     for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n"))
