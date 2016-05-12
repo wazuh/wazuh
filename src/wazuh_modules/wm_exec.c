@@ -172,7 +172,7 @@ static inline void get_time(struct timespec *ts) {
 
 // Execute command with timeout of secs
 
-int wm_exec(char *command, char **output, int *status, int secs)
+int wm_exec(char *command, char **output, int *exitcode, int secs)
 {
     static char* const envp[] = { NULL };
     char **argv = wm_strsplit(command);
@@ -182,6 +182,7 @@ int wm_exec(char *command, char **output, int *status, int secs)
     pthread_t thread;
     struct timespec timeout = { 0, 0 };
     int retval = 0;
+    int status;
 
     // Create pipe for child's stdout
 
@@ -207,7 +208,7 @@ int wm_exec(char *command, char **output, int *status, int secs)
         dup2(pipe_fd[1], STDERR_FILENO);
 
         if (execve(argv[0], argv, envp) < 0)
-            return -1;
+            exit(1);
 
         // Child won't return
 
@@ -230,22 +231,6 @@ int wm_exec(char *command, char **output, int *status, int secs)
 
         switch (pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout)) {
         case 0:
-            switch (waitpid(pid, status, WNOHANG)) {
-            case -1:
-                merror("%s: ERROR: waitpid()", ARGV0);
-                retval = -1;
-                break;
-
-            case 0:
-                merror("%s: WARN: Subprocess was killed.", ARGV0);
-                kill(pid, SIGKILL);
-                break;
-
-            default:
-                if (status)
-                    *status = WEXITSTATUS(*status);
-            }
-
             break;
 
         case ETIMEDOUT:
@@ -257,6 +242,22 @@ int wm_exec(char *command, char **output, int *status, int secs)
             merror("%s: ERROR: pthread_cond_timedwait()", ARGV0);
             kill(pid, SIGKILL);
             retval = -1;
+        }
+
+        switch (waitpid(pid, &status, WNOHANG)) {
+        case -1:
+            merror("%s: ERROR: waitpid()", ARGV0);
+            retval = -1;
+            break;
+
+        case 0:
+            merror("%s: WARN: Subprocess was killed.", ARGV0);
+            kill(pid, SIGKILL);
+            break;
+
+        default:
+            if (exitcode)
+                *exitcode = WEXITSTATUS(status);
         }
 
         pthread_mutex_unlock(&tinfo.mutex);
@@ -295,6 +296,7 @@ void* reader(void *args) {
             break;
         }
     }
+
 
     if (tinfo->output)
         tinfo->output[length] = '\0';
