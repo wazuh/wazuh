@@ -5,10 +5,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Query of max number of agents on agent_control.
-- Timeout for maild in order to avoid it to hang.
+- agent_control: maximum number of agents can now be extracted using option "-L".
+- maild: timeout limitation, preventing it from hang in some cases.
 - Updated decoders, ruleset and rootchecks from Wazuh Ruleset v1.0.8.
-- Update changes from OSSEC Project.
+- Updated changes from ossec-hids repository.
 
 ### Changed
 
@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 - Changed some log messages.
 - Reordered directories for agent backups.
 - Don't exit when client.keys is empty by default.
-- Check and reload keys file on every reception.
+- Improved client.keys reloading capabilities.
 
 ### Fixed
 
