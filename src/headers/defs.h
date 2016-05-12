@@ -40,6 +40,8 @@
 #define BACKLOG         32              /* Socket input queue length    */
 #define MAX_EVENTS      1024            /* Max number of epoll events   */
 #define EPOLL_MILLIS    -1              /* Epoll wait time              */
+#define MAX_TAG_COUNTER 256             /* Max retrying counter         */
+#define SOCK_RECV_TIME0 300             /* Socket receiving timeout (s) */
 
 /* Some global names */
 #define __ossec_name    "OSSEC HIDS"

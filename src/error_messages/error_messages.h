@@ -51,6 +51,7 @@
 #define CHOWN_ERROR   "%s(1135): ERROR: Could not chown object '%s' due to [(%d)-(%s)]."
 #define EPOLL_ERROR   "%s(1136): ERROR: Could not handle epoll descriptor."
 #define LOST_ERROR   "%s(1137): ERROR: Lost connection with manager."
+#define KQUEUE_ERROR   "%s(1138): ERROR: Could not handle kqueue descriptor."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "%s(1201): ERROR: No remote connection configured."
@@ -294,4 +295,3 @@
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
 
 #endif /* _ERROR_MESSAGES__H */
-
