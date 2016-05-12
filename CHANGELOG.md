@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- agent_control: maximum number of agents can now be extracted using option "-L".
+- agent_control: maximum number of agents can now be extracted using option "-m".
 - maild: timeout limitation, preventing it from hang in some cases.
 - Updated decoders, ruleset and rootchecks from Wazuh Ruleset v1.0.8.
 - Updated changes from ossec-hids repository.
