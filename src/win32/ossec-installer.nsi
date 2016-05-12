@@ -201,7 +201,7 @@ Section "OSSEC Agent (required)" MainSec
     ; write version and install information
     VersionInstall:
         FileOpen $0 "$INSTDIR\VERSION.txt" w
-        FileWrite $0 "${NAME} v${VERSION} - WAZUH v${WAZUH_VERSION} - Installed on $CURRENTTIME"
+        FileWrite $0 "${NAME} v${VERSION} / WAZUH v${WAZUH_VERSION} - Installed on $CURRENTTIME"
         FileClose $0
         IfErrors VersionError VersionComplete
     VersionError:
