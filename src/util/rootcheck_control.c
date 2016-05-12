@@ -330,7 +330,7 @@ int main(int argc, char **argv)
             snprintf(final_ip, 128, "%s%s", keys.keyentries[i]->ip->ip,
                      final_mask);
 
-            if (!csv_output)
+            if (!(csv_output || json_output))
                 printf("\nPolicy and auditing events for agent "
                        "'%s (%s) - %s':\n",
                        keys.keyentries[i]->name, keys.keyentries[i]->id,

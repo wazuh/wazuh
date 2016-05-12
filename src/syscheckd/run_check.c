@@ -126,6 +126,8 @@ void start_daemon()
         syscheck.time = 604800;
         rootcheck.time = 604800;
     }
+    /* Printing syscheck propierties */
+    merror("%s: INFO: Syscheck scan frequency: %d seconds", ARGV0, syscheck.time);
 
     /* Will create the db to store syscheck data */
     if (syscheck.scan_on_start) {
@@ -134,7 +136,6 @@ void start_daemon()
     } else {
         prev_time_rk = time(0);
     }
-
     /* Before entering in daemon mode itself */
     prev_time_sk = time(0);
     sleep(syscheck.tsleep * 10);

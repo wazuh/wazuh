@@ -116,7 +116,7 @@ int OS_RemoveAgent(const char *u_id) {
         return 0;
 
     full_name = getFullnameById(u_id);
-    fp = fopen(AUTH_FILE, "r+");
+    fp = fopen(AUTH_FILE, "r");
 
     if (!fp)
         return 0;
@@ -486,7 +486,7 @@ double OS_AgentAntiquity(const char *id)
     if (stat(file_name, &file_stat) < 0)
         return -1;
 
-    return difftime(time(NULL), file_stat.st_mtim.tv_sec);
+    return difftime(time(NULL), file_stat.st_mtime);
 }
 
 /* Print available agents */
@@ -613,10 +613,9 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
 /* Backup agent information before force deleting */
 void OS_BackupAgentInfo(const char *id)
 {
-    char path_backup[OS_FLSIZE];
+    char *path_backup;
     char path_src[OS_FLSIZE];
     char path_dst[OS_FLSIZE];
-    char timestamp[40];
     char *name = getFullnameById(id);
     char *ip;
     time_t timer = time(NULL);
@@ -627,49 +626,119 @@ void OS_BackupAgentInfo(const char *id)
         return;
     }
 
-    snprintf(path_src, OS_FLSIZE, "%s/%s", AGENTINFO_DIR, name);
-
     ip = strchr(name, '-');
     *(ip++) = 0;
 
-    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&timer));
-    snprintf(path_backup, OS_FLSIZE, "%s/%s-%s %s", AGNBACKUP_DIR, name, ip, timestamp);
+    path_backup = OS_CreateBackupDir(id, name, ip, timer);
 
-    if (mkdir(path_backup, 0750) >= 0) {
-        /* agent-info */
-        snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
-        status += link(path_src, path_dst);
-
-        /* syscheck */
-        snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck", SYSCHECK_DIR, name, ip);
-        snprintf(path_dst, OS_FLSIZE, "%s/syscheck", path_backup);
-        status += link(path_src, path_dst);
-
-        snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck.cpt", SYSCHECK_DIR, name, ip);
-        snprintf(path_dst, OS_FLSIZE, "%s/syscheck.cpt", path_backup);
-        status += link(path_src, path_dst);
-
-        snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck-registry", SYSCHECK_DIR, name, ip);
-        snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry", path_backup);
-        status += link(path_src, path_dst);
-
-        snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck-registry.cpt", SYSCHECK_DIR, name, ip);
-        snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry.cpt", path_backup);
-        status += link(path_src, path_dst);
-
-        /* rootcheck */
-        snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
-        snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
-        status += link(path_src, path_dst);
-
-        if (status < 0) {
-            merror("%s: ERROR: Couln't create some backup files.", ARGV0);
-        }
-    } else {
+    if (!path_backup) {
         merror("%s: ERROR: Couldn't create backup directory.", ARGV0);
+        return;
+    }
+
+    /* agent-info */
+    snprintf(path_src, OS_FLSIZE, "%s/%s", AGENTINFO_DIR, name);
+    snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
+    status += link(path_src, path_dst);
+
+    /* syscheck */
+    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck", SYSCHECK_DIR, name, ip);
+    snprintf(path_dst, OS_FLSIZE, "%s/syscheck", path_backup);
+    status += link(path_src, path_dst);
+
+    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck.cpt", SYSCHECK_DIR, name, ip);
+    snprintf(path_dst, OS_FLSIZE, "%s/syscheck.cpt", path_backup);
+    status += link(path_src, path_dst);
+
+    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck-registry", SYSCHECK_DIR, name, ip);
+    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry", path_backup);
+    status += link(path_src, path_dst);
+
+    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck-registry.cpt", SYSCHECK_DIR, name, ip);
+    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry.cpt", path_backup);
+    status += link(path_src, path_dst);
+
+    /* rootcheck */
+    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
+    snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
+    status += link(path_src, path_dst);
+
+    if (status < 0) {
+        debug1("%s: Couldn't create some backup files.", ARGV0);
+
+        if (status == -6) {
+            debug1("%s: Backup directory empty. Removing %s", ARGV0, path_backup);
+            rmdir(path_backup);
+        }
     }
 
     free(name);
+    free(path_backup);
+}
+
+char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now) {
+    char path[OS_FLSIZE + 1];
+    char timestamp[40];
+
+    /* Directory for year ^*/
+
+    strftime(timestamp, 40, "%Y", localtime(&now));
+    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
+
+    if (IsDir(path) != 0) {
+        if (mkdir(path, 0750) < 0) {
+            return NULL;
+        }
+    }
+
+    /* Directory for month */
+
+    strftime(timestamp, 40, "%Y/%b", localtime(&now));
+    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
+
+    if (IsDir(path) != 0) {
+        if (mkdir(path, 0750) < 0) {
+            return NULL;
+        }
+    }
+
+    /* Directory for day */
+
+    strftime(timestamp, 40, "%Y/%b/%d", localtime(&now));
+    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
+
+    if (IsDir(path) != 0) {
+        if (mkdir(path, 0750) < 0) {
+            return NULL;
+        }
+    }
+
+    /* Directory for agent */
+    
+    int acount = 1;
+    char tag[10] = { 0 };
+    
+    while (1) {
+        snprintf(path, OS_FLSIZE, "%s/%s/%s %s-%s%s", AGNBACKUP_DIR, timestamp, id, name, ip, tag);
+
+        if (IsDir(path) != 0) {
+            if (mkdir(path, 0750) < 0) {
+                return NULL;
+            } else {
+                break;
+            }
+        } else {
+            if (++acount > MAX_TAG_COUNTER) {
+                return NULL;
+            } else {
+                snprintf(tag, 10, " %03d", acount);
+            }
+        }
+    }
+
+    char *retval;
+    os_strdup(path, retval);
+    return retval;
 }
 
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now)
@@ -680,7 +749,7 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
     fp = fopen(TIMESTAMP_FILE, "a");
 
     if (!fp) {
-        merror("%s: ERROR: Couldn't open timetamp file.", ARGV0);
+        merror("%s: ERROR: Couldn't open timestamp file.", ARGV0);
         return;
     }
 
@@ -699,7 +768,7 @@ void OS_RemoveAgentTimestamp(const char *id)
     struct stat fp_stat;
 
     if (stat(AUTH_FILE, &fp_stat) < 0) {
-        return 0;
+        return;
     }
 
     fp = fopen(TIMESTAMP_FILE, "r");
@@ -708,15 +777,11 @@ void OS_RemoveAgentTimestamp(const char *id)
         return;
     }
 
-    buffer = (char*)malloc(fp_stat.st_size + 1);
-
-    if (!buffer) {
-        fclose(fp);
-    }
+    os_calloc(fp_stat.st_size + 1, sizeof(char), buffer);
 
     while (fgets(line, OS_BUFFER_SIZE, fp)) {
         if (strncmp(id, line, idlen)) {
-            strcpy(&buffer[pos], line);
+            strncpy(&buffer[pos], line, fp_stat.st_size - pos);
             pos += strlen(line);
         }
     }

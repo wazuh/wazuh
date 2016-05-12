@@ -8,4 +8,5 @@
     <system_audit>/var/ossec/etc/shared/system_audit_rcl.txt</system_audit>
     <system_audit>/var/ossec//etc/shared/cis_rhel5_linux_rcl.txt</system_audit>
     <system_audit>/var/ossec//etc/shared/cis_rhel6_linux_rcl.txt</system_audit>
+    <system_audit>/var/ossec//etc/shared/cis_rhel7_linux_rcl.txt</system_audit>
   </rootcheck>
