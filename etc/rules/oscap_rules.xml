@@ -1,0 +1,276 @@
+<!--
+  -  OpenSCAP rules
+  -  v1.0 2016/05/09
+  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+-->
+
+<group name="oscap,">
+
+    <rule id="81400" level="0">
+        <decoded_as>oscap</decoded_as>
+        <description>OpenSCAP messages grouped.</description>
+    </rule>
+
+    <!-- Syslog messages -->
+    
+    <!--
+    Apr 12 10:50:32 centos oscap: Evaluation started. Content: /usr/share/xml/scap/ssg/content/ssg-centos7-ds.xml, Profile: xccdf_org.ssgproject.content_profile_standard.
+    -->
+    <rule id="81401" level="0">
+        <if_sid>81400</if_sid>
+        <match>Evaluation started</match>
+        <description>OpenSCAP: Evaluation started.</description>
+    </rule>
+
+    <!--
+    Apr 12 10:50:42 centos oscap: Evaluation finished. Return code: 0, Base score 100.000000.
+    -->
+    <rule id="81402" level="0">
+        <if_sid>81400</if_sid>
+        <match>Evaluation finished</match>
+        <description>OpenSCAP: Evaluation finished.</description>
+    </rule>
+
+    <!--
+    Apr 12 10:50:42 centos oscap: Evaluation finished. Return code: 2, Base score 100.000000.
+    -->
+    <rule id="81403" level="2">
+        <if_sid>81402</if_sid>
+        <status>2</status>
+        <description>OpenSCAP: Evaluation finished with some failures.</description>
+    </rule>
+
+    <!-- -- -->
+
+
+
+    <!-- OSCAP OSSEC Module -->
+    
+    
+    <!-- ERRORS -->
+    
+    <rule id="81501" level="1">
+        <if_sid>81400</if_sid>
+        <match>oscap: ERROR: </match>
+        <description>OpenSCAP: Error messages grouped.</description>
+    </rule>
+    
+    <!--
+    oscap: ERROR: OSCAP not installed. Details: [Errno 2] No such file or directory
+    -->
+    <rule id="81502" level="10">
+        <if_sid>81501</if_sid>
+        <match>OSCAP not installed</match>
+        <description>OpenSCAP ERROR: OSCAP not installed.</description>
+    </rule>
+    
+    <!--
+    oscap: ERROR: Impossible to execute OpenSCAP...
+    -->
+    <rule id="81503" level="10">
+        <if_sid>81501</if_sid>
+        <match>Impossible to execute OpenSCAP</match>
+        <description>OpenSCAP ERROR: Impossible to execute OpenSCAP.</description>
+    </rule>
+    
+    <!--
+    oscap: ERROR: File 'checklists/ssg-centos7dfa-axccdf.xml' does not exist.
+    -->
+    <rule id="81504" level="5">
+        <if_sid>81501</if_sid>
+        <match>: File '</match>
+        <description>OpenSCAP ERROR: Wrong configuration - Inexistent file.</description>
+    </rule>
+    
+    <!--
+    oscap: ERROR: Parsing file 'a.xml'. Details: 'a.xml:1: parser error : Start tag expected, '<' not found'
+    -->
+    <rule id="81505" level="5">
+        <if_sid>81501</if_sid>
+        <match>Parsing file </match>
+        <description>OpenSCAP ERROR: Wrong configuration - Invalid file.</description>
+    </rule>
+    
+    <!--
+    oscap: ERROR: Profile 'kk' doest not exist at 'checklists/ssg-centos7-xccdf.xml'.
+    -->
+    <rule id="81506" level="5">
+        <if_sid>81501</if_sid>
+        <match>Profile</match>
+        <description>OpenSCAP ERROR: Wrong configuration - Inexistent profile.</description>
+    </rule>
+    
+    <!--
+    oscap: ERROR: Executing profile 'standard' of file 'checklists/ssg-centos7-xccdf.xml': Return Code: '101' Error: 'No such module: eva'.
+    -->
+    <rule id="81507" level="10">
+        <if_sid>81501</if_sid>
+        <match>Executing profile</match>
+        <description>OpenSCAP ERROR: Problem executing oscap.</description>
+    </rule>
+    
+    <!--
+    oscap: ERROR: could not extract 'severity' field from ARF XML results file.
+    -->
+    <rule id="81508" level="0">
+        <if_sid>81501</if_sid>
+        <match>could not extract 'severity'</match>
+        <description>OpenSCAP ERROR: ARF XML error.</description>
+    </rule>
+    
+    <!--
+    oscap: ERROR: Unknown line: '???'.
+    -->
+    <rule id="81509" level="0">
+        <if_sid>81501</if_sid>
+        <match>Unknown line</match>
+        <description>OpenSCAP ERROR: Report has an unknown line.</description>
+    </rule>
+
+    <!-- -- -->
+
+
+    <!-- RULES -->
+    
+    <!--
+    oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "pass", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    -->
+    <rule id="81521" level="1">
+        <if_sid>81400</if_sid>
+        <status>pass</status>
+        <description>OpenSCAP rule passed.</description>
+    </rule>
+
+    <!--
+    oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "notchecked", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    -->
+    <rule id="81522" level="1">
+        <if_sid>81400</if_sid>
+        <status>notchecked</status>
+        <description>OpenSCAP rule not checked.</description>
+    </rule>
+
+    <!--
+    oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "notapplicable", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    -->
+    <rule id="81523" level="1">
+        <if_sid>81400</if_sid>
+        <status>notapplicable</status>
+        <description>OpenSCAP rule not applicable.</description>
+    </rule>
+    
+    <!--
+    TODO
+    oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "fixed", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    -->
+    <rule id="81524" level="2">
+        <if_sid>81400</if_sid>
+        <status>fixed</status>
+        <description>OpenSCAP rule fixed.</description>
+    </rule>
+    
+    <!--
+    TODO
+    oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "informational", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    -->
+    <rule id="81525" level="1">
+        <if_sid>81400</if_sid>
+        <status>informational</status>
+        <description>OpenSCAP rule informational.</description>
+    </rule>
+    
+    <!--
+    TODO
+    oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "error", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    -->
+    <rule id="81526" level="1">
+        <if_sid>81400</if_sid>
+        <status>error</status>
+        <description>OpenSCAP rule error.</description>
+    </rule>
+    
+    <!--
+    TODO
+    oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "unknown", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    -->
+    <rule id="81527" level="1">
+        <if_sid>81400</if_sid>
+        <status>unknown</status>
+        <description>OpenSCAP rule unknown.</description>
+    </rule>
+    
+    <!--
+    TODO
+    oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "notselected", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    -->
+    <rule id="81528" level="1">
+        <if_sid>81400</if_sid>
+        <status>notselected</status>
+        <description>OpenSCAP rule not selected.</description>
+    </rule>
+    
+    <!--
+    oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "fail", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "low".
+    oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "fail", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "fail", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "high".
+    -->
+    <rule id="81529" level="5">
+        <if_sid>81400</if_sid>
+        <status>fail</status>
+        <description>OpenSCAP rule failed (severity low).</description>
+    </rule>
+    
+    <rule id="81530" level="7">
+        <if_sid>81529</if_sid>
+        <action>medium</action>
+        <description>OpenSCAP rule failed (severity medium).</description>
+    </rule>
+    
+    <rule id="81531" level="9">
+        <if_sid>81529</if_sid>
+        <action>high</action>
+        <description>OpenSCAP rule failed (severity high).</description>
+    </rule>
+    
+    <!-- -- -->
+    
+    
+    <!-- Report Overview -->
+    
+    <!--
+    oscap: msg: "report-overview", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", score: "56.835060" / "100.000000", severity of failed rules: "high": "1", "medium": "9", "low": "34", "n/a": "0".
+    -->
+    <rule id="81540" level="1">
+        <if_sid>81400</if_sid>
+        <match>msg: "report-overview"</match>
+        <description>OpenSCAP Report overview.</description>
+    </rule>
+    
+    <rule id="81541" level="2">
+        <if_sid>81540</if_sid>
+        <regex>score: "8\d</regex>
+        <description>OpenSCAP Report overview: Score less than 90</description>
+    </rule>
+    
+    <rule id="81542" level="4">
+        <if_sid>81540</if_sid>
+        <regex>score: "7\d|score: "6\d|score: "5\d</regex>
+        <description>OpenSCAP Report overview: Score less than 80</description>
+    </rule>
+    
+    <rule id="81543" level="7">
+        <if_sid>81400</if_sid>
+        <regex>score: "4\d</regex>
+        <description>OpenSCAP Report overview: Score less than 50</description>
+    </rule>
+    
+    <rule id="81544" level="8">
+        <if_sid>81400</if_sid>
+        <regex>score: "3\d|score: "2\d|score: "1\d|score: "00|score: "0</regex>
+        <description>OpenSCAP Report overview: Score less than 30</description>
+    </rule>
+    
+    <!-- -- -->
+
+</group>

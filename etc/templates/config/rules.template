@@ -65,5 +65,6 @@
     <include>sysmon_rules.xml</include>
     <include>auditd_rules.xml</include>
     <include>opensmtpd_rules.xml</include>
+    <include>oscap_rules.xml</include>
     <include>local_rules.xml</include>
   </rules>  

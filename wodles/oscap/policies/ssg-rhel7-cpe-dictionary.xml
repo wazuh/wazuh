@@ -1,0 +1,17 @@
+<cpe-list xmlns="http://cpe.mitre.org/dictionary/2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cpe.mitre.org/dictionary/2.0 http://cpe.mitre.org/files/cpe-dictionary_2.1.xsd">
+      <cpe-item name="cpe:/o:redhat:enterprise_linux:7">
+            <title xml:lang="en-us">Red Hat Enterprise Linux 7</title>
+            <!-- the check references an OVAL file that contains an inventory definition -->
+            <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5" href="ssg-rhel7-cpe-oval.xml">oval:ssg:def:100</check>
+      </cpe-item>
+      <cpe-item name="cpe:/o:centos:centos:7">
+            <title xml:lang="en-us">CentOS 7</title>
+            <!-- the check references an OVAL file that contains an inventory definition -->
+            <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5" href="ssg-rhel7-cpe-oval.xml">oval:ssg:def:113</check>
+      </cpe-item>
+      <cpe-item name="cpe:/o:scientificlinux:scientificlinux:7">
+            <title xml:lang="en-us">Scientific Linux 7</title>
+            <!-- the check references an OVAL file that contains an inventory definition -->
+            <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5" href="ssg-rhel7-cpe-oval.xml">oval:ssg:def:115</check>
+      </cpe-item>
+</cpe-list>
