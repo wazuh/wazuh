@@ -13,10 +13,9 @@ static void* wm_oscap_main(wm_oscap *oscap);        // Module main function. It 
 static void wm_oscap_setup(wm_oscap *_oscap);       // Setup module
 static void wm_oscap_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_oscap_check();                       // Check configuration, disable flag
-//static void wm_oscap_reload();                      // Reload configuration
-static void wm_oscap_run(wm_oscap_eval *eval);  // Run an OpenSCAP policy
+static void wm_oscap_run(wm_oscap_eval *eval);      // Run an OpenSCAP policy
 static void wm_oscap_info();                        // Show module info
-static void wm_oscap_destroy(wm_oscap *oscap);     // Destroy data
+static void wm_oscap_destroy(wm_oscap *oscap);      // Destroy data
 
 const char *WM_OSCAP_LOCATION = "wodle_open-scap";  // Location field for event sending
 
@@ -126,14 +125,14 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     // Create arguments
 
     wm_strcat(&command, WM_OSCAP_SCRIPT_PATH, '\0');
-    wm_strcat(&command, "--policy", ' ');
+    wm_strcat(&command, "-f", ' ');
     wm_strcat(&command, eval->policy, ' ');
 
     for (profile = eval->profiles; profile; profile = profile->next)
         wm_strcat(&arg_profiles, profile->name, ',');
 
     if (arg_profiles) {
-        wm_strcat(&command, "--profiles", ' ');
+        wm_strcat(&command, "-p", ' ');
         wm_strcat(&command, arg_profiles, ' ');
     }
 
@@ -157,7 +156,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         wm_strcat(&arg_skip_result, "notselected", ',');
 
     if (arg_skip_result) {
-        wm_strcat(&command, "--skip-result", ' ');
+        wm_strcat(&command, "-r", ' ');
         wm_strcat(&command, arg_skip_result, ' ');
     }
 
@@ -169,8 +168,23 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         wm_strcat(&arg_skip_severity, "high", ',');
 
     if (arg_skip_severity) {
-        wm_strcat(&command, "--skip-severity", ' ');
+        wm_strcat(&command, "-s", ' ');
         wm_strcat(&command, arg_skip_severity, ' ');
+    }
+
+    if (eval->xccdf_id) {
+        wm_strcat(&command, "-x", ' ');
+        wm_strcat(&command, eval->xccdf_id, ' ');
+    }
+
+    if (eval->ds_id) {
+        wm_strcat(&command, "-d", ' ');
+        wm_strcat(&command, eval->ds_id, ' ');
+    }
+
+    if (eval->cpe) {
+        wm_strcat(&command, "-c", ' ');
+        wm_strcat(&command, eval->cpe, ' ');
     }
 
     // Execute
@@ -236,37 +250,6 @@ void wm_oscap_check() {
             eval->flags.skip_severity = oscap->flags.skip_severity;
     }
 }
-
-/* Reload configuration, disable flag
-
-void wm_oscap_reload() {
-    wmodule *cur_wm;
-
-    verbose("%s: INFO: Reloading configuration...", WM_OSCAP_LOGTAG);
-    wm_flag_reload = 0;
-    wm_destroy();
-
-    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, NULL) < 0)
-        exit(EXIT_FAILURE);
-
-    wm_check();
-
-    // Get new pointer to configuration
-
-    oscap = NULL;
-
-    for (cur_wm = wmodules; cur_wm; cur_wm = cur_wm->next) {
-        if (strcmp(cur_wm->context->name, WM_OSCAP_CONTEXT.name) == 0) {
-            oscap = (wm_oscap*)cur_wm->data;
-            break;
-        }
-    }
-
-    if (!oscap)
-        ErrorExit("%s: WARN: No configuration for OpenSCAP after reloading. Exiting...", WM_OSCAP_LOGTAG);
-
-    wm_oscap_check();
-} */
 
 // Show module info
 
