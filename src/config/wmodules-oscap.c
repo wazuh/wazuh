@@ -138,33 +138,33 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     }
                 } else if (!strcmp(children[j]->element, XML_XCCDF_ID)) {
                     free(cur_eval->xccdf_id);
-                    
+
                     if (!strlen(children[j]->content)) {
                         merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_XCCDF_ID, WM_OSCAP_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
-                    
+
                     cur_eval->xccdf_id = strdup(children[j]->content);
                 } else if (!strcmp(children[j]->element, XML_DS_ID)) {
                     free(cur_eval->ds_id);
-                    
+
                     if (!strlen(children[j]->content)) {
                         merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_DS_ID, WM_OSCAP_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
-                    
+
                     cur_eval->ds_id = strdup(children[j]->content);
                 } else if (!strcmp(children[j]->element, XML_CPE)) {
                     free(cur_eval->cpe);
-                    
+
                     if (!strlen(children[j]->content)) {
                         merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_CPE, WM_OSCAP_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
-                    
+
                     cur_eval->cpe = strdup(children[j]->content);
                 } else {
                     merror("%s: ERROR: No such tag '%s' at module '%s'.", __local_name, children[j]->element, WM_OSCAP_CONTEXT.name);
@@ -214,9 +214,9 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START)) {
-            if (!strcmp(nodes[j]->content, "yes"))
+            if (!strcmp(nodes[i]->content, "yes"))
                 oscap->flags.scan_on_start = 1;
-            else if (!strcmp(nodes[j]->content, "no"))
+            else if (!strcmp(nodes[i]->content, "no"))
                 oscap->flags.scan_on_start = 0;
             else {
                 merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_SCAN_ON_START, WM_OSCAP_CONTEXT.name);
