@@ -44,13 +44,17 @@ void* wm_oscap_main(wm_oscap *oscap) {
     if (!oscap->flags.scan_on_start) {
         time_start = time(NULL);
 
-        if (oscap->state.next_time > time_start)
+        if (oscap->state.next_time > time_start) {
+            verbose("%s: INFO: Waiting for turn to evaluate.", WM_OSCAP_LOGTAG);
             sleep(oscap->state.next_time - time_start);
+        }
     }
 
     // Main loop
 
     while (1) {
+
+        verbose("%s: INFO: Starting evaluation.", WM_OSCAP_LOGTAG);
 
         // Get time and execute
         time_start = time(NULL);
@@ -60,6 +64,8 @@ void* wm_oscap_main(wm_oscap *oscap) {
                 wm_oscap_run(eval);
 
         time_sleep = time(NULL) - time_start;
+
+        verbose("%s: INFO: Evaluation finished.", WM_OSCAP_LOGTAG);
 
         if ((time_t)oscap->interval >= time_sleep) {
             time_sleep = oscap->interval - time_sleep;
