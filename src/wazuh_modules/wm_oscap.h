@@ -49,11 +49,14 @@ typedef union wm_oscap_flags {
 } wm_oscap_flags;
 
 typedef struct wm_oscap_eval {
-    char *policy;                     // Policy name (string)
+    char *policy;                   // Policy name (string)
+    char *xccdf_id;                 // XCCDF id
+    char *ds_id;                    // Datastream id
+    char *cpe;                      // CPE dictionary
     wm_oscap_profile *profiles;     // Profiles (linked list)
     wm_oscap_flags flags;           // Flags
     unsigned int timeout;           // Execution time limit (seconds)
-    struct wm_oscap_eval *next;   // Pointer to next
+    struct wm_oscap_eval *next;     // Pointer to next
 } wm_oscap_eval;
 
 typedef struct wm_oscap_state {
@@ -65,7 +68,7 @@ typedef struct wm_oscap {
     unsigned int timeout;           // Default execution time limit (seconds)
     wm_oscap_flags flags;           // Default flags
     wm_oscap_state state;           // Running state
-    wm_oscap_eval *evals;      // Evaluations (linked list)
+    wm_oscap_eval *evals;           // Evaluations (linked list)
 } wm_oscap;
 
 extern const wm_context WM_OSCAP_CONTEXT;   // Context

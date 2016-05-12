@@ -46,13 +46,13 @@ void wm_check() {
 // Destroy configuration data
 
 void wm_destroy() {
+    wmodule *cur_module;
     wmodule *next_module;
 
-    while (wmodules) {
-        next_module = wmodules->next;
-        wmodules->context->destroy(wmodules->data);
-        free(wmodules);
-        wmodules = next_module;
+    for (cur_module = wmodules; cur_module; wmodules = next_module) {
+        next_module = cur_module->next;
+        cur_module->context->destroy(cur_module->data);
+        free(cur_module);
     }
 }
 
