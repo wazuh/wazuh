@@ -309,6 +309,9 @@ void wm_oscap_destroy(wm_oscap *oscap) {
 
         next_eval = cur_eval->next;
         free(cur_eval->policy);
+        free(cur_eval->xccdf_id);
+        free(cur_eval->ds_id);
+        free(cur_eval->cpe);
         free(cur_eval);
     }
 
