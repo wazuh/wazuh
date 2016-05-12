@@ -114,14 +114,14 @@ void wm_setup()
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, NULL);
 #endif
 
-    wm_check();
-
     // Go daemon
 
     if (!flag_foreground) {
         goDaemon();
         nowDaemon();
     }
+
+    wm_check();
 
     // Create PID file
 
