@@ -415,7 +415,7 @@ endif
 endif
 
 	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
-	install -m 0440 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
+	install -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
