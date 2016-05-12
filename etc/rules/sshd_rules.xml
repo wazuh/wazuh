@@ -383,6 +383,25 @@
     <description>sshd could not negotiate with client, no matching cipher.</description>
   </rule>
 
+  <rule id="5754" level="1">
+    <if_sid>5700</if_sid>
+    <match>Failed to create session: </match>
+    <description>sshd failed to create a session.</description>
+  </rule>
+
+  <rule id="5755" level="2">
+    <if_sid>5700</if_sid>
+    <match>bad ownership or modes for file</match>
+    <description>Authentication refused due to owner/permissions of authorized_keys.</description>
+    <group>authentication_failed,</group>
+  </rule>
+
+  <rule id="5756" level="0">
+    <if_sid>5700</if_sid>
+    <match> failed, subsystem not found$</match>
+    <description>sshd subsystem request failed.</description>
+  </rule>
+
 </group> <!-- SYSLOG, SSHD -->
 
 <!-- EOF -->

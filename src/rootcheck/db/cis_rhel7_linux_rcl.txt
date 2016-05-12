@@ -26,18 +26,18 @@
 
 
 # CIS Checks for Red Hat / CentOS 6
-# Based on CIS Benchmark for Red Hat Enterprise Linux 6 v1.3.0
+# Based on CIS Benchmark for Red Hat Enterprise Linux 7 v1.1.0
 
 # RC scripts location
 $rc_dirs=/etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
 
 
-[CIS - Testing against the CIS Red Hat Enterprise Linux 5 Benchmark v2.1.0] [any required] [http://www.ossec.net/]
+[CIS - Testing against the CIS Red Hat Enterprise Linux 7 Benchmark v1.1.0] [any required] [http://www.ossec.net/]
 f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 6;
-f:/etc/redhat-release -> r:^CentOS && r:release 6;
-f:/etc/redhat-release -> r:^Cloud && r:release 6;
-f:/etc/redhat-release -> r:^Oracle && r:release 6;
-f:/etc/redhat-release -> r:^Better && r:release 6;
+f:/etc/redhat-release -> r:^CentOS && r:release 7;
+f:/etc/redhat-release -> r:^Cloud && r:release 7;
+f:/etc/redhat-release -> r:^Oracle && r:release 7;
+f:/etc/redhat-release -> r:^Better && r:release 7;
 
 # 1.1.1 /tmp: partition
 [CIS - RHEL7 - Build considerations - Robust partition scheme - /tmp is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]

@@ -1,6 +1,6 @@
 <!--
   -  Amazon IAM rules
-  -  v1.1 2016/01/22
+  -  v1.2 2016/05/11
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  jose@wazuh.com
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -8,15 +8,10 @@
 
 <!-- amazon-iam messages -->
 
-<group name="Amazon-iam,">
-
-    <rule id="80800" level="0">
-        <decoded_as>AmazonAWS-signin</decoded_as>
-        <description>Amazon sign in alerts.</description>
-    </rule>
+<group name="amazon-iam,">
 
     <rule id="80801" level="2">
-        <if_sid>80800</if_sid>
+        <if_sid>80202</if_sid>
         <action>ConsoleLogin</action>
         <description>Amazon-signin: User Login Success</description>
         <group>amazon,authentication_success,pci_dss_10.2.5,</group>
@@ -35,15 +30,8 @@
         <group>amazon,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,</group>
     </rule>
 
-
-
-    <rule id="80860" level="0">
-        <decoded_as>AmazonAWS-iam</decoded_as>
-        <description>Amazon IAM alerts.</description>
-    </rule>
-
     <rule id="80861" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>CreateUser</action>
         <description>Amazon-iam: User created</description>
         <group>amazon,pci_dss_10.2.5,</group>
@@ -64,7 +52,7 @@
     </rule>
 
     <rule id="80864" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>AddUserToGroup</action>
         <description>Amazon-iam: User added to a group</description>
         <group>amazon,pci_dss_10.2.5,</group>
@@ -85,7 +73,7 @@
     </rule>
 
     <rule id="80867" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>RemoveUserFromGroup</action>
         <description>Amazon-iam: User removed from a group</description>
         <group>amazon,pci_dss_10.2.5,</group>
@@ -106,7 +94,7 @@
     </rule>
 
     <rule id="80870" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>UpdateAccessKey</action>
         <description>Amazon-iam: Access key updated</description>
         <group>amazon,pci_dss_10.6.1,</group>
@@ -127,7 +115,7 @@
     </rule>
 
     <rule id="80873" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>AttachGroupPolicy</action>
         <description>Amazon-iam: Group policy attached to a group</description>
         <group>amazon,pci_dss_10.2.5,</group>
@@ -148,7 +136,7 @@
     </rule>
 
     <rule id="80876" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>DetachGroupPolicy</action>
         <description>Amazon-iam: Group policy deattached to a group</description>
         <group>amazon,pci_dss_10.2.5,</group>
@@ -169,7 +157,7 @@
     </rule>
 
     <rule id="80879" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>AttachUserPolicy</action>
         <description>Amazon-iam: User policy attached to a user</description>
         <group>amazon,pci_dss_10.2.5,</group>
@@ -190,7 +178,7 @@
     </rule>
 
     <rule id="80882" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>DetachUserPolicy</action>
         <description>Amazon-iam: User policy deattached to a user</description>
         <group>amazon,pci_dss_10.2.5,</group>
@@ -211,7 +199,7 @@
     </rule>
 
     <rule id="80885" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>AttachRolePolicy</action>
         <description>Amazon-iam: Rule policy attached to a user</description>
         <group>amazon,pci_dss_10.2.5,</group>
@@ -232,7 +220,7 @@
     </rule>
 
     <rule id="80888" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>DetachRolePolicy</action>
         <description>Amazon-iam: Rule policy deattached to a user</description>
         <group>amazon,pci_dss_10.2.5,</group>
@@ -253,7 +241,7 @@
     </rule>
 
     <rule id="80891" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>CreateGroup</action>
         <description>Amazon-iam: Group created</description>
         <group>amazon,pci_dss_10.2.5,</group>
@@ -274,7 +262,7 @@
     </rule>
 
     <rule id="80894" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>CreateRole</action>
         <description>Amazon-iam: Role created</description>
         <group>amazon,pci_dss_10.2.5,</group>
@@ -295,7 +283,7 @@
     </rule>
 
     <rule id="80897" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>CreatePolicy</action>
         <description>Amazon-iam: Policy created</description>
         <group>amazon,pci_dss_10.6.1,</group>
@@ -316,7 +304,7 @@
     </rule>
 
     <rule id="80900" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>UpdateAccountPasswordPolicy</action>
         <description>Amazon-iam: Policy password account update</description>
         <group>amazon,pci_dss_10.6.1,</group>
@@ -337,47 +325,109 @@
     </rule>
 
     <rule id="80903" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>CreateAccountAlias</action>
         <description>Amazon-iam: Account alias created</description>
         <group>amazon,pci_dss_10.2.5,</group>
     </rule> 
 
-    <rule id="80904" level="2">
+    <rule id="80904" level="5">
         <if_sid>80903</if_sid>
-        <action>"errorCode":"</action>
+        <match>"errorCode":"</match>
         <description>Amazon-iam: Create Account Alias error</description>
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
     <rule id="80905" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>DeleteAccountAlias</action>
         <description>Amazon-iam: Account alias deleted</description>
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
-    <rule id="80906" level="2">
+    <rule id="80906" level="5">
         <if_sid>80905</if_sid>
-        <action>"errorCode":"</action>
+        <match>"errorCode":"</match>
         <description>Amazon-iam: Delete account alias error</description>
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
     <rule id="80907" level="2">
-        <if_sid>80860</if_sid>
+        <if_sid>80202</if_sid>
         <action>UpdateInstanceAlias</action>
         <description>Amazon-iam: Account alias updated</description>
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
-    <rule id="80908" level="2">
+    <rule id="80908" level="5">
         <if_sid>80907</if_sid>
-        <action>"errorCode":"</action>
+        <match>"errorCode":"</match>
         <description>Amazon-iam: Update Instance Alias error</description>
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
+    <rule id="80909" level="2">
+        <if_sid>80202</if_sid>
+        <action>GetGroup</action>
+        <description>Amazon-iam: Get Group</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="80910" level="5">
+        <if_sid>80909</if_sid>
+        <match>"errorCode":"NoSuchEntityException"</match>
+        <description>Amazon-iam: The group cant be found</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
+    
+    <rule id="80911" level="5">
+        <if_sid>80909</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-iam: Get group error</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
+    
+    <rule id="80912" level="2">
+        <if_sid>80202</if_sid>
+        <action>ListGroups</action>
+        <description>Amazon-iam: Get Group</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="80913" level="5">
+        <if_sid>80912</if_sid>
+        <match>"errorCode":"NoSuchEntityException"</match>
+        <description>Amazon-iam: The group cant be listed</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
+    
+    <rule id="80914" level="5">
+        <if_sid>80912</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-iam: List group error</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
+    
+    <rule id="80915" level="2">
+        <if_sid>80202</if_sid>
+        <action>ListUsers</action>
+        <description>Amazon-iam: List Users</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="80916" level="5">
+        <if_sid>80915</if_sid>
+        <match>"errorCode":"NoSuchEntityException"</match>
+        <description>Amazon-iam: The users cant be listed</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="80917" level="5">
+        <if_sid>80915</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-iam: List users error</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
 </group>
 
 <!-- amazon-iam -->

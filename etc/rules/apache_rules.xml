@@ -19,7 +19,7 @@
   -->
 
 
-<group name="apache,">
+<group name="apache,web,">
   <rule id="30100" level="0">
     <decoded_as>apache-errorlog</decoded_as>
     <description>Apache messages grouped.</description>
