@@ -32,13 +32,22 @@ const wm_context WM_OSCAP_CONTEXT = {
 
 void* wm_oscap_main(wm_oscap *oscap) {
     wm_oscap_eval *eval;
-    time_t time_start;
+    time_t time_start = 0;
     time_t time_sleep = 0;
 
     // Check configuration and show debug information
 
     wm_oscap_setup(oscap);
     verbose("%s: INFO: Module started.", WM_OSCAP_LOGTAG);
+
+    // First sleeping
+
+    if (!oscap->flags.scan_on_start) {
+        time_start = time(NULL);
+
+        if (oscap->state.next_time > time_start)
+            sleep(oscap->state.next_time - time_start);
+    }
 
     // Main loop
 
@@ -47,13 +56,11 @@ void* wm_oscap_main(wm_oscap *oscap) {
         // Get time and execute
         time_start = time(NULL);
 
-        if (oscap->flags.scan_on_start && !oscap->state.next_time) {
-            for (eval = oscap->evals; eval; eval = eval->next)
-                if (!eval->flags.error)
-                    wm_oscap_run(eval);
+        for (eval = oscap->evals; eval; eval = eval->next)
+            if (!eval->flags.error)
+                wm_oscap_run(eval);
 
-            time_sleep = time(NULL) - time_start;
-        }
+        time_sleep = time(NULL) - time_start;
 
         if ((time_t)oscap->interval >= time_sleep) {
             time_sleep = oscap->interval - time_sleep;

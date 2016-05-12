@@ -152,6 +152,8 @@ DWORD WINAPI Reader(LPVOID args) {
 
 // Unix version ----------------------------------------------------------------
 
+#define EXECVE_ERROR 0xFF
+
 void* reader(void *args);   // Reading thread's start point
 
 // Work-around for OS X
@@ -208,7 +210,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         dup2(pipe_fd[1], STDERR_FILENO);
 
         if (execve(argv[0], argv, envp) < 0)
-            exit(1);
+            exit(EXECVE_ERROR);
 
         // Child won't return
 
@@ -219,6 +221,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         close(pipe_fd[1]);
         tinfo.pipe = pipe_fd[0];
 
+        // Launch thread
+
         pthread_mutex_lock(&tinfo.mutex);
 
         if (pthread_create(&thread, NULL, reader, &tinfo)) {
@@ -228,6 +232,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         get_time(&timeout);
         timeout.tv_sec += secs;
+
+        // Wait for reading termination
 
         switch (pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout)) {
         case 0:
@@ -244,6 +250,13 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             retval = -1;
         }
 
+        // Wait for thread
+
+        pthread_mutex_unlock(&tinfo.mutex);
+        pthread_join(thread, NULL);
+
+        // Wait for child process
+
         switch (waitpid(pid, &status, WNOHANG)) {
         case -1:
             merror("%s: ERROR: waitpid()", ARGV0);
@@ -256,17 +269,20 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             break;
 
         default:
-            if (exitcode)
+            if (WEXITSTATUS(status) == EXECVE_ERROR)
+                retval = -1;
+            else if (exitcode)
                 *exitcode = WEXITSTATUS(status);
         }
 
-        pthread_mutex_unlock(&tinfo.mutex);
-        pthread_join(thread, NULL);
+        // Setup output
 
         if (retval >= 0)
             *output = tinfo.output ? tinfo.output : strdup("");
         else
             free(tinfo.output);
+
+        // Cleanup
 
         pthread_mutex_destroy(&tinfo.mutex);
         pthread_cond_destroy(&tinfo.finished);
@@ -296,7 +312,6 @@ void* reader(void *args) {
             break;
         }
     }
-
 
     if (tinfo->output)
         tinfo->output[length] = '\0';
