@@ -43,10 +43,10 @@ void* wm_oscap_main(wm_oscap *oscap) {
     // Main loop
 
     while (1) {
-        
+
         // Get time and execute
         time_start = time(NULL);
-            
+
         if (oscap->flags.scan_on_start && !oscap->state.next_time) {
             for (eval = oscap->evals; eval; eval = eval->next)
                 if (!eval->flags.error)
@@ -54,7 +54,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
 
             time_sleep = time(NULL) - time_start;
         }
-        
+
         if ((time_t)oscap->interval >= time_sleep) {
             time_sleep = oscap->interval - time_sleep;
             oscap->state.next_time = oscap->interval + time_start;
@@ -109,7 +109,7 @@ void wm_oscap_cleanup() {
 void wm_oscap_run(wm_oscap_eval *eval) {
     char *command = NULL;
     int status;
-    char *output;
+    char *output = NULL;
     char *line;
     char *arg_profiles = NULL;
     char *arg_skip_result = NULL;
@@ -117,7 +117,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     wm_oscap_profile *profile;
 
     // Create arguments
-    
+
     wm_strcat(&command, WM_OSCAP_SCRIPT_PATH, '\0');
     wm_strcat(&command, "--policy", ' ');
     wm_strcat(&command, eval->policy, ' ');
@@ -169,19 +169,23 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     // Execute
 
     debug1("Launching command: %s", command);
-    
+
     switch (wm_exec(command, &output, &status, eval->timeout)) {
     case 0:
         if (status > 0) {
             merror("%s: WARN: Ignoring policy '%s' due to error.", WM_OSCAP_LOGTAG, eval->policy);
             eval->flags.error = 1;
         }
+
+        break;
+
     case WM_ERROR_TIMEOUT:
         free(output);
+        output = NULL;
         wm_strcat(&output, "oscap: ERROR: Timeout expired.", '\0');
         merror("%s: ERROR: Timeout expired executing '%s'.", WM_OSCAP_LOGTAG, eval->policy);
         break;
-        
+
     default:
         merror("%s: ERROR: Internal calling.", WM_OSCAP_LOGTAG);
     }

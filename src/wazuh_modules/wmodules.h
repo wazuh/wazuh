@@ -55,7 +55,7 @@ void wm_check();
 // Destroy configuration data
 void wm_destroy();
 
-/* Execute command with timeout of secs. Status can be NULL.
+/* Execute command with timeout of secs. exitcode can be NULL.
  *
  * command is a mutable string.
  * output is a pointer to dynamic string. Caller is responsible for freeing it!
@@ -63,7 +63,7 @@ void wm_destroy();
  * If the called program timed-out, returns WM_ERROR_TIMEOUT and output may
  * contain data.
  */
-int wm_exec(char *command, char **output, int *status, int secs);
+int wm_exec(char *command, char **output, int *exitcode, int secs);
 
 // Check whether the last execution timed out
 int wm_exec_timeout();
