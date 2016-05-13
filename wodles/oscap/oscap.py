@@ -359,7 +359,7 @@ if __name__ == "__main__":
     if arg_profiles:
         for p in arg_profiles:
             if p not in profiles:
-                print("{0} Profile \"{1}\" doest not exist at \"{2}\".".format(OSCAP_LOG_ERROR, p, arg_policy))
+                print("{0} Profile \"{1}\" does not exist at \"{2}\".".format(OSCAP_LOG_ERROR, p, arg_policy))
                 exit(1)
 
         profiles = arg_profiles
