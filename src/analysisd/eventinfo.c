@@ -439,7 +439,9 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->location = NULL;
 
     lf->srcip = NULL;
+    lf->srcgeoip = NULL;
     lf->dstip = NULL;
+    lf->dstgeoip = NULL;
     lf->srcport = NULL;
     lf->dstport = NULL;
     lf->protocol = NULL;
@@ -500,9 +502,21 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->srcip) {
         free(lf->srcip);
     }
+
+    if(lf->srcgeoip) {
+        free(lf->srcgeoip);
+        lf->srcgeoip = NULL;
+    }
+
     if (lf->dstip) {
         free(lf->dstip);
     }
+
+    if(lf->dstgeoip) {
+        free(lf->dstgeoip);
+        lf->dstgeoip = NULL;
+    }
+
     if (lf->srcport) {
         free(lf->srcport);
     }

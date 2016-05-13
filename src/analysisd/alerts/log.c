@@ -15,90 +15,6 @@
 #include "eventinfo.h"
 #include "config.h"
 
-#ifdef LIBGEOIP_ENABLED
-#include "GeoIP.h"
-#include "GeoIPCity.h"
-
-#define RFC1918_10     (167772160u  & 4278190080u)       /* 10/8        */
-#define RFC1918_172    (2886729728u & 4293918720u)       /* 172.17/12   */
-#define RFC1918_192    (3232235520u & 4294901760u)       /* 192.168/16  */
-#define NETMASK_8      4278190080u                       /* 255.0.0.0   */
-#define NETMASK_12     4293918720u                       /* 255.240.0.0 */
-#define NETMASK_16     4294901760u                       /* 255.255.0.0 */
-
-static const char *_mk_NA( const char *p )
-{
-    return (p ? p : "N/A");
-}
-
-/* Convert a dot-quad IP address into long format */
-static unsigned long StrIP2Int(const char *ip)
-{
-    unsigned int c1, c2, c3, c4;
-    /* IP address is not coming from user input -> We can trust it */
-    /* Only minimal checking is performed */
-    size_t len = strlen(ip);
-    if ((len < 7) || (len > 15)) {
-        return (0);
-    }
-
-    sscanf(ip, "%u.%u.%u.%u", &c1, &c2, &c3, &c4);
-    return ((unsigned long)c4 + c3 * 256 + c2 * 256 * 256 + c1 * 256 * 256 * 256);
-}
-
-/* Use the GeoIP API to locate an IP address */
-static void GeoIP_Lookup(const char *ip, char *buffer, const size_t length)
-{
-    GeoIP   *gi;
-    GeoIPRecord *gir;
-
-    /* Dumb way to detect an IPv6 address */
-    if (strchr(ip, ':')) {
-        /* Use the IPv6 DB */
-        gi = GeoIP_open(Config.geoip_db_path, GEOIP_INDEX_CACHE);
-        if (gi == NULL) {
-            merror(INVALID_GEOIP_DB, ARGV0, Config.geoip6_db_path);
-            snprintf(buffer, length, "Unknown (1)");
-            return;
-        }
-        gir = GeoIP_record_by_name_v6(gi, ip);
-    } else {
-        /* Use the IPv4 DB */
-        /* If we have a RFC1918 IP, do not perform a DB lookup (performance) */
-        unsigned long longip = StrIP2Int(ip);
-        if (longip == 0 ) {
-            snprintf(buffer, length, "Unknown (2)");
-            return;
-        }
-        if ((longip & NETMASK_8)  == RFC1918_10 ||
-                (longip & NETMASK_12) == RFC1918_172 ||
-                (longip & NETMASK_16) == RFC1918_192) {
-            snprintf(buffer, length, "RFC1918 IP");
-            return;
-        }
-
-        gi = GeoIP_open(Config.geoip_db_path, GEOIP_INDEX_CACHE);
-        if (gi == NULL) {
-            merror(INVALID_GEOIP_DB, ARGV0, Config.geoip_db_path);
-            snprintf(buffer, length, "Unknown (3)");
-            return;
-        }
-        gir = GeoIP_record_by_name(gi, ip);
-    }
-    if (gir != NULL) {
-        snprintf(buffer, length, "%s,%s,%s",
-                 _mk_NA(gir->country_code),
-                 _mk_NA(GeoIP_region_name_by_code(gir->country_code, gir->region)),
-                 _mk_NA(gir->city)
-                );
-        GeoIP_delete(gi);
-        return;
-    }
-    GeoIP_delete(gi);
-    snprintf(buffer, length, "Unknown (4)");
-    return;
-}
-#endif /* LIBGEOIP_ENABLED */
 
 /* Drop/allow patterns */
 static OSMatch FWDROPpm;
@@ -166,20 +82,6 @@ void OS_Store(const Eventinfo *lf)
 
 void OS_LogOutput(Eventinfo *lf)
 {
-#ifdef LIBGEOIP_ENABLED
-    char geoip_msg_src[OS_SIZE_1024 + 1];
-    char geoip_msg_dst[OS_SIZE_1024 + 1];
-    geoip_msg_src[0] = '\0';
-    geoip_msg_dst[0] = '\0';
-    if (Config.loggeoip) {
-        if (lf->srcip) {
-            GeoIP_Lookup(lf->srcip, geoip_msg_src, OS_SIZE_1024);
-        }
-        if (lf->dstip) {
-            GeoIP_Lookup(lf->dstip, geoip_msg_dst, OS_SIZE_1024);
-        }
-    }
-#endif
     printf(
         "** Alert %ld.%ld:%s - %s\n"
         "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
@@ -202,13 +104,9 @@ void OS_LogOutput(Eventinfo *lf)
         lf->srcip == NULL ? "" : "\nSrc IP: ",
         lf->srcip == NULL ? "" : lf->srcip,
 
-#ifdef LIBGEOIP_ENABLED
-        (strlen(geoip_msg_src) == 0) ? "" : "\nSrc Location: ",
-        (strlen(geoip_msg_src) == 0) ? "" : geoip_msg_src,
-#else
-        "",
-        "",
-#endif
+        lf->srcgeoip == NULL?"":" / ",
+        lf->srcgeoip == NULL?"":lf->srcgeoip,
+
 
         lf->srcport == NULL ? "" : "\nSrc Port: ",
         lf->srcport == NULL ? "" : lf->srcport,
@@ -216,13 +114,9 @@ void OS_LogOutput(Eventinfo *lf)
         lf->dstip == NULL ? "" : "\nDst IP: ",
         lf->dstip == NULL ? "" : lf->dstip,
 
-#ifdef LIBGEOIP_ENABLED
-        (strlen(geoip_msg_dst) == 0) ? "" : "\nDst Location: ",
-        (strlen(geoip_msg_dst) == 0) ? "" : geoip_msg_dst,
-#else
-        "",
-        "",
-#endif
+        lf->dstgeoip == NULL?"":" / ",
+        lf->dstgeoip == NULL?"":lf->dstgeoip,
+
 
         lf->dstport == NULL ? "" : "\nDst Port: ",
         lf->dstport == NULL ? "" : lf->dstport,
@@ -250,20 +144,6 @@ void OS_LogOutput(Eventinfo *lf)
 
 void OS_Log(Eventinfo *lf)
 {
-#ifdef LIBGEOIP_ENABLED
-    char geoip_msg_src[OS_SIZE_1024 + 1];
-    char geoip_msg_dst[OS_SIZE_1024 + 1];
-    geoip_msg_src[0] = '\0';
-    geoip_msg_dst[0] = '\0';
-    if (Config.loggeoip) {
-        if (lf->srcip) {
-            GeoIP_Lookup(lf->srcip, geoip_msg_src, OS_SIZE_1024 );
-        }
-        if (lf->dstip) {
-            GeoIP_Lookup(lf->dstip, geoip_msg_dst, OS_SIZE_1024 );
-        }
-    }
-#endif
     /* Writing to the alert log file */
     fprintf(_aflog,
             "** Alert %ld.%ld:%s - %s\n"
@@ -287,13 +167,9 @@ void OS_Log(Eventinfo *lf)
             lf->srcip == NULL ? "" : "\nSrc IP: ",
             lf->srcip == NULL ? "" : lf->srcip,
 
-#ifdef LIBGEOIP_ENABLED
-            (strlen(geoip_msg_src) == 0) ? "" : "\nSrc Location: ",
-            (strlen(geoip_msg_src) == 0) ? "" : geoip_msg_src,
-#else
-            "",
-            "",
-#endif
+            lf->srcgeoip == NULL?"":" / ",
+            lf->srcgeoip == NULL?"":lf->srcgeoip,
+
 
             lf->srcport == NULL ? "" : "\nSrc Port: ",
             lf->srcport == NULL ? "" : lf->srcport,
@@ -301,13 +177,9 @@ void OS_Log(Eventinfo *lf)
             lf->dstip == NULL ? "" : "\nDst IP: ",
             lf->dstip == NULL ? "" : lf->dstip,
 
-#ifdef LIBGEOIP_ENABLED
-            (strlen(geoip_msg_dst) == 0) ? "" : "\nDst Location: ",
-            (strlen(geoip_msg_dst) == 0) ? "" : geoip_msg_dst,
-#else
-            "",
-            "",
-#endif
+            lf->dstgeoip == NULL?"":" / ",
+            lf->dstgeoip == NULL?"":lf->dstgeoip,
+
 
             lf->dstport == NULL ? "" : "\nDst Port: ",
             lf->dstport == NULL ? "" : lf->dstport,

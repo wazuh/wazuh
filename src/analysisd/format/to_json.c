@@ -61,7 +61,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->srcip) {
         cJSON_AddStringToObject(root, "srcip", lf->srcip);
     }
-    if(lf->srcport) {
+    if (lf->srcgeoip) {
+        cJSON_AddStringToObject(root, "srcgeoip", lf->srcgeoip);
+    }
+    if (lf->srcport) {
         cJSON_AddStringToObject(root, "srcport", lf->srcport);
     }
     if(lf->srcuser) {
@@ -70,7 +73,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->dstip) {
         cJSON_AddStringToObject(root, "dstip", lf->dstip);
     }
-    if(lf->dstport) {
+    if (lf->dstgeoip) {
+        cJSON_AddStringToObject(root, "dstip", lf->dstgeoip);
+    }
+    if (lf->dstport) {
         cJSON_AddStringToObject(root, "dstport", lf->dstport);
     }
     if(lf->dstuser) {
