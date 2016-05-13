@@ -67,8 +67,10 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_check_if_ignored = "check_if_ignored";
 
     const char *xml_srcip = "srcip";
+    const char *xml_srcgeoip = "srcgeoip";
     const char *xml_srcport = "srcport";
     const char *xml_dstip = "dstip";
+    const char *xml_dstgeoip = "dstgeoip";
     const char *xml_dstport = "dstport";
     const char *xml_user = "user";
     const char *xml_url = "url";
@@ -111,6 +113,8 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_dodiff = "check_diff";
 
     const char *xml_different_url = "different_url";
+    const char *xml_different_srcip = "different_srcip";
+    const char *xml_different_geoip = "different_geoip";
 
     const char *xml_notsame_source_ip = "not_same_source_ip";
     const char *xml_notsame_user = "not_same_user";
@@ -318,6 +322,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                 char *id = NULL;
                 char *srcport = NULL;
                 char *dstport = NULL;
+                char *srcgeoip = NULL;
+                char *dstgeoip = NULL;
+
                 char *status = NULL;
                 char *hostname = NULL;
                 char *extra_data = NULL;
@@ -511,6 +518,20 @@ int Rules_OP_ReadRules(const char *rulefile)
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
+                    } else if(strcasecmp(rule_opt[k]->element,xml_srcgeoip)==0) {
+                        srcgeoip =
+                            loadmemory(srcgeoip,
+                                    rule_opt[k]->content);
+
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
+                    } else if(strcasecmp(rule_opt[k]->element,xml_dstgeoip)==0) {
+                        dstgeoip =
+                            loadmemory(dstgeoip,
+                                    rule_opt[k]->content);
+
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     } else if (strcasecmp(rule_opt[k]->element, xml_id) == 0) {
                         id =
                             loadmemory(id,
@@ -825,6 +846,18 @@ int Rules_OP_ReadRules(const char *rulefile)
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
+                    } else if(strcmp(rule_opt[k]->element,
+                                   xml_different_srcip) == 0) {
+                        config_ruleinfo->context_opts|= DIFFERENT_SRCIP;
+
+                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
+                    } else if(strcmp(rule_opt[k]->element,
+                                   xml_different_geoip) == 0) {
+                        config_ruleinfo->context_opts|= DIFFERENT_GEOIP;
+
+                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     } else if (strcmp(rule_opt[k]->element, xml_notsame_id) == 0) {
                         config_ruleinfo->context_opts &= NOT_SAME_ID;
                     } else if (strcasecmp(rule_opt[k]->element,
@@ -1139,6 +1172,32 @@ int Rules_OP_ReadRules(const char *rulefile)
                     free(user);
                     user = NULL;
                 }
+
+                /* Adding in srcgeoip */
+                if(srcgeoip) {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->srcgeoip);
+                    if(!OSMatch_Compile(srcgeoip, config_ruleinfo->srcgeoip, 0)) {
+                        merror(REGEX_COMPILE, ARGV0, srcgeoip,
+                                              config_ruleinfo->srcgeoip->error);
+                        return(-1);
+                    }
+                    free(srcgeoip);
+                    srcgeoip = NULL;
+                }
+
+
+                /* Adding in dstgeoip */
+                if(dstgeoip) {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->dstgeoip);
+                    if(!OSMatch_Compile(dstgeoip, config_ruleinfo->dstgeoip, 0)) {
+                        merror(REGEX_COMPILE, ARGV0, dstgeoip,
+                                              config_ruleinfo->dstgeoip->error);
+                        return(-1);
+                    }
+                    free(dstgeoip);
+                    dstgeoip = NULL;
+                }
+
 
                 /* Add in URL */
                 if (url) {

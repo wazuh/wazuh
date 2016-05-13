@@ -22,6 +22,8 @@
 #define SAME_ID         0x004 /* 4   */
 #define SAME_LOCATION   0x008 /* 8   */
 #define DIFFERENT_URL   0x010 /* */
+#define DIFFERENT_SRCIP 0x200 
+#define DIFFERENT_GEOIP 0x400 
 #define SAME_SRCPORT    0x020
 #define SAME_DSTPORT    0x040
 #define SAME_DODIFF     0x100
@@ -136,6 +138,8 @@ typedef struct _RuleInfo {
 
     os_ip **srcip;
     os_ip **dstip;
+    OSMatch *srcgeoip;
+    OSMatch *dstgeoip;
     OSMatch *srcport;
     OSMatch *dstport;
     OSMatch *user;
