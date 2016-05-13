@@ -1,8 +1,14 @@
 <!--
   -  OpenSCAP rules
-  -  v1.0 2016/05/09
+  -  v1.0 2016/05/13
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+-->
+
+<!--
+ID Range:
+OpenSCAP syslog messages: 81400 - 81499
+Wodle OpenSCAP: 81500 - 81600
 -->
 
 <group name="oscap,">
@@ -21,6 +27,7 @@
         <if_sid>81400</if_sid>
         <match>Evaluation started</match>
         <description>OpenSCAP: Evaluation started.</description>
+        <group>syslog,</group>
     </rule>
 
     <!--
@@ -30,6 +37,7 @@
         <if_sid>81400</if_sid>
         <match>Evaluation finished</match>
         <description>OpenSCAP: Evaluation finished.</description>
+        <group>syslog,</group>
     </rule>
 
     <!--
@@ -39,6 +47,7 @@
         <if_sid>81402</if_sid>
         <status>2</status>
         <description>OpenSCAP: Evaluation finished with some failures.</description>
+        <group>syslog,</group>
     </rule>
 
     <!-- -- -->
@@ -54,6 +63,7 @@
         <if_sid>81400</if_sid>
         <match>oscap: ERROR: </match>
         <description>OpenSCAP: Error messages grouped.</description>
+        <group>errors,</group>
     </rule>
     
     <!--
@@ -140,6 +150,7 @@
         <if_sid>81400</if_sid>
         <status>pass</status>
         <description>OpenSCAP rule passed.</description>
+        <group>rule-result,</group>
     </rule>
 
     <!--
@@ -149,6 +160,7 @@
         <if_sid>81400</if_sid>
         <status>notchecked</status>
         <description>OpenSCAP rule not checked.</description>
+        <group>rule-result,</group>
     </rule>
 
     <!--
@@ -158,56 +170,57 @@
         <if_sid>81400</if_sid>
         <status>notapplicable</status>
         <description>OpenSCAP rule not applicable.</description>
+        <group>rule-result,</group>
     </rule>
     
     <!--
-    TODO
     oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "fixed", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
     -->
     <rule id="81524" level="2">
         <if_sid>81400</if_sid>
         <status>fixed</status>
         <description>OpenSCAP rule fixed.</description>
+        <group>rule-result,</group>
     </rule>
     
     <!--
-    TODO
     oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "informational", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
     -->
     <rule id="81525" level="1">
         <if_sid>81400</if_sid>
         <status>informational</status>
         <description>OpenSCAP rule informational.</description>
+        <group>rule-result,</group>
     </rule>
     
     <!--
-    TODO
     oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "error", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
     -->
     <rule id="81526" level="1">
         <if_sid>81400</if_sid>
         <status>error</status>
         <description>OpenSCAP rule error.</description>
+        <group>rule-result,</group>
     </rule>
     
     <!--
-    TODO
     oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "unknown", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
     -->
     <rule id="81527" level="1">
         <if_sid>81400</if_sid>
         <status>unknown</status>
         <description>OpenSCAP rule unknown.</description>
+        <group>rule-result,</group>
     </rule>
     
     <!--
-    TODO
     oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "notselected", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
     -->
     <rule id="81528" level="1">
         <if_sid>81400</if_sid>
         <status>notselected</status>
         <description>OpenSCAP rule not selected.</description>
+        <group>rule-result,</group>
     </rule>
     
     <!--
@@ -219,6 +232,7 @@
         <if_sid>81400</if_sid>
         <status>fail</status>
         <description>OpenSCAP rule failed (severity low).</description>
+        <group>rule-result,</group>
     </rule>
     
     <rule id="81530" level="7">
@@ -245,29 +259,30 @@
         <if_sid>81400</if_sid>
         <match>msg: "report-overview"</match>
         <description>OpenSCAP Report overview.</description>
+        <group>report-overview,</group>
     </rule>
     
     <rule id="81541" level="2">
         <if_sid>81540</if_sid>
-        <regex>score: "8\d</regex>
+        <regex>score: "8\d.</regex>
         <description>OpenSCAP Report overview: Score less than 90</description>
     </rule>
     
     <rule id="81542" level="4">
         <if_sid>81540</if_sid>
-        <regex>score: "7\d|score: "6\d|score: "5\d</regex>
+        <regex>score: "7\d.|score: "6\d.|score: "5\d.</regex>
         <description>OpenSCAP Report overview: Score less than 80</description>
     </rule>
     
     <rule id="81543" level="7">
-        <if_sid>81400</if_sid>
-        <regex>score: "4\d</regex>
+        <if_sid>81540</if_sid>
+        <regex>score: "4\d.|score: "3\d.</regex>
         <description>OpenSCAP Report overview: Score less than 50</description>
     </rule>
     
     <rule id="81544" level="8">
-        <if_sid>81400</if_sid>
-        <regex>score: "3\d|score: "2\d|score: "1\d|score: "00|score: "0</regex>
+        <if_sid>81540</if_sid>
+        <regex>score: "2\d.|score: "1\d.|score: "0</regex>
         <description>OpenSCAP Report overview: Score less than 30</description>
     </rule>
     
