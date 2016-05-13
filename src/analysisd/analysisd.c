@@ -1057,6 +1057,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
      * status,
      */
     RuleInfo *rule = curr_node->ruleinfo;
+    int i;
 
     /* Can't be null */
     if (!rule) {
@@ -1136,6 +1137,23 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         if (!OSMatch_Execute(lf->url, strlen(lf->url), rule->url)) {
             return (NULL);
         }
+    }
+    
+    /* Check for dynamic fields */
+    
+    for (i = 0; i < 8 && rule->fields[i]; i++) {
+        int j;
+        
+        for (j = 0; j < 8; j++)
+            if (lf->decoder_info->fields[j])
+                if (strcasecmp(lf->decoder_info->fields[j], rule->fields[i]->name) == 0)
+                    break;
+
+        if (j == 8)
+            return NULL;
+        
+        if (!OSRegex_Execute(lf->fields[j], rule->fields[i]->regex))
+            return NULL;
     }
 
     /* Get TCP/IP packet information */
