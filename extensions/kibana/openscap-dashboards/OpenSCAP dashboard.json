@@ -1,0 +1,19 @@
+[
+  {
+    "_id": "OpenSCAP-dashboard",
+    "_type": "dashboard",
+    "_source": {
+      "title": "OpenSCAP dashboard",
+      "hits": 0,
+      "description": "",
+      "panelsJSON": "[{\"id\":\"OSCAP-Agents\",\"type\":\"visualization\",\"panelIndex\":5,\"size_x\":2,\"size_y\":4,\"col\":11,\"row\":1},{\"id\":\"OSCAP-Scans\",\"type\":\"visualization\",\"panelIndex\":6,\"size_x\":2,\"size_y\":2,\"col\":1,\"row\":3},{\"id\":\"OSCAP-Rules:-Severity\",\"type\":\"visualization\",\"panelIndex\":7,\"size_x\":3,\"size_y\":2,\"col\":5,\"row\":5},{\"id\":\"OSCAP-Rules:-Status\",\"type\":\"visualization\",\"panelIndex\":8,\"size_x\":2,\"size_y\":2,\"col\":8,\"row\":5},{\"id\":\"OSCAP-Rules:-History\",\"type\":\"visualization\",\"panelIndex\":9,\"size_x\":4,\"size_y\":2,\"col\":1,\"row\":5},{\"id\":\"OSCAP-Scan-History\",\"type\":\"visualization\",\"panelIndex\":10,\"size_x\":4,\"size_y\":2,\"col\":3,\"row\":3},{\"id\":\"OSCAP-Rules:-Titles\",\"type\":\"visualization\",\"panelIndex\":13,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":5},{\"id\":\"OSCAP-Search:-Scan-overview\",\"type\":\"search\",\"panelIndex\":14,\"size_x\":12,\"size_y\":3,\"col\":1,\"row\":8,\"columns\":[\"AgentName\",\"srcuser\",\"protocol\",\"status\",\"id\",\"action\",\"data\",\"url\"],\"sort\":[\"@timestamp\",\"desc\"]},{\"id\":\"OSCAP-Search-Rules\",\"type\":\"search\",\"panelIndex\":15,\"size_x\":12,\"size_y\":2,\"col\":1,\"row\":11,\"columns\":[\"AgentName\",\"srcuser\",\"protocol\",\"url\",\"status\",\"action\"],\"sort\":[\"@timestamp\",\"desc\"]},{\"id\":\"OSCAP-Errors\",\"type\":\"visualization\",\"panelIndex\":16,\"size_x\":4,\"size_y\":2,\"col\":7,\"row\":3},{\"id\":\"OSCAP-Policies\",\"type\":\"visualization\",\"panelIndex\":17,\"size_x\":3,\"size_y\":2,\"col\":1,\"row\":1},{\"id\":\"OSCAP-Policies-ampersand-Profiles\",\"type\":\"visualization\",\"panelIndex\":18,\"size_x\":3,\"size_y\":2,\"col\":4,\"row\":1},{\"id\":\"OSCAP-Agents:-Policies-ampersand-Profiles\",\"type\":\"visualization\",\"panelIndex\":19,\"size_x\":4,\"size_y\":2,\"col\":7,\"row\":1}]",
+      "optionsJSON": "{\"darkTheme\":false}",
+      "uiStateJSON": "{}",
+      "version": 1,
+      "timeRestore": false,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}}}]}"
+      }
+    }
+  }
+]
