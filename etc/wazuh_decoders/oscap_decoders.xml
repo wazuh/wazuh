@@ -33,6 +33,7 @@ oscap: msg: "rule-result", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssg
   <order>srcuser, protocol, extra_data, status, url, id, action</order>
 </decoder>
 
+
 <!--
 Report overview
 oscap: msg: "report-overview", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", score: "56.835060" / "100.000000", severity of failed rules: "high": "1", "medium": "9", "low": "34", "n/a": "0".
@@ -40,8 +41,8 @@ oscap: msg: "report-overview", policy: "ssg-centos7-ds.xml", profile: "xccdf_org
 <decoder name="oscap-wodle-repor-overview">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "report-overview"</prematch>
-  <regex offset="after_prematch">^, policy: "(\S+)", profile: "(\S+)", score: "(\S+)" /</regex>
-  <order>srcuser, protocol, status</order>
+  <regex offset="after_prematch">^, policy: "(\S+)", profile: "(\S+)", score: "(\S+)" / "(\S+)", severity of failed rules: "high": "(\S+)", "medium": "(\S+)", "low": "(\S+)",</regex>
+  <order>srcuser, protocol, status, id, action, extra_data, url</order>
 </decoder>
 
 <!--
