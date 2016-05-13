@@ -18,6 +18,8 @@
 #define AFTER_PREVREGEX 0x004   /* 4   */
 #define AFTER_ERROR     0x010
 
+struct _Eventinfo;
+
 /* Decoder structure */
 typedef struct {
     u_int8_t  get_next;
@@ -33,13 +35,14 @@ typedef struct {
     char *parent;
     char *name;
     char *ftscomment;
+    char *fields[8];
 
     OSRegex *regex;
     OSRegex *prematch;
     OSMatch *program_name;
 
     void (*plugindecoder)(void *lf);
-    void (**order)(void *lf, char *field);
+    void* (**order)(struct _Eventinfo *, char *, int);
 } OSDecoderInfo;
 
 /* List structure */
@@ -64,4 +67,3 @@ void RootcheckInit(void);
 int ReadDecodeXML(const char *file);
 
 #endif
-

@@ -446,40 +446,40 @@ int ReadDecodeXML(const char *file)
                 /* Check the values from the order */
                 while (*norder) {
                     if (strstr(*norder, "dstuser") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) DstUser_FP;
+                        pi->order[order_int] = DstUser_FP;
                     } else if (strstr(*norder, "srcuser") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) SrcUser_FP;
+                        pi->order[order_int] = SrcUser_FP;
                     }
                     /* User is an alias to dstuser */
                     else if (strstr(*norder, "user") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) DstUser_FP;
+                        pi->order[order_int] = DstUser_FP;
                     } else if (strstr(*norder, "srcip") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) SrcIP_FP;
+                        pi->order[order_int] = SrcIP_FP;
                     } else if (strstr(*norder, "dstip") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) DstIP_FP;
+                        pi->order[order_int] = DstIP_FP;
                     } else if (strstr(*norder, "srcport") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) SrcPort_FP;
+                        pi->order[order_int] = SrcPort_FP;
                     } else if (strstr(*norder, "dstport") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) DstPort_FP;
+                        pi->order[order_int] = DstPort_FP;
                     } else if (strstr(*norder, "protocol") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) Protocol_FP;
+                        pi->order[order_int] = Protocol_FP;
                     } else if (strstr(*norder, "action") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) Action_FP;
+                        pi->order[order_int] = Action_FP;
                     } else if (strstr(*norder, "id") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) ID_FP;
+                        pi->order[order_int] = ID_FP;
                     } else if (strstr(*norder, "url") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) Url_FP;
+                        pi->order[order_int] = Url_FP;
                     } else if (strstr(*norder, "data") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) Data_FP;
+                        pi->order[order_int] = Data_FP;
                     } else if (strstr(*norder, "extra_data") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) Data_FP;
+                        pi->order[order_int] = Data_FP;
                     } else if (strstr(*norder, "status") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) Status_FP;
+                        pi->order[order_int] = Status_FP;
                     } else if (strstr(*norder, "system_name") != NULL) {
-                        pi->order[order_int] = (void (*)(void *, char *)) SystemName_FP;
+                        pi->order[order_int] = SystemName_FP;
                     } else {
-                        ErrorExit("decode-xml: Wrong field '%s' in the order"
-                                  " of decoder '%s'", *norder, pi->name);
+                        pi->order[order_int] = DynamicField_FP;
+                        pi->fields[order_int] = strdup(*norder);
                     }
 
                     free(*norder);
