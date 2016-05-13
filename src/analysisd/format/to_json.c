@@ -31,6 +31,11 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->generated_rule->level) {
             cJSON_AddNumberToObject(rule, "level", lf->generated_rule->level);
         }
+
+        if (lf->generated_rule->group) {
+            cJSON_AddStringToObject(rule, "group", lf->generated_rule->group);
+        }
+
         if(lf->generated_rule->comment) {
             cJSON_AddStringToObject(rule, "comment", lf->generated_rule->comment);
         }
