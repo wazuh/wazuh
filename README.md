@@ -1,8 +1,8 @@
 # OSSEC Wazuh fork
 
-OSSEC is a full platform to monitor and control your systems. It mixes together all the aspects of HIDS (host-based intrusion detection), log monitoring and SIM/SIEM together in a simple, powerful and open source solution. 
+OSSEC is a full platform to monitor and control your systems. It mixes together all the aspects of HIDS (host-based intrusion detection), log monitoring and SIM/SIEM together in a simple, powerful and open source solution.
 
-This fork provides compliance support, extended logging, and additional management features. These capabilities are required for the integration with ELK Stack and OSSEC Wazuh RESTful API (also included in this repository). 
+This fork provides compliance support, extended logging, and additional management features. These capabilities are required for the integration with ELK Stack and OSSEC Wazuh RESTful API (also included in this repository).
 
 ## Wazuh Open Source modules and contributions
 
@@ -27,8 +27,9 @@ Wazuh team is currently supporting OSSEC enterprise users, and decided to develo
 
 ## Branches
 
-* `master` branch on correspond to the last OSSEC Wazuh stable version.
-* `development` branch contains the latest code, be aware of possible bugs on this branch.  
+* `stable` branch on correspond to the last OSSEC Wazuh stable version.
+* `master` branch contains the latest code, be aware of possible bugs on this branch.
+* `development` branch includes all the new features we're adding and testing.
 
 ## Contribute
 
