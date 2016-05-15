@@ -257,7 +257,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         // Wait for child process
 
-        switch (waitpid(pid, &status, WNOHANG)) {
+        switch (waitpid(pid, &status, retval ? 0 : WNOHANG)) {
         case -1:
             merror("%s: ERROR: waitpid()", ARGV0);
             retval = -1;
@@ -266,6 +266,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         case 0:
             merror("%s: WARN: Subprocess was killed.", ARGV0);
             kill(pid, SIGKILL);
+            waitpid(pid, &status, 0);
             break;
 
         default:
