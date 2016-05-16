@@ -154,7 +154,7 @@ DWORD WINAPI Reader(LPVOID args) {
 
 #define EXECVE_ERROR 0xFF
 
-void* reader(void *args);   // Reading thread's start point
+static void* reader(void *args);   // Reading thread's start point
 
 // Work-around for OS X
 
@@ -209,6 +209,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         dup2(pipe_fd[1], STDOUT_FILENO);
         dup2(pipe_fd[1], STDERR_FILENO);
 
+        setsid();
+
         if (execve(argv[0], argv, envp) < 0)
             exit(EXECVE_ERROR);
 
@@ -240,13 +242,13 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             break;
 
         case ETIMEDOUT:
-            kill(pid, SIGKILL);
+            kill(-pid, SIGKILL);
             retval = WM_ERROR_TIMEOUT;
             break;
 
         default:
             merror("%s: ERROR: pthread_cond_timedwait()", ARGV0);
-            kill(pid, SIGKILL);
+            kill(-pid, SIGKILL);
             retval = -1;
         }
 
@@ -264,9 +266,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             break;
 
         case 0:
-            merror("%s: WARN: Subprocess was killed.", ARGV0);
-            kill(pid, SIGKILL);
+            kill(-pid, SIGKILL);
             waitpid(pid, &status, 0);
+            merror("%s: WARN: Subprocess was killed.", ARGV0);
             break;
 
         default:
