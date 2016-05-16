@@ -478,8 +478,16 @@ int ReadDecodeXML(const char *file)
                     } else if (strstr(*norder, "system_name") != NULL) {
                         pi->order[order_int] = SystemName_FP;
                     } else {
+                        char *word = &(*norder)[strspn(*norder, " ")];
+                        word[strcspn(word, " ")] = '\0';
+
+                        if (strlen(word) == 0) {
+                            ErrorExit("decode-xml: Wrong field '%s' in the order"
+                                  " of decoder '%s'", *norder, pi->name);
+                        }
+
                         pi->order[order_int] = DynamicField_FP;
-                        pi->fields[order_int] = strdup(*norder);
+                        pi->fields[order_int] = strdup(word);
                     }
 
                     free(*norder);
@@ -751,4 +759,3 @@ char *_loadmemory(char *at, char *str)
     }
     return (NULL);
 }
-
