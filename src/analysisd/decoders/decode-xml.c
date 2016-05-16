@@ -445,47 +445,47 @@ int ReadDecodeXML(const char *file)
 
                 /* Check the values from the order */
                 while (*norder) {
-                    if (strstr(*norder, "dstuser") != NULL) {
+                    char *word = &(*norder)[strspn(*norder, " ")];
+                    word[strcspn(word, " ")] = '\0';
+
+                    if (strlen(word) == 0) {
+                        ErrorExit("decode-xml: Wrong field '%s' in the order"
+                                  " of decoder '%s'", *norder, pi->name);
+                    }
+
+                    if (!strcmp(word, "dstuser")) {
                         pi->order[order_int] = DstUser_FP;
-                    } else if (strstr(*norder, "srcuser") != NULL) {
+                    } else if (!strcmp(word, "srcuser")) {
                         pi->order[order_int] = SrcUser_FP;
                     }
                     /* User is an alias to dstuser */
-                    else if (strstr(*norder, "user") != NULL) {
+                    else if (!strcmp(word, "user")) {
                         pi->order[order_int] = DstUser_FP;
-                    } else if (strstr(*norder, "srcip") != NULL) {
+                    } else if (!strcmp(word, "srcip")) {
                         pi->order[order_int] = SrcIP_FP;
-                    } else if (strstr(*norder, "dstip") != NULL) {
+                    } else if (!strcmp(word, "dstip")) {
                         pi->order[order_int] = DstIP_FP;
-                    } else if (strstr(*norder, "srcport") != NULL) {
+                    } else if (!strcmp(word, "srcport")) {
                         pi->order[order_int] = SrcPort_FP;
-                    } else if (strstr(*norder, "dstport") != NULL) {
+                    } else if (!strcmp(word, "dstport")) {
                         pi->order[order_int] = DstPort_FP;
-                    } else if (strstr(*norder, "protocol") != NULL) {
+                    } else if (!strcmp(word, "protocol")) {
                         pi->order[order_int] = Protocol_FP;
-                    } else if (strstr(*norder, "action") != NULL) {
+                    } else if (!strcmp(word, "action")) {
                         pi->order[order_int] = Action_FP;
-                    } else if (strstr(*norder, "id") != NULL) {
+                    } else if (!strcmp(word, "id")) {
                         pi->order[order_int] = ID_FP;
-                    } else if (strstr(*norder, "url") != NULL) {
+                    } else if (!strcmp(word, "url")) {
                         pi->order[order_int] = Url_FP;
-                    } else if (strstr(*norder, "data") != NULL) {
+                    } else if (!strcmp(word, "data")) {
                         pi->order[order_int] = Data_FP;
-                    } else if (strstr(*norder, "extra_data") != NULL) {
+                    } else if (!strcmp(word, "extra_data")) {
                         pi->order[order_int] = Data_FP;
-                    } else if (strstr(*norder, "status") != NULL) {
+                    } else if (!strcmp(word, "status")) {
                         pi->order[order_int] = Status_FP;
-                    } else if (strstr(*norder, "system_name") != NULL) {
+                    } else if (!strcmp(word, "system_name")) {
                         pi->order[order_int] = SystemName_FP;
                     } else {
-                        char *word = &(*norder)[strspn(*norder, " ")];
-                        word[strcspn(word, " ")] = '\0';
-
-                        if (strlen(word) == 0) {
-                            ErrorExit("decode-xml: Wrong field '%s' in the order"
-                                  " of decoder '%s'", *norder, pi->name);
-                        }
-
                         pi->order[order_int] = DynamicField_FP;
                         pi->fields[order_int] = strdup(word);
                     }
