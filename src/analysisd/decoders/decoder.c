@@ -186,6 +186,8 @@ void DecodeEvent(Eventinfo *lf)
                     regex_prev++;
                 }
 
+                lf->decoder_info = nnode;
+
                 for (i = 0; nnode->regex->sub_strings[i]; i++) {
                     if (nnode->order[i])
                         nnode->order[i](lf, nnode->regex->sub_strings[i], i);
