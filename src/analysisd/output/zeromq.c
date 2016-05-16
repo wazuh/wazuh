@@ -13,7 +13,6 @@
 
 #include "shared.h"
 #include "rules.h"
-#include "czmq.h"
 #include "format/to_json.h"
 
 
