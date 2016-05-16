@@ -15,7 +15,11 @@
 #include "eventinfo.h"
 
 void zeromq_output_event(const Eventinfo *lf);
+#if CZMQ_VERSION_MAJOR == 2
 void zeromq_output_start(const char *uri);
+#elif CZMQ_VERSION_MAJOR == 3
+void zeromq_output_start(const char *uri, const char *client_cert_path, const char *server_cert_path);
+#endif
 void zeromq_output_end(void);
 
 
