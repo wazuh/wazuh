@@ -14,6 +14,7 @@ from os import remove, close as close
 from subprocess import call, CalledProcessError, STDOUT
 from getopt import getopt, GetoptError
 from signal import signal, SIGINT
+import tempfile
 
 OSCAP_BIN = "oscap"
 PATTERN_HEAD = "Profiles:\n"
@@ -21,6 +22,9 @@ PATTERN_PROFILE = "(\t+)(\S+)\n"
 OSCAP_LOG_ERROR = "oscap: ERROR:"
 OSSEC_PATH = "/var/ossec"
 POLICIES_PATH = "{0}/wodles/oscap/policies".format(OSSEC_PATH)
+
+tempfile.tempdir = OSSEC_PATH + "/tmp"
+
 ################################################################################
 
 try:
