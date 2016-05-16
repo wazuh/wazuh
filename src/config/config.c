@@ -43,6 +43,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osreports = "reports";                  /* Server Config */
     const char *osintegratord = "integration";          /* Server Config */
     const char *osactive_response = "active-response";  /* Agent Config  */
+    const char *oswmodule = "wodle";  /* Wodle - Wazuh Module  */
 
     while (node[i]) {
         XML_NODE chld_node = NULL;
@@ -119,6 +120,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, osreports) == 0) {
             if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (strcmp(node[i]->element, oswmodule) == 0) {
+            if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
         } else {

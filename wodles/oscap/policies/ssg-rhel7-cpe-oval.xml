@@ -1,0 +1,239 @@
+<oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:ind="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" xmlns:unix="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" xmlns:linux="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-common-5 oval-common-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5 oval-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#independent independent-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#unix unix-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#linux linux-definitions-schema.xsd">
+  <generator>
+    <oval:product_name>python</oval:product_name>
+    <oval:product_version>2.6.6</oval:product_version>
+    <oval:schema_version>5.11</oval:schema_version>
+    <oval:timestamp>2015-10-02T10:17:35</oval:timestamp>
+  </generator>
+  <definitions><definition class="inventory" id="oval:ssg:def:100" version="1">
+      <metadata>
+        <title>Red Hat Enterprise Linux 7</title>
+        <affected family="unix">
+        </affected>
+        <reference ref_id="cpe:/o:redhat:enterprise_linux:7" source="CPE"/>
+        <description>The operating system installed on the system is
+      Red Hat Enterprise Linux 7</description>
+        <reference source="JL" ref_id="FEDORA20_20150522" ref_url="test_attestation"/>
+      </metadata>
+      <criteria>
+        <criterion comment="Installed operating system is part of the unix family" test_ref="oval:ssg:tst:101"/>
+        <criteria operator="OR">
+          <criterion comment="Red Hat Enterprise Linux 7 Workstation is installed" test_ref="oval:ssg:tst:102"/>
+          <criterion comment="Red Hat Enterprise Linux 7 Server is installed" test_ref="oval:ssg:tst:103"/>
+        </criteria>
+      </criteria>
+    </definition>
+    <definition class="inventory" id="oval:ssg:def:104" version="1">
+      <metadata>
+        <title>CentOS 6</title>
+        <affected family="unix">
+        </affected>
+        <reference ref_id="cpe:/o:centos:centos:6" source="CPE"/>
+        <description>The operating system installed on the system is
+      CentOS 6</description>
+        <reference source="MP" ref_id="CENTOS6_20150707" ref_url="test_attestation"/>
+      </metadata>
+      <criteria>
+        <criterion comment="Installed operating system is part of the unix family" test_ref="oval:ssg:tst:105"/>
+        <criterion comment="CentOS6 is installed" test_ref="oval:ssg:tst:106"/>
+      </criteria>
+    </definition>
+    <definition class="inventory" id="oval:ssg:def:107" version="2">
+      <metadata>
+        <title>Installed operating system is Fedora</title>
+        <affected family="unix">
+        </affected>
+        <reference ref_id="cpe:/o:fedoraproject:fedora:21" source="CPE"/>
+        <reference ref_id="cpe:/o:fedoraproject:fedora:22" source="CPE"/>
+        <reference ref_id="cpe:/o:fedoraproject:fedora:23" source="CPE"/>
+        <description>The operating system installed on the system is Fedora</description>
+        <reference source="JL" ref_id="RHEL6_20150624" ref_url="test_attestation"/>
+        <reference source="JL" ref_id="RHEL7_20150522" ref_url="test_attestation"/>
+        <reference source="JL" ref_id="FEDORA21_20150624" ref_url="test_attestation"/>
+      </metadata>
+      <criteria operator="AND">
+        <criterion comment="Installed operating system is part of the unix family" test_ref="oval:ssg:tst:105"/>
+        <criterion comment="fedora-release RPM package is installed" test_ref="oval:ssg:tst:108"/>
+        <criterion comment="CPE vendor is 'fedoraproject' and product is 'fedora'" test_ref="oval:ssg:tst:109"/>
+      </criteria>
+    </definition>
+    <definition class="inventory" id="oval:ssg:def:110" version="1">
+      <metadata>
+        <title>Red Hat Enterprise Linux 6</title>
+        <affected family="unix">
+          <platform>Fedora 21</platform>
+          <platform>Fedora 22</platform>
+          <platform>Fedora 23</platform>
+          <platform>Red Hat Enterprise Linux 7</platform>
+          <platform>Red Hat Enterprise Linux 6</platform>
+        </affected>
+        <reference ref_id="cpe:/o:redhat:enterprise_linux:6" source="CPE"/>
+        <description>The operating system installed on the system is
+      Red Hat Enterprise Linux 6</description>
+        <reference source="JL" ref_id="RHEL7_20150522" ref_url="test_attestation"/>
+        <reference source="JL" ref_id="FEDORA20_20150522" ref_url="test_attestation"/>
+      </metadata>
+      <criteria>
+        <criterion comment="Installed operating system is part of the unix family" test_ref="oval:ssg:tst:105"/>
+        <criteria operator="OR">
+          <criterion comment="Red Hat Enterprise Linux 6 Workstation is installed" test_ref="oval:ssg:tst:111"/>
+          <criterion comment="Red Hat Enterprise Linux 6 Server is installed" test_ref="oval:ssg:tst:112"/>
+        </criteria>
+      </criteria>
+    </definition>
+    <definition class="inventory" id="oval:ssg:def:113" version="1">
+      <metadata>
+        <title>CentOS 7</title>
+        <affected family="unix">
+        </affected>
+        <reference ref_id="cpe:/o:centos:centos:7" source="CPE"/>
+        <description>The operating system installed on the system is
+      CentOS 7</description>
+        <reference source="MP" ref_id="CENTOS7_20150707" ref_url="test_attestation"/>
+      </metadata>
+      <criteria>
+        <criterion comment="Installed operating system is part of the unix family" test_ref="oval:ssg:tst:105"/>
+        <criterion comment="CentOS7 is installed" test_ref="oval:ssg:tst:114"/>
+      </criteria>
+    </definition>
+    <definition class="inventory" id="oval:ssg:def:115" version="1">
+      <metadata>
+        <title>Scientific Linux 7</title>
+        <affected family="unix">
+        </affected>
+        <reference ref_id="cpe:/o:scientificlinux:scientificlinux:6" source="CPE"/>
+        <description>The operating system installed on the system is
+      Scientific Linux 7</description>
+        <reference source="MP" ref_id="SL7_20150707" ref_url="test_attestation"/>
+      </metadata>
+      <criteria>
+        <criterion comment="Installed operating system is part of the unix family" test_ref="oval:ssg:tst:105"/>
+        <criterion comment="Scientific Linux 7 is installed" test_ref="oval:ssg:tst:116"/>
+      </criteria>
+    </definition>
+    <definition class="inventory" id="oval:ssg:def:117" version="1">
+      <metadata>
+        <title>Scientific Linux 6</title>
+        <affected family="unix">
+        </affected>
+        <reference ref_id="cpe:/o:scientificlinux:scientificlinux:6" source="CPE"/>
+        <description>The operating system installed on the system is
+      Scientific Linux 6</description>
+        <reference source="MP" ref_id="SL6_20150707" ref_url="test_attestation"/>
+      </metadata>
+      <criteria>
+        <criterion comment="Installed operating system is part of the unix family" test_ref="oval:ssg:tst:105"/>
+        <criterion comment="Scientific Linux 6 is installed" test_ref="oval:ssg:tst:118"/>
+      </criteria>
+    </definition>
+    </definitions><tests><ind:family_test check="all" check_existence="at_least_one_exists" comment="installed OS part of unix family" id="oval:ssg:tst:101" version="1">
+      <ind:object object_ref="oval:ssg:obj:119"/>
+      <ind:state state_ref="oval:ssg:ste:120"/>
+    </ind:family_test>
+    <linux:rpminfo_test check="all" check_existence="at_least_one_exists" comment="redhat-release-workstation is version 7" id="oval:ssg:tst:102" version="1">
+      <linux:object object_ref="oval:ssg:obj:121"/>
+      <linux:state state_ref="oval:ssg:ste:122"/>
+    </linux:rpminfo_test>
+    <linux:rpminfo_test check="all" check_existence="at_least_one_exists" comment="redhat-release-server is version 7" id="oval:ssg:tst:103" version="1">
+      <linux:object object_ref="oval:ssg:obj:123"/>
+      <linux:state state_ref="oval:ssg:ste:124"/>
+    </linux:rpminfo_test>
+    <ind:family_test check="all" check_existence="at_least_one_exists" comment="installed OS part of unix family" id="oval:ssg:tst:105" version="1">
+      <ind:object object_ref="oval:ssg:obj:125"/>
+      <ind:state state_ref="oval:ssg:ste:126"/>
+    </ind:family_test>
+    <linux:rpminfo_test check="all" check_existence="at_least_one_exists" comment="centos-release is version 6" id="oval:ssg:tst:106" version="1">
+      <linux:object object_ref="oval:ssg:obj:127"/>
+      <linux:state state_ref="oval:ssg:ste:128"/>
+    </linux:rpminfo_test>
+    <linux:rpminfo_test check="all" check_existence="only_one_exists" comment="fedora-release RPM package is installed" id="oval:ssg:tst:108" version="1">
+      <linux:object object_ref="oval:ssg:obj:129"/>
+    </linux:rpminfo_test>
+    <ind:textfilecontent54_test check="all" comment="CPE vendor is 'fedoraproject' and 'product' is fedora" id="oval:ssg:tst:109" version="1">
+      <ind:object object_ref="oval:ssg:obj:130"/>
+    </ind:textfilecontent54_test>
+    <linux:rpminfo_test check="all" check_existence="at_least_one_exists" comment="redhat-release-workstation is version 6" id="oval:ssg:tst:111" version="1">
+      <linux:object object_ref="oval:ssg:obj:131"/>
+      <linux:state state_ref="oval:ssg:ste:132"/>
+    </linux:rpminfo_test>
+    <linux:rpminfo_test check="all" check_existence="at_least_one_exists" comment="redhat-release-server is version 6" id="oval:ssg:tst:112" version="1">
+      <linux:object object_ref="oval:ssg:obj:133"/>
+      <linux:state state_ref="oval:ssg:ste:134"/>
+    </linux:rpminfo_test>
+    <linux:rpminfo_test check="all" check_existence="at_least_one_exists" comment="centos-release is version 7" id="oval:ssg:tst:114" version="1">
+      <linux:object object_ref="oval:ssg:obj:135"/>
+      <linux:state state_ref="oval:ssg:ste:136"/>
+    </linux:rpminfo_test>
+    <linux:rpminfo_test check="all" check_existence="at_least_one_exists" comment="sl-release is version 7" id="oval:ssg:tst:116" version="1">
+      <linux:object object_ref="oval:ssg:obj:137"/>
+      <linux:state state_ref="oval:ssg:ste:138"/>
+    </linux:rpminfo_test>
+    <linux:rpminfo_test check="all" check_existence="at_least_one_exists" comment="sl-release is version 6" id="oval:ssg:tst:118" version="1">
+      <linux:object object_ref="oval:ssg:obj:139"/>
+      <linux:state state_ref="oval:ssg:ste:140"/>
+    </linux:rpminfo_test>
+    </tests><objects><ind:family_object id="oval:ssg:obj:119" version="1"/>
+    <linux:rpminfo_object id="oval:ssg:obj:121" version="1">
+      <linux:name>redhat-release-workstation</linux:name>
+    </linux:rpminfo_object>
+    <linux:rpminfo_object id="oval:ssg:obj:123" version="1">
+      <linux:name>redhat-release-server</linux:name>
+    </linux:rpminfo_object>
+    <ind:family_object id="oval:ssg:obj:125" version="1"/>
+    <linux:rpminfo_object id="oval:ssg:obj:127" version="1">
+      <linux:name>centos-release</linux:name>
+    </linux:rpminfo_object>
+    <linux:rpminfo_object id="oval:ssg:obj:129" version="1">
+      <linux:name>fedora-release</linux:name>
+    </linux:rpminfo_object>
+    <ind:textfilecontent54_object id="oval:ssg:obj:130" version="1">
+      <ind:filepath>/etc/system-release-cpe</ind:filepath>
+      <ind:pattern operation="pattern match">^cpe:\/o:fedoraproject:fedora:[\d]+$</ind:pattern>
+      <ind:instance datatype="int" operation="equals">1</ind:instance>
+    </ind:textfilecontent54_object>
+    <linux:rpminfo_object id="oval:ssg:obj:131" version="1">
+      <linux:name>redhat-release-workstation</linux:name>
+    </linux:rpminfo_object>
+    <linux:rpminfo_object id="oval:ssg:obj:133" version="1">
+      <linux:name>redhat-release-server</linux:name>
+    </linux:rpminfo_object>
+    <linux:rpminfo_object id="oval:ssg:obj:135" version="1">
+      <linux:name>centos-release</linux:name>
+    </linux:rpminfo_object>
+    <linux:rpminfo_object id="oval:ssg:obj:137" version="1">
+      <linux:name>sl-release</linux:name>
+    </linux:rpminfo_object>
+    <linux:rpminfo_object id="oval:ssg:obj:139" version="1">
+      <linux:name>sl-release</linux:name>
+    </linux:rpminfo_object>
+    </objects><states><ind:family_state id="oval:ssg:ste:120" version="1">
+      <ind:family>unix</ind:family>
+    </ind:family_state>
+    <linux:rpminfo_state id="oval:ssg:ste:122" version="1">
+      <linux:version operation="pattern match">^7.*$</linux:version>
+    </linux:rpminfo_state>
+    <linux:rpminfo_state id="oval:ssg:ste:124" version="1">
+      <linux:version operation="pattern match">^7.*$</linux:version>
+    </linux:rpminfo_state>
+    <ind:family_state id="oval:ssg:ste:126" version="1">
+      <ind:family>unix</ind:family>
+    </ind:family_state>
+    <linux:rpminfo_state id="oval:ssg:ste:128" version="1">
+      <linux:version operation="pattern match">^6.*$</linux:version>
+    </linux:rpminfo_state>
+    <linux:rpminfo_state id="oval:ssg:ste:132" version="1">
+      <linux:version operation="pattern match">^6.*$</linux:version>
+    </linux:rpminfo_state>
+    <linux:rpminfo_state id="oval:ssg:ste:134" version="1">
+      <linux:version operation="pattern match">^6.*$</linux:version>
+    </linux:rpminfo_state>
+    <linux:rpminfo_state id="oval:ssg:ste:136" version="1">
+      <linux:version operation="pattern match">^7.*$</linux:version>
+    </linux:rpminfo_state>
+    <linux:rpminfo_state id="oval:ssg:ste:138" version="1">
+      <linux:version operation="pattern match">^7.*$</linux:version>
+    </linux:rpminfo_state>
+    <linux:rpminfo_state id="oval:ssg:ste:140" version="1">
+      <linux:version operation="pattern match">^6.*$</linux:version>
+    </linux:rpminfo_state>
+    </states></oval_definitions>
