@@ -257,7 +257,11 @@ int main_analysisd(int argc, char **argv)
 #ifdef ZEROMQ_OUTPUT_ENABLED
     /* Start zeromq */
     if (Config.zeromq_output) {
+#if CZMQ_VERSION_MAJOR == 2 
         zeromq_output_start(Config.zeromq_output_uri);
+#elif CZMQ_VERSION_MAJOR >= 3
+        zeromq_output_start(Config.zeromq_output_uri, Config.zeromq_output_client_cert, Config.zeromq_output_server_cert);
+#endif
     }
 #endif
 
