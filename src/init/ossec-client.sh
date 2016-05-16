@@ -12,7 +12,7 @@ DIR=`dirname $PWD`;
 NAME="OSSEC HIDS"
 VERSION="v2.8"
 AUTHOR="Trend Micro Inc."
-DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
+DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd wazuh-moduled"
 
 [ -f /etc/ossec-init.conf ] && . /etc/ossec-init.conf
 
@@ -117,7 +117,7 @@ testconfig()
 # Start function
 start()
 {
-    SDAEMONS="ossec-execd ossec-agentd ossec-logcollector ossec-syscheckd"
+    SDAEMONS="ossec-execd wazuh-moduled ossec-agentd ossec-logcollector ossec-syscheckd"
 
     echo "Starting $NAME $VERSION (by $AUTHOR)..."
     lock;
