@@ -12,6 +12,7 @@
 #include "shared.h"
 #include "rules.h"
 #include "cJSON.h"
+#include "config.h"
 
 /* Convert Eventinfo to json */
 char* Eventinfo_to_jsonstr(const Eventinfo* lf)
@@ -49,8 +50,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->firedtimes);
         }
     }
-   
-        
+
+
     if(lf->protocol) {
         cJSON_AddStringToObject(root, "protocol", lf->protocol);
     }
@@ -77,15 +78,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     }
     if(lf->full_log) {
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
-    }
-
-    //Dynamic fields
-    if(lf->decoder_info){
-        //ToDO: use constant instead of 8.
-        for(i=0;i<8;i++){
-            if (lf->decoder_info->fields[i] && lf->fields[i])
-                cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
-        }
     }
 
     if(lf->filename) {
@@ -141,6 +133,16 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->decoder_info) {
 
         cJSON* decoder;
+
+        // Dynamic fields
+        if (lf->decoder_info->fields) {
+            for (i = 0; i < Config.decoder_order_size; i++) {
+                if (lf->decoder_info->fields[i] && lf->fields[i]) {
+                    cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
+                }
+            }
+        }
+
         cJSON_AddItemToObject(root, "decoder", decoder = cJSON_CreateObject());
 
         if(lf->decoder_info->fts)
@@ -218,15 +220,6 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->data)
         cJSON_AddStringToObject(root, "data", lf->data);
 
-    //Dynamic fields
-    if(lf->decoder_info){
-        //ToDO: use constant instead of 8.
-        for(i=0;i<8;i++){
-            if (lf->decoder_info->fields[i] && lf->fields[i])
-                cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
-        }
-    }
-
     if(lf->systemname)
         cJSON_AddStringToObject(root, "systemname", lf->systemname);
 
@@ -294,6 +287,16 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->decoder_info) {
 
         cJSON* decoder;
+
+        // Dynamic fields
+        if (lf->decoder_info->fields) {
+            for (i = 0; i < Config.decoder_order_size; i++) {
+                if (lf->decoder_info->fields[i] && lf->fields[i]) {
+                    cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
+                }
+            }
+        }
+
         cJSON_AddItemToObject(root, "decoder", decoder = cJSON_CreateObject());
 
         if(lf->decoder_info->fts)

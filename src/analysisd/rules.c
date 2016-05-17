@@ -1404,6 +1404,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->hostname = NULL;
     ruleinfo_pt->program_name = NULL;
     ruleinfo_pt->action = NULL;
+    os_calloc(Config.decoder_order_size, sizeof(FieldInfo*), ruleinfo_pt->fields);
 
     /* Zero last matched events */
     ruleinfo_pt->__frequency = 0;
@@ -1790,4 +1791,3 @@ static int doesRuleExist(int sid, RuleNode *r_node)
 
     return (0);
 }
-
