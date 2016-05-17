@@ -15,6 +15,8 @@ from subprocess import call, CalledProcessError, STDOUT
 from getopt import getopt, GetoptError
 from signal import signal, SIGINT
 import tempfile
+import random
+import string
 
 OSCAP_BIN = "oscap"
 PATTERN_HEAD = "Profiles:\n"
@@ -132,6 +134,10 @@ def exec_and_parse_oscap(profile_selected="no-profiles"):
     temp = mkstemp()
     close(temp[0])
 
+    rand1 = temp[1].split("/")[-1][3:]
+    rand2 = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(14))
+    eval_id = rand1 + rand2
+
     try:
         cmd = [OSCAP_BIN, "xccdf", "eval", "--results-arf", temp[1]]
 
@@ -215,7 +221,8 @@ def exec_and_parse_oscap(profile_selected="no-profiles"):
                 skip_line = True
 
             if not skip_line:
-                print("oscap: msg: \"rule-result\", policy: \"{0}\", profile: \"{1}\", rule_id: \"{2}\", result: \"{3}\", title: \"{4}\", ident: \"{5}\", severity: \"{6}\".".format(policy_name,
+                print("oscap: msg: \"rule-result\", id: \"{0}\", policy: \"{1}\", profile: \"{2}\", rule_id: \"{3}\", result: \"{4}\", title: \"{5}\", ident: \"{6}\", severity: \"{7}\".".format(eval_id,
+                                                                                                                                                                                     policy_name,
                                                                                                                                                                                      profile_selected, rule,
                                                                                                                                                                                      result, title, ident,
                                                                                                                                                                                      severity))
@@ -230,7 +237,7 @@ def exec_and_parse_oscap(profile_selected="no-profiles"):
     for k in severity_failed_rules:
         msg_failed_r += "\"{0}\": \"{1}\", ".format(k, severity_failed_rules[k])
 
-    print("oscap: msg: \"report-overview\", policy: \"{0}\", profile: \"{1}\", score: {2}, severity of failed rules: {3}.".format(policy_name, profile_selected, score, msg_failed_r[:-2]))
+    print("oscap: msg: \"report-overview\", id: \"{0}\", policy: \"{1}\", profile: \"{2}\", score: {3}, severity of failed rules: {4}.".format(eval_id, policy_name, profile_selected, score, msg_failed_r[:-2]))
 
 
 def signal_handler(n_signal, frame):
