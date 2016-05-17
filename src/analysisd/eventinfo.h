@@ -37,7 +37,7 @@ typedef struct _Eventinfo {
     char *url;
     char *data;
     char *systemname;
-    char *fields[8];
+    char **fields;
 
     /* Pointer to the rule that generated it */
     RuleInfo *generated_rule;
@@ -153,4 +153,3 @@ void *DynamicField_FP(Eventinfo *lf, char *field, int order);
 void *None_FP(Eventinfo *lf, char *field, int order);
 
 #endif /* _EVTINFO__H */
-

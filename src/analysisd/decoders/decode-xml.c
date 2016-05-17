@@ -14,6 +14,7 @@
 #include "eventinfo.h"
 #include "decoder.h"
 #include "plugin_decoders.h"
+#include "config.h"
 
 #ifdef TESTRULE
 #undef XML_LDECODER
@@ -431,20 +432,19 @@ int ReadDecodeXML(const char *file)
                 char **norder, **s_norder;
                 int order_int = 0;
 
-                /* Maximum number is 8 for the order */
-                norder = OS_StrBreak(',', elements[j]->content, 8);
+                /* Maximum number for the order is limited by decoder_order_size */
+                norder = OS_StrBreak(',', elements[j]->content, MAX_DECODER_ORDER_SIZE);
                 s_norder = norder;
-                os_calloc(8, sizeof(void *), pi->order);
-
-                /* Initialize the function pointers */
-                while (order_int < 8) {
-                    pi->order[order_int] = NULL;
-                    order_int++;
-                }
+                os_calloc(Config.decoder_order_size, sizeof(void *), pi->order);
+                os_calloc(Config.decoder_order_size, sizeof(char *), pi->fields);
                 order_int = 0;
 
                 /* Check the values from the order */
                 while (*norder) {
+
+                    if (order_int >= Config.decoder_order_size) {
+                        ErrorExit("%s: ERROR: Order has too many fields.", ARGV0);
+                    }
                     char *word = &(*norder)[strspn(*norder, " ")];
                     word[strcspn(word, " ")] = '\0';
 

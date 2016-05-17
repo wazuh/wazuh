@@ -35,7 +35,7 @@ typedef struct {
     char *parent;
     char *name;
     char *ftscomment;
-    char *fields[8];
+    char **fields;
 
     OSRegex *regex;
     OSRegex *prematch;
