@@ -33,7 +33,7 @@ $rc_dirs=/etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
 
 
 [CIS - Testing against the CIS Red Hat Enterprise Linux 7 Benchmark v1.1.0] [any required] [http://www.ossec.net/]
-f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 6;
+f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 7;
 f:/etc/redhat-release -> r:^CentOS && r:release 7;
 f:/etc/redhat-release -> r:^Cloud && r:release 7;
 f:/etc/redhat-release -> r:^Oracle && r:release 7;
