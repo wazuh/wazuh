@@ -20,6 +20,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* rule;
     cJSON* file_diff;
     char* out;
+    int i;
 
     root = cJSON_CreateObject();
 
@@ -77,6 +78,16 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->full_log) {
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
     }
+
+    //Dynamic fields
+    if(lf->decoder_info){
+        //ToDO: use constant instead of 8.
+        for(i=0;i<8;i++){
+            if (lf->decoder_info->fields[i] && lf->fields[i])
+                cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
+        }
+    }
+
     if(lf->filename) {
         file_diff = cJSON_CreateObject();
         cJSON_AddItemToObject(root, "SyscheckFile", file_diff);
@@ -158,6 +169,7 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
 {
     cJSON* root;
     char* out;
+    int i;
 
     root = cJSON_CreateObject();
 
@@ -205,6 +217,15 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
 
     if(lf->data)
         cJSON_AddStringToObject(root, "data", lf->data);
+
+    //Dynamic fields
+    if(lf->decoder_info){
+        //ToDO: use constant instead of 8.
+        for(i=0;i<8;i++){
+            if (lf->decoder_info->fields[i] && lf->fields[i])
+                cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
+        }
+    }
 
     if(lf->systemname)
         cJSON_AddStringToObject(root, "systemname", lf->systemname);
