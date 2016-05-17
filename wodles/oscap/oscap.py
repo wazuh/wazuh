@@ -131,6 +131,7 @@ def extract_profiles_from_file(oscap_file):
 
 
 def exec_and_parse_oscap(profile_selected="no-profiles"):
+    result_printed = False
     temp = mkstemp()
     close(temp[0])
 
@@ -155,7 +156,7 @@ def exec_and_parse_oscap(profile_selected="no-profiles"):
         cmd.append(arg_policy)
 
         if debug:
-            print("CMD:\n{0}\n".format(' '.join(cmd)))
+            print("\nCMD: '{0}'".format(' '.join(cmd)))
 
         output = check_output(cmd, stderr=STDOUT)
     except CalledProcessError as error:
@@ -226,10 +227,14 @@ def exec_and_parse_oscap(profile_selected="no-profiles"):
                                                                                                                                                                                      profile_selected, rule,
                                                                                                                                                                                      result, title, ident,
                                                                                                                                                                                      severity))
+                result_printed = True
 
             ident = ""
         else:
             print("{0} Unknown line: \"{1}\".".format(OSCAP_LOG_ERROR, line[0]))
+
+    if debug and not result_printed:
+        print("oscap: No results printed due to skip-result and skip-severity.")
 
     score = search_element_in_xml(tree, "score", None)
 
