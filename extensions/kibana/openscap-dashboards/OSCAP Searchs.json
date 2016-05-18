@@ -1,18 +1,20 @@
 [
   {
-    "_id": "OSCAP-Search-Rules",
+    "_id": "OSCAP-Search:-Rules",
     "_type": "search",
     "_source": {
-      "title": "OSCAP Search: Rules",
+      "title": "OSCAP Rules",
       "description": "",
       "hits": 0,
       "columns": [
         "AgentName",
-        "srcuser",
-        "protocol",
-        "url",
-        "status",
-        "action"
+        "eval_id",
+        "policy",
+        "profile",
+        "title",
+        "result",
+        "severity",
+        "rule_id"
       ],
       "sort": [
         "@timestamp",
@@ -28,18 +30,19 @@
     "_id": "OSCAP-Search:-Scan-overview",
     "_type": "search",
     "_source": {
-      "title": "OSCAP Search: Scan overview",
+      "title": "OSCAP Scans",
       "description": "",
       "hits": 0,
       "columns": [
         "AgentName",
-        "srcuser",
-        "protocol",
-        "status",
-        "id",
-        "action",
-        "data",
-        "url"
+        "eval_id",
+        "policy",
+        "profile",
+        "score",
+        "max_score",
+        "severity_low",
+        "severity_medium",
+        "severity_high"
       ],
       "sort": [
         "@timestamp",
@@ -47,7 +50,7 @@
       ],
       "version": 1,
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"ossec-*\",\"filter\":[],\"highlight\":{\"pre_tags\":[\"@kibana-highlighted-field@\"],\"post_tags\":[\"@/kibana-highlighted-field@\"],\"fields\":{\"*\":{}},\"require_field_match\":false,\"fragment_size\":2147483647},\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"report-overview\\\"\",\"analyze_wildcard\":true}}}"
+        "searchSourceJSON": "{\n  \"index\": \"ossec-*\",\n  \"filter\": [],\n  \"highlight\": {\n    \"pre_tags\": [\n      \"@kibana-highlighted-field@\"\n    ],\n    \"post_tags\": [\n      \"@/kibana-highlighted-field@\"\n    ],\n    \"fields\": {\n      \"*\": {}\n    },\n    \"require_field_match\": false,\n    \"fragment_size\": 2147483647\n  },\n  \"query\": {\n    \"query_string\": {\n      \"query\": \"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"report-overview\\\"\",\n      \"analyze_wildcard\": true\n    }\n  }\n}"
       }
     }
   }
