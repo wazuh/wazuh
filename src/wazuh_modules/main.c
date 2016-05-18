@@ -21,7 +21,6 @@ int main(int argc, char **argv)
     int debug = 0;
     int test_config = 0;
     wmodule *cur_module;
-    pthread_attr_t attr;
 
     // Get command line options
 
@@ -69,18 +68,19 @@ int main(int argc, char **argv)
 
     // Run modules
 
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        int error = pthread_create(&cur_module->thread, &attr, cur_module->context->start, cur_module->data);
+        int error = pthread_create(&cur_module->thread, NULL, cur_module->context->start, cur_module->data);
 
         if (error)
             ErrorExit("%s: ERROR: fork(): %s", ARGV0, strerror(error));
     }
 
-    pthread_attr_destroy(&attr);
-    pthread_exit(NULL);
+    // Wait for threads
+
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        pthread_join(cur_module->thread, NULL);
+    }
+
     return EXIT_SUCCESS;
 }
 
