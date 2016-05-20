@@ -533,7 +533,6 @@ int main(int argc, char **argv)
     }
 
     if (restart_agent) {
-
         if (!(agent_id || restart_all_agents)) {
             if (json_output) {
                 cJSON_AddNumberToObject(root, "error", 45);
@@ -566,11 +565,11 @@ int main(int argc, char **argv)
         if (send_msg_to_agent(arq, "restart-ossec0", restart_all_agents ? NULL : agent_id, "null") == 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 0);
-                cJSON_AddStringToObject(root, "data", "Restarting agent");
+                cJSON_AddStringToObject(root, "data", restart_all_agents ? "Restarting all agents" : "Restarting agent");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
-            }else{
-                printf("\nOSSEC HIDS %s: Restarting agent: %s\n",ARGV0, agent_id);
+            } else {
+                printf("\nOSSEC HIDS %s: Restarting agent: %s\n",ARGV0, restart_all_agents ? "(all)" : agent_id);
             }
         } else {
             if(json_output){
