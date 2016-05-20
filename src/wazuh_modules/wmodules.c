@@ -89,36 +89,58 @@ int wm_strcat(char **str1, const char *str2, char sep) {
 // Compare two strings, trimming whitespaces of s1
 
 char* wm_strtrim(char *string) {
-    int i;
+    char *c;
+    char *d;
 
-    while (*string == ' ')
-        string++;
-
-    i = strlen(string);
-
-    if (i) {
-        for (i--; string[i] == ' '; i--);
-        string[i + 1] = '\0';
-    }
-
+    string = &string[strspn(string, " ")];
+    for (c = string + strcspn(string, " "); *(d = c + strspn(c, " ")); c = d + strcspn(d, " "));
+    *c = '\0';
     return string;
 }
 
-// Split string containing white-spaced tokens into NULL-ended string array
+// Tokenize string separated by spaces, respecting double-quotes
 
-char** wm_strsplit(char *string) {
-    char **output;
-    int n = 2;
-    char *c;
+char** wm_strtok(char *string) {
+    char *c = string;
+    char **output = (char**)calloc(2, sizeof(char*));
+    size_t n = 1;
 
-    for (c = string; (c = strchr(c, ' ')); c++)
-        n++;
+    if (!output)
+        return NULL;
 
-    output = (char**)calloc(n, sizeof(char*));
-    n = 0;
+    *output = string;
 
-    for (c = strtok(string, " "); c; c = strtok(NULL, " "))
-        output[n++] = c;
+    while ((c = strpbrk(c, " \"\\"))) {
+        switch (*c) {
+        case ' ':
+            *(c++) = '\0';
+            output[n++] = c;
+            output = (char**)realloc(output, (n + 1) * sizeof(char*));
+            output[n] = NULL;
+            break;
+
+        case '\"':
+            c++;
+
+            while ((c = strpbrk(c, "\"\\"))) {
+                if (*c == '\\')
+                    c += 2;
+                else
+                    break;
+            }
+
+            if (!c) {
+                free(output);
+                return NULL;
+            }
+
+            c++;
+            break;
+
+        case '\\':
+            c += 2;
+        }
+    }
 
     return output;
 }
