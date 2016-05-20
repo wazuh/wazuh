@@ -24,9 +24,11 @@
 #define WM_STATE_DIR    DEFAULTDIR "/var/wodles"    // Default directory for states.
 #define WM_STRING_MAX   1048576                     // Max. dynamic string size.
 #define WM_BUFFER_MAX   1024                        // Max. static buffer size.
+#define WM_MAX_ATTEMPTS 3                           // Max. number of attempts.
+#define WM_MAX_WAIT     1                           // Max. wait between attempts.
 #define WM_IO_WRITE     0
 #define WM_IO_READ      1
-#define WM_ERROR_TIMEOUT 1                          // Error code for timeout
+#define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
 
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
