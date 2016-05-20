@@ -109,6 +109,8 @@ void wm_help()
 
 void wm_setup()
 {
+    struct sigaction action = { .sa_handler = wm_handler };
+
     // Read configuration: ossec.conf
 
     if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, NULL) < 0)
@@ -136,12 +138,12 @@ void wm_setup()
     // Signal management
 
     atexit(wm_cleanup);
-    signal(SIGTERM, wm_handler);
-    signal(SIGUSR1, wm_handler);
+    sigaction(SIGTERM, &action, NULL);
+    sigaction(SIGUSR1, &action, NULL);
 
     if (flag_foreground) {
-        signal(SIGHUP, wm_handler);
-        signal(SIGINT, wm_handler);
+        sigaction(SIGHUP, &action, NULL);
+        sigaction(SIGINT, &action, NULL);
     }
 }
 
@@ -164,9 +166,6 @@ void wm_handler(int signum)
     case SIGINT:
     case SIGTERM:
         exit(EXIT_SUCCESS);
-    case SIGUSR1:
-        wm_flag_reload = 1;
-        break;
     default:
         merror("%s: ERROR: unknown signal (%d)", ARGV0, signum);
     }

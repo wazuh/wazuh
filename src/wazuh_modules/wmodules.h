@@ -52,7 +52,6 @@ typedef struct wmodule {
 #include "wm_oscap.h"
 
 extern wmodule *wmodules;               // Loaded modules.
-extern int wm_flag_reload;              // Flag to reload configuration.
 
 // Check general configuration
 void wm_check();
