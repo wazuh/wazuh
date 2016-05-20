@@ -248,12 +248,14 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         case ETIMEDOUT:
             kill(-pid, SIGKILL);
+            pthread_cancel(thread);
             retval = WM_ERROR_TIMEOUT;
             break;
 
         default:
             merror("%s: ERROR: pthread_cond_timedwait()", ARGV0);
             kill(-pid, SIGKILL);
+            pthread_cancel(thread);
             retval = -1;
         }
 
