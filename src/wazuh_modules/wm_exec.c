@@ -256,7 +256,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             action.sa_handler = handler;
             sigaction(SIGCHLD, &action, NULL);
             kill(-pid, SIGTERM);
-            sleep(1);
+            sleep(WM_MAX_WAIT);
             action.sa_handler = SIG_DFL;
             sigaction(SIGCHLD, &action, NULL);
             pthread_cancel(thread);
