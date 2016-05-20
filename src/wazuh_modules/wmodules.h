@@ -84,8 +84,8 @@ int wm_strcat(char **str1, const char *str2, char sep);
 // Trim whitespaces from string
 char* wm_strtrim(char *string);
 
-// Split string containing white-spaced tokens into NULL-ended string array
-char** wm_strsplit(char *string);
+// Tokenize string separated by spaces, respecting double-quotes
+char** wm_strtok(char *string);
 
 /* Load or save the running state
  * op: WM_IO_READ | WM_IO_WRITE
