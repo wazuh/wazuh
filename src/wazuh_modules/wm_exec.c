@@ -160,6 +160,7 @@ DWORD WINAPI Reader(LPVOID args) {
 #define EXECVE_ERROR 0xFF
 
 static void* reader(void *args);   // Reading thread's start point
+static void handler(int signum);    // Signal handler
 
 // Work-around for OS X
 
@@ -188,7 +189,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
     ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL };
     pthread_t thread;
     struct timespec timeout = { 0, 0 };
-    int retval = 0;
+    struct sigaction action = { 0 };
+    int retval = -1;
     int status;
 
     // Create pipe for child's stdout
@@ -244,19 +246,20 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         switch (pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout)) {
         case 0:
+            retval = 0;
             break;
 
         case ETIMEDOUT:
-            kill(-pid, SIGKILL);
-            pthread_cancel(thread);
             retval = WM_ERROR_TIMEOUT;
-            break;
 
         default:
-            merror("%s: ERROR: pthread_cond_timedwait()", ARGV0);
-            kill(-pid, SIGKILL);
+            action.sa_handler = handler;
+            sigaction(SIGCHLD, &action, NULL);
+            kill(-pid, SIGTERM);
+            sleep(1);
+            action.sa_handler = SIG_DFL;
+            sigaction(SIGCHLD, &action, NULL);
             pthread_cancel(thread);
-            retval = -1;
         }
 
         // Wait for thread
@@ -333,5 +336,9 @@ void* reader(void *args) {
     close(tinfo->pipe);
     return NULL;
 }
+
+// Signal handler
+
+static void handler(__attribute__((unused)) int signum) { }
 
 #endif // WIN32

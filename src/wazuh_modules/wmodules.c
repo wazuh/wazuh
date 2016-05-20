@@ -11,7 +11,6 @@
 
 #include "wmodules.h"
 
-int wm_flag_reload = 0;     // Flag to reload configuration.
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 
 // Check general configuration
