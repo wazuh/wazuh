@@ -1,7 +1,12 @@
 /*
  * Wazuh Module Manager
- * Wazuh Inc.
- * April 22, 2016
+ * Copyright (C) 2016 Wazuh Inc.
+ * April 22, 2016.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
  */
 
 #ifndef W_MODULES
