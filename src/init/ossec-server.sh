@@ -39,7 +39,7 @@ checkpid()
 {
     for i in ${DAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps --no-headers -p $j >/dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
                     echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
@@ -298,7 +298,7 @@ pstatus()
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps --no-headers -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
                     echo "${pfile}: Process $j not used by ossec, removing .."
