@@ -82,6 +82,17 @@ void OS_Store(const Eventinfo *lf)
 
 void OS_LogOutput(Eventinfo *lf)
 {
+#ifdef LIBGEOIP_ENABLED
+    if (Config.geoipdb_file) {
+        if (lf->srcip) {
+                lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
+        }
+        if (lf->dstip) {
+                lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
+        }
+    }
+#endif
+
     printf(
         "** Alert %ld.%ld:%s - %s\n"
         "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
@@ -104,8 +115,14 @@ void OS_LogOutput(Eventinfo *lf)
         lf->srcip == NULL ? "" : "\nSrc IP: ",
         lf->srcip == NULL ? "" : lf->srcip,
 
-        lf->srcgeoip == NULL?"":" / ",
-        lf->srcgeoip == NULL?"":lf->srcgeoip,
+#ifdef LIBGEOIP_ENABLED
+        lf->srcgeoip == NULL ? "" : "\nSrc Location: ",
+        lf->srcgeoip == NULL ? "" : lf->srcgeoip,
+#else
+        "",
+        "",
+#endif
+
 
 
         lf->srcport == NULL ? "" : "\nSrc Port: ",
@@ -114,8 +131,14 @@ void OS_LogOutput(Eventinfo *lf)
         lf->dstip == NULL ? "" : "\nDst IP: ",
         lf->dstip == NULL ? "" : lf->dstip,
 
-        lf->dstgeoip == NULL?"":" / ",
-        lf->dstgeoip == NULL?"":lf->dstgeoip,
+#ifdef LIBGEOIP_ENABLED
+        lf->dstgeoip == NULL ? "" : "\nDst Location: ",
+        lf->dstgeoip == NULL ? "" : lf->dstgeoip,
+#else
+        "",
+        "",
+#endif
+
 
 
         lf->dstport == NULL ? "" : "\nDst Port: ",
@@ -144,6 +167,17 @@ void OS_LogOutput(Eventinfo *lf)
 
 void OS_Log(Eventinfo *lf)
 {
+#ifdef LIBGEOIP_ENABLED
+    if (Config.geoipdb_file) {
+        if (lf->srcip) {
+                lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
+        }
+        if (lf->dstip) {
+                lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
+        }
+    }
+#endif
+
     /* Writing to the alert log file */
     fprintf(_aflog,
             "** Alert %ld.%ld:%s - %s\n"
@@ -167,8 +201,13 @@ void OS_Log(Eventinfo *lf)
             lf->srcip == NULL ? "" : "\nSrc IP: ",
             lf->srcip == NULL ? "" : lf->srcip,
 
-            lf->srcgeoip == NULL?"":" / ",
-            lf->srcgeoip == NULL?"":lf->srcgeoip,
+#ifdef LIBGEOIP_ENABLED
+            lf->srcgeoip == NULL ? "" : "\nSrc Location: ",
+            lf->srcgeoip == NULL ? "" : lf->srcgeoip,
+#else
+            "",
+            "",
+#endif
 
 
             lf->srcport == NULL ? "" : "\nSrc Port: ",
@@ -177,8 +216,14 @@ void OS_Log(Eventinfo *lf)
             lf->dstip == NULL ? "" : "\nDst IP: ",
             lf->dstip == NULL ? "" : lf->dstip,
 
-            lf->dstgeoip == NULL?"":" / ",
-            lf->dstgeoip == NULL?"":lf->dstgeoip,
+#ifdef LIBGEOIP_ENABLED
+            lf->dstgeoip == NULL ? "" : "\nDst Location: ",
+            lf->dstgeoip == NULL ? "" : lf->dstgeoip,
+#else
+            "",
+            "",
+#endif
+
 
 
             lf->dstport == NULL ? "" : "\nDst Port: ",
