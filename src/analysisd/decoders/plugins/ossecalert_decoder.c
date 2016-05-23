@@ -125,10 +125,6 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
 
         if (strncmp(oa_val, "srcip: ", 7) == 0) {
             os_strdup(oa_val + 7, lf->srcip);
-            if(!lf->srcgeoip && lf->srcip)
-            {
-                lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
-            }
         }
         if(strncmp(oa_val, "user: ", 6) == 0) {
             os_strdup(oa_val + 6, lf->dstuser);
