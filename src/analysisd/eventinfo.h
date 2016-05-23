@@ -37,6 +37,7 @@ typedef struct _Eventinfo {
     char *url;
     char *data;
     char *systemname;
+    char **fields;
 
     /* Pointer to the rule that generated it */
     RuleInfo *generated_rule;
@@ -135,20 +136,20 @@ EventNode *OS_GetLastEvent(void);
 void OS_CreateEventList(int maxsize);
 
 /* Pointers to the event decoders */
-void *SrcUser_FP(Eventinfo *lf, char *field);
-void *DstUser_FP(Eventinfo *lf, char *field);
-void *SrcIP_FP(Eventinfo *lf, char *field);
-void *DstIP_FP(Eventinfo *lf, char *field);
-void *SrcPort_FP(Eventinfo *lf, char *field);
-void *DstPort_FP(Eventinfo *lf, char *field);
-void *Protocol_FP(Eventinfo *lf, char *field);
-void *Action_FP(Eventinfo *lf, char *field);
-void *ID_FP(Eventinfo *lf, char *field);
-void *Url_FP(Eventinfo *lf, char *field);
-void *Data_FP(Eventinfo *lf, char *field);
-void *Status_FP(Eventinfo *lf, char *field);
-void *SystemName_FP(Eventinfo *lf, char *field);
-void *None_FP(Eventinfo *lf, char *field);
+void *SrcUser_FP(Eventinfo *lf, char *field, int order);
+void *DstUser_FP(Eventinfo *lf, char *field, int order);
+void *SrcIP_FP(Eventinfo *lf, char *field, int order);
+void *DstIP_FP(Eventinfo *lf, char *field, int order);
+void *SrcPort_FP(Eventinfo *lf, char *field, int order);
+void *DstPort_FP(Eventinfo *lf, char *field, int order);
+void *Protocol_FP(Eventinfo *lf, char *field, int order);
+void *Action_FP(Eventinfo *lf, char *field, int order);
+void *ID_FP(Eventinfo *lf, char *field, int order);
+void *Url_FP(Eventinfo *lf, char *field, int order);
+void *Data_FP(Eventinfo *lf, char *field, int order);
+void *Status_FP(Eventinfo *lf, char *field, int order);
+void *SystemName_FP(Eventinfo *lf, char *field, int order);
+void *DynamicField_FP(Eventinfo *lf, char *field, int order);
+void *None_FP(Eventinfo *lf, char *field, int order);
 
 #endif /* _EVTINFO__H */
-

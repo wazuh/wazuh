@@ -1,0 +1,19 @@
+[
+  {
+    "_id": "OpenSCAP",
+    "_type": "dashboard",
+    "_source": {
+      "title": "OpenSCAP",
+      "hits": 0,
+      "description": "",
+      "panelsJSON": "[{\"col\":11,\"id\":\"OSCAP-Agents\",\"panelIndex\":5,\"row\":3,\"size_x\":2,\"size_y\":3,\"type\":\"visualization\"},{\"col\":3,\"id\":\"OSCAP-Rules:-Severity\",\"panelIndex\":7,\"row\":5,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Rules:-History\",\"panelIndex\":9,\"row\":7,\"size_x\":4,\"size_y\":2,\"type\":\"visualization\"},{\"col\":8,\"id\":\"OSCAP-Scan-History\",\"panelIndex\":10,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Policies\",\"panelIndex\":17,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Policies-ampersand-Profiles\",\"panelIndex\":18,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Agents:-Policies-ampersand-Profiles\",\"panelIndex\":19,\"row\":1,\"size_x\":4,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"columns\":[\"AgentName\",\"eval_id\",\"policy\",\"profile\",\"score\",\"max_score\",\"severity_low\",\"severity_medium\",\"severity_high\"],\"id\":\"OSCAP-Search:-Scan-overview\",\"panelIndex\":20,\"row\":9,\"size_x\":12,\"size_y\":3,\"sort\":[\"@timestamp\",\"desc\"],\"type\":\"search\"},{\"col\":1,\"columns\":[\"AgentName\",\"eval_id\",\"policy\",\"profile\",\"title\",\"result\",\"severity\",\"rule_id\"],\"id\":\"OSCAP-Search:-Rules\",\"panelIndex\":21,\"row\":12,\"size_x\":12,\"size_y\":3,\"sort\":[\"@timestamp\",\"desc\"],\"type\":\"search\"},{\"col\":8,\"id\":\"OSCAP-Errors:-History\",\"panelIndex\":23,\"row\":5,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Scan:-Score-average\",\"panelIndex\":24,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":11,\"id\":\"OSCAP-Total-Evaluations\",\"panelIndex\":26,\"row\":1,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"id\":\"OSCAP-Rules:-Top-20\",\"type\":\"visualization\",\"panelIndex\":28,\"size_x\":3,\"size_y\":4,\"col\":5,\"row\":5},{\"id\":\"OSCAP-Evaluations:-Score-range\",\"type\":\"visualization\",\"panelIndex\":29,\"size_x\":4,\"size_y\":2,\"col\":4,\"row\":3},{\"id\":\"OSCAP-Rules:-Result\",\"type\":\"visualization\",\"panelIndex\":30,\"size_x\":2,\"size_y\":2,\"col\":1,\"row\":5},{\"id\":\"OSCAP-Wodle-Errors\",\"type\":\"visualization\",\"panelIndex\":31,\"size_x\":3,\"size_y\":2,\"col\":8,\"row\":7},{\"id\":\"OSCAP-Last-Evaluations\",\"type\":\"visualization\",\"panelIndex\":32,\"size_x\":2,\"size_y\":3,\"col\":11,\"row\":6}]",
+      "optionsJSON": "{\"darkTheme\":false}",
+      "uiStateJSON": "{\"P-17\":{\"spy\":{\"mode\":{\"fill\":false,\"name\":null}}}}",
+      "version": 1,
+      "timeRestore": false,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}}}]}"
+      }
+    }
+  }
+]

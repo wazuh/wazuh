@@ -68,6 +68,11 @@ typedef struct _RuleInfoDetail {
     struct _RuleInfoDetail *next;
 } RuleInfoDetail;
 
+typedef struct _FieldInfo {
+    char *name;
+    OSRegex *regex;
+} FieldInfo;
+
 typedef struct _RuleInfo {
     int sigid;  /* id attribute -- required*/
     int level;  /* level attribute --required */
@@ -137,6 +142,7 @@ typedef struct _RuleInfo {
     OSMatch *hostname;
     OSMatch *program_name;
     OSMatch *extra_data;
+    FieldInfo **fields;
     char *action;
 
     char *comment; /* description in the xml */
@@ -235,4 +241,3 @@ int _setlevels(RuleNode *node, int nnode);
 extern int _max_freq;
 
 #endif /* _OS_RULES */
-

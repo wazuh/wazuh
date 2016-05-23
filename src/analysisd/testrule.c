@@ -146,6 +146,8 @@ int main(int argc, char **argv)
         ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
     }
 
+    Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", 8, MAX_DECODER_ORDER_SIZE);
+
     /*
      * Anonymous Section: Load rules, decoders, and lists
      *
@@ -344,6 +346,7 @@ void OS_ReadMSG(char *ut_str)
     /* Daemon loop */
     while (1) {
         lf = (Eventinfo *)calloc(1, sizeof(Eventinfo));
+        os_calloc(Config.decoder_order_size, sizeof(char*), lf->fields);
 
         /* This shouldn't happen */
         if (lf == NULL) {
@@ -571,4 +574,3 @@ void OS_ReadMSG(char *ut_str)
     }
     exit(exit_code);
 }
-

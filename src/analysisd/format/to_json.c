@@ -12,6 +12,7 @@
 #include "shared.h"
 #include "rules.h"
 #include "cJSON.h"
+#include "config.h"
 
 /* Convert Eventinfo to json */
 char* Eventinfo_to_jsonstr(const Eventinfo* lf)
@@ -20,6 +21,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* rule;
     cJSON* file_diff;
     char* out;
+    int i;
 
     root = cJSON_CreateObject();
 
@@ -48,8 +50,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->firedtimes);
         }
     }
-   
-        
+
+
     if(lf->protocol) {
         cJSON_AddStringToObject(root, "protocol", lf->protocol);
     }
@@ -77,6 +79,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->full_log) {
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
     }
+
     if(lf->filename) {
         file_diff = cJSON_CreateObject();
         cJSON_AddItemToObject(root, "SyscheckFile", file_diff);
@@ -130,6 +133,16 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->decoder_info) {
 
         cJSON* decoder;
+
+        // Dynamic fields
+        if (lf->decoder_info->fields) {
+            for (i = 0; i < Config.decoder_order_size; i++) {
+                if (lf->decoder_info->fields[i] && lf->fields[i]) {
+                    cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
+                }
+            }
+        }
+
         cJSON_AddItemToObject(root, "decoder", decoder = cJSON_CreateObject());
 
         if(lf->decoder_info->fts)
@@ -158,6 +171,7 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
 {
     cJSON* root;
     char* out;
+    int i;
 
     root = cJSON_CreateObject();
 
@@ -273,6 +287,16 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->decoder_info) {
 
         cJSON* decoder;
+
+        // Dynamic fields
+        if (lf->decoder_info->fields) {
+            for (i = 0; i < Config.decoder_order_size; i++) {
+                if (lf->decoder_info->fields[i] && lf->fields[i]) {
+                    cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
+                }
+            }
+        }
+
         cJSON_AddItemToObject(root, "decoder", decoder = cJSON_CreateObject());
 
         if(lf->decoder_info->fts)

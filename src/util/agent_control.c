@@ -25,7 +25,8 @@ static void helpmsg()
     printf("\t-l          List available (active or not) agents.\n");
     printf("\t-lc         List active agents.\n");
     printf("\t-i <id>     Extracts information from an agent.\n");
-    printf("\t-R <id>     Restarts agent.\n");
+    printf("\t-R -a       Restart all agents.\n");
+    printf("\t-R -u <id>  Restart the specified agent.\n");
     printf("\t-r -a       Runs the integrity/rootkit checking on all agents now.\n");
     printf("\t-r -u <id>  Runs the integrity/rootkit checking on one agent now.\n\n");
     printf("\t-b <ip>     Blocks the specified ip address.\n");
@@ -77,7 +78,7 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    while ((c = getopt(argc, argv, "VehdlLcsjarmu:i:b:f:R:")) != -1) {
+    while ((c = getopt(argc, argv, "VehdlLcsjarmu:i:b:f:R")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -139,11 +140,6 @@ int main(int argc, char **argv)
                 ar = optarg;
                 break;
             case 'R':
-                if (!optarg) {
-                    merror("%s: -R needs an argument", ARGV0);
-                    helpmsg();
-                }
-                agent_id = optarg;
                 restart_agent = 1;
                 break;
             case 'a':
@@ -536,14 +532,26 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    if (restart_agent && agent_id) {
+    if (restart_agent) {
+        if (!(agent_id || restart_all_agents)) {
+            if (json_output) {
+                cJSON_AddNumberToObject(root, "error", 45);
+                cJSON_AddStringToObject(root, "message", "Agent not specified");
+                printf("%s",cJSON_PrintUnformatted(root));
+                cJSON_Delete(root);
+            } else {
+                printf("\n** Agent not specified.\n");
+            }
+
+            exit(1);
+        }
 
         /* Connect to remoted */
         debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
         arq = connect_to_remoted();
         if (arq < 0) {
             if(json_output){
-                cJSON_AddNumberToObject(root, "error", 45);
+                cJSON_AddNumberToObject(root, "error", 43);
                 cJSON_AddStringToObject(root, "message", "Unable to connect to remoted");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
@@ -554,14 +562,14 @@ int main(int argc, char **argv)
         }
         debug1("%s: DEBUG: Connected...", ARGV0);
 
-        if (send_msg_to_agent(arq, "restart-ossec0", agent_id, "null") == 0) {
+        if (send_msg_to_agent(arq, "restart-ossec0", restart_all_agents ? NULL : agent_id, "null") == 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 0);
-                cJSON_AddStringToObject(root, "data", "Restarting agent");
+                cJSON_AddStringToObject(root, "data", restart_all_agents ? "Restarting all agents" : "Restarting agent");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
-            }else{
-                printf("\nOSSEC HIDS %s: Restarting agent: %s\n",ARGV0, agent_id);
+            } else {
+                printf("\nOSSEC HIDS %s: Restarting agent: %s\n",ARGV0, restart_all_agents ? "(all)" : agent_id);
             }
         } else {
             if(json_output){
