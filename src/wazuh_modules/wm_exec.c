@@ -189,7 +189,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
     ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL };
     pthread_t thread;
     struct timespec timeout = { 0, 0 };
-    struct sigaction action = { 0 };
+    struct sigaction action = { .sa_handler = NULL };
     int retval = -1;
     int status;
 
