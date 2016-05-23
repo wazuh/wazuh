@@ -15,7 +15,7 @@
 /* Configuration structure */
 typedef struct __Config {
     u_int8_t logall;
-    u_int8_t logall_json; 
+    u_int8_t logall_json;
     u_int8_t stats;
     u_int8_t integrity;
     u_int8_t syscheck_auto_ignore;
@@ -25,6 +25,7 @@ typedef struct __Config {
     u_int8_t mailbylevel;
     u_int8_t logbylevel;
     u_int8_t logfw;
+    int decoder_order_size;
 
     /* Prelude support */
     u_int8_t prelude;
@@ -91,4 +92,3 @@ typedef struct __Config {
 } _Config;
 
 #endif /* _CCONFIG__H */
-

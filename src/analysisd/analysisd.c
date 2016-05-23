@@ -283,6 +283,8 @@ int main_analysisd(int argc, char **argv)
     }
     nowChroot();
 
+    Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", 8, MAX_DECODER_ORDER_SIZE);
+
     /*
      * Anonymous Section: Load rules, decoders, and lists
      *
@@ -638,6 +640,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         if (!lf) {
             ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
+        os_calloc(Config.decoder_order_size, sizeof(char*), lf->fields);
         lf->year = prev_year;
         strncpy(lf->mon, prev_month, 3);
         lf->day = today;
@@ -658,6 +661,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Daemon loop */
     while (1) {
         lf = (Eventinfo *)calloc(1, sizeof(Eventinfo));
+        os_calloc(Config.decoder_order_size, sizeof(char*), lf->fields);
 
         /* This shouldn't happen */
         if (lf == NULL) {
@@ -1017,7 +1021,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 OS_Store(lf);
             if (Config.logall_json)
                 jsonout_output_archive(lf);
-            
+
 
 CLMEM:
             /** Cleaning the memory **/
@@ -1057,6 +1061,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
      * status,
      */
     RuleInfo *rule = curr_node->ruleinfo;
+    int i;
 
     /* Can't be null */
     if (!rule) {
@@ -1136,6 +1141,23 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         if (!OSMatch_Execute(lf->url, strlen(lf->url), rule->url)) {
             return (NULL);
         }
+    }
+
+    /* Check for dynamic fields */
+
+    for (i = 0; i < Config.decoder_order_size && rule->fields[i]; i++) {
+        int j;
+
+        for (j = 0; j < Config.decoder_order_size; j++)
+            if (lf->decoder_info->fields[j])
+                if (strcasecmp(lf->decoder_info->fields[j], rule->fields[i]->name) == 0)
+                    break;
+
+        if (j == Config.decoder_order_size)
+            return NULL;
+
+        if (!OSRegex_Execute(lf->fields[j], rule->fields[i]->regex))
+            return NULL;
     }
 
     /* Get TCP/IP packet information */
@@ -1538,4 +1560,3 @@ static void DumpLogstats()
 
     fclose(flog);
 }
-

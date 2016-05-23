@@ -79,6 +79,8 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_status = "status";
     const char *xml_action = "action";
     const char *xml_compiled = "compiled_rule";
+    const char *xml_field = "field";
+    const char *xml_name = "name";
 
     const char *xml_list = "list";
     const char *xml_list_lookup = "lookup";
@@ -303,6 +305,7 @@ int Rules_OP_ReadRules(const char *rulefile)
             /* Rule elements block */
             {
                 int k = 0;
+                int ifield = 0;
                 int info_type = 0;
                 int count_info_detail = 0;
                 RuleInfoDetail *last_info_detail = NULL;
@@ -560,6 +563,29 @@ int Rules_OP_ReadRules(const char *rulefile)
                         config_ruleinfo->action =
                             loadmemory(config_ruleinfo->action,
                                        rule_opt[k]->content);
+                    } else if (strcasecmp(rule_opt[k]->element, xml_field) == 0) {
+                        if (rule_opt[k]->attributes[0]) {
+                            os_calloc(1, sizeof(FieldInfo), config_ruleinfo->fields[ifield]);
+
+                            if (strcasecmp(rule_opt[k]->attributes[0], xml_name) == 0) {
+                                config_ruleinfo->fields[ifield]->name = loadmemory(config_ruleinfo->fields[ifield]->name, rule_opt[k]->values[0]);
+                            } else {
+                                merror("%s: Bad attribute '%s' for field.", ARGV0, rule_opt[k]->attributes[0]);
+                                return -1;
+                            }
+                        } else {
+                            merror("%s: No such attribute '%s' for field.", ARGV0, xml_name);
+                            return (-1);
+                        }
+
+                        os_calloc(1, sizeof(OSRegex), config_ruleinfo->fields[ifield]->regex);
+
+                        if (!OSRegex_Compile(rule_opt[k]->content, config_ruleinfo->fields[ifield]->regex, 0)) {
+                            merror(REGEX_COMPILE, ARGV0, rule_opt[k]->content, config_ruleinfo->fields[ifield]->regex->error);
+                            return -1;
+                        }
+
+                        ifield++;
                     } else if (strcasecmp(rule_opt[k]->element, xml_list) == 0) {
                         debug1("-> %s == %s", rule_opt[k]->element, xml_list);
                         if (rule_opt[k]->attributes && rule_opt[k]->values && rule_opt[k]->content) {
@@ -923,6 +949,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                         OS_ClearXML(&xml);
                         return (-1);
                     }
+
+
+
                     k++;
                 }
 
@@ -1375,6 +1404,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->hostname = NULL;
     ruleinfo_pt->program_name = NULL;
     ruleinfo_pt->action = NULL;
+    os_calloc(Config.decoder_order_size, sizeof(FieldInfo*), ruleinfo_pt->fields);
 
     /* Zero last matched events */
     ruleinfo_pt->__frequency = 0;
@@ -1761,4 +1791,3 @@ static int doesRuleExist(int sid, RuleNode *r_node)
 
     return (0);
 }
-

@@ -21,7 +21,7 @@ fi
 NAME="OSSEC HIDS"
 VERSION="v2.8"
 AUTHOR="Trend Micro Inc."
-DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
+DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-moduled ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 USE_JSON=false
 
 [ -f /etc/ossec-init.conf ] && . /etc/ossec-init.conf;
@@ -39,7 +39,7 @@ checkpid()
 {
     for i in ${DAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps --no-headers -p $j >/dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
                     echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
@@ -216,7 +216,7 @@ testconfig()
 # Start function
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
+    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} wazuh-moduled ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
 
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION (by $AUTHOR)..."
@@ -298,7 +298,7 @@ pstatus()
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps --no-headers -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
                     echo "${pfile}: Process $j not used by ossec, removing .."
