@@ -132,7 +132,10 @@ int main_analysisd(int argc, char **argv)
     hourly_syscheck = 0;
     hourly_firewall = 0;
 
+#ifdef LIBGEOIP_ENABLED
     geoipdb = NULL;
+#endif
+
 
     while ((c = getopt(argc, argv, "Vtdhfu:g:D:c:")) != -1) {
         switch (c) {
@@ -224,6 +227,7 @@ int main_analysisd(int argc, char **argv)
     debug1(READ_CONFIG, ARGV0);
 
 
+#ifdef LIBGEOIP_ENABLED
     /* Opening GeoIP DB */
     if(Config.geoipdb_file) {
         geoipdb = GeoIP_open(Config.geoipdb_file, GEOIP_INDEX_CACHE);
@@ -232,6 +236,8 @@ int main_analysisd(int argc, char **argv)
             merror("%s: Unable to open GeoIP database from: %s (disabling GeoIP).", ARGV0, Config.geoipdb_file);
         }
     }
+#endif
+
 
 
     /* Fix Config.ar */
