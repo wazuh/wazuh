@@ -13,6 +13,9 @@
 
 /* GeoIP - Every IP address will have its geolocation added to it */
 
+#ifdef LIBGEOIP_ENABLED
+
+
 #include "config.h"
 #include "os_regex/os_regex.h"
 #include "eventinfo.h"
@@ -81,3 +84,6 @@ char *GetGeoInfobyIP(char *ip_addr)
     return(geodata);
  
 }
+
+#endif
+
