@@ -20,7 +20,7 @@ OSSEC_USER_REM?=ossecr
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
-USE_GEOIP?=yes
+USE_GEOIP?=no
 USE_INOTIFY=no
 
 ifneq (${TARGET},winagent)
