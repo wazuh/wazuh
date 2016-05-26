@@ -12,6 +12,7 @@
 #include "wmodules.h"
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
+int wm_task_nice = 0;       // Nice value for tasks.
 
 // Check general configuration
 
