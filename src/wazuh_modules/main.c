@@ -111,6 +111,10 @@ void wm_setup()
 {
     struct sigaction action = { .sa_handler = wm_handler };
 
+    // Get defined values from internal_options
+
+    wm_task_nice = getDefine_Int("wazuh_modules", "task_nice", -20, 19);
+
     // Read configuration: ossec.conf
 
     if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, NULL) < 0)
@@ -139,7 +143,6 @@ void wm_setup()
 
     atexit(wm_cleanup);
     sigaction(SIGTERM, &action, NULL);
-    sigaction(SIGUSR1, &action, NULL);
 
     if (flag_foreground) {
         sigaction(SIGHUP, &action, NULL);

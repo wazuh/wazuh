@@ -39,7 +39,8 @@ static DWORD WINAPI Reader(LPVOID args);    // Reading thread's start point
 // Execute command with timeout of secs
 
 int wm_exec(char *command, char **output, int *status, int secs) {
-    HANDLE thread;
+    HANDLE hThread;
+    DWORD dwCreationFlags;
     STARTUPINFO sinfo = { 0 };
     PROCESS_INFORMATION pinfo = { 0 };
     ThreadInfo tinfo = { 0 };
@@ -64,7 +65,13 @@ int wm_exec(char *command, char **output, int *status, int secs) {
 
     // Create child process and close inherited pipes
 
-    if (!CreateProcess(NULL, command, NULL, NULL, TRUE, 0, NULL, NULL, &sinfo, &pinfo)) {
+    dwCreationFlags = wm_task_nice < -10 ? HIGH_PRIORITY_CLASS :
+                      wm_task_nice < 0 ? ABOVE_NORMAL_PRIORITY_CLASS :
+                      wm_task_nice == 0 ? NORMAL_PRIORITY_CLASS :
+                      wm_task_nice < 10 ? BELOW_NORMAL_PRIORITY_CLASS :
+                      IDLE_PRIORITY_CLASS;
+
+    if (!CreateProcess(NULL, command, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
         merror("%s: ERROR: CreateProcess(): %ld", ARGV0, GetLastError());
         return -1;
     }
@@ -73,9 +80,9 @@ int wm_exec(char *command, char **output, int *status, int secs) {
 
     // Create reading thread
 
-    thread = CreateThread(NULL, 0, Reader, &tinfo, 0, NULL);
+    hThread = CreateThread(NULL, 0, Reader, &tinfo, 0, NULL);
 
-    if (!thread) {
+    if (!hThread) {
         merror("%s: ERROR: CreateThread(): %ld", ARGV0, GetLastError());
         return -1;
     }
@@ -105,7 +112,7 @@ int wm_exec(char *command, char **output, int *status, int secs) {
 
     // Output
 
-    WaitForSingleObject(thread, INFINITE);
+    WaitForSingleObject(hThread, INFINITE);
 
     if (retval >= 0)
         *output = tinfo.output ? tinfo.output : strdup("");
@@ -114,7 +121,7 @@ int wm_exec(char *command, char **output, int *status, int secs) {
 
     // Cleanup
 
-    CloseHandle(thread);
+    CloseHandle(hThread);
     CloseHandle(pinfo.hProcess);
     CloseHandle(pinfo.hThread);
 
@@ -217,6 +224,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         dup2(pipe_fd[1], STDERR_FILENO);
 
         setsid();
+        if (nice(wm_task_nice)) {}
 
         if (execve(argv[0], argv, envp) < 0)
             exit(EXECVE_ERROR);
