@@ -14,7 +14,7 @@
 
 #define WM_DEF_TIMEOUT      300             // Default runtime limit (5 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
-#define WM_DEF_SKIP_RESULT  0b100001101     // Default results to skip (pass,not*)
+#define WM_DEF_SKIP_RESULT  0x10D           // Default results to skip (pass,not*)
 
 #define WM_OSCAP_LOGTAG ARGV0 ":oscap"
 #define WM_OSCAP_DEFAULT_DIR WM_DEFAULT_DIR "/oscap"
