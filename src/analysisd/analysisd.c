@@ -1418,6 +1418,19 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                         return (NULL);
                     }
                     break;
+                case RULE_DYNAMIC:
+                    for (i = 0; i < Config.decoder_order_size; i++)
+                        if (lf->decoder_info->fields[i])
+                            if (strcasecmp(lf->decoder_info->fields[i], list_holder->dfield) == 0)
+                                break;
+
+                    if (i == Config.decoder_order_size)
+                        return NULL;
+
+                    if (!OS_DBSearch(list_holder, lf->fields[i]))
+                        return NULL;
+
+                    break;
                 default:
                     return (NULL);
             }
