@@ -36,6 +36,7 @@ typedef struct ListRule {
     int field;
     int lookup_type;
     OSMatch *matcher;
+    char *dfield;
     char *filename;
     ListNode *db;
     struct ListRule *next;
@@ -55,7 +56,7 @@ int OS_DBSearch(ListRule *lrule, char *key);
 
 void OS_ListLoadRules(void);
 
-ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field, char *listname, OSMatch *matcher);
+ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field, const char *dfield, char *listname, OSMatch *matcher);
 
 ListNode *OS_GetFirstList(void);
 
@@ -64,4 +65,3 @@ ListNode *OS_FindList(const char *listname);
 void Lists_OP_CreateLists(void);
 
 #endif /* __LISTS_H */
-

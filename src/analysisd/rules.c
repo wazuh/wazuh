@@ -591,6 +591,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                         if (rule_opt[k]->attributes && rule_opt[k]->values && rule_opt[k]->content) {
                             int list_att_num = 0;
                             int rule_type = 0;
+                            char *rule_dfield = NULL;
                             OSMatch *matcher = NULL;
                             int lookup_type = LR_STRING_MATCH;
                             while (rule_opt[k]->attributes[list_att_num]) {
@@ -639,12 +640,12 @@ int Rules_OP_ReadRules(const char *rulefile)
                                     } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_action) == 0) {
                                         rule_type = RULE_ACTION;
                                     } else {
-                                        merror(INVALID_CONFIG, ARGV0,
-                                               rule_opt[k]->element,
-                                               rule_opt[k]->content);
-                                        merror("%s: List match field=\"%s\" is not valid.",
-                                               ARGV0, rule_opt[k]->values[list_att_num]);
-                                        return (-1);
+                                        rule_type = RULE_DYNAMIC;
+
+                                        // Trim whitespaces
+                                        rule_dfield = rule_opt[k]->values[list_att_num];
+                                        rule_dfield = &rule_dfield[strspn(rule_dfield, " ")];
+                                        rule_dfield[strcspn(rule_dfield, " ")] = '\0';
                                     }
                                 } else if (strcasecmp(rule_opt[k]->attributes[list_att_num], xml_list_cvalue) == 0) {
                                     os_calloc(1, sizeof(OSMatch), matcher);
@@ -659,7 +660,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                                         return (-1);
                                     }
                                 } else {
-                                    merror("%s:List feild=\"%s\" is not valid", ARGV0,
+                                    merror("%s:List field=\"%s\" is not valid", ARGV0,
                                            rule_opt[k]->values[list_att_num]);
                                     merror(INVALID_CONFIG, ARGV0,
                                            rule_opt[k]->element, rule_opt[k]->content);
@@ -668,7 +669,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                                 list_att_num++;
                             }
                             if (rule_type == 0) {
-                                merror("%s:List requires the field=\"\" Attrubute", ARGV0);
+                                merror("%s:List requires the field=\"\" attribute", ARGV0);
                                 merror(INVALID_CONFIG, ARGV0,
                                        rule_opt[k]->element, rule_opt[k]->content);
                                 return (-1);
@@ -678,6 +679,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                             config_ruleinfo->lists = OS_AddListRule(config_ruleinfo->lists,
                                                                     lookup_type,
                                                                     rule_type,
+                                                                    rule_dfield,
                                                                     rule_opt[k]->content,
                                                                     matcher);
                             if (config_ruleinfo->lists == NULL) {

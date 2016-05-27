@@ -53,6 +53,7 @@
 #define RULE_PROGRAM_NAME 512
 #define RULE_STATUS     1024
 #define RULE_ACTION     2048
+#define RULE_DYNAMIC    4096
 
 #define RULEINFODETAIL_TEXT     0
 #define RULEINFODETAIL_LINK     1
