@@ -151,7 +151,7 @@ static int OS_DBSearchKeyValue(ListRule *lrule, char *key)
         if (cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
             vpos = cdb_datapos(&lrule->db->cdb);
             vlen = cdb_datalen(&lrule->db->cdb);
-            val = (char *) malloc(vlen);
+            val = (char *) calloc(vlen + 1, sizeof(char));
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
             result = OSMatch_Execute(val, vlen, lrule->matcher);
             free(val);
@@ -294,4 +294,3 @@ int OS_DBSearch(ListRule *lrule, char *key)
             return 0;
     }
 }
-
