@@ -340,7 +340,7 @@ int str_cut(char* str, int begin, int len)
         len = l - begin;
     if(begin + len > l)
         len = l - begin;
-    memmove(str + begin, str + begin + len, l - len + 1);
+    memmove(str + begin, str + begin + len, l - begin - len + 1);
 
     return len;
 }
