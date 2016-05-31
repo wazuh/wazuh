@@ -228,6 +228,19 @@ void DecodeEvent(Eventinfo *lf)
 #endif
 }
 
+/* Find index of a dynamic field. Returns -1 if not found. */
+
+int FindField(const OSDecoderInfo *decoder, const char *name) {
+    int i;
+
+    for (i = 0; i < Config.decoder_order_size; i++)
+        if (decoder->fields[i])
+            if (strcasecmp(decoder->fields[i], name) == 0)
+                return i;
+
+    return -1;
+}
+
 /*** Event decoders ****/
 
 void *DstUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)

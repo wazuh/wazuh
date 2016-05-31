@@ -1146,14 +1146,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Check for dynamic fields */
 
     for (i = 0; i < Config.decoder_order_size && rule->fields[i]; i++) {
-        int j;
+        int j = FindField(lf->decoder_info, rule->fields[i]->name);
 
-        for (j = 0; j < Config.decoder_order_size; j++)
-            if (lf->decoder_info->fields[j])
-                if (strcasecmp(lf->decoder_info->fields[j], rule->fields[i]->name) == 0)
-                    break;
-
-        if (j == Config.decoder_order_size)
+        if (j < 0)
             return NULL;
 
         if (!OSRegex_Execute(lf->fields[j], rule->fields[i]->regex))
@@ -1419,12 +1414,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                     }
                     break;
                 case RULE_DYNAMIC:
-                    for (i = 0; i < Config.decoder_order_size; i++)
-                        if (lf->decoder_info->fields[i])
-                            if (strcasecmp(lf->decoder_info->fields[i], list_holder->dfield) == 0)
-                                break;
+                    i = FindField(lf->decoder_info, list_holder->dfield);
 
-                    if (i == Config.decoder_order_size)
+                    if (i < 0)
                         return NULL;
 
                     if (!OS_DBSearch(list_holder, lf->fields[i]))
