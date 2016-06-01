@@ -88,6 +88,8 @@ typedef struct _RuleInfo {
     int ignore_time;
     int ignore;
     int ckignore;
+    char **ignore_fields;
+    char **ckignore_fields;
     unsigned int group_prev_matched_sz;
 
     int __frequency;
