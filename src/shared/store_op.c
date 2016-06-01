@@ -346,6 +346,7 @@ int OSStore_Put(OSStore *list, const char *key, void *data)
             if ((chk_rc = strcmp(list->cur_node->key, key)) >= 0) {
                 /* Duplicate entry */
                 if (chk_rc == 0) {
+                    free(newnode->key);
                     free(newnode);
                     return (1);
                 }
@@ -380,4 +381,3 @@ int OSStore_Put(OSStore *list, const char *key, void *data)
 
     return (1);
 }
-
