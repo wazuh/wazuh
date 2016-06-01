@@ -101,7 +101,8 @@ static int os_setdecoderids(const char *p_name)
                 nnode->id = p_id;
 
                 /* Set parent name */
-                nnode->name = tmp_name;
+                free(nnode->name);
+                nnode->name = strdup(tmp_name);
             }
 
             /* Id cannot be 0 */
@@ -204,12 +205,15 @@ int ReadDecodeXML(const char *file)
     }
 
     /* Zero NULL_decoder */
-    os_calloc(1, sizeof(OSDecoderInfo), NULL_Decoder_tmp);
-    NULL_Decoder_tmp->id = 0;
-    NULL_Decoder_tmp->type = SYSLOG;
-    NULL_Decoder_tmp->name = NULL;
-    NULL_Decoder_tmp->fts = 0;
-    NULL_Decoder = NULL_Decoder_tmp;
+
+    if (!NULL_Decoder) {
+        os_calloc(1, sizeof(OSDecoderInfo), NULL_Decoder_tmp);
+        NULL_Decoder_tmp->id = 0;
+        NULL_Decoder_tmp->type = SYSLOG;
+        NULL_Decoder_tmp->name = NULL;
+        NULL_Decoder_tmp->fts = 0;
+        NULL_Decoder = NULL_Decoder_tmp;
+    }
 
     i = 0;
     while (node[i]) {

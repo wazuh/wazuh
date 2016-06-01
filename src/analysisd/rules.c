@@ -1181,6 +1181,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     free(if_matched_regex);
                     if_matched_regex = NULL;
                 }
+
+                OS_ClearNode(rule_opt);
             } /* end of elements block */
 
             /* Assign an active response to the rule */
