@@ -112,6 +112,7 @@ extern int alert_only;
 #define FTS_DATA        000020
 #define FTS_SYSTEMNAME  000040
 #define FTS_DONE        010000
+#define FTS_DYNAMIC     020000
 
 /** Functions for events **/
 
