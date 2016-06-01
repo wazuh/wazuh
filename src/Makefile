@@ -1186,7 +1186,7 @@ wazuh-moduled: ${wmoduled_o} ${ossec_libs}
 
 CFLAGS_TEST = -g -O0 --coverage
 
-LDFLAGS_TEST = -lcheck -lm -pthread
+LDFLAGS_TEST = -lcheck -lm -pthread -lrt -lsubunit
 
 ifdef TEST
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
@@ -1221,13 +1221,13 @@ test_os_xml: tests/test_os_xml.o ${os_xml_o}
 test_os_regex: tests/test_os_regex.c ${os_regex_o}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
-test_os_crypto: tests/test_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o} ${ZLIB_LIB}
+test_os_crypto: tests/test_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
-test_os_net: tests/test_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o}
+test_os_net: tests/test_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
-test_shared: tests/test_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
+test_shared: tests/test_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 test_valgrind: build_tests
