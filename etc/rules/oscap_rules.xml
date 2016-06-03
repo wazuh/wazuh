@@ -50,7 +50,7 @@ Wodle OpenSCAP: 81500 - 81600
         <group>syslog,</group>
     </rule>
 
-    <!-- -- -->
+    <!-- -->
 
 
 
@@ -156,7 +156,7 @@ Wodle OpenSCAP: 81500 - 81600
         <group>errors,</group>
     </rule>
 
-    <!-- -- -->
+    <!-- -->
 
 
     <!-- RULES -->
@@ -267,7 +267,7 @@ Wodle OpenSCAP: 81500 - 81600
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
-    <!-- -- -->
+    <!-- -->
 
 
     <!-- Report Overview -->
@@ -310,6 +310,6 @@ Wodle OpenSCAP: 81500 - 81600
         <group>report-overview,pci_dss_2.2,</group>
     </rule>
 
-    <!-- -- -->
+    <!--  -->
 
 </group>
