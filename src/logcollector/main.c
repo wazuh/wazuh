@@ -118,6 +118,8 @@ int main(int argc, char **argv)
     open_file_attempts = getDefine_Int("logcollector", "open_attempts",
                                        2, 998);
 
+    vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
+
     /* Exit if test config */
     if (test_config) {
         exit(0);
@@ -162,4 +164,3 @@ int main(int argc, char **argv)
     /* Main loop */
     LogCollectorStart();
 }
-
