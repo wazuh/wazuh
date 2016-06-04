@@ -12,7 +12,6 @@
 
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
-#define VCHECK_FILES    64
 #define DATE_MODIFIED   1
 
 /* For ino_t */
@@ -55,4 +54,3 @@ typedef struct _logreader_config {
 } logreader_config;
 
 #endif /* __CLOGREADER_H */
-
