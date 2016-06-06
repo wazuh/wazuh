@@ -123,7 +123,7 @@ size_t OS_StrHowClosedMatch(const char *str1, const char *str2);
 int OS_StrStartsWith(const char *str, const char *pattern) __attribute__((nonnull));
 
 /* Checks if a specific string is numeric (like "129544") */
-int OS_StrIsNum(const char *str) __attribute__((nonnull));
+int OS_StrIsNum(const char *str);
 
 /* Checks if a specified char is in the following range:
  * a-z, A-Z, 0-9, _-.
@@ -132,4 +132,3 @@ extern const unsigned char hostname_map[256];
 #define isValidChar(x) (hostname_map[(unsigned char)x])
 
 #endif /* __OS_REGEX_H */
-
