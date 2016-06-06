@@ -230,15 +230,15 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddStringToObject(root, "md5_before", lf->md5_before);
             cJSON_AddStringToObject(root, "md5_after", lf->md5_after);
         }
-        if(lf->sha1_before && lf->sha1_after && !strcmp(lf->sha1_before, lf->sha1_after) != 0) {
+        if(lf->sha1_before && lf->sha1_after && strcmp(lf->sha1_before, lf->sha1_after) != 0) {
             cJSON_AddStringToObject(root, "sha1_before", lf->sha1_before);
             cJSON_AddStringToObject(root, "sha1_after", lf->sha1_after);
         }
-        if(lf->owner_before && lf->owner_after && !strcmp(lf->owner_before, lf->owner_after) != 0) {
+        if(lf->owner_before && lf->owner_after && strcmp(lf->owner_before, lf->owner_after) != 0) {
             cJSON_AddStringToObject(root, "owner_before", lf->owner_before);
             cJSON_AddStringToObject(root, "owner_after", lf->owner_after);
         }
-        if(lf->gowner_before && lf->gowner_after && !strcmp(lf->gowner_before, lf->gowner_after) != 0) {
+        if(lf->gowner_before && lf->gowner_after && strcmp(lf->gowner_before, lf->gowner_after) != 0) {
             cJSON_AddStringToObject(root, "gowner_before", lf->gowner_before);
             cJSON_AddStringToObject(root, "gowner_after", lf->gowner_after);
         }
@@ -318,7 +318,7 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->full_log)
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
 
-    if(lf->year && lf->mon && lf->day && lf->hour)
+    if(lf->year && lf->mon[0] && lf->day && lf->hour[0])
         W_JSON_ParseTimestamp(root, lf);
 
     if(lf->hostname) {
