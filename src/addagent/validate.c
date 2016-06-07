@@ -714,10 +714,10 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
     }
 
     /* Directory for agent */
-    
+
     int acount = 1;
     char tag[10] = { 0 };
-    
+
     while (1) {
         snprintf(path, OS_FLSIZE, "%s/%s/%s %s-%s%s", AGNBACKUP_DIR, timestamp, id, name, ip, tag);
 
@@ -767,7 +767,7 @@ void OS_RemoveAgentTimestamp(const char *id)
     int pos = 0;
     struct stat fp_stat;
 
-    if (stat(AUTH_FILE, &fp_stat) < 0) {
+    if (stat(TIMESTAMP_FILE, &fp_stat) < 0) {
         return;
     }
 
