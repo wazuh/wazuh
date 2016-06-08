@@ -74,7 +74,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddStringToObject(root, "dstip", lf->dstip);
     }
     if (lf->dstgeoip) {
-        cJSON_AddStringToObject(root, "dstip", lf->dstgeoip);
+        cJSON_AddStringToObject(root, "dstgeoip", lf->dstgeoip);
     }
     if (lf->dstport) {
         cJSON_AddStringToObject(root, "dstport", lf->dstport);
