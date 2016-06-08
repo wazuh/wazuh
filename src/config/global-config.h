@@ -92,6 +92,7 @@ typedef struct __Config {
     u_int8_t loggeoip;
     char *geoip_db_path;
     char *geoip6_db_path;
+    int geoip_jsonout;
 #endif
 
 } _Config;
