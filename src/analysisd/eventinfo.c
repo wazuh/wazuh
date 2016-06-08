@@ -541,6 +541,15 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->systemname);
     }
 
+    if (lf->fields) {
+        int i;
+        for (i = 0; i < Config.decoder_order_size; i++)
+            if (lf->fields[i])
+                free(lf->fields[i]);
+
+        free(lf->fields);
+    }
+
     if (lf->filename) {
         free(lf->filename);
     }
@@ -597,4 +606,3 @@ void Free_Eventinfo(Eventinfo *lf)
 
     return;
 }
-

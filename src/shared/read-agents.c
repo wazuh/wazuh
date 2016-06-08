@@ -197,7 +197,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
     struct tm *tm_time;
     char read_day[24 + 1];
     char buf[OS_MAXSTR + 1];
-    OSMatch reg;
+    OSRegex reg;
     OSStore *files_list = NULL;
     fpos_t init_pos;
     cJSON *json_entry = NULL, *json_attrs = NULL;
@@ -206,7 +206,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
     read_day[24] = '\0';
 
     /* If the compilation failed, we don't need to free anything */
-    if (!OSMatch_Compile(fname, &reg, 0)) {
+    if (!OSRegex_Compile(fname, &reg, 0)) {
         if (!(csv_output || json_output))
             printf("\n** ERROR: Invalid file name: '%s'\n", fname);
         return (0);
@@ -215,7 +215,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
     /* Create list with files */
     files_list = OSStore_Create();
     if (!files_list) {
-        OSMatch_FreePattern(&reg);
+        OSRegex_FreePattern(&reg);
         goto cleanup;
     }
 
@@ -280,8 +280,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
             changed_file_name++;
 
             /* Check if the name should be printed */
-            if (!OSMatch_Execute(changed_file_name, strlen(changed_file_name),
-                                 &reg)) {
+            if (!OSRegex_Execute(changed_file_name, &reg)) {
                 fgetpos(fp, &init_pos);
                 continue;
             }
@@ -376,7 +375,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
     }
 
 cleanup:
-    OSMatch_FreePattern(&reg);
+    OSRegex_FreePattern(&reg);
     if (files_list) {
         OSStore_Free(files_list);
     }

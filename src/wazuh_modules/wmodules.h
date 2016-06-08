@@ -54,6 +54,7 @@ typedef struct wmodule {
 #include "wm_oscap.h"
 
 extern wmodule *wmodules;               // Loaded modules.
+extern int wm_task_nice;                // Nice value for tasks.
 
 // Check general configuration
 void wm_check();

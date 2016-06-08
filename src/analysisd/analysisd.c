@@ -257,7 +257,11 @@ int main_analysisd(int argc, char **argv)
 #ifdef ZEROMQ_OUTPUT_ENABLED
     /* Start zeromq */
     if (Config.zeromq_output) {
+#if CZMQ_VERSION_MAJOR == 2 
         zeromq_output_start(Config.zeromq_output_uri);
+#elif CZMQ_VERSION_MAJOR >= 3
+        zeromq_output_start(Config.zeromq_output_uri, Config.zeromq_output_client_cert, Config.zeromq_output_server_cert);
+#endif
     }
 #endif
 
@@ -1146,14 +1150,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Check for dynamic fields */
 
     for (i = 0; i < Config.decoder_order_size && rule->fields[i]; i++) {
-        int j;
+        int j = FindField(lf->decoder_info, rule->fields[i]->name);
 
-        for (j = 0; j < Config.decoder_order_size; j++)
-            if (lf->decoder_info->fields[j])
-                if (strcasecmp(lf->decoder_info->fields[j], rule->fields[i]->name) == 0)
-                    break;
-
-        if (j == Config.decoder_order_size)
+        if (j < 0)
             return NULL;
 
         if (!OSRegex_Execute(lf->fields[j], rule->fields[i]->regex))
@@ -1417,6 +1416,16 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                     if (!OS_DBSearch(list_holder, lf->action)) {
                         return (NULL);
                     }
+                    break;
+                case RULE_DYNAMIC:
+                    i = FindField(lf->decoder_info, list_holder->dfield);
+
+                    if (i < 0)
+                        return NULL;
+
+                    if (!OS_DBSearch(list_holder, lf->fields[i]))
+                        return NULL;
+
                     break;
                 default:
                     return (NULL);

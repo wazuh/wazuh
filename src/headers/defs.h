@@ -140,6 +140,7 @@ http://www.ossec.net/main/license/\n"
 #define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
 #define DIFF_NEW_FILE  "new-entry"
 #define DIFF_LAST_FILE "last-entry"
+#define DIFF_TEST_HOST "__test"
 
 /* Syscheck data */
 #define SYSCHECK        "syscheck"
