@@ -59,4 +59,7 @@ int checkVista();
 int isVista;
 #endif
 
+/* Delete directory recorsively */
+int rmdir_ex(const char *path);
+
 #endif /* __FILE_H */
