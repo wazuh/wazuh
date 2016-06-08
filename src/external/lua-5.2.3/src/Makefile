@@ -8,7 +8,7 @@ PLAT= none
 
 PREFIX?=/var/ossec
 
-#CC= gcc
+CC= gcc
 CFLAGS= -O2 -Wall -DLUA_COMPAT_ALL -DPREFIX=\"$(PREFIX)\" $(SYSCFLAGS) $(MYCFLAGS)
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
@@ -186,4 +186,3 @@ lvm.o: lvm.c lua.h luaconf.h ldebug.h lstate.h lobject.h llimits.h ltm.h \
  lzio.h lmem.h ldo.h lfunc.h lgc.h lopcodes.h lstring.h ltable.h lvm.h
 lzio.o: lzio.c lua.h luaconf.h llimits.h lmem.h lstate.h lobject.h ltm.h \
  lzio.h
-

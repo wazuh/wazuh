@@ -106,6 +106,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_prelude_log_level = "prelude_log_level";
     const char *xml_zeromq_output = "zeromq_output";
     const char *xml_zeromq_output_uri = "zeromq_uri";
+    const char *xml_zeromq_output_server_cert = "zeromq_server_cert";
+    const char *xml_zeromq_output_client_cert = "zeromq_client_cert";
     const char *xml_jsonout_output = "jsonout_output";
     const char *xml_stats = "stats";
     const char *xml_memorysize = "memory_size";
@@ -262,6 +264,14 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         } else if (strcmp(node[i]->element, xml_zeromq_output_uri) == 0) {
             if (Config) {
                 Config->zeromq_output_uri = strdup(node[i]->content);
+            }
+        } else if (strcmp(node[i]->element, xml_zeromq_output_server_cert) == 0) {
+            if (Config) {
+                Config->zeromq_output_server_cert = strdup(node[i]->content);
+            }
+        } else if (strcmp(node[i]->element, xml_zeromq_output_client_cert) == 0) {
+            if (Config) {
+                Config->zeromq_output_client_cert = strdup(node[i]->content);
             }
         }
         /* jsonout output */

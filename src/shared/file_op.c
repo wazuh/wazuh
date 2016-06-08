@@ -1529,3 +1529,55 @@ char *getuname()
 }
 
 #endif /* WIN32 */
+
+// Delete directory recorsively
+
+int rmdir_ex(const char *path) {
+    char filestr[PATH_MAX + 1];
+    struct dirent *dirent;
+    struct stat statbuf;
+    DIR *dir = opendir(path);
+
+    if (!dir)
+        return -1;
+
+    while ((dirent = readdir(dir))) {
+
+        // Skip "." and ".." (avoid strcmp)
+
+        if (dirent->d_name[0] == '.') {
+            switch (dirent->d_name[1]) {
+            case '\0':
+                continue;
+            case '.':
+                if (dirent->d_name[2] == '\0')
+                    continue;
+                break;
+            default:
+                break;
+            }
+        }
+
+        snprintf(filestr, PATH_MAX + 1, "%s/%s", path, dirent->d_name);
+
+        if (stat(filestr, &statbuf) < 0) {
+            closedir(dir);
+            return -1;
+        }
+
+        if (S_ISREG(statbuf.st_mode)) {
+            if (unlink(filestr) < 0) {
+                closedir(dir);
+                return -1;
+            }
+        } else if (S_ISDIR(statbuf.st_mode)) {
+            if (rmdir_ex(filestr) < 0) {
+                closedir(dir);
+                return -1;
+            }
+        }
+    }
+
+    closedir(dir);
+    return rmdir(path);
+}

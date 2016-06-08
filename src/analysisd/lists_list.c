@@ -87,6 +87,7 @@ ListNode *OS_FindList(const char *listname)
 ListRule *OS_AddListRule(ListRule *first_rule_list,
                          int lookup_type,
                          int field,
+                         const char *dfield,
                          char *listname,
                          OSMatch *matcher)
 {
@@ -101,6 +102,7 @@ ListRule *OS_AddListRule(ListRule *first_rule_list,
     new_rulelist_pt->matcher = matcher;
     new_rulelist_pt->lookup_type = lookup_type;
     new_rulelist_pt->filename = listname;
+    new_rulelist_pt->dfield = field == RULE_DYNAMIC ? strdup(dfield) : NULL;
     if ((new_rulelist_pt->db = OS_FindList(listname)) == NULL) {
         new_rulelist_pt->loaded = 0;
     } else {
@@ -151,7 +153,7 @@ static int OS_DBSearchKeyValue(ListRule *lrule, char *key)
         if (cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
             vpos = cdb_datapos(&lrule->db->cdb);
             vlen = cdb_datalen(&lrule->db->cdb);
-            val = (char *) malloc(vlen);
+            val = (char *) calloc(vlen + 1, sizeof(char));
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
             result = OSMatch_Execute(val, vlen, lrule->matcher);
             free(val);
@@ -294,4 +296,3 @@ int OS_DBSearch(ListRule *lrule, char *key)
             return 0;
     }
 }
-

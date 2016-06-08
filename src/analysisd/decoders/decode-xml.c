@@ -101,7 +101,8 @@ static int os_setdecoderids(const char *p_name)
                 nnode->id = p_id;
 
                 /* Set parent name */
-                nnode->name = tmp_name;
+                free(nnode->name);
+                nnode->name = strdup(tmp_name);
             }
 
             /* Id cannot be 0 */
@@ -204,12 +205,15 @@ int ReadDecodeXML(const char *file)
     }
 
     /* Zero NULL_decoder */
-    os_calloc(1, sizeof(OSDecoderInfo), NULL_Decoder_tmp);
-    NULL_Decoder_tmp->id = 0;
-    NULL_Decoder_tmp->type = SYSLOG;
-    NULL_Decoder_tmp->name = NULL;
-    NULL_Decoder_tmp->fts = 0;
-    NULL_Decoder = NULL_Decoder_tmp;
+
+    if (!NULL_Decoder) {
+        os_calloc(1, sizeof(OSDecoderInfo), NULL_Decoder_tmp);
+        NULL_Decoder_tmp->id = 0;
+        NULL_Decoder_tmp->type = SYSLOG;
+        NULL_Decoder_tmp->name = NULL;
+        NULL_Decoder_tmp->fts = 0;
+        NULL_Decoder = NULL_Decoder_tmp;
+    }
 
     i = 0;
     while (node[i]) {
@@ -433,11 +437,10 @@ int ReadDecodeXML(const char *file)
                 int order_int = 0;
 
                 /* Maximum number for the order is limited by decoder_order_size */
-                norder = OS_StrBreak(',', elements[j]->content, MAX_DECODER_ORDER_SIZE);
+                norder = OS_StrBreak(',', elements[j]->content, Config.decoder_order_size);
                 s_norder = norder;
                 os_calloc(Config.decoder_order_size, sizeof(void *), pi->order);
                 os_calloc(Config.decoder_order_size, sizeof(char *), pi->fields);
-                order_int = 0;
 
                 /* Check the values from the order */
                 while (*norder) {
@@ -509,43 +512,59 @@ int ReadDecodeXML(const char *file)
                 char **norder;
                 char **s_norder;
 
-                /* Maximum number is 8 for the FTS */
-                norder = OS_StrBreak(',', elements[j]->content, 8);
+                /* Maximum number for the FTS is limited by decoder_order_size */
+                norder = OS_StrBreak(',', elements[j]->content, Config.decoder_order_size);
                 if (norder == NULL) {
                     ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
                 }
+
+                os_calloc(Config.decoder_order_size, sizeof(char), pi->fts_fields);
 
                 /* Save the initial point to free later */
                 s_norder = norder;
 
                 /* Check the values from the FTS */
                 while (*norder) {
-                    if (strstr(*norder, "dstuser") != NULL) {
-                        pi->fts |= FTS_DSTUSER;
-                    }
-                    if (strstr(*norder, "user") != NULL) {
-                        pi->fts |= FTS_DSTUSER;
-                    } else if (strstr(*norder, "srcuser") != NULL) {
-                        pi->fts |= FTS_SRCUSER;
-                    } else if (strstr(*norder, "srcip") != NULL) {
-                        pi->fts |= FTS_SRCIP;
-                    } else if (strstr(*norder, "dstip") != NULL) {
-                        pi->fts |= FTS_DSTIP;
-                    } else if (strstr(*norder, "id") != NULL) {
-                        pi->fts |= FTS_ID;
-                    } else if (strstr(*norder, "location") != NULL) {
-                        pi->fts |= FTS_LOCATION;
-                    } else if (strstr(*norder, "data") != NULL) {
-                        pi->fts |= FTS_DATA;
-                    } else if (strstr(*norder, "extra_data") != NULL) {
-                        pi->fts |= FTS_DATA;
-                    } else if (strstr(*norder, "system_name") != NULL) {
-                        pi->fts |= FTS_SYSTEMNAME;
-                    } else if (strstr(*norder, "name") != NULL) {
-                        pi->fts |= FTS_NAME;
-                    } else {
+                    char *word = &(*norder)[strspn(*norder, " ")];
+                    word[strcspn(word, " ")] = '\0';
+
+                    if (strlen(word) == 0) {
                         ErrorExit("decode-xml: Wrong field '%s' in the fts"
                                   " decoder '%s'", *norder, pi->name);
+                    }
+
+                    if (!strcmp(word, "dstuser")) {
+                        pi->fts |= FTS_DSTUSER;
+                    }
+                    if (!strcmp(word, "user")) {
+                        pi->fts |= FTS_DSTUSER;
+                    } else if (!strcmp(word, "srcuser")) {
+                        pi->fts |= FTS_SRCUSER;
+                    } else if (!strcmp(word, "srcip")) {
+                        pi->fts |= FTS_SRCIP;
+                    } else if (!strcmp(word, "dstip")) {
+                        pi->fts |= FTS_DSTIP;
+                    } else if (!strcmp(word, "id")) {
+                        pi->fts |= FTS_ID;
+                    } else if (!strcmp(word, "location")) {
+                        pi->fts |= FTS_LOCATION;
+                    } else if (!strcmp(word, "data")) {
+                        pi->fts |= FTS_DATA;
+                    } else if (!strcmp(word, "extra_data")) {
+                        pi->fts |= FTS_DATA;
+                    } else if (!strcmp(word, "system_name")) {
+                        pi->fts |= FTS_SYSTEMNAME;
+                    } else if (!strcmp(word, "name")) {
+                        pi->fts |= FTS_NAME;
+                    } else {
+                        int i = FindField(pi, word);
+
+                        if (i < 0)
+                            ErrorExit("decode-xml: Wrong field '%s' in the fts"
+                                      " decoder '%s'", *norder, pi->name);
+
+                        pi->fts |= FTS_DYNAMIC;
+                        pi->fts_fields[i] = 1;
                     }
 
                     free(*norder);

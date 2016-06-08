@@ -53,6 +53,7 @@
 #define RULE_PROGRAM_NAME 512
 #define RULE_STATUS     1024
 #define RULE_ACTION     2048
+#define RULE_DYNAMIC    4096
 
 #define RULEINFODETAIL_TEXT     0
 #define RULEINFODETAIL_LINK     1
@@ -87,6 +88,8 @@ typedef struct _RuleInfo {
     int ignore_time;
     int ignore;
     int ckignore;
+    char **ignore_fields;
+    char **ckignore_fields;
     unsigned int group_prev_matched_sz;
 
     int __frequency;

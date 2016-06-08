@@ -36,6 +36,7 @@ typedef struct {
     char *name;
     char *ftscomment;
     char **fields;
+    char *fts_fields;
 
     OSRegex *regex;
     OSRegex *prematch;
@@ -65,5 +66,8 @@ void SyscheckInit(void);
 void RootcheckInit(void);
 
 int ReadDecodeXML(const char *file);
+
+/* Find index of a dynamic field. Returns -1 if not found. */
+int FindField(const OSDecoderInfo *decoder, const char *name);
 
 #endif

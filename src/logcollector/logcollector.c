@@ -18,6 +18,7 @@ int loop_timeout;
 int logr_queue;
 int open_file_attempts;
 logreader *logff;
+int vcheck_files;
 static int _cday = 0;
 
 
@@ -347,8 +348,8 @@ void LogCollectorStart()
             }
         }
 
-        /* Only check below if check > VCHECK_FILES */
-        if (f_check <= VCHECK_FILES) {
+        /* Only check below if check > vcheck_files */
+        if (f_check <= vcheck_files) {
             continue;
         }
 
