@@ -36,6 +36,12 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 
 void DecodeEvent(Eventinfo *lf);
 
+// Cleanup at exit
+static void onexit();
+
+// Signal handler
+static void onsignal(int signum);
+
 /* Print help statement */
 __attribute__((noreturn))
 static void help_logtest(void)
@@ -68,6 +74,7 @@ int main(int argc, char **argv)
     const char *group = GROUPGLOBAL;
     uid_t uid;
     gid_t gid;
+    struct sigaction action = { .sa_handler = onsignal };
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -293,6 +300,13 @@ int main(int argc, char **argv)
     if (Privsep_SetUser(uid) < 0) {
         ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
     }
+
+    /* Signal handling */
+
+    atexit(onexit);
+    sigaction(SIGTERM, &action, NULL);
+    sigaction(SIGHUP, &action, NULL);
+    sigaction(SIGINT, &action, NULL);
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
@@ -596,4 +610,16 @@ void OS_ReadMSG(char *ut_str)
         }
     }
     exit(exit_code);
+}
+
+// Cleanup at exit
+void onexit() {
+    char testdir[PATH_MAX + 1];
+    snprintf(testdir, PATH_MAX + 1, "%s/%s", DIFF_DIR, DIFF_TEST_HOST);
+    rmdir_ex(testdir);
+}
+
+// Signal handler
+void onsignal(__attribute__((unused)) int signum) {
+    exit(EXIT_SUCCESS);
 }
