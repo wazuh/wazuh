@@ -228,6 +228,8 @@ int main_analysisd(int argc, char **argv)
 
 
 #ifdef LIBGEOIP_ENABLED
+    Config.geoip_jsonout = getDefine_Int("analysisd", "geoip_jsonout", 0, 1);
+
     /* Opening GeoIP DB */
     if(Config.geoipdb_file) {
         geoipdb = GeoIP_open(Config.geoipdb_file, GEOIP_INDEX_CACHE);
@@ -276,7 +278,7 @@ int main_analysisd(int argc, char **argv)
 #ifdef ZEROMQ_OUTPUT_ENABLED
     /* Start zeromq */
     if (Config.zeromq_output) {
-#if CZMQ_VERSION_MAJOR == 2 
+#if CZMQ_VERSION_MAJOR == 2
         zeromq_output_start(Config.zeromq_output_uri);
 #elif CZMQ_VERSION_MAJOR >= 3
         zeromq_output_start(Config.zeromq_output_uri, Config.zeromq_output_client_cert, Config.zeromq_output_server_cert);
