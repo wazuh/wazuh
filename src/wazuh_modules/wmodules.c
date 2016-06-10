@@ -54,7 +54,7 @@ void wm_destroy() {
     wmodule *cur_module;
     wmodule *next_module;
 
-    for (cur_module = wmodules; cur_module; wmodules = next_module) {
+    for (cur_module = wmodules; cur_module; cur_module = next_module) {
         next_module = cur_module->next;
         cur_module->context->destroy(cur_module->data);
         free(cur_module);
