@@ -17,20 +17,20 @@
 #include "lists.h"
 
 /* Event context  - stored on a uint8 */
-#define SAME_USER       0x001 /* 1   */
-#define SAME_SRCIP      0x002 /* 2   */
-#define SAME_ID         0x004 /* 4   */
-#define SAME_LOCATION   0x008 /* 8   */
-#define DIFFERENT_URL   0x010 /* */
-#define DIFFERENT_SRCIP 0x200 
-#define DIFFERENT_GEOIP 0x400 
-#define SAME_SRCPORT    0x020
-#define SAME_DSTPORT    0x040
-#define SAME_DODIFF     0x100
-#define NOT_SAME_USER   0xffe /* 0xfff - 0x001  */
-#define NOT_SAME_SRCIP  0xffd /* 0xfff - 0x002  */
-#define NOT_SAME_ID     0xffb /* 0xfff - 0x004  */
-#define NOT_SAME_AGENT  0xff7 /* 0xfff - 0x008 */
+#define SAME_USER           0x001 /* 1   */
+#define SAME_SRCIP          0x002 /* 2   */
+#define SAME_ID             0x004 /* 4   */
+#define SAME_LOCATION       0x008 /* 8   */
+#define DIFFERENT_URL       0x010 /* */
+#define DIFFERENT_SRCIP     0x200
+#define DIFFERENT_SRCGEOIP  0x400
+#define SAME_SRCPORT        0x020
+#define SAME_DSTPORT        0x040
+#define SAME_DODIFF         0x100
+#define NOT_SAME_USER       0xffe /* 0xfff - 0x001  */
+#define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002  */
+#define NOT_SAME_ID         0xffb /* 0xfff - 0x004  */
+#define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
 
 /* Alert options  - store on a uint8 */
 #define DO_FTS          0x001
