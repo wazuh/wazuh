@@ -278,6 +278,17 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
                 }
             }
 
+            /* Check for different from same srcgeoip */
+            if (rule->context_opts & DIFFERENT_SRCGEOIP) {
+
+                if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
+                    continue;
+                }
+
+                if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                    continue;
+                }
+            }
         }
 
         /* Check if the number of matches worked */
@@ -401,7 +412,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
             }
         }
 
-        /* Check for repetitions from same src_ip */
+        /* Check for different from same srcgeoip */
         if (rule->context_opts & DIFFERENT_SRCGEOIP) {
 
             if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
