@@ -235,7 +235,7 @@ int main_analysisd(int argc, char **argv)
         geoipdb = GeoIP_open(Config.geoipdb_file, GEOIP_INDEX_CACHE);
         if (geoipdb == NULL)
         {
-            merror("%s: Unable to open GeoIP database from: %s (disabling GeoIP).", ARGV0, Config.geoipdb_file);
+            merror("%s: ERROR: Unable to open GeoIP database from: %s (disabling GeoIP).", ARGV0, Config.geoipdb_file);
         }
     }
 #endif
