@@ -44,6 +44,7 @@ typedef struct _OSRegex {
 
 /* OSmatch structure */
 typedef struct _OSMatch {
+    short int negate;
     int error;
     size_t *size;
     char **patterns;

@@ -276,6 +276,18 @@ void *SrcIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
 #endif
 
     lf->srcip = field;
+
+#ifdef LIBGEOIP_ENABLED
+
+    if(!lf->srcgeoip) {
+        lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
+#ifdef TESTRULE
+        if (lf->srcgeoip && !alert_only)
+            print_out("       srcgeoip: '%s'", lf->srcgeoip);
+#endif
+
+    }
+#endif
     return (NULL);
 }
 
@@ -288,7 +300,19 @@ void *DstIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
 #endif
 
     lf->dstip = field;
+
+#ifdef LIBGEOIP_ENABLED
+
+    if(!lf->dstgeoip) {
+        lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
+        #ifdef TESTRULE
+            if (lf->dstgeoip && !alert_only)
+                print_out("       dstgeoip: '%s'", lf->dstgeoip);
+        #endif
+    }
+#endif
     return (NULL);
+
 }
 
 void *SrcPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)

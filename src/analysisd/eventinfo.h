@@ -24,7 +24,9 @@ typedef struct _Eventinfo {
 
     /* Extracted from the decoders */
     char *srcip;
+    char *srcgeoip;
     char *dstip;
+    char *dstgeoip;
     char *srcport;
     char *dstport;
     char *protocol;

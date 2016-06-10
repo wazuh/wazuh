@@ -34,6 +34,9 @@ typedef struct __Config {
     /* prelude profile name */
     char *prelude_profile;
 
+    /* GeoIP DB */
+    char *geoipdb_file;
+
     /* ZEROMQ Export */
     u_int8_t zeromq_output;
     char *zeromq_output_uri;
@@ -89,6 +92,7 @@ typedef struct __Config {
     u_int8_t loggeoip;
     char *geoip_db_path;
     char *geoip6_db_path;
+    int geoip_jsonout;
 #endif
 
 } _Config;
