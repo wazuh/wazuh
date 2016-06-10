@@ -273,6 +273,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
             }
 #ifdef CLIENT
             else {
+                char *agentprofile = os_read_agent_profile();
                 debug2("agent_config element does not have any attributes.");
 
                 /* if node does not have any attributes, it is a generic config block.
@@ -281,9 +282,11 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                  * agent_config block
                  */
 
-                if (!os_read_agent_profile()) {
+                if (!agentprofile) {
                     debug2("but agent has a profile name.");
                     passed_agent_test = 0;
+                } else {
+                    free(agentprofile);
                 }
             }
 #endif
