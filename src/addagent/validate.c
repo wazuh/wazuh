@@ -12,7 +12,7 @@
 #include "os_crypto/md5/md5_op.h"
 
 #ifdef WIN32
-    #define chmod(x,y)
+    #define chmod(x,y) 0
     #define mkdir(x,y) 0
     #define link(x,y) 0
     #define difftime(x,y) 0
@@ -115,15 +115,15 @@ int OS_RemoveAgent(const char *u_id) {
     if (!id_exist)
         return 0;
 
-    full_name = getFullnameById(u_id);
     fp = fopen(AUTH_FILE, "r");
 
     if (!fp)
         return 0;
 
-    chmod(AUTH_FILE, 0440);
+    if (chmod(AUTH_FILE, 0440) < 0)
+        return 0;
 
-    if (stat(AUTH_FILE, &fp_stat) < 0) {
+    if (fstat(fileno(fp), &fp_stat) < 0) {
         fclose(fp);
         return 0;
     }
@@ -134,12 +134,22 @@ int OS_RemoveAgent(const char *u_id) {
         return 0;
     }
 
-    fsetpos(fp, &fp_pos);
-    fp_seek = ftell(fp);
+    if (fsetpos(fp, &fp_pos) < 0) {
+        fclose(fp);
+        return 0;
+    }
+
+    if ((fp_seek = ftell(fp)) < 0) {
+        fclose(fp);
+        return 0;
+    }
+
     fseek(fp, 0, SEEK_SET);
-    fp_read = fread(buffer, sizeof(char), fp_seek, fp);
+    fp_read = fread(buffer, sizeof(char), (size_t)fp_seek, fp);
 
     if (!fgets(buf_curline, OS_BUFFER_SIZE - 2, fp)) {
+        free(buffer);
+        fclose(fp);
         return 0;
     }
 
@@ -176,8 +186,10 @@ int OS_RemoveAgent(const char *u_id) {
     fclose(fp);
     free(buffer);
 
-    if (full_name)
+    if ((full_name = getFullnameById(u_id))) {
         delete_agentinfo(full_name);
+        free(full_name);
+    }
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
@@ -482,6 +494,7 @@ double OS_AgentAntiquity(const char *id)
         return -1;
 
     snprintf(file_name, OS_FLSIZE - 1, "%s/%s", AGENTINFO_DIR, full_name);
+    free(full_name);
 
     if (stat(file_name, &file_stat) < 0)
         return -1;
@@ -548,8 +561,10 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
                         } else if (json_output) {
                             cJSON *json_agent = cJSON_CreateObject();
 
-                            if (!json_agent)
+                            if (!json_agent) {
+                                fclose(fp);
                                 return 0;
+                            }
 
                             cJSON_AddStringToObject(json_agent, "id", line_read);
                             cJSON_AddStringToObject(json_agent, "name", name);
@@ -626,13 +641,18 @@ void OS_BackupAgentInfo(const char *id)
         return;
     }
 
-    ip = strchr(name, '-');
+    if (!(ip = strchr(name, '-'))) {
+        free(name);
+        return;
+    }
+
     *(ip++) = 0;
 
     path_backup = OS_CreateBackupDir(id, name, ip, timer);
 
     if (!path_backup) {
         merror("%s: ERROR: Couldn't create backup directory.", ARGV0);
+        free(name);
         return;
     }
 
@@ -767,13 +787,13 @@ void OS_RemoveAgentTimestamp(const char *id)
     int pos = 0;
     struct stat fp_stat;
 
-    if (stat(TIMESTAMP_FILE, &fp_stat) < 0) {
-        return;
-    }
-
     fp = fopen(TIMESTAMP_FILE, "r");
 
     if (!fp) {
+        return;
+    }
+
+    if (fstat(fileno(fp), &fp_stat) < 0) {
         return;
     }
 

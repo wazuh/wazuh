@@ -248,6 +248,8 @@ int add_agent(int json_output)
                     _ip = NULL;
                 }
             }
+
+            free(id_exist);
         }
 
     } while (!_ip);
@@ -346,7 +348,18 @@ int add_agent(int json_output)
                     ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
             }
 #ifndef WIN32
-            chmod(AUTH_FILE, 0440);
+            if (chmod(AUTH_FILE, 0440) < 0) {
+                if (json_output) {
+                    char buffer[1024];
+                    cJSON *json_root = cJSON_CreateObject();
+                    snprintf(buffer, 1023, "Could not chmod object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+                    cJSON_AddNumberToObject(json_root, "error", 71);
+                    cJSON_AddStringToObject(json_root, "message", buffer);
+                    printf("%s", cJSON_PrintUnformatted(json_root));
+                    exit(1);
+                } else
+                    ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+            }
 #endif
 
             /* Random 1: Time took to write the agent information
