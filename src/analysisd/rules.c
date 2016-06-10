@@ -114,7 +114,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
     const char *xml_different_url = "different_url";
     const char *xml_different_srcip = "different_srcip";
-    const char *xml_different_geoip = "different_geoip";
+    const char *xml_different_srcgeoip = "different_srcgeoip";
 
     const char *xml_notsame_source_ip = "not_same_source_ip";
     const char *xml_notsame_user = "not_same_user";
@@ -853,8 +853,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     } else if(strcmp(rule_opt[k]->element,
-                                   xml_different_geoip) == 0) {
-                        config_ruleinfo->context_opts|= DIFFERENT_GEOIP;
+                                   xml_different_srcgeoip) == 0) {
+                        config_ruleinfo->context_opts|= DIFFERENT_SRCGEOIP;
 
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;

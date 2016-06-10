@@ -47,7 +47,7 @@ char *GetGeoInfobyIP(char *ip_addr)
         return(NULL);
     }
 
-    if(geoiprecord->country_code == NULL || geoiprecord->country_code == NULL)
+    if(geoiprecord->country_code == NULL)
     {
         GeoIPRecord_delete(geoiprecord);
         return(NULL);

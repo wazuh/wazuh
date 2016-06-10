@@ -402,7 +402,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
         }
 
         /* Check for repetitions from same src_ip */
-        if (rule->context_opts & DIFFERENT_GEOIP) {
+        if (rule->context_opts & DIFFERENT_SRCGEOIP) {
 
             if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
                 continue;
