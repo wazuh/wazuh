@@ -403,6 +403,17 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
             }
         }
 
+        /* Check for repetitions from same src_ip */
+        if (rule->context_opts & DIFFERENT_GEOIP) {
+
+            if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
+                continue;
+            }
+
+            if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                continue;
+            }
+        }
 
         /* Check if the number of matches worked */
         if (rule->__frequency < rule->frequency) {

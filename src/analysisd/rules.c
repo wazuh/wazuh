@@ -1293,6 +1293,10 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                 /* Mark rules that match this id */
                 OS_MarkID(NULL, config_ruleinfo);
+
+                /* Set function pointer */
+                config_ruleinfo->event_search = (void *(*)(void *, void *))
+                    Search_LastEvents;
             }
 
             /* Mark the rules that match if_matched_group */
