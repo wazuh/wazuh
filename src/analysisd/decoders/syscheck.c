@@ -15,6 +15,9 @@
 #include "alerts/alerts.h"
 #include "decoder.h"
 
+/* SQLITE DB */
+#include "os_db/db_fim.h"
+
 typedef struct __sdb {
     char buf[OS_MAXSTR + 1];
     char comment[OS_MAXSTR + 1];
@@ -49,7 +52,7 @@ typedef struct __sdb {
 
 /* Local variables */
 static _sdb sdb;
-
+sqlite3 *db;
 
 /* Initialize the necessary information to process the syscheck information */
 void SyscheckInit()
@@ -88,6 +91,10 @@ void SyscheckInit()
     sdb.idn = getDecoderfromlist(SYSCHECK_NEW);
     sdb.idd = getDecoderfromlist(SYSCHECK_DEL);
 
+	/* Connect to sqlite db */
+	sqlite_connect(db);
+	sqlite_close(db);
+	
     debug1("%s: SyscheckInit completed.", ARGV0);
     return;
 }
@@ -220,6 +227,11 @@ static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
     char *saved_name;
 
     FILE *fp;
+	
+	char event[OS_MAXSTR + 1];
+	
+	/* Connect to sqlite db */
+	sqlite_connect(db);
 
     /* Get db pointer */
     fp = DB_File(lf->location, &agent_id);
@@ -352,13 +364,15 @@ static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
             snprintf(sdb.comment, OS_MAXSTR,
                      "File '%.756s' was deleted. Unable to retrieve "
                      "checksum.", f_name);
+			snprintf(event, OS_MAXSTR, "deleted");
         }
 
         /* If file was re-added, do not compare changes */
         else if (saved_sum[0] == '-' && saved_sum[1] == '1') {
             sdb.syscheck_dec->id = sdb.idn;
             snprintf(sdb.comment, OS_MAXSTR,
-                     "File '%.756s' was re-added.", f_name);
+                     "File '%.756s' was re-added.", f_name);		 
+			snprintf(event, OS_MAXSTR, "readded");		 
         }
 
         else {
@@ -566,6 +580,7 @@ static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
                      lf->data == NULL ? "" : "What changed:\n",
                      lf->data == NULL ? "" : lf->data
                     );
+			snprintf(event, OS_MAXSTR, "modified");	
         }
 
         /* Create a new log message */
@@ -577,6 +592,12 @@ static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
         /* Set decoder */
         lf->decoder_info = sdb.syscheck_dec;
 
+		/* Insert row in SQLite DB*/
+		db_insert_fim(db, f_name, event, newmd5, newsha1, lf->size_after, lf->owner_after, lf->gowner_after, lf->perm_after);
+		
+		/* Disconnect SQLite DB */
+		sqlite_close(db);
+		
         return (1);
 
     } /* Continue */
@@ -587,27 +608,40 @@ static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
     fflush(fp);
 
     /* Alert if configured to notify on new files */
-    if ((Config.syscheck_alert_new == 1) && (DB_IsCompleted(agent_id))) {
-        sdb.syscheck_dec->id = sdb.idn;
+    if (DB_IsCompleted(agent_id)) {
+		
+		snprintf(event, OS_MAXSTR, "added");
+		/* Insert row in SQLite DB*/
+		db_insert_fim(db, f_name, event, lf->md5_after, lf->sha1_after, lf->size_after, lf->owner_after, lf->gowner_after, lf->perm_after);
+		
+		/* Disconnect SQLite DB */
+		sqlite_close(db);
+		
+		if(Config.syscheck_alert_new == 1){
+			sdb.syscheck_dec->id = sdb.idn;
 
-        /* New file message */
-        snprintf(sdb.comment, OS_MAXSTR,
-                 "New file '%.756s' "
-                 "added to the file system.", f_name);
+			/* New file message */
+			snprintf(sdb.comment, OS_MAXSTR,
+					 "New file '%.756s' "
+					 "added to the file system.", f_name);
+				
+			/* Create a new log message */
+			free(lf->full_log);
+			os_strdup(sdb.comment, lf->full_log);
+			lf->log = lf->full_log;
 
-        /* Create a new log message */
-        free(lf->full_log);
-        os_strdup(sdb.comment, lf->full_log);
-        lf->log = lf->full_log;
+			/* Set decoder */
+			lf->decoder_info = sdb.syscheck_dec;
+			lf->data = NULL;
 
-        /* Set decoder */
-        lf->decoder_info = sdb.syscheck_dec;
-        lf->data = NULL;
-
-        return (1);
+			return (1);
+		}
     }
-
+	
     lf->data = NULL;
+	
+	/* Disconnect SQLite DB */
+	sqlite_close(db);
     return (0);
 }
 
