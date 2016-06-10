@@ -209,13 +209,11 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         } else if (!strcmp(nodes[i]->element, XML_SKIP_RESULT)) {
             if (wm_oscap_parse_skip_result(nodes[i]->content, &oscap->flags) < 0) {
                 merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_SKIP_RESULT, WM_OSCAP_CONTEXT.name);
-                OS_ClearNode(children);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_SKIP_SEVERITY)) {
             if (wm_oscap_parse_skip_severity(nodes[i]->content, &oscap->flags) < 0) {
                 merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_SKIP_SEVERITY, WM_OSCAP_CONTEXT.name);
-                OS_ClearNode(children);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START)) {
@@ -225,7 +223,6 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 oscap->flags.scan_on_start = 0;
             else {
                 merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_SCAN_ON_START, WM_OSCAP_CONTEXT.name);
-                OS_ClearNode(children);
                 return OS_INVALID;
             }
         } else {
