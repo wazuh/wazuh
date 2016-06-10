@@ -244,6 +244,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         if (pthread_create(&thread, NULL, reader, &tinfo)) {
             merror("%s: ERROR: Couldn't create reading thread.", ARGV0);
+            pthread_mutex_unlock(&tinfo.mutex);
             return -1;
         }
 
