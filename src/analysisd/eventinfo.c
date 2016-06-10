@@ -317,8 +317,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
     Eventinfo *lf;
     Eventinfo *first_lf;
 
-    merror("XXXX : remove me!");
-
     /* Last events */
     eventnode_pt = OS_GetLastEvent();
     if (!eventnode_pt) {
