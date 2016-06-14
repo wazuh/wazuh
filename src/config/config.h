@@ -24,8 +24,13 @@
 #define CSYSLOGD      0004000
 #define CAGENTLESS    0020000
 #define CREPORTS      0040000
+#define CINTEGRATORD  0100000
+#define CWMODULE  0200000
 
 #define CAGENT_CONFIG 0010000
+
+#define UDP_PROTO   6
+#define TCP_PROTO   17
 
 #include "os_xml/os_xml.h"
 
@@ -43,10 +48,13 @@ int Read_DB(XML_NODE node, void *config1, void *config2);
 int Read_CSyslog(XML_NODE node, void *config1, void *config2);
 int Read_CAgentless(XML_NODE node, void *config1, void *config2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
+int Read_Integrator(XML_NODE node, void *config1, void *config2);
 int Read_Remote(XML_NODE node, void *d1, void *d2);
 int Read_Client(XML_NODE node, void *d1, void *d2);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
+int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
+
 
 #endif /* _HCONFIG__H */

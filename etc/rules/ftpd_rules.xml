@@ -3,6 +3,9 @@
   -  Official ftpd rules for OSSEC.
   -  Author: Ahmet Ozturk
   -  License: http://www.ossec.net/en/licensing.html
+  -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -->
       
 

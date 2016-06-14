@@ -432,9 +432,21 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
     }
 
     /* Send _ssize of crypt_msg */
-    if (OS_SendUDPbySize(agt->sock, _ssize, crypt_msg) < 0) {
-        merror(SEND_ERROR, ARGV0, "server");
-        sleep(1);
+    if (agt->protocol == UDP_PROTO) {
+        if (OS_SendUDPbySize(agt->sock, _ssize, crypt_msg) < 0) {
+            merror(SEND_ERROR, ARGV0, "server");
+            sleep(1);
+        }
+    } else {
+        netsize_t length = _ssize;
+
+        if (OS_SendTCPbySize(agt->sock, sizeof(length), (void*)&length) < 0) {
+            merror(SEND_ERROR, ARGV0, "server");
+            sleep(1);
+        } else if (OS_SendTCPbySize(agt->sock, _ssize, crypt_msg) < 0) {
+            merror(SEND_ERROR, ARGV0, "server");
+            sleep(1);
+        }
     }
 
     if (!ReleaseMutex(hMutex)) {
@@ -505,7 +517,7 @@ void send_win32_info(time_t curr_time)
     /* Create message */
     if (File_DateofChange(AGENTCONFIGINT) > 0) {
         os_md5 md5sum;
-        if (OS_MD5_File(AGENTCONFIGINT, md5sum) != 0) {
+        if (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) != 0) {
             snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s", __win32_uname, __win32_shared);
         } else {
             snprintf(tmp_msg, OS_SIZE_1024, "#!-%s / %s\n%s", __win32_uname, md5sum, __win32_shared);
@@ -525,9 +537,21 @@ void send_win32_info(time_t curr_time)
     }
 
     /* Send UDP message */
-    if (OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0) {
-        merror(SEND_ERROR, ARGV0, "server");
-        sleep(1);
+    if (agt->protocol == UDP_PROTO) {
+        if (OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0) {
+            merror(SEND_ERROR, ARGV0, "server");
+            sleep(1);
+        }
+    } else {
+        netsize_t length = msg_size;
+
+        if (OS_SendTCPbySize(agt->sock, sizeof(length), (void*)&length) < 0) {
+            merror(SEND_ERROR, ARGV0, "server");
+            sleep(1);
+        } else if (OS_SendTCPbySize(agt->sock, msg_size, crypt_msg) < 0) {
+            merror(SEND_ERROR, ARGV0, "server");
+            sleep(1);
+        }
     }
 
     return;

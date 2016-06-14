@@ -1,0 +1,51 @@
+#!/bin/sh
+# Slack Integration
+# Author: Daniel B. Cid
+# Last modified: Jan 02, 2015
+
+ALERTFILE=$1
+APIKEY=$2
+WEBHOOK=$3
+
+LOCAL=`dirname $0`;
+SERVER=`hostname`
+cd $LOCAL
+cd ../
+PWD=`pwd`
+
+
+# Logging the call
+echo "`date` $0 $1 $2 $3 $4 $5 $6 $7" >> ${PWD}/logs/integrations.log
+
+
+# IP Address must be provided
+if [ "x${WEBHOOK}" = "x" ]; then
+   echo "$0: Missing argument <alertfile> <unused> (webhook)" 
+   exit 1;
+fi
+
+
+ls $ALERTFILE >/dev/null 2>&1
+if [ ! $? = 0 ]; then
+    echo "$0: Missing file: <alertfile>"
+    exit 1;
+fi
+
+
+. $ALERTFILE 
+postfile=`mktemp`
+
+
+echo 'payload={"username":"OSSEC2slack Integration from '$alertlocation'", "icon_emoji": ":ghost:", "text": "OSSEC Alert\n```'$alertdate $alertlocation'\nRule:'$ruleid' (level '$alertlevel'): '$ruledescription'\nIP:'$srcip'\n'$alertlog'\n```"}' > $postfile
+
+res=`curl -s --data @$postfile "$WEBHOOK"`
+echo $res | grep "ok" >/dev/null 2>&1
+if [ $? = 0 ]; then
+    echo "`date` $0 Slack integration ran successfully" >> ${PWD}/logs/integrations.log
+else
+    echo "`date` $0 Slack integration failed to run. Either invalid hook url or payload." >> ${PWD}/logs/integrations.log
+fi
+
+rm -f $postfile
+
+exit 0;

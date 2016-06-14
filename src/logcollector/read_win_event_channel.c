@@ -192,6 +192,22 @@ wchar_t *convert_unix_string(char *string)
     return (dest);
 }
 
+/* Filter escape characters */
+
+char* filter_special_chars(const char *string) {
+    int i, j = 0;
+    int n = strlen(string);
+    char *filtered = malloc(n + 1);
+
+    if (!filtered)
+        return NULL;
+
+    for (i = 0; i <= n; i++)
+        filtered[j++] = (string[i] == '\\') ? string[++i] : string[i];
+    
+    return filtered;
+}
+
 char *get_property_value(PEVT_VARIANT value)
 {
     if (value->Type == EvtVarTypeNull) {
@@ -826,6 +842,7 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 {
     wchar_t *wchannel = NULL;
     wchar_t *wquery = NULL;
+    char *filtered_query = NULL;
     os_channel *channel = NULL;
     DWORD flags = EvtSubscribeToFutureEvents;
     EVT_HANDLE bookmark = NULL;
@@ -873,7 +890,17 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 
     /* Convert query to Windows string */
     if (query) {
-        if ((wquery = convert_unix_string(query)) == NULL) {
+        if ((filtered_query = filter_special_chars(query)) == NULL) {
+            log2file(
+                "%s: ERROR: Could not filter_special_chars() query for (%s) which returned [(%d)-(%s)]",
+                ARGV0,
+                channel->evt_log,
+                errno,
+                strerror(errno));
+            goto cleanup;
+        }
+    	
+        if ((wquery = convert_unix_string(filtered_query)) == NULL) {
             log2file(
                 "%s: ERROR: Could not convert_unix_string() query for (%s) which returned [(%d)-(%s)]",
                 ARGV0,
@@ -933,6 +960,7 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 cleanup:
     free(wchannel);
     free(wquery);
+    free(filtered_query);
 
     if (status == 0) {
         free(channel->bookmark_name);

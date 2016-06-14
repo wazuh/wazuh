@@ -100,7 +100,7 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
     }
 
     if (_proto == IPPROTO_TCP) {
-        if (listen(ossock, 32) < 0) {
+        if (listen(ossock, BACKLOG) < 0) {
             OS_CloseSocket(ossock);
             return (OS_SOCKTERR);
         }
@@ -498,5 +498,11 @@ int OS_CloseSocket(int socket)
 #else
     return (close(socket));
 #endif /* WIN32 */
+}
+
+int OS_SetRecvTimeout(int socket, int seconds)
+{
+    struct timeval tv = { seconds, 0 };
+    return setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
 }
 

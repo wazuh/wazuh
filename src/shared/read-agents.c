@@ -12,14 +12,14 @@
 #include "os_net/os_net.h"
 
 #ifndef WIN32
-static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, int csv_output,
+static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, int csv_output, cJSON *json_output,
                                     int is_win, int number_of_changes) __attribute__((nonnull(2)));
-static int _do_print_file_syscheck(FILE *fp, const char *fname,
-                                   int update_counter, int csv_output) __attribute__((nonnull));
-static int _do_print_syscheck(FILE *fp, int all_files, int csv_output) __attribute__((nonnull));
+static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_counter,
+                                   int csv_output, cJSON *json_output) __attribute__((nonnull(1)));
+static int _do_print_syscheck(FILE *fp, int all_files, int csv_output, cJSON *json_output) __attribute__((nonnull(1)));
 static int _do_get_rootcheckscan(FILE *fp) __attribute__((nonnull));
 static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
-                               int csv_output, int show_last) __attribute__((nonnull));
+                               int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
 #endif /* !WIN32*/
 
 static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info) __attribute__((nonnull(2, 3)));
@@ -54,7 +54,7 @@ void free_agents(char **agent_list)
 #define sk_strchr(x,y,z) z = strchr(x, y); if(z == NULL) return(0); else { *z = '\0'; z++; }
 
 static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, __attribute__((unused)) int csv_output,
-                                    int is_win, int number_of_changes)
+                                    cJSON *json_output, int is_win, int number_of_changes)
 {
     const char *p_size, *size;
     char *p_perm, *p_uid, *p_gid, *p_md5, *p_sha1;
@@ -65,7 +65,10 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, _
 
     /* A deleted file has no attributes */
     if (strcmp(attrs, "-1") == 0) {
-        printf("File deleted.\n");
+        if (json_output)
+            cJSON_AddStringToObject(json_output, "event", "deleted");
+        else
+            printf("File deleted.\n");
         return (0);
     }
 
@@ -85,9 +88,16 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, _
     p_sha1 = sha1;
 
     if (prev_attrs && (strcmp(prev_attrs, "-1") == 0)) {
-        printf("File restored. ");
+        if (json_output)
+            cJSON_AddStringToObject(json_output, "event", "restored");
+        else
+            printf("File restored. ");
     } else if (prev_attrs) {
-        printf("File changed. ");
+        if (json_output)
+            cJSON_AddStringToObject(json_output, "event", "modified");
+        else
+            printf("File changed. ");
+
         p_size = prev_attrs;
         sk_strchr(p_size, ':', p_perm);
         sk_strchr(p_perm, ':', p_uid);
@@ -95,31 +105,36 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, _
         sk_strchr(p_gid, ':', p_md5);
         sk_strchr(p_md5, ':', p_sha1);
     } else {
-        printf("File added to the database. ");
+        if (json_output)
+            cJSON_AddStringToObject(json_output, "event", "added");
+        else
+            printf("File added to the database. ");
     }
 
-    /* Fix number of changes */
-    if (prev_attrs && !number_of_changes) {
-        number_of_changes = 1;
-    }
-
-    if (number_of_changes) {
-        switch (number_of_changes) {
-            case 1:
-                printf("- 1st time modified.\n");
-                break;
-            case 2:
-                printf("- 2nd time modified.\n");
-                break;
-            case 3:
-                printf("- 3rd time modified.\n");
-                break;
-            default:
-                printf("- Being ignored (3 or more changes).\n");
-                break;
+    if (!json_output) {
+        /* Fix number of changes */
+        if (prev_attrs && !number_of_changes) {
+            number_of_changes = 1;
         }
-    } else {
-        printf("\n");
+
+        if (number_of_changes) {
+            switch (number_of_changes) {
+                case 1:
+                    printf("- 1st time modified.\n");
+                    break;
+                case 2:
+                    printf("- 2nd time modified.\n");
+                    break;
+                case 3:
+                    printf("- 3rd time modified.\n");
+                    break;
+                default:
+                    printf("- Being ignored (3 or more changes).\n");
+                    break;
+            }
+        } else {
+            printf("\n");
+        }
     }
 
     perm_str[35] = '\0';
@@ -143,15 +158,26 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, _
              (perm_int & S_ISVTX) ? 't' :
              (perm_int & S_IXOTH) ? 'x' : '-');
 
-    printf("Integrity checking values:\n");
-    printf("   Size:%s%s\n", (strcmp(size, p_size) == 0) ? " " : " >", size);
-    if (!is_win) {
-        printf("   Perm:%s%s\n", (strcmp(perm, p_perm) == 0) ? " " : " >", perm_str);
-        printf("   Uid: %s%s\n", (strcmp(uid, p_uid) == 0) ? " " : " >", uid);
-        printf("   Gid: %s%s\n", (strcmp(gid, p_gid) == 0) ? " " : " >", gid);
+    if (json_output) {
+        cJSON_AddStringToObject(json_output, "size", size);
+        cJSON_AddNumberToObject(json_output, "mode", is_win ? 0 : perm_int);
+        cJSON_AddStringToObject(json_output, "perm", is_win ? "" : perm_str);
+        cJSON_AddStringToObject(json_output, "uid", is_win ? "" : uid);
+        cJSON_AddStringToObject(json_output, "gid", is_win ? "" : gid);
+        cJSON_AddStringToObject(json_output, "md5", md5);
+        cJSON_AddStringToObject(json_output, "sha1", sha1);
+
+    } else{
+        printf("Integrity checking values:\n");
+        printf("   Size:%s%s\n", (strcmp(size, p_size) == 0) ? " " : " >", size);
+        if (!is_win) {
+            printf("   Perm:%s%s\n", (strcmp(perm, p_perm) == 0) ? " " : " >", perm_str);
+            printf("   Uid: %s%s\n", (strcmp(uid, p_uid) == 0) ? " " : " >", uid);
+            printf("   Gid: %s%s\n", (strcmp(gid, p_gid) == 0) ? " " : " >", gid);
+        }
+        printf("   Md5: %s%s\n", (strcmp(md5, p_md5) == 0) ? " " : " >", md5);
+        printf("   Sha1:%s%s\n", (strcmp(sha1, p_sha1) == 0) ? " " : " >", sha1);
     }
-    printf("   Md5: %s%s\n", (strcmp(md5, p_md5) == 0) ? " " : " >", md5);
-    printf("   Sha1:%s%s\n", (strcmp(sha1, p_sha1) == 0) ? " " : " >", sha1);
 
     /* Fix entries */
     perm[-1] = ':';
@@ -164,36 +190,39 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, _
 }
 
 /* Print information about a specific file */
-static int _do_print_file_syscheck(FILE *fp, const char *fname,
-                                   int update_counter, int csv_output)
+static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_counter,
+                                   int csv_output, cJSON *json_output)
 {
     int f_found = 0;
     struct tm *tm_time;
     char read_day[24 + 1];
     char buf[OS_MAXSTR + 1];
-    OSMatch reg;
+    OSRegex reg;
     OSStore *files_list = NULL;
     fpos_t init_pos;
+    cJSON *json_entry = NULL, *json_attrs = NULL;
 
     buf[OS_MAXSTR] = '\0';
     read_day[24] = '\0';
 
     /* If the compilation failed, we don't need to free anything */
-    if (!OSMatch_Compile(fname, &reg, 0)) {
-        printf("\n** ERROR: Invalid file name: '%s'\n", fname);
+    if (!OSRegex_Compile(fname, &reg, 0)) {
+        if (!(csv_output || json_output))
+            printf("\n** ERROR: Invalid file name: '%s'\n", fname);
         return (0);
     }
 
     /* Create list with files */
     files_list = OSStore_Create();
     if (!files_list) {
-        OSMatch_FreePattern(&reg);
+        OSRegex_FreePattern(&reg);
         goto cleanup;
     }
 
     /* Get initial position */
     if (fgetpos(fp, &init_pos) != 0) {
-        printf("\n** ERROR: fgetpos failed.\n");
+        if (!(csv_output || json_output))
+            printf("\n** ERROR: fgetpos failed.\n");
         goto cleanup;
     }
 
@@ -244,14 +273,14 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
 
             changed_file_name = strchr(changed_file_name, ' ');
             if (!changed_file_name) {
-                printf("\n** ERROR: Invalid line: '%s'.\n", buf);
+                if (!(csv_output || json_output))
+                    printf("\n** ERROR: Invalid line: '%s'.\n", buf);
                 goto cleanup;
             }
             changed_file_name++;
 
             /* Check if the name should be printed */
-            if (!OSMatch_Execute(changed_file_name, strlen(changed_file_name),
-                                 &reg)) {
+            if (!OSRegex_Execute(changed_file_name, &reg)) {
                 fgetpos(fp, &init_pos);
                 continue;
             }
@@ -261,50 +290,61 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
             /* Reset the values */
             if (update_counter) {
                 if (fsetpos(fp, &init_pos) != 0) {
-                    printf("\n** ERROR: fsetpos failed (unable to update "
-                           "counter).\n");
+                    if (!(csv_output || json_output))
+                        printf("\n** ERROR: fsetpos failed (unable to update "
+                               "counter).\n");
                     goto cleanup;
                 }
 
                 if (update_counter == 2) {
                     if (fprintf(fp, "!!?") <= 0) {
-                        printf("\n** ERROR: fputs failed (unable to update "
-                               "counter).\n");
+                        if (!(csv_output || json_output))
+                            printf("\n** ERROR: fputs failed (unable to update "
+                                   "counter).\n");
                         goto cleanup;
                     }
                 }
 
                 else {
                     if (fprintf(fp, "!++") <= 0) {
-                        printf("\n** ERROR: fputs failed (unable to update "
-                               "counter).\n");
+                        if (!(csv_output || json_output))
+                            printf("\n** ERROR: fputs failed (unable to update "
+                                   "counter).\n");
                         goto cleanup;
                     }
                 }
 
-                printf("\n**Counter updated for file '%s'\n\n",
-                       changed_file_name);
+                if (!(csv_output || json_output))
+                    printf("\n**Counter updated for file '%s'\n\n",
+                           changed_file_name);
                 goto cleanup;
             }
-
 
             tm_time = localtime(&change_time);
             strftime(read_day, 23, "%Y %h %d %T", tm_time);
 
-            if (!csv_output)
-                printf("\n%s,%d - %s\n", read_day, number_changes,
-                       changed_file_name);
-            else
+            if (json_output) {
+                json_entry = cJSON_CreateObject();
+                json_attrs = cJSON_CreateObject();
+
+                cJSON_AddStringToObject(json_entry, "date", read_day);
+                cJSON_AddStringToObject(json_entry, "file", changed_file_name);
+                cJSON_AddNumberToObject(json_entry, "changes", number_changes);
+
+            } else if (csv_output)
                 printf("%s,%s,%d\n", read_day, changed_file_name,
                        number_changes);
-
+            else
+                printf("\n%s,%d - %s\n", read_day, number_changes,
+                       changed_file_name);
 
             prev_attrs = (char *) OSStore_Get(files_list, changed_file_name);
+
             if (prev_attrs) {
                 char *new_attrs;
                 os_strdup(changed_attrs, new_attrs);
                 _do_print_attrs_syscheck(prev_attrs, changed_attrs,
-                                         csv_output,
+                                         csv_output, json_attrs,
                                          changed_file_name[0] == '/' ? 0 : 1,
                                          number_changes);
 
@@ -316,21 +356,26 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
                 os_strdup(changed_attrs, new_attrs);
                 OSStore_Put(files_list, changed_file_name, new_attrs);
                 _do_print_attrs_syscheck(NULL,
-                                         changed_attrs, csv_output,
+                                         changed_attrs, csv_output, json_attrs,
                                          changed_file_name[0] == '/' ? 0 : 1,
                                          number_changes);
+            }
+
+            if (json_output) {
+                cJSON_AddItemToObject(json_entry, "attrs", json_attrs);
+                cJSON_AddItemToArray(json_output, json_entry);
             }
 
             fgetpos(fp, &init_pos);
         }
     }
 
-    if (!f_found) {
+    if (!(f_found || csv_output || json_output)) {
         printf("\n** No entries found.\n");
     }
 
 cleanup:
-    OSMatch_FreePattern(&reg);
+    OSRegex_FreePattern(&reg);
     if (files_list) {
         OSStore_Free(files_list);
     }
@@ -339,7 +384,7 @@ cleanup:
 }
 
 /* Print syscheck db (of modified files) */
-static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, int csv_output)
+static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, int csv_output, cJSON *json_output)
 {
     int f_found = 0;
     struct tm *tm_time;
@@ -389,7 +434,8 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
 
             changed_file_name = strchr(changed_file_name, ' ');
             if (!changed_file_name) {
-                printf("\n** ERROR: Invalid line: '%s'.\n", buf);
+                if (!(csv_output || json_output))
+                    printf("\n** ERROR: Invalid line: '%s'.\n", buf);
                 return (-1);
             }
             changed_file_name++;
@@ -397,23 +443,29 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
             tm_time = localtime(&change_time);
             strftime(read_day, 23, "%Y %h %d", tm_time);
             if (strcmp(read_day, saved_read_day) != 0) {
-                if (!csv_output) {
+                if (!(csv_output || json_output)) {
                     printf("\nChanges for %s:\n", read_day);
                 }
                 strncpy(saved_read_day, read_day, 23);
             }
             strftime(read_day, 23, "%Y %h %d %T", tm_time);
 
-            if (!csv_output)
-                printf("%s,%d - %s\n", read_day, number_changes,
-                       changed_file_name);
-            else
+            if (json_output) {
+                cJSON *entry = cJSON_CreateObject();
+                cJSON_AddStringToObject(entry, "date", read_day);
+                cJSON_AddStringToObject(entry, "file", changed_file_name);
+                cJSON_AddNumberToObject(entry, "changes", number_changes);
+                cJSON_AddItemToArray(json_output, entry);
+            } else if (csv_output)
                 printf("%s,%s,%d\n", read_day, changed_file_name,
                        number_changes);
+            else
+                printf("%s,%d - %s\n", read_day, number_changes,
+                       changed_file_name);
         }
     }
 
-    if (!f_found && !csv_output) {
+    if (!(f_found || csv_output || json_output)) {
         printf("\n** No entries found.\n");
     }
 
@@ -423,7 +475,7 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
 /* Print syscheck db (of modified files) */
 int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname,
                    int print_registry, int all_files, int csv_output,
-                   int update_counter)
+                   cJSON *json_output, int update_counter)
 {
     FILE *fp;
     char tmp_file[513];
@@ -467,9 +519,9 @@ int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname,
 
     if (fp) {
         if (!fname) {
-            _do_print_syscheck(fp, all_files, csv_output);
+            _do_print_syscheck(fp, all_files, csv_output, json_output);
         } else {
-            _do_print_file_syscheck(fp, fname, update_counter, csv_output);
+            _do_print_file_syscheck(fp, fname, update_counter, csv_output, json_output);
         }
         fclose(fp);
     }
@@ -497,9 +549,9 @@ static int _do_get_rootcheckscan(FILE *fp)
     return ((int)time(NULL));
 }
 
-/* Print syscheck db (of modified files) */
+/* Print rootcheck db */
 static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
-                               int csv_output, int show_last)
+                               int csv_output, cJSON *json_output, int show_last)
 {
     int i = 0;
     int f_found = 0;
@@ -533,7 +585,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
 
     fseek(fp, 0, SEEK_SET);
 
-    if (!csv_output) {
+    if (!(csv_output || json_output)) {
         if (show_last) {
             tm_time = localtime(&time_last_scan);
             strftime(read_day, 23, "%Y %h %d %T", tm_time);
@@ -610,7 +662,27 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
         tm_time = localtime((time_t *)&i_time);
         strftime(old_day, 23, "%Y %h %d %T", tm_time);
 
-        if (!csv_output) {
+        if (json_output) {
+            cJSON *event = cJSON_CreateObject();
+            cJSON_AddStringToObject(event, "status", resolved == 0 ? "outstanding" : "resolved");
+            cJSON_AddStringToObject(event, "readDay", read_day);
+            cJSON_AddStringToObject(event, "oldDay", old_day);
+
+            if (ns_events[i])
+                cJSON_AddStringToObject(event, "event", tmp_str);
+            else {
+                char json_buffer[OS_MAXSTR + 1];
+                snprintf(json_buffer, OS_MAXSTR, "%s%s", ns_events[i], tmp_str);
+                cJSON_AddStringToObject(event, "event", json_buffer);
+            }
+
+            cJSON_AddItemToArray(json_output, event);
+        } else if (csv_output) {
+            printf("%s,%s,%s,%s%s\n", resolved == 0 ? "outstanding" : "resolved",
+                   read_day, old_day,
+                   ns_events[i] != NULL ? "" : "System Audit: ",
+                   tmp_str);
+        } else {
             if (!show_last) {
                 printf("%s (first time detected: %s)\n", read_day, old_day);
             }
@@ -620,17 +692,12 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
             } else {
                 printf("System Audit: %s\n\n", tmp_str);
             }
-        } else {
-            printf("%s,%s,%s,%s%s\n", resolved == 0 ? "outstanding" : "resolved",
-                   read_day, old_day,
-                   ns_events[i] != NULL ? "" : "System Audit: ",
-                   tmp_str);
         }
 
         f_found++;
     }
 
-    if (!f_found && !csv_output) {
+    if (!f_found && !(csv_output || json_output)) {
         printf("** No entries found.\n");
     }
 
@@ -638,8 +705,8 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
 }
 
 /* Print rootcheck db */
-int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname, int resolved,
-                    int csv_output, int show_last)
+int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname,
+                    int resolved, int csv_output, cJSON *json_output, int show_last)
 {
     int ltime = 0;
     FILE *fp;
@@ -668,15 +735,15 @@ int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname, i
         ltime = _do_get_rootcheckscan(fp);
         if (!fname) {
             if (resolved == 1) {
-                _do_print_rootcheck(fp, 1, ltime, csv_output, 0);
+                _do_print_rootcheck(fp, 1, ltime, csv_output, json_output, 0);
             } else if (resolved == 2) {
-                _do_print_rootcheck(fp, 0, ltime, csv_output, show_last);
+                _do_print_rootcheck(fp, 0, ltime, csv_output, json_output, show_last);
             } else {
-                _do_print_rootcheck(fp, 1, ltime, csv_output, 0);
-                _do_print_rootcheck(fp, 0, ltime, csv_output, show_last);
+                _do_print_rootcheck(fp, 1, ltime, csv_output, json_output, 0);
+                _do_print_rootcheck(fp, 0, ltime, csv_output, json_output, show_last);
             }
-        } else {
         }
+
         fclose(fp);
     }
 
@@ -800,6 +867,9 @@ int delete_agentinfo(const char *name)
 
     /* Delete syscheck */
     delete_syscheck(sk_name, sk_ip, 1);
+
+    /* Delete rootcheck */
+    delete_rootcheck(sk_name, sk_ip, 1);
 
     return (1);
 }

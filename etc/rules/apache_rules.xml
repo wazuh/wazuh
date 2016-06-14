@@ -5,6 +5,8 @@
   -  Copyright (C) 2009 Trend Micro Inc.
   -  All rights reserved.
   -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -  This program is a free software; you can redistribute it
   -  and/or modify it under the terms of the GNU General Public
   -  License (version 2) as published by the FSF - Free Software
@@ -17,7 +19,7 @@
   -->
 
 
-<group name="apache,">
+<group name="apache,web,">
   <rule id="30100" level="0">
     <decoded_as>apache-errorlog</decoded_as>
     <description>Apache messages grouped.</description>
@@ -300,6 +302,25 @@
     <match>with code 403</match>
     <description>ModSecurity rejected a query</description>
   </rule>
+
+    <!--
+    Shellshock detected
+    Pattern: "(){:;};" (with spaces)
+    Code: 400
+    Decoder: web-accesslog_decoders.xml
+
+    Examples:
+    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 404 292 "-" "() { :;};/usr/bin/perl ..."
+    -->
+    <rule id="30412" level="6">
+        <if_sid>31101</if_sid>
+        <regex>"\(\)\s*{\s*:;\s*}\s*;</regex>
+        <description>Shellshock attack attempt</description>
+	<info type="cve">CVE-2014-6271</info>
+	<info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6271</info>
+        <group>attack,pci_dss_11.4,</group>
+    </rule>
+
 </group> <!-- ERROR_LOG,APACHE -->
 
 <!-- EOF -->

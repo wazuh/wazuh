@@ -43,11 +43,8 @@ short eval_bool2(char *str, short default_val)
 int Read_Rootcheck_Config(const char *cfgfile)
 {
     OS_XML xml;
-    char *str = NULL;
 
     /* XML Definitions */
-    const char *(xml_daemon[]) = {xml_rootcheck, "daemon", NULL};
-    const char *(xml_notify[]) = {xml_rootcheck, "notify", NULL};
     const char *(xml_base_dir[]) = {xml_rootcheck, "base_directory", NULL};
     const char *(xml_workdir[]) = {xml_rootcheck, "work_directory", NULL};
     const char *(xml_rootkit_files[]) = {xml_rootcheck, "rootkit_files", NULL};
@@ -60,6 +57,7 @@ int Read_Rootcheck_Config(const char *cfgfile)
     const char *(xml_readall[]) = {xml_rootcheck, "readall", NULL};
 #ifdef OSSECHIDS
     const char *(xml_time[]) = {xml_rootcheck, "frequency", NULL};
+    char *str = NULL;
 #endif
     const char *(xml_check_dev[]) = {xml_rootcheck, "check_dev", NULL};
     const char *(xml_check_files[]) = {xml_rootcheck, "check_files", NULL};
@@ -92,8 +90,6 @@ int Read_Rootcheck_Config(const char *cfgfile)
         return (-1);
     }
 
-    /* Run as a daemon */
-    rootcheck.daemon = eval_bool2(OS_GetOneContentforElement(&xml, xml_daemon), rootcheck.daemon);
 
 #ifdef OSSECHIDS
     /* time  */
@@ -119,26 +115,6 @@ int Read_Rootcheck_Config(const char *cfgfile)
     /* Read all flags */
     if (!rootcheck.readall) {
         rootcheck.readall = eval_bool2(OS_GetOneContentforElement(&xml, xml_readall), 0);
-    }
-
-    /* Notifications type */
-    str  = OS_GetOneContentforElement(&xml, xml_notify);
-    if (str) {
-        if (strcasecmp(str, "queue") == 0) {
-            rootcheck.notify = QUEUE;
-        } else if (strcasecmp(str, "syslog") == 0) {
-            rootcheck.notify = SYSLOG;
-        } else {
-            merror("%s: Invalid notification option. Only "
-                   "'syslog' or 'queue' are allowed.", ARGV0);
-            return (-1);
-        }
-
-        free(str);
-        str = NULL;
-    } else {
-        /* Default to SYSLOG */
-        rootcheck.notify = SYSLOG;
     }
 
     /* Get work directory */
@@ -175,8 +151,6 @@ int Read_Rootcheck_Config(const char *cfgfile)
 #endif /* WIN32 */
     OS_ClearXML(&xml);
 
-    debug1("%s: DEBUG: Daemon set to '%d'", ARGV0, rootcheck.daemon);
-    debug1("%s: DEBUG: alert set to '%d'", ARGV0, rootcheck.notify);
 
     return (0);
 }

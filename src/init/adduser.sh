@@ -51,7 +51,7 @@ else
         OSMYSHELL="/sbin/nologin"
     fi
 
-    if ! grep "^${GROUP}" /etc/group > /dev/null 2>&1; then
+    if ! grep "^${GROUP}:" /etc/group > /dev/null 2>&1; then
         ${GROUPADD} "${GROUP}"
     fi
 
@@ -67,8 +67,12 @@ else
     fi
 
     for U in ${USER} ${USER_MAIL} ${USER_REM}; do
-        if ! grep "^${U}" /etc/passwd > /dev/null 2>&1; then
-            ${USERADD} "${U}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
+        if ! grep "^${U}:" /etc/passwd > /dev/null 2>&1; then
+	    if [ "$UNAME" = "OpenBSD" ]; then
+               ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
+	    else
+	       ${USERADD} "${U}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
+	    fi
         fi
     done
 fi

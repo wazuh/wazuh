@@ -14,6 +14,7 @@ src/isbigendian.c
 src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
 src/Config.OS
+src/external/zlib-1.2.8/ztest*
 
 # Compiled programs
 src/agent-auth
@@ -40,10 +41,25 @@ src/ossec-regex
 src/ossec-remoted
 src/ossec-reportd
 src/ossec-syscheckd
+src/ossec-integratord
 src/rootcheck_control
 src/syscheck_control
 src/syscheck_update
 src/verify-agent-conf
+src/wazuh-moduled
+
+# Windows agent
+src/external/lua-5.2.3/src/lua52.dll
+src/external/lua-5.2.3/src/ossec-lua*.exe
+src/win32/*.exe
+src/win32/LICENSE.txt
+src/win32/default-local_internal_options.conf
+src/win32/default-ossec.conf
+src/win32/help_win.txt
+src/win32/internal_options.conf
+src/win32/restart-ossec.cmd
+src/win32/route-null.cmd
+
 
 
 # Eclipse files

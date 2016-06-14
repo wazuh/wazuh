@@ -12,6 +12,9 @@
   -  Foundation.
   -
   -  License details: http://www.ossec.net/en/licensing.html
+  -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -->
 
 
@@ -222,5 +225,23 @@
     <description>SQL injection attempt.</description>
     <group>attack,sqlinjection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,</group>
   </rule>
+
+    <!--
+    Shellshock detected
+    Pattern: "(){:;};" (with spaces)
+    Code: 200
+    Decoder: web-accesslog_decoders.xml
+
+    Examples:
+    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { :;};/usr/bin/perl ..."
+    -->
+    <rule id="31166" level="15">
+        <if_sid>31108</if_sid>
+        <regex>"\(\)\s*{\s*:;\s*}\s*;</regex>
+        <description>Shellshock attack detected</description>
+	<info type="cve">CVE-2014-6271</info>
+	<info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6271</info>
+        <group>attack,pci_dss_11.4,</group>
+    </rule>
 
 </group> <!-- Web access log -->

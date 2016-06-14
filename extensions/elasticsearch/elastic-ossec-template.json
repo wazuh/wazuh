@@ -343,6 +343,16 @@
         },
         "type": {
           "type": "string"
+        },
+        "score": {
+          "type": "double",
+          "index": "not_analyzed",
+          "doc_values": "true"
+        },
+        "max_score": {
+          "type": "double",
+          "index": "not_analyzed",
+          "doc_values": "true"
         }
       }
     }

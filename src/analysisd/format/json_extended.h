@@ -1,8 +1,8 @@
 /* Copyright (C) 2015 Wazuh Inc
  * All rights reserved.
- * 
+ *
  */
- 
+
 #ifndef __JSON_EXTENDED_H__
 #define __JSON_EXTENDED_H__
 
@@ -24,7 +24,7 @@ void W_JSON_ParseAgentIP(cJSON *root, const Eventinfo *lf);
 void W_JSON_ParseLocation(cJSON *root, const Eventinfo *lf, int archives);
 // Parse Groups
 void W_JSON_ParseGroups(cJSON *root, const Eventinfo *lf, int nested);
-// Parse Groups Compliance 
+// Parse Groups Compliance
 void W_JSON_ParseGroupsCompliance(cJSON *root, int nested);
 // Parse Rootcheck compliance
 void W_JSON_ParseRootcheck(cJSON *root, const Eventinfo *lf, int nested);

@@ -83,16 +83,22 @@ int doDiff(RuleInfo *rule, const Eventinfo *lf)
         if (htpt) {
             *htpt = '\0';
         }
-        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname + 1,
-                 rule->sigid, DIFF_LAST_FILE);
+#ifndef TESTRULE
+        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname + 1, rule->sigid, DIFF_LAST_FILE);
+#else
+        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, DIFF_TEST_HOST, rule->sigid, DIFF_LAST_FILE);
+#endif
 
         if (htpt) {
             *htpt = ')';
         }
         htpt = NULL;
     } else {
-        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname,
-                 rule->sigid, DIFF_LAST_FILE);
+#ifndef TESTRULE
+        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname, rule->sigid, DIFF_LAST_FILE);
+#else
+        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, DIFF_TEST_HOST, rule->sigid, DIFF_LAST_FILE);
+#endif
     }
 
     /* lf->size can't be too long */
@@ -142,4 +148,3 @@ int doDiff(RuleInfo *rule, const Eventinfo *lf)
     rule->last_events[1] = flastcontent;
     return (1);
 }
-

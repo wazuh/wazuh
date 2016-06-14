@@ -230,6 +230,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_OWNER;
                     opts |= CHECK_GROUP;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM
+		       | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP );
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -242,6 +244,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_MD5SUM;
                     opts |= CHECK_SHA1SUM;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM );
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -253,6 +256,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_MD5SUM;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_MD5SUM;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -264,6 +268,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_SHA1SUM;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_SHA1SUM;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -275,6 +280,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_PERM;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_PERM;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -286,6 +292,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_SIZE;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_SIZE;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -297,6 +304,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_OWNER;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_OWNER;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -308,6 +316,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_GROUP;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_GROUP;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -317,6 +326,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_REALTIME;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_REALTIME;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -326,6 +336,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_SEECHANGES;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_SEECHANGES;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -367,7 +378,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         /* Check for glob */
-#ifndef WIN32
+	/* The mingw32 builder used by travis.ci can't find glob.h 
+	 * Yet glob must work on actual win32.  
+	 */
+#ifndef __MINGW32__ 
         if (strchr(tmp_dir, '*') ||
                 strchr(tmp_dir, '?') ||
                 strchr(tmp_dir, '[')) {
@@ -398,7 +412,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile);
         }
 #else
-        dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile);
+	dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile);
 #endif
 
         if (restrictfile) {
@@ -443,6 +457,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_scan_on_start = "scan_on_start";
     const char *xml_prefilter_cmd = "prefilter_cmd";
     const char *xml_skip_nfs = "skip_nfs";
+    const char *xml_nodiff = "nodiff";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -452,6 +467,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
 
     syscheck_config *syscheck;
     syscheck = (syscheck_config *)configp;
+    unsigned int nodiff_size = 0;
 
     while (node[i]) {
         if (!node[i]->element) {
@@ -688,6 +704,74 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 os_strdup(node[i]->content, syscheck->registry_ignore[ign_size]);
             }
 #endif
+        /* Getting file/dir nodiff */
+        } else if (strcmp(node[i]->element,xml_nodiff) == 0) {
+#ifdef WIN32
+            /* For Windows, we attempt to expand environment variables */
+            char *new_nodiff = NULL;
+            os_calloc(2048, sizeof(char), new_nodiff);
+
+            ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047);
+
+            free(node[i]->content);
+            node[i]->content = new_nodiff;
+#endif
+            /* Add if regex */
+            if (node[i]->attributes && node[i]->values) {
+                if (node[i]->attributes[0] && node[i]->values[0] &&
+                        (strcmp(node[i]->attributes[0], "type") == 0) &&
+                        (strcmp(node[i]->values[0], "sregex") == 0)) {
+                    OSMatch *mt_pt;
+                    if (!syscheck->nodiff_regex) {
+                        os_calloc(2, sizeof(OSMatch *), syscheck->nodiff_regex);
+                        syscheck->nodiff_regex[0] = NULL;
+                        syscheck->nodiff_regex[1] = NULL;
+                    } else {
+                        while (syscheck->nodiff_regex[nodiff_size] != NULL) {
+                            nodiff_size++;
+                        }
+
+                        os_realloc(syscheck->nodiff_regex,
+                                   sizeof(OSMatch *) * (nodiff_size + 2),
+                                   syscheck->nodiff_regex);
+                        syscheck->nodiff_regex[nodiff_size + 1] = NULL;
+                    }
+                    os_calloc(1, sizeof(OSMatch),
+                              syscheck->nodiff_regex[nodiff_size]);
+                    debug1("Found nodiff regex node %s", node[i]->content);
+                    if (!OSMatch_Compile(node[i]->content,
+                                         syscheck->nodiff_regex[nodiff_size], 0)) {
+                        mt_pt = (OSMatch *)syscheck->nodiff_regex[nodiff_size];
+                        merror(REGEX_COMPILE, __local_name, node[i]->content,
+                               mt_pt->error);
+                        return (0);
+                    }
+                    debug1("Found nodiff regex node %s OK?", node[i]->content);
+                    debug1("Found nodiff regex size %d", nodiff_size);
+                } else {
+                    merror(SK_INV_ATTR, __local_name, node[i]->attributes[0]);
+                    return (OS_INVALID);
+                }
+            }
+
+            /* Add if simple entry -- check for duplicates */
+            else if (!os_IsStrOnArray(node[i]->content, syscheck->nodiff)) {
+                if (!syscheck->nodiff) {
+                    os_calloc(2, sizeof(char *), syscheck->nodiff);
+                    syscheck->nodiff[0] = NULL;
+                    syscheck->nodiff[1] = NULL;
+                } else {
+                    while (syscheck->nodiff[nodiff_size] != NULL) {
+                        nodiff_size++;
+                    }
+
+                    os_realloc(syscheck->nodiff,
+                               sizeof(char *) * (nodiff_size + 2),
+                               syscheck->nodiff);
+                    syscheck->nodiff[nodiff_size + 1] = NULL;
+                }
+                os_strdup(node[i]->content, syscheck->nodiff[nodiff_size]);
+            }
         } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
             /* auto_ignore is not read here */
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
@@ -727,4 +811,49 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
 
     return (0);
 }
+
+
+/* return a text version of the directory check option bits,
+ * in a provided string buffer
+ */
+char *syscheck_opts2str(char *buf, int buflen, int opts) {
+    int left = buflen;
+    int i;
+    int check_bits[] = {
+        CHECK_PERM,
+        CHECK_SIZE,
+        CHECK_OWNER,
+        CHECK_GROUP,
+	CHECK_MD5SUM,
+        CHECK_SHA1SUM,
+        CHECK_REALTIME,
+        CHECK_SEECHANGES,
+	0
+	};
+    char *check_strings[] = {
+        "perm",
+        "size",
+        "owner",
+        "group",
+	"md5sum",
+        "sha1sum",
+        "realtime",
+        "report_changes",
+	NULL
+	};
+
+    buf[0] = '\0';
+    for ( i = 0; check_bits[ i ]; i++ ) {
+	if ( opts & check_bits[ i ] ) {
+	    if ( left < buflen )  {
+		strncat( buf, " | ", left );
+		left -= 3;
+		}
+	    strncat( buf, check_strings[ i ], left );
+	    left = buflen - strlen( buf );
+	    }
+	}
+
+    return buf;
+    }
 

@@ -11,10 +11,13 @@
   -  Foundation.
   -
   -  License details: http://www.ossec.net/en/licensing.html
+  -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -->
                         
 
-<group name="apache,">
+<group name="nginx,web,">
   <rule id="31300" level="0">
     <decoded_as>nginx-errorlog</decoded_as>
     <description>Nginx messages grouped.</description>

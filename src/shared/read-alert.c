@@ -116,13 +116,13 @@ void FreeAlertData(alert_data *al_data)
         al_data->log = NULL;
     }
 #ifdef LIBGEOIP_ENABLED
-    if (al_data->geoipdatasrc) {
-        free(al_data->geoipdatasrc);
-        al_data->geoipdatasrc = NULL;
+    if (al_data->srcgeoip) {
+        free(al_data->srcgeoip);
+        al_data->srcgeoip = NULL;
     }
-    if (al_data->geoipdatadst) {
-        free(al_data->geoipdatadst);
-        al_data->geoipdatadst = NULL;
+    if (al_data->dstgeoip) {
+        free(al_data->dstgeoip);
+        al_data->dstgeoip = NULL;
     }
 #endif
     free(al_data);
@@ -151,8 +151,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *new_sha1 = NULL;
     char **log = NULL;
 #ifdef LIBGEOIP_ENABLED
-    char *geoipdatasrc = NULL;
-    char *geoipdatadst = NULL;
+    char *srcgeoip = NULL;
+    char *dstgeoip = NULL;
 #endif
     int level = 0, rule = 0, srcport = 0, dstport = 0;
 
@@ -181,8 +181,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 al_data->date = date;
                 al_data->filename = filename;
 #ifdef LIBGEOIP_ENABLED
-                al_data->geoipdatasrc = geoipdatasrc;
-                al_data->geoipdatadst = geoipdatadst;
+                al_data->srcgeoip  = srcgeoip ;
+                al_data->dstgeoip = dstgeoip;
 #endif
                 al_data->old_md5 = old_md5;
                 al_data->new_md5 = new_md5;
@@ -333,8 +333,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
             else if (strncmp(GEOIP_BEGIN_SRC, str, GEOIP_BEGIN_SRC_SZ) == 0) {
                 os_clearnl(str, p);
                 p = str + GEOIP_BEGIN_SRC_SZ;
-                free(geoipdatasrc);
-                os_strdup(p, geoipdatasrc);
+                free(srcgeoip);
+                os_strdup(p, srcgeoip);
             }
 #endif
             /* srcport */
@@ -357,8 +357,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
             else if (strncmp(GEOIP_BEGIN_DST, str, GEOIP_BEGIN_DST_SZ) == 0) {
                 os_clearnl(str, p);
                 p = str + GEOIP_BEGIN_DST_SZ;
-                free(geoipdatadst);
-                os_strdup(p, geoipdatadst);
+                free(dstgeoip);
+                os_strdup(p, dstgeoip);
             }
 #endif
             /* dstport */
@@ -450,13 +450,13 @@ l_error:
             srcip = NULL;
         }
 #ifdef LIBGEOIP_ENABLED
-        if (geoipdatasrc) {
-            free(geoipdatasrc);
-            geoipdatasrc = NULL;
+        if (srcgeoip) {
+            free(srcgeoip);
+            srcgeoip = NULL;
         }
-        if (geoipdatadst) {
-            free(geoipdatadst);
-            geoipdatadst = NULL;
+        if (dstgeoip) {
+            free(dstgeoip);
+            dstgeoip = NULL;
         }
 #endif
         if (user) {
@@ -535,8 +535,8 @@ l_error:
     free(new_sha1);
     free(filename);
 #ifdef LIBGEOIP_ENABLED
-    free(geoipdatasrc);
-    free(geoipdatadst);
+    free(srcgeoip);
+    free(dstgeoip);
 #endif
 
     /* We need to clean end of file before returning */

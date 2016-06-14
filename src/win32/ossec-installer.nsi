@@ -26,6 +26,7 @@
 !define MUI_ICON favicon.ico
 !define MUI_UNICON ossec-uninstall.ico
 !define VERSION "2.8"
+!define WAZUH_VERSION "1.1.1"
 !define NAME "OSSEC HIDS"
 !define SERVICE "OssecSvc"
 
@@ -200,7 +201,7 @@ Section "OSSEC Agent (required)" MainSec
     ; write version and install information
     VersionInstall:
         FileOpen $0 "$INSTDIR\VERSION.txt" w
-        FileWrite $0 "${NAME} v${VERSION} - Installed on $CURRENTTIME"
+        FileWrite $0 "${NAME} v${VERSION} / WAZUH v${WAZUH_VERSION} - Installed on $CURRENTTIME"
         FileClose $0
         IfErrors VersionError VersionComplete
     VersionError:

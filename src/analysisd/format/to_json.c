@@ -12,6 +12,7 @@
 #include "shared.h"
 #include "rules.h"
 #include "cJSON.h"
+#include "config.h"
 
 /* Convert Eventinfo to json */
 char* Eventinfo_to_jsonstr(const Eventinfo* lf)
@@ -20,6 +21,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* rule;
     cJSON* file_diff;
     char* out;
+    int i;
 
     root = cJSON_CreateObject();
 
@@ -48,8 +50,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->firedtimes);
         }
     }
-   
-        
+
+
     if(lf->protocol) {
         cJSON_AddStringToObject(root, "protocol", lf->protocol);
     }
@@ -59,7 +61,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->srcip) {
         cJSON_AddStringToObject(root, "srcip", lf->srcip);
     }
-    if(lf->srcport) {
+    #ifdef LIBGEOIP_ENABLED
+    if (lf->srcgeoip && Config.geoip_jsonout) {
+        cJSON_AddStringToObject(root, "srcgeoip", lf->srcgeoip);
+    }
+    #endif
+    if (lf->srcport) {
         cJSON_AddStringToObject(root, "srcport", lf->srcport);
     }
     if(lf->srcuser) {
@@ -68,7 +75,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->dstip) {
         cJSON_AddStringToObject(root, "dstip", lf->dstip);
     }
-    if(lf->dstport) {
+    #ifdef LIBGEOIP_ENABLED
+    if (lf->dstgeoip && Config.geoip_jsonout) {
+        cJSON_AddStringToObject(root, "dstgeoip", lf->dstgeoip);
+    }
+    #endif
+    if (lf->dstport) {
         cJSON_AddStringToObject(root, "dstport", lf->dstport);
     }
     if(lf->dstuser) {
@@ -77,6 +89,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->full_log) {
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
     }
+
     if(lf->filename) {
         file_diff = cJSON_CreateObject();
         cJSON_AddItemToObject(root, "SyscheckFile", file_diff);
@@ -87,19 +100,19 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddStringToObject(file_diff, "md5_before", lf->md5_before);
             cJSON_AddStringToObject(file_diff, "md5_after", lf->md5_after);
         }
-        if(lf->sha1_before && lf->sha1_after && !strcmp(lf->sha1_before, lf->sha1_after) != 0) {
+        if(lf->sha1_before && lf->sha1_after && strcmp(lf->sha1_before, lf->sha1_after) != 0) {
             cJSON_AddStringToObject(file_diff, "sha1_before", lf->sha1_before);
             cJSON_AddStringToObject(file_diff, "sha1_after", lf->sha1_after);
         }
-        if(lf->owner_before && lf->owner_after && !strcmp(lf->owner_before, lf->owner_after) != 0) {
+        if(lf->owner_before && lf->owner_after && strcmp(lf->owner_before, lf->owner_after) != 0) {
             cJSON_AddStringToObject(file_diff, "owner_before", lf->owner_before);
             cJSON_AddStringToObject(file_diff, "owner_after", lf->owner_after);
         }
-        if(lf->gowner_before && lf->gowner_after && !strcmp(lf->gowner_before, lf->gowner_after) != 0) {
+        if(lf->gowner_before && lf->gowner_after && strcmp(lf->gowner_before, lf->gowner_after) != 0) {
             cJSON_AddStringToObject(file_diff, "gowner_before", lf->gowner_before);
             cJSON_AddStringToObject(file_diff, "gowner_after", lf->gowner_after);
         }
-        if(lf->perm_before && lf->perm_after && lf->perm_before != lf->perm_after) {
+        if(lf->perm_before && lf->perm_after && (lf->perm_before != lf->perm_after)) {
             cJSON_AddNumberToObject(file_diff, "perm_before", lf->perm_before);
             cJSON_AddNumberToObject(file_diff, "perm_after", lf->perm_after);
         }
@@ -130,6 +143,16 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->decoder_info) {
 
         cJSON* decoder;
+
+        // Dynamic fields
+        if (lf->decoder_info->fields) {
+            for (i = 0; i < Config.decoder_order_size; i++) {
+                if (lf->decoder_info->fields[i] && lf->fields[i]) {
+                    cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
+                }
+            }
+        }
+
         cJSON_AddItemToObject(root, "decoder", decoder = cJSON_CreateObject());
 
         if(lf->decoder_info->fts)
@@ -158,6 +181,7 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
 {
     cJSON* root;
     char* out;
+    int i;
 
     root = cJSON_CreateObject();
 
@@ -216,15 +240,15 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddStringToObject(root, "md5_before", lf->md5_before);
             cJSON_AddStringToObject(root, "md5_after", lf->md5_after);
         }
-        if(lf->sha1_before && lf->sha1_after && !strcmp(lf->sha1_before, lf->sha1_after) != 0) {
+        if(lf->sha1_before && lf->sha1_after && strcmp(lf->sha1_before, lf->sha1_after) != 0) {
             cJSON_AddStringToObject(root, "sha1_before", lf->sha1_before);
             cJSON_AddStringToObject(root, "sha1_after", lf->sha1_after);
         }
-        if(lf->owner_before && lf->owner_after && !strcmp(lf->owner_before, lf->owner_after) != 0) {
+        if(lf->owner_before && lf->owner_after && strcmp(lf->owner_before, lf->owner_after) != 0) {
             cJSON_AddStringToObject(root, "owner_before", lf->owner_before);
             cJSON_AddStringToObject(root, "owner_after", lf->owner_after);
         }
-        if(lf->gowner_before && lf->gowner_after && !strcmp(lf->gowner_before, lf->gowner_after) != 0) {
+        if(lf->gowner_before && lf->gowner_after && strcmp(lf->gowner_before, lf->gowner_after) != 0) {
             cJSON_AddStringToObject(root, "gowner_before", lf->gowner_before);
             cJSON_AddStringToObject(root, "gowner_after", lf->gowner_after);
         }
@@ -273,6 +297,16 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->decoder_info) {
 
         cJSON* decoder;
+
+        // Dynamic fields
+        if (lf->decoder_info->fields) {
+            for (i = 0; i < Config.decoder_order_size; i++) {
+                if (lf->decoder_info->fields[i] && lf->fields[i]) {
+                    cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
+                }
+            }
+        }
+
         cJSON_AddItemToObject(root, "decoder", decoder = cJSON_CreateObject());
 
         if(lf->decoder_info->fts)
@@ -294,7 +328,7 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->full_log)
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
 
-    if(lf->year && lf->mon && lf->day && lf->hour)
+    if(lf->year && lf->mon[0] && lf->day && lf->hour[0])
         W_JSON_ParseTimestamp(root, lf);
 
     if(lf->hostname) {

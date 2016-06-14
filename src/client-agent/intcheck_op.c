@@ -46,12 +46,12 @@ int intcheck_file(const char *file_name, const char *dir)
 #endif
     {
         /* Generate SHA-1 of the file */
-        if (OS_SHA1_File(file_name, sf_sum) < 0) {
+        if (OS_SHA1_File(file_name, sf_sum, OS_TEXT) < 0) {
             strncpy(sf_sum, "xxx", 4);
         }
 
         /* Generate MD5 of the file */
-        if (OS_MD5_File(file_name, mf_sum) < 0) {
+        if (OS_MD5_File(file_name, mf_sum, OS_TEXT) < 0) {
             strncpy(mf_sum, "xxx", 4);
         }
     }

@@ -19,8 +19,9 @@
 /* Receive events from the server */
 void *receiver_thread(__attribute__((unused)) void *none)
 {
-    int recv_b;
-
+    ssize_t recv_b;
+    netsize_t length;
+    int reads;
     char file[OS_SIZE_1024 + 1];
     char buffer[OS_MAXSTR + 1];
 
@@ -66,8 +67,38 @@ void *receiver_thread(__attribute__((unused)) void *none)
             continue;
         }
 
+        reads = 0;
+
         /* Read until no more messages are available */
-        while ((recv_b = recv(agt->sock, buffer, OS_SIZE_1024, 0)) > 0) {
+        while (1) {
+            if (agt->protocol == TCP_PROTO) {
+                /* Only one read per call */
+                if (reads++) {
+                    break;
+                }
+
+                recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
+
+                if (recv_b <= 0) {
+                    merror(LOST_ERROR, ARGV0);
+                    start_agent(0);
+                    break;
+                }
+
+                recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
+
+                if (recv_b != length) {
+                    merror(RECV_ERROR, ARGV0);
+                    break;
+                }
+            } else {
+                recv_b = recv(agt->sock, buffer, OS_SIZE_1024, 0);
+
+                if (recv_b <= 0) {
+                    break;
+                }
+            }
+
             /* Id of zero -- only one key allowed */
             tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1);
             if (tmp_msg == NULL) {
@@ -172,7 +203,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                         /* Nothing to be done */
                     }
 
-                    else if (OS_MD5_File(file, currently_md5) < 0) {
+                    else if (OS_MD5_File(file, currently_md5, OS_TEXT) < 0) {
                         /* Remove file */
                         unlink(file);
                         file[0] = '\0';

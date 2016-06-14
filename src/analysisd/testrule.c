@@ -36,6 +36,12 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 
 void DecodeEvent(Eventinfo *lf);
 
+// Cleanup at exit
+static void onexit();
+
+// Signal handler
+static void onsignal(int signum);
+
 /* Print help statement */
 __attribute__((noreturn))
 static void help_logtest(void)
@@ -64,6 +70,11 @@ int main(int argc, char **argv)
     char *ut_str = NULL;
     const char *dir = DEFAULTDIR;
     const char *cfg = DEFAULTCPATH;
+    const char *user = USER;
+    const char *group = GROUPGLOBAL;
+    uid_t uid;
+    gid_t gid;
+    struct sigaction action = { .sa_handler = onsignal };
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -76,6 +87,10 @@ int main(int argc, char **argv)
 
     active_responses = NULL;
     memset(prev_month, '\0', 4);
+
+#ifdef LIBGEOIP_ENABLED
+    geoipdb = NULL;
+#endif
 
     while ((c = getopt(argc, argv, "VatvdhU:D:c:")) != -1) {
         switch (c) {
@@ -128,6 +143,19 @@ int main(int argc, char **argv)
 
     debug1(READ_CONFIG, ARGV0);
 
+#ifdef LIBGEOIP_ENABLED
+    Config.geoip_jsonout = getDefine_Int("analysisd", "geoip_jsonout", 0, 1);
+
+    /* Opening GeoIP DB */
+    if(Config.geoipdb_file) {
+        geoipdb = GeoIP_open(Config.geoipdb_file, GEOIP_INDEX_CACHE);
+        if (geoipdb == NULL)
+        {
+            merror("%s: ERROR: Unable to open GeoIP database from: %s (disabling GeoIP).", ARGV0, Config.geoipdb_file);
+        }
+    }
+#endif
+
     /* Get server hostname */
     memset(__shost, '\0', 512);
     if (gethostname(__shost, 512 - 1) != 0) {
@@ -142,9 +170,25 @@ int main(int argc, char **argv)
         }
     }
 
-    if (chdir(dir) != 0) {
+    /* Check if the user/group given are valid */
+    uid = Privsep_GetUser(user);
+    gid = Privsep_GetGroup(group);
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        ErrorExit(USER_ERROR, ARGV0, user, group);
+    }
+
+    /* Set the group */
+    if (Privsep_SetGroup(gid) < 0) {
+        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+    }
+
+    /* Chroot */
+    if (Privsep_Chroot(dir) < 0) {
         ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
     }
+    nowChroot();
+
+    Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", 8, MAX_DECODER_ORDER_SIZE);
 
     /*
      * Anonymous Section: Load rules, decoders, and lists
@@ -269,6 +313,18 @@ int main(int argc, char **argv)
         exit(0);
     }
 
+    /* Set the user */
+    if (Privsep_SetUser(uid) < 0) {
+        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+    }
+
+    /* Signal handling */
+
+    atexit(onexit);
+    sigaction(SIGTERM, &action, NULL);
+    sigaction(SIGHUP, &action, NULL);
+    sigaction(SIGINT, &action, NULL);
+
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
 
@@ -344,6 +400,7 @@ void OS_ReadMSG(char *ut_str)
     /* Daemon loop */
     while (1) {
         lf = (Eventinfo *)calloc(1, sizeof(Eventinfo));
+        os_calloc(Config.decoder_order_size, sizeof(char*), lf->fields);
 
         /* This shouldn't happen */
         if (lf == NULL) {
@@ -572,3 +629,14 @@ void OS_ReadMSG(char *ut_str)
     exit(exit_code);
 }
 
+// Cleanup at exit
+void onexit() {
+    char testdir[PATH_MAX + 1];
+    snprintf(testdir, PATH_MAX + 1, "%s/%s", DIFF_DIR, DIFF_TEST_HOST);
+    rmdir_ex(testdir);
+}
+
+// Signal handler
+void onsignal(__attribute__((unused)) int signum) {
+    exit(EXIT_SUCCESS);
+}

@@ -9,6 +9,7 @@
 
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
+#include "external/cJSON/cJSON.h"
 #include <stdlib.h>
 
 /* Prototypes */
@@ -18,6 +19,10 @@ static char *trimwhitespace(char *str);
 static char *trimwhitespace(char *str)
 {
     char *end;
+
+    /* Null pointer? */
+    if (!str)
+        return NULL;
 
     /* Trim leading space */
     while (isspace(*str)) {
@@ -180,19 +185,31 @@ int k_import(const char *cmdimport)
 }
 
 /* Extract base64 for a specific agent */
-int k_extract(const char *cmdextract)
+int k_extract(const char *cmdextract, int json_output)
 {
     FILE *fp;
     const char *user_input;
     char *b64_enc;
     char line_read[FILE_SIZE + 1];
     char n_id[USER_SIZE + 1];
+    cJSON *json_root = NULL;
+
+    if (json_output)
+        json_root = cJSON_CreateObject();
 
     if (cmdextract) {
         user_input = cmdextract;
 
         if (!IDExist(user_input)) {
-            printf(NO_ID, user_input);
+            if (json_output) {
+                char buffer[1024];
+                snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", user_input);
+                cJSON_AddNumberToObject(json_root, "error", 70);
+                cJSON_AddStringToObject(json_root, "message", buffer);
+                printf("%s", cJSON_PrintUnformatted(json_root));
+            } else
+                printf(NO_ID, user_input);
+
             exit(1);
         }
     } else {
@@ -223,11 +240,25 @@ int k_extract(const char *cmdextract)
     /* Try to open the auth file */
     fp = fopen(AUTH_FILE, "r");
     if (!fp) {
-        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+        if (json_output) {
+            char buffer[1024];
+            snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+            cJSON_AddNumberToObject(json_root, "error", 71);
+            cJSON_AddStringToObject(json_root, "message", buffer);
+            printf("%s", cJSON_PrintUnformatted(json_root));
+            exit(1);
+        } else
+            ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
     }
 
     if (fsetpos(fp, &fp_pos)) {
-        merror("%s: Can not set fileposition.", ARGV0);
+        if (json_output) {
+            cJSON_AddNumberToObject(json_root, "error", 72);
+            cJSON_AddStringToObject(json_root, "message", "Can not set fileposition");
+            printf("%s", cJSON_PrintUnformatted(json_root));
+        } else
+            merror("%s: Can not set fileposition.", ARGV0);
+
         exit(1);
     }
 
@@ -235,7 +266,13 @@ int k_extract(const char *cmdextract)
     strncpy(n_id, user_input, USER_SIZE - 1);
 
     if (fgets(line_read, FILE_SIZE, fp) == NULL) {
-        printf(ERROR_KEYS);
+        if (json_output) {
+            cJSON_AddNumberToObject(json_root, "error", 73);
+            cJSON_AddStringToObject(json_root, "message", "Unable to handle keys file");
+            printf("%s", cJSON_PrintUnformatted(json_root));
+        } else
+            printf(ERROR_KEYS);
+
         fclose(fp);
         exit(1);
     }
@@ -243,12 +280,24 @@ int k_extract(const char *cmdextract)
 
     b64_enc = encode_base64(strlen(line_read), line_read);
     if (b64_enc == NULL) {
-        printf(EXTRACT_ERROR);
+        if (json_output) {
+            cJSON_AddNumberToObject(json_root, "error", 74);
+            cJSON_AddStringToObject(json_root, "message", "Unable to extract agent key");
+            printf("%s", cJSON_PrintUnformatted(json_root));
+        } else
+            printf(EXTRACT_ERROR);
+
         fclose(fp);
         exit(1);
     }
 
-    printf(EXTRACT_MSG, n_id, b64_enc);
+    if (json_output) {
+        cJSON_AddNumberToObject(json_root, "error", 0);
+        cJSON_AddStringToObject(json_root, "data", b64_enc);
+        printf("%s", cJSON_PrintUnformatted(json_root));
+    } else
+        printf(EXTRACT_MSG, n_id, b64_enc);
+
     if (!cmdextract) {
         printf("\n" PRESS_ENTER);
         read_from_user();
@@ -274,7 +323,7 @@ int k_bulkload(const char *cmdbulk)
     char name[FILE_SIZE + 1];
     char id[FILE_SIZE + 1];
     char ip[FILE_SIZE + 1];
-    char delims[] = ",";
+    char delims[] = AGENT_FILE_DELIMS;
     char *token = NULL;
 
     /* Check if we can open the input file */
@@ -306,6 +355,10 @@ int k_bulkload(const char *cmdbulk)
 
         memset(name, '\0', FILE_SIZE + 1);
         token = strtok(NULL, delims);
+
+        if (!token)
+            ErrorExit(SYNTAX_ERROR, cmdbulk);
+
         strncpy(name, trimwhitespace(token), FILE_SIZE - 1);
 
 #ifndef WIN32
@@ -403,7 +456,7 @@ int k_bulkload(const char *cmdbulk)
         fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
         fclose(fp);
 
-        printf(AGENT_ADD);
+        printf(AGENT_ADD, id);
         restart_necessary = 1;
 
 cleanup:
@@ -413,4 +466,3 @@ cleanup:
     fclose(infp);
     return (0);
 }
-

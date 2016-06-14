@@ -24,6 +24,7 @@
 #define RCPTTO              "Rcpt To: <%s>\r\n"
 #define DATAMSG             "DATA\r\n"
 #define FROM                "From: OSSEC HIDS <%s>\r\n"
+#define REPLYTO             "Reply-To: OSSEC HIDS <%s>\r\n"
 #define TO                  "To: <%s>\r\n"
 #define CC                  "Cc: <%s>\r\n"
 #define SUBJECT             "Subject: %s\r\n"
@@ -45,7 +46,7 @@
 #define MAIL_DEBUG(x,y,z) if(MAIL_DEBUG_FLAG) merror(x,y,z)
 
 
-int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, const struct tm *p)
+int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *replyto, char *idsname, FILE *fp, const struct tm *p)
 {
     int socket, i = 0;
     char *msg;
@@ -168,6 +169,12 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
     memset(snd_msg, '\0', 128);
     snprintf(snd_msg, 127, FROM, from);
     OS_SendTCP(socket, snd_msg);
+
+    if (replyto) {
+        memset(snd_msg, '\0', 128);
+        snprintf(snd_msg, 127, REPLYTO, replyto);
+        OS_SendTCP(socket, snd_msg);
+    }
 
     /* Add CCs */
     if (to[1]) {

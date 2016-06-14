@@ -21,7 +21,7 @@ fi
 NAME="OSSEC HIDS"
 VERSION="v2.8"
 AUTHOR="Trend Micro Inc."
-DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON}"
+DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-moduled ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -35,7 +35,7 @@ MAX_ITERATION="10"
 checkpid() {
     for i in ${DAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps --no-headers -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
                 rm ${DIR}/var/run/${i}-${j}.pid
@@ -97,8 +97,8 @@ enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug]"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 
@@ -108,14 +108,16 @@ enable()
         echo "CSYSLOG_DAEMON=ossec-csyslogd" >> ${PLIST};
     elif [ "X$2" = "Xagentless" ]; then
         echo "AGENTLESS_DAEMON=ossec-agentlessd" >> ${PLIST};
+    elif [ "X$2" = "Xintegrator" ]; then
+        echo "INTEGRATOR_DAEMON=ossec-integratord" >> ${PLIST};
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug]"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 }
@@ -125,8 +127,8 @@ disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 disable [database|client-syslog|agentless,debug]"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 disable [database|client-syslog|agentless,debug|integrator]"
         exit 1;
     fi
 
@@ -136,14 +138,16 @@ disable()
         echo "CSYSLOG_DAEMON=\"\"" >> ${PLIST};
     elif [ "X$2" = "Xagentless" ]; then
         echo "AGENTLESS_DAEMON=\"\"" >> ${PLIST};
+    elif [ "X$2" = "Xintegrator" ]; then
+        echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug]"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 }
@@ -178,7 +182,7 @@ testconfig()
 
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
+    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} wazuh-moduled ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
 
     echo "Starting $NAME $VERSION (by $AUTHOR)..."
     echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
@@ -233,7 +237,7 @@ pstatus()
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps --no-headers -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "${pfile}: Process $j not used by ossec, removing .."
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
@@ -307,4 +311,3 @@ disable)
 *)
     help
 esac
-

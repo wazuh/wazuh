@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS  server
     last_contact    INT         UNSIGNED NOT NULL,
     version         VARCHAR(32)          NOT NULL,
     hostname        VARCHAR(64)          NOT NULL   UNIQUE,
-    information     VARCHAR(128)         NOT NULL,
+    information     TEXT                 NOT NULL,
     PRIMARY KEY  (id)
     );
 

@@ -16,6 +16,7 @@
 int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
+    int secure_count = 0;
     unsigned int pl = 0;
     unsigned int allow_size = 1;
     unsigned int deny_size = 1;
@@ -74,6 +75,12 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     /* Clean */
     while (logr->conn[pl] != 0) {
+        if (logr->conn[pl] == SECURE_CONN) {
+            if (++secure_count > 1) {
+                merror(DUP_SECURE, __local_name);
+                return (OS_INVALID);
+            }
+        }
         pl++;
     }
 
@@ -111,6 +118,10 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 logr->conn[pl] = SYSLOG_CONN;
             } else if (strcmp(node[i]->content, "secure") == 0) {
                 logr->conn[pl] = SECURE_CONN;
+                if (++secure_count > 1) {
+                    merror(DUP_SECURE, __local_name);
+                    return (OS_INVALID);
+                }
             } else {
                 merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
                 return (OS_INVALID);
@@ -202,11 +213,5 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         logr->proto[pl] = UDP_PROTO;
     }
 
-    /* Secure connections only run on UDP */
-    if ((logr->conn[pl] == SECURE_CONN) && (logr->proto[pl] == TCP_PROTO)) {
-        logr->proto[pl] = UDP_PROTO;
-    }
-
     return (0);
 }
-

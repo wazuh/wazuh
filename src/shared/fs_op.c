@@ -40,8 +40,11 @@ short IsNFS(const char *dir_name)
     }
     else
     {
-        /* Throw an error and retreat! */
-        merror("ERROR: statfs('%s') produced error: %s", dir_name, strerror(errno));
+        /* If the file exists, throw an error and retreat! If the file does not exist, there
+	 * is no reason to spam the log with these errors. */
+	if(errno != ENOENT) {
+            merror("ERROR: statfs('%s') produced error: %s", dir_name, strerror(errno));
+	}
         return(-1);
     }
 #else

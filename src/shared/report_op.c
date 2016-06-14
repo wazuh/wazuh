@@ -116,25 +116,39 @@ static int _os_report_check_filters(const alert_data *al_data, const report_filt
         }
     }
     if (r_filter->srcip) {
-
+        if(!al_data->srcip) {
+            return(0);
+        }
         if (al_data->srcip) {
             if (!strstr(al_data->srcip, r_filter->srcip)) {
                 return (0);
             }
+        } else {
+            return (0);
         }
     }
     if (r_filter->user) {
+        if(!al_data->user) {
+            return(0);
+        }
         if (al_data->user) {
             if (!strstr(al_data->user, r_filter->user)) {
                 return (0);
             }
+        } else {
+            return (0);
         }
     }
     if (r_filter->files) {
+        if(!al_data->filename) {
+            return(0);
+        }
         if (al_data->filename) {
             if (!strstr(al_data->filename, r_filter->files)) {
                 return (0);
             }
+        } else {
+            return (0);
         }
     }
     return (1);
@@ -496,6 +510,7 @@ void os_ReportdStart(report_filter *r_filter)
 
             mgroup = OS_StrBreak(',', al_data->group, 32);
             if (mgroup) {
+            	char **mgroup_orig = mgroup;
                 while (*mgroup) {
                     tmp_str = *mgroup;
                     while (*tmp_str == ' ') {
@@ -514,7 +529,7 @@ void os_ReportdStart(report_filter *r_filter)
                     mgroup++;
                 }
 
-                free(mgroup);
+                free(mgroup_orig);
             } else {
                 tmp_str = al_data->group;
                 while (*tmp_str == ' ') {

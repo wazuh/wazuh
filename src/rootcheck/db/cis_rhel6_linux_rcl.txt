@@ -1,5 +1,7 @@
 # OSSEC Linux Audit - (C) 2014
 #
+# PCI Tagging by Wazuh <ossec@wazuh.com>.
+#
 # Released under the same license as OSSEC.
 # More details at the LICENSE file included with OSSEC or online
 # at: http://www.ossec.net/en/licensing.html
@@ -44,15 +46,15 @@ f:/etc/redhat-release -> r:^Better && r:release 6;
 f:/etc/fstab -> !r:/tmp;
 
 # 1.1.2 /tmp: nodev
-[CIS - RHEL6 - 1.1.2 - Partition /tmp without 'nodev' set {CIS: 1.1.2 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.1.2 - Partition /tmp without 'nodev' set {CIS: 1.1.2 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;
 
 # 1.1.3 /tmp: nosuid
-[CIS - RHEL6 - 1.1.3 - Partition /tmp without 'nosuid' set {CIS: 1.1.3 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.1.3 - Partition /tmp without 'nosuid' set {CIS: 1.1.3 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/fstab -> !r:^# && r:/tmp && !r:nosuid;
 
 # 1.1.4 /tmp: noexec
-[CIS - RHEL6 - 1.1.4 - Partition /tmp without 'noexec' set {CIS: 1.1.4 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.1.4 - Partition /tmp without 'noexec' set {CIS: 1.1.4 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;
 
 # 1.1.5 Build considerations - Partition scheme.
@@ -76,31 +78,31 @@ f:/etc/fstab -> ^# && !r:/var/log/audit;
 f:/etc/fstab -> ^# && !r:/home;
 
 # 1.1.10 /home: nodev
-[CIS - RHEL6 - 1.1.10 -  Partition /home without 'nodev' set {CIS: 1.1.10 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.1.10 -  Partition /home without 'nodev' set {CIS: 1.1.10 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/fstab -> !r:^# && r:/home && !r:nodev;
 
 # 1.1.11 nodev on removable media partitons (not scored)
-[CIS - RHEL6 - 1.1.11 - Removable partition /media without 'nodev' set {CIS: 1.1.11 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.1.11 - Removable partition /media without 'nodev' set {CIS: 1.1.11 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/fstab -> !r:^# && r:/media && !r:nodev;
 
 # 1.1.12 noexec on removable media partitions (not scored)
-[CIS - RHEL6 - 1.1.12 - Removable partition /media without 'noexec' set {CIS: 1.1.12 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.1.12 - Removable partition /media without 'noexec' set {CIS: 1.1.12 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/fstab -> !r:^# && r:/media && !r:noexec;
 
 # 1.1.13 nosuid on removale media partitions (not scored)
-[CIS - RHEL6 - 1.1.13 - Removable partition /media without 'nosuid' set {CIS: 1.1.13 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.1.13 - Removable partition /media without 'nosuid' set {CIS: 1.1.13 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;
 
 # 1.1.14 /dev/shm: nodev
-[CIS - RHEL6 - 1.1.14 - /dev/shm without 'nodev' set {CIS: 1.1.14 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.1.14 - /dev/shm without 'nodev' set {CIS: 1.1.14 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nodev;
 
 # 1.1.15 /dev/shm: nosuid
-[CIS - RHEL6 - 1.1.15 - /dev/shm without 'nosuid' set {CIS: 1.1.15 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.1.15 - /dev/shm without 'nosuid' set {CIS: 1.1.15 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nosuid;
 
 # 1.1.16 /dev/shm: noexec
-[CIS - RHEL6 - 1.1.16 - /dev/shm without 'noexec' set {CIS: 1.1.16 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.1.16 - /dev/shm without 'noexec' set {CIS: 1.1.16 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;
 
 # 1.1.17 sticky bit on world writable directories (Scored)
@@ -152,23 +154,23 @@ f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;
 ###############################################
 
 # 1.4.1 enable selinux in /etc/grub.conf
-[CIS - RHEL6 - 1.4.1 - SELinux Disabled in /etc/grub.conf {CIS: 1.4.1 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.4.1 - SELinux Disabled in /etc/grub.conf {CIS: 1.4.1 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/grub.conf -> !r:selinux=0;
 
 # 1.4.2 Set selinux state
-[CIS - RHEL6 - 1.4.2 - SELinux not set to enforcing {CIS: 1.4.2 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.4.2 - SELinux not set to enforcing {CIS: 1.4.2 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/selinux/config -> r:SELINUX=enforcing;
 
 # 1.4.3 Set seliux policy
-[CIS - RHEL6 - 1.4.3 - SELinux policy not set to targeted {CIS: 1.4.3 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.4.3 - SELinux policy not set to targeted {CIS: 1.4.3 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/selinux/config -> r:SELINUXTYPE=targeted;
 
 # 1.4.4 Remove SETroubleshoot
-[CIS - RHEL6 - 1.4.4 - SELinux setroubleshoot enabld {CIS: 1.4.4 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.4.4 - SELinux setroubleshoot enabld {CIS: 1.4.4 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dsetroubleshoot$;
 
 # 1.4.5 Disable MCS Translation service mcstrans
-[CIS - RHEL6 - 1.4.5 - SELinux mctrans enabled {CIS: 1.4.5 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.4.5 - SELinux mctrans enabled {CIS: 1.4.5 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dmctrans$;
 
 # 1.4.6 Check for unconfined daemons
@@ -186,15 +188,15 @@ d:$rc_dirs -> ^S\d\dmctrans$;
 # TODO (no mode tests)
 
 # 1.5.3 Set Boot Loader Password (Scored)
-[CIS - RHEL6 - 1.5.3 - GRUB Password not set {CIS: 1.5.3 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.5.3 - GRUB Password not set {CIS: 1.5.3 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/boot/grub/menu.lst -> !r:^# && !r:password;
 
 # 1.5.4 Require Authentication for Single-User Mode (Scored)
-[CIS - RHEL6 - 1.5.4 - Authenticaion for single user mode not enabled {CIS: 1.5.4 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.5.4 - Authenticaion for single user mode not enabled {CIS: 1.5.4 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/inittab -> !r:^# && r:S:wait;
 
 # 1.5.5 Disable Interactive Boot (Scored)
-[CIS - RHEL6 - 1.5.5 - Interactive Boot not disabled {CIS: 1.5.5 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 1.5.5 - Interactive Boot not disabled {CIS: 1.5.5 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/sysconfig/init -> !r:^# && r:PROMPT=no;
 
 
@@ -230,7 +232,7 @@ f:/proc/sys/kernel/randomize_va_space -> 0;
 
 # 2.1.1 Remove telnet-server (Scored)
 # TODO: detect it is installed at all
-[CIS - RHEL6 - 2.1.1 - Telnet enabled on xinetd {CIS: 2.1.1 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 2.1.1 - Telnet enabled on xinetd {CIS: 2.1.1 RHEL6} {PCI_DSS: 2.2.3}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/xinetd.d/telnet -> !r:^# && r:disable && r:no;
 
 
@@ -238,7 +240,7 @@ f:/etc/xinetd.d/telnet -> !r:^# && r:disable && r:no;
 # TODO
 
 # 2.1.3 Remove rsh-server (Scored)
-[CIS - RHEL6 - 2.1.3 - rsh/rlogin/rcp enabled on xinetd {CIS: 2.1.3 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 2.1.3 - rsh/rlogin/rcp enabled on xinetd {CIS: 2.1.3 RHEL6} {PCI_DSS: 2.2.3}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/xinetd.d/rlogin -> !r:^# && r:disable && r:no;
 f:/etc/xinetd.d/rsh -> !r:^# && r:disable && r:no;
 f:/etc/xinetd.d/shell -> !r:^# && r:disable && r:no;
@@ -247,25 +249,25 @@ f:/etc/xinetd.d/shell -> !r:^# && r:disable && r:no;
 # TODO
 
 # 2.1.5 Remove NIS Client (Scored)
-[CIS - RHEL6 - 2.1.5 - Disable standard boot services - NIS (client) Enabled {CIS: 2.1.5 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 2.1.5 - Disable standard boot services - NIS (client) Enabled {CIS: 2.1.5 RHEL6} {PCI_DSS: 2.2.3}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dypbind$;
 
 # 2.1.6 Remove NIS Server (Scored)
-[CIS - RHEL6 - 2.1.6 - Disable standard boot services - NIS (server) Enabled {CIS: 2.1.6 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 2.1.6 - Disable standard boot services - NIS (server) Enabled {CIS: 2.1.6 RHEL6} {PCI_DSS: 2.2.3}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dypserv$;
 
 # 2.1.7 Remove tftp (Scored)
 # TODO
 
 # 2.1.8 Remove tftp-server (Scored)
-[CIS - RHEL6 - 2.1.8 - tftpd enabled on xinetd {CIS: 2.1.8 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 2.1.8 - tftpd enabled on xinetd {CIS: 2.1.8 RHEL6} {PCI_DSS: 2.2.3}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/xinetd.d/tftpd -> !r:^# && r:disable && r:no;
 
 # 2.1.9 Remove talk (Scored)
 # TODO
 
 # 2.1.10 Remove talk-server (Scored)
-[CIS - RHEL6 - 2.1.10 - talk enabled on xinetd {CIS: 2.1.10 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 2.1.10 - talk enabled on xinetd {CIS: 2.1.10 RHEL6} {PCI_DSS: 2.2.3}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/xinetd.d/talk -> !r:^# && r:disable && r:no;
 
 # 2.1.11 Remove xinetd (Scored)
@@ -298,15 +300,15 @@ f:/etc/xinetd.d/talk -> !r:^# && r:disable && r:no;
 ###############################################
 
 # 3.1 Set Daemon umask (Scored)
-[CIS - RHEL6 - 3.1 - Set daemon umask - Default umask is higher than 027 {CIS: 3.1 RHEL6}] [all] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 3.1 - Set daemon umask - Default umask is higher than 027 {CIS: 3.1 RHEL6} {PCI_DSS: 2.2.2}] [all] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/init.d/functions -> !r:^# && r:^umask && <:umask 027;
 
 # 3.2 Remove X Windows (Scored)
-[CIS - RHEL6 - 3.2 - X11 not disabled {CIS: 3.2 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 3.2 - X11 not disabled {CIS: 3.2 RHEL6} {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/inittab -> !r:^# && r:id:5;
 
 # 3.3 Disable Avahi Server (Scored)
-[CIS - RHEL6 - 3.2 - Avahi daemon not disabled {CIS: 3.3 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 3.2 - Avahi daemon not disabled {CIS: 3.3 RHEL6} {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 p:avahi-daemon;
 
 # 3.4 Disable Print Server - CUPS (Not Scored)
@@ -315,13 +317,13 @@ p:avahi-daemon;
 # TODO
 
 # 3.6 Configure Network Time Protocol (NTP) (Scored)
-#[CIS - RHEL6 - 3.6 - NTPD not disabled {CIS: 1.1.1 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+#[CIS - RHEL6 - 3.6 - NTPD not disabled {CIS: 1.1.1 RHEL6} {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 # TODO.
 
 # 3.7 Remove LDAP (Not Scored)
 
 # 3.8 Disable NFS and RPC (Not Scored)
-[CIS - RHEL6 - 3.8 - Disable standard boot services - NFS Enabled {CIS: 3.8 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 3.8 - Disable standard boot services - NFS Enabled {CIS: 3.8 RHEL6} {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dnfs$;
 d:$rc_dirs -> ^S\d\dnfslock$;
 
@@ -329,7 +331,7 @@ d:$rc_dirs -> ^S\d\dnfslock$;
 # TODO
 
 # 3.10 Remove FTP Server (Not Scored)
-[CIS - RHEL6 - 3.10 - VSFTP enabled on xinetd {CIS: 3.10 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 3.10 - VSFTP enabled on xinetd {CIS: 3.10 RHEL6} {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/xinetd.d/vsftpd -> !r:^# && r:disable && r:no;
 
 # 3.11 Remove HTTP Server (Not Scored)
@@ -337,23 +339,23 @@ f:/etc/xinetd.d/vsftpd -> !r:^# && r:disable && r:no;
 d:$rc_dirs -> ^S\d\dhttpd$;
 
 # 3.12 Remove Dovecot (IMAP and POP3 services) (Not Scored)
-[CIS - RHEL6 - 3.12 - imap enabled on xinetd {CIS: 3.12 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 3.12 - imap enabled on xinetd {CIS: 3.12 RHEL6} {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/xinetd.d/cyrus-imapd -> !r:^# && r:disable && r:no;
 
-[CIS - RHEL6 - 3.12 - pop3 enabled on xinetd {CIS: 3.12 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 3.12 - pop3 enabled on xinetd {CIS: 3.12 RHEL6} {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/xinetd.d/dovecot -> !r:^# && r:disable && r:no;
 
 # 3.13 Remove Samba (Not Scored)
-[CIS - RHEL6 - 3.13 - Disable standard boot services - Samba Enabled {CIS: 3.13 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 3.13 - Disable standard boot services - Samba Enabled {CIS: 3.13 RHEL6} {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dsamba$;
 d:$rc_dirs -> ^S\d\dsmb$;
 
 # 3.14 Remove HTTP Proxy Server (Not Scored)
-[CIS - RHEL6 - 3.14 - Disable standard boot services - Squid Enabled {CIS: 3.14 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 3.14 - Disable standard boot services - Squid Enabled {CIS: 3.14 RHEL6} {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dsquid$;
 
 # 3.15 Remove SNMP Server (Not Scored)
-[CIS - RHEL6 - 3.15 - Disable standard boot services - SNMPD process Enabled {CIS: 3.15 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 3.15 - Disable standard boot services - SNMPD process Enabled {CIS: 3.15 RHEL6} {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dsnmpd$;
 
 # 3.16 Configure Mail Transfer Agent for Local-Only Mode (Scored)
@@ -369,12 +371,12 @@ d:$rc_dirs -> ^S\d\dsnmpd$;
 ###############################################
 
 # 4.1.1 Disable IP Forwarding (Scored)
-[CIS - RHEL6 - 4.1.1 - Network parameters - IP Forwarding enabled {CIS: 4.1.1 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 4.1.1 - Network parameters - IP Forwarding enabled {CIS: 4.1.1 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/proc/sys/net/ipv4/ip_forward -> 1;
 f:/proc/sys/net/ipv6/ip_forward -> 1;
 
 # 4.1.2 Disable Send Packet Redirects (Scored)
-[CIS - RHEL6 - 4.1.2 - Network parameters - IP send redirects enabled {CIS: 4.1.2 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 4.1.2 - Network parameters - IP send redirects enabled {CIS: 4.1.2 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/proc/sys/net/ipv4/conf/all/send_redirects -> 0;
 f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;
 
@@ -384,38 +386,38 @@ f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;
 ###############################################
 
 # 4.2.1 Disable Source Routed Packet Acceptance (Scored)
-[CIS - RHEL6 - 4.2.1 - Network parameters - Source routing accepted {CIS: 4.2.1 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 4.2.1 - Network parameters - Source routing accepted {CIS: 4.2.1 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;
 
 # 4.2.2 Disable ICMP Redirect Acceptance (Scored)
-#CIS - RHEL6 - 4.2.2 - Network parameters - ICMP redirects accepted {CIS: 1.1.1 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+#[CIS - RHEL6 - 4.2.2 - Network parameters - ICMP redirects accepted {CIS: 1.1.1 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 #f:/proc/sys/net/ipv4/conf/all/accept_redirects -> 1;
 #f:/proc/sys/net/ipv4/conf/default/accept_redirects -> 1;
 
 # 4.2.3 Disable Secure ICMP Redirect Acceptance (Scored)
-[CIS - RHEL6 - 4.2.3 - Network parameters - ICMP secure redirects accepted {CIS: 4.2.3 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 4.2.3 - Network parameters - ICMP secure redirects accepted {CIS: 4.2.3 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/proc/sys/net/ipv4/conf/all/secure_redirects -> 1;
 f:/proc/sys/net/ipv4/conf/default/secure_redirects -> 1;
 
 # 4.2.4 Log Suspicious Packets (Scored)
-[CIS - RHEL6 - 4.2.4 - Network parameters - martians not logged {CIS: 4.2.4 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 4.2.4 - Network parameters - martians not logged {CIS: 4.2.4 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/proc/sys/net/ipv4/conf/all/log_martians -> 0;
 
 # 4.2.5 Enable Ignore Broadcast Requests (Scored)
-[CIS - RHEL6 - 4.2.5 - Network parameters - ICMP broadcasts accepted {CIS: 4.2.5 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 4.2.5 - Network parameters - ICMP broadcasts accepted {CIS: 4.2.5 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> 0;
 
 # 4.2.6 Enable Bad Error Message Protection (Scored)
-[CIS - RHEL6 - 4.2.6 - Network parameters - Bad error message protection not enabled {CIS: 4.2.6 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 4.2.6 - Network parameters - Bad error message protection not enabled {CIS: 4.2.6 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/proc/sys/net/ipv4/icmp_ignore_bogus_error_responses -> 0;
 
 # 4.2.7 Enable RFC-recommended Source Route Validation (Scored)
-[CIS - RHEL6 - 4.2.7 - Network parameters - RFC Source route validation not enabled  {CIS: 4.2.7 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 4.2.7 - Network parameters - RFC Source route validation not enabled  {CIS: 4.2.7 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/proc/sys/net/ipv4/conf/all/rp_filter -> 0;
 f:/proc/sys/net/ipv4/conf/default/rp_filter -> 0;
 
 # 4.2.8 Enable TCP SYN Cookies (Scored)
-[CIS - RHEL6 - 4.2.8 - Network parameters - SYN Cookies not enabled {CIS: 4.2.8 RHEL6} ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 4.2.8 - Network parameters - SYN Cookies not enabled {CIS: 4.2.8 RHEL6} {PCI_DSS: 2.2.4}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
 
 
@@ -585,7 +587,7 @@ f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
 ###############################################
 
 # 6.2.1 Set SSH Protocol to 2 (Scored)
-[CIS - RHEL6 - 6.2.1 - SSH Configuration - Protocol version 1 enabled {CIS: 6.2.1 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 6.2.1 - SSH Configuration - Protocol version 1 enabled {CIS: 6.2.1 RHEL6} {PCI_DSS: 4.1}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;
 
 # 6.2.2 Set LogLevel to INFO (Scored)
@@ -597,19 +599,19 @@ f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;
 # 6.2.5 Set SSH MaxAuthTries to 4 or Less (Scored)
 
 # 6.2.6 Set SSH IgnoreRhosts to Yes (Scored)
-[CIS - RHEL6 - 6.2.6 - SSH Configuration - IgnoreRHosts disabled {CIS: 6.2.6 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 6.2.6 - SSH Configuration - IgnoreRHosts disabled {CIS: 6.2.6 RHEL6} {PCI_DSS: 4.1}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+no;
 
 # 6.2.7 Set SSH HostbasedAuthentication to No (Scored)
-[CIS - RHEL6 - 6.2.7 - SSH Configuration - Host based authentication enabled {CIS: 6.2.7 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 6.2.7 - SSH Configuration - Host based authentication enabled {CIS: 6.2.7 RHEL6} {PCI_DSS: 4.1}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;
 
 # 6.2.8 Disable SSH Root Login (Scored)
-[CIS - RHEL6 - 6.2.8 - SSH Configuration - Root login allowed {CIS: 6.2.8 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 6.2.8 - SSH Configuration - Root login allowed {CIS: 6.2.8 RHEL6} {PCI_DSS: 4.1}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
 
 # 6.2.9 Set SSH PermitEmptyPasswords to No (Scored)
-[CIS - RHEL6 - 6.2.9 - SSH Configuration - Empty passwords permitted {CIS: 6.2.9 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 6.2.9 - SSH Configuration - Empty passwords permitted {CIS: 6.2.9 RHEL6} {PCI_DSS: 4.1}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;
 
 # 6.2.10 Do Not Allow Users to Set Environment Options (Scored)
@@ -730,7 +732,7 @@ f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;
 # 9.2.4 Verify No Legacy "+" Entries Exist in /etc/group File (Scored)
 
 # 9.2.5 Verify No UID 0 Accounts Exist Other Than root (Scored)
-[CIS - RHEL6 - 9.2.5 - Non-root account with uid 0 {CIS: 9.2.5 RHEL6}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - 9.2.5 - Non-root account with uid 0 {CIS: 9.2.5 RHEL6} {PCI_DSS: 10.2.5}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
 
 # 9.2.6 Ensure root PATH Integrity (Scored)
@@ -763,7 +765,7 @@ f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
 
 
 # Other/Legacy Tests
-[CIS - RHEL6 - X.X.X - Account with empty password present] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - X.X.X - Account with empty password present {PCI_DSS: 10.2.5}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 f:/etc/shadow -> r:^\w+::;
 
 [CIS - RHEL6 - X.X.X - User-mounted removable partition allowed on the console] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
@@ -773,14 +775,14 @@ f:/etc/security/console.perms -> r:^<console>  \d+ <floppy>;
 [CIS - RHEL6 - X.X.X - Disable standard boot services - Kudzu hardware detection Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dkudzu$;
 
-[CIS - RHEL6 - X.X.X - Disable standard boot services - PostgreSQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - X.X.X - Disable standard boot services - PostgreSQL server Enabled {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dpostgresql$;
 
-[CIS - RHEL6 - X.X.X - Disable standard boot services - MySQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - X.X.X - Disable standard boot services - MySQL server Enabled {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dmysqld$;
 
-[CIS - RHEL6 - X.X.X - Disable standard boot services - DNS server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - X.X.X - Disable standard boot services - DNS server Enabled {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dnamed$;
 
-[CIS - RHEL6 - X.X.X - Disable standard boot services - NetFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
+[CIS - RHEL6 - X.X.X - Disable standard boot services - NetFS Enabled {PCI_DSS: 2.2.2}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6 -]
 d:$rc_dirs -> ^S\d\dnetfs$;

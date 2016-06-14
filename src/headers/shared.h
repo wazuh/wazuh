@@ -39,6 +39,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/param.h>
+#include <stdint.h>
 
 #ifndef WIN32
 #include <sys/wait.h>
@@ -61,8 +62,14 @@
 #include <ctype.h>
 #include <signal.h>
 
-#ifndef WIN32
+/* The mingw32 builder used by travis.ci can't find glob.h 
+ * Yet glob must work on actual win32.  
+ */
+#ifndef __MINGW32__ 
 #include <glob.h>
+#endif
+
+#ifndef WIN32
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -93,6 +100,8 @@
 #endif
 
 /* Global portability code */
+
+typedef int32_t netsize_t;
 
 #ifdef SOLARIS
 #include <limits.h>
