@@ -106,7 +106,7 @@
     <if_sid>18104</if_sid>
     <id>^630$|^629$|^4725$|^4726$</id>
     <description>User account disabled or deleted.</description>
-    <group>adduser,account_changedpci_dss_8.1.2,pci_dss_10.2.5,</group>
+    <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,</group>
   </rule>
   
   <rule id="18113" level="8">
