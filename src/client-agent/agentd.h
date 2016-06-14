@@ -25,7 +25,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 void *EventForward(void);
 
 /* Receiver messages */
-void *receive_msg(void);
+int receive_msg(void);
 
 /* Receiver messages for Windows */
 void *receiver_thread(void *none);

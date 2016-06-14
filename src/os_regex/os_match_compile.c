@@ -42,6 +42,7 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
     reg->patterns = NULL;
     reg->size = NULL;
     reg->match_fp = NULL;
+    reg->negate = 0;
 
     /* The pattern can't be null */
     if (pattern == NULL) {
@@ -54,6 +55,15 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
         reg->error = OS_REGEX_MAXSIZE;
         goto compile_error;
     }
+
+
+    /* Checking if it is a negated entry. */
+    if(*pattern == '!')
+    {
+        reg->negate = 1;
+        pattern++;
+    }
+
 
     /* Duping the pattern for our internal work */
     new_str = strdup(pattern);
@@ -180,4 +190,3 @@ compile_error:
 
     return (0);
 }
-

@@ -151,3 +151,15 @@ Examples:
   <regex>^[\s\d+.\d+] (\w+): (\w+):\s+\w+ is now (\w+)\p\s(\D+)$</regex>
   <order>id,data,action,status</order>
 </decoder>
+
+
+<!--
+USB
+
+Feb  3 10:23:08 testsys kernel: usb 1-1.2: New USB device found, idVendor=0781, idProduct=5575
+-->
+<decoder name="usb-storage-attached">
+    <parent>iptables</parent>
+    <regex offset="after_parent">^(usb) </regex>
+    <order>id</order>
+</decoder>

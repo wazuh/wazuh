@@ -174,6 +174,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                     }
                 }
 
+                OSRegex_FreePattern(&regex);
                 closedir(dfd);
                 /* Sort just then newly added items */
                 qsort(Config->decoders + start_point , decoders_size - start_point - 1, sizeof(char *), cmpr);
@@ -242,6 +243,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                     }
                 }
 
+                OSRegex_FreePattern(&regex);
                 closedir(dfd);
                 /* Sort just then newly added items */
                 qsort(Config->includes + start_point , rules_size - start_point - 1, sizeof(char *), cmpr);
@@ -251,8 +253,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             OSRegex_FreePattern(&regex);
             return (OS_INVALID);
         }
+
         i++;
     }
     return (0);
 }
-

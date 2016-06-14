@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "sec.h"
+#include "external/cJSON/cJSON.h"
 
 /** Prototypes **/
 
@@ -20,11 +21,11 @@ char *encode_base64(int size, char *src);
 char *read_from_user(void);
 
 /* Add or remove an agent */
-int add_agent(void);
-int remove_agent(void);
+int add_agent(int json_output);
+int remove_agent(int json_output);
 
 /* Extract or import a key */
-int k_extract(const char *cmdextract);
+int k_extract(const char *cmdextract, int json_output);
 int k_import(const char *cmdimport);
 int k_bulkload(const char *cmdbulk);
 
@@ -33,11 +34,18 @@ int OS_IsValidName(const char *u_name);
 int OS_IsValidID(const char *id);
 int IDExist(const char *id);
 int NameExist(const char *u_name);
+char *IPExist(const char *u_ip);
 char *getFullnameById(const char *id);
 char *OS_AddNewAgent(const char *name, const char *ip, const char *id);
+int OS_RemoveAgent(const char *id);
+double OS_AgentAntiquity(const char *id);
+void OS_BackupAgentInfo(const char *id);
+char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now);
+void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
+void OS_RemoveAgentTimestamp(const char *id);
 
 /* Print available agents */
-int print_agents(int print_status, int active_only, int csv_output, int json_output);
+int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output);
 int list_agents(int cmdlist);
 
 /* Clear a line */
@@ -59,6 +67,7 @@ extern fpos_t fp_pos;
 
 /* Internal strings */
 #define QUIT                "\\q"
+#define AGENT_FILE_DELIMS   ","
 
 /* Print agents */
 #define PRINT_AVAILABLE     "\nAvailable agents: \n"
@@ -75,7 +84,7 @@ extern fpos_t fp_pos;
 #define AGENT_INFO      "Agent information:\n   ID:%s\n   Name:%s\n   " \
                         "IP Address:%s\n\n"
 #define ADD_CONFIRM     "Confirm adding it?(y/n): "
-#define AGENT_ADD       "Agent added.\n"
+#define AGENT_ADD       "Agent added with ID %s.\n"
 #define ADDED           "Added.\n"
 #define ADD_NOT         "Not Adding.\n"
 #define PRESS_ENTER     "** Press ENTER to return to the main menu.\n"
@@ -86,12 +95,14 @@ extern fpos_t fp_pos;
 #define ADD_ERROR_ID    "\n** ID '%s' already present. They must be unique.\n\n"
 #define ADD_ERROR_NAME  "\n** Name '%s' already present. Please enter a new name.\n\n"
 #define IP_ERROR        "\n** Invalid IP '%s'. Please enter a valid IP Address.\n\n"
+#define IP_DUP_ERROR    "\n** Duplicated IP '%s'. Please enter an unique IP Address.\n\n"
 #define NO_AGENT        "\n** No agent available. You need to add one first.\n"
 #define NO_ID           "\n** Invalid ID '%s' given. ID is not present.\n"
 #define NO_KEY          "\n** Invalid authentication key. Starting over again.\n"
 #define INVALID_ID      "\n** Invalid ID '%s' given. ID must be numeric (max 8 digits).\n\n"
 #define INVALID_NAME    "\n** Invalid name '%s' given. Name must contain only alphanumeric characters (min=2, max=32).\n\n"
 #define NO_DEFAULT      "\n** Could not get default ID. Ran out of IDs to try with a max of '%d'. Either need to raise max agents or clean out client.keys.\n\n"
+#define SYNTAX_ERROR    "\n** Syntax error at file %s\n\n"
 
 /* Remove agent */
 #define REMOVE_ID       "Provide the ID of the agent to be removed (or '\\q' to quit): "
@@ -138,4 +149,3 @@ extern fpos_t fp_pos;
 #define GMF_ERROR       ARGV0 ": Could not run GetModuleFileName.\n"
 #define GMF_BUFF_ERROR  ARGV0 ": Could not get path because it is too long and was shrunk by (%d) characters with a max of (%d).\n"
 #define GMF_UNKN_ERROR  ARGV0 ": Could not run GetModuleFileName which returned (%ld).\n"
-

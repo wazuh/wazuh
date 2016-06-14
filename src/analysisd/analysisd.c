@@ -132,6 +132,11 @@ int main_analysisd(int argc, char **argv)
     hourly_syscheck = 0;
     hourly_firewall = 0;
 
+#ifdef LIBGEOIP_ENABLED
+    geoipdb = NULL;
+#endif
+
+
     while ((c = getopt(argc, argv, "Vtdhfu:g:D:c:")) != -1) {
         switch (c) {
             case 'V':
@@ -221,6 +226,22 @@ int main_analysisd(int argc, char **argv)
 
     debug1(READ_CONFIG, ARGV0);
 
+
+#ifdef LIBGEOIP_ENABLED
+    Config.geoip_jsonout = getDefine_Int("analysisd", "geoip_jsonout", 0, 1);
+
+    /* Opening GeoIP DB */
+    if(Config.geoipdb_file) {
+        geoipdb = GeoIP_open(Config.geoipdb_file, GEOIP_INDEX_CACHE);
+        if (geoipdb == NULL)
+        {
+            merror("%s: ERROR: Unable to open GeoIP database from: %s (disabling GeoIP).", ARGV0, Config.geoipdb_file);
+        }
+    }
+#endif
+
+
+
     /* Fix Config.ar */
     Config.ar = ar_flag;
     if (Config.ar == -1) {
@@ -257,7 +278,11 @@ int main_analysisd(int argc, char **argv)
 #ifdef ZEROMQ_OUTPUT_ENABLED
     /* Start zeromq */
     if (Config.zeromq_output) {
+#if CZMQ_VERSION_MAJOR == 2
         zeromq_output_start(Config.zeromq_output_uri);
+#elif CZMQ_VERSION_MAJOR >= 3
+        zeromq_output_start(Config.zeromq_output_uri, Config.zeromq_output_client_cert, Config.zeromq_output_server_cert);
+#endif
     }
 #endif
 
@@ -282,6 +307,8 @@ int main_analysisd(int argc, char **argv)
         ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
     }
     nowChroot();
+
+    Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", 8, MAX_DECODER_ORDER_SIZE);
 
     /*
      * Anonymous Section: Load rules, decoders, and lists
@@ -638,6 +665,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         if (!lf) {
             ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
+        os_calloc(Config.decoder_order_size, sizeof(char*), lf->fields);
         lf->year = prev_year;
         strncpy(lf->mon, prev_month, 3);
         lf->day = today;
@@ -658,6 +686,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Daemon loop */
     while (1) {
         lf = (Eventinfo *)calloc(1, sizeof(Eventinfo));
+        os_calloc(Config.decoder_order_size, sizeof(char*), lf->fields);
 
         /* This shouldn't happen */
         if (lf == NULL) {
@@ -1017,7 +1046,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 OS_Store(lf);
             if (Config.logall_json)
                 jsonout_output_archive(lf);
-            
+
 
 CLMEM:
             /** Cleaning the memory **/
@@ -1057,6 +1086,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
      * status,
      */
     RuleInfo *rule = curr_node->ruleinfo;
+    int i;
 
     /* Can't be null */
     if (!rule) {
@@ -1138,6 +1168,18 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         }
     }
 
+    /* Check for dynamic fields */
+
+    for (i = 0; i < Config.decoder_order_size && rule->fields[i]; i++) {
+        int j = FindField(lf->decoder_info, rule->fields[i]->name);
+
+        if (j < 0)
+            return NULL;
+
+        if (!OSRegex_Execute(lf->fields[j], rule->fields[i]->regex))
+            return NULL;
+    }
+
     /* Get TCP/IP packet information */
     if (rule->alert_opts & DO_PACKETINFO) {
         /* Check for the srcip */
@@ -1214,6 +1256,31 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                 return (NULL);
             }
         }
+
+        /* Adding checks for geoip. */
+        if(rule->srcgeoip) {
+            if(lf->srcgeoip) {
+                if(!OSMatch_Execute(lf->srcgeoip,
+                            strlen(lf->srcgeoip),
+                            rule->srcgeoip))
+                    return(NULL);
+            } else {
+                return(NULL);
+            }
+        }
+
+
+        if(rule->dstgeoip) {
+            if(lf->dstgeoip) {
+                if(!OSMatch_Execute(lf->dstgeoip,
+                            strlen(lf->dstgeoip),
+                            rule->dstgeoip))
+                    return(NULL);
+            } else {
+                return(NULL);
+            }
+        }
+
 
         /* Check if any rule related to the size exist */
         if (rule->maxsize) {
@@ -1396,6 +1463,16 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                         return (NULL);
                     }
                     break;
+                case RULE_DYNAMIC:
+                    i = FindField(lf->decoder_info, list_holder->dfield);
+
+                    if (i < 0)
+                        return NULL;
+
+                    if (!OS_DBSearch(list_holder, lf->fields[i]))
+                        return NULL;
+
+                    break;
                 default:
                     return (NULL);
             }
@@ -1407,8 +1484,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* If it is a context rule, search for it */
     if (rule->context == 1) {
         if (!(rule->context_opts & SAME_DODIFF)) {
-            if (!rule->event_search(lf, rule)) {
-                return (NULL);
+            if (rule->event_search) {
+                if (!rule->event_search(lf, rule)) {
+                    return (NULL);
+                }
             }
         }
     }
@@ -1536,4 +1615,3 @@ static void DumpLogstats()
 
     fclose(flog);
 }
-

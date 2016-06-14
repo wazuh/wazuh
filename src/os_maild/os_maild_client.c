@@ -163,13 +163,13 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
 #ifdef LIBGEOIP_ENABLED
     /* Get GeoIP information */
     if (Mail->geoip) {
-        if (al_data->geoipdatasrc) {
-            snprintf(geoip_msg_src, OS_SIZE_1024, "Src Location: %s\r\n", al_data->geoipdatasrc);
+        if (al_data->srcgeoip) {
+            snprintf(geoip_msg_src, OS_SIZE_1024, "Src Location: %s\r\n", al_data->srcgeoip);
         } else {
             geoip_msg_src[0] = '\0';
         }
-        if (al_data->geoipdatadst) {
-            snprintf(geoip_msg_dst, OS_SIZE_1024, "Dst Location: %s\r\n", al_data->geoipdatadst);
+        if (al_data->dstgeoip) {
+            snprintf(geoip_msg_dst, OS_SIZE_1024, "Dst Location: %s\r\n", al_data->dstgeoip);
         } else {
             geoip_msg_dst[0] = '\0';
         }

@@ -159,4 +159,3 @@ fail:
     OS_ClearNode(ret);
     return (NULL);
 }
-

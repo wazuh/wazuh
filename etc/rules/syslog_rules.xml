@@ -10,6 +10,9 @@
   -  Foundation.
   -
   -  License details: http://www.ossec.net/en/licensing.html
+  -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -->
   
 
@@ -492,18 +495,17 @@
 </group> <!-- SYSLOG,ADDUSER -->
 
 
-
 <!-- Sudo messages -->
-<group name="syslog,sudo,pci_dss_11.4,">
+<group name="syslog,sudo,">
   <rule id="5400" level="0" noalert="1">
     <decoded_as>sudo</decoded_as>
     <description>Initial group for sudo messages</description>
   </rule>
   
-  <rule id="5401" level="10">
+  <rule id="5401" level="5">
     <if_sid>5400</if_sid>
-    <match>3 incorrect password attempts</match>
-    <description>Three failed attempts to run sudo</description>
+    <match>incorrect password attempt</match>
+    <description>Failed attempt to run sudo</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
@@ -519,7 +521,21 @@
     <options>alert_by_email</options>
     <if_fts></if_fts>
     <description>First time user executed sudo.</description>
-  </rule>                  
+  </rule>
+
+  <rule id="5404" level="10">
+    <if_sid>5401</if_sid>
+    <match>3 incorrect password attempts</match>
+    <description>Three failed attempts to run sudo</description>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+  
+    <rule id="5405" level="5">
+        <if_sid>5400</if_sid>
+        <match>user NOT in sudoers</match>
+        <description>Unauthorized user attempted to use sudo.</description>
+    </rule>
+  
 </group> <!-- SYSLOG, SUDO -->
 
 

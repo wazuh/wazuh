@@ -1,0 +1,39 @@
+<!--
+  -  Amazon rules
+  -  v1.0 2016/05/11
+  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+-->
+
+<!-- amazon messages -->
+
+<group name="amazon,">
+    <rule id="80200" level="0">
+        <decoded_as>AmazonAWS</decoded_as>
+        <description>Amazon alerts.</description>
+    </rule>
+
+    <rule id="80201" level="0">
+        <if_sid>80200</if_sid>
+        <match>"eventSource":"ec2.amazonaws.com"|"eventSource":"elasticloadbalancing.amazonaws.com"</match>
+        <description>Amazon EC2 alerts.</description>
+        <group>amazon-ec2,</group>
+    </rule>
+
+    <rule id="80202" level="0">
+        <if_sid>80200</if_sid>
+        <match>"eventSource":"iam.amazonaws.com"|"eventSource":"signin.amazonaws.com"</match>
+        <description>Amazon IAM alerts.</description>
+        <group>amazon-iam,</group>
+    </rule>
+  
+  <rule id="80203" level="0">
+        <if_sid>80200</if_sid>
+        <match>"eventSource":"s3.amazonaws.com"</match>
+        <description>Amazon s3 alerts.</description>
+        <group>amazon-s3,</group>
+    </rule>
+
+    <!-- ID for amazon events 80200-80300 -->
+
+</group>

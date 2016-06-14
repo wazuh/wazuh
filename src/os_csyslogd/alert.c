@@ -104,8 +104,8 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " classification: %s;", al_data->group );
         field_add_string(syslog_msg, OS_SIZE_2048, " srcip: %s;", al_data->srcip );
 #ifdef LIBGEOIP_ENABLED
-        field_add_string(syslog_msg, OS_SIZE_2048, " srccity: %s;", al_data->geoipdatasrc );
-        field_add_string(syslog_msg, OS_SIZE_2048, " dstcity: %s;", al_data->geoipdatadst );
+        field_add_string(syslog_msg, OS_SIZE_2048, " srccity: %s;", al_data->srcgeoip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dstcity: %s;", al_data->dstgeoip );
 #endif
         field_add_string(syslog_msg, OS_SIZE_2048, " dstip: %s;", al_data->dstip );
         field_add_string(syslog_msg, OS_SIZE_2048, " user: %s;", al_data->user );
@@ -136,8 +136,8 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
         field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
 #ifdef LIBGEOIP_ENABLED
-        field_add_string(syslog_msg, OS_SIZE_2048, " cs3Label=SrcCity cs3=%s", al_data->geoipdatasrc );
-        field_add_string(syslog_msg, OS_SIZE_2048, " cs4Label=DstCity cs4=%s", al_data->geoipdatadst );
+        field_add_string(syslog_msg, OS_SIZE_2048, " cs3Label=SrcCity cs3=%s", al_data->srcgeoip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " cs4Label=DstCity cs4=%s", al_data->dstgeoip );
 #endif
         field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
         field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
@@ -205,11 +205,11 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
             cJSON_AddStringToObject(root,   "sha1_new",   al_data->new_sha1);
         }
 #ifdef LIBGEOIP_ENABLED
-        if (al_data->geoipdatasrc) {
-            cJSON_AddStringToObject(root, "src_city", al_data->geoipdatasrc);
+        if (al_data->srcgeoip) {
+            cJSON_AddStringToObject(root, "src_city", al_data->srcgeoip);
         }
-        if (al_data->geoipdatadst) {
-            cJSON_AddStringToObject(root, "dst_city", al_data->geoipdatadst);
+        if (al_data->dstgeoip) {
+            cJSON_AddStringToObject(root, "dst_city", al_data->dstgeoip);
         }
 #endif
 
@@ -249,8 +249,8 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         }
 
 #ifdef LIBGEOIP_ENABLED
-        field_add_string(syslog_msg, OS_SIZE_2048, " src_city=\"%s\",", al_data->geoipdatasrc );
-        field_add_string(syslog_msg, OS_SIZE_2048, " dst_city=\"%s\",", al_data->geoipdatadst );
+        field_add_string(syslog_msg, OS_SIZE_2048, " src_city=\"%s\",", al_data->srcgeoip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dst_city=\"%s\",", al_data->dstgeoip );
 #endif
 
         if ( field_add_string(syslog_msg, OS_SIZE_2048, " dst_ip=\"%s\",", al_data->dstip ) > 0 ) {

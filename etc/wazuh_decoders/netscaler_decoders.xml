@@ -1,19 +1,17 @@
-<!-- netscaler decoder -->
 <!--
-  -  v1.0 2015/10/27
+  -  netscaler decoder 
+  -  v1.1 2015/01/07
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  jesus@wazuh.com
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
 
 <!--
-03/17/2014:12:06:45 
-03/17/2014: 12:06:45 
-                                    GMT CUA30070LBN5501 PPE-3
-                                    GMT b3nsc21 0-PPE-0
-                                    GMT HLCNS001 0-PPE-0
-                                    GMT ns 0-PPE-0
+netscaler
+31/12/2015: 12:00:00 GMT name PPE : Text
+31/12/2015: 12:00:00 GMT name 0-PPE : Text
+31/12/2015: 12:00:00 GMT name 0-PPE-0 : Text
+27/06/2009: 04:51:17 GMT ns 90 : Text
 -->
 <decoder name="netscaler">
     <prematch>\d\d/\d\d/\d\d\d\d:\s*\d\d:\d\d:\d\d\s+GMT\s+\S+\.+PPE\.+:\s|\d\d/\d\d/\d\d\d\d:\s*\d\d:\d\d:\d\d\s+GMT\s+ns\.+:\s</prematch>
@@ -33,11 +31,12 @@ AAA LOGIN_FAILED
 <!--
 UI CMD_EXECUTED
 02/14/2012: 14:32:35 GMT CUA30070LBN6202 PPE-1 : UI CMD_EXECUTED 427 :  User ******** - Remote_ip 10.31.66.1 - Command "bind system global SYSLOG -priority 0" - Status "Success"
+01/05/2016: 22:09:54 GMT SERVER 0-PPE-0 : API CMD_EXECUTED 12345678 0 :  User nsroot - Remote_ip 10.10.10.10 - Command "login nsroot ********" - Status "ERROR: Invalid username or password"
 -->
 <decoder name="netscaler-UI">
     <parent>netscaler</parent>
-    <prematch> UI CMD_EXECUTED</prematch>
-    <regex offset="after_parent">(UI) CMD_EXECUTED \.+User (\S+) - Remote_ip (\S+) - Command "(\.+)" - Status "(\.+)"</regex>
+    <prematch> UI CMD_EXECUTED| API CMD_EXECUTED</prematch>
+    <regex offset="after_parent">(\S+) CMD_EXECUTED \.+User (\S+) - Remote_ip (\S+) - Command "(\.+)" - Status "(\.+)"</regex>
     <order>id,srcuser,srcip,action,status</order>
 </decoder>
 
@@ -164,4 +163,3 @@ Generic
 </decoder>
 
 <!-- netscaler decoder END -->
-

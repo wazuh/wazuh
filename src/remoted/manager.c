@@ -52,18 +52,18 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-    
+
     send_msg(agentid, msg_ack);
-    
+
     /* Check if there is a keep alive already for this agent */
     if (_keep_alive[agentid] && _msg[agentid] &&
             (strcmp(_msg[agentid], r_msg) == 0)) {
-        
+
         utimes(_keep_alive[agentid], NULL);
     }
 
     else if (strcmp(r_msg, HC_STARTUP) == 0) {
-        
+        debug1("%s: DEBUG: Agent %s sent HC_STARTUP from %s.", ARGV0, keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
         return;
     }
 
@@ -71,11 +71,11 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         FILE *fp;
         char *uname = r_msg;
         char *random_leftovers;
-        
+
         /* Lock mutex */
         if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
             merror(MUTEX_ERROR, ARGV0);
-            
+
             return;
         }
 
@@ -88,7 +88,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         /* Unlock mutex */
         if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
             merror(MUTEX_ERROR, ARGV0);
-            
+
             return;
         }
 
@@ -110,13 +110,13 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         if (!_keep_alive[agentid]) {
             char agent_file[OS_SIZE_1024 + 1];
             agent_file[OS_SIZE_1024] = '\0';
-            
+
             /* Write to the agent file */
             snprintf(agent_file, OS_SIZE_1024, "%s/%s-%s",
                      AGENTINFO_DIR,
                      keys.keyentries[agentid]->name,
                      keys.keyentries[agentid]->ip->ip);
-             
+
             os_strdup(agent_file, _keep_alive[agentid]);
         }
 
@@ -126,13 +126,13 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             fprintf(fp, "%s\n", uname);
             fclose(fp);
         }
-        
+
     }
 
     /* Lock now to notify of change */
     if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
         merror(MUTEX_ERROR, ARGV0);
-        
+
         return;
     }
 
@@ -146,10 +146,10 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     /* Unlock mutex */
     if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
         merror(MUTEX_ERROR, ARGV0);
-        
+
         return;
     }
-    
+
     return;
 }
 
@@ -223,7 +223,7 @@ static void c_files()
             continue;
         }
 
-        if (OS_MD5_File(tmp_dir, md5sum) != 0) {
+        if (OS_MD5_File(tmp_dir, md5sum, OS_TEXT) != 0) {
             merror("%s: Error accessing file '%s'", ARGV0, tmp_dir);
             continue;
         }
@@ -252,7 +252,7 @@ static void c_files()
 
     closedir(dp);
 
-    if (OS_MD5_File(SHAREDCFG_FILE, md5sum) != 0) {
+    if (OS_MD5_File(SHAREDCFG_FILE, md5sum, OS_TEXT) != 0) {
         merror("%s: Error accessing file '%s'", ARGV0, SHAREDCFG_FILE);
         f_sum[0]->sum[0] = '\0';
     }

@@ -99,6 +99,13 @@
   <fts>name, user, location</fts>
 </decoder>
 
+<decoder name="ssh-kbd">
+  <parent>sshd</parent>
+  <prematch offset="after_parent">^Postponed keyboard-interactive|^Failed keyboard-interactive</prematch>
+  <regex offset="after_prematch"> user (\S+) from (\S+) port (\d+) </regex>
+  <order>user, srcip, srcport</order>
+</decoder>
+
 <decoder name="ssh-invfailed">
   <parent>sshd</parent>
   <prematch>^Failed \S+ for invalid user|^Failed \S+ for illegal user</prematch>
@@ -117,6 +124,13 @@
   <parent>sshd</parent>
   <prematch>^error: PAM: Authentication \w+ </prematch>
   <regex offset="after_prematch">^for (\S+) from (\S+)$</regex>
+  <order>user, srcip</order>
+</decoder>
+
+<decoder name="ssh-pam-error">
+  <parent>sshd</parent>
+  <prematch>^error: PAM: </prematch>
+  <regex offset="after_prematch">user (\S+) from (\S+)</regex>
   <order>user, srcip</order>
 </decoder>
 
@@ -191,3 +205,26 @@
   <regex>user "uid=(\S+),ou=\w+,dc=\w+,dc=\w+"</regex>
   <order>user</order>
 </decoder>
+
+<decoder name="sshd-negotiate">
+  <parent>sshd</parent>
+  <prematch offset="after_parent">fatal: Unable to negotiate with </prematch>
+  <regex offset="after_prematch">^(\S+) port (\d+): |^(\S+): </regex>
+  <order>srcip, srcport</order>
+</decoder>
+
+<decoder name="sshd-pam-host-user">
+  <parent>sshd</parent>
+  <prematch>rhost=\S+\s+user=\S+</prematch>
+  <regex>rhost=(\S+)\s+user=(\S+)</regex>
+  <order>srcip, user</order>
+</decoder>
+
+<!--
+<decoder name="sshd-invalid">
+  <parent>sshd</parent>
+  <prematch>^input_user_auth_request: </prematch>
+  <regex offset="after_prematch"> user (\S+)</regex>
+  <order>user</order>
+</decoder>
+-->

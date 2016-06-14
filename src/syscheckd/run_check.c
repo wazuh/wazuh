@@ -126,6 +126,8 @@ void start_daemon()
         syscheck.time = 604800;
         rootcheck.time = 604800;
     }
+    /* Printing syscheck propierties */
+    merror("%s: INFO: Syscheck scan frequency: %d seconds", ARGV0, syscheck.time);
 
     /* Will create the db to store syscheck data */
     if (syscheck.scan_on_start) {
@@ -134,7 +136,6 @@ void start_daemon()
     } else {
         prev_time_rk = time(0);
     }
-
     /* Before entering in daemon mode itself */
     prev_time_sk = time(0);
     sleep(syscheck.tsleep * 10);
@@ -370,7 +371,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
     {
         if (sha1sum || md5sum) {
             /* Generate checksums of the file */
-            if (OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum) < 0) {
+            if (OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, OS_BINARY) < 0) {
                 strncpy(sf_sum, "xxx", 4);
                 strncpy(mf_sum, "xxx", 4);
             }
@@ -384,7 +385,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
             if (S_ISREG(statbuf_lnk.st_mode)) {
                 if (sha1sum || md5sum) {
                     /* Generate checksums of the file */
-                    if (OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum) < 0) {
+                    if (OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, OS_BINARY) < 0) {
                         strncpy(sf_sum, "xxx", 4);
                         strncpy(mf_sum, "xxx", 4);
                     }

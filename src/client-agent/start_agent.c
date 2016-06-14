@@ -37,7 +37,6 @@ int connect_server(int initial_id)
                     agt->rip[rc],
                     agt->port);
         }
-
     }
 
     while (agt->rip[rc]) {
@@ -81,13 +80,14 @@ int connect_server(int initial_id)
                 agt->rip[rc],
                 agt->port);
 
-        /* IPv6 address */
-        if (strchr(tmp_str, ':') != NULL) {
-            verbose("%s: INFO: Using IPv6 (%s).", ARGV0, tmp_str);
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 1);
+        if (agt->protocol == UDP_PROTO) {
+            agt->sock = OS_ConnectUDP(agt->port, tmp_str, strchr(tmp_str, ':') != NULL);
         } else {
-            verbose("%s: INFO: Using IPv4 (%s).", ARGV0, tmp_str);
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 0);
+            if (agt->sock >= 0) {
+                close(agt->sock);
+            }
+
+            agt->sock = OS_ConnectTCP(agt->port, tmp_str, strchr(tmp_str, ':') != NULL);
         }
 
         if (agt->sock < 0) {
@@ -113,10 +113,12 @@ int connect_server(int initial_id)
 #endif
 
 #ifdef WIN32
-            int bmode = 1;
+            if (agt->protocol == UDP_PROTO) {
+                int bmode = 1;
 
-            /* Set socket to non-blocking */
-            ioctlsocket(agt->sock, FIONBIO, (u_long FAR *) &bmode);
+                /* Set socket to non-blocking */
+                ioctlsocket(agt->sock, FIONBIO, (u_long FAR *) &bmode);
+            }
 #endif
 
             agt->rip_id = rc;
@@ -131,6 +133,7 @@ int connect_server(int initial_id)
 void start_agent(int is_startup)
 {
     ssize_t recv_b = 0;
+    netsize_t length;
     unsigned int attempts = 0, g_attempts = 1;
 
     char *tmp_msg;
@@ -155,8 +158,22 @@ void start_agent(int is_startup)
         attempts = 0;
 
         /* Read until our reply comes back */
-        while (((recv_b = recv(agt->sock, buffer, OS_MAXSTR,
-                               MSG_DONTWAIT)) >= 0) || (attempts <= 5)) {
+        while (attempts <= 5) {
+            if (agt->protocol == TCP_PROTO) {
+                recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
+
+                if (recv_b > 0) {
+                    recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
+
+                    if (recv_b != length) {
+                        merror(RECV_ERROR, ARGV0);
+                        recv_b = 0;
+                    }
+                }
+            } else {
+                recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
+            }
+
             if (recv_b <= 0) {
                 /* Sleep five seconds before trying to get the reply from
                  * the server again
@@ -166,6 +183,12 @@ void start_agent(int is_startup)
 
                 /* Send message again (after three attempts) */
                 if (attempts >= 3) {
+                    if (agt->protocol == TCP_PROTO) {
+                        if (!connect_server(agt->rip_id)) {
+                            continue;
+                        }
+                    }
+
                     send_msg(0, msg);
                 }
 
@@ -208,7 +231,7 @@ void start_agent(int is_startup)
         /* If we have more than one server, try all */
         if (agt->rip[1]) {
             int curr_rip = agt->rip_id;
-            merror("%s: INFO: Trying next server ip in the line: '%s'.", ARGV0,
+            verbose("%s: INFO: Trying next server ip in the line: '%s'.", ARGV0,
                    agt->rip[agt->rip_id + 1] != NULL ? agt->rip[agt->rip_id + 1] : agt->rip[0]);
             connect_server(agt->rip_id + 1);
 
@@ -229,4 +252,3 @@ void start_agent(int is_startup)
 
     return;
 }
-

@@ -21,6 +21,7 @@ typedef struct _MailConfig {
     int subject_full;
     int priority;
     char **to;
+    char *reply_to;
     char *from;
     char *idsname;
     char *smtpserver;

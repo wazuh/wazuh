@@ -50,7 +50,6 @@ before_script:
 - if [[ "${OSSEC_TYPE}" == "test" ]]; then ( sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ vivid main " && sudo apt-get update && sudo apt-get install check valgrind ); fi
 
 
-
 script:
 - COMMAND="V=1 TARGET=${OSSEC_TYPE}"
   && if ! [[ "${DB}" = "none" ]]; then COMMAND="${COMMAND} DATABASE=${DB}"; fi
@@ -76,3 +75,4 @@ deploy:
     all_branches: true
     repo: ossec/ossec-hids
     condition: $OSSEC_TYPE = winagent
+

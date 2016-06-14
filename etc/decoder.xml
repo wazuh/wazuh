@@ -729,10 +729,10 @@ Jan  8 19:32:41 tp.lan dropbear[15165]: Pubkey auth succeeded for 'root' with ke
 
 <!-- Vpopmail decoder. (by Ceg Ryan <cegryan ( at ) gmail.com>)
   - Examples:
-  - vpopmail[32485]: vchkpw-pop3: password fail abc@xxx.com:x.x.x.x
-  - vpopmail[32485]: vchkpw-2110 password fail abc@xxx.com:x.x.x.x
+  - vpopmail[32485]: vchkpw-pop3: password fail abc@example.com:x.x.x.x
+  - vpopmail[32485]: vchkpw-2110 password fail abc@example.com:x.x.x.x
   -                  vchkpw-pop3: password fail (pass: 'test') user@my_domain:1.2.3.4
-  - vpopmail[2100]: vchkpw-pop3: vpopmail user not found abc@xxx.com:x.x.x.x
+  - vpopmail[2100]: vchkpw-pop3: vpopmail user not found abc@example.com:x.x.x.x
   - vpopmail[4162]: vchkpw-pop3: vpopmail user not found support@:69.3.64.3
   -->
 <decoder name="vpopmail">
@@ -1024,7 +1024,7 @@ Jan  8 19:32:41 tp.lan dropbear[15165]: Pubkey auth succeeded for 'root' with ke
 <!-- OpenBSD smtpd decoders -->
 
 <decoder name="smtpd">
-  <program_name>smtpd</program_name>
+  <program_name>^smtpd</program_name>
 </decoder>
 
 <decoder name="smtpd-client">

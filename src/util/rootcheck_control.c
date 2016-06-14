@@ -9,6 +9,7 @@
 
 #include "addagent/manage_agents.h"
 #include "sec.h"
+#include <external/cJSON/cJSON.h>
 
 #undef ARGV0
 #define ARGV0 "rootcheck_control"
@@ -32,6 +33,7 @@ static void helpmsg()
     printf("\t-q          Used with -i, prints all the outstanding issues.\n");
     printf("\t-L          Used with -i, prints the last scan.\n");
     printf("\t-s          Changes the output to CSV (comma delimited).\n");
+    printf("\t-j          Changes the output to JSON.\n");
     exit(1);
 }
 
@@ -47,9 +49,10 @@ int main(int argc, char **argv)
     int c = 0, info_agent = 0, update_rootcheck = 0,
         list_agents = 0, show_last = 0,
         resolved_only = 0;
-    int active_only = 0, csv_output = 0;
+    int active_only = 0, csv_output = 0, json_output = 0;
 
     char shost[512];
+    cJSON *json_root = NULL;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -59,7 +62,7 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    while ((c = getopt(argc, argv, "VhqrDdLlcsu:i:")) != -1) {
+    while ((c = getopt(argc, argv, "VhqrDdLlcsju:i:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -75,6 +78,9 @@ int main(int argc, char **argv)
                 break;
             case 's':
                 csv_output = 1;
+                break;
+            case 'j':
+                json_output = 1;
                 break;
             case 'c':
                 active_only++;
@@ -110,6 +116,9 @@ int main(int argc, char **argv)
         }
 
     }
+
+    if (json_output)
+        json_root = cJSON_CreateObject();
 
     /* Get the group name */
     gid = Privsep_GetGroup(group);
@@ -160,6 +169,8 @@ int main(int argc, char **argv)
 
     /* Update rootcheck database */
     if (update_rootcheck) {
+        char json_buffer[1024];
+
         /* Clean all agents (and server) db */
         if (strcmp(agent_id, "all") == 0) {
             DIR *sys_dir;
@@ -167,7 +178,14 @@ int main(int argc, char **argv)
 
             sys_dir = opendir(ROOTCHECK_DIR);
             if (!sys_dir) {
-                ErrorExit("%s: Unable to open: '%s'", ARGV0, ROOTCHECK_DIR);
+                if (json_output) {
+                    cJSON_AddNumberToObject(json_root, "error", 11);
+                    snprintf(json_buffer, 1023, "%s: Unable to open: '%s'", ARGV0, ROOTCHECK_DIR);
+                    cJSON_AddStringToObject(json_root, "message", json_buffer);
+                    printf("%s", cJSON_PrintUnformatted(json_root));
+                    exit(1);
+                } else
+                    ErrorExit("%s: Unable to open: '%s'", ARGV0, ROOTCHECK_DIR);
             }
 
             while ((entry = readdir(sys_dir)) != NULL) {
@@ -193,7 +211,14 @@ int main(int argc, char **argv)
             }
 
             closedir(sys_dir);
-            printf("\n** Policy and auditing database updated.\n\n");
+
+            if (json_output) {
+                cJSON_AddNumberToObject(json_root, "error", 0);
+                cJSON_AddStringToObject(json_root, "data", "Policy and auditing database updated");
+                printf("%s", cJSON_PrintUnformatted(json_root));
+            } else
+                printf("\n** Policy and auditing database updated.\n\n");
+
             exit(0);
         }
 
@@ -208,7 +233,14 @@ int main(int argc, char **argv)
                 fclose(fp);
             }
             unlink(final_dir);
-            printf("\n** Policy and auditing database updated.\n\n");
+
+            if (json_output) {
+                cJSON_AddNumberToObject(json_root, "error", 0);
+                cJSON_AddStringToObject(json_root, "data", "Policy and auditing database updated");
+                printf("%s", cJSON_PrintUnformatted(json_root));
+            } else
+                printf("\n** Policy and auditing database updated.\n\n");
+
             exit(0);
         }
 
@@ -221,15 +253,29 @@ int main(int argc, char **argv)
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {
-                printf("\n** Invalid agent id '%s'.\n", agent_id);
-                helpmsg();
+                if (json_output) {
+                    cJSON_AddNumberToObject(json_root, "error", 12);
+                    snprintf(json_buffer, 1023, "Invalid agent id '%s'.", agent_id);
+                    cJSON_AddStringToObject(json_root, "message", json_buffer);
+                    printf("%s", cJSON_PrintUnformatted(json_root));
+                    exit(1);
+                } else {
+                    printf("\n** Invalid agent id '%s'.\n", agent_id);
+                    helpmsg();
+                }
             }
 
             /* Delete syscheck */
             delete_rootcheck(keys.keyentries[i]->name,
                              keys.keyentries[i]->ip->ip, 0);
 
-            printf("\n** Policy and auditing database updated.\n\n");
+            if (json_output) {
+                 cJSON_AddNumberToObject(json_root, "error", 0);
+                 cJSON_AddStringToObject(json_root, "data", "Policy and auditing database updated");
+                 printf("%s", cJSON_PrintUnformatted(json_root));
+            } else
+                printf("\n** Policy and auditing database updated.\n\n");
+
             exit(0);
         }
     }
@@ -240,22 +286,41 @@ int main(int argc, char **argv)
         char final_ip[128 + 1];
         char final_mask[128 + 1];
         keystore keys;
+        cJSON *json_events = NULL;
+
+        if (json_output)
+            json_events = cJSON_CreateArray();
 
         if ((strcmp(agent_id, "000") == 0) ||
                 (strcmp(agent_id, "local") == 0)) {
-            if (!csv_output)
+            if (!(csv_output || json_output))
                 printf("\nPolicy and auditing events for local system '%s - %s':\n",
                        shost, "127.0.0.1");
 
-            print_rootcheck(NULL,
-                            NULL, NULL, resolved_only, csv_output, show_last);
+            print_rootcheck(NULL, NULL, NULL, resolved_only, csv_output,
+                            json_events, show_last);
+
+            if (json_output) {
+                cJSON_AddNumberToObject(json_root, "error", 0);
+                cJSON_AddItemToObject(json_root, "data", json_events);
+                printf("%s", cJSON_PrintUnformatted(json_root));
+            }
         } else {
             OS_ReadKeys(&keys);
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {
-                printf("\n** Invalid agent id '%s'.\n", agent_id);
-                helpmsg();
+                if (json_output) {
+                    char json_buffer[1024];
+                    snprintf(json_buffer, 1023, "Invalid agent id '%s'", agent_id);
+                    cJSON_AddNumberToObject(json_root, "error", 13);
+                    cJSON_AddStringToObject(json_root, "message", json_buffer);
+                    printf("%s", cJSON_PrintUnformatted(json_root));
+                    exit(1);
+                } else {
+                    printf("\n** Invalid agent id '%s'.\n", agent_id);
+                    helpmsg();
+                }
             }
 
             final_ip[128] = '\0';
@@ -265,7 +330,7 @@ int main(int argc, char **argv)
             snprintf(final_ip, 128, "%s%s", keys.keyentries[i]->ip->ip,
                      final_mask);
 
-            if (!csv_output)
+            if (!(csv_output || json_output))
                 printf("\nPolicy and auditing events for agent "
                        "'%s (%s) - %s':\n",
                        keys.keyentries[i]->name, keys.keyentries[i]->id,
@@ -273,16 +338,27 @@ int main(int argc, char **argv)
 
             print_rootcheck(keys.keyentries[i]->name,
                             keys.keyentries[i]->ip->ip, NULL,
-                            resolved_only, csv_output, show_last);
+                            resolved_only, csv_output, json_events, show_last);
 
+            if (json_output) {
+                cJSON_AddNumberToObject(json_root, "error", 0);
+                cJSON_AddItemToObject(json_root, "data", json_events);
+                printf("%s", cJSON_PrintUnformatted(json_root));
+            }
         }
 
         exit(0);
     }
 
-    printf("\n** Invalid argument combination.\n");
-    helpmsg();
+    if (json_output) {
+        cJSON_AddNumberToObject(json_root, "error", 10);
+        cJSON_AddStringToObject(json_root, "message", "Invalid argument combination");
+        printf("%s", cJSON_PrintUnformatted(json_root));
+        exit(1);
+    } else {
+        printf("\n** Invalid argument combination.\n");
+        helpmsg();
+    }
 
     return (0);
 }
-

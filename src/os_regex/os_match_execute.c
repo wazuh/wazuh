@@ -112,11 +112,10 @@ int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg)
                              str,
                              str_len,
                              reg->size[i]) == TRUE) {
-            return (1);
+            return(reg->negate == 0?1:0);
         }
         i++;
     }
 
-    return (0);
+    return(reg->negate);
 }
-

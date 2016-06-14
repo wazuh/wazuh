@@ -108,7 +108,7 @@
 <!-- OpenBSD smtpd decoders -->
 
 <decoder name="smtpd">
-  <program_name>smtpd</program_name>
+  <program_name>^smtpd</program_name>
 </decoder>
 
 <decoder name="smtpd-client">
@@ -123,4 +123,17 @@
   <prematch>relay=</prematch>
   <regex>relay=\S+ [(\S+)], </regex>
   <order>srcip</order>
+</decoder>
+
+<decoder name="smtpd-in">
+  <parent>smtpd</parent>
+  <prematch offset="after_parent">^smtp-in: </prematch>
+  <regex offset="after_prematch">^(\S+) </regex>
+  <order>status</order>
+</decoder>
+
+<decoder name="smtpd-in">
+  <parent>smtpd</parent>
+  <regex> => (\d+) </regex>
+  <order>action</order>
 </decoder>

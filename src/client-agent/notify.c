@@ -39,7 +39,7 @@ char *getsharedfiles()
     char *ret;
     os_md5 md5sum;
 
-    if (OS_MD5_File(SHAREDCFG_FILE, md5sum) != 0) {
+    if (OS_MD5_File(SHAREDCFG_FILE, md5sum, OS_TEXT) != 0) {
         md5sum[0] = 'x';
         md5sum[1] = '\0';
     }
@@ -120,7 +120,7 @@ void run_notify()
 
     /* Create message */
     if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
-            (OS_MD5_File(AGENTCONFIGINT, md5sum) == 0)) {
+            (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
         snprintf(tmp_msg, OS_SIZE_1024, "#!-%s / %s\n%s\n%s",
                  uname, md5sum, shared_files, keep_alive_random);
     } else {

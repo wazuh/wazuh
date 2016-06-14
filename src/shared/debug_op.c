@@ -195,6 +195,11 @@ void nowDebug()
     dbg_flag++;
 }
 
+int isDebug(void)
+{
+    return dbg_flag;
+}
+
 int isChroot()
 {
     return (chroot_flag);

@@ -48,6 +48,10 @@
 #define CHDIR_ERROR   "%s(1133): ERROR: Unable to chdir to directory '%s' due to [(%d)-(%s)]."
 #define LINK_ERROR    "%s(1134): ERROR: Unable to link from '%s' to '%s' due to [(%d)-(%s)]."
 #define CHOWN_ERROR   "%s(1135): ERROR: Could not chown object '%s' due to [(%d)-(%s)]."
+#define CHOWN_ERROR   "%s(1135): ERROR: Could not chown object '%s' due to [(%d)-(%s)]."
+#define EPOLL_ERROR   "%s(1136): ERROR: Could not handle epoll descriptor."
+#define LOST_ERROR   "%s(1137): ERROR: Lost connection with manager."
+#define KQUEUE_ERROR   "%s(1138): ERROR: Could not handle kqueue descriptor."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "%s(1201): ERROR: No remote connection configured."
@@ -87,6 +91,9 @@
 #define NO_CONFIG       "%s(1239): ERROR: Configuration file not found: '%s'."
 #define INVALID_TIME    "%s(1240): ERROR: Invalid time format: '%s'."
 #define INVALID_DAY     "%s(1241): ERROR: Invalid day format: '%s'."
+#define ACCEPT_ERROR    "%s(1242): ERROR: Couldn't accept TCP connections."
+#define RECV_ERROR      "%s(1243): ERROR: Couldn't receive message from peer."
+#define DUP_SECURE      "%s(1244): ERROR: Can't add more than one secure connection."
 
 #define MAILQ_ERROR     "%s(1221): ERROR: No Mail queue at %s"
 #define IMSG_ERROR      "%s(1222): ERROR: Invalid msg: %s"
@@ -127,6 +134,7 @@
 
 /* remoted */
 #define NO_REM_CONN     "%s(1750): ERROR: No remote connection configured. Exiting."
+#define NO_CLIENT_KEYS  "%s(1751): ERROR: File client.keys not found or empty."
 
 /* 1760 - 1769 -- reserved for maild */
 
@@ -177,7 +185,7 @@
 #define ENCSIZE_ERROR   "%s(1405): ERROR: Message size not valid: '%s'."
 #define ENCSUM_ERROR    "%s(1406): ERROR: Checksum mismatch on message from '%s'."
 #define ENCTIME_ERROR   "%s(1407): ERROR: Duplicated counter for '%s'."
-#define ENC_IP_ERROR    "%s(1408): ERROR: Invalid ID for the source ip: '%s'."
+#define ENC_IP_ERROR    "%s(1408): ERROR: Invalid ID %s for the source ip: '%s'."
 #define ENCFILE_CHANGED "%s(1409): INFO: Authentication file changed. Updating."
 #define ENC_READ        "%s(1410): INFO: Reading authentication keys file."
 
@@ -238,6 +246,9 @@
 /* Syslog output */
 #define XML_INV_CSYSLOG "%s(5301): ERROR: Invalid client-syslog configuration."
 
+/* Integrator daemon */
+#define XML_INV_INTEGRATOR "%s(5302): ERROR: Invalid integratord configuration."
+
 /* Agentless */
 #define XML_INV_AGENTLESS   "%s(7101): ERROR: Invalid agentless configuration."
 #define XML_INV_MISSFREQ    "%s(7102): ERROR: Frequency not set for the periodic option."
@@ -284,4 +295,3 @@
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
 
 #endif /* _ERROR_MESSAGES__H */
-

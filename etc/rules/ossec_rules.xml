@@ -11,6 +11,9 @@
   -  Foundation.
   -
   -  License details: http://www.ossec.net/en/licensing.html
+  -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -->
 
 
@@ -128,6 +131,13 @@
     <group>rootcheck</group>
   </rule>
 
+  <rule id="520" level="3">
+    <if_sid>500</if_sid>
+    <match>Duplicated IP</match>
+    <description>Trying to add an agent with duplicated IP.</description>
+    <group>pci_dss_10.6.1,</group>
+  </rule>
+
   <!-- Process monitoring rules -->
   <rule id="530" level="0">
     <if_sid>500</if_sid>
@@ -138,7 +148,7 @@
 
   <rule id="531" level="7" ignore="7200">
     <if_sid>530</if_sid>
-    <match>ossec: output: 'df -h': /dev/</match>
+    <match>ossec: output: 'df -P': /dev/</match>
     <regex>100%</regex>
     <description>Partition usage reached 100% (disk space monitor).</description> 
     <group>low_diskspace,pci_dss_10.6.1,</group>

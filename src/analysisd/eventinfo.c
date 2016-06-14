@@ -278,6 +278,17 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
                 }
             }
 
+            /* Check for different from same srcgeoip */
+            if (rule->context_opts & DIFFERENT_SRCGEOIP) {
+
+                if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
+                    continue;
+                }
+
+                if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                    continue;
+                }
+            }
         }
 
         /* Check if the number of matches worked */
@@ -316,8 +327,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
     EventNode *eventnode_pt;
     Eventinfo *lf;
     Eventinfo *first_lf;
-
-    merror("XXXX : remove me!");
 
     /* Last events */
     eventnode_pt = OS_GetLastEvent();
@@ -403,6 +412,17 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
             }
         }
 
+        /* Check for different from same srcgeoip */
+        if (rule->context_opts & DIFFERENT_SRCGEOIP) {
+
+            if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
+                continue;
+            }
+
+            if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                continue;
+            }
+        }
 
         /* Check if the number of matches worked */
         if (rule->__frequency < rule->frequency) {
@@ -439,7 +459,9 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->location = NULL;
 
     lf->srcip = NULL;
+    lf->srcgeoip = NULL;
     lf->dstip = NULL;
+    lf->dstgeoip = NULL;
     lf->srcport = NULL;
     lf->dstport = NULL;
     lf->protocol = NULL;
@@ -500,9 +522,21 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->srcip) {
         free(lf->srcip);
     }
+
+    if(lf->srcgeoip) {
+        free(lf->srcgeoip);
+        lf->srcgeoip = NULL;
+    }
+
     if (lf->dstip) {
         free(lf->dstip);
     }
+
+    if(lf->dstgeoip) {
+        free(lf->dstgeoip);
+        lf->dstgeoip = NULL;
+    }
+
     if (lf->srcport) {
         free(lf->srcport);
     }
@@ -539,6 +573,15 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->systemname) {
         free(lf->systemname);
+    }
+
+    if (lf->fields) {
+        int i;
+        for (i = 0; i < Config.decoder_order_size; i++)
+            if (lf->fields[i])
+                free(lf->fields[i]);
+
+        free(lf->fields);
     }
 
     if (lf->filename) {
@@ -597,4 +640,3 @@ void Free_Eventinfo(Eventinfo *lf)
 
     return;
 }
-

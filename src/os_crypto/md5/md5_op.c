@@ -16,9 +16,9 @@
 
 #include "md5_op.h"
 #include "md5.h"
+#include "headers/defs.h"
 
-
-int OS_MD5_File(const char *fname, os_md5 output)
+int OS_MD5_File(const char *fname, os_md5 output, int mode)
 {
     FILE *fp;
     MD5_CTX ctx;
@@ -28,8 +28,8 @@ int OS_MD5_File(const char *fname, os_md5 output)
 
     memset(output, 0, 33);
     buf[1024] = '\0';
-    
-    fp = fopen(fname, "r");
+
+    fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return (-1);
     }
@@ -71,4 +71,3 @@ int OS_MD5_Str(const char *str, os_md5 output)
 
     return (0);
 }
-

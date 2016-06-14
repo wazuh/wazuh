@@ -10,6 +10,9 @@
   -  Foundation.
   -
   -  License details: http://www.ossec.net/en/licensing.html
+  -
+  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -
   -->
   
 
@@ -352,6 +355,51 @@
     <if_sid>5700</if_sid>
     <match>^Bad packet length</match>
     <description>ssh bad packet length</description>
+  </rule>
+
+  <rule id="5750" level="0">
+    <decoded_as>sshd</decoded_as>
+    <if_sid>5700</if_sid>
+    <match>Unable to negotiate with |Unable to negotiate a key</match>
+    <description>sshd could not negotiate with client.</description>
+  </rule>
+
+  <rule id="5751" level="1">
+    <decoded_as>sshd</decoded_as>
+    <if_sid>5700</if_sid>
+    <match>no hostkey alg [preauth]</match>
+    <description>No hostkey alg.</description>
+  </rule>
+
+  <rule id="5752" level="2">
+    <if_sid>5750</if_sid>
+    <match>no matching key exchange method found.|Unable to negotiate a key exchange method</match>
+    <description>Client did not offer an acceptable key exchange method.</description>
+  </rule>
+
+  <rule id="5753" level="2">
+    <if_sid>5750</if_sid>
+    <match>no matching cipher found.</match>
+    <description>sshd could not negotiate with client, no matching cipher.</description>
+  </rule>
+
+  <rule id="5754" level="1">
+    <if_sid>5700</if_sid>
+    <match>Failed to create session: </match>
+    <description>sshd failed to create a session.</description>
+  </rule>
+
+  <rule id="5755" level="2">
+    <if_sid>5700</if_sid>
+    <match>bad ownership or modes for file</match>
+    <description>Authentication refused due to owner/permissions of authorized_keys.</description>
+    <group>authentication_failed,</group>
+  </rule>
+
+  <rule id="5756" level="0">
+    <if_sid>5700</if_sid>
+    <match> failed, subsystem not found$</match>
+    <description>sshd subsystem request failed.</description>
   </rule>
 
 </group> <!-- SYSLOG, SSHD -->

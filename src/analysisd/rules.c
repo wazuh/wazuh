@@ -67,8 +67,10 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_check_if_ignored = "check_if_ignored";
 
     const char *xml_srcip = "srcip";
+    const char *xml_srcgeoip = "srcgeoip";
     const char *xml_srcport = "srcport";
     const char *xml_dstip = "dstip";
+    const char *xml_dstgeoip = "dstgeoip";
     const char *xml_dstport = "dstport";
     const char *xml_user = "user";
     const char *xml_url = "url";
@@ -79,6 +81,8 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_status = "status";
     const char *xml_action = "action";
     const char *xml_compiled = "compiled_rule";
+    const char *xml_field = "field";
+    const char *xml_name = "name";
 
     const char *xml_list = "list";
     const char *xml_list_lookup = "lookup";
@@ -109,6 +113,8 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_dodiff = "check_diff";
 
     const char *xml_different_url = "different_url";
+    const char *xml_different_srcip = "different_srcip";
+    const char *xml_different_srcgeoip = "different_srcgeoip";
 
     const char *xml_notsame_source_ip = "not_same_source_ip";
     const char *xml_notsame_user = "not_same_user";
@@ -303,6 +309,7 @@ int Rules_OP_ReadRules(const char *rulefile)
             /* Rule elements block */
             {
                 int k = 0;
+                int ifield = 0;
                 int info_type = 0;
                 int count_info_detail = 0;
                 RuleInfoDetail *last_info_detail = NULL;
@@ -315,6 +322,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                 char *id = NULL;
                 char *srcport = NULL;
                 char *dstport = NULL;
+                char *srcgeoip = NULL;
+                char *dstgeoip = NULL;
+
                 char *status = NULL;
                 char *hostname = NULL;
                 char *extra_data = NULL;
@@ -508,6 +518,20 @@ int Rules_OP_ReadRules(const char *rulefile)
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
+                    } else if(strcasecmp(rule_opt[k]->element,xml_srcgeoip)==0) {
+                        srcgeoip =
+                            loadmemory(srcgeoip,
+                                    rule_opt[k]->content);
+
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
+                    } else if(strcasecmp(rule_opt[k]->element,xml_dstgeoip)==0) {
+                        dstgeoip =
+                            loadmemory(dstgeoip,
+                                    rule_opt[k]->content);
+
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     } else if (strcasecmp(rule_opt[k]->element, xml_id) == 0) {
                         id =
                             loadmemory(id,
@@ -560,11 +584,35 @@ int Rules_OP_ReadRules(const char *rulefile)
                         config_ruleinfo->action =
                             loadmemory(config_ruleinfo->action,
                                        rule_opt[k]->content);
+                    } else if (strcasecmp(rule_opt[k]->element, xml_field) == 0) {
+                        if (rule_opt[k]->attributes[0]) {
+                            os_calloc(1, sizeof(FieldInfo), config_ruleinfo->fields[ifield]);
+
+                            if (strcasecmp(rule_opt[k]->attributes[0], xml_name) == 0) {
+                                config_ruleinfo->fields[ifield]->name = loadmemory(config_ruleinfo->fields[ifield]->name, rule_opt[k]->values[0]);
+                            } else {
+                                merror("%s: Bad attribute '%s' for field.", ARGV0, rule_opt[k]->attributes[0]);
+                                return -1;
+                            }
+                        } else {
+                            merror("%s: No such attribute '%s' for field.", ARGV0, xml_name);
+                            return (-1);
+                        }
+
+                        os_calloc(1, sizeof(OSRegex), config_ruleinfo->fields[ifield]->regex);
+
+                        if (!OSRegex_Compile(rule_opt[k]->content, config_ruleinfo->fields[ifield]->regex, 0)) {
+                            merror(REGEX_COMPILE, ARGV0, rule_opt[k]->content, config_ruleinfo->fields[ifield]->regex->error);
+                            return -1;
+                        }
+
+                        ifield++;
                     } else if (strcasecmp(rule_opt[k]->element, xml_list) == 0) {
                         debug1("-> %s == %s", rule_opt[k]->element, xml_list);
                         if (rule_opt[k]->attributes && rule_opt[k]->values && rule_opt[k]->content) {
                             int list_att_num = 0;
                             int rule_type = 0;
+                            char *rule_dfield = NULL;
                             OSMatch *matcher = NULL;
                             int lookup_type = LR_STRING_MATCH;
                             while (rule_opt[k]->attributes[list_att_num]) {
@@ -613,12 +661,12 @@ int Rules_OP_ReadRules(const char *rulefile)
                                     } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_action) == 0) {
                                         rule_type = RULE_ACTION;
                                     } else {
-                                        merror(INVALID_CONFIG, ARGV0,
-                                               rule_opt[k]->element,
-                                               rule_opt[k]->content);
-                                        merror("%s: List match field=\"%s\" is not valid.",
-                                               ARGV0, rule_opt[k]->values[list_att_num]);
-                                        return (-1);
+                                        rule_type = RULE_DYNAMIC;
+
+                                        // Trim whitespaces
+                                        rule_dfield = rule_opt[k]->values[list_att_num];
+                                        rule_dfield = &rule_dfield[strspn(rule_dfield, " ")];
+                                        rule_dfield[strcspn(rule_dfield, " ")] = '\0';
                                     }
                                 } else if (strcasecmp(rule_opt[k]->attributes[list_att_num], xml_list_cvalue) == 0) {
                                     os_calloc(1, sizeof(OSMatch), matcher);
@@ -633,7 +681,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                                         return (-1);
                                     }
                                 } else {
-                                    merror("%s:List feild=\"%s\" is not valid", ARGV0,
+                                    merror("%s:List field=\"%s\" is not valid", ARGV0,
                                            rule_opt[k]->values[list_att_num]);
                                     merror(INVALID_CONFIG, ARGV0,
                                            rule_opt[k]->element, rule_opt[k]->content);
@@ -642,7 +690,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                                 list_att_num++;
                             }
                             if (rule_type == 0) {
-                                merror("%s:List requires the field=\"\" Attrubute", ARGV0);
+                                merror("%s:List requires the field=\"\" attribute", ARGV0);
                                 merror(INVALID_CONFIG, ARGV0,
                                        rule_opt[k]->element, rule_opt[k]->content);
                                 return (-1);
@@ -652,6 +700,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                             config_ruleinfo->lists = OS_AddListRule(config_ruleinfo->lists,
                                                                     lookup_type,
                                                                     rule_type,
+                                                                    rule_dfield,
                                                                     rule_opt[k]->content,
                                                                     matcher);
                             if (config_ruleinfo->lists == NULL) {
@@ -797,6 +846,18 @@ int Rules_OP_ReadRules(const char *rulefile)
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
+                    } else if(strcmp(rule_opt[k]->element,
+                                   xml_different_srcip) == 0) {
+                        config_ruleinfo->context_opts|= DIFFERENT_SRCIP;
+
+                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
+                    } else if(strcmp(rule_opt[k]->element,
+                                   xml_different_srcgeoip) == 0) {
+                        config_ruleinfo->context_opts|= DIFFERENT_SRCGEOIP;
+
+                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     } else if (strcmp(rule_opt[k]->element, xml_notsame_id) == 0) {
                         config_ruleinfo->context_opts &= NOT_SAME_ID;
                     } else if (strcasecmp(rule_opt[k]->element,
@@ -856,66 +917,101 @@ int Rules_OP_ReadRules(const char *rulefile)
                             OS_ClearXML(&xml);
                             return (-1);
                         }
-                    } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_ignore) == 0) {
-                        if (strstr(rule_opt[k]->content, "user") != NULL) {
-                            config_ruleinfo->ignore |= FTS_DSTUSER;
-                        }
-                        if (strstr(rule_opt[k]->content, "srcip") != NULL) {
-                            config_ruleinfo->ignore |= FTS_SRCIP;
-                        }
-                        if (strstr(rule_opt[k]->content, "dstip") != NULL) {
-                            config_ruleinfo->ignore |= FTS_DSTIP;
-                        }
-                        if (strstr(rule_opt[k]->content, "id") != NULL) {
-                            config_ruleinfo->ignore |= FTS_ID;
-                        }
-                        if (strstr(rule_opt[k]->content, "location") != NULL) {
-                            config_ruleinfo->ignore |= FTS_LOCATION;
-                        }
-                        if (strstr(rule_opt[k]->content, "data") != NULL) {
-                            config_ruleinfo->ignore |= FTS_DATA;
-                        }
-                        if (strstr(rule_opt[k]->content, "name") != NULL) {
-                            config_ruleinfo->ignore |= FTS_NAME;
+                    } else if (strcasecmp(rule_opt[k]->element, xml_ignore) == 0) {
+                        char **norder;
+                        char **s_norder;
+                        int i;
 
+                        norder = OS_StrBreak(',', rule_opt[k]->content, Config.decoder_order_size);
+                        if (norder == NULL) {
+                            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
                         }
-                        if (!config_ruleinfo->ignore) {
-                            merror("%s: Wrong ignore option: '%s'",
-                                   ARGV0,
-                                   rule_opt[k]->content);
-                            return (-1);
-                        }
-                    } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_check_if_ignored) == 0) {
-                        if (strstr(rule_opt[k]->content, "user") != NULL) {
-                            config_ruleinfo->ckignore |= FTS_DSTUSER;
-                        }
-                        if (strstr(rule_opt[k]->content, "srcip") != NULL) {
-                            config_ruleinfo->ckignore |= FTS_SRCIP;
-                        }
-                        if (strstr(rule_opt[k]->content, "dstip") != NULL) {
-                            config_ruleinfo->ckignore |= FTS_DSTIP;
-                        }
-                        if (strstr(rule_opt[k]->content, "id") != NULL) {
-                            config_ruleinfo->ckignore |= FTS_ID;
-                        }
-                        if (strstr(rule_opt[k]->content, "location") != NULL) {
-                            config_ruleinfo->ckignore |= FTS_LOCATION;
-                        }
-                        if (strstr(rule_opt[k]->content, "data") != NULL) {
-                            config_ruleinfo->ckignore |= FTS_DATA;
-                        }
-                        if (strstr(rule_opt[k]->content, "name") != NULL) {
-                            config_ruleinfo->ckignore |= FTS_NAME;
 
+                        s_norder = norder;
+                        os_calloc(Config.decoder_order_size, sizeof(char*), config_ruleinfo->ignore_fields);
+
+                        for (i = 0; *norder; i++) {
+                            char *word = &(*norder)[strspn(*norder, " ")];
+                            word[strcspn(word, " ")] = '\0';
+
+                            if (strlen(word) == 0)
+                                ErrorExit("%s: Wrong ignore option: '%s'", ARGV0, rule_opt[k]->content);
+
+                            if (!strcmp(word, "user")) {
+                                config_ruleinfo->ignore |= FTS_DSTUSER;
+                            } else if (!strcmp(word, "srcip")) {
+                                config_ruleinfo->ignore |= FTS_SRCIP;
+                            } else if (!strcmp(word, "dstip")) {
+                                config_ruleinfo->ignore |= FTS_DSTIP;
+                            } else if (!strcmp(word, "id")) {
+                                config_ruleinfo->ignore |= FTS_ID;
+                            } else if (!strcmp(word, "location")) {
+                                config_ruleinfo->ignore |= FTS_LOCATION;
+                            } else if (!strcmp(word, "data")) {
+                                config_ruleinfo->ignore |= FTS_DATA;
+                            } else if (!strcmp(word, "name")) {
+                                config_ruleinfo->ignore |= FTS_NAME;
+                            } else {
+                                if (i >= Config.decoder_order_size)
+                                    ErrorExit("%s: ERROR: too many dynamic fields for ignore.", ARGV0);
+
+                                config_ruleinfo->ignore |= FTS_DYNAMIC;
+                                config_ruleinfo->ignore_fields[i] = strdup(word);
+                            }
+
+                            free(*norder);
+                            norder++;
                         }
-                        if (!config_ruleinfo->ckignore) {
-                            merror("%s: Wrong check_if_ignored option: '%s'",
-                                   ARGV0,
-                                   rule_opt[k]->content);
-                            return (-1);
+
+                        free(s_norder);
+                    } else if (strcasecmp(rule_opt[k]->element, xml_check_if_ignored) == 0) {
+                        char **norder;
+                        char **s_norder;
+                        int i;
+
+                        norder = OS_StrBreak(',', rule_opt[k]->content, Config.decoder_order_size);
+                        if (norder == NULL) {
+                            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
                         }
+
+                        s_norder = norder;
+                        os_calloc(Config.decoder_order_size, sizeof(char*), config_ruleinfo->ckignore_fields);
+
+                        for (i = 0; *norder; i++) {
+                            char *word = &(*norder)[strspn(*norder, " ")];
+                            word[strcspn(word, " ")] = '\0';
+
+                            if (strlen(word) == 0)
+                                ErrorExit("%s: Wrong check_if_ignored option: '%s'", ARGV0, rule_opt[k]->content);
+
+
+                            if (!strcmp(word, "user")) {
+                                config_ruleinfo->ckignore |= FTS_DSTUSER;
+                            } else if (!strcmp(word, "srcip")) {
+                                config_ruleinfo->ckignore |= FTS_SRCIP;
+                            } else if (!strcmp(word, "dstip")) {
+                                config_ruleinfo->ckignore |= FTS_DSTIP;
+                            } else if (!strcmp(word, "id")) {
+                                config_ruleinfo->ckignore |= FTS_ID;
+                            } else if (!strcmp(word, "location")) {
+                                config_ruleinfo->ckignore |= FTS_LOCATION;
+                            } else if (!strcmp(word, "data")) {
+                                config_ruleinfo->ckignore |= FTS_DATA;
+                            } else if (!strcmp(word, "name")) {
+                                config_ruleinfo->ckignore |= FTS_NAME;
+                            } else {
+                                if (i >= Config.decoder_order_size)
+                                    ErrorExit("%s: ERROR: too many dynamic fields for check_if_ignored.", ARGV0);
+
+                                config_ruleinfo->ckignore |= FTS_DYNAMIC;
+                                config_ruleinfo->ckignore_fields[i] = strdup(word);
+                            }
+
+                            free(*norder);
+                            norder++;
+                        }
+
+                        free(s_norder);
                     } else {
                         merror("%s: Invalid option '%s' for "
                                "rule '%d'.", ARGV0, rule_opt[k]->element,
@@ -923,6 +1019,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                         OS_ClearXML(&xml);
                         return (-1);
                     }
+
                     k++;
                 }
 
@@ -1076,6 +1173,32 @@ int Rules_OP_ReadRules(const char *rulefile)
                     user = NULL;
                 }
 
+                /* Adding in srcgeoip */
+                if(srcgeoip) {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->srcgeoip);
+                    if(!OSMatch_Compile(srcgeoip, config_ruleinfo->srcgeoip, 0)) {
+                        merror(REGEX_COMPILE, ARGV0, srcgeoip,
+                                              config_ruleinfo->srcgeoip->error);
+                        return(-1);
+                    }
+                    free(srcgeoip);
+                    srcgeoip = NULL;
+                }
+
+
+                /* Adding in dstgeoip */
+                if(dstgeoip) {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->dstgeoip);
+                    if(!OSMatch_Compile(dstgeoip, config_ruleinfo->dstgeoip, 0)) {
+                        merror(REGEX_COMPILE, ARGV0, dstgeoip,
+                                              config_ruleinfo->dstgeoip->error);
+                        return(-1);
+                    }
+                    free(dstgeoip);
+                    dstgeoip = NULL;
+                }
+
+
                 /* Add in URL */
                 if (url) {
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->url);
@@ -1117,6 +1240,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                     free(if_matched_regex);
                     if_matched_regex = NULL;
                 }
+
+                OS_ClearNode(rule_opt);
             } /* end of elements block */
 
             /* Assign an active response to the rule */
@@ -1168,6 +1293,10 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                 /* Mark rules that match this id */
                 OS_MarkID(NULL, config_ruleinfo);
+
+                /* Set function pointer */
+                config_ruleinfo->event_search = (void *(*)(void *, void *))
+                    Search_LastEvents;
             }
 
             /* Mark the rules that match if_matched_group */
@@ -1327,6 +1456,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->alert_opts = 0;
     ruleinfo_pt->ignore = 0;
     ruleinfo_pt->ckignore = 0;
+    ruleinfo_pt->ignore_fields = NULL;
+    ruleinfo_pt->ckignore_fields = NULL;
 
     if (noalert) {
         ruleinfo_pt->alert_opts |= NO_ALERT;
@@ -1375,6 +1506,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->hostname = NULL;
     ruleinfo_pt->program_name = NULL;
     ruleinfo_pt->action = NULL;
+    os_calloc(Config.decoder_order_size, sizeof(FieldInfo*), ruleinfo_pt->fields);
 
     /* Zero last matched events */
     ruleinfo_pt->__frequency = 0;
@@ -1761,4 +1893,3 @@ static int doesRuleExist(int sid, RuleNode *r_node)
 
     return (0);
 }
-

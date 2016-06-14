@@ -19,7 +19,7 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
         W_JSON_ParseAgentIP(root, lf);
     }
     // Parse timestamp
-    if(lf->year && lf->mon && lf->day && lf->hour) {
+    if(lf->year && lf->mon[0] && lf->day && lf->hour[0]) {
         W_JSON_ParseTimestamp(root, lf);
     }
     // Parse Location
@@ -171,7 +171,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
 int add_groupPCI(cJSON* rule, char* group, int firstPCI)
 {
     cJSON* pci;
-    char aux[strlen(group)];
+    char *aux;
     // If group begin with pci_dss_ we have a PCI group
     if((startsWith("pci_dss_", group)) == 1) {
         // Once we add pci_dss group and create array for PCI_DSS requirements
@@ -182,9 +182,10 @@ int add_groupPCI(cJSON* rule, char* group, int firstPCI)
             pci = cJSON_GetObjectItem(rule, "PCI_DSS");
         }
         // Prepare string and add it to PCI dss array
-        strncpy(aux, group, strlen(group));
+        aux = strdup(group);
         str_cut(aux, 0, 8);
         cJSON_AddItemToArray(pci, cJSON_CreateString(aux));
+        free(aux);
         return 1;
     }
     return 0;
@@ -193,7 +194,7 @@ int add_groupPCI(cJSON* rule, char* group, int firstPCI)
 int add_groupCIS(cJSON* rule, char* group, int firstCIS)
 {
     cJSON* cis;
-    char aux[strlen(group)];
+    char *aux;
     if((startsWith("cis_", group)) == 1) {
         if(firstCIS == 1) {
             cis = cJSON_CreateArray();
@@ -201,9 +202,10 @@ int add_groupCIS(cJSON* rule, char* group, int firstCIS)
         } else {
             cis = cJSON_GetObjectItem(rule, "CIS");
         }
-        strncpy(aux, group, strlen(group));
+        aux = strdup(group);
         str_cut(aux, 0, 4);
         cJSON_AddItemToArray(cis, cJSON_CreateString(aux));
+        free(aux);
         return 1;
     }
     return 0;
@@ -340,7 +342,7 @@ int str_cut(char* str, int begin, int len)
         len = l - begin;
     if(begin + len > l)
         len = l - begin;
-    memmove(str + begin, str + begin + len, l - len + 1);
+    memmove(str + begin, str + begin + len, l - begin - len + 1);
 
     return len;
 }

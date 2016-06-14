@@ -44,7 +44,7 @@ static void help_agent_auth(void) __attribute__((noreturn));
 static void help_agent_auth()
 {
     print_header();
-    print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-v path] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-v path] [-x path] [-k path] [-P pass]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -59,12 +59,14 @@ static void help_agent_auth()
     print_out("    -v <path>   Full path to CA certificate used to verify the server");
     print_out("    -x <path>   Full path to agent certificate");
     print_out("    -k <path>   Full path to agent key");
+    print_out("    -P <pass>   Authorization password");
     print_out(" ");
     exit(1);
 }
 
 int main(int argc, char **argv)
 {
+    int key_added = 0;
     int c;
     int test_config = 0;
 #ifndef WIN32
@@ -74,6 +76,7 @@ int main(int argc, char **argv)
     int sock = 0, port = DEFAULT_PORT, ret = 0;
     const char *dir = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
+    char *authpass = NULL;
     const char *manager = NULL;
     const char *ipaddress = NULL;
     const char *agentname = NULL;
@@ -81,12 +84,12 @@ int main(int argc, char **argv)
     const char *agent_key = NULL;
     const char *ca_cert = NULL;
     char lhostname[512 + 1];
-    char buf[2048 + 1];
+    char buf[4096 + 1];
     SSL_CTX *ctx;
     SSL *ssl;
     BIO *sbio;
     bio_err = 0;
-    buf[2048] = '\0';
+    buf[4096] = '\0';
 
 #ifdef WIN32
     WSADATA wsaData;
@@ -95,7 +98,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtg:m:p:A:v:x:k:")) != -1) {
+    while ((c = getopt(argc, argv, "Vdhtg:m:p:A:v:x:k:D:P:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -113,11 +116,11 @@ int main(int argc, char **argv)
                 group = optarg;
                 break;
             case 'D':
-                if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
-                }
-                dir = optarg;
-                break;
+            if (!optarg) {
+                ErrorExit("%s: -g needs an argument", ARGV0);
+            }
+            dir = optarg;
+            break;
             case 't':
                 test_config = 1;
                 break;
@@ -159,6 +162,12 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -%c needs an argument", ARGV0, c);
                 }
                 agent_key = optarg;
+                break;
+            case 'P':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+
+                authpass = optarg;
                 break;
             default:
                 help_agent_auth();
@@ -233,6 +242,28 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    /* Checking if there is a custom password file */
+    if (authpass == NULL) {
+        FILE *fp;
+        fp = fopen(AUTHDPASS_PATH, "r");
+        buf[0] = '\0';
+
+        if (fp) {
+            buf[4096] = '\0';
+            char *ret = fgets(buf, 4095, fp);
+
+            if (ret && strlen(buf) > 2) {
+                authpass = buf;
+            }
+
+            fclose(fp);
+            printf("INFO: Using password specified on file: %s\n", AUTHDPASS_PATH);
+        }
+    }
+    if (!authpass) {
+        printf("WARN: No authentication password provided. Insecure mode started.\n");
+    }
+
     /* Connect via TCP */
     sock = OS_ConnectTCP(port, ipaddress, 0);
     if (sock <= 0) {
@@ -268,7 +299,13 @@ int main(int argc, char **argv)
 
     printf("INFO: Using agent name as: %s\n", agentname);
 
-    snprintf(buf, 2048, "OSSEC A:'%s'\n", agentname);
+    if (authpass) {
+        snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s'\n", authpass, agentname);
+    }
+    else {
+        snprintf(buf, 2048, "OSSEC A:'%s'\n", agentname);
+    }
+
     ret = SSL_write(ssl, buf, strlen(buf));
     if (ret < 0) {
         printf("SSL write error (unable to send message.)\n");
@@ -321,11 +358,15 @@ int main(int argc, char **argv)
                         fprintf(fp, "%s\n", key);
                         fclose(fp);
                     }
+                    key_added = 1;
                     printf("INFO: Valid key created. Finished.\n");
                 }
                 break;
             case SSL_ERROR_ZERO_RETURN:
             case SSL_ERROR_SYSCALL:
+                if (key_added == 0) {
+                    printf("ERROR: Unable to create key. Either wrong password or connection not accepted by the manager.\n");
+                }
                 printf("INFO: Connection closed.\n");
                 exit(0);
                 break;
@@ -338,6 +379,9 @@ int main(int argc, char **argv)
     }
 
     /* Shut down the socket */
+    if (key_added == 0) {
+        printf("ERROR: Unable to create key. Either wrong password or connection not accepted by the manager.\n");
+    }
     SSL_CTX_free(ctx);
     close(sock);
 
@@ -345,4 +389,3 @@ int main(int argc, char **argv)
 }
 
 #endif /* LIBOPENSSL_ENABLED */
-
