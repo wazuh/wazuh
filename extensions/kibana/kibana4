@@ -17,10 +17,10 @@
 #configure this with wherever you unpacked kibana:
 KIBANA_BIN=/opt/kibana/bin
 
+NAME=kibana4
 PID_FILE=/var/run/$NAME.pid
 PATH=/bin:/usr/bin:/sbin:/usr/sbin:$KIBANA_BIN
 DAEMON=$KIBANA_BIN/kibana
-NAME=kibana4
 DESC="Kibana4"
 
 if [ `id -u` -ne 0 ]; then
