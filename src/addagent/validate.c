@@ -120,8 +120,10 @@ int OS_RemoveAgent(const char *u_id) {
     if (!fp)
         return 0;
 
-    if (chmod(AUTH_FILE, 0440) < 0)
+    if (chmod(AUTH_FILE, 0440) < 0) {
+        fclose(fp);
         return 0;
+    }
 
     if (fstat(fileno(fp), &fp_stat) < 0) {
         fclose(fp);
@@ -136,11 +138,13 @@ int OS_RemoveAgent(const char *u_id) {
 
     if (fsetpos(fp, &fp_pos) < 0) {
         fclose(fp);
+        free(buffer);
         return 0;
     }
 
     if ((fp_seek = ftell(fp)) < 0) {
         fclose(fp);
+        free(buffer);
         return 0;
     }
 
@@ -794,6 +798,7 @@ void OS_RemoveAgentTimestamp(const char *id)
     }
 
     if (fstat(fileno(fp), &fp_stat) < 0) {
+        fclose(fp);
         return;
     }
 
