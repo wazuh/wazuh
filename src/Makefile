@@ -52,7 +52,7 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-pthread -lrt
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
 else
 ifeq (${uname_S},AIX)
@@ -446,7 +446,7 @@ endif
 install-server-generic: install-common
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/ossec_decoders
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/wazuh_decoders
-	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/db
+	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/var/db
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
@@ -782,14 +782,8 @@ sqlite_c := $(wildcard os_db/*.c)
 sqlite_o := $(sqlite_c:.c=.o)
 
 os_db/%.o: os_db/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-analysisd\" -c $^ -o $@
 
-sqlite.a: ${sqlite_o}
-	${OSSEC_LINK} $@ $^
-	${OSSEC_RANLIB} $@
-	
-OSSEC_LDFLAGS+=-ldl
-	
 #### Config ##########
 
 config_c := $(wildcard config/*.c)
@@ -1112,7 +1106,7 @@ decoders_o := $(decoders_c:.c=.o)
 decoders_test_o := $(decoders_c:.c=-test.o)
 decoders_live_o := $(decoders_c:.c=-live.o)
 
-all_analysisd_o += ${decoders_o} ${decoders_test_o} ${decoders_live_o} 
+all_analysisd_o += ${decoders_o} ${decoders_test_o} ${decoders_live_o}
 all_analysisd_libs += decoders.a decoders-test.a decoders-live.a
 
 
@@ -1139,10 +1133,10 @@ analysisd/compiled_rules/%-test.o: analysisd/compiled_rules/%.c
 analysisd/compiled_rules/%-live.o: analysisd/compiled_rules/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
-decoders-live.a: ${decoders_live_o} ${sqlite_o}
-	${OSSEC_LINK} $@ $^ 
+decoders-live.a: ${decoders_live_o}
+	${OSSEC_LINK} $@ $^
 
-decoders-test.a: ${decoders_test_o} ${sqlite_o}
+decoders-test.a: ${decoders_test_o}
 	${OSSEC_LINK} $@ $^
 
 format_c := ${wildcard analysisd/format/*.c}
@@ -1176,10 +1170,10 @@ analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"ossec-analysisd\" -I./analysisd -c $< -o $@
 
 
-ossec-logtest: ${analysisd_test_o} ${output_o} ${format_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+ossec-logtest: ${analysisd_test_o} ${output_o} ${format_o} ${sqlite_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} -DTESTRULE $^ ${OSSEC_LDFLAGS} -o $@
 
-ossec-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+ossec-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} ${sqlite_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}

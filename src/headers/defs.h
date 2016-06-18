@@ -136,7 +136,7 @@ http://www.ossec.net/main/license/\n"
 #define AGNBACKUP_DIR    "/backup/agents"
 
 /* Database SQLite */
-#define SQLITE_DIR    "/db"
+#define SQLITE_DIR    "/var/db"
 #define SQLITE_DB_NAME    "database.db"
 
 /* Diff queue */
