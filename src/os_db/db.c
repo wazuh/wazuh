@@ -27,10 +27,11 @@ static const char *SCHEMA_SQLITE_TABLE_AGENT = "\
 static const char *SCHEMA_SQLITE_TABLE_FIM_FILE = "\
 	CREATE TABLE IF NOT EXISTS fim_file ( \
 		id INTEGER PRIMARY KEY AUTOINCREMENT, \
+		id_agent INTEGER NOT NULL, \
 		path TEXT NOT NULL \
 	); \
 	\
-	CREATE INDEX IF NOT EXISTS fim_file_path ON fim_file (path);";
+	CREATE INDEX IF NOT EXISTS fim_file_path ON fim_file (id_agent, path);";
 
 static const char *SCHEMA_SQLITE_TABLE_FIM_EVENT = "\
 	CREATE TABLE IF NOT EXISTS fim_event ( \
@@ -70,7 +71,7 @@ void db_open(){
 
 	case SQLITE_CANTOPEN:
 		// Create tables if not exists
-		merror("Creating %s", dir);
+		merror("%s: INFO: Creating %s", ARGV0, dir);
 		if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
 			ErrorExit("%s: ERROR: Can't open SQLite database: %s\n", ARGV0, sqlite3_errmsg(db));
 
