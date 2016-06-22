@@ -19,18 +19,21 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
     if (reg == 1) {
 #ifdef WIN32
         if (syscheck->registry == NULL) {
-            os_calloc(2, sizeof(char *), syscheck->registry);
-            syscheck->registry[pl + 1] = NULL;
-            os_strdup(entry, syscheck->registry[pl]);
+            os_calloc(2, sizeof(registry), syscheck->registry);
+            syscheck->registry[pl + 1].entry = NULL;
+            syscheck->registry[pl].arch = vals;
+            os_strdup(entry, syscheck->registry[pl].entry);
         } else {
-            while (syscheck->registry[pl] != NULL) {
+            while (syscheck->registry[pl].entry != NULL) {
                 pl++;
             }
-            os_realloc(syscheck->registry, (pl + 2) * sizeof(char *),
+            os_realloc(syscheck->registry, (pl + 2) * sizeof(registry),
                        syscheck->registry);
-            syscheck->registry[pl + 1] = NULL;
-            os_strdup(entry, syscheck->registry[pl]);
+            syscheck->registry[pl + 1].entry = NULL;
+            syscheck->registry[pl].arch = vals;
+            os_strdup(entry, syscheck->registry[pl].entry);
         }
+
 #endif
     }
 
@@ -85,8 +88,71 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
 }
 
 #ifdef WIN32
+
+void dump_registry_ignore(syscheck_config *syscheck, char *entry, int arch) {
+    int ign_size = 0;
+
+    if (syscheck->registry_ignore) {
+        int ign_size;
+
+        /* We do not add duplicated entries */
+        for (ign_size = 0; syscheck->registry_ignore[ign_size].entry; ign_size++)
+            if (syscheck->registry_ignore[ign_size].arch == arch &&
+                strcmp(syscheck->registry_ignore[ign_size].entry, entry) == 0)
+                return;
+
+        os_realloc(syscheck->registry_ignore,
+                   sizeof(registry) * (ign_size + 2),
+                   syscheck->registry_ignore);
+
+        syscheck->registry_ignore[ign_size + 1].entry = NULL;
+    } else {
+        ign_size = 0;
+        os_calloc(2, sizeof(registry), syscheck->registry_ignore);
+        syscheck->registry_ignore[0].entry = NULL;
+        syscheck->registry_ignore[1].entry = NULL;
+    }
+
+    os_strdup(entry, syscheck->registry_ignore[ign_size].entry);
+    syscheck->registry_ignore[ign_size].arch = arch;
+}
+
+int dump_registry_ignore_regex(syscheck_config *syscheck, char *regex, int arch) {
+    OSMatch *mt_pt;
+    int ign_size = 0;
+
+    if (!syscheck->registry_ignore_regex) {
+        os_calloc(2, sizeof(registry_regex),
+                  syscheck->registry_ignore_regex);
+        syscheck->registry_ignore_regex[0].regex = NULL;
+        syscheck->registry_ignore_regex[1].regex = NULL;
+    } else {
+        while (syscheck->registry_ignore_regex[ign_size].regex != NULL) {
+            ign_size++;
+        }
+
+        os_realloc(syscheck->registry_ignore_regex,
+                   sizeof(registry_regex) * (ign_size + 2),
+                   syscheck->registry_ignore_regex);
+        syscheck->registry_ignore_regex[ign_size + 1].regex = NULL;
+    }
+
+    os_calloc(1, sizeof(OSMatch),
+              syscheck->registry_ignore_regex[ign_size].regex);
+
+    if (!OSMatch_Compile(regex,
+                         syscheck->registry_ignore_regex[ign_size].regex, 0)) {
+        mt_pt = syscheck->registry_ignore_regex[ign_size].regex;
+        merror(REGEX_COMPILE, __local_name, regex, mt_pt->error);
+        return (0);
+    }
+
+    syscheck->registry_ignore_regex[ign_size].arch = arch;
+    return 1;
+}
+
 /* Read Windows registry configuration */
-int read_reg(syscheck_config *syscheck, char *entries)
+int read_reg(syscheck_config *syscheck, char *entries, int arch)
 {
     int i;
     char **entry;
@@ -123,19 +189,19 @@ int read_reg(syscheck_config *syscheck, char *entries)
 
         /* Add entries - look for the last available */
         i = 0;
-        while (syscheck->registry && syscheck->registry[i]) {
+        while (syscheck->registry && syscheck->registry[i].entry) {
             int str_len_i;
             int str_len_dir;
 
             str_len_dir = strlen(tmp_entry);
-            str_len_i = strlen(syscheck->registry[i]);
+            str_len_i = strlen(syscheck->registry[i].entry);
 
             if (str_len_dir > str_len_i) {
                 str_len_dir = str_len_i;
             }
 
             /* Duplicated entry */
-            if (strcmp(syscheck->registry[i], tmp_entry) == 0) {
+            if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
                 merror(SK_DUP, __local_name, tmp_entry);
                 return (1);
             }
@@ -143,7 +209,7 @@ int read_reg(syscheck_config *syscheck, char *entries)
         }
 
         /* Add new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, 0, 1, NULL);
+        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL);
 
         /* Next entry */
         entry++;
@@ -378,10 +444,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         /* Check for glob */
-	/* The mingw32 builder used by travis.ci can't find glob.h 
-	 * Yet glob must work on actual win32.  
+	/* The mingw32 builder used by travis.ci can't find glob.h
+	 * Yet glob must work on actual win32.
 	 */
-#ifndef __MINGW32__ 
+#ifndef __MINGW32__
         if (strchr(tmp_dir, '*') ||
                 strchr(tmp_dir, '?') ||
                 strchr(tmp_dir, '[')) {
@@ -459,6 +525,13 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_skip_nfs = "skip_nfs";
     const char *xml_nodiff = "nodiff";
 
+#ifdef WIN32
+    const char *xml_arch = "arch";
+    const char *xml_32bit = "32bit";
+    const char *xml_64bit = "64bit";
+    const char *xml_both = "both";
+#endif
+
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
     <directories check_owner="yes" check_group="yes" check_perm="yes"
@@ -498,7 +571,28 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         /* Get Windows registry */
         else if (strcmp(node[i]->element, xml_registry) == 0) {
 #ifdef WIN32
-            if (!read_reg(syscheck, node[i]->content)) {
+            if (node[i]->attributes) {
+                if (strcmp(node[i]->attributes[0], xml_arch) == 0) {
+                    if (strcmp(node[i]->values[0], xml_32bit) == 0) {
+                        if (!read_reg(syscheck, node[i]->content, ARCH_32BIT))
+                            return (OS_INVALID);
+                    } else if (strcmp(node[i]->values[0], xml_64bit) == 0) {
+                        if (!read_reg(syscheck, node[i]->content, ARCH_64BIT))
+                            return (OS_INVALID);
+                    } else if (strcmp(node[i]->values[0], xml_both) == 0) {
+                        if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT) &&
+                            read_reg(syscheck, node[i]->content, ARCH_64BIT)))
+                            return (OS_INVALID);
+                    } else {
+                        merror(XML_INVATTR, __local_name, node[i]->attributes[0], node[i]->content);
+                        return OS_INVALID;
+                    }
+                } else {
+                    merror(XML_INVATTR, __local_name, node[i]->attributes[0], node[i]->content);
+                    return OS_INVALID;
+                }
+
+            } else if (!read_reg(syscheck, node[i]->content, ARCH_32BIT)) {
                 return (OS_INVALID);
             }
 #endif
@@ -643,66 +737,52 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         /* Get registry ignore list */
         else if (strcmp(node[i]->element, xml_registry_ignore) == 0) {
 #ifdef WIN32
-            int ign_size = 0;
+            int sregex = 0;
+            int arch = ARCH_32BIT;
 
             /* Add if regex */
             if (node[i]->attributes && node[i]->values) {
-                if (node[i]->attributes[0] && node[i]->values[0] &&
-                        (strcmp(node[i]->attributes[0], "type") == 0) &&
-                        (strcmp(node[i]->values[0], "sregex") == 0)) {
-                    OSMatch *mt_pt;
+                int j;
 
-                    if (!syscheck->registry_ignore_regex) {
-                        os_calloc(2, sizeof(OSMatch *),
-                                  syscheck->registry_ignore_regex);
-                        syscheck->registry_ignore_regex[0] = NULL;
-                        syscheck->registry_ignore_regex[1] = NULL;
-                    } else {
-                        while (syscheck->registry_ignore_regex[ign_size] != NULL) {
-                            ign_size++;
+                for (j = 0; node[i]->attributes[j]; j++) {
+                    if (strcmp(node[i]->attributes[j], "type") == 0 &&
+                    strcmp(node[i]->values[j], "sregex") == 0) {
+                        sregex = 1;
+                    } else if (strcmp(node[i]->attributes[j], xml_arch) == 0) {
+                        if (strcmp(node[i]->values[j], xml_32bit) == 0)
+                            arch = ARCH_32BIT;
+                        else if  (strcmp(node[i]->values[j], xml_64bit) == 0)
+                            arch = ARCH_64BIT;
+                        else if (strcmp(node[i]->values[j], xml_both) == 0)
+                            arch = ARCH_BOTH;
+                        else {
+                            merror(XML_INVATTR, __local_name, node[i]->attributes[j], node[i]->content);
+                            return OS_INVALID;
                         }
-
-                        os_realloc(syscheck->registry_ignore_regex,
-                                   sizeof(OSMatch *) * (ign_size + 2),
-                                   syscheck->registry_ignore_regex);
-                        syscheck->registry_ignore_regex[ign_size + 1] = NULL;
+                    } else {
+                        merror(XML_INVATTR, __local_name, node[i]->attributes[j], node[i]->content);
+                        return OS_INVALID;
                     }
-
-                    os_calloc(1, sizeof(OSMatch),
-                              syscheck->registry_ignore_regex[ign_size]);
-
-                    if (!OSMatch_Compile(node[i]->content,
-                                         syscheck->registry_ignore_regex[ign_size], 0)) {
-                        mt_pt = (OSMatch *)
-                                syscheck->registry_ignore_regex[ign_size];
-                        merror(REGEX_COMPILE, __local_name, node[i]->content,
-                               mt_pt->error);
-                        return (0);
-                    }
-                } else {
-                    merror(SK_INV_ATTR, __local_name, node[i]->attributes[0]);
-                    return (OS_INVALID);
                 }
             }
-            /* We do not add duplicated entries */
-            else if (!os_IsStrOnArray(node[i]->content,
-                                      syscheck->registry_ignore)) {
-                if (!syscheck->registry_ignore) {
-                    os_calloc(2, sizeof(char *), syscheck->registry_ignore);
-                    syscheck->registry_ignore[0] = NULL;
-                    syscheck->registry_ignore[1] = NULL;
-                } else {
-                    while (syscheck->registry_ignore[ign_size] != NULL) {
-                        ign_size++;
-                    }
 
-                    os_realloc(syscheck->registry_ignore,
-                               sizeof(char *) * (ign_size + 2),
-                               syscheck->registry_ignore);
-                    syscheck->registry_ignore[ign_size + 1] = NULL;
+
+            if (sregex) {
+                if (arch != ARCH_BOTH)
+                    dump_registry_ignore_regex(syscheck, node[i]->content, arch);
+                else {
+                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_32BIT);
+                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_64BIT);
                 }
-                os_strdup(node[i]->content, syscheck->registry_ignore[ign_size]);
+            } else {
+                if (arch != ARCH_BOTH)
+                    dump_registry_ignore(syscheck, node[i]->content, arch);
+                else {
+                    dump_registry_ignore(syscheck, node[i]->content, ARCH_32BIT);
+                    dump_registry_ignore(syscheck, node[i]->content, ARCH_64BIT);
+                }
             }
+
 #endif
         /* Getting file/dir nodiff */
         } else if (strcmp(node[i]->element,xml_nodiff) == 0) {
@@ -856,4 +936,3 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
 
     return buf;
     }
-
