@@ -13,6 +13,7 @@
 
 #ifdef WIN32
 static char *SYSCHECK_EMPTY[] = { NULL };
+static registry REGISTRY_EMPTY[] = { { NULL, 0 } };
 #endif
 
 
@@ -72,13 +73,12 @@ int Read_Syscheck_Config(const char *cfgfile)
         syscheck.dir = SYSCHECK_EMPTY;
     }
     if (!syscheck.registry) {
-        syscheck.registry = SYSCHECK_EMPTY;
+            syscheck.registry = REGISTRY_EMPTY;
     }
-    if ((syscheck.dir[0] == NULL) && (syscheck.registry[0] == NULL)) {
+    if ((syscheck.dir[0] == NULL) && (syscheck.registry[0].entry == NULL)) {
         return (1);
     }
 #endif
 
     return (0);
 }
-
