@@ -13,18 +13,21 @@
 #include "sqlite3.h"
 
 static const char *SQL_INSERT_FIM = "INSERT INTO fim_event (id_agent, id_file, event, date, size, perm, uid, gid, md5, sha1) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-static const char *SQL_INSERT_FILE = "INSERT INTO fim_file (path) VALUES (?);";
-static const char *SQL_FIND_FILE = "SELECT id FROM fim_file WHERE path = ?;";
+static const char *SQL_INSERT_FILE = "INSERT INTO fim_file (id_agent, path) VALUES (?, ?);";
+static const char *SQL_FIND_FILE = "SELECT id FROM fim_file WHERE id_agent = ? AND path = ?;";
 
 /* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
-int db_insert_file(const char *path) {
+int db_insert_file(int id_agent, const char *path) {
     static sqlite3_stmt *stmt = NULL;
     int result;
 
-    if (!(stmt || sqlite3_prepare_v2(db, SQL_INSERT_FILE, -1, &stmt, NULL)))
+    if (!(stmt || sqlite3_prepare_v2(db, SQL_INSERT_FILE, -1, &stmt, NULL) == SQLITE_OK)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
         return -1;
+    }
 
-    sqlite3_bind_text(stmt, 1, path, -1, NULL);
+    sqlite3_bind_int(stmt, 1, id_agent);
+    sqlite3_bind_text(stmt, 2, path, -1, NULL);
     result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
     sqlite3_reset(stmt);
 
@@ -32,20 +35,25 @@ int db_insert_file(const char *path) {
 }
 
 /* Insert file, Returns -1 on error. */
-int db_find_file(const char *path) {
+int db_find_file(int id_agent, const char *path) {
     static sqlite3_stmt *stmt = NULL;
     int result;
 
-    if (!(stmt || sqlite3_prepare_v2(db, SQL_FIND_FILE, -1, &stmt, NULL)))
+    if (!(stmt || sqlite3_prepare_v2(db, SQL_FIND_FILE, -1, &stmt, NULL) == SQLITE_OK)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
         return -1;
+    }
 
-    sqlite3_bind_text(stmt, 1, path, -1, NULL);
+    sqlite3_bind_int(stmt, 1, id_agent);
+    sqlite3_bind_text(stmt, 2, path, -1, NULL);
 
     switch (sqlite3_step(stmt)) {
     case SQLITE_ROW:
         result = sqlite3_column_int(stmt, 0);
+        break;
     case SQLITE_DONE:
         result = 0;
+        break;
     default:
         result = -1;
     }
@@ -60,15 +68,17 @@ int db_insert_fim(int id_agent, const char *f_name, const char *event, const Sys
     int id_file;
     int result;
 
-    if (!(stmt || sqlite3_prepare_v2(db, SQL_INSERT_FIM, -1, &stmt, NULL)))
+    if (!(stmt || sqlite3_prepare_v2(db, SQL_INSERT_FIM, -1, &stmt, NULL) == SQLITE_OK)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
         return -1;
+    }
 
-    switch ((id_file = db_find_file(f_name))) {
+    switch ((id_file = db_find_file(id_agent, f_name))) {
     case -1:
         return -1;
 
     case 0:
-        if ((id_file = db_insert_file(f_name)) < 0)
+        if ((id_file = db_insert_file(id_agent, f_name)) < 0)
             return -1;
     }
 

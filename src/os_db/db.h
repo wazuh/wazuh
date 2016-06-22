@@ -22,10 +22,10 @@ extern sqlite3 *db;
 void db_open();
 
 /* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
-int db_find_file(const char *path);
+int db_find_file(int id_agent, const char *path);
 
 /* Insert file, Returns -1 on error. */
-int db_insert_file(const char *path);
+int db_insert_file(int id_agent, const char *path);
 
 /* Insert FIM entry. Returns -1 on error. */
 int db_insert_fim(int id_agent, const char *f_name, const char *event, const SyscheckSum *sum, long int time);

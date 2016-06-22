@@ -503,7 +503,11 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          lf->data == NULL ? "" : lf->data
                         );
 
-                db_insert_fim(agent_id, f_name, "modified", &newsum, (long int)lf->time);
+                if (db_insert_fim(agent_id, f_name, "modified", &newsum, (long int)lf->time) < 0) {
+                    merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
+                    debug1("%s: DEBUG: Agent: '%d', file: '%s'", ARGV0, agent_id, f_name);
+                }
+
                 break;
 
             case 1:
@@ -512,7 +516,11 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 snprintf(sdb.comment, OS_MAXSTR,
                      "File '%.756s' was re-added.", f_name);
 
-                db_insert_fim(agent_id, f_name, "readded", &newsum, (long int)lf->time);
+                if (db_insert_fim(agent_id, f_name, "readded", &newsum, (long int)lf->time) < 0) {
+                    merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
+                    debug1("%s: DEBUG: Agent: '%d', file: '%s'", ARGV0, agent_id, f_name);
+                }
+
                 break;
             }
 
@@ -525,7 +533,10 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                  "File '%.756s' was deleted. Unable to retrieve "
                  "checksum.", f_name);
 
-            db_insert_fim(agent_id, f_name, "deleted", NULL, (long int)lf->time);
+            if (db_insert_fim(agent_id, f_name, "deleted", NULL, (long int)lf->time) < 0) {
+                merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
+                debug1("%s: DEBUG: Agent: '%d', file: '%s'", ARGV0, agent_id, f_name);
+            }
         }
 
         /* Create a new log message */
@@ -550,8 +561,12 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
     if (DB_IsCompleted(agent_id)) {
 
         /* Insert row in SQLite DB*/
-        if (!DecodeSum(&newsum, c_sum))
-		      db_insert_fim(agent_id, f_name, "added", &newsum, (long int)lf->time);
+        if (!DecodeSum(&newsum, c_sum)) {
+            if (db_insert_fim(agent_id, f_name, "added", &newsum, (long int)lf->time) < 0) {
+                merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
+                debug1("%s: DEBUG: Agent: '%d', file: '%s'", ARGV0, agent_id, f_name);
+            }
+        }
 
 		if(Config.syscheck_alert_new == 1){
 			sdb.syscheck_dec->id = sdb.idn;
