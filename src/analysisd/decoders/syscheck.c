@@ -302,6 +302,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
             return (0);
         }
 
+        debug2("Agent: %d, location: <%s>, file: <%s>, sum: <%s>, saved: <%s>", agent_id, lf->location, f_name, c_sum, saved_sum);
+
         /* If we reached here, the checksum of the file has changed */
         if (saved_sum[-3] == '!') {
             p++;
@@ -513,6 +515,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 db_insert_fim(agent_id, f_name, "readded", &newsum, (long int)lf->time);
                 break;
             }
+
+            break;
 
         case 1:
             /* File deleted */
