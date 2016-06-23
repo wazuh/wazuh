@@ -167,7 +167,6 @@ DWORD WINAPI Reader(LPVOID args) {
 #define EXECVE_ERROR 0xFF
 
 static void* reader(void *args);   // Reading thread's start point
-static void handler(int signum);    // Signal handler
 
 // Work-around for OS X
 
@@ -196,7 +195,6 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
     ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL };
     pthread_t thread;
     struct timespec timeout = { 0, 0 };
-    struct sigaction action = { .sa_handler = NULL };
     int retval = -1;
     int status;
 
@@ -262,12 +260,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             retval = WM_ERROR_TIMEOUT;
 
         default:
-            action.sa_handler = handler;
-            sigaction(SIGCHLD, &action, NULL);
             kill(-pid, SIGTERM);
-            sleep(WM_MAX_WAIT);
-            action.sa_handler = SIG_DFL;
-            sigaction(SIGCHLD, &action, NULL);
             pthread_cancel(thread);
         }
 
@@ -278,16 +271,10 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         // Wait for child process
 
-        switch (waitpid(pid, &status, retval ? 0 : WNOHANG)) {
+        switch (waitpid(pid, &status, 0)) {
         case -1:
             merror("%s: ERROR: waitpid()", ARGV0);
             retval = -1;
-            break;
-
-        case 0:
-            kill(-pid, SIGKILL);
-            waitpid(pid, &status, 0);
-            merror("%s: WARN: Subprocess was killed.", ARGV0);
             break;
 
         default:
@@ -345,9 +332,5 @@ void* reader(void *args) {
     close(tinfo->pipe);
     return NULL;
 }
-
-// Signal handler
-
-static void handler(__attribute__((unused)) int signum) { }
 
 #endif // WIN32
