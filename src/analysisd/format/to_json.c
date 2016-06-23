@@ -89,6 +89,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->full_log) {
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
     }
+    if (lf->agent_id) {
+        cJSON_AddStringToObject(root, "AgentID", lf->agent_id);
+    }
 
     if(lf->filename) {
         file_diff = cJSON_CreateObject();
@@ -334,6 +337,10 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->hostname) {
         W_JSON_ParseHostname(root, lf->hostname);
         W_JSON_ParseAgentIP(root, lf);
+    }
+
+    if (lf->agent_id) {
+        cJSON_AddStringToObject(root, "AgentID", lf->agent_id);
     }
 
     if(lf->location)

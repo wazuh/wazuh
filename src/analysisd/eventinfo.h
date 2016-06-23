@@ -18,6 +18,7 @@ typedef struct _Eventinfo {
     /* Extracted from the event */
     char *log;
     char *full_log;
+    char *agent_id;
     char *location;
     char *hostname;
     char *program_name;
