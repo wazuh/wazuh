@@ -99,25 +99,41 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
         cJSON_AddStringToObject(file_diff, "path", lf->filename);
 
-        if(lf->md5_before && lf->md5_after && strcmp(lf->md5_before, lf->md5_after) != 0) {
-            cJSON_AddStringToObject(file_diff, "md5_before", lf->md5_before);
-            cJSON_AddStringToObject(file_diff, "md5_after", lf->md5_after);
+        if (lf->size_before) {
+            cJSON_AddStringToObject(file_diff, "size_before", lf->size_before);
         }
-        if(lf->sha1_before && lf->sha1_after && strcmp(lf->sha1_before, lf->sha1_after) != 0) {
-            cJSON_AddStringToObject(file_diff, "sha1_before", lf->sha1_before);
-            cJSON_AddStringToObject(file_diff, "sha1_after", lf->sha1_after);
+        if (lf->size_after) {
+            cJSON_AddStringToObject(file_diff, "size_after", lf->size_after);
         }
-        if(lf->owner_before && lf->owner_after && strcmp(lf->owner_before, lf->owner_after) != 0) {
+        if (lf->perm_before) {
+            cJSON_AddNumberToObject(file_diff, "perm_before", lf->perm_before);
+        }
+        if (lf->perm_after) {
+            cJSON_AddNumberToObject(file_diff, "perm_after", lf->perm_after);
+        }
+        if (lf->owner_before) {
             cJSON_AddStringToObject(file_diff, "owner_before", lf->owner_before);
+        }
+        if (lf->owner_after) {
             cJSON_AddStringToObject(file_diff, "owner_after", lf->owner_after);
         }
-        if(lf->gowner_before && lf->gowner_after && strcmp(lf->gowner_before, lf->gowner_after) != 0) {
+        if (lf->gowner_before) {
             cJSON_AddStringToObject(file_diff, "gowner_before", lf->gowner_before);
+        }
+        if (lf->gowner_after) {
             cJSON_AddStringToObject(file_diff, "gowner_after", lf->gowner_after);
         }
-        if(lf->perm_before && lf->perm_after && (lf->perm_before != lf->perm_after)) {
-            cJSON_AddNumberToObject(file_diff, "perm_before", lf->perm_before);
-            cJSON_AddNumberToObject(file_diff, "perm_after", lf->perm_after);
+        if (lf->md5_before) {
+            cJSON_AddStringToObject(file_diff, "md5_before", lf->md5_before);
+        }
+        if (lf->md5_after) {
+            cJSON_AddStringToObject(file_diff, "md5_after", lf->md5_after);
+        }
+        if (lf->sha1_before) {
+            cJSON_AddStringToObject(file_diff, "sha1_before", lf->sha1_before);
+        }
+        if (lf->sha1_after) {
+            cJSON_AddStringToObject(file_diff, "sha1_after", lf->sha1_after);
         }
     }
 
