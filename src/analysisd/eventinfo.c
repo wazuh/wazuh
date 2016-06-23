@@ -454,6 +454,7 @@ void Zero_Eventinfo(Eventinfo *lf)
 {
     lf->log = NULL;
     lf->full_log = NULL;
+    lf->agent_id = NULL;
     lf->hostname = NULL;
     lf->program_name = NULL;
     lf->location = NULL;
@@ -515,6 +516,11 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->full_log) {
         free(lf->full_log);
     }
+
+    if (lf->agent_id) {
+        free(lf->agent_id);
+    }
+
     if (lf->location) {
         free(lf->location);
     }
