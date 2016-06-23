@@ -14,20 +14,23 @@
 static const char *SCHEMA_SQLITE_TABLE_AGENT = "\
 	CREATE TABLE IF NOT EXISTS agent ( \
 		id INTEGER PRIMARY KEY, \
-		name TEXT NOT NULL, \
-		ip TEXT NOT NULL, \
+		name TEXT, \
+		ip TEXT, \
 		key TEXT, \
 		os TEXT, \
 		version TEXT, \
-		date_add NUMERIC \
+		date_add NUMERIC DEFAULT CURRENT_TIMESTAMP, \
+		enabled INTEGER DEFAULT 1 \
 	) WITHOUT ROWID; \
 	\
-	CREATE INDEX IF NOT EXISTS agent_name ON agent (name);";
+	CREATE INDEX IF NOT EXISTS agent_name ON agent (name); \
+	CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip); \
+	INSERT INTO agent (id) VALUES (0);";
 
 static const char *SCHEMA_SQLITE_TABLE_FIM_FILE = "\
 	CREATE TABLE IF NOT EXISTS fim_file ( \
 		id INTEGER PRIMARY KEY AUTOINCREMENT, \
-		id_agent INTEGER NOT NULL, \
+		id_agent INTEGER NOT NULL REFERENCES agent (id), \
 		path TEXT NOT NULL \
 	); \
 	\
@@ -36,7 +39,6 @@ static const char *SCHEMA_SQLITE_TABLE_FIM_FILE = "\
 static const char *SCHEMA_SQLITE_TABLE_FIM_EVENT = "\
 	CREATE TABLE IF NOT EXISTS fim_event ( \
 		id INTEGER PRIMARY KEY AUTOINCREMENT, \
-		id_agent INTEGER NOT NULL REFERENCES agent (id), \
 		id_file INTEGER NOT NULL REFERENCES fim_file (id), \
 		event TEXT NOT NULL CHECK (event in ('added', 'modified', 'readded', 'deleted')), \
 		date NUMERIC, \

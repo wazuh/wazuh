@@ -10,9 +10,8 @@
  */
 
 #include "db.h"
-#include "sqlite3.h"
 
-static const char *SQL_INSERT_FIM = "INSERT INTO fim_event (id_agent, id_file, event, date, size, perm, uid, gid, md5, sha1) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+static const char *SQL_INSERT_FIM = "INSERT INTO fim_event (id_file, event, date, size, perm, uid, gid, md5, sha1) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
 static const char *SQL_INSERT_FILE = "INSERT INTO fim_file (id_agent, path) VALUES (?, ?);";
 static const char *SQL_FIND_FILE = "SELECT id FROM fim_file WHERE id_agent = ? AND path = ?;";
 
@@ -31,7 +30,7 @@ int db_insert_file(int id_agent, const char *path) {
     result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
     sqlite3_reset(stmt);
 
-     return result;
+    return result;
 }
 
 /* Insert file, Returns -1 on error. */
@@ -82,25 +81,24 @@ int db_insert_fim(int id_agent, const char *f_name, const char *event, const Sys
             return -1;
     }
 
-    sqlite3_bind_int(stmt, 1, id_agent);
-    sqlite3_bind_int(stmt, 2, id_file);
-    sqlite3_bind_text(stmt, 3, event, -1, NULL);
-    sqlite3_bind_int(stmt, 4, time);
+    sqlite3_bind_int(stmt, 1, id_file);
+    sqlite3_bind_text(stmt, 2, event, -1, NULL);
+    sqlite3_bind_int(stmt, 3, time);
 
     if (sum) {
-        sqlite3_bind_int(stmt, 5, atoi(sum->size));
-        sqlite3_bind_int(stmt, 6, sum->perm);
-        sqlite3_bind_int(stmt, 7, atoi(sum->uid));
-        sqlite3_bind_int(stmt, 8, atoi(sum->gid));
-        sqlite3_bind_text(stmt, 9, sum->md5, -1, NULL);
-        sqlite3_bind_text(stmt, 10, sum->sha1, -1, NULL);
+        sqlite3_bind_int(stmt, 4, atoi(sum->size));
+        sqlite3_bind_int(stmt, 5, sum->perm);
+        sqlite3_bind_int(stmt, 6, atoi(sum->uid));
+        sqlite3_bind_int(stmt, 7, atoi(sum->gid));
+        sqlite3_bind_text(stmt, 8, sum->md5, -1, NULL);
+        sqlite3_bind_text(stmt, 9, sum->sha1, -1, NULL);
     } else {
+        sqlite3_bind_null(stmt, 4);
         sqlite3_bind_null(stmt, 5);
         sqlite3_bind_null(stmt, 6);
         sqlite3_bind_null(stmt, 7);
         sqlite3_bind_null(stmt, 8);
         sqlite3_bind_null(stmt, 9);
-        sqlite3_bind_null(stmt, 10);
     }
 
     result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;

@@ -503,9 +503,9 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          lf->data == NULL ? "" : lf->data
                         );
 
-                if (db_insert_fim(agent_id, f_name, "modified", &newsum, (long int)lf->time) < 0) {
+                if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, f_name, "modified", &newsum, (long int)lf->time) < 0) {
                     merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
-                    debug1("%s: DEBUG: Agent: '%d', file: '%s'", ARGV0, agent_id, f_name);
+                    debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
                 }
 
                 break;
@@ -516,9 +516,9 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 snprintf(sdb.comment, OS_MAXSTR,
                      "File '%.756s' was re-added.", f_name);
 
-                if (db_insert_fim(agent_id, f_name, "readded", &newsum, (long int)lf->time) < 0) {
+                if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, f_name, "readded", &newsum, (long int)lf->time) < 0) {
                     merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
-                    debug1("%s: DEBUG: Agent: '%d', file: '%s'", ARGV0, agent_id, f_name);
+                    debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
                 }
 
                 break;
@@ -533,9 +533,9 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                  "File '%.756s' was deleted. Unable to retrieve "
                  "checksum.", f_name);
 
-            if (db_insert_fim(agent_id, f_name, "deleted", NULL, (long int)lf->time) < 0) {
+            if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, f_name, "deleted", NULL, (long int)lf->time) < 0) {
                 merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
-                debug1("%s: DEBUG: Agent: '%d', file: '%s'", ARGV0, agent_id, f_name);
+                debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
             }
         }
 
@@ -562,9 +562,9 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
         /* Insert row in SQLite DB*/
         if (!DecodeSum(&newsum, c_sum)) {
-            if (db_insert_fim(agent_id, f_name, "added", &newsum, (long int)lf->time) < 0) {
+            if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, f_name, "added", &newsum, (long int)lf->time) < 0) {
                 merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
-                debug1("%s: DEBUG: Agent: '%d', file: '%s'", ARGV0, agent_id, f_name);
+                debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
             }
         }
 
