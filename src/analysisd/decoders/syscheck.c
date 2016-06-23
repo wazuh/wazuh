@@ -57,6 +57,8 @@ static _sdb sdb;
    or -1 on failure. */
 static int DecodeSum(SyscheckSum *sum, char *c_sum);
 
+static void FillEvent(Eventinfo *lf, const char *f_name, const SyscheckSum *sum);
+
 /* Initialize the necessary information to process the syscheck information */
 void SyscheckInit()
 {
@@ -513,6 +515,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
             case 1:
                 /* If file was re-added, do not compare changes */
                 sdb.syscheck_dec->id = sdb.idn;
+                FillEvent(lf, f_name, &newsum);
                 snprintf(sdb.comment, OS_MAXSTR,
                      "File '%.756s' was re-added.", f_name);
 
@@ -529,6 +532,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
         case 1:
             /* File deleted */
             sdb.syscheck_dec->id = sdb.idd;
+            os_strdup(f_name, lf->filename);
             snprintf(sdb.comment, OS_MAXSTR,
                  "File '%.756s' was deleted. Unable to retrieve "
                  "checksum.", f_name);
@@ -570,6 +574,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
 		if(Config.syscheck_alert_new == 1){
 			sdb.syscheck_dec->id = sdb.idn;
+            FillEvent(lf, f_name, &newsum);
 
 			/* New file message */
 			snprintf(sdb.comment, OS_MAXSTR,
@@ -690,4 +695,14 @@ int DecodeSum(SyscheckSum *sum, char *c_sum) {
 
     sum->perm = atoi(c_perm);
     return 0;
+}
+
+void FillEvent(Eventinfo *lf, const char *f_name, const SyscheckSum *sum) {
+    os_strdup(f_name, lf->filename);
+    os_strdup(sum->size, lf->size_after);
+    lf->perm_after = sum->perm;
+    os_strdup(sum->uid, lf->owner_after);
+    os_strdup(sum->gid, lf->gowner_after);
+    os_strdup(sum->md5, lf->md5_after);
+    os_strdup(sum->sha1, lf->sha1_after);
 }
