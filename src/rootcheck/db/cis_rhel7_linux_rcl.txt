@@ -273,36 +273,36 @@ f:/etc/xinetd.d/talk -> !r:^# && r:disable && r:no;
 f:/usr/lib/systemd/system/ntalk.service -> r:Exec;
 
 # 2.1.11 Remove xinetd (Scored)
-[CIS - RHEL7 - 2.1.11 -  xinetd detected {CIS: 2.1.11 RHEL7}  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
+[CIS - RHEL7 - 2.1.11 -  xinetd detected {CIS: 2.1.11 RHEL7}]  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
 f:/usr/lib/systemd/system/xinetd.service -> r:Exec;
 
 # 2.1.12 Disable chargen-dgram (Scored)
-[CIS - RHEL7 - 2.1.12 -  chargen-dgram enabled on xinetd {CIS: 2.1.12 RHEL7}  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
+[CIS - RHEL7 - 2.1.12 -  chargen-dgram enabled on xinetd {CIS: 2.1.12 RHEL7}]  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
 f:/etc/xinetd.d/chargen-dgram -> !r:^# && r:disable && r:no;
 
 # 2.1.13 Disable chargen-stream (Scored)
-[CIS - RHEL7 - 2.1.13 -  chargen-stream enabled on xinetd {CIS: 2.1.13 RHEL7}  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
+[CIS - RHEL7 - 2.1.13 -  chargen-stream enabled on xinetd {CIS: 2.1.13 RHEL7}]  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
 f:/etc/xinetd.d/chargen-stream -> !r:^# && r:disable && r:no;
 
 # 2.1.14 Disable daytime-dgram (Scored)
-[CIS - RHEL7 - 2.1.14 -  daytime-dgram enabled on xinetd {CIS: 2.1.14 RHEL7}  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
+[CIS - RHEL7 - 2.1.14 -  daytime-dgram enabled on xinetd {CIS: 2.1.14 RHEL7}]  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
 f:/etc/xinetd.d/daytime-dgram -> !r:^# && r:disable && r:no;
 
 # 2.1.15 Disable daytime-stream (Scored)
-[CIS - RHEL7 - 2.1.15 -  daytime-stream enabled on xinetd {CIS: 2.1.15 RHEL7}  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
+[CIS - RHEL7 - 2.1.15 -  daytime-stream enabled on xinetd {CIS: 2.1.15 RHEL7}]  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
 f:/etc/xinetd.d/daytime-stream -> !r:^# && r:disable && r:no;
 
 
 # 2.1.16 Disable echo-dgram (Scored)
-[CIS - RHEL7 - 2.1.16 -  echo-dgram enabled on xinetd {CIS: 2.1.16 RHEL7}  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
+[CIS - RHEL7 - 2.1.16 -  echo-dgram enabled on xinetd {CIS: 2.1.16 RHEL7}]  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
 f:/etc/xinetd.d/echo-dgram -> !r:^# && r:disable && r:no;
 
 # 2.1.17 Disable echo-stream (Scored)
-[CIS - RHEL7 - 2.1.17 -  echo-stream enabled on xinetd {CIS: 2.1.17 RHEL7}  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
+[CIS - RHEL7 - 2.1.17 -  echo-stream enabled on xinetd {CIS: 2.1.17 RHEL7}]  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
 f:/etc/xinetd.d/echo-stream -> !r:^# && r:disable && r:no;
 
 # 2.1.18 Disable tcpmux-server (Scored)
-[CIS - RHEL7 - 2.1.18 -  tcpmux-server enabled on xinetd {CIS: 2.1.18 RHEL7}  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
+[CIS - RHEL7 - 2.1.18 -  tcpmux-server enabled on xinetd {CIS: 2.1.18 RHEL7}]  [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
 f:/etc/xinetd.d/tcpmux-server -> !r:^# && r:disable && r:no;
 
 
@@ -326,7 +326,7 @@ p:avahi-daemon;
 # 3.4 Disable Print Server - CUPS (Not Scored)
 
 # 3.5 Remove DHCP Server (Scored)
-[CIS - RHEL7 - 3.5 - DHCPnot disabled {CIS: 3.5 RHEL7} [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
+[CIS - RHEL7 - 3.5 - DHCPnot disabled {CIS: 3.5 RHEL7}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
 f:/usr/lib/systemd/system/dhcpd.service -> r:Exec;
 
 # 3.6 Configure Network Time Protocol (NTP) (Scored)
@@ -487,7 +487,7 @@ f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
 # 4.6.4 Disable TIPC (Not Scored)
 
 # 4.7 Enable IPtables (Scored)
-#[CIS - RHEL7 - 4.7 - Uncommon Network Protocols - Firewalld not enabled {CIS: 4.7 RHEL7} [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
+#[CIS - RHEL7 - 4.7 - Uncommon Network Protocols - Firewalld not enabled {CIS: 4.7 RHEL7}] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL7 -]
 #f:/usr/lib/systemd/system/firewalld.service -> TODO;
 
 
