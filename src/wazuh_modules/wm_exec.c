@@ -189,7 +189,7 @@ static inline void get_time(struct timespec *ts) {
 int wm_exec(char *command, char **output, int *exitcode, int secs)
 {
     static char* const envp[] = { NULL };
-    char **argv = wm_strtok(command);
+    char **argv;
     pid_t pid;
     int pipe_fd[2];
     ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL };
@@ -216,6 +216,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
     case 0:
 
         // Child
+
+        argv = wm_strtok(command);
 
         close(pipe_fd[0]);
         dup2(pipe_fd[1], STDOUT_FILENO);
