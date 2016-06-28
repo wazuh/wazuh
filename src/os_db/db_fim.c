@@ -12,11 +12,13 @@
 #include "db.h"
 
 static const char *SQL_INSERT_FIM = "INSERT INTO fim_event (id_file, event, date, size, perm, uid, gid, md5, sha1) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
-static const char *SQL_INSERT_FILE = "INSERT INTO fim_file (id_agent, path) VALUES (?, ?);";
+static const char *SQL_INSERT_FILE = "INSERT INTO fim_file (id_agent, path, type) VALUES (?, ?, ?);";
 static const char *SQL_FIND_FILE = "SELECT id FROM fim_file WHERE id_agent = ? AND path = ?;";
 
+static int get_type(const char *location);
+
 /* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
-int db_insert_file(int id_agent, const char *path) {
+int db_insert_file(int id_agent, const char *path, int type) {
     static sqlite3_stmt *stmt = NULL;
     int result;
 
@@ -27,6 +29,7 @@ int db_insert_file(int id_agent, const char *path) {
 
     sqlite3_bind_int(stmt, 1, id_agent);
     sqlite3_bind_text(stmt, 2, path, -1, NULL);
+    sqlite3_bind_text(stmt, 3, type == DB_FILE_TYPE_FILE ? "file" : "registry", -1, NULL);
     result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
     sqlite3_reset(stmt);
 
@@ -62,7 +65,7 @@ int db_find_file(int id_agent, const char *path) {
 }
 
 /* Insert FIM entry. Returns -1 on error. */
-int db_insert_fim(int id_agent, const char *f_name, const char *event, const SyscheckSum *sum, long int time) {
+int db_insert_fim(int id_agent, const char *location, const char *f_name, const char *event, const SyscheckSum *sum, long int time) {
     sqlite3_stmt *stmt = NULL;
     int id_file;
     int result;
@@ -77,7 +80,7 @@ int db_insert_fim(int id_agent, const char *f_name, const char *event, const Sys
         return -1;
 
     case 0:
-        if ((id_file = db_insert_file(id_agent, f_name)) < 0)
+        if ((id_file = db_insert_file(id_agent, f_name, get_type(location))) < 0)
             return -1;
     }
 
@@ -104,4 +107,9 @@ int db_insert_fim(int id_agent, const char *f_name, const char *event, const Sys
     result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
     sqlite3_reset(stmt);
     return result;
+}
+
+int get_type(const char *location) {
+    int offset = strlen(location) - 19;
+    return (offset >= 0 && strcmp(location + offset, "->syscheck-registry") == 0) ? DB_FILE_TYPE_REGISTRY : DB_FILE_TYPE_FILE;
 }

@@ -31,7 +31,8 @@ static const char *SCHEMA_SQLITE_TABLE_FIM_FILE = "\
 	CREATE TABLE IF NOT EXISTS fim_file ( \
 		id INTEGER PRIMARY KEY AUTOINCREMENT, \
 		id_agent INTEGER NOT NULL REFERENCES agent (id), \
-		path TEXT NOT NULL \
+		path TEXT NOT NULL, \
+		type TEXT NOT NULL CHECK (type IN ('file', 'registry')) \
 	); \
 	\
 	CREATE INDEX IF NOT EXISTS fim_file_path ON fim_file (id_agent, path);";
@@ -40,7 +41,7 @@ static const char *SCHEMA_SQLITE_TABLE_FIM_EVENT = "\
 	CREATE TABLE IF NOT EXISTS fim_event ( \
 		id INTEGER PRIMARY KEY AUTOINCREMENT, \
 		id_file INTEGER NOT NULL REFERENCES fim_file (id), \
-		event TEXT NOT NULL CHECK (event in ('added', 'modified', 'readded', 'deleted')), \
+		event TEXT NOT NULL CHECK (event IN ('added', 'modified', 'readded', 'deleted')), \
 		date NUMERIC, \
 		size INTEGER, \
 		perm INTEGER, \
