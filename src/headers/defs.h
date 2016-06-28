@@ -137,7 +137,7 @@ http://www.ossec.net/main/license/\n"
 
 /* Database SQLite */
 #define SQLITE_DIR    "/var/db"
-#define SQLITE_DB_NAME    "database.db"
+#define SQLITE_DB_NAME    "database.sqlite"
 
 /* Diff queue */
 #define DIFF_DIR        "/queue/diff"

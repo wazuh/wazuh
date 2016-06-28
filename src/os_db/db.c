@@ -51,8 +51,10 @@ static const char *SCHEMA_SQLITE_TABLE_FIM_EVENT = "\
 		sha1 TEXT \
 	);";
 
+static const char *PRAGMA_JOURNAL_WAL = "PRAGMA journal_mode=WAL;";
+
 static void db_create_tables();
-static void db_create_table(const char * table);
+static void db_exec(const char *sql);
 
 sqlite3 *db;
 
@@ -87,15 +89,16 @@ void db_open(){
 }
 
 void db_create_tables() {
-	db_create_table(SCHEMA_SQLITE_TABLE_AGENT);
-	db_create_table(SCHEMA_SQLITE_TABLE_FIM_FILE);
-	db_create_table(SCHEMA_SQLITE_TABLE_FIM_EVENT);
+	db_exec(PRAGMA_JOURNAL_WAL);
+	db_exec(SCHEMA_SQLITE_TABLE_AGENT);
+	db_exec(SCHEMA_SQLITE_TABLE_FIM_FILE);
+	db_exec(SCHEMA_SQLITE_TABLE_FIM_EVENT);
 }
 
-void db_create_table(const char *table){
+void db_exec(const char *sql){
 	char *zErrMsg = NULL;
 
 	/* Execute SQL statement */
-	if (sqlite3_exec(db, table, 0, 0, &zErrMsg) != SQLITE_OK)
-		ErrorExit("%s: ERROR: Create table: SQL error: %s\n", ARGV0, zErrMsg);
+	if (sqlite3_exec(db, sql, 0, 0, &zErrMsg) != SQLITE_OK)
+		ErrorExit("%s: ERROR: SQL error: %s\n", ARGV0, zErrMsg);
 }
