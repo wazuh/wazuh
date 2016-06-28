@@ -14,6 +14,7 @@
 #include "eventinfo.h"
 #include "alerts/alerts.h"
 #include "decoder.h"
+#include "os_db/db.h"
 
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
@@ -182,6 +183,7 @@ int DecodeRootcheck(Eventinfo *lf)
                 lf->decoder_info = rootcheck_dec;
                 lf->fields[RKF_TITLE] = rk_get_title(lf->log);
                 lf->fields[RKF_FILE] = rk_get_file(lf->log);
+                db_update_pm(lf->agent_id ? atoi(lf->agent_id) : 0, lf->log, (long int)lf->time);
                 return (1);
             }
         }
@@ -202,6 +204,7 @@ int DecodeRootcheck(Eventinfo *lf)
                 lf->decoder_info = rootcheck_dec;
                 lf->fields[RKF_TITLE] = rk_get_title(lf->log);
                 lf->fields[RKF_FILE] = rk_get_file(lf->log);
+                db_update_pm(lf->agent_id ? atoi(lf->agent_id) : 0, lf->log, (long int)lf->time);
                 return (1);
             }
         }
@@ -222,6 +225,7 @@ int DecodeRootcheck(Eventinfo *lf)
     lf->decoder_info = rootcheck_dec;
     lf->fields[RKF_TITLE] = rk_get_title(lf->log);
     lf->fields[RKF_FILE] = rk_get_file(lf->log);
+    db_insert_pm(lf->agent_id ? atoi(lf->agent_id) : 0, (long int)lf->time, lf->log);
     return (1);
 }
 

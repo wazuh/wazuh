@@ -27,10 +27,16 @@ void db_open();
 /* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
 int db_find_file(int id_agent, const char *path);
 
-/* Insert file, Returns -1 on error. */
+/* Insert file, Returns ID, or -1 on error. */
 int db_insert_file(int id_agent, const char *path, int type);
 
-/* Insert FIM entry. Returns -1 on error. */
+/* Insert FIM entry. Returns ID, or -1 on error. */
 int db_insert_fim(int id_agent, const char *location, const char *f_name, const char *event, const SyscheckSum *sum, long int time);
+
+/* Insert policy monitoring entry. Returns ID on success or -1 on error. */
+int db_insert_pm(int id_agent, long int date, const char *log);
+
+/* Update policy monitoring last date. Returns 0 on success or -1 on error. */
+int db_update_pm(int id_agent, const char *log, long int date_last);
 
 #endif

@@ -36,7 +36,7 @@ int db_insert_file(int id_agent, const char *path, int type) {
     return result;
 }
 
-/* Insert file, Returns -1 on error. */
+/* Insert file, Returns ID, or -1 on error. */
 int db_find_file(int id_agent, const char *path) {
     static sqlite3_stmt *stmt = NULL;
     int result;
@@ -64,7 +64,7 @@ int db_find_file(int id_agent, const char *path) {
     return result;
 }
 
-/* Insert FIM entry. Returns -1 on error. */
+/* Insert FIM entry. Returns ID, or -1 on error. */
 int db_insert_fim(int id_agent, const char *location, const char *f_name, const char *event, const SyscheckSum *sum, long int time) {
     sqlite3_stmt *stmt = NULL;
     int id_file;
