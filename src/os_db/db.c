@@ -51,6 +51,17 @@ static const char *SCHEMA_SQLITE_TABLE_FIM_EVENT = "\
 		sha1 TEXT \
 	);";
 
+static const char *SCHEMA_SQLITE_TABLE_PM_EVENT = "\
+	CREATE TABLE IF NOT EXISTS pm_event ( \
+		id INTEGER PRIMARY KEY AUTOINCREMENT, \
+		id_agent INTEGER NOT NULL REFERENCES agent (id), \
+		date_first NUMERIC, \
+		date_last INTEGER, \
+		log TEXT \
+	); \
+	\
+	CREATE INDEX IF NOT EXISTS pm_event_log ON pm_event (id_agent, log);";
+
 static const char *PRAGMA_JOURNAL_WAL = "PRAGMA journal_mode=WAL;";
 
 static void db_create_tables();
@@ -93,6 +104,7 @@ void db_create_tables() {
 	db_exec(SCHEMA_SQLITE_TABLE_AGENT);
 	db_exec(SCHEMA_SQLITE_TABLE_FIM_FILE);
 	db_exec(SCHEMA_SQLITE_TABLE_FIM_EVENT);
+	db_exec(SCHEMA_SQLITE_TABLE_PM_EVENT);
 }
 
 void db_exec(const char *sql){
