@@ -505,7 +505,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          lf->data == NULL ? "" : lf->data
                         );
 
-                if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, f_name, "modified", &newsum, (long int)lf->time) < 0) {
+                if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "modified", &newsum, (long int)lf->time) < 0) {
                     merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
                     debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
                 }
@@ -519,7 +519,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 snprintf(sdb.comment, OS_MAXSTR,
                      "File '%.756s' was re-added.", f_name);
 
-                if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, f_name, "readded", &newsum, (long int)lf->time) < 0) {
+                if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "readded", &newsum, (long int)lf->time) < 0) {
                     merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
                     debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
                 }
@@ -537,7 +537,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                  "File '%.756s' was deleted. Unable to retrieve "
                  "checksum.", f_name);
 
-            if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, f_name, "deleted", NULL, (long int)lf->time) < 0) {
+            if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "deleted", NULL, (long int)lf->time) < 0) {
                 merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
                 debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
             }
@@ -561,37 +561,34 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
     fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time, f_name);
     fflush(fp);
 
-    /* Alert if configured to notify on new files */
-    if (DB_IsCompleted(agent_id)) {
-
-        /* Insert row in SQLite DB*/
-        if (!DecodeSum(&newsum, c_sum)) {
-            if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, f_name, "added", &newsum, (long int)lf->time) < 0) {
-                merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
-                debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
-            }
+    /* Insert row in SQLite DB*/
+    if (!DecodeSum(&newsum, c_sum)) {
+        if (db_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "added", &newsum, (long int)lf->time) < 0) {
+            merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
+            debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
         }
+    }
 
-		if(Config.syscheck_alert_new == 1){
-			sdb.syscheck_dec->id = sdb.idn;
-            FillEvent(lf, f_name, &newsum);
+    /* Alert if configured to notify on new files */
+    if ((Config.syscheck_alert_new == 1) && DB_IsCompleted(agent_id)) {
+		sdb.syscheck_dec->id = sdb.idn;
+        FillEvent(lf, f_name, &newsum);
 
-			/* New file message */
-			snprintf(sdb.comment, OS_MAXSTR,
-					 "New file '%.756s' "
-					 "added to the file system.", f_name);
+		/* New file message */
+		snprintf(sdb.comment, OS_MAXSTR,
+				 "New file '%.756s' "
+				 "added to the file system.", f_name);
 
-			/* Create a new log message */
-			free(lf->full_log);
-			os_strdup(sdb.comment, lf->full_log);
-			lf->log = lf->full_log;
+		/* Create a new log message */
+		free(lf->full_log);
+		os_strdup(sdb.comment, lf->full_log);
+		lf->log = lf->full_log;
 
-			/* Set decoder */
-			lf->decoder_info = sdb.syscheck_dec;
-			lf->data = NULL;
+		/* Set decoder */
+		lf->decoder_info = sdb.syscheck_dec;
+		lf->data = NULL;
 
-			return (1);
-		}
+		return (1);
     }
 
     lf->data = NULL;
