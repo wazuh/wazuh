@@ -11,61 +11,10 @@
 
 #include "db.h"
 
-static const char *SCHEMA_SQLITE_TABLE_AGENT = "\
-	CREATE TABLE IF NOT EXISTS agent ( \
-		id INTEGER PRIMARY KEY, \
-		name TEXT, \
-		ip TEXT, \
-		key TEXT, \
-		os TEXT, \
-		version TEXT, \
-		date_add NUMERIC DEFAULT CURRENT_TIMESTAMP, \
-		enabled INTEGER DEFAULT 1 \
-	) WITHOUT ROWID; \
-	\
-	CREATE INDEX IF NOT EXISTS agent_name ON agent (name); \
-	CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip); \
-	INSERT INTO agent (id) VALUES (0);";
-
-static const char *SCHEMA_SQLITE_TABLE_FIM_FILE = "\
-	CREATE TABLE IF NOT EXISTS fim_file ( \
-		id INTEGER PRIMARY KEY AUTOINCREMENT, \
-		id_agent INTEGER NOT NULL REFERENCES agent (id), \
-		path TEXT NOT NULL, \
-		type TEXT NOT NULL CHECK (type IN ('file', 'registry')) \
-	); \
-	\
-	CREATE INDEX IF NOT EXISTS fim_file_path ON fim_file (id_agent, path);";
-
-static const char *SCHEMA_SQLITE_TABLE_FIM_EVENT = "\
-	CREATE TABLE IF NOT EXISTS fim_event ( \
-		id INTEGER PRIMARY KEY AUTOINCREMENT, \
-		id_file INTEGER NOT NULL REFERENCES fim_file (id), \
-		event TEXT NOT NULL CHECK (event IN ('added', 'modified', 'readded', 'deleted')), \
-		date NUMERIC, \
-		size INTEGER, \
-		perm INTEGER, \
-		uid INTEGER, \
-		gid INTEGER, \
-		md5 TEXT, \
-		sha1 TEXT \
-	);";
-
-static const char *SCHEMA_SQLITE_TABLE_PM_EVENT = "\
-	CREATE TABLE IF NOT EXISTS pm_event ( \
-		id INTEGER PRIMARY KEY AUTOINCREMENT, \
-		id_agent INTEGER NOT NULL REFERENCES agent (id), \
-		date_first NUMERIC, \
-		date_last INTEGER, \
-		log TEXT \
-	); \
-	\
-	CREATE INDEX IF NOT EXISTS pm_event_log ON pm_event (id_agent, log);";
-
-static const char *PRAGMA_JOURNAL_WAL = "PRAGMA journal_mode=WAL;";
+/* From schema.s and schema.sql */
+extern const char *SCHEMA_SQL;
 
 static void db_create_tables();
-static void db_exec(const char *sql);
 
 sqlite3 *db;
 
@@ -100,17 +49,15 @@ void db_open(){
 }
 
 void db_create_tables() {
-	db_exec(PRAGMA_JOURNAL_WAL);
-	db_exec(SCHEMA_SQLITE_TABLE_AGENT);
-	db_exec(SCHEMA_SQLITE_TABLE_FIM_FILE);
-	db_exec(SCHEMA_SQLITE_TABLE_FIM_EVENT);
-	db_exec(SCHEMA_SQLITE_TABLE_PM_EVENT);
-}
+	const char *sql;
+	const char *tail;
+	sqlite3_stmt *stmt;
 
-void db_exec(const char *sql){
-	char *zErrMsg = NULL;
+	for (sql = SCHEMA_SQL; sql; sql = tail) {
+		if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail))
+			ErrorExit("%s: ERROR: Can't create table: %s", ARGV0, sqlite3_errmsg(db));
 
-	/* Execute SQL statement */
-	if (sqlite3_exec(db, sql, 0, 0, &zErrMsg) != SQLITE_OK)
-		ErrorExit("%s: ERROR: SQL error: %s\n", ARGV0, zErrMsg);
+		sqlite3_step(stmt);
+		sqlite3_reset(stmt);
+	}
 }
