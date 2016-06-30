@@ -498,7 +498,7 @@ endif
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
-
+	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
 	install -m 750 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations
 	touch ${PREFIX}/logs/integrations.log
