@@ -123,7 +123,7 @@ def _fim_insert_file(cursor, id_agent, dbfile, filetype):
     try:
         with open(dbfile, 'r') as syscheck:
             for line in syscheck:
-                path, event, date, size, perm, uid, gid, md5, sha1 = _fim_decode(line)
+                path, event, date, size, perm, uid, gid, md5, sha1 = _fim_decode(line[:-1])
                 row = cursor.execute('SELECT id FROM fim_file WHERE id_agent = ? AND path = ?', (id_agent, path)).fetchone()
 
                 if row:
@@ -177,7 +177,7 @@ def insert_pm(dbpath=DB_PATH):
                         j = line.find(' ')
                         date_last = line[:i]
                         date_first = line[i+1:j]
-                        log = line[j+1:]
+                        log = line[j+1:-1]
                     else:
                         date_first = date_last = None
                         log = line
