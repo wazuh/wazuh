@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Data migration utility for Wazuh HIDS.
+# Database support for Wazuh HIDS.
 # Copyright 2016 Wazuh, Inc. <info@wazuh.com>
 # June 30, 2016.
 # This program is a free software, you can redistribute it
@@ -12,7 +12,7 @@ import sqlite3
 from getopt import getopt, GetoptError
 
 OSSEC_PATH = '/var/ossec'
-SQL_PATH = 'ossec.sql'
+SQL_PATH = 'src/wazuh_db/schema.sql'
 DB_PATH = OSSEC_PATH + '/var/db/database.sqlite'
 KEYS_PATH = OSSEC_PATH + '/etc/client.keys'
 
@@ -192,7 +192,7 @@ def insert_pm(dbpath=DB_PATH):
 
 def _print_help():
     print '''
-    Data migration utility for Wazuh HIDS
+    Database creation utility for Wazuh HIDS
 
     Options:
         -f          Remove database if it exists.
