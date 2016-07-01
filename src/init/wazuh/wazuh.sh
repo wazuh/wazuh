@@ -22,5 +22,9 @@ WazuhSetup(){
 
 WazuhUpgrade()
 {
-    ./upgrade.py $USER_OLD_VERSION
+    if [ -n "$USER_OLD_VERSION" ]; then
+        env python ./src/init/wazuh/upgrade.py -d $INSTALLDIR $USER_OLD_VERSION
+    else
+        env python ./src/init/wazuh/upgrade.py -d $INSTALLDIR "v1.0"
+    fi
 }

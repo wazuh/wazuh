@@ -73,6 +73,12 @@ getPreinstalledDir()
     return 0;
 }
 
+getPreinstalledVersion()
+{
+    . ${OSSEC_INIT}
+    echo $WAZUH_VERSION
+}
+
 UpdateStartOSSEC()
 {
    . ${OSSEC_INIT}
@@ -126,4 +132,3 @@ UpdateOSSECRules()
     echo "</ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
     rm "${OSSEC_CONF_FILE}.$$.tmp2"
 }
-
