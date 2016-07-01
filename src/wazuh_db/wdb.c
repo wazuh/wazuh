@@ -9,17 +9,17 @@
  * Foundation.
  */
 
-#include "db.h"
+#include "wdb.h"
 
 /* From schema.s and schema.sql */
 extern const char *SCHEMA_SQL;
 
-static void db_create_tables();
+static void wdb_create_tables();
 
-sqlite3 *db;
+sqlite3 *wdb;
 
 /* Open global database */
-void db_open(){
+void wdb_open(){
 
 	char dir[OS_FLSIZE + 1];
 	int rc;
@@ -28,7 +28,7 @@ void db_open(){
 	snprintf(dir, OS_FLSIZE, "%s/%s", SQLITE_DIR, SQLITE_DB_NAME);
 
 	// Connect or create the database
-	rc = sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL);
+	rc = sqlite3_open_v2(dir, &wdb, SQLITE_OPEN_READWRITE, NULL);
 
 	switch (rc) {
 	case 0:
@@ -37,25 +37,25 @@ void db_open(){
 	case SQLITE_CANTOPEN:
 		// Create tables if not exists
 		merror("%s: INFO: Creating %s", ARGV0, dir);
-		if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
-			ErrorExit("%s: ERROR: Can't open SQLite database: %s\n", ARGV0, sqlite3_errmsg(db));
+		if (sqlite3_open_v2(dir, &wdb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
+			ErrorExit("%s: ERROR: Can't open SQLite database: %s\n", ARGV0, sqlite3_errmsg(wdb));
 
-		db_create_tables();
+		wdb_create_tables();
 		break;
 
 	default:
-	    ErrorExit("%s: ERROR: Can't open SQLite database: %s\n", ARGV0, sqlite3_errmsg(db));
+	    ErrorExit("%s: ERROR: Can't open SQLite database: %s\n", ARGV0, sqlite3_errmsg(wdb));
 	}
 }
 
-void db_create_tables() {
+void wdb_create_tables() {
 	const char *sql;
 	const char *tail;
 	sqlite3_stmt *stmt;
 
 	for (sql = SCHEMA_SQL; sql; sql = tail) {
-		if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail))
-			ErrorExit("%s: ERROR: Can't create table: %s", ARGV0, sqlite3_errmsg(db));
+		if (sqlite3_prepare_v2(wdb, sql, -1, &stmt, &tail))
+			ErrorExit("%s: ERROR: Can't create table: %s", ARGV0, sqlite3_errmsg(wdb));
 
 		sqlite3_step(stmt);
 		sqlite3_reset(stmt);
