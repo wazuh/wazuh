@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#include "db.h"
+#include "wdb.h"
 
 static const char *SQL_INSERT_FIM = "INSERT INTO fim_event (id_file, event, date, size, perm, uid, gid, md5, sha1) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
 static const char *SQL_INSERT_FILE = "INSERT INTO fim_file (id_agent, path, type) VALUES (?, ?, ?);";
@@ -18,31 +18,31 @@ static const char *SQL_FIND_FILE = "SELECT id FROM fim_file WHERE id_agent = ? A
 static int get_type(const char *location);
 
 /* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
-int db_insert_file(int id_agent, const char *path, int type) {
+int wdb_insert_file(int id_agent, const char *path, int type) {
     static sqlite3_stmt *stmt = NULL;
     int result;
 
-    if (!(stmt || sqlite3_prepare_v2(db, SQL_INSERT_FILE, -1, &stmt, NULL) == SQLITE_OK)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+    if (!(stmt || sqlite3_prepare_v2(wdb, SQL_INSERT_FILE, -1, &stmt, NULL) == SQLITE_OK)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb));
         return -1;
     }
 
     sqlite3_bind_int(stmt, 1, id_agent);
     sqlite3_bind_text(stmt, 2, path, -1, NULL);
-    sqlite3_bind_text(stmt, 3, type == DB_FILE_TYPE_FILE ? "file" : "registry", -1, NULL);
-    result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
+    sqlite3_bind_text(stmt, 3, type == WDB_FILE_TYPE_FILE ? "file" : "registry", -1, NULL);
+    result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(wdb) : -1;
     sqlite3_reset(stmt);
 
     return result;
 }
 
 /* Insert file, Returns ID, or -1 on error. */
-int db_find_file(int id_agent, const char *path) {
+int wdb_find_file(int id_agent, const char *path) {
     static sqlite3_stmt *stmt = NULL;
     int result;
 
-    if (!(stmt || sqlite3_prepare_v2(db, SQL_FIND_FILE, -1, &stmt, NULL) == SQLITE_OK)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+    if (!(stmt || sqlite3_prepare_v2(wdb, SQL_FIND_FILE, -1, &stmt, NULL) == SQLITE_OK)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb));
         return -1;
     }
 
@@ -65,22 +65,22 @@ int db_find_file(int id_agent, const char *path) {
 }
 
 /* Insert FIM entry. Returns ID, or -1 on error. */
-int db_insert_fim(int id_agent, const char *location, const char *f_name, const char *event, const SyscheckSum *sum, long int time) {
+int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const char *event, const SyscheckSum *sum, long int time) {
     sqlite3_stmt *stmt = NULL;
     int id_file;
     int result;
 
-    if (!(stmt || sqlite3_prepare_v2(db, SQL_INSERT_FIM, -1, &stmt, NULL) == SQLITE_OK)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+    if (!(stmt || sqlite3_prepare_v2(wdb, SQL_INSERT_FIM, -1, &stmt, NULL) == SQLITE_OK)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb));
         return -1;
     }
 
-    switch ((id_file = db_find_file(id_agent, f_name))) {
+    switch ((id_file = wdb_find_file(id_agent, f_name))) {
     case -1:
         return -1;
 
     case 0:
-        if ((id_file = db_insert_file(id_agent, f_name, get_type(location))) < 0)
+        if ((id_file = wdb_insert_file(id_agent, f_name, get_type(location))) < 0)
             return -1;
     }
 
@@ -104,12 +104,12 @@ int db_insert_fim(int id_agent, const char *location, const char *f_name, const 
         sqlite3_bind_null(stmt, 9);
     }
 
-    result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
+    result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(wdb) : -1;
     sqlite3_reset(stmt);
     return result;
 }
 
 int get_type(const char *location) {
     int offset = strlen(location) - 19;
-    return (offset >= 0 && strcmp(location + offset, "->syscheck-registry") == 0) ? DB_FILE_TYPE_REGISTRY : DB_FILE_TYPE_FILE;
+    return (offset >= 0 && strcmp(location + offset, "->syscheck-registry") == 0) ? WDB_FILE_TYPE_REGISTRY : WDB_FILE_TYPE_FILE;
 }
