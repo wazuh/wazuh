@@ -68,7 +68,11 @@ def insert_agents(dbpath=DB_PATH):
     cur.execute('BEGIN')
 
     for agent in agents:
-        id, name, ip, key = agent.split()
+        try:
+            id, name, ip, key = agent.split()
+        except ValueError:
+            sys.stderr.write("ERROR: Corrupt line at 'client.keys'.\n")
+            continue
 
         if id[0] in '# ':
             id = id[1:]
