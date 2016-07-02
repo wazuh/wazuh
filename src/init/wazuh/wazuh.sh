@@ -16,8 +16,17 @@ patch_version(){
         rm -rf $DIRECTORY/etc/shared/ssh > /dev/null 2>&1
 }
 WazuhSetup(){
+    DB_FILE=$INSTALLDIR/var/db/database.sqlite
+
     install_ruleset_updater
     patch_version
+
+    env python ./src/init/wazuh/database.py -c -v -p $DB_FILE
+
+    if [ "$?" = "0" ]; then
+        chmod ug+w $DB_FILE
+        chown root:ossec $DB_FILE
+    fi
 }
 
 WazuhUpgrade()

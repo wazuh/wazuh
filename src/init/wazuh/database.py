@@ -15,6 +15,7 @@ OSSEC_PATH = '/var/ossec'
 SQL_PATH = 'src/wazuh_db/schema.sql'
 DB_PATH = OSSEC_PATH + '/var/db/database.sqlite'
 KEYS_PATH = OSSEC_PATH + '/etc/client.keys'
+_verbose = False
 
 def create(dbpath=DB_PATH, sqlpath=SQL_PATH, force=False):
     '''Create database file, if it doesn't exists.
@@ -36,8 +37,11 @@ def create(dbpath=DB_PATH, sqlpath=SQL_PATH, force=False):
             except OSError:
                 pass
         else:
-            sys.stderr.write("ERROR: Database '{0}' already exists.\n".format(dbpath))
+            sys.stderr.write("WARN: Database '{0}' already exists.\n".format(dbpath))
             return False
+
+    if _verbose:
+        print("INFO: Creating database schema.")
 
     try:
         script = open(sqlpath, 'r')
@@ -85,6 +89,9 @@ def insert_agents(dbpath=DB_PATH):
                 os, version = f.read().split(' - ')
         except IOError:
             os = version = None
+
+        if _verbose:
+            print("INFO: Inserting agent '{0}'.".format(id))
 
         try:
             cur.execute(sql, (id, name, ip, key, os, version,enabled))
@@ -142,18 +149,24 @@ def insert_fim(dbpath=DB_PATH):
 
     conn = sqlite3.connect(dbpath)
     cursor = conn.cursor()
-    cursor.execute('BEGIN')
 
     for id_agent, name, ip, os in conn.cursor().execute('SELECT id, name, ip, os FROM agent WHERE enabled = 1'):
         path = OSSEC_PATH + '/queue/syscheck/'
         path += '({0}) {1}->syscheck'.format(name, ip) if name else 'syscheck'
+
+        if _verbose:
+            print("INFO: Inserting syscheck database of agent '{0}'.".format(id_agent))
+
+        cursor.execute('BEGIN')
+
         _fim_insert_file(cursor, id_agent, path, 'file')
 
         if os and 'Windows' in os:
             path = '{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(OSSEC_PATH, name, ip)
             _fim_insert_file(cursor, id_agent, path, 'registry')
 
-    conn.commit()
+        conn.commit()
+
     conn.close()
 
 def insert_pm(dbpath=DB_PATH):
@@ -162,14 +175,17 @@ def insert_pm(dbpath=DB_PATH):
 
     conn = sqlite3.connect(dbpath)
     cursor = conn.cursor()
-    cursor.execute('BEGIN')
 
     for id_agent, name, ip, os in conn.cursor().execute('SELECT id, name, ip, os FROM agent WHERE enabled = 1'):
         path = OSSEC_PATH + '/queue/rootcheck/'
         path += '({0}) {1}->rootcheck'.format(name, ip) if name else 'rootcheck'
 
+        if _verbose:
+            print("INFO: Inserting rootcheck database of agent '{0}'.".format(id_agent))
+
         try:
             with open(path, 'r') as rootcheck:
+                cursor.execute('BEGIN')
                 for line in rootcheck:
                     if line[0] == '!':
                         line = line[1:]
@@ -184,10 +200,11 @@ def insert_pm(dbpath=DB_PATH):
 
                     cursor.execute("INSERT INTO pm_event (id_agent, date_first, date_last, log) VALUES (?, ?, ?, ?)", (id_agent, date_first, date_last, log))
 
+                conn.commit()
+
         except IOError:
             sys.stderr.write("WARN: No such file '{0}'.\n".format(path))
 
-    conn.commit()
     conn.close()
 
 def _print_help():
@@ -195,10 +212,12 @@ def _print_help():
     Database creation utility for Wazuh HIDS
 
     Options:
+        -c          Only create database (do not insert data).
         -f          Remove database if it exists.
         -h, --help  Prints this help.
         -p <path>   Changes the default path for database.
         -s <path>   Changes the default path of the source SQL file.
+        -v          Verbose mode.
 
     Copyright 2016 Wazuh, Inc. <info@wazuh.com>
     '''
@@ -207,10 +226,13 @@ if __name__ == '__main__':
     dbpath = DB_PATH
     sqlpath = SQL_PATH
     force = False
+    update = True
 
     try:
-        for opt in getopt(sys.argv[1:], 'fhp:s:', '')[0]:
-            if opt[0] == '-p':
+        for opt in getopt(sys.argv[1:], 'cfhp:s:v', '')[0]:
+            if opt[0] == '-c':
+                insert = False
+            elif opt[0] == '-p':
                 dbpath = opt[1]
             elif opt[0] == '-f':
                 force = True
@@ -219,6 +241,8 @@ if __name__ == '__main__':
             elif opt[0] in ('-h', '--help'):
                 _print_help()
                 sys.exit(0)
+            elif opt[0] == '-v':
+                _verbose = True
 
     except GetoptError as error:
         sys.stderr.write("ERROR: {0}.\n".format(error.msg))
@@ -226,8 +250,9 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if create(dbpath, sqlpath, force):
-        insert_agents(dbpath)
-        insert_fim(dbpath)
-        insert_pm(dbpath)
+        if insert:
+            insert_agents(dbpath)
+            insert_fim(dbpath)
+            insert_pm(dbpath)
     else:
         sys.exit(1)
