@@ -1,5 +1,5 @@
 ** OSSEC Windows Agent v2.8 **
-** OSSEC Wazuh v1.1.1 **
+** OSSEC Wazuh v1.2-alpha1 **
 ** Copyright (C) 2014 Trend Micro Inc. **
 
 

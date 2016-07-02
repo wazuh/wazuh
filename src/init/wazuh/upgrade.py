@@ -8,7 +8,7 @@ import database
 # This program is a free software, you can redistribute it
 # and/or modify it under the terms of GPLv2.
 
-versions = ['1.0', '1.0.1', '1.0.2', '1.0.3', '1.0.4', '1.1', '1.1.1', '1.2']
+versions = ['1.0', '1.0.1', '1.0.2', '1.0.3', '1.0.4', '1.1', '1.1.1', '1.2-alpha1']
 
 def print_help():
     print '''
@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     dbpath = ossec_dir + '/var/db/database.sqlite'
 
-    if old_version < '1.2':
+    if versions.index(old_version) < len(versions) - 1:
         print("Upgrading database")
 
         database.insert_agents(dbpath)
