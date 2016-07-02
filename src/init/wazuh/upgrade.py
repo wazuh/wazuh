@@ -48,9 +48,8 @@ if __name__ == '__main__':
     dbpath = ossec_dir + '/var/db/database.sqlite'
 
     if old_version < '1.2':
-        print("Updating database")
+        print("Upgrading database")
 
-        if database.create(dbpath):
-            database.insert_agents(dbpath)
-            database.insert_fim(dbpath)
-            database.insert_pm(dbpath)
+        database.insert_agents(dbpath)
+        database.insert_fim(dbpath)
+        database.insert_pm(dbpath)
