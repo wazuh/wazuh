@@ -98,9 +98,7 @@ void SyscheckInit()
 
 	/* Connect to sqlite db */
 	wdb_open();
-
     debug1("%s: SyscheckInit completed.", ARGV0);
-    return;
 }
 
 /* Check if the db is completed for that specific agent */

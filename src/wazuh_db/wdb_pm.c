@@ -19,6 +19,9 @@ int wdb_insert_pm(int id_agent, long int date, const char *log) {
     static sqlite3_stmt *stmt = NULL;
     int result;
 
+    if (!wdb)
+        return 0;
+
     if (!(stmt || sqlite3_prepare_v2(wdb, SQL_INSERT_PM, -1, &stmt, NULL) == SQLITE_OK)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb));
         return -1;
@@ -40,6 +43,9 @@ int wdb_update_pm(int id_agent, const char *log, long int date_last) {
     static sqlite3_stmt *stmt = NULL;
     int result;
 
+    if (!wdb)
+        return 0;
+
     if (!(stmt || sqlite3_prepare_v2(wdb, SQL_UPDATE_PM, -1, &stmt, NULL) == SQLITE_OK)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb));
         return -1;
@@ -49,7 +55,7 @@ int wdb_update_pm(int id_agent, const char *log, long int date_last) {
     sqlite3_bind_int(stmt, 2, id_agent);
     sqlite3_bind_text(stmt, 3, log, -1, NULL);
 
-    result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(wdb) : -1;
+    result = sqlite3_step(stmt) == SQLITE_DONE ? 0 : -1;
     sqlite3_reset(stmt);
 
     return result;
