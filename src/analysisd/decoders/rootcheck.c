@@ -61,6 +61,7 @@ void RootcheckInit()
     rootcheck_dec->fields[RKF_TITLE] = "title";
     rootcheck_dec->fields[RKF_FILE] = "file";
 
+    wdb_open();
     debug1("%s: RootcheckInit completed.", ARGV0);
 
     return;

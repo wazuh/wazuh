@@ -779,15 +779,10 @@ wmodules.a: ${wmodules_o}
 #### SQLite ####
 
 sqlite_c := $(wildcard wazuh_db/*.c)
-sqlite_o := $(sqlite_c:.c=.o) wazuh_db/schema.o
+sqlite_o := $(sqlite_c:.c=.o)
 
 wazuh_db/%.o: wazuh_db/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-analysisd\" -c $^ -o $@
-
-wazuh_db/schema.o: wazuh_db/schema.s
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-analysisd\" -c $^ -o $@
-
-wazuh_db/schema.s: wazuh_db/schema.sql
 
 #### Config ##########
 

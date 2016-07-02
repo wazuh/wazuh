@@ -22,6 +22,9 @@ int wdb_insert_file(int id_agent, const char *path, int type) {
     static sqlite3_stmt *stmt = NULL;
     int result;
 
+    if (!wdb)
+        return 0;
+
     if (!(stmt || sqlite3_prepare_v2(wdb, SQL_INSERT_FILE, -1, &stmt, NULL) == SQLITE_OK)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb));
         return -1;
@@ -40,6 +43,9 @@ int wdb_insert_file(int id_agent, const char *path, int type) {
 int wdb_find_file(int id_agent, const char *path) {
     static sqlite3_stmt *stmt = NULL;
     int result;
+
+    if (!wdb)
+        return 0;
 
     if (!(stmt || sqlite3_prepare_v2(wdb, SQL_FIND_FILE, -1, &stmt, NULL) == SQLITE_OK)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb));
@@ -69,6 +75,9 @@ int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const
     sqlite3_stmt *stmt = NULL;
     int id_file;
     int result;
+
+    if (!wdb)
+        return 0;
 
     if (!(stmt || sqlite3_prepare_v2(wdb, SQL_INSERT_FIM, -1, &stmt, NULL) == SQLITE_OK)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb));
