@@ -252,7 +252,7 @@ void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
         string = strdup(lf->hostname);
 
         if ((ip = strchr(string, ')'))) {
-            if (end = strchr(ip += 2, '-'))
+            if ((end = strchr(ip += 2, '-')))
                 *end = '\0';
 
             cJSON_AddStringToObject(root, "agentip", ip);
