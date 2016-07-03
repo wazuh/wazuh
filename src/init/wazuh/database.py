@@ -102,7 +102,14 @@ def insert_agents(dbpath=DB_PATH):
         except sqlite3.IntegrityError:
             sys.stderr.write("WARN: Agent '{0}' already exists.\n".format(id))
 
+    if _verbose:
+        print("INFO: Committing changes...")
+
     conn.commit()
+
+    if _verbose:
+        print("INFO: Data commited.")
+
     conn.close()
 
 def _fim_decode(line):
@@ -153,6 +160,7 @@ def insert_fim(dbpath=DB_PATH):
 
     conn = sqlite3.connect(dbpath)
     cursor = conn.cursor()
+    cursor.execute('BEGIN')
 
     for id_agent, name, ip, os in conn.cursor().execute('SELECT id, name, ip, os FROM agent WHERE enabled = 1'):
         path = OSSEC_PATH + '/queue/syscheck/'
@@ -161,15 +169,19 @@ def insert_fim(dbpath=DB_PATH):
         if _verbose:
             print("INFO: Inserting syscheck database of agent '{0}'.".format(id_agent))
 
-        cursor.execute('BEGIN')
-
         _fim_insert_file(cursor, id_agent, path, 'file')
 
         if os and 'Windows' in os:
             path = '{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(OSSEC_PATH, name, ip)
             _fim_insert_file(cursor, id_agent, path, 'registry')
 
-        conn.commit()
+    if _verbose:
+        print("INFO: Committing changes...")
+
+    conn.commit()
+
+    if _verbose:
+        print("INFO: Data commited.")
 
     conn.close()
 
@@ -179,6 +191,7 @@ def insert_pm(dbpath=DB_PATH):
 
     conn = sqlite3.connect(dbpath)
     cursor = conn.cursor()
+    cursor.execute('BEGIN')
 
     for id_agent, name, ip, os in conn.cursor().execute('SELECT id, name, ip, os FROM agent WHERE enabled = 1'):
         path = OSSEC_PATH + '/queue/rootcheck/'
@@ -189,7 +202,6 @@ def insert_pm(dbpath=DB_PATH):
 
         try:
             with open(path, 'r') as rootcheck:
-                cursor.execute('BEGIN')
                 for line in rootcheck:
                     if line[0] == '!':
                         line = line[1:]
@@ -204,10 +216,16 @@ def insert_pm(dbpath=DB_PATH):
 
                     cursor.execute("INSERT INTO pm_event (id_agent, date_first, date_last, log) VALUES (?, ?, ?, ?)", (id_agent, date_first, date_last, log))
 
-                conn.commit()
-
         except IOError:
             sys.stderr.write("WARN: No such file '{0}'.\n".format(path))
+
+    if _verbose:
+        print("INFO: Committing changes...")
+
+    conn.commit()
+
+    if _verbose:
+        print("INFO: Data commited.")
 
     conn.close()
 
