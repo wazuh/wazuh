@@ -197,7 +197,7 @@ def insert_pm(dbpath=DB_PATH):
                         j = line.find(' ')
                         date_last = line[:i]
                         date_first = line[i+1:j]
-                        log = line[j+1:-1]
+                        log = line[j+1:-1].decode('utf_8')
                     else:
                         date_first = date_last = None
                         log = line
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     dbpath = DB_PATH
     sqlpath = SQL_PATH
     force = False
-    update = True
+    insert = True
 
     try:
         for opt in getopt(sys.argv[1:], 'cfhp:s:v', '')[0]:
