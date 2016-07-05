@@ -446,7 +446,8 @@ endif
 install-server-generic: install-common
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/ossec_decoders
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/wazuh_decoders
-	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/var/db
+	install -d -m 770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/var/db
+	install -d -m 770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/var/db/agents
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
@@ -498,7 +499,6 @@ endif
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
-	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
 	install -m 750 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations
 	touch ${PREFIX}/logs/integrations.log

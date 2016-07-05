@@ -19,24 +19,33 @@
 #define WDB_FILE_TYPE_REGISTRY 1
 
 /* Global SQLite database */
-extern sqlite3 *wdb;
+extern sqlite3 *wdb_global;
 
 /* Open global database */
-void wdb_open();
+void wdb_open_global();
+
+/* Close global database */
+void wdb_close_global();
+
+/* Open database for agent */
+sqlite3* wdb_open_agent(int id_agent, const char *name);
+
+/* Get agent name from location string */
+char* wdb_agent_name(const char *location);
 
 /* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
-int wdb_find_file(int id_agent, const char *path);
+int wdb_find_file(sqlite3 *db, const char *path, int type);
 
-/* Insert file, Returns ID, or -1 on error. */
-int wdb_insert_file(int id_agent, const char *path, int type);
+/* Find file, Returns ID, or -1 on error. */
+int wdb_insert_file(sqlite3 *db, const char *path, int type);
 
 /* Insert FIM entry. Returns ID, or -1 on error. */
 int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const char *event, const SyscheckSum *sum, long int time);
 
 /* Insert policy monitoring entry. Returns ID on success or -1 on error. */
-int wdb_insert_pm(int id_agent, long int date, const char *log);
+int wdb_insert_pm(int id_agent, const char *location, long int date, const char *log);
 
 /* Update policy monitoring last date. Returns 0 on success or -1 on error. */
-int wdb_update_pm(int id_agent, const char *log, long int date_last);
+int wdb_update_pm(int id_agent, const char *location, const char *log, long int date_last);
 
 #endif

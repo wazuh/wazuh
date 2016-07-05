@@ -135,9 +135,9 @@ http://www.ossec.net/main/license/\n"
 /* Backup directory for agents */
 #define AGNBACKUP_DIR    "/backup/agents"
 
-/* Database SQLite */
-#define SQLITE_DIR    "/var/db"
-#define SQLITE_DB_NAME    "database.sqlite"
+/* Wazuh Database */
+#define WDB_DIR         "/var/db"
+#define WDB_GLOB_NAME   "database.sqlite"
 
 /* Diff queue */
 #define DIFF_DIR        "/queue/diff"

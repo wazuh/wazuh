@@ -96,8 +96,6 @@ void SyscheckInit()
     sdb.idn = getDecoderfromlist(SYSCHECK_NEW);
     sdb.idd = getDecoderfromlist(SYSCHECK_DEL);
 
-	/* Connect to sqlite db */
-	wdb_open();
     debug1("%s: SyscheckInit completed.", ARGV0);
 }
 
