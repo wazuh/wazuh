@@ -14,14 +14,14 @@ def print_help():
     print '''
     Upgrade utility for Wazuh HIDS
 
-    Usage: upgrade.py <old version>
+    Usage: upgrade.py [-d <inst path>] <old version>
 
     Copyright 2016 Wazuh, Inc. <info@wazuh.com>
     '''
 
 if __name__ == '__main__':
     old_version = None
-    ossec_dir = database.OSSEC_PATH
+    ossec_dir = database._ossec_path
 
     try:
         opts = getopt(sys.argv[1:], 'd:')
@@ -45,11 +45,10 @@ if __name__ == '__main__':
         sys.stderr.write("ERROR: Version not supported.\n")
         sys.exit(0)
 
-    dbpath = ossec_dir + '/var/db/database.sqlite'
+    dbpath = ossec_dir + '/var/db'
 
     if versions.index(old_version) < len(versions) - 1:
         print("Upgrading database")
 
-        database.insert_agents(dbpath)
         database.insert_fim(dbpath)
         database.insert_pm(dbpath)
