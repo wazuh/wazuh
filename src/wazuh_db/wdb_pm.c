@@ -19,7 +19,7 @@ int wdb_insert_pm(int id_agent, const char *location, long int date, const char 
     sqlite3 *db;
     sqlite3_stmt *stmt = NULL;
     int result;
-    char *name = wdb_agent_name(location);
+    char *name = wdb_agent_loc2name(location);
 
     if (!name)
         return -1;

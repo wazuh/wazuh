@@ -21,8 +21,8 @@
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
 
-/* Open global database */
-void wdb_open_global();
+/* Open global database. Returns 0 on success or -1 on failure. */
+int wdb_open_global();
 
 /* Close global database */
 void wdb_close_global();
@@ -31,7 +31,7 @@ void wdb_close_global();
 sqlite3* wdb_open_agent(int id_agent, const char *name);
 
 /* Get agent name from location string */
-char* wdb_agent_name(const char *location);
+char* wdb_agent_loc2name(const char *location);
 
 /* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
 int wdb_find_file(sqlite3 *db, const char *path, int type);
@@ -47,5 +47,26 @@ int wdb_insert_pm(int id_agent, const char *location, long int date, const char 
 
 /* Update policy monitoring last date. Returns 0 on success or -1 on error. */
 int wdb_update_pm(int id_agent, const char *location, const char *log, long int date_last);
+
+/* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_insert_agent(int id, const char *name, const char *ip, const char *key);
+
+/* Update agent info. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent(int id, const char *os, const char *version);
+
+/* Disable agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_disable_agent(int id);
+
+/* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_remove_agent(int id);
+
+/* Get name from agent. The string must be freed after using. Returns NULL on error. */
+char* wdb_agent_name(int id);
+
+/* Create database for agent from profile. Returns 0 on success or -1 on error. */
+int wdb_create_agent_db(int id, const char *name);
+
+/* Create database for agent from profile. Returns 0 on success or -1 on error. */
+int wdb_remove_agent_db(int id);
 
 #endif

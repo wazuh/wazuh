@@ -43,7 +43,7 @@ int wdb_insert_file(sqlite3 *db, const char *path, int type) {
 
 /* Find file, Returns ID, or -1 on error. */
 int wdb_find_file(sqlite3 *db, const char *path, int type) {
-    static sqlite3_stmt *stmt = NULL;
+    sqlite3_stmt *stmt = NULL;
     int result;
 
     if (sqlite3_prepare_v2(db, SQL_FIND_FILE, -1, &stmt, NULL)) {
@@ -77,7 +77,7 @@ int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const
     int id_file;
     int result;
     int type = get_type(location);
-    char *name = wdb_agent_name(location);
+    char *name = wdb_agent_loc2name(location);
 
     if (!name)
         return -1;
