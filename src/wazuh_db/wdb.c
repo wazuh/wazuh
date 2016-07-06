@@ -25,6 +25,7 @@ int wdb_open_global() {
 
 		if (sqlite3_open_v2(dir, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
 			merror("%s: ERROR: Can't open SQLite database '%s': %s\n", ARGV0, dir, sqlite3_errmsg(wdb_global));
+			sqlite3_close_v2(wdb_global);
 			wdb_global = NULL;
 		}
 	}
@@ -47,6 +48,7 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
 
 	if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
 		merror("%s: ERROR: Can't open SQLite database '%s': %s\n", ARGV0, dir, sqlite3_errmsg(wdb_global));
+		sqlite3_close_v2(db);
 		return NULL;
 	}
 
