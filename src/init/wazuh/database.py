@@ -258,7 +258,7 @@ def insert_fim(destdir=_dest_dir):
 
         if os and 'Windows' in os:
             path = '{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(_ossec_path, name, ip)
-            _fim_insert_file(cursor, id_agent, path, 'registry')
+            _fim_insert_file(cursor, path, 'registry')
 
         if _verbose:
             print("INFO: Committing changes...")
