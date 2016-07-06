@@ -240,7 +240,7 @@ int OSList_AddData(OSList *list, void *data)
     newnode->next = NULL;
     newnode->data = data;
 
-    /* If we don't havea first node, assign it */
+    /* If we don't have a first node, assign it */
     if (!list->first_node) {
         list->first_node = newnode;
     }
