@@ -304,7 +304,7 @@ endif # USE_OPENSSL
 
 ifneq (,$(filter ${USE_OPENSSL},yes y Y 1))
 	DEFINES+=-DLIBOPENSSL_ENABLED
-	ifneq (${OPENSSL_LIBS},)
+	ifeq (${OPENSSL_LIBS},)
 		OSSEC_LDFLAGS+=-lssl -lcrypto
 	else
 		OSSEC_LDFLAGS+=${OPENSSL_LIBS}

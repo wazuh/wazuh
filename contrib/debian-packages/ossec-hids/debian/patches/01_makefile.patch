@@ -8,7 +8,7 @@ Index: ossec-hids-2.8.2/Makefile
 +# 06/15/2015
 +#
 +
-+DESTDIR=/
++DESTDIR?=/
 +DIR=$(DESTDIR)/var/ossec/
 +OSSEC_INIT=$(DIR)/etc/ossec-init.conf
 +
@@ -72,6 +72,6 @@ Index: ossec-hids-2.8.2/Makefile
 +	cp -p active-response/firewalls/*.sh $(DIR)/active-response/bin/
 +	cp -p src/init/ossec-hids-debian.init $(DIR)/etc/init.d/ossec
 +	echo "DIRECTORY=\"/var/ossec\"" > $(OSSEC_INIT)
-+	echo "VERSION=\"v2.8.2\"" >> $(OSSEC_INIT)
++	echo "VERSION=\"$(cat src/VERSION)" >> $(OSSEC_INIT)
 +	echo "DATE=\"`date`\"" >> $(OSSEC_INIT)
 +	echo "TYPE=\"server\"" >> $(OSSEC_INIT)
