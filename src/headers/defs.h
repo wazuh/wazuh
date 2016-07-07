@@ -138,6 +138,7 @@ http://www.ossec.net/main/license/\n"
 /* Wazuh Database */
 #define WDB_DIR         "var/db"
 #define WDB_GLOB_NAME   "global.db"
+#define WDB_PROF_NAME   ".profile.db"
 
 /* Diff queue */
 #define DIFF_DIR        "/queue/diff"
