@@ -847,7 +847,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                         __crt_ftell = ftell(_aflog);
                         if (Config.custom_alert_output) {
                             OS_CustomLog(lf, Config.custom_alert_output_format);
-                        } else {
+                        } else if (Config.alerts_log) {
                             OS_Log(lf);
                         }
                         /* Log to json file */
@@ -939,7 +939,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
                     if (Config.custom_alert_output) {
                         OS_CustomLog(lf, Config.custom_alert_output_format);
-                    } else {
+                    } else if (Config.alerts_log) {
                         OS_Log(lf);
                     }
                     /* Log to json file */
