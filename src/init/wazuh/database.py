@@ -25,6 +25,16 @@ _db_perm = 0660
 _dir_mode = 0770
 _verbose = False
 
+# Check minimum version of SQLite module: 2.6.0
+
+if sqlite3.version < '2.6.0':
+    if __name__ == '__main__':
+        sys.stderr.write("ERROR: Required minimal version of SQLite module 2.6.0\n" + \
+                         "Please update the module version or get Python 2.7\n")
+        sys.exit(1)
+    else:
+        raise ImportError("Minimal version of SQLite module 2.6.0 required")
+
 def _remove(path):
     try:
         os.remove(path)
