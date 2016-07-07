@@ -35,7 +35,7 @@ void manage_files(int cday, int cmon, int cyear)
 
     char flogfile[OS_FLSIZE + 1];
     char flogfile_old[OS_FLSIZE + 1];
-    
+
     char ejlogfile[OS_FLSIZE + 1];
     char ejlogfile_old[OS_FLSIZE + 1];
 
@@ -92,11 +92,11 @@ void manage_files(int cday, int cmon, int cyear)
              months[pp_old->tm_mon],
              "archive",
              pp_old->tm_mday);
-             
+
     OS_SignLog(ejlogfile, ejlogfile_old, 0);
     OS_CompressLog(ejlogfile);
 
-    
+
     /* alert logfile  */
     snprintf(alogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
              ALERTS,
@@ -112,7 +112,7 @@ void manage_files(int cday, int cmon, int cyear)
              "alerts",
              pp_old->tm_mday);
 
-    OS_SignLog(alogfile, alogfile_old, 1);
+    OS_SignLog(alogfile, alogfile_old, 0);
     OS_CompressLog(alogfile);
 
     /* alert logfile  */
@@ -154,4 +154,3 @@ void manage_files(int cday, int cmon, int cyear)
 
     return;
 }
-
