@@ -363,48 +363,14 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 if (oldsum.perm == newsum.perm) {
                     sdb.perm[0] = '\0';
                 } else if (oldsum.perm > 0 && newsum.perm > 0) {
+                    char opstr[10];
+                    char npstr[10];
+
+                    strncpy(opstr, agent_file_perm(oldsum.perm), sizeof(opstr));
+                    strncpy(npstr, agent_file_perm(newsum.perm), sizeof(npstr));
 
                     snprintf(sdb.perm, OS_FLSIZE, "Permissions changed from "
-                             "'%c%c%c%c%c%c%c%c%c' "
-                             "to '%c%c%c%c%c%c%c%c%c'\n",
-                             (oldsum.perm & S_IRUSR) ? 'r' : '-',
-                             (oldsum.perm & S_IWUSR) ? 'w' : '-',
-
-                             (oldsum.perm & S_ISUID) ? 's' :
-                             (oldsum.perm & S_IXUSR) ? 'x' : '-',
-
-                             (oldsum.perm & S_IRGRP) ? 'r' : '-',
-                             (oldsum.perm & S_IWGRP) ? 'w' : '-',
-
-                             (oldsum.perm & S_ISGID) ? 's' :
-                             (oldsum.perm & S_IXGRP) ? 'x' : '-',
-
-                             (oldsum.perm & S_IROTH) ? 'r' : '-',
-                             (oldsum.perm & S_IWOTH) ? 'w' : '-',
-
-                             (oldsum.perm & S_ISVTX) ? 't' :
-                             (oldsum.perm & S_IXOTH) ? 'x' : '-',
-
-
-
-                             (newsum.perm & S_IRUSR) ? 'r' : '-',
-                             (newsum.perm & S_IWUSR) ? 'w' : '-',
-
-                             (newsum.perm & S_ISUID) ? 's' :
-                             (newsum.perm & S_IXUSR) ? 'x' : '-',
-
-
-                             (newsum.perm & S_IRGRP) ? 'r' : '-',
-                             (newsum.perm & S_IWGRP) ? 'w' : '-',
-
-                             (newsum.perm & S_ISGID) ? 's' :
-                             (newsum.perm & S_IXGRP) ? 'x' : '-',
-
-                             (newsum.perm & S_IROTH) ? 'r' : '-',
-                             (newsum.perm & S_IWOTH) ? 'w' : '-',
-
-                             (newsum.perm & S_ISVTX) ? 't' :
-                             (newsum.perm & S_IXOTH) ? 'x' : '-');
+                             "'%9.9s' to '%9.9s'\n", opstr, npstr);
 
                     lf->perm_before = oldsum.perm;
                 }
