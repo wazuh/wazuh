@@ -151,7 +151,7 @@ int wdb_create_agent_db(int id, const char *name) {
     if (!name)
         return -1;
 
-    snprintf(path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_GLOB_NAME);
+    snprintf(path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_PROF_NAME);
 
     if (!(source = fopen(path, "r"))) {
         debug1("%s: Couldn't open profile '%s'.", ARGV0, path);
