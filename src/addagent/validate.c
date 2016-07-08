@@ -831,3 +831,15 @@ void OS_RemoveAgentTimestamp(const char *id)
     fclose(fp);
     free(buffer);
 }
+
+void FormatID(char *id) {
+    int number;
+    char *end;
+
+    if (id && *id) {
+        number = strtol(id, &end, 10);
+
+        if (!*end)
+            sprintf(id, "%03d", number);
+    }
+}

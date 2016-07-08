@@ -19,7 +19,7 @@ _dest_dir = _ossec_path + '/var/db'
 _keys_path = _ossec_path + '/etc/client.keys'
 _prof_name = '/.profile.db'
 _agent_dir = '/agents'
-_agent_pattern = '/{0}-{1}.db'
+_agent_pattern = '/{0:03}-{1}.db'
 
 _db_perm = 0660
 _dir_mode = 0770

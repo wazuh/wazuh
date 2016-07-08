@@ -36,7 +36,6 @@ time_t time3;
 long int rand1;
 long int rand2;
 
-
 /* Remove spaces, newlines, etc from a string */
 char *chomp(char *str)
 {
@@ -299,9 +298,10 @@ int add_agent(int json_output)
                 strncpy(id, _id, FILE_SIZE - 1);
             }
 
-            if (!OS_IsValidID(id)) {
+            if (OS_IsValidID(id)) {
+                FormatID(id);
+            } else
                 printf(INVALID_ID, id);
-            }
 
             /* Search for ID KEY  -- no duplicates */
             if (IDExist(id)) {
@@ -442,8 +442,8 @@ int remove_agent(int json_output)
             return (0);
         }
 
+        FormatID(user_input);
         strncpy(u_id, user_input, FILE_SIZE);
-
         id_exist = IDExist(user_input);
 
         if (!id_exist) {

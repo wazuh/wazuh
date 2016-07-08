@@ -158,7 +158,7 @@ int wdb_create_agent_db(int id, const char *name) {
         return -1;
     }
 
-    snprintf(path, OS_FLSIZE, "%s%s/agents/%d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
 
     if (!(dest = fopen(path, "w"))) {
         debug1("%s: Couldn't create database '%s'.", ARGV0, path);
@@ -186,7 +186,7 @@ int wdb_remove_agent_db(int id) {
     if (!name)
         return -1;
 
-    snprintf(path, OS_FLSIZE, "%s%s/agents/%d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
     free(name);
 
     if (!remove(path)) {
