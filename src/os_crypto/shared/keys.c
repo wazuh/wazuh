@@ -253,10 +253,10 @@ void OS_ReadKeys(keystore *keys)
 
     /* Check if there are any agents available */
     if (keys->keysize == 0) {
-        merror(NO_CLIENT_KEYS, __local_name);
-        
-        if (!pass_empty_keyfile) {
-            exit(1);
+        if (pass_empty_keyfile) {
+            debug1(NO_CLIENT_KEYS, __local_name);
+        } else {
+            ErrorExit(NO_CLIENT_KEYS, __local_name);
         }
     }
 
