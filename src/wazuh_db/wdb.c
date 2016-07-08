@@ -44,7 +44,7 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
 	char dir[OS_FLSIZE + 1];
 	sqlite3 *db;
 
-    snprintf(dir, OS_FLSIZE, "%s%s/agents/%d-%s.db", isChroot() ? "/" : "", WDB_DIR, id_agent, name);
+    snprintf(dir, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id_agent, name);
 
 	if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
 		merror("%s: ERROR: Can't open SQLite database '%s': %s\n", ARGV0, dir, sqlite3_errmsg(wdb_global));
