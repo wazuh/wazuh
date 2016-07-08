@@ -310,6 +310,7 @@ int main(int argc, char **argv)
     /* Check if the provided ID is valid */
     if (agent_id != NULL) {
         if (strcmp(agent_id, "000") != 0) {
+            OS_PassEmptyKeyfile();
             OS_ReadKeys(&keys);
 
             agt_id = OS_IsAllowedID(&keys, agent_id);
