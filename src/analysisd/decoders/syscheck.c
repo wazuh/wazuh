@@ -28,6 +28,8 @@ typedef struct __sdb {
     char gowner[OS_FLSIZE + 1];
     char md5[OS_FLSIZE + 1];
     char sha1[OS_FLSIZE + 1];
+    char mtime[OS_FLSIZE + 1];
+    char inode[OS_FLSIZE + 1];
 
     char agent_cp[MAX_AGENTS + 1][1];
     char *agent_ips[MAX_AGENTS + 1];
@@ -82,6 +84,8 @@ void SyscheckInit()
     memset(sdb.gowner, '\0', OS_FLSIZE + 1);
     memset(sdb.md5, '\0', OS_FLSIZE + 1);
     memset(sdb.sha1, '\0', OS_FLSIZE + 1);
+    memset(sdb.mtime, '\0', OS_FLSIZE + 1);
+    memset(sdb.inode, '\0', OS_FLSIZE + 1);
 
     /* Create decoder */
     os_calloc(1, sizeof(OSDecoderInfo), sdb.syscheck_dec);
@@ -437,10 +441,14 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 if (!newsum.uid || !oldsum.uid || strcmp(newsum.uid, oldsum.uid) == 0) {
                     sdb.owner[0] = '\0';
                 } else {
-                    snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', "
-                             "now it is '%s'\n",
-                             oldsum.uid, newsum.uid);
-
+                    if (oldsum.uname && newsum.uname) {
+                        snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.uname, oldsum.uid, newsum.uname, newsum.uid);
+                        os_strdup(oldsum.uname, lf->uname_before);
+                        os_strdup(newsum.uname, lf->uname_after);
+                    } else
+                        snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', "
+                                 "now it is '%s'\n",
+                                 oldsum.uid, newsum.uid);
 
                     os_strdup(oldsum.uid, lf->owner_before);
                     os_strdup(newsum.uid, lf->owner_after);
@@ -450,9 +458,15 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 if (!newsum.gid || !oldsum.gid || strcmp(newsum.gid, oldsum.gid) == 0) {
                     sdb.gowner[0] = '\0';
                 } else {
-                    snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s', "
-                             "now it is '%s'\n",
-                             oldsum.gid, newsum.gid);
+                    if (oldsum.gname && newsum.gname) {
+                        snprintf(sdb.owner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.gname, oldsum.gid, newsum.gname, newsum.gid);
+                        os_strdup(oldsum.gname, lf->gname_before);
+                        os_strdup(newsum.gname, lf->gname_after);
+                    } else
+                        snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s', "
+                                 "now it is '%s'\n",
+                                 oldsum.gid, newsum.gid);
+
                     os_strdup(oldsum.gid, lf->gowner_before);
                     os_strdup(newsum.gid, lf->gowner_after);
                 }
@@ -478,6 +492,29 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     os_strdup(oldsum.sha1, lf->sha1_before);
                     os_strdup(newsum.sha1, lf->sha1_after);
                 }
+
+                /* Modification time message */
+                if (oldsum.mtime && newsum.mtime && oldsum.mtime != newsum.mtime) {
+                    char *old_ctime = strdup(ctime(&oldsum.mtime));
+                    char *new_ctime = strdup(ctime(&newsum.mtime));
+                    snprintf(sdb.mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
+                    lf->mtime_before = oldsum.mtime;
+                    lf->mtime_after = newsum.mtime;
+                    free(old_ctime);
+                    free(new_ctime);
+                } else {
+                    sdb.mtime[0] = '\0';
+                }
+
+                /* Inode message */
+                if (oldsum.inode && newsum.inode && oldsum.inode != newsum.inode) {
+                    snprintf(sdb.mtime, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum.inode, newsum.inode);
+                    lf->inode_before = oldsum.inode;
+                    lf->inode_after = newsum.inode;
+                } else {
+                    sdb.inode[0] = '\0';
+                }
+
                 os_strdup(f_name, lf->filename);
 
                 /* Provide information about the file */
@@ -655,6 +692,10 @@ int DecodeSyscheck(Eventinfo *lf)
    or -1 on failure. */
 int DecodeSum(SyscheckSum *sum, char *c_sum) {
     char *c_perm;
+    char *c_mtime;
+    char *c_inode;
+
+    memset(sum, 0, sizeof(SyscheckSum));
 
     if (c_sum[0] == '-' && c_sum[1] == '1')
         return 1;
@@ -670,6 +711,7 @@ int DecodeSum(SyscheckSum *sum, char *c_sum) {
         return -1;
 
     *(sum->uid++) = '\0';
+    sum->perm = atoi(c_perm);
 
     if (!(sum->gid = strchr(sum->uid, ':')))
         return -1;
@@ -686,7 +728,29 @@ int DecodeSum(SyscheckSum *sum, char *c_sum) {
 
     *(sum->sha1++) = '\0';
 
-    sum->perm = atoi(c_perm);
+    // New fields: user name, group name, modification time and inode
+
+    if (!(sum->uname = strchr(sum->sha1, ':')))
+        return 0;
+
+    *(sum->uname++) = '\0';
+
+    if (!(sum->gname = strchr(sum->uname, ':')))
+        return -1;
+
+    *(sum->gname++) = '\0';
+
+    if (!(c_mtime = strchr(sum->gname, ':')))
+        return -1;
+
+    *(c_mtime++) = '\0';
+
+    if (!(c_inode = strchr(c_mtime, ':')))
+        return -1;
+
+    *(c_inode++) = '\0';
+    sum->mtime = atol(c_mtime);
+    sum->inode = atol(c_inode);
     return 0;
 }
 
@@ -698,4 +762,13 @@ void FillEvent(Eventinfo *lf, const char *f_name, const SyscheckSum *sum) {
     os_strdup(sum->gid, lf->gowner_after);
     os_strdup(sum->md5, lf->md5_after);
     os_strdup(sum->sha1, lf->sha1_after);
+
+    if (sum->uname)
+        os_strdup(sum->uname, lf->uname_after);
+
+    if (sum->gname)
+        os_strdup(sum->gname, lf->gname_after);
+
+    lf->mtime_after = sum->mtime;
+    lf->inode_after = sum->inode;
 }

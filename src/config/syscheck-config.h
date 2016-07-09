@@ -23,6 +23,8 @@
 #define CHECK_SHA1SUM       0000040
 #define CHECK_REALTIME      0000100
 #define CHECK_SEECHANGES    0000200
+#define CHECK_MTIME         0000400
+#define CHECK_INODE         0001000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1

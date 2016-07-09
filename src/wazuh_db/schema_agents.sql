@@ -22,7 +22,11 @@ CREATE TABLE IF NOT EXISTS fim_event (
     uid INTEGER,
     gid INTEGER,
     md5 TEXT,
-    sha1 TEXT
+    sha1 TEXT,
+    uname TEXT,
+    gname TEXT,
+    mtime NUMERIC,
+    inode INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS fim_event_type ON fim_event (type);

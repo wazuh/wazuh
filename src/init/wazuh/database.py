@@ -223,19 +223,29 @@ def _fim_decode(line):
     path = parts[2].decode('utf_8')
 
     if parts[0] == '-1':
-        return path, 'deleted', date, None, None, None, None, None, None
+        return path, 'deleted', date, None, None, None, None, None, None, None, None, None, None
 
-    size, perm, uid, gid, md5, sha1 = parts[0].split(':')
+    csum = parts[0].split(':')
 
-    size = int(size)
-    perm = int(perm)
-    uid = int(uid)
-    gid = int(gid)
+    if len(csum) >= 6:
+        size, perm, uid, gid = [int(x) for x in csum[:4]]
+        md5, sha1 = csum[4:6]
+
+        if len(csum) == 6:
+            uname = gname = mtime = inode = None
+        elif len(csum) == 10:
+            uname, gname = csum[6:8]
+            mtime, inode = [int(x) for x in csum[8:10]]
+        else:
+            raise Exception("Couldn't decode line at syscheck database.")
+
+    else:
+        raise Exception("Couldn't decode line at syscheck database.")
 
     if size < 0:
         event = 'deleted'
 
-    return path, event, date, size, perm, uid, gid, md5, sha1
+    return path, event, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode
 
 def _fim_insert_file(cursor, dbfile, filetype):
     '''Inserts one file from syscheck into the database'''
@@ -243,7 +253,7 @@ def _fim_insert_file(cursor, dbfile, filetype):
     try:
         with open(dbfile, 'r') as syscheck:
             for line in syscheck:
-                path, event, date, size, perm, uid, gid, md5, sha1 = _fim_decode(line[:-1])
+                path, event, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode = _fim_decode(line[:-1])
                 row = cursor.execute('SELECT id FROM fim_file WHERE type = ? AND path = ?', (filetype, path)).fetchone()
 
                 if row:
@@ -252,7 +262,7 @@ def _fim_insert_file(cursor, dbfile, filetype):
                     cursor.execute('INSERT INTO fim_file (path, type) VALUES (?, ?)', (path, filetype))
                     id_file = cursor.lastrowid
 
-                cursor.execute('INSERT INTO fim_event (id_file, type, date, size, perm, uid, gid, md5, sha1) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', (id_file, event, date, size, perm, uid, gid, md5, sha1))
+                cursor.execute('INSERT INTO fim_event (id_file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (id_file, event, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode))
     except IOError:
         sys.stderr.write("WARN: No such file '{0}'.\n".format(dbfile))
 

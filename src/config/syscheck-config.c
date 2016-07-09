@@ -230,6 +230,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_check_owner = "check_owner";
     const char *xml_check_group = "check_group";
     const char *xml_check_perm = "check_perm";
+    const char *xml_check_mtime = "check_mtime";
+    const char *xml_check_inode = "check_inode";
     const char *xml_real_time = "realtime";
     const char *xml_report_changes = "report_changes";
     const char *xml_restrict = "restrict";
@@ -295,9 +297,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_SIZE;
                     opts |= CHECK_OWNER;
                     opts |= CHECK_GROUP;
+                    opts |= CHECK_MTIME;
+                    opts |= CHECK_INODE;
                 } else if (strcmp(*values, "no") == 0) {
 		    opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM
-		       | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP );
+		       | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE );
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -388,7 +392,32 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     ret = 0;
                     goto out_free;
                 }
-            } else if (strcmp(*attrs, xml_real_time) == 0) {
+            }
+            /* Check modification time */
+            else if (strcmp(*attrs, xml_check_mtime) == 0) {
+                if (strcmp(*values, "yes") == 0) {
+                    opts |= CHECK_MTIME;
+                } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_MTIME;
+                } else {
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
+                    ret = 0;
+                    goto out_free;
+                }
+            }
+            /* Check inode */
+            else if (strcmp(*attrs, xml_check_inode) == 0) {
+                if (strcmp(*values, "yes") == 0) {
+                    opts |= CHECK_INODE;
+                } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_INODE;
+                } else {
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
+                    ret = 0;
+                    goto out_free;
+                }
+            }
+            else if (strcmp(*attrs, xml_real_time) == 0) {
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_REALTIME;
                 } else if (strcmp(*values, "no") == 0) {
@@ -904,10 +933,12 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         CHECK_SIZE,
         CHECK_OWNER,
         CHECK_GROUP,
-	CHECK_MD5SUM,
+        CHECK_MD5SUM,
         CHECK_SHA1SUM,
         CHECK_REALTIME,
         CHECK_SEECHANGES,
+        CHECK_MTIME,
+        CHECK_INODE,
 	0
 	};
     char *check_strings[] = {
@@ -915,10 +946,12 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "size",
         "owner",
         "group",
-	"md5sum",
+    	"md5sum",
         "sha1sum",
         "realtime",
         "report_changes",
+        "mtime",
+        "inode",
 	NULL
 	};
 

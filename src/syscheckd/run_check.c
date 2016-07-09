@@ -136,6 +136,7 @@ void start_daemon()
     } else {
         prev_time_rk = time(0);
     }
+
     /* Before entering in daemon mode itself */
     prev_time_sk = time(0);
     sleep(syscheck.tsleep * 10);
@@ -305,7 +306,7 @@ void start_daemon()
 /* Read file information and return a pointer to the checksum */
 int c_read_file(const char *file_name, const char *oldsum, char *newsum)
 {
-    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0;
+    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
     os_md5 mf_sum;
     os_sha1 sf_sum;
@@ -366,6 +367,14 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
         sha1sum = 0;
     }
 
+    /* Modification time */
+    if (oldsum[6] == '+')
+        mtime = 1;
+
+    /* Inode */
+    if (oldsum[7] == '+')
+        inode = 1;
+
     /* Generate new checksum */
     if (S_ISREG(statbuf.st_mode))
     {
@@ -397,14 +406,17 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
 
     newsum[0] = '\0';
     newsum[255] = '\0';
-    snprintf(newsum, 255, "%ld:%d:%d:%d:%s:%s",
+    snprintf(newsum, 255, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld",
              size == 0 ? 0 : (long)statbuf.st_size,
              perm == 0 ? 0 : (int)statbuf.st_mode,
              owner == 0 ? 0 : (int)statbuf.st_uid,
              group == 0 ? 0 : (int)statbuf.st_gid,
              md5sum   == 0 ? "xxx" : mf_sum,
-             sha1sum  == 0 ? "xxx" : sf_sum);
+             sha1sum  == 0 ? "xxx" : sf_sum,
+             owner == 0 ? "" : get_user(statbuf.st_uid),
+             group == 0 ? "" : get_group(statbuf.st_gid),
+             mtime ? (long)statbuf.st_mtime : 0,
+             inode ? (long)statbuf.st_ino : 0);
 
     return (0);
 }
-
