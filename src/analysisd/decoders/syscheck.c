@@ -374,6 +374,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 return 0;
 
             case 0:
+                FillEvent(lf, f_name, &newsum);
+
                 /* Generate size message */
                 if (!oldsum.size || !newsum.size || strcmp(oldsum.size, newsum.size) == 0) {
                     sdb.size[0] = '\0';
@@ -383,7 +385,6 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                              oldsum.size, newsum.size);
 
                     os_strdup(oldsum.size, lf->size_before);
-                    os_strdup(newsum.size, lf->size_after);
                 }
 
                 /* Permission message */
@@ -434,7 +435,6 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                              (newsum.perm & S_IXOTH) ? 'x' : '-');
 
                     lf->perm_before = oldsum.perm;
-                    lf->perm_after = newsum.perm;
                 }
 
                 /* Ownership message */
@@ -444,14 +444,12 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     if (oldsum.uname && newsum.uname) {
                         snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.uname, oldsum.uid, newsum.uname, newsum.uid);
                         os_strdup(oldsum.uname, lf->uname_before);
-                        os_strdup(newsum.uname, lf->uname_after);
                     } else
                         snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', "
                                  "now it is '%s'\n",
                                  oldsum.uid, newsum.uid);
 
                     os_strdup(oldsum.uid, lf->owner_before);
-                    os_strdup(newsum.uid, lf->owner_after);
                 }
 
                 /* Group ownership message */
@@ -461,14 +459,12 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     if (oldsum.gname && newsum.gname) {
                         snprintf(sdb.owner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.gname, oldsum.gid, newsum.gname, newsum.gid);
                         os_strdup(oldsum.gname, lf->gname_before);
-                        os_strdup(newsum.gname, lf->gname_after);
                     } else
                         snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s', "
                                  "now it is '%s'\n",
                                  oldsum.gid, newsum.gid);
 
                     os_strdup(oldsum.gid, lf->gowner_before);
-                    os_strdup(newsum.gid, lf->gowner_after);
                 }
 
                 /* MD5 message */
@@ -479,7 +475,6 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                              "New md5sum is : '%s'\n",
                              oldsum.md5, newsum.md5);
                     os_strdup(oldsum.md5, lf->md5_before);
-                    os_strdup(newsum.md5, lf->md5_after);
                 }
 
                 /* SHA-1 message */
@@ -490,16 +485,17 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                              "New sha1sum is : '%s'\n",
                              oldsum.sha1, newsum.sha1);
                     os_strdup(oldsum.sha1, lf->sha1_before);
-                    os_strdup(newsum.sha1, lf->sha1_after);
                 }
 
                 /* Modification time message */
                 if (oldsum.mtime && newsum.mtime && oldsum.mtime != newsum.mtime) {
                     char *old_ctime = strdup(ctime(&oldsum.mtime));
                     char *new_ctime = strdup(ctime(&newsum.mtime));
+                    old_ctime[strlen(old_ctime) - 1] = '\0';
+                    new_ctime[strlen(new_ctime) - 1] = '\0';
+
                     snprintf(sdb.mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
                     lf->mtime_before = oldsum.mtime;
-                    lf->mtime_after = newsum.mtime;
                     free(old_ctime);
                     free(new_ctime);
                 } else {
@@ -510,7 +506,6 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 if (oldsum.inode && newsum.inode && oldsum.inode != newsum.inode) {
                     snprintf(sdb.mtime, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum.inode, newsum.inode);
                     lf->inode_before = oldsum.inode;
-                    lf->inode_after = newsum.inode;
                 } else {
                     sdb.inode[0] = '\0';
                 }
