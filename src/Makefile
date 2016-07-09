@@ -1359,8 +1359,8 @@ clean-internals:
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
 	rm -f ${integrator_o} ossec-integratord
-	rm -f ${wmoduled_o} ${wmodules_o} wazuh-moduled
-	rm -f ${sqlite_o}
+	rm -f ${wmoduled_o} ${wmodules_o} wazuh-moduled wmodules.a
+	rm -f ${sqlite_o} sqlite.a
 
 clean-windows:
 	rm -f win32/LICENSE.txt
