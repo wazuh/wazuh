@@ -12,7 +12,7 @@
 #include "wdb.h"
 
 static const char *SQL_INSERT_PM = "INSERT INTO pm_event (date_first, date_last, log) VALUES (?, ?, ?);";
-static const char *SQL_UPDATE_PM = "UPDATE pm_event SET date_last = ? WHERE id_agent = ? AND log = ?;";
+static const char *SQL_UPDATE_PM = "UPDATE pm_event SET date_last = ? WHERE log = ?;";
 
 /* Insert policy monitoring entry. Returns ID on success or -1 on error. */
 int wdb_insert_pm(int id_agent, const char *location, long int date, const char *log) {
