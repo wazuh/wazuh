@@ -63,10 +63,12 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip) __attri
  */
 int connect_to_remoted(void);
 
+#ifndef WIN32
 /* Return the unix permission string
  * Returns a pointer to a local static array
  */
 char *agent_file_perm(mode_t mode);
+#endif
 
 /* Sends a message to an agent
  * Returns -1 on error
