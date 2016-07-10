@@ -954,6 +954,24 @@ int connect_to_remoted()
     return (arq);
 }
 
+char *agent_file_perm(mode_t mode)
+{
+	/* rwxrwxrwx0 -> 10 */
+	static char permissions[10];
+
+	permissions[0] = (mode & S_IRUSR) ? 'r' : '-';
+	permissions[1] = (mode & S_IWUSR) ? 'w' : '-';
+	permissions[2] = (mode & S_ISUID) ? 's' : (mode & S_IXUSR) ? 'x' : '-';
+	permissions[3] = (mode & S_IRGRP) ? 'r' : '-';
+	permissions[4] = (mode & S_IWGRP) ? 'w' : '-';
+	permissions[5] = (mode & S_ISGID) ? 's' : (mode & S_IXGRP) ? 'x' : '-';
+	permissions[6] = (mode & S_IROTH) ? 'r' : '-';
+	permissions[7] = (mode & S_IWOTH) ? 'w' : '-';
+	permissions[8] = (mode & S_ISVTX) ? 't' : (mode & S_IXOTH) ? 'x' : '-';
+
+	return &permissions[0];
+}
+
 #endif /* !WIN32 */
 
 /* Internal funtion. Extract last time of scan from rootcheck/syscheck. */
@@ -1319,22 +1337,4 @@ char **get_agents(int flag)
 
     closedir(dp);
     return (f_files);
-}
-
-char *agent_file_perm(mode_t mode)
-{
-	/* rwxrwxrwx0 -> 10 */
-	static char permissions[10];
-
-	permissions[0] = (mode & S_IRUSR) ? 'r' : '-';
-	permissions[1] = (mode & S_IWUSR) ? 'w' : '-';
-	permissions[2] = (mode & S_ISUID) ? 's' : (mode & S_IXUSR) ? 'x' : '-';
-	permissions[3] = (mode & S_IRGRP) ? 'r' : '-';
-	permissions[4] = (mode & S_IWGRP) ? 'w' : '-';
-	permissions[5] = (mode & S_ISGID) ? 's' : (mode & S_IXGRP) ? 'x' : '-';
-	permissions[6] = (mode & S_IROTH) ? 'r' : '-';
-	permissions[7] = (mode & S_IWOTH) ? 'w' : '-';
-	permissions[8] = (mode & S_ISVTX) ? 't' : (mode & S_IXOTH) ? 'x' : '-';
-
-	return &permissions[0];
 }
