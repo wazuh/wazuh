@@ -160,6 +160,7 @@ Feb  3 10:23:08 testsys kernel: usb 1-1.2: New USB device found, idVendor=0781, 
 -->
 <decoder name="usb-storage-attached">
     <parent>iptables</parent>
+    <prematch offset="after_parent">^usb</prematch>
     <regex offset="after_parent">^(usb) </regex>
     <order>id</order>
 </decoder>

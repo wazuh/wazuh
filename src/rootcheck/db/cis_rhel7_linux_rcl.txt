@@ -25,7 +25,7 @@
 # (All of them must match for it to return true).
 
 
-# CIS Checks for Red Hat / CentOS 6
+# CIS Checks for Red Hat / CentOS 7
 # Based on CIS Benchmark for Red Hat Enterprise Linux 7 v1.1.0
 
 # RC scripts location
