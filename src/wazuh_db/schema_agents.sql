@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS fim_event (
     type TEXT NOT NULL CHECK (type IN ('added', 'modified', 'readded', 'deleted')),
     date NUMERIC,
     size INTEGER,
-    perm INTEGER,
+    perm TEXT,
     uid INTEGER,
     gid INTEGER,
     md5 TEXT,
