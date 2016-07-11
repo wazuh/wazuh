@@ -111,8 +111,11 @@ int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const
     sqlite3_bind_int64(stmt, 3, time);
 
     if (sum) {
+        char perm[7];
+        snprintf(perm, 7, "%06o", sum->perm);
+
         sqlite3_bind_int64(stmt, 4, atol(sum->size));
-        sqlite3_bind_int(stmt, 5, sum->perm);
+        sqlite3_bind_text(stmt, 5, perm, -1, NULL);
         sqlite3_bind_int(stmt, 6, atoi(sum->uid));
         sqlite3_bind_int(stmt, 7, atoi(sum->gid));
         sqlite3_bind_text(stmt, 8, sum->md5, -1, NULL);

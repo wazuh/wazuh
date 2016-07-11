@@ -105,13 +105,13 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddStringToObject(file_diff, "size_after", lf->size_after);
         }
         if (lf->perm_before) {
-            char perm[4];
-            sprintf(perm, "%o", lf->perm_before & 0777);
+            char perm[7];
+            snprintf(perm, 7, "%6o", lf->perm_before);
             cJSON_AddStringToObject(file_diff, "perm_before", perm);
         }
         if (lf->perm_after) {
-            char perm[4];
-            sprintf(perm, "%o", lf->perm_after & 0777);
+            char perm[7];
+            snprintf(perm, 7, "%6o", lf->perm_after);
             cJSON_AddStringToObject(file_diff, "perm_after", perm);
         }
         if (lf->owner_before) {
@@ -291,13 +291,13 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddStringToObject(file_diff, "size_after", lf->size_after);
         }
         if (lf->perm_before) {
-            char perm[4];
-            sprintf(perm, "%o", lf->perm_before & 0777);
+            char perm[7];
+            snprintf(perm, 7, "%6o", lf->perm_before);
             cJSON_AddStringToObject(file_diff, "perm_before", perm);
         }
         if (lf->perm_after) {
-            char perm[4];
-            sprintf(perm, "%o", lf->perm_after & 0777);
+            char perm[7];
+            snprintf(perm, 7, "%6o", lf->perm_after);
             cJSON_AddStringToObject(file_diff, "perm_after", perm);
         }
         if (lf->owner_before) {

@@ -230,6 +230,7 @@ def _fim_decode(line):
     if len(csum) >= 6:
         size, perm, uid, gid = [int(x) for x in csum[:4]]
         md5, sha1 = csum[4:6]
+        perm = '{0:06o}'.format(perm)
 
         if len(csum) == 6:
             uname = gname = mtime = inode = None

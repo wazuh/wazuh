@@ -160,9 +160,9 @@ void OS_LogOutput(Eventinfo *lf)
             printf("New size: %s\n", lf->size_after);
 
         if (lf->perm_before)
-            printf("Old permissions: %o\n", lf->perm_before);
+            printf("Old permissions: %6o\n", lf->perm_before);
         if (lf->perm_after)
-            printf("New permissions: %o\n", lf->perm_after);
+            printf("New permissions: %6o\n", lf->perm_after);
 
         if (lf->owner_before) {
             if (lf->uname_before)
@@ -309,9 +309,9 @@ void OS_Log(Eventinfo *lf)
             fprintf(_aflog, "New size: %s\n", lf->size_after);
 
         if (lf->perm_before)
-            fprintf(_aflog, "Old permissions: %o\n", lf->perm_before);
+            fprintf(_aflog, "Old permissions: %6o\n", lf->perm_before);
         if (lf->perm_after)
-            fprintf(_aflog, "New permissions: %o\n", lf->perm_after);
+            fprintf(_aflog, "New permissions: %6o\n", lf->perm_after);
 
         if (lf->owner_before) {
             if (lf->uname_before)
