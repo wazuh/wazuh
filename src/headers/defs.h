@@ -42,6 +42,7 @@
 #define EPOLL_MILLIS    -1              /* Epoll wait time              */
 #define MAX_TAG_COUNTER 256             /* Max retrying counter         */
 #define SOCK_RECV_TIME0 300             /* Socket receiving timeout (s) */
+#define MIN_ORDER_SIZE  10              /* Minimum size of orders array */
 
 /* Some global names */
 #define __ossec_name    "OSSEC HIDS"
@@ -134,6 +135,11 @@ http://www.ossec.net/main/license/\n"
 
 /* Backup directory for agents */
 #define AGNBACKUP_DIR    "/backup/agents"
+
+/* Wazuh Database */
+#define WDB_DIR         "var/db"
+#define WDB_GLOB_NAME   "global.db"
+#define WDB_PROF_NAME   ".profile.db"
 
 /* Diff queue */
 #define DIFF_DIR        "/queue/diff"

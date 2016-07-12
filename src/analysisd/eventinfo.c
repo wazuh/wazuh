@@ -454,6 +454,7 @@ void Zero_Eventinfo(Eventinfo *lf)
 {
     lf->log = NULL;
     lf->full_log = NULL;
+    lf->agent_id = NULL;
     lf->hostname = NULL;
     lf->program_name = NULL;
     lf->location = NULL;
@@ -500,6 +501,14 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->owner_after = NULL;
     lf->gowner_before = NULL;
     lf->gowner_after = NULL;
+    lf->uname_before = NULL;
+    lf->uname_after = NULL;
+    lf->gname_before = NULL;
+    lf->gname_after = NULL;
+    lf->mtime_before = 0;
+    lf->mtime_after = 0;
+    lf->inode_before = 0;
+    lf->inode_after = 0;
 
     return;
 }
@@ -515,6 +524,11 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->full_log) {
         free(lf->full_log);
     }
+
+    if (lf->agent_id) {
+        free(lf->agent_id);
+    }
+
     if (lf->location) {
         free(lf->location);
     }
@@ -616,6 +630,18 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->gowner_after) {
         free(lf->gowner_after);
+    }
+    if (lf->uname_before) {
+        free(lf->uname_before);
+    }
+    if (lf->uname_after) {
+        free(lf->uname_after);
+    }
+    if (lf->gname_before) {
+        free(lf->gname_before);
+    }
+    if (lf->gname_after) {
+        free(lf->gname_after);
     }
 
     /* Free node to delete */

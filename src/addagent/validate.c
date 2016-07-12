@@ -10,6 +10,7 @@
 #include <time.h>
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
+#include "wazuh_db/wdb.h"
 
 #ifdef WIN32
     #define chmod(x,y) 0
@@ -97,6 +98,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     fprintf(fp, "%s\n", finals);
     fclose(fp);
     OS_AddAgentTimestamp(id, name, ip, time(0));
+    wdb_insert_agent(atoi(id), name, ip, finals);
     return (finals);
 }
 
@@ -157,6 +159,8 @@ int OS_RemoveAgent(const char *u_id) {
         return 0;
     }
 
+    wdb_remove_agent_db(atoi(u_id));
+
 #ifndef REUSE_ID
     char *ptr_name = strchr(buf_curline, ' ');
 
@@ -173,6 +177,10 @@ int OS_RemoveAgent(const char *u_id) {
     size_t curline_len = strlen(buf_curline);
     memcpy(buffer + fp_read, buf_curline, curline_len);
     fp_read += curline_len;
+
+    wdb_disable_agent(atoi(u_id));
+#else
+    wdb_remove_agent(atoi(u_id));
 #endif
 
     if (!feof(fp))
@@ -197,7 +205,6 @@ int OS_RemoveAgent(const char *u_id) {
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
-
     OS_RemoveAgentTimestamp(u_id);
     return 1;
 }
@@ -823,4 +830,16 @@ void OS_RemoveAgentTimestamp(const char *id)
     fprintf(fp, "%s", buffer);
     fclose(fp);
     free(buffer);
+}
+
+void FormatID(char *id) {
+    int number;
+    char *end;
+
+    if (id && *id) {
+        number = strtol(id, &end, 10);
+
+        if (!*end)
+            sprintf(id, "%03d", number);
+    }
 }

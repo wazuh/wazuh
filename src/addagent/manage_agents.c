@@ -12,6 +12,7 @@
  */
 
 #include "manage_agents.h"
+#include "wazuh_db/wdb.h"
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
 #include <stdlib.h>
@@ -34,7 +35,6 @@ time_t time2;
 time_t time3;
 long int rand1;
 long int rand2;
-
 
 /* Remove spaces, newlines, etc from a string */
 char *chomp(char *str)
@@ -82,6 +82,7 @@ int add_agent(int json_output)
 
     os_md5 md1;
     os_md5 md2;
+    char key[65];
 
     char *user_input;
     char *_name;
@@ -297,9 +298,10 @@ int add_agent(int json_output)
                 strncpy(id, _id, FILE_SIZE - 1);
             }
 
-            if (!OS_IsValidID(id)) {
+            if (OS_IsValidID(id)) {
+                FormatID(id);
+            } else
                 printf(INVALID_ID, id);
-            }
 
             /* Search for ID KEY  -- no duplicates */
             if (IDExist(id)) {
@@ -379,9 +381,11 @@ int add_agent(int json_output)
                      (int)time3);
             OS_MD5_Str(str1, md1);
 
-            fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
+            snprintf(key, 65, "%s%s", md1, md2);
+            fprintf(fp, "%s %s %s %s\n", id, name, c_ip.ip, key);
             fclose(fp);
             OS_AddAgentTimestamp(id, name, ip, time3);
+            wdb_insert_agent(atoi(id), name, ip, key);
 
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
@@ -438,8 +442,8 @@ int remove_agent(int json_output)
             return (0);
         }
 
+        FormatID(user_input);
         strncpy(u_id, user_input, FILE_SIZE);
-
         id_exist = IDExist(user_input);
 
         if (!id_exist) {
