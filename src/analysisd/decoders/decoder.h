@@ -53,6 +53,20 @@ typedef struct _OSDecoderNode {
     OSDecoderInfo *osdecoder;
 } OSDecoderNode;
 
+/* File sum structure */
+typedef struct SyscheckSum {
+    char *size;
+    int perm;
+    char *uid;
+    char *gid;
+    char *md5;
+    char *sha1;
+    char *uname;
+    char *gname;
+    long mtime;
+    long inode;
+} SyscheckSum;
+
 /* Functions to Create the list, add a osdecoder to the
  * list and to get the first osdecoder
  */

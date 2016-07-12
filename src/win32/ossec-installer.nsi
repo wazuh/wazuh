@@ -26,7 +26,7 @@
 !define MUI_ICON favicon.ico
 !define MUI_UNICON ossec-uninstall.ico
 !define VERSION "2.8"
-!define WAZUH_VERSION "1.1.1"
+!define WAZUH_VERSION "1.2-alpha1"
 !define NAME "OSSEC HIDS"
 !define SERVICE "OssecSvc"
 
@@ -172,6 +172,7 @@ Section "OSSEC Agent (required)" MainSec
     File vista_sec.txt
     File /oname=active-response\bin\route-null.cmd route-null.cmd
     File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
+    File /oname=libwinpthread-1.dll /usr/i686-w64-mingw32/lib/libwinpthread-1.dll
 
     ; use appropriate version of "ossec-agent.exe"
     ${If} ${AtLeastWinVista}

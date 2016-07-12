@@ -57,5 +57,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum) __attri
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
-#endif
+const char* get_user(int uid);
+const char* get_group(int gid);
 
+#endif

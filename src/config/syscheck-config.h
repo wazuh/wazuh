@@ -23,6 +23,12 @@
 #define CHECK_SHA1SUM       0000040
 #define CHECK_REALTIME      0000100
 #define CHECK_SEECHANGES    0000200
+#define CHECK_MTIME         0000400
+#define CHECK_INODE         0001000
+
+#define ARCH_32BIT          0
+#define ARCH_64BIT          1
+#define ARCH_BOTH           2
 
 #include <stdio.h>
 
@@ -35,6 +41,20 @@ typedef struct _rtfim {
     HANDLE evt;
 #endif
 } rtfim;
+
+#ifdef WIN32
+
+typedef struct registry {
+    char *entry;
+    int arch;
+} registry;
+
+typedef struct registry_regex {
+    OSMatch *regex;
+    int arch;
+} registry_regex;
+
+#endif
 
 typedef struct _config {
     unsigned int tsleep;            /* sleep for sometime for daemon to settle */
@@ -67,9 +87,9 @@ typedef struct _config {
 
     /* Windows only registry checking */
 #ifdef WIN32
-    char **registry_ignore;         /* list of registry entries to ignore */
-    void **registry_ignore_regex;   /* regex of registry entries to ignore */
-    char **registry;                /* array of registry entries to be scanned */
+    registry *registry_ignore;                  /* list of registry entries to ignore */
+    registry_regex *registry_ignore_regex;      /* regex of registry entries to ignore */
+    registry *registry;                         /* array of registry entries to be scanned */
     FILE *reg_fp;
 #endif
 
@@ -86,4 +106,3 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 
 #endif /* __SYSCHECKC_H */
-

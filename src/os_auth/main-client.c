@@ -38,6 +38,9 @@ int main()
 #include <openssl/ssl.h>
 #include "auth.h"
 
+#undef ARGV0
+#define ARGV0 "agent-auth"
+
 static void help_agent_auth(void) __attribute__((noreturn));
 
 /* Print help statement */

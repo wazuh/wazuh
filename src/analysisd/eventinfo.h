@@ -18,6 +18,7 @@ typedef struct _Eventinfo {
     /* Extracted from the event */
     char *log;
     char *full_log;
+    char *agent_id;
     char *location;
     char *hostname;
     char *program_name;
@@ -77,6 +78,14 @@ typedef struct _Eventinfo {
     char *owner_after;
     char *gowner_before;
     char *gowner_after;
+    char *uname_before;
+    char *uname_after;
+    char *gname_before;
+    char *gname_after;
+    long mtime_before;
+    long mtime_after;
+    long inode_before;
+    long inode_after;
 } Eventinfo;
 
 /* Events List structure */
