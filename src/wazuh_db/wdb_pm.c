@@ -32,7 +32,7 @@ int wdb_insert_pm(int id_agent, const char *location, long int date, const char 
 
     if (sqlite3_prepare_v2(db, SQL_INSERT_PM, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
-        sqlite3_close(db);
+        sqlite3_close_v2(db);
         return -1;
     }
 
@@ -41,8 +41,8 @@ int wdb_insert_pm(int id_agent, const char *location, long int date, const char 
     sqlite3_bind_text(stmt, 3, log, -1, NULL);
 
     result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
-    sqlite3_reset(stmt);
-    sqlite3_close(db);
+    sqlite3_finalize(stmt);
+    sqlite3_close_v2(db);
     return result;
 }
 
@@ -64,7 +64,7 @@ int wdb_update_pm(int id_agent, const char *location, const char *log, long int 
 
     if (sqlite3_prepare_v2(db, SQL_UPDATE_PM, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
-        sqlite3_close(db);
+        sqlite3_close_v2(db);
         return -1;
     }
 
@@ -73,7 +73,7 @@ int wdb_update_pm(int id_agent, const char *location, const char *log, long int 
     sqlite3_bind_text(stmt, 3, log, -1, NULL);
 
     result = sqlite3_step(stmt) == SQLITE_DONE ? 0 : -1;
-    sqlite3_reset(stmt);
-    sqlite3_close(db);
+    sqlite3_finalize(stmt);
+    sqlite3_close_v2(db);
     return result;
 }

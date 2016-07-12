@@ -35,7 +35,7 @@ int wdb_open_global() {
 
 /* Close global database */
 void wdb_close_global() {
-	sqlite3_close(wdb_global);
+	sqlite3_close_v2(wdb_global);
 	wdb_global = NULL;
 }
 

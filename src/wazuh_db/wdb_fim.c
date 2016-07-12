@@ -90,18 +90,18 @@ int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const
 
     if (sqlite3_prepare_v2(db, SQL_INSERT_FIM, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
-        sqlite3_close(db);
+        sqlite3_close_v2(db);
         return -1;
     }
 
     switch ((id_file = wdb_find_file(db, f_name, type))) {
     case -1:
-        sqlite3_close(db);
+        sqlite3_close_v2(db);
         return -1;
 
     case 0:
         if ((id_file = wdb_insert_file(db, f_name, type)) < 0) {
-            sqlite3_close(db);
+            sqlite3_close_v2(db);
             return -1;
         }
     }
@@ -139,7 +139,7 @@ int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const
 
     result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
     sqlite3_finalize(stmt);
-    sqlite3_close(db);
+    sqlite3_close_v2(db);
     return result;
 }
 

@@ -534,8 +534,6 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     sdb.inode[0] = '\0';
                 }
 
-                os_strdup(f_name, lf->filename);
-
                 /* Provide information about the file */
                 snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
                          "'%.756s'\n"
@@ -797,9 +795,9 @@ void FillEvent(Eventinfo *lf, const char *f_name, const SyscheckSum *sum) {
     os_calloc(7, sizeof(char), lf->fields[SCK_PERM]);
     snprintf(lf->fields[SCK_PERM], 7, "%06o", sum->perm);
     os_strdup(sum->uid, lf->fields[SCK_UID]);
-    os_strdup(sum->gid ,lf->fields[SCK_GID]);
-    os_strdup(sum->md5 ,lf->fields[SCK_MD5]);
-    os_strdup(sum->sha1 ,lf->fields[SCK_SHA1]);
+    os_strdup(sum->gid, lf->fields[SCK_GID]);
+    os_strdup(sum->md5, lf->fields[SCK_MD5]);
+    os_strdup(sum->sha1, lf->fields[SCK_SHA1]);
 
     if (sum->uname)
         os_strdup(sum->uname, lf->fields[SCK_UNAME]);
