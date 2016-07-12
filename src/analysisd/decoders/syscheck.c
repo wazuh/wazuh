@@ -18,6 +18,18 @@
 /* SQLITE DB */
 #include "wazuh_db/wdb.h"
 
+/* Fields for rules */
+#define SCK_FILE  0
+#define SCK_SIZE  1
+#define SCK_PERM  2
+#define SCK_UID   3
+#define SCK_GID   4
+#define SCK_MD5   5
+#define SCK_SHA1  6
+#define SCK_UNAME 7
+#define SCK_GNAME 8
+#define SCK_INODE 9
+
 typedef struct __sdb {
     char buf[OS_MAXSTR + 1];
     char comment[OS_MAXSTR + 1];
@@ -93,6 +105,18 @@ void SyscheckInit()
     sdb.syscheck_dec->name = SYSCHECK_MOD;
     sdb.syscheck_dec->type = OSSEC_RL;
     sdb.syscheck_dec->fts = 0;
+
+    os_calloc(Config.decoder_order_size, sizeof(char *), sdb.syscheck_dec->fields);
+    sdb.syscheck_dec->fields[SCK_FILE] = "file";
+    sdb.syscheck_dec->fields[SCK_SIZE] = "size";
+    sdb.syscheck_dec->fields[SCK_PERM] = "perm";
+    sdb.syscheck_dec->fields[SCK_UID] = "uid";
+    sdb.syscheck_dec->fields[SCK_GID] = "gid";
+    sdb.syscheck_dec->fields[SCK_MD5] = "md5";
+    sdb.syscheck_dec->fields[SCK_SHA1] = "sha1";
+    sdb.syscheck_dec->fields[SCK_UNAME] = "uname";
+    sdb.syscheck_dec->fields[SCK_GNAME] = "gname";
+    sdb.syscheck_dec->fields[SCK_INODE] = "inode";
 
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
     sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);
@@ -766,4 +790,25 @@ void FillEvent(Eventinfo *lf, const char *f_name, const SyscheckSum *sum) {
 
     lf->mtime_after = sum->mtime;
     lf->inode_after = sum->inode;
+
+    /* Fields */
+    os_strdup(f_name, lf->fields[SCK_FILE]);
+    os_strdup(sum->size, lf->fields[SCK_SIZE]);
+    os_calloc(7, sizeof(char), lf->fields[SCK_PERM]);
+    snprintf(lf->fields[SCK_PERM], 7, "%06o", sum->perm);
+    os_strdup(sum->uid, lf->fields[SCK_UID]);
+    os_strdup(sum->gid ,lf->fields[SCK_GID]);
+    os_strdup(sum->md5 ,lf->fields[SCK_MD5]);
+    os_strdup(sum->sha1 ,lf->fields[SCK_SHA1]);
+
+    if (sum->uname)
+        os_strdup(sum->uname, lf->fields[SCK_UNAME]);
+
+    if (sum->gname)
+        os_strdup(sum->gname, lf->fields[SCK_GNAME]);
+
+    if (sum->inode) {
+        os_calloc(20, sizeof(char), lf->fields[SCK_INODE]);
+        snprintf(lf->fields[SCK_INODE], 20, "%ld", sum->inode);
+    }
 }
