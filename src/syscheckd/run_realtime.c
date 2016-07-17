@@ -58,10 +58,6 @@ int realtime_checksumfile(const char *file_name)
             char alert_msg[OS_MAXSTR + 1];
 
             alert_msg[OS_MAXSTR] = '\0';
-
-            #ifdef WIN32
-            snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
-            #else
             char *fullalert = NULL;
 
             if (buf[5] == 's' || buf[5] == 'n') {
@@ -76,7 +72,6 @@ int realtime_checksumfile(const char *file_name)
             } else {
                 snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
             }
-            #endif
             send_syscheck_msg(alert_msg);
 
             return (1);
@@ -401,4 +396,3 @@ int realtime_process()
 }
 
 #endif /* WIN32 */
-
