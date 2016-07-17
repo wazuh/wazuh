@@ -142,8 +142,12 @@ http://www.ossec.net/main/license/\n"
 #define WDB_PROF_NAME   ".profile.db"
 
 /* Diff queue */
+#ifndef WIN32
 #define DIFF_DIR        "/queue/diff"
 #define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
+#else
+#define DIFF_DIR_PATH "queue/diff"
+#endif
 #define DIFF_NEW_FILE  "new-entry"
 #define DIFF_LAST_FILE "last-entry"
 #define DIFF_TEST_HOST "__test"
