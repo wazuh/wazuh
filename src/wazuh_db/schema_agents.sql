@@ -39,7 +39,9 @@ CREATE TABLE IF NOT EXISTS pm_event (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date_first NUMERIC,
     date_last NUMERIC,
-    log TEXT
+    log TEXT,
+    pci_dss TEXT,
+    cis TEXT
 );
 
 CREATE INDEX IF NOT EXISTS pm_event_log ON pm_event (log);

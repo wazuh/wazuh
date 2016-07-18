@@ -302,6 +302,34 @@ def insert_fim(destdir=_dest_dir):
 
         conn.close()
 
+def _pm_pcidss(string):
+    '''Get PCI_DSS requirement from log string '''
+
+    i = string.find('{PCI_DSS: ')
+
+    if i >= 0:
+        string = string[i + 10:]
+        i = string.find('}')
+
+        if i >= 0:
+            return string[:i]
+
+    return None
+
+def _pm_cis(string):
+    '''Get CIS requirement from log string '''
+
+    i = string.find('{CIS: ')
+
+    if i >= 0:
+        string = string[i + 6:]
+        i = string.find('}')
+
+        if i >= 0:
+            return string[:i]
+
+    return None
+
 def insert_pm(destdir=_dest_dir):
     '''Insert the policy monitoring events into database.
        It requires that table agents has been filled.'''
@@ -335,7 +363,7 @@ def insert_pm(destdir=_dest_dir):
                         date_first = date_last = None
                         log = line
 
-                    cursor.execute("INSERT INTO pm_event (date_first, date_last, log) VALUES (?, ?, ?)", (date_first, date_last, log))
+                    cursor.execute("INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (?, ?, ?, ?, ?)", (date_first, date_last, log, _pm_pcidss(log), _pm_cis(log)))
 
         except IOError:
             sys.stderr.write("WARN: No such file '{0}'.\n".format(path))
