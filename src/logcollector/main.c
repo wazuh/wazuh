@@ -149,7 +149,7 @@ int main(int argc, char **argv)
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        merror(PID_ERROR, ARGV0);
+        ErrorExit(PID_ERROR, ARGV0);
     }
 
     /* Wait 6 seconds for the analysisd/agentd to settle */
