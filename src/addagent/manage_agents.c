@@ -77,6 +77,7 @@ int add_agent(int json_output)
 {
     int i = 1;
     FILE *fp;
+    File file;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
 
@@ -114,24 +115,8 @@ int add_agent(int json_output)
     }
     fclose(fp);
 
-#ifndef WIN32
-    if (chmod(AUTH_FILE, 0440) == -1) {
-        if (json_output) {
-            char buffer[1024];
-            cJSON *json_root = cJSON_CreateObject();
-            snprintf(buffer, 1023, "Could not chmod object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
-            cJSON_AddNumberToObject(json_root, "error", 71);
-            cJSON_AddStringToObject(json_root, "message", buffer);
-            printf("%s", cJSON_PrintUnformatted(json_root));
-            exit(1);
-        } else
-            ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
-    }
-#endif
-
     /* Set time 2 */
     time2 = time(0);
-
     rand1 = random();
 
     /* Zero strings */
@@ -336,8 +321,7 @@ int add_agent(int json_output)
             time3 = time(0);
             rand2 = random();
 
-            fp = fopen(AUTH_FILE, "a");
-            if (!fp) {
+            if (TempFile(&file, AUTH_FILE) < 0 ) {
                 if (json_output) {
                     char buffer[1024];
                     cJSON *json_root = cJSON_CreateObject();
@@ -349,20 +333,6 @@ int add_agent(int json_output)
                 } else
                     ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
             }
-#ifndef WIN32
-            if (chmod(AUTH_FILE, 0440) < 0) {
-                if (json_output) {
-                    char buffer[1024];
-                    cJSON *json_root = cJSON_CreateObject();
-                    snprintf(buffer, 1023, "Could not chmod object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
-                    cJSON_AddNumberToObject(json_root, "error", 71);
-                    cJSON_AddStringToObject(json_root, "message", buffer);
-                    printf("%s", cJSON_PrintUnformatted(json_root));
-                    exit(1);
-                } else
-                    ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
-            }
-#endif
 
             /* Random 1: Time took to write the agent information
              * Random 2: Time took to choose the action
@@ -382,8 +352,10 @@ int add_agent(int json_output)
             OS_MD5_Str(str1, md1);
 
             snprintf(key, 65, "%s%s", md1, md2);
-            fprintf(fp, "%s %s %s %s\n", id, name, c_ip.ip, key);
-            fclose(fp);
+            fprintf(file.fp, "%s %s %s %s\n", id, name, c_ip.ip, key);
+            fclose(file.fp);
+            rename(file.name, AUTH_FILE);
+            free(file.name);
             OS_AddAgentTimestamp(id, name, ip, time3);
             wdb_insert_agent(atoi(id), name, ip, key);
 
