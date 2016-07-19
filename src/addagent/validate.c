@@ -13,7 +13,7 @@
 #include "wazuh_db/wdb.h"
 
 #ifdef WIN32
-    #define chmod(x,y) 0
+    #define fchmod(x,y) 0
     #define mkdir(x,y) 0
     #define link(x,y) 0
     #define difftime(x,y) 0
@@ -22,10 +22,9 @@
 /* Global variables */
 fpos_t fp_pos;
 
-
 char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
 {
-    FILE *fp;
+    File file;
     os_md5 md1;
     os_md5 md2;
     char str1[STR_SIZE + 1];
@@ -84,9 +83,8 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
         id = nid;
     }
 
-    fp = fopen(AUTH_FILE, "a");
-    if (!fp) {
-        return (NULL);
+    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+        return NULL;
     }
 
     os_calloc(2048, sizeof(char), finals);
@@ -95,8 +93,10 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     } else {
         snprintf(finals, 2048, "%s %s %s %s%s", id, name, ip, md1, md2);
     }
-    fprintf(fp, "%s\n", finals);
-    fclose(fp);
+    fprintf(file.fp, "%s\n", finals);
+    fclose(file.fp);
+    rename(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH);
+    free(file.name);
     OS_AddAgentTimestamp(id, name, ip, time(0));
     wdb_insert_agent(atoi(id), name, ip, finals);
     return (finals);
@@ -104,6 +104,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
 
 int OS_RemoveAgent(const char *u_id) {
     FILE *fp;
+    File file;
     int id_exist;
     char *full_name;
     long fp_seek;
@@ -121,11 +122,6 @@ int OS_RemoveAgent(const char *u_id) {
 
     if (!fp)
         return 0;
-
-    if (chmod(AUTH_FILE, 0440) < 0) {
-        fclose(fp);
-        return 0;
-    }
 
     if (fstat(fileno(fp), &fp_stat) < 0) {
         fclose(fp);
@@ -187,15 +183,16 @@ int OS_RemoveAgent(const char *u_id) {
         fp_read += fread(buffer + fp_read, sizeof(char), fp_stat.st_size, fp);
 
     fclose(fp);
-    fp = fopen(AUTH_FILE, "w");
 
-    if (!fp) {
+    if (TempFile(&file, NULL) < 0) {
         free(buffer);
         return 0;
     }
 
-    fwrite(buffer, sizeof(char), fp_read, fp);
-    fclose(fp);
+    fwrite(buffer, sizeof(char), fp_read, file.fp);
+    fclose(file.fp);
+    rename(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH);
+    free(file.name);
     free(buffer);
 
     if ((full_name = getFullnameById(u_id))) {
@@ -774,24 +771,25 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
 
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now)
 {
-    FILE *fp;
+    File file;
     char timestamp[40];
 
-    fp = fopen(TIMESTAMP_FILE, "a");
-
-    if (!fp) {
+    if (TempFile(&file, TIMESTAMP_FILE) < 0) {
         merror("%s: ERROR: Couldn't open timestamp file.", ARGV0);
         return;
     }
 
     strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&now));
-    fprintf(fp, "%s %s %s %s\n", id, name, ip, timestamp);
-    fclose(fp);
+    fprintf(file.fp, "%s %s %s %s\n", id, name, ip, timestamp);
+    fclose(file.fp);
+    rename(file.name, TIMESTAMP_FILE);
+    free(file.name);
 }
 
 void OS_RemoveAgentTimestamp(const char *id)
 {
     FILE *fp;
+    File file;
     char *buffer;
     char line[OS_BUFFER_SIZE];
     int idlen = strlen(id);
@@ -819,17 +817,18 @@ void OS_RemoveAgentTimestamp(const char *id)
     }
 
     fclose(fp);
-    fp = fopen(TIMESTAMP_FILE, "w");
 
-    if (!fp) {
-        merror("%s: ERROR: Couldn't open timetamp file.", ARGV0);
+    if (TempFile(&file, NULL) < 0) {
+        merror("%s: ERROR: Couldn't open timestamp file.", ARGV0);
         free(buffer);
         return;
     }
 
-    fprintf(fp, "%s", buffer);
-    fclose(fp);
+    fprintf(file.fp, "%s", buffer);
+    fclose(file.fp);
     free(buffer);
+    rename(file.name, TIMESTAMP_FILE);
+    free(file.name);
 }
 
 void FormatID(char *id) {
@@ -842,4 +841,70 @@ void FormatID(char *id) {
         if (!*end)
             sprintf(id, "%03d", number);
     }
+}
+
+int TempFile(File *file, const char *source) {
+    FILE *fp_src;
+    int fd;
+    size_t count_r;
+    size_t count_w;
+    char buffer[4096];
+    char template[OS_FLSIZE + 1] = "/tmp/tempXXXXXX";
+
+    if (!isChroot())
+        snprintf(template, OS_FLSIZE, "%s/tmp/tempXXXXXX", DEFAULTDIR);
+
+    fd = mkstemp(template);
+
+    if (fd < 0) {
+        return -1;
+    }
+
+    if (fchmod(fd, 0640) < 0) {
+        close(fd);
+        unlink(template);
+        return -1;
+    }
+
+    file->fp = fdopen(fd, "w");
+
+    if (!file->fp) {
+        close(fd);
+        unlink(template);
+        return -1;
+    }
+
+    if (source) {
+        fp_src = fopen(source, "r");
+
+        if (!fp_src) {
+            file->name = strdup(template);
+            return 0;
+        }
+
+        while (!feof(fp_src)) {
+            count_r = fread(buffer, 1, 4096, fp_src);
+
+            if (ferror(fp_src)) {
+                fclose(fp_src);
+                fclose(file->fp);
+                unlink(template);
+                return -1;
+            }
+
+            count_w = fwrite(buffer, 1, count_r, file->fp);
+
+            if (count_w != count_r || ferror(file->fp)) {
+                fclose(fp_src);
+                fclose(file->fp);
+                unlink(template);
+                return -1;
+            }
+        }
+
+        fclose(fp_src);
+    }
+
+    file->name = strdup(template);
+    return 0;
 }
