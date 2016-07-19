@@ -202,10 +202,13 @@ int add_agent(int json_output)
         }
 
         strncpy(ip, _ip, FILE_SIZE - 1);
+        free(c_ip.ip);
 
         if (!OS_IsValidIP(ip, &c_ip)) {
             printf(IP_ERROR, ip);
             _ip = NULL;
+            free(c_ip.ip);
+            c_ip.ip = NULL;
         } else if ((id_exist = IPExist(ip))) {
             double antiquity = -1;
             const char *env_remove_dup = getenv("OSSEC_REMOVE_DUPLICATED");
@@ -232,12 +235,13 @@ int add_agent(int json_output)
                     printf(IP_DUP_ERROR, ip);
                     setenv("OSSEC_AGENT_IP", "", 1);
                     _ip = NULL;
+                    free(c_ip.ip);
+                    c_ip.ip = NULL;
                 }
             }
 
             free(id_exist);
         }
-
     } while (!_ip);
 
     if (!*id) {
