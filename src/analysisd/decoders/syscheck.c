@@ -555,6 +555,11 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          lf->data == NULL ? "" : lf->data
                         );
 
+                if (lf->data) {
+                    os_strdup(lf->data, lf->diff);
+                    merror("\n\nVIKMAN: diff = <%s>\n\n", lf->diff);
+                }
+
                 if (wdb_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "modified", &newsum, (long int)lf->time) < 0) {
                     merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
                     debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
