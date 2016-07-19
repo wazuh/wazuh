@@ -137,7 +137,7 @@ void wm_setup()
     // Create PID file
 
     if (CreatePID(ARGV0, getpid()) < 0)
-        merror("%s: ERROR: Couldn't create PID file: (%s)", ARGV0, strerror(errno));
+        ErrorExit("%s: ERROR: Couldn't create PID file: (%s)", ARGV0, strerror(errno));
 
     // Signal management
 

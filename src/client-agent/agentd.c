@@ -56,7 +56,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        merror(PID_ERROR, ARGV0);
+        ErrorExit(PID_ERROR, ARGV0);
     }
 
     /* Read private keys  */
@@ -159,4 +159,3 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         }
     }
 }
-
