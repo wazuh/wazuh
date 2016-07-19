@@ -162,6 +162,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if (lf->inode_after) {
             cJSON_AddNumberToObject(file_diff, "inode_after", lf->inode_after);
         }
+        if (lf->diff) {
+            cJSON_AddStringToObject(file_diff, "diff", lf->diff);
+        }
     }
 
     if(lf->program_name)
@@ -347,6 +350,9 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
         }
         if (lf->inode_after) {
             cJSON_AddNumberToObject(file_diff, "inode_after", lf->inode_after);
+        }
+        if (lf->diff) {
+            cJSON_AddStringToObject(file_diff, "diff", lf->diff);
         }
     }
 

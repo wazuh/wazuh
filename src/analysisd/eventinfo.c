@@ -509,6 +509,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->mtime_after = 0;
     lf->inode_before = 0;
     lf->inode_after = 0;
+    lf->diff = NULL;
 
     return;
 }
@@ -642,6 +643,9 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->gname_after) {
         free(lf->gname_after);
+    }
+    if (lf->diff) {
+        free(lf->diff);
     }
 
     /* Free node to delete */
