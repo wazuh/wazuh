@@ -83,7 +83,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
         id = nid;
     }
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 1) < 0) {
         return NULL;
     }
 
@@ -95,7 +95,12 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     }
     fprintf(file.fp, "%s\n", finals);
     fclose(file.fp);
-    rename(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH);
+
+    if (MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+        free(file.name);
+        return NULL;
+    }
+
     free(file.name);
     OS_AddAgentTimestamp(id, name, ip, time(0));
     wdb_insert_agent(atoi(id), name, ip, finals);
@@ -184,14 +189,20 @@ int OS_RemoveAgent(const char *u_id) {
 
     fclose(fp);
 
-    if (TempFile(&file, NULL) < 0) {
+    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {
         free(buffer);
         return 0;
     }
 
     fwrite(buffer, sizeof(char), fp_read, file.fp);
     fclose(file.fp);
-    rename(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH);
+
+    if (MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+        free(file.name);
+        free(buffer);
+        return 0;
+    }
+
     free(file.name);
     free(buffer);
 
@@ -774,7 +785,7 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
     File file;
     char timestamp[40];
 
-    if (TempFile(&file, TIMESTAMP_FILE) < 0) {
+    if (TempFile(&file, TIMESTAMP_FILE, 1) < 0) {
         merror("%s: ERROR: Couldn't open timestamp file.", ARGV0);
         return;
     }
@@ -782,7 +793,7 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
     strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&now));
     fprintf(file.fp, "%s %s %s %s\n", id, name, ip, timestamp);
     fclose(file.fp);
-    rename(file.name, TIMESTAMP_FILE);
+    MoveFile(file.name, TIMESTAMP_FILE);
     free(file.name);
 }
 
@@ -818,7 +829,7 @@ void OS_RemoveAgentTimestamp(const char *id)
 
     fclose(fp);
 
-    if (TempFile(&file, NULL) < 0) {
+    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
         merror("%s: ERROR: Couldn't open timestamp file.", ARGV0);
         free(buffer);
         return;
@@ -827,7 +838,7 @@ void OS_RemoveAgentTimestamp(const char *id)
     fprintf(file.fp, "%s", buffer);
     fclose(file.fp);
     free(buffer);
-    rename(file.name, TIMESTAMP_FILE);
+    MoveFile(file.name, TIMESTAMP_FILE);
     free(file.name);
 }
 
@@ -843,17 +854,12 @@ void FormatID(char *id) {
     }
 }
 
-int TempFile(File *file, const char *source) {
+int TempFile(File *file, const char *source, int copy) {
     FILE *fp_src;
     int fd;
-    size_t count_r;
-    size_t count_w;
-    char buffer[4096];
-    char template[OS_FLSIZE + 1] = "/tmp/tempXXXXXX";
+    char template[OS_FLSIZE + 1];
 
-    if (!isChroot())
-        snprintf(template, OS_FLSIZE, "%s/tmp/tempXXXXXX", DEFAULTDIR);
-
+    snprintf(template, OS_FLSIZE, "%s.XXXXXX", source);
     fd = mkstemp(template);
 
     if (fd < 0) {
@@ -874,7 +880,11 @@ int TempFile(File *file, const char *source) {
         return -1;
     }
 
-    if (source) {
+    if (copy) {
+        size_t count_r;
+        size_t count_w;
+        char buffer[4096];
+
         fp_src = fopen(source, "r");
 
         if (!fp_src) {
@@ -907,4 +917,58 @@ int TempFile(File *file, const char *source) {
 
     file->name = strdup(template);
     return 0;
+}
+
+int MoveFile(const char *src, const char *dst) {
+    FILE *fp_src;
+    FILE *fp_dst;
+    size_t count_r;
+    size_t count_w;
+    char buffer[4096];
+    int status = 0;
+
+    if (rename(src, dst) == 0) {
+        return 0;
+    }
+
+    debug1("%s: WARN: Couldn't rename %s: %s", ARGV0, dst, strerror(errno));
+
+    fp_src = fopen(src, "r");
+
+    if (!fp_src) {
+        merror("%s: ERROR: Couldn't open file '%s'", ARGV0, src);
+        return -1;
+    }
+
+    fp_dst = fopen(dst, "w");
+
+    if (!fp_dst) {
+        merror("%s: ERROR: Couldn't open file '%s'", ARGV0, dst);
+        fclose(fp_src);
+        unlink(src);
+        return -1;
+    }
+
+    while (!feof(fp_src)) {
+        count_r = fread(buffer, 1, 4096, fp_src);
+
+        if (ferror(fp_src)) {
+            merror("%s: ERROR: Couldn't read file '%s'", ARGV0, src);
+            status = -1;
+            break;
+        }
+
+        count_w = fwrite(buffer, 1, count_r, fp_dst);
+
+        if (count_w != count_r || ferror(fp_dst)) {
+            merror("%s: ERROR: Couldn't write file '%s'", ARGV0, dst);
+            status = -1;
+            break;
+        }
+    }
+
+    fclose(fp_src);
+    fclose(fp_dst);
+    unlink(dst);
+    return status;
 }
