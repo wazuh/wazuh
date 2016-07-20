@@ -325,7 +325,7 @@ int add_agent(int json_output)
             time3 = time(0);
             rand2 = random();
 
-            if (TempFile(&file, AUTH_FILE) < 0 ) {
+            if (TempFile(&file, AUTH_FILE, 1) < 0 ) {
                 if (json_output) {
                     char buffer[1024];
                     cJSON *json_root = cJSON_CreateObject();
@@ -358,7 +358,20 @@ int add_agent(int json_output)
             snprintf(key, 65, "%s%s", md1, md2);
             fprintf(file.fp, "%s %s %s %s\n", id, name, c_ip.ip, key);
             fclose(file.fp);
-            rename(file.name, AUTH_FILE);
+
+            if (MoveFile(file.name, AUTH_FILE) < 0) {
+                if (json_output) {
+                    char buffer[1024];
+                    cJSON *json_root = cJSON_CreateObject();
+                    snprintf(buffer, 1023, "Could not write file '%s'", AUTH_FILE);
+                    cJSON_AddNumberToObject(json_root, "error", 71);
+                    cJSON_AddStringToObject(json_root, "message", buffer);
+                    printf("%s", cJSON_PrintUnformatted(json_root));
+                    exit(1);
+                } else
+                    ErrorExit("%s: Could not write file '%s'", ARGV0, AUTH_FILE);
+            }
+
             free(file.name);
             OS_AddAgentTimestamp(id, name, ip, time3);
             wdb_insert_agent(atoi(id), name, ip, key);
