@@ -296,7 +296,9 @@ int main(int argc, char **argv)
 
             if (ret && strlen(buf) > 2) {
                 /* Remove newline */
-                buf[strlen(buf) - 1] = '\0';
+                if (buf[strlen(buf) - 1] == '\n')
+                    buf[strlen(buf) - 1] = '\0';
+
                 authpass = strdup(buf);
             }
 
