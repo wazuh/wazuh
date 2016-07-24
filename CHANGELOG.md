@@ -1,6 +1,63 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v1.2]
+
+### Added
+
+- Wazuh modules manager
+- Wazuh module for OpenSCAP
+- Ruleset for OpenSCAP alerts
+- Kibana dashboards for OpenSCAP
+- Option at agent_control to restart all agents
+- Dynamic fields to rules and decoders
+- Dynamic fields to JSON in alerts/archives
+- CDB list lookup with dynamic fields
+- FTS for dynamic fields
+- Logcollector option to set the frequency of file checking
+- GeoIP support in Alerts (by Scott R Shinn)
+- Internal option to output GeoIP data on JSON alerts
+- Matching pattern negation (by Daniel Cid)
+- Syscheck and Rootcheck events on SQLite databases
+- Data migration tool to SQLite databases
+- Jenkins QA
+- 64-bit Windows registry keys support
+- Complete FIM data output to JSON and alerts
+- Username, date and inode attributes to FIM events
+- Report changes (FIM file diffs) to Windows agent
+- File diffs to JSON output
+- Elastic mapping updated for new FIM events
+
+### Changed
+
+- Isolated logtest directory from analysisd
+- Remoted informs Analysisd about agent ID
+- Updated Kibana dashboards
+- Syscheck FIM attributes to dynamic fields
+- Force services to exit if PID file creation fails
+- Atomic writing of client.keys through temporary files
+- Disabled remote message ID verification by default
+
+### Fixed
+
+- Logcollector bug that inhibited alerts about file reduction
+- Memory issue on string manipulation at JSON
+- Memory bug at JSON alerts
+- Fixed some CLang warnings
+- Issue on marching OSSEC user on installing
+- Memory leaks at configuration
+- Memory leaks at Analysisd
+- Bugs and memory errors at agent management
+- Mistake with incorrect name for PID file (by Tickhon Clearscale)
+- Agent-auth name at messages (it appeared to be the server)
+- Avoid Monitord to log errors when the JSON slerrts file doesn't exists
+- Agents numberig issue (minimum 3 digits)
+- Avoid no-JSON message at agent_control when client.keys empty
+- Memory leaks at manage_agents
+- Authd error messages about connection to queue passed to warning
+- Issue with Authd password checking
+- Avoid ossec-control to use Dash
+
 ## [v1.1.1] - 2016-05-12
 
 ### Added
@@ -143,5 +200,3 @@ All notable changes to this project will be documented in this file.
 
 ## [v1.0] - 2015-11-23
 - Initial Wazuh version v1.0
-
-
