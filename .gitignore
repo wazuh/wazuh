@@ -3,7 +3,7 @@
 *.a
 *.dSYM
 .DS_Store
-.pyc
+*.pyc
 
 # Auto generated build files
 src/LOCATION
