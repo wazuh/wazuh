@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # ossec-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
