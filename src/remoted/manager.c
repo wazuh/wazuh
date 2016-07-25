@@ -63,7 +63,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     }
 
     else if (strcmp(r_msg, HC_STARTUP) == 0) {
-        debug1("%s: DEBUG: Agent %s sent HC_STARTUP from %s.", ARGV0, keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
+        debug1("%s: DEBUG: Agent %s sent HC_STARTUP from %s.", ARGV0, keys.keyentries[agentid]->name, inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr));
         return;
     }
 
