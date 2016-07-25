@@ -292,9 +292,9 @@ char *seechanges_addfile(const char *filename)
     tmp_location[OS_MAXSTR] = '\0';
     diff_location[OS_MAXSTR] = '\0';
     diff_cmd[OS_MAXSTR] = '\0';
-    char *tmp_location_filtered;
-    char *old_location_filtered;
-    char *diff_location_filtered;
+    char *tmp_location_filtered = NULL;
+    char *old_location_filtered = NULL;
+    char *diff_location_filtered = NULL;
     md5sum_new[0] = '\0';
     md5sum_old[0] = '\0';
 

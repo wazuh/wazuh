@@ -297,7 +297,6 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         pthread_mutex_destroy(&tinfo.mutex);
         pthread_cond_destroy(&tinfo.finished);
-        free(argv);
 
         return retval;
     }
