@@ -22,7 +22,7 @@ int wdb_insert_file(sqlite3 *db, const char *path, int type) {
     sqlite3_stmt *stmt = NULL;
     int result;
 
-    if (sqlite3_prepare_v2(db, SQL_INSERT_FILE, -1, &stmt, NULL)) {
+    if (wdb_prepare(db, SQL_INSERT_FILE, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
         return -1;
     }
@@ -30,7 +30,7 @@ int wdb_insert_file(sqlite3 *db, const char *path, int type) {
     sqlite3_bind_text(stmt, 1, path, -1, NULL);
     sqlite3_bind_text(stmt, 2, type == WDB_FILE_TYPE_FILE ? "file" : "registry", -1, NULL);
 
-    if (sqlite3_step(stmt) == SQLITE_DONE)
+    if (wdb_step(stmt) == SQLITE_DONE)
         result = (int)sqlite3_last_insert_rowid(db);
     else {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
@@ -46,7 +46,7 @@ int wdb_find_file(sqlite3 *db, const char *path, int type) {
     sqlite3_stmt *stmt = NULL;
     int result;
 
-    if (sqlite3_prepare_v2(db, SQL_FIND_FILE, -1, &stmt, NULL)) {
+    if (wdb_prepare(db, SQL_FIND_FILE, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
         return -1;
     }
@@ -54,7 +54,7 @@ int wdb_find_file(sqlite3 *db, const char *path, int type) {
     sqlite3_bind_text(stmt, 1, type == WDB_FILE_TYPE_FILE ? "file" : "registry", -1, NULL);
     sqlite3_bind_text(stmt, 2, path, -1, NULL);
 
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         result = sqlite3_column_int(stmt, 0);
         break;
@@ -88,7 +88,7 @@ int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const
     if (!db)
         return -1;
 
-    if (sqlite3_prepare_v2(db, SQL_INSERT_FIM, -1, &stmt, NULL)) {
+    if (wdb_prepare(db, SQL_INSERT_FIM, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
         sqlite3_close_v2(db);
         return -1;
@@ -137,7 +137,7 @@ int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const
         sqlite3_bind_null(stmt, 13);
     }
 
-    result = sqlite3_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
     sqlite3_finalize(stmt);
     sqlite3_close_v2(db);
     return result;

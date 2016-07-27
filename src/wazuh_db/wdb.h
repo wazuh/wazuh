@@ -69,4 +69,10 @@ int wdb_create_agent_db(int id, const char *name);
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_remove_agent_db(int id);
 
+/* Prepare SQL query with availability waiting */
+int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);
+
+/* Execute statement with availability waiting */
+int wdb_step(sqlite3_stmt *stmt);
+
 #endif

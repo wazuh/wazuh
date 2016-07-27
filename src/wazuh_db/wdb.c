@@ -11,6 +11,9 @@
 
 #include "wdb.h"
 
+#define BUSY_SLEEP 1
+#define MAX_ATTEMPTS 1000
+
 sqlite3 *wdb_global = NULL;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
@@ -27,7 +30,8 @@ int wdb_open_global() {
 			merror("%s: ERROR: Can't open SQLite database '%s': %s\n", ARGV0, dir, sqlite3_errmsg(wdb_global));
 			sqlite3_close_v2(wdb_global);
 			wdb_global = NULL;
-		}
+		} else
+			sqlite3_busy_timeout(wdb_global, BUSY_SLEEP);
 	}
 
 	return wdb_global != NULL;
@@ -50,7 +54,8 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
 		merror("%s: ERROR: Can't open SQLite database '%s': %s\n", ARGV0, dir, sqlite3_errmsg(wdb_global));
 		sqlite3_close_v2(db);
 		return NULL;
-	}
+	} else
+		sqlite3_busy_timeout(db, BUSY_SLEEP);
 
 	return db;
 }
@@ -83,4 +88,34 @@ char* wdb_agent_loc2name(const char *location) {
 	default:
 	    return NULL;
 	}
+}
+
+/* Prepare SQL query with availability waiting */
+int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail) {
+	int result;
+	int attempts;
+
+	for (attempts = 0; (result = sqlite3_prepare_v2(db, zSql, nByte, stmt, pzTail)) == SQLITE_BUSY; attempts++) {
+		if (attempts == MAX_ATTEMPTS) {
+			debug1("%s: DEBUG: Maximum attempts exceeded for sqlite3_prepare_v2()", ARGV0);
+			return -1;
+		}
+	}
+
+	return result;
+}
+
+/* Execute statement with availability waiting */
+int wdb_step(sqlite3_stmt *stmt) {
+	int result;
+	int attempts;
+
+	for (attempts = 0; (result = sqlite3_step(stmt)) == SQLITE_BUSY; attempts++) {
+		if (attempts == MAX_ATTEMPTS) {
+			debug1("%s: DEBUG: Maximum attempts exceeded for sqlite3_step()", ARGV0);
+			return -1;
+		}
+	}
+
+	return result;
 }
