@@ -1583,11 +1583,11 @@ static int getattributes(char **attributes, char **values,
         }
         /* Get rule id */
         else if (strcasecmp(attributes[k], xml_id) == 0) {
-            if (OS_StrIsNum(values[k])) {
+            if (OS_StrIsNum(values[k]) && strlen(values[k]) <= 6) {
                 sscanf(values[k], "%6d", id);
             } else {
                 merror("rules_op: Invalid rule id: %s. "
-                       "Must be integer" ,
+                       "Must be integer (max 6 digits)" ,
                        values[k]);
                 return (-1);
             }
