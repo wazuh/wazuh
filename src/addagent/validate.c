@@ -17,6 +17,7 @@
     #define mkdir(x,y) 0
     #define link(x,y) 0
     #define difftime(x,y) 0
+    #define mkstemp(x) 0
 #endif
 
 /* Global variables */
@@ -96,7 +97,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     fprintf(file.fp, "%s\n", finals);
     fclose(file.fp);
 
-    if (MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
         free(file.name);
         return NULL;
     }
@@ -197,7 +198,7 @@ int OS_RemoveAgent(const char *u_id) {
     fwrite(buffer, sizeof(char), fp_read, file.fp);
     fclose(file.fp);
 
-    if (MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
         free(file.name);
         free(buffer);
         return 0;
@@ -793,7 +794,7 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
     strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&now));
     fprintf(file.fp, "%s %s %s %s\n", id, name, ip, timestamp);
     fclose(file.fp);
-    MoveFile(file.name, TIMESTAMP_FILE);
+    OS_MoveFile(file.name, TIMESTAMP_FILE);
     free(file.name);
 }
 
@@ -838,7 +839,7 @@ void OS_RemoveAgentTimestamp(const char *id)
     fprintf(file.fp, "%s", buffer);
     fclose(file.fp);
     free(buffer);
-    MoveFile(file.name, TIMESTAMP_FILE);
+    OS_MoveFile(file.name, TIMESTAMP_FILE);
     free(file.name);
 }
 
@@ -919,7 +920,7 @@ int TempFile(File *file, const char *source, int copy) {
     return 0;
 }
 
-int MoveFile(const char *src, const char *dst) {
+int OS_MoveFile(const char *src, const char *dst) {
     FILE *fp_src;
     FILE *fp_dst;
     size_t count_r;
