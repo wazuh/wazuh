@@ -234,6 +234,7 @@ int DecodeRootcheck(Eventinfo *lf)
 char* rk_get_title(const char *log) {
     char *title = strdup(log);
     char *c;
+    char *d;
     char *orig;
 
     if ((c = strstr(title, " {"))) {
@@ -244,14 +245,12 @@ char* rk_get_title(const char *log) {
             *c = '\0';
     }
 
-    orig = title;
-
-    while ((c = strstr(title, " - "))) {
-        title = c + 3;
+    if ((c = strstr(title, ": ")) && (!(d = strstr(title, " - ")) || c < d )) {
+        orig = title;
+        title = strdup(c + 2);
+        free(orig);
     }
 
-    title = strdup(title);
-    free(orig);
     return title;
 }
 
