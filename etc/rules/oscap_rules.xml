@@ -167,8 +167,7 @@ Wodle OpenSCAP: 81500 - 81600
     <rule id="81521" level="1">
         <if_sid>81400</if_sid>
         <field name="result">pass</field>
-        <description>OpenSCAP rule passed: </description>
-        <description_append>title</description_append>
+        <description>OpenSCAP rule passed.</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
@@ -178,8 +177,7 @@ Wodle OpenSCAP: 81500 - 81600
     <rule id="81522" level="1">
         <if_sid>81400</if_sid>
         <field name="result">notchecked</field>
-        <description>OpenSCAP rule not checked: </description>
-        <description_append>title</description_append>
+        <description>OpenSCAP rule not checked.</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
@@ -189,8 +187,7 @@ Wodle OpenSCAP: 81500 - 81600
     <rule id="81523" level="1">
         <if_sid>81400</if_sid>
         <field name="result">notapplicable</field>
-        <description>OpenSCAP rule not applicable: </description>
-        <description_append>title</description_append>
+        <description>OpenSCAP rule not applicable.</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
@@ -200,8 +197,7 @@ Wodle OpenSCAP: 81500 - 81600
     <rule id="81524" level="2">
         <if_sid>81400</if_sid>
         <field name="result">fixed</field>
-        <description>OpenSCAP rule fixed: </description>
-        <description_append>title</description_append>
+        <description>OpenSCAP rule fixed.</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
@@ -211,8 +207,7 @@ Wodle OpenSCAP: 81500 - 81600
     <rule id="81525" level="1">
         <if_sid>81400</if_sid>
         <field name="result">informational</field>
-        <description>OpenSCAP rule informational: </description>
-        <description_append>title</description_append>
+        <description>OpenSCAP rule informational.</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
@@ -222,8 +217,7 @@ Wodle OpenSCAP: 81500 - 81600
     <rule id="81526" level="2">
         <if_sid>81400</if_sid>
         <field name="result">error</field>
-        <description>OpenSCAP rule error: </description>
-        <description_append>title</description_append>
+        <description>OpenSCAP rule error.</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
@@ -233,8 +227,7 @@ Wodle OpenSCAP: 81500 - 81600
     <rule id="81527" level="1">
         <if_sid>81400</if_sid>
         <field name="result">unknown</field>
-        <description>OpenSCAP rule unknown: </description>
-        <description_append>title</description_append>
+        <description>OpenSCAP rule unknown.</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
@@ -244,8 +237,7 @@ Wodle OpenSCAP: 81500 - 81600
     <rule id="81528" level="1">
         <if_sid>81400</if_sid>
         <field name="result">notselected</field>
-        <description>OpenSCAP rule not selected: </description>
-        <description_append>title</description_append>
+        <description>OpenSCAP rule not selected.</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
@@ -257,24 +249,21 @@ Wodle OpenSCAP: 81500 - 81600
     <rule id="81529" level="5">
         <if_sid>81400</if_sid>
         <field name="result">fail</field>
-        <description>OpenSCAP rule failed (severity low): </description>
-        <description_append>title</description_append>
+        <description>OpenSCAP rule failed (severity low).</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81530" level="7">
         <if_sid>81529</if_sid>
         <field name="severity">medium</field>
-        <description>OpenSCAP rule failed (severity medium): </description>
-        <description_append>title</description_append>
+        <description>OpenSCAP rule failed (severity medium).</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81531" level="9">
         <if_sid>81529</if_sid>
         <field name="severity">high</field>
-        <description>OpenSCAP rule failed (severity high): </description>
-        <description_append>title</description_append>
+        <description>OpenSCAP rule failed (severity high).</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 

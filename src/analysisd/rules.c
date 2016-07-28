@@ -65,7 +65,6 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_comment = "description";
     const char *xml_ignore = "ignore";
     const char *xml_check_if_ignored = "check_if_ignored";
-    const char *xml_comment_append = "description_append";
 
     const char *xml_srcip = "srcip";
     const char *xml_srcgeoip = "srcgeoip";
@@ -450,17 +449,6 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         config_ruleinfo->comment =
                             loadmemory(config_ruleinfo->comment,
-                                       rule_opt[k]->content);
-                    } else if (strcasecmp(rule_opt[k]->element, xml_comment_append) == 0) {
-                        char *newline;
-
-                        newline = strchr(rule_opt[k]->content, '\n');
-                        if (newline) {
-                            *newline = ' ';
-                        }
-
-                        config_ruleinfo->comment_append =
-                            loadmemory(config_ruleinfo->comment_append,
                                        rule_opt[k]->content);
                     } else if (strcasecmp(rule_opt[k]->element, xml_srcip) == 0) {
                         unsigned int ip_s = 0;
