@@ -82,6 +82,8 @@ void OS_Store(const Eventinfo *lf)
 
 void OS_LogOutput(Eventinfo *lf)
 {
+    int i;
+
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
         if (lf->srcip) {
@@ -212,6 +214,14 @@ void OS_LogOutput(Eventinfo *lf)
             printf("New inode: %ld\n", lf->inode_after);
     }
 
+    // Dynamic fields, except for syscheck events
+    if (lf->decoder_info->fields && !lf->filename) {
+        for (i = 0; i < Config.decoder_order_size; i++) {
+            if (lf->decoder_info->fields[i] && lf->fields[i]) {
+                printf("%s: %s\n", lf->decoder_info->fields[i], lf->fields[i]);
+            }
+        }
+    }
 
     /* Print the last events if present */
     if (lf->generated_rule->last_events) {
@@ -231,6 +241,8 @@ void OS_LogOutput(Eventinfo *lf)
 
 void OS_Log(Eventinfo *lf)
 {
+    int i;
+
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
         if (lf->srcip) {
@@ -359,6 +371,15 @@ void OS_Log(Eventinfo *lf)
             fprintf(_aflog, "Old inode: %ld\n", lf->inode_before);
         if (lf->inode_after)
             fprintf(_aflog, "New inode: %ld\n", lf->inode_after);
+    }
+
+    // Dynamic fields, except for syscheck events
+    if (lf->decoder_info->fields && !lf->filename) {
+        for (i = 0; i < Config.decoder_order_size; i++) {
+            if (lf->decoder_info->fields[i] && lf->fields[i]) {
+                fprintf(_aflog, "%s: %s\n", lf->decoder_info->fields[i], lf->fields[i]);
+            }
+        }
     }
 
     /* Print the last events if present */
