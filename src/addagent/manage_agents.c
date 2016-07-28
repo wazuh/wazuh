@@ -359,7 +359,7 @@ int add_agent(int json_output)
             fprintf(file.fp, "%s %s %s %s\n", id, name, c_ip.ip, key);
             fclose(file.fp);
 
-            if (MoveFile(file.name, AUTH_FILE) < 0) {
+            if (OS_MoveFile(file.name, AUTH_FILE) < 0) {
                 if (json_output) {
                     char buffer[1024];
                     cJSON *json_root = cJSON_CreateObject();

@@ -50,7 +50,7 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
 void OS_RemoveAgentTimestamp(const char *id);
 void FormatID(char *id);
 int TempFile(File *file, const char *source, int copy);
-int MoveFile(const char *src, const char *dst);
+int OS_MoveFile(const char *src, const char *dst);
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output);
