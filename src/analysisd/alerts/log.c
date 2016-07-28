@@ -83,6 +83,7 @@ void OS_Store(const Eventinfo *lf)
 void OS_LogOutput(Eventinfo *lf)
 {
     int i;
+    const char *comment_append = "";
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -95,9 +96,18 @@ void OS_LogOutput(Eventinfo *lf)
     }
 #endif
 
+    if (lf->generated_rule->comment_append) {
+        i = FindField(lf->decoder_info, lf->generated_rule->comment_append);
+
+        if (i < 0)
+            debug1("%s: No such field '%s' to append to description.", ARGV0, lf->generated_rule->comment_append);
+        else
+            comment_append = lf->fields[i];
+    }
+
     printf(
         "** Alert %ld.%ld:%s - %s\n"
-        "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
+        "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s%s'"
         "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
         (long int)lf->time,
         __crt_ftell,
@@ -113,6 +123,7 @@ void OS_LogOutput(Eventinfo *lf)
         lf->generated_rule->sigid,
         lf->generated_rule->level,
         lf->generated_rule->comment,
+        comment_append,
 
         lf->srcip == NULL ? "" : "\nSrc IP: ",
         lf->srcip == NULL ? "" : lf->srcip,
@@ -242,6 +253,7 @@ void OS_LogOutput(Eventinfo *lf)
 void OS_Log(Eventinfo *lf)
 {
     int i;
+    const char *comment_append = "";
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -254,10 +266,19 @@ void OS_Log(Eventinfo *lf)
     }
 #endif
 
+    if (lf->generated_rule->comment_append) {
+        i = FindField(lf->decoder_info, lf->generated_rule->comment_append);
+
+        if (i < 0)
+            debug1("%s: No such field '%s' to append to description.", ARGV0, lf->generated_rule->comment_append);
+        else
+            comment_append = lf->fields[i];
+    }
+
     /* Writing to the alert log file */
     fprintf(_aflog,
             "** Alert %ld.%ld:%s - %s\n"
-            "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
+            "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s%s'"
             "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
             (long int)lf->time,
             __crt_ftell,
@@ -273,6 +294,7 @@ void OS_Log(Eventinfo *lf)
             lf->generated_rule->sigid,
             lf->generated_rule->level,
             lf->generated_rule->comment,
+            comment_append,
 
             lf->srcip == NULL ? "" : "\nSrc IP: ",
             lf->srcip == NULL ? "" : lf->srcip,

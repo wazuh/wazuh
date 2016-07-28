@@ -22,6 +22,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* file_diff;
     char* out;
     int i;
+    char comment[1024 + 1];
 
     root = cJSON_CreateObject();
 
@@ -32,7 +33,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddNumberToObject(rule, "level", lf->generated_rule->level);
         }
         if(lf->generated_rule->comment) {
-            cJSON_AddStringToObject(rule, "comment", lf->generated_rule->comment);
+            if (lf->generated_rule->comment_append) {
+                i = FindField(lf->decoder_info, lf->generated_rule->comment_append);
+                snprintf(comment, 1024, "%s%s", lf->generated_rule->comment, i >= 0 ? lf->fields[i] : "");
+                cJSON_AddStringToObject(rule, "comment", comment);
+            } else
+                cJSON_AddStringToObject(rule, "comment", lf->generated_rule->comment);
         }
         if(lf->generated_rule->sigid) {
             cJSON_AddNumberToObject(rule, "sidid", lf->generated_rule->sigid);
@@ -235,6 +241,7 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* root;
     char* out;
     int i;
+    char comment[1024];
 
     root = cJSON_CreateObject();
 
@@ -373,8 +380,14 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->generated_rule->level)
             cJSON_AddNumberToObject(rule, "level", lf->generated_rule->level);
 
-        if(lf->generated_rule->comment)
-            cJSON_AddStringToObject(rule, "comment", lf->generated_rule->comment);
+        if(lf->generated_rule->comment) {
+            if (lf->generated_rule->comment_append) {
+                i = FindField(lf->decoder_info, lf->generated_rule->comment_append);
+                snprintf(comment, 1024, "%s%s", lf->generated_rule->comment, i >= 0 ? lf->fields[i] : "");
+                cJSON_AddStringToObject(rule, "comment", comment);
+            } else
+                cJSON_AddStringToObject(rule, "comment", lf->generated_rule->comment);
+        }
 
         if(lf->generated_rule->sigid)
             cJSON_AddNumberToObject(rule, "sidid", lf->generated_rule->sigid);
