@@ -153,7 +153,6 @@ typedef struct _RuleInfo {
     char *action;
 
     char *comment; /* description in the xml */
-    char *comment_append; /* dynamic field to append to description */
     char *info;
     char *cve;
     RuleInfoDetail *info_details;

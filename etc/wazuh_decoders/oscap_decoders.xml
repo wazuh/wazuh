@@ -1,5 +1,5 @@
 <!--
-  -  OpenSCAP decoder
+  -  OpenSCAP decoder 
   -  v1.0 2016/05/17
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -30,7 +30,7 @@ oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.x
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "rule-result"</prematch>
   <regex offset="after_prematch">^, id: "(\S+)", policy: "(\S+)", profile: "(\S+)", rule_id: "(\S+)", result: "(\S+)", title: "(\.+)", ident: "(\.+)", severity: "(\S+)".$</regex>
-  <order>eval_id, policy, profile, oscap_rule_id, result, title, ident, severity</order>
+  <order>eval_id, policy, profile, rule_id, result, title, ident, severity</order>
 </decoder>
 
 
