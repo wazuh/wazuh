@@ -377,9 +377,7 @@ static void read_controlmsg(unsigned int agentid, char *msg)
                 debug1("%s: DEBUG Sending file '%s' to agent.", ARGV0,
                        f_sum[0]->name);
                 if (send_file_toagent(agentid, f_sum[0]->name, f_sum[0]->sum) < 0) {
-                    merror("%s: ERROR: Unable to send file '%s' to agent.",
-                           ARGV0,
-                           f_sum[0]->name);
+                    merror(SHARED_ERROR, ARGV0, f_sum[0]->name, keys.keyentries[agentid]->id, keys.keyentries[agentid]->name);
                 }
             }
 
@@ -423,9 +421,7 @@ static void read_controlmsg(unsigned int agentid, char *msg)
 
             debug1("%s: Sending file '%s' to agent.", ARGV0, f_sum[i]->name);
             if (send_file_toagent(agentid, f_sum[i]->name, f_sum[i]->sum) < 0) {
-                merror("%s: Error sending file '%s' to agent.",
-                       ARGV0,
-                       f_sum[i]->name);
+                merror(SHARED_ERROR, ARGV0, f_sum[i]->name, keys.keyentries[agentid]->id, keys.keyentries[agentid]->name);
             }
         }
 
