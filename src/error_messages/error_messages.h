@@ -94,6 +94,8 @@
 #define ACCEPT_ERROR    "%s(1242): ERROR: Couldn't accept TCP connections."
 #define RECV_ERROR      "%s(1243): ERROR: Couldn't receive message from peer."
 #define DUP_SECURE      "%s(1244): ERROR: Can't add more than one secure connection."
+#define SEND_DISCON     "%s(1245): ERROR: Sending message to disconnected agent '%s'."
+#define SHARED_ERROR    "%s(1246): ERROR: Unable to send file '%s' to agent '%s' (%s)."
 
 #define MAILQ_ERROR     "%s(1221): ERROR: No Mail queue at %s"
 #define IMSG_ERROR      "%s(1222): ERROR: Invalid msg: %s"
