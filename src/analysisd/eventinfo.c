@@ -18,6 +18,7 @@ int full_output;
 int alert_only;
 #endif
 
+#define OS_COMMENT_MAX 1024
 
 /* Search last times a signature fired
  * Will look for only that specific signature.
@@ -458,6 +459,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->hostname = NULL;
     lf->program_name = NULL;
     lf->location = NULL;
+    lf->comment = NULL;
 
     lf->srcip = NULL;
     lf->srcgeoip = NULL;
@@ -521,6 +523,9 @@ void Free_Eventinfo(Eventinfo *lf)
         merror("%s: Trying to free NULL event. Inconsistent..", ARGV0);
         return;
     }
+
+    if (lf->comment)
+        free(lf->comment);
 
     if (lf->full_log) {
         free(lf->full_log);
@@ -669,4 +674,49 @@ void Free_Eventinfo(Eventinfo *lf)
     lf = NULL;
 
     return;
+}
+
+/* Parse rule comment with dynamic fields */
+char* ParseRuleComment(Eventinfo *lf) {
+    static char final[OS_COMMENT_MAX + 1] = { '\0' };
+    char orig[OS_COMMENT_MAX + 1] = { '\0' };
+    char *str;
+    char *var;
+    char *end;
+    size_t n = 0;
+    size_t z;
+    int i;
+
+    strncpy(orig, lf->generated_rule->comment, OS_COMMENT_MAX);
+
+    for (str = orig; (var = strstr(str, "$(")); str = end) {
+        *(var) = '\0';
+
+        if (n + (z = strlen(str)) >= OS_COMMENT_MAX)
+            return strdup(lf->generated_rule->comment);
+
+        strncpy(&final[n], str, z);
+        n += z;
+
+        if (!(end = strchr(var += 2, ')')))
+            return strdup(lf->generated_rule->comment);
+
+        *(end++) = '\0';
+
+        if ((i = FindField(lf->decoder_info, var)) < 0)
+            return strdup(lf->generated_rule->comment);
+
+        if (n + (z = strlen(lf->fields[i])) >= OS_COMMENT_MAX)
+            return strdup(lf->generated_rule->comment);
+
+        strncpy(&final[n], lf->fields[i], z);
+        n += z;
+    }
+
+    if (n + (z = strlen(str)) >= OS_COMMENT_MAX)
+        return strdup(lf->generated_rule->comment);
+
+    strncpy(&final[n], str, z);
+    final[n + z] = '\0';
+    return strdup(final);
 }

@@ -22,6 +22,7 @@ typedef struct _Eventinfo {
     char *location;
     char *hostname;
     char *program_name;
+    char *comment;
 
     /* Extracted from the decoders */
     char *srcip;
@@ -147,6 +148,9 @@ EventNode *OS_GetLastEvent(void);
 
 /* Create the event list. Maxsize must be specified */
 void OS_CreateEventList(int maxsize);
+
+/* Parse rule comment with dynamic fields */
+char* ParseRuleComment(Eventinfo *lf);
 
 /* Pointers to the event decoders */
 void *SrcUser_FP(Eventinfo *lf, char *field, int order);

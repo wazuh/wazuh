@@ -935,6 +935,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
                 /* Log the alert if configured to */
                 if (currently_rule->alert_opts & DO_LOGALERT) {
+                    lf->comment = ParseRuleComment(lf);
                     __crt_ftell = ftell(_aflog);
 
                     if (Config.custom_alert_output) {
