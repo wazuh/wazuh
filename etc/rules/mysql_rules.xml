@@ -15,7 +15,7 @@
   -  PCI Tagging by Wazuh <ossec@wazuh.com>.
   -
   -->
-  
+
 
 <!-- MYSQL Log messages -->
 <group name="mysql_log,">
@@ -27,60 +27,60 @@
   <rule id="50105" level="3">
     <if_sid>50100</if_sid>
     <regex>^MySQL log: \d+ \S+ \d+ Connect</regex>
-    <description>Database authentication success.</description>
+    <description>MySQL: authentication success.</description>
     <group>authentication_success,pci_dss_10.2.5,pci_dss_8.7,</group>
   </rule>
 
   <rule id="50106" level="9">
     <if_sid>50105</if_sid>
     <match>Access denied for user</match>
-    <description>Database authentication failure.</description>
+    <description>MySQL: authentication failure.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.7,</group>
   </rule>
-  
+
   <rule id="50107" level="0">
     <if_sid>50100</if_sid>
     <regex>^MySQL log: \d+ \S+ \d+ Query</regex>
-    <description>Database query.</description>
+    <description>MySQL: query.</description>
   </rule>
-  
+
   <rule id="50108" level="3">
     <if_sid>50100</if_sid>
     <regex>^MySQL log: \d+ \S+ \d+ Quit</regex>
-    <description>User disconnected from database.</description>
+    <description>MySQL: User disconnected from database.</description>
     <group>pci_dss_10.2.5,pci_dss_8.7,</group>
   </rule>
 
   <rule id="50120" level="12">
     <if_sid>50100</if_sid>
     <match>mysqld ended|Shutdown complete</match>
-    <description>Database shutdown messge.</description>
+    <description>MySQL: shutdown messge.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="50121" level="3">
     <if_sid>50100</if_sid>
     <match>mysqld started|mysqld restarted</match>
-    <description>Database startup message.</description>
+    <description>MySQL: startup message.</description>
     <group>service_availability,</group>
   </rule>
-  
+
   <rule id="50125" level="5">
     <if_sid>50100</if_sid>
     <regex>^MySQL log: \d+ \S+ \d+ [ERROR]</regex>
-    <description>Database error.</description>
-  </rule> 
-  
+    <description>MySQL: error.</description>
+  </rule>
+
   <rule id="50126" level="12">
     <if_sid>50125</if_sid>
     <match>Fatal error:</match>
-    <description>Database fatal error.</description>
+    <description>MySQL: fatal error.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
-  
+
   <rule id="50180" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>50125</if_matched_sid>
-    <description>Multiple database errors.</description>
+    <description>MySQL: Multiple errors.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
 

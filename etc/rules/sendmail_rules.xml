@@ -8,7 +8,7 @@
   -  PCI Tagging by Wazuh <ossec@wazuh.com>.
   -
   -->
-      
+
 
 <group name="syslog,sendmail,">
   <rule id="3100" level="0">
@@ -21,11 +21,11 @@
     <match>reject=</match>
     <description>Grouping of the sendmail reject rules.</description>
   </rule>
-  
+
   <rule id="3102" level="5">
     <if_sid>3101</if_sid>
     <match>reject=451 4.1.8 </match>
-    <description>Sender domain does not have any valid </description>
+    <description>sendmail: Sender domain does not have any valid </description>
     <description>MX record (Requested action aborted).</description>
     <group>spam,pci_dss_11.4,</group>
   </rule>
@@ -33,7 +33,7 @@
   <rule id="3103" level="6">
     <if_sid>3101</if_sid>
     <match>reject=550 5.0.0 |reject=553 5.3.0</match>
-    <description>Rejected by access list </description>
+    <description>sendmail: Rejected by access list </description>
     <description>(55x: Requested action not taken).</description>
     <group>spam,pci_dss_11.4,</group>
   </rule>
@@ -41,7 +41,7 @@
   <rule id="3104" level="6">
     <if_sid>3101</if_sid>
     <match>reject=550 5.7.1 </match>
-    <description>Attepmt to use mail server as relay </description>
+    <description>sendmail: Attepmt to use mail server as relay </description>
     <description>(550: Requested action not taken).</description>
     <group>spam,pci_dss_11.4,</group>
   </rule>
@@ -49,7 +49,7 @@
   <rule id="3105" level="5">
     <if_sid>3101</if_sid>
     <match>reject=553 5.1.8 </match>
-    <description>Sender domain is not found </description>
+    <description>sendmail: Sender domain is not found </description>
     <description> (553: Requested action not taken).</description>
     <group>spam,pci_dss_11.4,</group>
   </rule>
@@ -57,34 +57,34 @@
   <rule id="3106" level="5">
     <if_sid>3101</if_sid>
     <match>reject=553 5.5.4 </match>
-    <description>Sender address does not have domain </description>
+    <description>sendmail: Sender address does not have domain </description>
     <description>(553: Requested action not taken).</description>
     <group>spam,pci_dss_11.4,</group>
   </rule>
 
   <rule id="3107" level="4">
     <if_sid>3101</if_sid>
-    <description>Sendmail rejected message.</description>
+    <description>sendmail: Sendmail rejected message.</description>
   </rule>
-  
+
   <rule id="3108" level="6">
     <if_sid>3100</if_sid>
     <match>rejecting commands from</match>
-    <description>Sendmail rejected due to pre-greeting.</description>
+    <description>sendmail: Sendmail rejected due to pre-greeting.</description>
     <group>spam,pci_dss_11.4,</group>
   </rule>
-  
+
   <rule id="3109" level="8">
     <if_sid>3100</if_sid>
     <match>savemail panic</match>
-    <description>Sendmail save mail panic.</description>
+    <description>sendmail: Sendmail save mail panic.</description>
     <group>system_error,</group>
   </rule>
-  
+
   <rule id="3151" level="10" frequency="6" timeframe="120">
     <if_matched_sid>3102</if_matched_sid>
     <same_source_ip />
-    <description>Sender domain has bogus MX record. </description>
+    <description>sendmail: Sender domain has bogus MX record. </description>
     <description>It should not be sending e-mail.</description>
     <group>multiple_spam,pci_dss_11.4,</group>
   </rule>
@@ -92,7 +92,7 @@
   <rule id="3152" level="6" frequency="6" timeframe="120">
     <if_matched_sid>3103</if_matched_sid>
     <same_source_ip />
-    <description>Multiple attempts to send e-mail from a </description>
+    <description>sendmail: Multiple attempts to send e-mail from a </description>
     <description>previously rejected sender (access).</description>
     <group>multiple_spam,pci_dss_11.4,</group>
   </rule>
@@ -100,14 +100,14 @@
   <rule id="3153" level="6" frequency="6" timeframe="120">
     <if_matched_sid>3104</if_matched_sid>
     <same_source_ip />
-    <description>Multiple relaying attempts of spam.</description>
+    <description>sendmail: Multiple relaying attempts of spam.</description>
     <group>multiple_spam,pci_dss_11.4,</group>
   </rule>
 
   <rule id="3154" level="10" frequency="6" timeframe="120">
     <if_matched_sid>3105</if_matched_sid>
     <same_source_ip />
-    <description>Multiple attempts to send e-mail </description>
+    <description>sendmail: Multiple attempts to send e-mail </description>
     <description>from invalid/unknown sender domain.</description>
     <group>multiple_spam,pci_dss_11.4,</group>
   </rule>
@@ -115,22 +115,22 @@
   <rule id="3155" level="10" frequency="6" timeframe="120">
     <if_matched_sid>3106</if_matched_sid>
     <same_source_ip />
-    <description>Multiple attempts to send e-mail from </description>
+    <description>sendmail: Multiple attempts to send e-mail from </description>
     <description>invalid/unknown sender.</description>
     <group>multiple_spam,pci_dss_11.4,</group>
   </rule>
-  
+
   <rule id="3156" level="10" frequency="10" timeframe="120">
     <if_matched_sid>3107</if_matched_sid>
     <same_source_ip />
-    <description>Multiple rejected e-mails from same source ip.</description>
+    <description>sendmail: Multiple rejected e-mails from same source ip.</description>
     <group>multiple_spam,pci_dss_11.4,</group>
   </rule>
 
   <rule id="3158" level="10" frequency="6" timeframe="120">
     <if_matched_sid>3108</if_matched_sid>
     <same_source_ip />
-    <description>Multiple pre-greetings rejects.</description>
+    <description>sendmail: Multiple pre-greetings rejects.</description>
     <group>multiple_spam,pci_dss_11.4,</group>
   </rule>
 
@@ -145,7 +145,7 @@
    <rule id="3191" level="6">
      <if_sid>3190</if_sid>
      <match>^sender check failed|^sender check tempfailed</match>
-     <description>SMF-SAV sendmail milter unable to verify </description>
+     <description>sendmail: SMF-SAV sendmail milter unable to verify </description>
      <description>address (REJECTED).</description>
      <group>smf-sav,spam,pci_dss_11.4,</group>
    </rule>
