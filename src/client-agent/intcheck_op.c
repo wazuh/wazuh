@@ -17,8 +17,8 @@
 int intcheck_file(const char *file_name, const char *dir)
 {
     struct stat statbuf;
-    os_md5 mf_sum;
-    os_sha1 sf_sum;
+    os_md5 mf_sum = 0;
+    os_sha1 sf_sum = 0;
     char newsum[912 + 1];
 
     newsum[0] = '\0';
