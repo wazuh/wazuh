@@ -1,10 +1,12 @@
 <!--
-  -  ossec_ruleset.py rules 
+  -  ossec_ruleset.py rules
   -  v1.0 2016/01/21
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  jesus@wazuh.com
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
+
+<!-- ID: 80650 - 80699 -->
 
 <!-- ossec_ruleset.py messages
 wazuh_ossec_ruleset:2016-01-21 12:53:04=Starting ossec_ruleset.py
@@ -51,7 +53,7 @@ wazuh_ossec_ruleset:2016-01-21 12:53:11=Do not forget to restart OSSEC to apply 
         <regex>error|Error|ERROR</regex>
         <description>Error updating ruleset</description>
     </rule>
-    
+
     <rule id="80656" level="5">
         <if_sid>80650</if_sid>
         <match>Do not forget to restart OSSEC to apply changes</match>

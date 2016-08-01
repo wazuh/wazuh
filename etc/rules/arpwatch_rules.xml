@@ -15,12 +15,12 @@
   -
   -  License details: http://www.ossec.net/en/licensing.html
   -->
-                            
+
 
 <group name="syslog,arpwatch,">
   <rule id="7200" level="0" noalert="1">
     <decoded_as>arpwatch</decoded_as>
-    <description>Grouping of the arpwatch rules.</description>
+    <description>Arpwatch messages grouped.</description>
   </rule>
 
   <rule id="7201" level="4">
@@ -30,40 +30,39 @@
     <description>Arpwatch new host detected.</description>
     <group>new_host,pci_dss_10.6.1,</group>
   </rule>
-                  
+
   <rule id="7202" level="9">
     <if_sid>7200</if_sid>
     <match>flip flop </match>
-    <description>Arpwatch "flip flop" message. </description>
-    <description>IP address/MAC relation changing too often.</description>
+    <description>Arpwatch: "flip flop" message. IP address/MAC relation changing too often.</description>
     <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,</group>
   </rule>
 
   <rule id="7203" level="3">
     <if_sid>7200</if_sid>
     <match>reaper: pid </match>
-    <description>Arpwatch exiting.</description>
+    <description>Arpwatch: exiting.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
- 
+
   <rule id="7204" level="9">
     <if_sid>7200</if_sid>
     <match>changed ethernet address </match>
-    <description>Changed network interface for ip address.</description>
+    <description>Arpwatch: Changed network interface for ip address.</description>
     <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,</group>
-  </rule> 
- 
+  </rule>
+
   <rule id="7205" level="0">
     <if_sid>7200</if_sid>
     <match>bad interface eth0|exiting|Running as </match>
-    <description>Arpwatch startup/exiting messages.</description>
-  </rule> 
+    <description>Arpwatch: startup/exiting messages.</description>
+  </rule>
 
   <rule id="7206" level="0">
     <if_sid>7200</if_sid>
     <match>sent bad addr len</match>
-    <description>Arpwatch detected bad address len (ignored).</description>
-  </rule> 
+    <description>Arpwatch: detected bad address len (ignored).</description>
+  </rule>
 
   <rule id="7207" level="1">
     <if_sid>7200</if_sid>
@@ -75,14 +74,14 @@
   <rule id="7208" level="1">
     <if_sid>7200</if_sid>
     <match>reused old ethernet address</match>
-    <description>An IP has reverted to an old ethernet address.</description>
+    <description>Arpwatch: An IP has reverted to an old ethernet address.</description>
     <group>pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="7209" level="7">
     <if_sid>7200</if_sid>
     <match>ethernet mismatch</match>
-    <description>Possible arpspoofing attempt.</description>
+    <description>Arpwatch: Possible arpspoofing attempt.</description>
     <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,</group>
   </rule>
 

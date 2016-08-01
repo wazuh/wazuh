@@ -8,7 +8,7 @@
 
 <!-- Netscaler messages -->
 <!--
-ID: 80100 - 80200
+ID: 80100 - 80199
 id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, ACL, TRANSFORM, APPFW_RESP, AAATM, PITBOSS, CVPN
 -->
 <group name="netscaler,">
