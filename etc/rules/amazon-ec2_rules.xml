@@ -6,8 +6,12 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
 
-<!-- amazon-ec2 messages -->
+<!--
+ec2: ID: 80300 - 80499
+vpc: ID: 81000 - 81099
+-->
 
+<!-- amazon-ec2 messages -->
 <group name="amazon-ec2,">
 
     <!-- It is necessary rules file: amazon_rules.xml -->
@@ -24,7 +28,7 @@
     <rule id="80302" level="5">
         <if_sid>80301</if_sid>
         <match>"errorCode":"Client.InstanceLimitExceeded"</match>
-        <description>Amazon-ec2: Run instance InstanceLimit Exceeded</description> 
+        <description>Amazon-ec2: Run instance InstanceLimit Exceeded</description>
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 

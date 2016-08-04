@@ -15,7 +15,7 @@
   -  PCI Tagging by Wazuh <ossec@wazuh.com>.
   -
   -->
-  
+
 
 <!-- Solaris BSM Log messages -->
 <group name="syslog,solaris_bsm,">
@@ -27,40 +27,40 @@
   <rule id="6101" level="5">
     <if_sid>6100</if_sid>
     <status>^failed</status>
-    <description>Auditing session failed.</description>
+    <description>Solaris: Auditing session failed.</description>
   </rule>
 
   <rule id="6102" level="0">
     <if_sid>6100</if_sid>
     <status>^ok</status>
-    <description>Auditing session succeeded.</description>
+    <description>Solaris: Auditing session succeeded.</description>
   </rule>
 
   <rule id="6103" level="3">
     <if_sid>6102</if_sid>
     <match>^login</match>
-    <description>Login session succeeded.</description>
+    <description>Solaris: Login session succeeded.</description>
     <group>authentication_success,pci_dss_10.2.5,</group>
   </rule>
-  
+
   <rule id="6104" level="5">
     <if_sid>6101</if_sid>
     <match>^login</match>
-    <description>Login session failed.</description>
+    <description>Solaris: Login session failed.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
-  
+
   <rule id="6105" level="3">
     <if_sid>6102</if_sid>
     <match>^su </match>
-    <description>User successfully changed UID.</description>
+    <description>Solaris: User successfully changed UID.</description>
     <group>authentication_success,pci_dss_10.2.5,</group>
   </rule>
-  
+
   <rule id="6106" level="5">
     <if_sid>6103</if_sid>
     <match>^su </match>
-    <description>User failed to change UID (user id).</description>
+    <description>Solaris: User failed to change UID (user id).</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 </group> <!-- SOLARIS BSM -->

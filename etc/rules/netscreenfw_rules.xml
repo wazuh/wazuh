@@ -46,14 +46,14 @@
     <action>alert</action>
     <description>Netscreen critical/alert message.</description>
   </rule>
-  
+
   <rule id="4504" level="5">
     <if_sid>4500</if_sid>
     <action>information</action>
     <description>Netscreen informational message.</description>
   </rule>
 
-  <!-- ns204: NetScreen device_id=ns204 [Root]system-critical-00027: 
+  <!-- ns204: NetScreen device_id=ns204 [Root]system-critical-00027:
      - Configuration Erase sequence accepted -->
   <rule id="4505" level="11">
     <if_sid>4503</if_sid>
@@ -65,54 +65,54 @@
   <rule id="4506" level="8">
     <if_sid>4501</if_sid>
     <id>^00002</id>
-    <description>Successfull admin login to the Netscreen firewall</description>
+    <description>Netscreen firewall: Successfull admin login</description>
     <group>authentication_success,pci_dss_10.2.5,pci_dss_10.2.2,</group>
   </rule>
-  
+
   <rule id="4507" level="8">
     <if_sid>4502</if_sid>
     <id>^00515</id>
-    <description>Successfull admin login to the Netscreen firewall</description>
+    <description>Netscreen firewall: Successfull admin login</description>
     <group>authentication_success,pci_dss_10.2.5,pci_dss_10.2.2,</group>
   </rule>
 
   <rule id="4508" level="8">
     <if_sid>4501</if_sid>
     <id>^00018</id>
-    <description>Firewall policy changed.</description>
+    <description>Netscreen firewall: policy changed.</description>
     <group>config_changed,pci_dss_1.1.1,</group>
   </rule>
 
   <rule id="4509" level="8">
     <if_sid>4504</if_sid>
     <id>^00767</id>
-    <description>Firewall configuration changed.</description>
+    <description>Netscreen firewall: configuration changed.</description>
     <group>config_changed,pci_dss_1.1.1,</group>
   </rule>
-  
+
   <rule id="4550" level="10" frequency="4" timeframe="180" ignore="60">
     <if_matched_sid>4503</if_matched_sid>
     <same_source_ip />
-    <description>Multiple Netscreen critical messages from </description>
+    <description>Netscreen firewall: Multiple critical messages from </description>
     <description>same source IP.</description>
     <group>pci_dss_1.4,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
 
   <rule id="4551" level="10" frequency="6" timeframe="180" ignore="60">
     <if_matched_sid>4503</if_matched_sid>
-    <description>Multiple Netscreen critical messages.</description>
+    <description>Netscreen firewall: Multiple critical messages.</description>
   </rule>
 
   <rule id="4552" level="10" frequency="4" timeframe="180" ignore="60">
     <if_matched_sid>4513</if_matched_sid>
     <same_source_ip />
-    <description>Multiple Netscreen alert messages from </description>
+    <description>Netscreen firewall: Multiple alert messages from </description>
     <description>same source IP.</description>
     <group>pci_dss_1.4,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
 
   <rule id="4553" level="10" frequency="8" timeframe="100" ignore="60">
     <if_matched_sid>4513</if_matched_sid>
-    <description>Multiple Netscreen alert messages.</description>
+    <description>Netscreen firewall: Multiple alert messages.</description>
   </rule>
 </group> <!-- SYSLOG,NETSCREENFW -->

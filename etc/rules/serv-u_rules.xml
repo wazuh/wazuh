@@ -6,28 +6,30 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
 
+<!-- ID: 80500 - 80599 -->
+
 <!-- serv-u messages
 [TypeMessage] DayWeek DayMonthYear Time - (SessionID) Message
 
 TypeMessage:
     [01] - System Messages
-    [02] - Security Messages 
-    [03] - IP Names 
-    [04] - ODBC Calls 
-    [05] - ODBC Errors 
+    [02] - Security Messages
+    [03] - IP Names
+    [04] - ODBC Calls
+    [05] - ODBC Errors
     [06] - Events
-    [10] - Downloads 
-    [11] - Uploads 
-    [12] - File Deletions 
-    [13] - File and Directory Renames 
-    [14] - Directory Creations 
-    [15] - Directory Deletions 
-    [20] - FTP Commands 
-    [21] - FTP Replies 
-    [30] - SSH Commands 
-    [31] - SSH Replies 
-    [40] - HTTP Commands 
-    [41] - HTTP Replies 
+    [10] - Downloads
+    [11] - Uploads
+    [12] - File Deletions
+    [13] - File and Directory Renames
+    [14] - Directory Creations
+    [15] - Directory Deletions
+    [20] - FTP Commands
+    [21] - FTP Replies
+    [30] - SSH Commands
+    [31] - SSH Replies
+    [40] - HTTP Commands
+    [41] - HTTP Replies
 -->
 <group name="serv-u,">
 
@@ -35,7 +37,7 @@ TypeMessage:
         <decoded_as>serv-u</decoded_as>
         <description>Serv-u messages grouped.</description>
     </rule>
-    
+
     <!--
     Server started
     [01] Thu 26Nov15 17:12:11 - Serv-U File Server (64-bit) - Version 15.1 (15.1.2.189) - (C) 2014 SolarWinds Worldwide, LLC.  All rights reserved.
@@ -57,7 +59,7 @@ TypeMessage:
         <match>Domain started</match>
         <description>Serv-U: Domain started</description>
     </rule>
-    
+
     <!--
     User logged in
     [02] Thu 26Nov15 14:27:14 - (000003) User "lin" logged in
@@ -69,7 +71,7 @@ TypeMessage:
         <description>Serv-U: User logged in</description>
         <group>authentication_success,pci_dss_10.2.5,</group>
     </rule>
-    
+
     <!--
     User logged out
     [02] Thu 26Nov15 14:27:25 - (000003) User "lin" logged out
@@ -81,7 +83,7 @@ TypeMessage:
         <description>Serv-U: User logged out</description>
     </rule>
 
-    <!-- 
+    <!--
     Failed login
     [02] Thu 26Nov15 17:55:14 - (000002) Invalid login credentials; user: "lin"; password: "**********"
     [02] Thu 26Nov15 17:55:14 - (000002) Password wrong too many times for user "lin" - disconnecting
@@ -91,16 +93,16 @@ TypeMessage:
         <action>02</action>
         <match>Invalid login credentials|Password wrong too many times</match>
         <description>Serv-U: Invalid credentials</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group> 
+        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
     </rule>
-    
+
     <rule id="80506" level="10" frequency="6">
         <if_matched_sid>80505</if_matched_sid>
         <same_user />
         <description>Serv-U: Multiple authentication failures.</description>
         <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
-    </rule> 
-    
+    </rule>
+
     <!--
     Session idle time out
     [02] Thu 26Nov15 20:34:45 - (000034) Session idle time out
@@ -112,7 +114,7 @@ TypeMessage:
         <description>Serv-U: Session timeout</description>
         <group>pci_dss_8.1.5,</group>
     </rule>
-    
+
     <!--
     Closed session
     [02] Thu 26Nov15 20:34:45 - (000034) Closed session
@@ -123,7 +125,7 @@ TypeMessage:
         <match>Closed session</match>
         <description>Serv-U: Closed session</description>
     </rule>
-    
+
     <!--
     Connection
     [02] Thu 26Nov15 14:29:12 - (000004) Connected to 192.168.2.200 (local address 192.168.2.201, port 22)
@@ -135,7 +137,7 @@ TypeMessage:
         <description>Serv-U: Remote host connected</description>
         <group>pci_dss_10.2.1,</group>
     </rule>
-    
+
     <!--
     Event
     [06] Thu 26Nov15 17:57:14 - Event: FILE_UPLOAD (Event 07); Type: EMAIL; To: admin@company.com
@@ -145,7 +147,7 @@ TypeMessage:
         <action>06</action>
         <description>Serv-U: Event</description>
     </rule>
-    
+
     <!--
     General Actions
     Download
@@ -161,50 +163,50 @@ TypeMessage:
     Directory deleted
     [15] Thu 26Nov15 17:55:14 - (000001) Directory deleted: "C:\Folder"
     -->
-    
+
     <rule id="80511" level="0">
         <if_sid>80500</if_sid>
         <action>10</action>
         <match>Sent file</match>
         <description>Serv-U: File downloaded</description>
-    </rule> 
-    
+    </rule>
+
     <rule id="80512" level="0">
         <if_sid>80500</if_sid>
         <action>11</action>
         <match>Received file</match>
         <description>Serv-U: File uploaded</description>
-    </rule> 
-    
+    </rule>
+
     <rule id="80513" level="1">
         <if_sid>80500</if_sid>
         <action>12</action>
         <match>File deleted</match>
         <description>Serv-U: File deleted</description>
-    </rule> 
-    
+    </rule>
+
     <rule id="80514" level="0">
         <if_sid>80500</if_sid>
         <action>13</action>
         <match>Renamed</match>
         <description>Serv-U: File/Directory renamed</description>
     </rule>
-    
+
     <rule id="80515" level="0">
         <if_sid>80500</if_sid>
         <action>14</action>
         <match>Directory created</match>
         <description>Serv-U: Directory created</description>
-    </rule> 
-    
+    </rule>
+
     <rule id="80516" level="1">
         <if_sid>80500</if_sid>
         <action>15</action>
         <match>Directory deleted</match>
         <description>Serv-U: Directory deleted</description>
-    </rule> 
-    
-    
+    </rule>
+
+
     <!--
     Suspicious Actions
     Upload: .exe
@@ -216,8 +218,8 @@ TypeMessage:
         <match>Received file</match>
         <url>.exe</url>
         <description>Serv-U: File with extension ".exe" uploaded</description>
-    </rule> 
-    
+    </rule>
+
     <!--
     User logged in FTP/FTPS
     [21] Thu 26Nov15 16:46:37 - (000016) 230 User logged in, proceed.
@@ -238,8 +240,8 @@ TypeMessage:
         <action>31</action>
         <match>SSH2_MSG_USERAUTH_SUCCESS</match>
         <description>Serv-U: User logged in SFTP (SSH)</description>
-    </rule> 
-    
+    </rule>
+
     <!--
     User logged in HTTP/HTTPS
     [41] Thu 26Nov15 16:41:39 - (000011) HTTP_OKAY (200): SESS_OKAY
@@ -249,8 +251,8 @@ TypeMessage:
         <action>41</action>
         <match>HTTP_OKAY (200): SESS_OKAY</match>
         <description>Serv-U: User logged in HTTP/HTTPS</description>
-    </rule> 
-    
+    </rule>
+
     <!--
     FTP anonymous
     [21] Thu 26Nov15 19:28:14 - (000010) 530 Sorry, no ANONYMOUS access allowed
@@ -261,8 +263,8 @@ TypeMessage:
         <match>530 Sorry, no ANONYMOUS access allowed</match>
         <description>Serv-U: Attempt to login using anonymous user</description>
         <group>authentication_failures,pci_dss_10.2.4,</group>
-    </rule> 
-    
+    </rule>
+
     <!--
     Permision denied
     [21] Thu 26Nov15 19:59:54 - (000030) 550 /C:/Users/file.txt: Permission denied.
@@ -275,7 +277,7 @@ TypeMessage:
         <match>Permission denied</match>
         <description>Serv-U: FTP/FTPS Permision denied</description>
          <group>pci_dss_10.2.4,</group>
-    </rule> 
+    </rule>
 
     <rule id="80523" level="4">
         <if_sid>80500</if_sid>
@@ -283,16 +285,16 @@ TypeMessage:
         <match>Permission denied</match>
         <description>Serv-U: SFTP (SSH) Permision denied</description>
         <group>pci_dss_10.2.4,</group>
-    </rule> 
-    
+    </rule>
+
     <rule id="80524" level="4">
         <if_sid>80500</if_sid>
         <action>41</action>
         <match>SESS_PERMISSION_DENIED</match>
         <description>Serv-U: HTTP/HTTPS Permision denied</description>
         <group>pci_dss_10.2.4,</group>
-    </rule> 
-    
+    </rule>
+
 </group>
 
 <!-- serv-u -->
