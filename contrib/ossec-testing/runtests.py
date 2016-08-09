@@ -18,6 +18,7 @@ class OssecTester(object):
 
     def buildCmd(self, rule, alert, decoder):
         cmd = ['%s/ossec-logtest' % (self._ossec_path), ]
+        cmd += ['-q']
         if self._ossec_conf:
             cmd += ["-c", self._ossec_conf]
         if self._base_dir:
