@@ -127,7 +127,8 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
 
     /* Escape strings */
     osdb_escapestr(al_data->user);
-
+    osdb_escapestr(al_data->location);
+    
     /* We first need to insert the location */
     loc_id = (int *) OSHash_Get(db_config->location_hash, al_data->location);
 
