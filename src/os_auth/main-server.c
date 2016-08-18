@@ -380,7 +380,8 @@ int main(int argc, char **argv)
         if ((client_sock = accept(sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
             if (active_processes >= POOL_SIZE) {
                 merror("%s: Error: Max concurrency reached. Unable to fork", ARGV0);
-                break;
+                close(client_sock);
+                continue;
             }
             pid = fork();
             if (pid) {
