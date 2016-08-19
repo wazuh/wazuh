@@ -15,7 +15,7 @@
   -  PCI Tagging by Wazuh <ossec@wazuh.com>.
   -
   -->
-  
+
 
 <!-- PostgreSQL Log messages -->
 <group name="postgresql_log,">
@@ -29,75 +29,75 @@
     <status>^LOG</status>
     <description>PostgreSQL log message.</description>
   </rule>
-  
+
   <rule id="50502" level="0">
     <if_sid>50500</if_sid>
     <status>^NOTICE|INFO</status>
     <description>PostgreSQL informational message.</description>
   </rule>
-  
+
   <rule id="50503" level="4">
     <if_sid>50500</if_sid>
     <status>^ERROR</status>
     <description>PostgreSQL error message.</description>
   </rule>
-   
+
   <rule id="50504" level="5">
     <if_sid>50500</if_sid>
     <status>^FATAL</status>
     <description>PostgreSQL error message.</description>
     <group>pci_dss_10.6.1,</group>
   </rule>
-  
+
   <rule id="50505" level="0">
     <if_sid>50500</if_sid>
     <status>^DEBUG</status>
     <description>PostgreSQL debug message.</description>
   </rule>
-  
+
   <rule id="50510" level="0">
     <if_sid>50501</if_sid>
     <match> duration: | statement: </match>
-    <description>Database query.</description>
+    <description>PostgreSQL: Database query.</description>
   </rule>
-  
+
   <rule id="50511" level="3">
     <if_sid>50501</if_sid>
     <match>connection authorized</match>
-    <description>Database authentication success.</description>
+    <description>PostgreSQL: Database authentication success.</description>
     <group>authentication_success,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="50512" level="9">
     <if_sid>50504</if_sid>
     <match>authentication failed</match>
-    <description>Database authentication failure.</description>
+    <description>PostgreSQL: Database authentication failure.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
-  
+
   <rule id="50520" level="12">
     <if_sid>50504</if_sid>
     <match>terminating connection due</match>
-    <description>Database shutdown messge.</description>
+    <description>PostgreSQL: Database shutdown messge.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
-  
+
   <rule id="50521" level="12">
     <if_sid>50501</if_sid>
     <match>aborting any active transactions|shutting down</match>
-    <description>Database shutdown messge.</description>
+    <description>PostgreSQL: Database shutdown messge.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="50580" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>50504</if_matched_sid>
-    <description>Multiple database errors.</description>
+    <description>PostgreSQL: Multiple database errors.</description>
     <group>service_availability,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
-  
+
   <rule id="50581" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>50503</if_matched_sid>
-    <description>Multiple database errors.</description>
+    <description>PostgreSQL: Multiple database errors.</description>
     <group>service_availability,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
 

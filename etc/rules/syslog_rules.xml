@@ -14,7 +14,7 @@
   -  PCI Tagging by Wazuh <ossec@wazuh.com>.
   -
   -->
-  
+
 
 <!-- Default variables for the SYSLOG rules. -->
 
@@ -40,14 +40,14 @@
 
   <rule id="1003" level="13" maxsize="1025">
     <description>Non standard syslog message (size too large).</description>
-  </rule>  
+  </rule>
 
   <rule id="1004" level="5">
     <match>^exiting on signal</match>
     <description>Syslogd exiting (logging stopped).</description>
     <group>pci_dss_10.6.1,</group>
   </rule>
-  
+
   <rule id="1005" level="5">
     <program_name>syslogd</program_name>
     <match>^restart</match>
@@ -60,7 +60,7 @@
     <description>Syslogd restarted.</description>
     <group>pci_dss_10.6.1,</group>
   </rule>
-  
+
   <rule id="1007" level="7">
     <match>file system full|No space left on device</match>
     <description>File system full.</description>
@@ -90,7 +90,7 @@
     <program_name>^automount|^mount</program_name>
     <description>NFS rules grouped.</description>
   </rule>
-  
+
   <rule id="2101" level="4">
     <if_sid>2100</if_sid>
     <match>nfs: mount failure</match>
@@ -102,7 +102,7 @@
     <match>reason given by server: Permission denied</match>
     <description>Unable to mount the NFS directory.</description>
   </rule>
- 
+
   <rule id="2103" level="4">
     <match>^rpc.mountd: refused mount request from</match>
     <description>Unable to mount the NFS directory.</description>
@@ -114,14 +114,14 @@
     <description>Automount informative message</description>
   </rule>
 </group> <!-- SYSLOG,NFS -->
-  
-  
 
-<!-- xinetd messages -->  
+
+
+<!-- xinetd messages -->
 <group name="syslog,xinetd,">
   <rule id="2301" level="10">
     <match>^Deactivating service </match>
-    <description>Excessive number connections to a service.</description>
+    <description>xinetd: Excessive number connections to a service.</description>
     <group>pci_dss_10.6.1,</group>
   </rule>
 </group> <!-- SYSLOG,XINETD -->
@@ -138,12 +138,12 @@
     <match>Wrong password given for|login failed|Auth: Login incorrect|</match>
     <match>Failed to authenticate user</match>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
-    <description>User authentication failure.</description>
+    <description>syslog: User authentication failure.</description>
   </rule>
 
   <rule id="2502" level="10">
     <match>more authentication failures;|REPEATED login failures</match>
-    <description>User missed the password more than one time</description>
+    <description>syslog: User missed the password more than one time</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
@@ -151,25 +151,25 @@
     <regex>^refused connect from|</regex>
     <regex>^libwrap refused connection|</regex>
     <regex>Connection from \S+ denied</regex>
-    <description>Connection blocked by Tcp Wrappers.</description>
+    <description>syslog: Connection blocked by Tcp Wrappers.</description>
     <group>access_denied,pci_dss_10.2.4,</group>
   </rule>
 
   <rule id="2504" level="9">
     <match>ILLEGAL ROOT LOGIN|ROOT LOGIN REFUSED</match>
-    <description>Illegal root login. </description>
+    <description>syslog: Illegal root login. </description>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.2.2,</group>
   </rule>
 
   <rule id="2505" level="3">
     <match>^ROOT LOGIN  on</match>
-    <description>Physical root login.</description>
+    <description>syslog: Physical root login.</description>
     <group>pci_dss_10.2.2,</group>
-  </rule>  
+  </rule>
 
   <rule id="2506" level="3">
     <match>^Authentication passed</match>
-    <description>Pop3 Authentication passed.</description>
+    <description>syslog: Pop3 Authentication passed.</description>
     <group>pci_dss_10.2.5,</group>
   </rule>
 
@@ -221,7 +221,7 @@
     <description>Ignoring procmail messages.</description>
   </rule>
 </group> <!-- SYSLOG,SENDMAIL -->
-  
+
 
 
 <!-- Smartd messages -->
@@ -230,7 +230,7 @@
     <program_name>^smart</program_name>
     <description>Pre-match rule for smartd.</description>
   </rule>
-  
+
   <rule id="2801" level="0">
     <if_sid>2800</if_sid>
     <match>No configuration file /etc/smartd.conf found</match>
@@ -247,7 +247,7 @@
     <if_sid>2800</if_sid>
     <match>No such device or address</match>
     <description>Device configured but not available to Smartd</description>
-  </rule>  
+  </rule>
 </group> <!-- SYSLOG,SMARTD -->
 
 
@@ -270,13 +270,13 @@
     <match>modprobe: Can't locate module sound</match>
     <description>Informative message from the kernel</description>
   </rule>
-  
+
   <rule id="5103" level="9">
     <if_sid>5100</if_sid>
     <match>Oversized packet received from</match>
     <description>Error message from the kernel. </description>
     <description>Ping of death attack.</description>
-  </rule>  
+  </rule>
 
   <rule id="5104" level="8">
     <if_sid>5100</if_sid>
@@ -349,12 +349,12 @@
     <match>ADSL line is down</match>
     <description>Monitor ADSL line is down.</description>
   </rule>
-  
+
   <rule id="5131" level="3">
     <if_sid>5100</if_sid>
     <match>ADSL line is up</match>
     <description>Monitor ADSL line is up.</description>
-  </rule>                         
+  </rule>
 
   <rule id="5200" level="0">
     <match>^hpiod: unable to ParDevice</match>
@@ -370,19 +370,19 @@
     <program_name>crond|crontab</program_name>
     <description>Crontab rule group.</description>
   </rule>
-  
+
   <rule id="2831" level="0">
     <if_sid>2830</if_sid>
     <match>^unable to exec</match>
     <description>Wrong crond configuration</description>
   </rule>
-  
+
   <rule id="2834" level="5">
     <if_sid>2830</if_sid>
     <match>BEGIN EDIT</match>
     <description>Crontab opened for editing.</description>
   </rule>
-  
+
   <rule id="2832" level="5">
     <if_sid>2830</if_sid>
     <match>REPLACE</match>
@@ -407,11 +407,11 @@
     <decoded_as>su</decoded_as>
     <description>Initial grouping for su messages.</description>
   </rule>
-  
+
   <rule id="5301" level="5">
    <if_sid>5300</if_sid>
    <match>authentication failure; |failed|BAD su|^-</match>
-   <description>User missed the password to change UID (user id).</description> 
+   <description>User missed the password to change UID (user id).</description>
    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
@@ -492,6 +492,13 @@
     <description>Information from the user was changed</description>
     <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,</group>
   </rule>
+
+  <rule id="5905" level="0">
+    <program_name>useradd</program_name>
+    <match>failed adding user </match>
+    <description>useradd failed.</description>
+  </rule>
+
 </group> <!-- SYSLOG,ADDUSER -->
 
 
@@ -501,7 +508,7 @@
     <decoded_as>sudo</decoded_as>
     <description>Initial group for sudo messages</description>
   </rule>
-  
+
   <rule id="5401" level="5">
     <if_sid>5400</if_sid>
     <match>incorrect password attempt</match>
@@ -529,13 +536,13 @@
     <description>Three failed attempts to run sudo</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
-  
+
     <rule id="5405" level="5">
         <if_sid>5400</if_sid>
         <match>user NOT in sudoers</match>
         <description>Unauthorized user attempted to use sudo.</description>
     </rule>
-  
+
 </group> <!-- SYSLOG, SUDO -->
 
 
@@ -545,14 +552,14 @@
     <program_name>^pptpd</program_name>
     <description>PPTPD messages grouped</description>
   </rule>
-  
+
   <rule id="9101" level="0">
     <if_sid>9100</if_sid>
     <regex>^GRE: \S+ from \S+ failed: status = -1 </regex>
     <description>PPTPD failed message (communication error)</description>
     <info type="link">http://poptop.sourceforge.net/dox/gre-protocol-unavailable.phtml</info>
   </rule>
-  
+
   <rule id="9102" level="0">
     <if_sid>9100</if_sid>
     <match>^tcflush failed: Bad file descriptor</match>
@@ -573,7 +580,7 @@
   </rule>
 </group>
 
-                
+
 <group name="syslog,squid,">
   <rule id="9200" level="0" noalert="1">
     <program_name>^squid</program_name>
@@ -595,7 +602,7 @@
     <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d \w+ </regex>
     <description>Dpkg (Debian Package) log.</description>
   </rule>
-  
+
   <rule id="2901" level="3">
     <if_sid>2900</if_sid>
     <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d install</regex>

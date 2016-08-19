@@ -31,8 +31,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->generated_rule->level) {
             cJSON_AddNumberToObject(rule, "level", lf->generated_rule->level);
         }
-        if(lf->generated_rule->comment) {
-            cJSON_AddStringToObject(rule, "comment", lf->generated_rule->comment);
+        if(lf->comment) {
+            cJSON_AddStringToObject(rule, "comment", lf->comment);
         }
         if(lf->generated_rule->sigid) {
             cJSON_AddNumberToObject(rule, "sidid", lf->generated_rule->sigid);
@@ -373,8 +373,8 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->generated_rule->level)
             cJSON_AddNumberToObject(rule, "level", lf->generated_rule->level);
 
-        if(lf->generated_rule->comment)
-            cJSON_AddStringToObject(rule, "comment", lf->generated_rule->comment);
+        if(lf->comment)
+            cJSON_AddStringToObject(rule, "comment", lf->comment);
 
         if(lf->generated_rule->sigid)
             cJSON_AddNumberToObject(rule, "sidid", lf->generated_rule->sigid);

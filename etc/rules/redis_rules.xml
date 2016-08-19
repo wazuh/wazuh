@@ -1,10 +1,12 @@
 <!--
-  -  redis rules 
+  -  redis rules
   -  v1.0 2016/04/20
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  jesus@wazuh.com
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
+
+<!-- ID: 81300 - 81399 -->
 
 <!--
 REDIS
@@ -16,7 +18,7 @@ REDIS
         <decoded_as>redis</decoded_as>
         <description>Redis messages grouped.</description>
     </rule>
-    
+
     <!--
     8447:M 14 Apr 08:59:22.962 # Server started, Redis version 3.0.7
     -->
@@ -25,7 +27,7 @@ REDIS
         <match>Server started</match>
         <description>Redis: started</description>
     </rule>
-    
+
     <!--
     1017:M 14 Apr 08:59:12.136 # Redis is now ready to exit, bye bye...
     -->
@@ -34,7 +36,7 @@ REDIS
         <match>Redis is now ready to exit, bye bye</match>
         <description>Redis: shutdown</description>
     </rule>
-    
+
     <!--
     8447:M 14 Apr 08:59:22.962 # Redis can't set maximum open files to 10032 because of OS error: Operation not permitted.
     8447:M 14 Apr 08:59:22.962 # WARNING: The TCP backlog setting of 511 cannot be enforced because /proc/sys/net/core/somaxconn is set to the lower value of 128.
@@ -44,7 +46,7 @@ REDIS
         <match>WARNING|can't|not permitted|error|Error|ERROR|Failed</match>
         <description>Redis: Warning / Error</description>
     </rule>
-    
+
     <!--
     8496:M 14 Apr 09:07:02.261 - Accepted 10.10.10.10:12345
     8496:M 14 Apr 09:07:02.268 - Client closed connection
@@ -55,7 +57,7 @@ REDIS
         <regex>\S+:\d+</regex>
         <description>Redis: Client connected</description>
     </rule>
-    
+
     <!--
     8496:M 14 Apr 09:07:02.268 - Client closed connection
     -->

@@ -6,7 +6,7 @@
 -->
 
 <!-- amazon messages -->
-
+<!-- ID: 80200 - 80299 -->
 <group name="amazon,">
     <rule id="80200" level="0">
         <decoded_as>AmazonAWS</decoded_as>
@@ -26,7 +26,7 @@
         <description>Amazon IAM alerts.</description>
         <group>amazon-iam,</group>
     </rule>
-  
+
   <rule id="80203" level="0">
         <if_sid>80200</if_sid>
         <match>"eventSource":"s3.amazonaws.com"</match>
