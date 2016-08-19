@@ -154,14 +154,23 @@ int wdb_create_agent_db(int id, const char *name) {
     snprintf(path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_PROF_NAME);
 
     if (!(source = fopen(path, "r"))) {
-        debug1("%s: Couldn't open profile '%s'.", ARGV0, path);
-        return -1;
+        debug1("%s: Profile database not found, creating.", ARGV0);
+
+        if (wdb_create_profile(path) < 0)
+            return -1;
+
+        // Retry to open
+
+        if (!(source = fopen(path, "r"))) {
+            merror("%s: Couldn't open profile '%s'.", ARGV0, path);
+            return -1;
+        }
     }
 
     snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
 
     if (!(dest = fopen(path, "w"))) {
-        debug1("%s: Couldn't create database '%s'.", ARGV0, path);
+        merror("%s: Couldn't create database '%s'.", ARGV0, path);
         return -1;
     }
 
