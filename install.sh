@@ -146,7 +146,6 @@ Install()
 
     # If update, start OSSEC
     if [ "X${update_only}" = "Xyes" ]; then
-        WazuhUpgrade
         UpdateStartOSSEC
     fi
 
