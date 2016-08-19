@@ -14,7 +14,7 @@
   -
   -  License details: http://www.ossec.net/en/licensing.html
   -->
-  
+
 
 <!-- Asterisk Log messages -->
 <group name="syslog,asterisk,">
@@ -22,7 +22,7 @@
     <decoded_as>asterisk</decoded_as>
     <description>Asterisk messages grouped.</description>
   </rule>
-  
+
   <rule id="6201" level="0">
     <if_sid>6200</if_sid>
     <match>^NOTICE</match>
@@ -34,7 +34,7 @@
     <match>^WARN</match>
     <description>Asterisk warning message.</description>
   </rule>
-  
+
   <rule id="6203" level="3">
     <if_sid>6200</if_sid>
     <match>^ERROR</match>
@@ -44,42 +44,42 @@
   <rule id="6210" level="5">
     <if_sid>6201</if_sid>
     <match>Wrong password</match>
-    <description>Login session failed.</description>
+    <description>Asterisk: Login session failed.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="6211" level="5">
     <if_sid>6201</if_sid>
     <match>Username/auth name mismatch</match>
-    <description>Login session failed (invalid user).</description>
+    <description>Asterisk: Login session failed (invalid user).</description>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="6212" level="5">
     <if_sid>6201</if_sid>
     <match>No matching peer found</match>
-    <description>Login session failed (invalid extension).</description>
+    <description>Asterisk: Login session failed (invalid extension).</description>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="6250" level="10" frequency="6" timeframe="300">
     <if_matched_sid>6211</if_matched_sid>
     <same_source_ip />
-    <description>Multiple failed logins (user enumeration in process).</description>
+    <description>Asterisk: Multiple failed logins (user enumeration in process).</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
   <rule id="6251" level="10" frequency="6" timeframe="300">
     <if_matched_sid>6210</if_matched_sid>
     <same_source_ip />
-    <description>Multiple failed logins.</description>
+    <description>Asterisk: Multiple failed logins.</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
-  
+
   <rule id="6252" level="10" frequency="6" timeframe="300">
     <if_matched_sid>6212</if_matched_sid>
     <same_source_ip />
-    <description>Extension enumeration.</description>
+    <description>Asterisk: Extension enumeration.</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
@@ -88,7 +88,7 @@
   <rule id="6253" level="5">
     <if_sid>6201</if_sid>
     <match>No registration for peer</match>
-    <description>Login session failed (invalid iax user).</description>
+    <description>Asterisk: Login session failed (invalid iax user).</description>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
@@ -96,7 +96,7 @@
   <rule id="6254" level="10" frequency="3" timeframe="300">
     <if_matched_sid>6253</if_matched_sid>
     <same_source_ip />
-    <description>Extension IAX Enumeration.</description>
+    <description>Asterisk: Extension IAX Enumeration.</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
@@ -104,7 +104,7 @@
   <rule id="6255" level="5">
     <if_sid>6202</if_sid>
     <match>Don't know how to respond via</match>
-    <description>Possible Registration Hijacking.</description>
+    <description>Asterisk: Possible Registration Hijacking.</description>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
@@ -112,7 +112,7 @@
   <rule id="6256" level="5">
     <if_sid>6201</if_sid>
     <match>failed MD5 authentication</match>
-    <description>IAX peer Wrong Password.</description>
+    <description>Asterisk: IAX peer Wrong Password.</description>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
@@ -120,11 +120,11 @@
   <rule id="6257" level="10" frequency="3" timeframe="300">
     <if_matched_sid>6256</if_matched_sid>
     <same_source_ip />
-    <description>Multiple failed logins.</description>
+    <description>Asterisk: Multiple failed logins.</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
-  
+
 </group> <!-- ASTERISK -->
 
 <!-- EOF -->

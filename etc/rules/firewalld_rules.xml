@@ -14,7 +14,7 @@
   <rule id="40902" level="3">
     <if_sid>40901</if_sid>
     <match> No chain/target/match by that name.$</match>
-    <description>Incorrect chain/target/match.</description>
+    <description>firewalld: Incorrect chain/target/match.</description>
   </rule>
 
   <rule id="40903" level="2">
@@ -23,4 +23,3 @@
     <description>firewalld: zone already set.</description>
   </rule>
 </group>
-

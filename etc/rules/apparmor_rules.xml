@@ -19,13 +19,13 @@
   <rule id="52000" level="3">
     <decoded_as>iptables</decoded_as>
     <match> apparmor=</match>
-    <description>Apparmor grouping</description>
+    <description>Apparmor messages grouped.</description>
   </rule>
 
   <rule id="52001" level="0">
     <if_sid>52000</if_sid>
     <status>ALLOWED|STATUS</status>
-    <description>Ignore ALLOWED or STATUS</description>
+    <description>Apparmor Ignore ALLOWED or STATUS</description>
   </rule>
 
   <rule id="52002" level="3">

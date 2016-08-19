@@ -14,7 +14,7 @@
   -  PCI Tagging by Wazuh <ossec@wazuh.com>.
   -
   -->
-  
+
 
 <!-- SSHD messages -->
 <group name="syslog,sshd,">
@@ -22,11 +22,11 @@
     <decoded_as>sshd</decoded_as>
     <description>SSHD messages grouped.</description>
   </rule>
-              
+
   <rule id="5701" level="8">
     <if_sid>5700</if_sid>
     <match>Bad protocol version identification</match>
-    <description>Possible attack on the ssh server </description>
+    <description>sshd: Possible attack on the ssh server </description>
     <description>(or version gathering).</description>
     <group>pci_dss_11.4,</group>
   </rule>
@@ -35,13 +35,13 @@
     <if_sid>5700</if_sid>
     <match>^reverse mapping</match>
     <regex>failed - POSSIBLE BREAK</regex>
-    <description>Reverse lookup error (bad ISP or attack).</description>
+    <description>sshd: Reverse lookup error (bad ISP or attack).</description>
     <group>pci_dss_11.4,</group>
   </rule>
 
   <rule id="5703" level="10" frequency="4" timeframe="360">
     <if_matched_sid>5702</if_matched_sid>
-    <description>Possible breakin attempt </description>
+    <description>sshd: Possible breakin attempt </description>
     <description>(high number of reverse lookup errors).</description>
     <group>pci_dss_11.4,</group>
   </rule>
@@ -49,12 +49,12 @@
   <rule id="5704" level="4">
     <if_sid>5700</if_sid>
     <match>fatal: Timeout before authentication for</match>
-    <description>Timeout while logging in (sshd).</description>
+    <description>sshd: Timeout while logging in.</description>
   </rule>
 
   <rule id="5705" level="10" frequency="4" timeframe="360">
     <if_matched_sid>5704</if_matched_sid>
-    <description>Possible scan or breakin attempt </description>
+    <description>sshd: Possible scan or breakin attempt </description>
     <description>(high number of login timeouts).</description>
     <group>pci_dss_11.4,</group>
   </rule>
@@ -62,14 +62,14 @@
   <rule id="5706" level="6">
     <if_sid>5700</if_sid>
     <match>Did not receive identification string from</match>
-    <description>SSH insecure connection attempt (scan).</description>
+    <description>sshd: insecure connection attempt (scan).</description>
     <group>recon,pci_dss_11.4,</group>
   </rule>
 
   <rule id="5707" level="14">
     <if_sid>5700</if_sid>
     <match>fatal: buffer_get_string: bad string</match>
-    <description>OpenSSH challenge-response exploit.</description>
+    <description>sshd: OpenSSH challenge-response exploit.</description>
     <group>exploit_attempt,pci_dss_11.4,pci_dss_6.2,</group>
   </rule>
 
@@ -78,13 +78,13 @@
     <match>error: Could not get shadow information for NOUSER|</match>
     <match>fatal: Read from socket failed: |error: ssh_msg_send: write|</match>
     <match>^syslogin_perform_logout: |^pam_succeed_if(sshd:auth): error retrieving information about user|can't verify hostname: getaddrinfo</match>
-    <description>Useless SSHD message without an user/ip and context.</description>
+    <description>sshd: Useless SSHD message without an user/ip and context.</description>
   </rule>
-  
+
   <rule id="5710" level="5">
     <if_sid>5700</if_sid>
     <match>illegal user|invalid user</match>
-    <description>Attempt to login using a non-existent user</description>
+    <description>sshd: Attempt to login using a non-existent user</description>
     <group>invalid_login,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
   </rule>
 
@@ -94,12 +94,12 @@
     <match>input_userauth_request: invalid user|</match>
     <match>PAM: User not known to the underlying authentication module for illegal user|</match>
     <match>error retrieving information about user</match>
-    <description>Useless/Duplicated SSHD message without a user/ip.</description>
+    <description>sshd: Useless/Duplicated SSHD message without a user/ip.</description>
   </rule>
 
   <rule id="5712" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>5710</if_matched_sid>
-    <description>SSHD brute force trying to get access to </description>
+    <description>sshd: brute force trying to get access to </description>
     <description>the system.</description>
     <same_source_ip />
     <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,</group>
@@ -108,68 +108,68 @@
   <rule id="5713" level="6">
     <if_sid>5700</if_sid>
     <match>Corrupted check bytes on</match>
-    <description>Corrupted bytes on SSHD.</description>  
+    <description>sshd: Corrupted bytes on SSHD.</description>
   </rule>
-  
+
   <rule id="5714" level="14" timeframe="120" frequency="1">
     <if_matched_sid>5713</if_matched_sid>
     <match>Local: crc32 compensation attack</match>
-    <description>SSH CRC-32 Compensation attack</description>
+    <description>sshd: SSH CRC-32 Compensation attack</description>
     <info type="cve">2001-0144</info>
     <info type="link">http://www.securityfocus.com/bid/2347/info/</info>
     <group>exploit_attempt,pci_dss_11.4,pci_dss_6.2,</group>
-  </rule>  
+  </rule>
 
   <rule id="5715" level="3">
     <if_sid>5700</if_sid>
     <match>^Accepted|authenticated.$</match>
-    <description>SSHD authentication success.</description>
+    <description>sshd: authentication success.</description>
     <group>authentication_success,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="5716" level="5">
     <if_sid>5700</if_sid>
     <match>^Failed|^error: PAM: Authentication</match>
-    <description>SSHD authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group> 
-  </rule>  
+    <description>sshd: authentication failed.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
 
   <rule id="5717" level="4">
     <if_sid>5700</if_sid>
     <match>error: Bad prime description in line</match>
-    <description>SSHD configuration error (moduli).</description>
+    <description>sshd: configuration error (moduli).</description>
   </rule>
 
   <rule id="5718" level="5">
     <if_sid>5700</if_sid>
     <match>not allowed because</match>
-    <description>Attempt to login using a denied user.</description>
+    <description>sshd: Attempt to login using a denied user.</description>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
-                      
+
   <rule id="5719" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>5718</if_matched_sid>
-    <description>Multiple access attempts using a denied user.</description>
+    <description>sshd: Multiple access attempts using a denied user.</description>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
-  
+
   <rule id="5720" level="10" frequency="6">
     <if_matched_sid>5716</if_matched_sid>
     <same_source_ip />
-    <description>Multiple SSHD authentication failures.</description>
+    <description>sshd: Multiple authentication failures.</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
-  </rule>                                       
+  </rule>
 
   <rule id="5721" level="0">
     <if_sid>5700</if_sid>
     <match>Received disconnect from</match>
-    <description>System disconnected from sshd.</description>
+    <description>sshd: System disconnected from sshd.</description>
   </rule>
 
   <rule id="5722" level="0">
     <if_sid>5700</if_sid>
     <match>Connection closed</match>
-    <description>ssh connection closed.</description>
+    <description>sshd: ssh connection closed.</description>
     <group>pci_dss_10.2.5,</group>
   </rule>
 
@@ -177,7 +177,7 @@
     <if_sid>5700</if_sid>
     <match>error: buffer_get_bignum2_ret: negative numbers not supported</match>
     <info>This maybe a bad key in authorized_keys.</info>
-    <description>SSHD key error.</description>
+    <description>sshd: key error.</description>
     <group>pci_dss_4.1,pci_dss_10.6.1,</group>
   </rule>
 
@@ -185,26 +185,26 @@
     <if_sid>5700</if_sid>
     <match>fatal: buffer_get_bignum2: buffer error</match>
     <info>This error may relate to ssh key handling.</info>
-    <description>SSHD key error.</description>
+    <description>sshd: key error.</description>
     <group>pci_dss_4.1,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="5725" level="0">
     <if_sid>5700</if_sid>
     <match>fatal: Write failed: Host is down</match>
-    <description>Host ungracefully disconnected.</description>
+    <description>sshd: Host ungracefully disconnected.</description>
   </rule>
 
   <rule id="5726" level="5">
     <if_sid>5700</if_sid>
     <match>error: PAM: Module is unknown for</match>
-    <description>Unknown PAM module, PAM misconfiguration.</description>
+    <description>sshd: Unknown PAM module, PAM misconfiguration.</description>
   </rule>
 
   <rule id="5727" level="0">
     <if_sid>5700</if_sid>
     <match>failed: Address already in use.</match>
-    <description>Attempt to start sshd when something already bound to the port.</description>
+    <description>sshd: Attempt to start sshd when something already bound to the port.</description>
     <group>pci_dss_10.6.1,pci_dss_2.2.3,</group>
   </rule>
 
@@ -212,131 +212,131 @@
     <if_sid>5700</if_sid>
     <match>Authentication service cannot retrieve user credentials</match>
     <info>May be related to PAM module errors.</info>
-    <description>Authentication services were not able to retrieve user credentials.</description>
+    <description>sshd: Authentication services were not able to retrieve user credentials.</description>
     <group>authentication_failed,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="5729" level="0">
     <if_sid>5700</if_sid>
     <match>debug1: attempt</match>
-    <description>Debug message.</description>
+    <description>sshd: Debug message.</description>
   </rule>
 
   <rule id="5730" level="4">
     <if_sid>5700</if_sid>
     <regex>error: connect to \S+ port \d+ failed: Connection refused</regex>
-    <description>SSHD is not accepting connections.</description>
+    <description>sshd: SSHD is not accepting connections.</description>
     <group>pci_dss_10.6.1</group>
   </rule>
 
   <rule id="5731" level="6">
     <if_sid>5700</if_sid>
     <match>AKASSH_Version_Mapper1.</match>
-    <description>SSH Scanning.</description>
+    <description>sshd: SSH Scanning.</description>
     <group>recon,pci_dss_11.4,</group>
   </rule>
 
   <rule id="5732" level="0">
     <if_sid>5700</if_sid>
     <match>error: connect_to </match>
-    <description>Possible port forwarding failure.</description>
+    <description>sshd: Possible port forwarding failure.</description>
   </rule>
 
   <rule id="5733" level="0">
     <if_sid>5700</if_sid>
     <match>Invalid credentials</match>
-    <description>User entered incorrect password.</description>
+    <description>sshd: User entered incorrect password.</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="5734" level="0">
     <if_sid>5700</if_sid>
     <match>Could not load host key</match>
-    <description>sshd could not load one or more host keys.</description>
+    <description>sshd: sshd could not load one or more host keys.</description>
     <info>This may be related to an upgrade to OpenSSH.</info>
   </rule>
 
   <rule id="5735" level="0">
     <if_sid>5700</if_sid>
     <match>Write failed: Broken pipe</match>
-    <description>Failed write due to one host disappearing.</description>
+    <description>sshd: Failed write due to one host disappearing.</description>
   </rule>
 
   <rule id="5736" level="0">
     <if_sid>5700</if_sid>
     <match>^error: setsockopt SO_KEEPALIVE: Connection reset by peer$|</match>
     <match>^error: accept: Software caused connection abort$</match>
-    <description>Connection reset or aborted.</description>
+    <description>sshd: Connection reset or aborted.</description>
   </rule>
 
   <rule id="5737" level="5">
     <if_sid>5700</if_sid>
     <match>^fatal: Cannot bind any address.$</match>
-    <description>sshd cannot bind to configured address.</description>
+    <description>sshd: cannot bind to configured address.</description>
     <group>pci_dss_10.6.1</group>
   </rule>
 
   <rule id="5738" level="5">
     <if_sid>5700</if_sid>
     <match>set_loginuid failed opening loginuid$</match>
-    <description>pam_loginuid could not open loginuid.</description>
+    <description>sshd: pam_loginuid could not open loginuid.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="5739" level="4">
     <if_sid>5700</if_sid>
     <match>^error: Could not stat AuthorizedKeysCommand</match>
-    <description>SSHD configuration error (AuthorizedKeysCommand)</description>
+    <description>sshd: configuration error (AuthorizedKeysCommand)</description>
   </rule>
 
   <rule id="5740" level="4">
     <if_sid>5700</if_sid>
     <match>Connection reset by peer$</match>
-    <description>ssh connection reset by peer</description>
+    <description>sshd: connection reset by peer</description>
   </rule>
 
   <rule id="5741" level="4">
     <if_sid>5700</if_sid>
     <match>Connection refused$</match>
-    <description>ssh connection refused</description>
+    <description>sshd: connection refused</description>
   </rule>
 
   <rule id="5742" level="4">
     <if_sid>5700</if_sid>
     <match>Connection timed out$</match>
-    <description>ssh connection timed out</description>
+    <description>sshd: connection timed out</description>
     <group>pci_dss_8.1.5,</group>
   </rule>
 
   <rule id="5743" level="4">
     <if_sid>5700</if_sid>
     <match>No route to host$</match>
-    <description>ssh no route to host</description>
+    <description>sshd: no route to host</description>
   </rule>
 
   <rule id="5744" level="4">
     <if_sid>5700</if_sid>
     <match>failure direct-tcpip$</match>
-    <description>ssh port forwarding issue</description>
+    <description>sshd: port forwarding issue</description>
   </rule>
 
   <rule id="5745" level="4">
     <if_sid>5700</if_sid>
     <match>Transport endpoint is not connected$</match>
-    <description>ssh transport endpoint is not connected</description>
+    <description>sshd: transport endpoint is not connected</description>
   </rule>
 
   <rule id="5746" level="4">
     <if_sid>5700</if_sid>
     <match>get_remote_port failed$</match>
-    <description>ssh get_remote_port failed</description>
+    <description>sshd: get_remote_port failed</description>
   </rule>
-  
+
   <!-- http://www.gossamer-threads.com/lists/openssh/users/47438 -->
   <rule id="5747" level="6">
     <if_sid>5700</if_sid>
     <match>bad client public DH value</match>
-    <description>ssh bad client public DH value</description>
+    <description>sshd: bad client public DH value</description>
   </rule>
 
   <!-- log sample with context:
@@ -347,59 +347,59 @@
   <rule id="5748" level="6">
     <if_sid>5700</if_sid>
     <match>Corrupted MAC on input.</match>
-    <description>ssh corrupted MAC on input</description>
+    <description>sshd: corrupted MAC on input</description>
     <group>pci_dss_10.6.1</group>
   </rule>
 
   <rule id="5749" level="4">
     <if_sid>5700</if_sid>
     <match>^Bad packet length</match>
-    <description>ssh bad packet length</description>
+    <description>sshd: bad packet length</description>
   </rule>
 
   <rule id="5750" level="0">
     <decoded_as>sshd</decoded_as>
     <if_sid>5700</if_sid>
     <match>Unable to negotiate with |Unable to negotiate a key</match>
-    <description>sshd could not negotiate with client.</description>
+    <description>sshd: could not negotiate with client.</description>
   </rule>
 
   <rule id="5751" level="1">
     <decoded_as>sshd</decoded_as>
     <if_sid>5700</if_sid>
     <match>no hostkey alg [preauth]</match>
-    <description>No hostkey alg.</description>
+    <description>sshd: No hostkey alg.</description>
   </rule>
 
   <rule id="5752" level="2">
     <if_sid>5750</if_sid>
     <match>no matching key exchange method found.|Unable to negotiate a key exchange method</match>
-    <description>Client did not offer an acceptable key exchange method.</description>
+    <description>sshd: Client did not offer an acceptable key exchange method.</description>
   </rule>
 
   <rule id="5753" level="2">
     <if_sid>5750</if_sid>
     <match>no matching cipher found.</match>
-    <description>sshd could not negotiate with client, no matching cipher.</description>
+    <description>sshd: could not negotiate with client, no matching cipher.</description>
   </rule>
 
   <rule id="5754" level="1">
     <if_sid>5700</if_sid>
     <match>Failed to create session: </match>
-    <description>sshd failed to create a session.</description>
+    <description>sshd: failed to create a session.</description>
   </rule>
 
   <rule id="5755" level="2">
     <if_sid>5700</if_sid>
     <match>bad ownership or modes for file</match>
-    <description>Authentication refused due to owner/permissions of authorized_keys.</description>
+    <description>sshd: Authentication refused due to owner/permissions of authorized_keys.</description>
     <group>authentication_failed,</group>
   </rule>
 
   <rule id="5756" level="0">
     <if_sid>5700</if_sid>
     <match> failed, subsystem not found$</match>
-    <description>sshd subsystem request failed.</description>
+    <description>sshd: subsystem request failed.</description>
   </rule>
 
 </group> <!-- SYSLOG, SSHD -->

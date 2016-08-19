@@ -13,11 +13,11 @@
   -->
 
 <!-- Puppet messages -->
-<!-- ID: 80000 - 80100 -->
+<!-- ID: 80000 - 80099 -->
 <group name="puppet,">
 
     <!--
-    Note: 
+    Note:
         Logs with "core_dumped|failure|error|attack|bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted" will match with rule 1002.
         To use "if_sid 80000 or 80001" with these logs, rule 8000 and 80001 must have a level of 0 or >2.
     -->
@@ -26,7 +26,7 @@
         <description>Puppet Master messages grouped.</description>
         <group>master</group>
     </rule>
-    
+
     <rule id="80001" level="0" noalert="1" >
         <decoded_as>puppet-agent</decoded_as>
         <description>Puppet Agent messages grouped.</description>
@@ -34,17 +34,17 @@
     </rule>
 
     <!-- Mater Rules -->
-    
+
     <!--
     Start
-    Oct  1 10:32:26 puppet puppet-master[1055]: Starting Puppet master version 3.8.3 
+    Oct  1 10:32:26 puppet puppet-master[1055]: Starting Puppet master version 3.8.3
     -->
     <rule id="80002" level="5">
         <if_sid>80000</if_sid>
         <match>^Starting</match>
         <description>Puppet Master started</description>
     </rule>
-    
+
     <!--
     Stop
     - Oct  1 12:16:46 puppet puppet-master[1055]: Processing stop
@@ -56,7 +56,7 @@
         <regex>\.+stop</regex>
         <description>Puppet Master stopped</description>
     </rule>
-    
+
     <!--
     Permission
     - Oct  1 17:56:52 puppet puppet-master[7879]: Permission denied - /etc/puppet/modules/ossec/files/ossec-agent-win32-2.8.exe
@@ -66,7 +66,7 @@
         <match>^Permission denied </match>
         <description>Puppet Master: Permission denied</description>
     </rule>
-    
+
     <!--
     Cetificates
     - Oct  1 12:26:37 puppet puppet-master[1940]: Removing file Puppet::SSL::CertificateRequest puppet.yokatan.com at '/var/lib/puppet/ssl/ca/requests/puppet.yokatan.com.pem'
@@ -81,10 +81,10 @@
     </rule>
 
     <!--
-    Errors   
+    Errors
     *Run error
     - Sep 30 15:45:30 puppet puppet-master[3400]: Could not run: Address already in use - bind(2)
-    
+
     *Manifest Errors
     - Sep 30 15:55:46 puppet puppet-master[3594]: Could not parse for environment production: No file(s) found for import of 'nodes.pp' at /etc/puppet/manifests/site.pp:2 on node ubuntu.localdomain
     - Sep 30 16:07:13 puppet puppet-master[3594]: You cannot collect exported resources without storeconfigs being set; the collection will be ignored on line 96 in file /etc/puppet/modules/ossec/manifests/server.pp
@@ -99,7 +99,7 @@
     - Sep 30 16:07:13 puppet puppet-master[3594]: Puppet::Parser::AST::Resource failed with error ArgumentError: Invalid resource type apt::source at /etc/puppet/modules/ossec/manifests/common.pp:24 on node server.yokatan.com
     - *failed*
     - *has failure*
-    
+
     *General Errors
     - Sep 30 15:53:39 puppet puppet-master[3594]: Could not resolve 192.168.209.171: no name for 192.168.209.171
     - Sep 30 15:56:06 puppet puppet-master[3594]: Could not find default node or by name with 'ubuntu.localdomain, ubuntu' on node ubuntu.localdomain
@@ -107,7 +107,7 @@
     - Sep 30 16:14:08 puppet puppet-master[3594]: Not collecting exported resources without storeconfigs
     - Sep 30 18:43:42 puppet puppet-master[3594]: The environment must be purely alphanumeric, not 'puppet-ca'
     - Oct  1 16:48:27 puppet puppet-master[7879]: Syntax error at '
-    - Oct  5 16:11:52 puppet puppet-master[8980]: Failed to submit 'replace facts' command for agente.yokatan.com to PuppetDB at puppetdb:8081: getaddrinfo: Name or service not known     
+    - Oct  5 16:11:52 puppet puppet-master[8980]: Failed to submit 'replace facts' command for agente.yokatan.com to PuppetDB at puppetdb:8081: getaddrinfo: Name or service not known
     - *failed*
     - *has failure*
     -->
@@ -115,7 +115,7 @@
         <if_sid>80000</if_sid>
         <match>^Could not run: Address already in use</match>
         <description>Puppet Master: not run - address in use</description>
-    </rule>  
+    </rule>
 
     <rule id="80007" level="5">
         <if_sid>80000</if_sid>
@@ -129,13 +129,13 @@
         <match>^Could not|not found|^Not collecting|^The environment must be|^Syntax error|^Failed|failed|has failure</match>
         <description>Puppet Master: Error</description>
     </rule>
-    
+
 
     <!--
     Info
     - Oct  1 16:54:26 puppet puppet-master[7879]: Compiled catalog for windows.localdomain in environment production in 0.30 seconds
     - Sep 30 15:45:30 puppet puppet-master[3400]: Reopening log files
-    
+
     *Deprecated
     - Sep 30 15:45:10 puppet puppet-master[3015]: Setting templatedir is deprecated. See http://links.puppetlabs.com/env-settings-deprecations
     - Sep 30 15:55:46 puppet puppet-master[3594]: The use of 'import' is deprecated at /etc/puppet/manifests/site.pp:2. See http://links.puppetlabs.com/puppet-import-deprecation
@@ -148,15 +148,15 @@
         <match>^Compiled catalog|^Reopening log</match>
         <description>Puppet Master: Info</description>
     </rule>
-    
+
     <rule id="80010" level="2">
         <if_sid>80000</if_sid>
         <program_name>puppet-master</program_name>
         <match>^Compiled catalog|^Reopening log|is deprecated|are deprecated</match>
         <description>Puppet Master: Deprecated</description>
     </rule>
-    
-    
+
+
     <!-- Agent Rules -->
     <!--
     Start
@@ -167,7 +167,7 @@
         <match>^Starting Puppet client</match>
         <description>Puppet Agent started</description>
     </rule>
-    
+
     <!--
     Stop
     - Oct  5 17:43:18 puppet puppet-agent[6273]: Caught INT; storing stop
@@ -178,13 +178,13 @@
         <regex>\.+stop</regex>
         <description>Puppet Agent stopped</description>
     </rule>
-    
+
     <!--
     Cetificates
     - Oct  5 17:08:18 puppet puppet-agent[4209]: Certificate Request fingerprint (SHA256): 34:F3:06:89:C2:D3:78:E0:42:99:F7:B6:39:6F:0C:C2:DB:F1:8A:1C:7E:72:B9:96:E8:A9:67:2B:93:1B:E1:A5
     - Oct  5 16:13:20 puppet puppet-agent[9113]: Using cached certificate for ca
     - Oct  5 17:08:18 puppet puppet-agent[4209]: Creating a new SSL key for puppet.yokatan.com
-    
+
     - Oct 13 11:17:29 server puppet-agent[2910]: Could not request certificate: The certificate retrieved from the master does not match the agent's private key.
     -->
     <rule id="80052" level="2">
@@ -193,33 +193,33 @@
         <regex>master does not match the agent</regex>
         <description>Puppet Agent: Certificate - Could not request certificate</description>
     </rule>
-    
+
     <rule id="80053" level="0">
         <if_sid>80001</if_sid>
         <match>^Certificate Request|^Using cached certificate|SSL key</match>
         <description>Puppet Agent: Certificate issue</description>
     </rule>
-    
+
 
     <!--
     Errors
     *Not file found
     - Oct  5 16:13:23 puppet puppet-agent[9126]: No /etc/puppet/puppetdb.conf file found; falling back to default server and port puppetdb:8081
     - Oct  5 16:13:20 puppet puppet-agent[9113]: Puppet::Type::User::ProviderDirectoryservice: file /usr/bin/dsimport does not exist
-    
+
     *Missing feature
     - Oct  5 16:13:20 puppet puppet-agent[9113]: Puppet::Type::User::ProviderLdap: feature ldap is missing
-    
+
     *Failed library
     - Oct  5 16:13:19 puppet puppet-agent[9113]: Failed to load library 'selinux' for feature 'selinux'
-    
+
     *Failed to apply catalog
     - 2015-10-04T08:02:57.257269+00:00 vp21a00is-isgsec015 puppet-agent[1966]: Failed to apply catalog: Could not find dependency File[/etc/yum.conf] for Package[puppet] at /isgadmin/puppet/environments/core/modules/core/manifests/puppet/client.pp:62
     - Oct  5 15:49:48 puppet puppet-agent[7393]: Failed to apply catalog: Could not retrieve local facts: Failed to submit 'replace facts' command for puppet.yokatan.com to PuppetDB at puppetdb:8081: getaddrinfo: Name or service not known
-    
+
     *Connection refused
     - Oct 13 12:48:08 server puppet-agent[3277]: (/File[/var/lib/puppet/facts.d]) Failed to generate additional resources using 'eval_generate': Connection refused - connect(2)
-    
+
     *Errors
     - Oct  5 15:49:28 puppet puppet-agent[7393]: Unable to fetch my node definition, but the agent run will continue:
     - Oct  5 16:13:20 puppet puppet-agent[9113]: (/User[puppet]) Provider useradd does not support features libuser; not managing attribute forcelocal
@@ -229,13 +229,13 @@
     - *failed*
     - *has failure*
     -->
-    
+
     <rule id="80054" level="4">
         <if_sid>80001</if_sid>
-        <regex>^No \S+ file found|file \S+ does not exist</regex>  
+        <regex>^No \S+ file found|file \S+ does not exist</regex>
         <description>Puppet Agent: Error - no file found or does not exist</description>
     </rule>
-    
+
     <rule id="80055" level="4">
         <if_sid>80001</if_sid>
         <regex>feature \S+ is missing</regex>
@@ -247,30 +247,30 @@
         <match>^Failed to load library</match>
         <description>Puppet Agent: Error - failed library</description>
     </rule>
-    
+
     <rule id="80057" level="5">
         <if_sid>80001</if_sid>
         <match>^Failed to apply catalog</match>
         <description>Puppet Agent: Error - failed to apply catalog</description>
     </rule>
-    
+
     <rule id="80058" level="10">
         <if_sid>80001</if_sid>
         <match>Connection refused - connect</match>
         <description>Puppet Agent: connection refused</description>
     </rule>
-    
+
     <rule id="80059" level="4">
         <if_sid>80001</if_sid>
         <match>^Unable to fetch|does not support|Not using cache|Could not retrieve|Failed|failed|has failure</match>
         <description>Puppet Agent: Error</description>
     </rule>
-    
+
     <!--
     Info
     - Oct  5 15:49:28 puppet puppet-agent[7393]: (/File[/var/lib/puppet/lib/puppet/provider/mysql_database]/ensure) created
     - Oct  5 15:49:28 puppet puppet-agent[7393]: (/File[/var/lib/puppet/lib/puppet/provider/mysql_user/mysql.rb]/ensure) defined content as '{md5}3af9f573524a516e2ecd6d0830a92c62'
-    
+
     - Oct  5 15:49:28 puppet puppet-agent[7393]: Retrieving pluginfacts
     - 2015-10-04T08:02:53.535821+00:00 vp21a00is-isgsec015 puppet-agent[1966]: Loading facts in /var/lib/puppet/lib/facter/kmod_bnx2.rb
     - 2015-10-04T08:02:56.965822+00:00 vp21a00is-isgsec015 puppet-agent[1966]: Caching catalog for vp21a00is-isgsec015.isg.apple.com
@@ -286,10 +286,10 @@
     - Oct  8 09:22:30 vpc-puppet puppet-agent[7601]: (/File[/var/lib/puppet/state/last_run_report.yaml]/mode) mode changed '0660' to '0640'
     - Oct  8 09:48:20 vpc-puppet puppet-agent[12407]: Configuring PuppetDB terminuses with config file /etc/puppet/puppetdb.conf
     - Oct  5 16:13:20 puppet puppet-agent[9113]: (/File[/var/lib/puppet/state]) Autorequiring File[/var/lib/puppet]
-    
+
     - Oct  5 17:43:35 puppet puppet-agent[6631]: Applying configuration version '1444059814'
     - Oct  5 17:43:35 puppet puppet-agent[6631]: Finished catalog run in 0.12 seconds
-    
+
     - Oct  8 11:51:20 vpc-puppet puppet-agent[16317]: Executing '/usr/bin/apt-key add /tmp/apt_key20151008-16317-8e36sn'
     -->
     <rule id="80070" level="0">
@@ -298,43 +298,43 @@
         <regex>\(\.+\) created|\(\.+\) defined</regex>
         <description>Puppet Agent: Info - create or defined content</description>
     </rule>
-    
+
     <rule id="80071" level="0">
         <if_sid>80001</if_sid>
         <match>^Retrieving|^Loading|^Caching|^Evicting|^Using settings|^Finishing transaction|^Configuring| connection for|mode changed|Autorequiring</match>
         <description>Puppet Agent: Info</description>
     </rule>
-    
+
     <rule id="80072" level="2">
         <if_sid>80001</if_sid>
         <match>^Applying configuration|^Finished catalog</match>
         <description>Puppet Agent: Info - applying configuration</description>
     </rule>
-    
+
     <rule id="80073" level="2">
         <if_sid>80001</if_sid>
         <match>^Executing</match>
         <description>Puppet Agent: Info - executing </description>
     </rule>
-    
-    
-    
+
+
+
     <!-- Commands -->
-    
+
     <!--
-        Last run: 
+        Last run:
             Check the field "time:last_run" in file /var/lib/puppet/state/last_run_summary.yaml
-        
-        Setup: 
+
+        Setup:
         These rules need to read a command output, so it is necessary to copy the code below to /var/ossec/etc/ossec.conf (in every agent)
-        
+
         <localfile>
             <log_format>full_command</log_format>
             <command>timestamp_puppet=`cat /var/lib/puppet/state/last_run_summary.yaml | grep last_run | cut -d: -f 2 | tr -d '[[:space:]]'`;timestamp_current_date=$(date +"%s");diff_min=$((($timestamp_current_date-$timestamp_puppet)/60));if [ "$diff_min" -le "30" ];then echo "Puppet: OK. It runs in the last 30 minutes";else puppet_date=`date -d @"$timestamp_puppet"`;echo "Puppet: KO. Last run: $puppet_date";fi</command>
             <frequency>2100</frequency>
         </localfile>
-        
-        *Also you can copy the code to /var/ossec/etc/shared/agent.conf in OSSEC Master and configure in every agent the logcollector option to accept remote commands from the manager: 
+
+        *Also you can copy the code to /var/ossec/etc/shared/agent.conf in OSSEC Master and configure in every agent the logcollector option to accept remote commands from the manager:
             /var/ossec/etc/internal_options.conf:
                 # Logcollector - If it should accept remote commands from the manager
                 logcollector.remote_commands=1
@@ -346,18 +346,18 @@
         <match>^ossec: output: 'timestamp_puppet</match>
         <description>Command check if puppet runs every 30 min or less</description>
     </rule>
-    
+
     <rule id="80091" level="0">
         <if_sid>80090</if_sid>
         <match>Puppet: OK</match>
         <description>Puppet ran in the last 30 minutes</description>
     </rule>
-    
+
     <rule id="80092" level="5">
         <if_sid>80090</if_sid>
         <match>Puppet: KO</match>
         <description>Puppet did not run in the last 30 minutes</description>
     </rule>
-    
+
 </group>
 <!-- Puppet -->

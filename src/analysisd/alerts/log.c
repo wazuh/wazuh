@@ -112,7 +112,7 @@ void OS_LogOutput(Eventinfo *lf)
         lf->location,
         lf->generated_rule->sigid,
         lf->generated_rule->level,
-        lf->generated_rule->comment,
+        lf->comment,
 
         lf->srcip == NULL ? "" : "\nSrc IP: ",
         lf->srcip == NULL ? "" : lf->srcip,
@@ -272,7 +272,7 @@ void OS_Log(Eventinfo *lf)
             lf->location,
             lf->generated_rule->sigid,
             lf->generated_rule->level,
-            lf->generated_rule->comment,
+            lf->comment,
 
             lf->srcip == NULL ? "" : "\nSrc IP: ",
             lf->srcip == NULL ? "" : lf->srcip,
@@ -483,7 +483,7 @@ void OS_CustomLog(const Eventinfo *lf, const char *format)
         escaped_log = NULL;
     }
 
-    snprintf(tmp_buffer, 1024, "%s", lf->generated_rule->comment ? lf->generated_rule->comment : "");
+    snprintf(tmp_buffer, 1024, "%s", lf->comment ? lf->comment : "");
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_COMMENT], tmp_buffer);
     if (log) {
         os_free(log);
