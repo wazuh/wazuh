@@ -257,7 +257,8 @@ int label_valid(const label *l)
         return VERIFY_FALSE;
     }
 
-    if (!isalpha(l->text[0]) || !isalnum(l->text[l->len - 1])) {
+
+    if (!isalnum(l->text[l->len - 1])) {
         return VERIFY_FALSE;
     }
 
@@ -324,4 +325,3 @@ char *asn1_to_cstr(ASN1_STRING *astr)
 }
 
 #endif /* LIBOPENSSL_ENABLED */
-
