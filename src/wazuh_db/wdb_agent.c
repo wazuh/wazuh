@@ -170,6 +170,7 @@ int wdb_create_agent_db(int id, const char *name) {
     snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
 
     if (!(dest = fopen(path, "w"))) {
+        fclose(source);
         merror("%s: Couldn't create database '%s'.", ARGV0, path);
         return -1;
     }
