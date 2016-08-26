@@ -19,7 +19,7 @@ int wm_task_nice = 0;       // Nice value for tasks.
 void wm_check() {
     wmodule *i;
     wmodule *j;
-    wmodule *prev;
+    wmodule *next;
 
     // Check that a configuration exists
 
@@ -29,21 +29,16 @@ void wm_check() {
     // Get the last module of the same type
 
     for (i = wmodules->next; i; i = i->next) {
-        prev = wmodules;
+        for (j = wmodules; j != i; j = next) {
+            next = j->next;
 
-        for (j = wmodules; j != i; j = j->next) {
             if (i->context->name == j->context->name) {
-                if (j == wmodules)
-                    wmodules = j->next;
-                else
-                    prev->next = j->next;
-
                 j->context->destroy(j->data);
                 free(j);
-                j = prev;
+
+                if (j == wmodules)
+                    wmodules = next;
             }
-            else
-                prev = j;
         }
     }
 }
