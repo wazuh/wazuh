@@ -389,12 +389,14 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
         switch (DecodeSum(&newsum, c_sum)) {
         case -1:
             merror("%s: ERROR: Couldn't decode syscheck sum from log.", ARGV0);
+            lf->data = NULL;
             return 0;
 
         case 0:
             switch (DecodeSum(&oldsum, saved_sum)) {
             case -1:
                 merror("%s: ERROR: Couldn't decode syscheck sum from database.", ARGV0);
+                lf->data = NULL;
                 return 0;
 
             case 0:
@@ -555,10 +557,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          lf->data == NULL ? "" : lf->data
                         );
 
-                if (lf->data) {
+                if (lf->data)
                     os_strdup(lf->data, lf->diff);
-                    merror("\n\nVIKMAN: diff = <%s>\n\n", lf->diff);
-                }
 
                 if (wdb_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "modified", &newsum, (long int)lf->time) < 0) {
                     merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
@@ -617,33 +617,43 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
     fflush(fp);
 
     /* Insert row in SQLite DB*/
-    if (!DecodeSum(&newsum, c_sum)) {
-        if (wdb_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "added", &newsum, (long int)lf->time) < 0) {
-            merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
-            debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
-        }
-    }
 
-    /* Alert if configured to notify on new files */
-    if ((Config.syscheck_alert_new == 1) && DB_IsCompleted(agent_id)) {
-		sdb.syscheck_dec->id = sdb.idn;
-        FillEvent(lf, f_name, &newsum);
+    switch (DecodeSum(&newsum, c_sum)) {
+        case -1:
+            merror("%s: ERROR: Couldn't decode syscheck sum from log.", ARGV0);
+            break;
 
-		/* New file message */
-		snprintf(sdb.comment, OS_MAXSTR,
-				 "New file '%.756s' "
-				 "added to the file system.", f_name);
+        case 0:
+            if (wdb_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "added", &newsum, (long int)lf->time) < 0) {
+                merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
+                debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
+            }
 
-		/* Create a new log message */
-		free(lf->full_log);
-		os_strdup(sdb.comment, lf->full_log);
-		lf->log = lf->full_log;
+            /* Alert if configured to notify on new files */
+            if ((Config.syscheck_alert_new == 1) && DB_IsCompleted(agent_id)) {
+                sdb.syscheck_dec->id = sdb.idn;
+                FillEvent(lf, f_name, &newsum);
 
-		/* Set decoder */
-		lf->decoder_info = sdb.syscheck_dec;
-		lf->data = NULL;
+                /* New file message */
+                snprintf(sdb.comment, OS_MAXSTR,
+                         "New file '%.756s' "
+                         "added to the file system.", f_name);
 
-		return (1);
+                /* Create a new log message */
+                free(lf->full_log);
+                os_strdup(sdb.comment, lf->full_log);
+                lf->log = lf->full_log;
+
+                /* Set decoder */
+                lf->decoder_info = sdb.syscheck_dec;
+                lf->data = NULL;
+
+                return (1);
+            }
+
+        case 1:
+            merror("%s: WARN: Missing file entry.", ARGV0);
+            break;
     }
 
     lf->data = NULL;

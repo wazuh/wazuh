@@ -71,7 +71,7 @@ int doDiff(RuleInfo *rule, const Eventinfo *lf)
     time_t date_of_change;
     char *htpt = NULL;
     char flastfile[OS_SIZE_2048 + 1];
-    char flastcontent[OS_SIZE_8192 + 1];
+    static char flastcontent[OS_SIZE_8192 + 1];
 
     /* Clean up global */
     flastcontent[0] = '\0';
