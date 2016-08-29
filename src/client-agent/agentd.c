@@ -62,7 +62,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Read private keys  */
     verbose(ENC_READ, ARGV0);
 
-    OS_ReadKeys(&keys);
+    OS_ReadKeys(&keys, 1);
     OS_StartCounter(&keys);
 
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,

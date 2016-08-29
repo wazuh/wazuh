@@ -14,9 +14,8 @@
 
 /* Prototypes */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size) __attribute((nonnull));
-static void __chash(keystore *keys, const char *id, const char *name, char *ip, const char *key) __attribute((nonnull));
 
-static int pass_empty_keyfile = 0;
+static int pass_empty_keyfile = 1;
 
 /* Clear keys entries */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
@@ -28,13 +27,15 @@ static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
 }
 
 /* Create the final key */
-static void __chash(keystore *keys, const char *id, const char *name, char *ip, const char *key)
+void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
 {
     os_md5 filesum1;
     os_md5 filesum2;
 
     char *tmp_str;
     char _finalstr[KEYSIZE];
+    int id_number;
+    char *end;
 
     /* Allocate for the whole structure */
     keys->keyentries = (keyentry **)realloc(keys->keyentries,
@@ -42,6 +43,8 @@ static void __chash(keystore *keys, const char *id, const char *name, char *ip, 
     if (!keys->keyentries) {
         ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
     }
+
+    keys->keyentries[keys->keysize + 1] = keys->keyentries[keys->keysize];
     os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
 
     /* Set configured values for id */
@@ -74,36 +77,44 @@ static void __chash(keystore *keys, const char *id, const char *name, char *ip, 
     keys->keyentries[keys->keysize]->global = 0;
     keys->keyentries[keys->keysize]->fp = NULL;
 
-    /** Generate final symmetric key **/
+    if (keys->rehash_keys) {
+        /** Generate final symmetric key **/
 
-    /* MD5 from name, id and key */
-    OS_MD5_Str(name, filesum1);
-    OS_MD5_Str(id,  filesum2);
+        /* MD5 from name, id and key */
+        OS_MD5_Str(name, filesum1);
+        OS_MD5_Str(id,  filesum2);
 
-    /* Generate new filesum1 */
-    snprintf(_finalstr, sizeof(_finalstr) - 1, "%s%s", filesum1, filesum2);
+        /* Generate new filesum1 */
+        snprintf(_finalstr, sizeof(_finalstr) - 1, "%s%s", filesum1, filesum2);
 
-    /* Use just half of the first MD5 (name/id) */
-    OS_MD5_Str(_finalstr, filesum1);
-    filesum1[15] = '\0';
-    filesum1[16] = '\0';
+        /* Use just half of the first MD5 (name/id) */
+        OS_MD5_Str(_finalstr, filesum1);
+        filesum1[15] = '\0';
+        filesum1[16] = '\0';
 
-    /* Second md is just the key */
-    OS_MD5_Str(key, filesum2);
+        /* Second md is just the key */
+        OS_MD5_Str(key, filesum2);
 
-    /* Generate final key */
-    snprintf(_finalstr, 49, "%s%s", filesum2, filesum1);
+        /* Generate final key */
+        snprintf(_finalstr, 49, "%s%s", filesum2, filesum1);
 
-    /* Final key is 48 * 4 = 192bits */
-    os_strdup(_finalstr, keys->keyentries[keys->keysize]->key);
+        /* Final key is 48 * 4 = 192bits */
+        os_strdup(_finalstr, keys->keyentries[keys->keysize]->key);
 
-    /* Clean final string from memory */
-    memset_secure(_finalstr, '\0', sizeof(_finalstr));
+        /* Clean final string from memory */
+        memset_secure(_finalstr, '\0', sizeof(_finalstr));
+    } else
+        os_strdup(key, keys->keyentries[keys->keysize]->key);
 
     /* Ready for next */
     keys->keysize++;
 
-    return;
+    /* Update counter */
+
+    id_number = strtol(id, &end, 10);
+
+    if (!*end && id_number > keys->id_counter)
+        keys->id_counter = id_number;
 }
 
 /* Check if the authentication key file is present */
@@ -133,7 +144,7 @@ int OS_CheckKeys()
 }
 
 /* Read the authentication keys */
-void OS_ReadKeys(keystore *keys)
+void OS_ReadKeys(keystore *keys, int rehash_keys)
 {
     FILE *fp;
 
@@ -166,6 +177,8 @@ void OS_ReadKeys(keystore *keys)
     /* Initialize structure */
     os_calloc(1, sizeof(keyentry*), keys->keyentries);
     keys->keysize = 0;
+    keys->id_counter = 0;
+    keys->rehash_keys = rehash_keys;
 
     /* Zero the buffers */
     __memclear(id, name, ip, key, KEYSIZE + 1);
@@ -231,7 +244,7 @@ void OS_ReadKeys(keystore *keys)
         strncpy(key, valid_str, KEYSIZE - 1);
 
         /* Generate the key hash */
-        __chash(keys, id, name, ip, key);
+        OS_AddKey(keys, id, name, ip, key);
 
         /* Clear the memory */
         __memclear(id, name, ip, key, KEYSIZE + 1);
@@ -266,6 +279,32 @@ void OS_ReadKeys(keystore *keys)
     return;
 }
 
+void OS_FreeKey(keyentry *key) {
+    if (key->ip) {
+        free(key->ip->ip);
+        free(key->ip);
+    }
+
+    if (key->id) {
+        free(key->id);
+    }
+
+    if (key->key) {
+        free(key->key);
+    }
+
+    if (key->name) {
+        free(key->name);
+    }
+
+    /* Close counter */
+    if (key->fp) {
+        fclose(key->fp);
+    }
+
+    free(key);
+}
+
 /* Free the auth keys */
 void OS_FreeKeys(keystore *keys)
 {
@@ -283,38 +322,13 @@ void OS_FreeKeys(keystore *keys)
     keys->keyhash_id = NULL;
     keys->keyhash_ip = NULL;
 
-    /* Sleep to give time to other threads to stop using them */
-    sleep(1);
-
     /* Free the hashes */
     OSHash_Free(hashid);
     OSHash_Free(haship);
 
     for (i = 0; i <= _keysize; i++) {
         if (keys->keyentries[i]) {
-            if (keys->keyentries[i]->ip) {
-                free(keys->keyentries[i]->ip->ip);
-                free(keys->keyentries[i]->ip);
-            }
-
-            if (keys->keyentries[i]->id) {
-                free(keys->keyentries[i]->id);
-            }
-
-            if (keys->keyentries[i]->key) {
-                free(keys->keyentries[i]->key);
-            }
-
-            if (keys->keyentries[i]->name) {
-                free(keys->keyentries[i]->name);
-            }
-
-            /* Close counter */
-            if (keys->keyentries[i]->fp) {
-                fclose(keys->keyentries[i]->fp);
-            }
-
-            free(keys->keyentries[i]);
+            OS_FreeKey(keys->keyentries[i]);
             keys->keyentries[i] = NULL;
         }
     }
@@ -347,7 +361,7 @@ int OS_UpdateKeys(keystore *keys)
         /* Read keys */
         verbose(ENC_READ, __local_name);
 
-        OS_ReadKeys(keys);
+        OS_ReadKeys(keys, keys->rehash_keys);
         debug1("%s: DEBUG: OS_StartCounter", __local_name);
 
         OS_StartCounter(keys);
@@ -427,4 +441,93 @@ int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
 /* Configure to pass if keys file is empty */
 void OS_PassEmptyKeyfile() {
     pass_empty_keyfile = 1;
+}
+
+/* Delete a key */
+int OS_DeleteKey(keystore *keys, const char *id) {
+    int i = OS_IsAllowedID(keys, id);
+
+    if (i < 0)
+        return -1;
+
+    OSHash_Delete(keys->keyhash_id, id);
+    OSHash_Delete(keys->keyhash_ip, keys->keyentries[i]->ip->ip);
+    OS_FreeKey(keys->keyentries[i]);
+    keys->keysize--;
+
+    if (i < (int)keys->keysize) {
+        keys->keyentries[i] = keys->keyentries[keys->keysize];
+        OSHash_Update(keys->keyhash_id, keys->keyentries[i]->id, keys->keyentries[i]);
+        OSHash_Update(keys->keyhash_ip, keys->keyentries[i]->ip->ip, keys->keyentries[i]);
+    }
+
+    keys->keyentries[keys->keysize] = keys->keyentries[keys->keysize + 1];
+    return 0;
+}
+
+/* Write keystore on client keys file */
+int OS_WriteKeys(const keystore *keys) {
+    unsigned int i;
+    File file;
+
+    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0)
+        return -1;
+
+    for (i = 0; i < keys->keysize; i++) {
+        keyentry *entry = keys->keyentries[i];
+        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, entry->ip->ip, entry->key);
+    }
+
+    fclose(file.fp);
+
+    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+        free(file.name);
+        return -1;
+    }
+
+    free(file.name);
+    return 0;
+}
+
+/* Duplicate complete keystore */
+keystore* OS_DupKeys(const keystore *keys) {
+    keystore *copy;
+    unsigned int i;
+
+    os_calloc(1, sizeof(keystore), copy);
+    os_calloc(keys->keysize + 1, sizeof(keyentry *), copy->keyentries);
+    copy->keyhash_id = OSHash_Duplicate(keys->keyhash_id);
+    copy->keyhash_ip = OSHash_Duplicate(keys->keyhash_ip);
+
+    copy->keysize = keys->keysize;
+    copy->file_change = keys->file_change;
+    copy->id_counter = keys->id_counter;
+
+    for (i = 0; i <= keys->keysize; i++) {
+        os_calloc(1, sizeof(keyentry), copy->keyentries[i]);
+        copy->keyentries[i]->rcvd = keys->keyentries[i]->rcvd;
+        copy->keyentries[i]->local = keys->keyentries[i]->local;
+        copy->keyentries[i]->keyid = keys->keyentries[i]->keyid;
+        copy->keyentries[i]->global = keys->keyentries[i]->global;
+
+        if (keys->keyentries[i]->id)
+            copy->keyentries[i]->id = strdup(keys->keyentries[i]->id);
+
+        if (keys->keyentries[i]->key)
+            copy->keyentries[i]->key = strdup(keys->keyentries[i]->key);
+
+        if (keys->keyentries[i]->name)
+            copy->keyentries[i]->name = strdup(keys->keyentries[i]->name);
+
+        if (keys->keyentries[i]->ip) {
+            os_calloc(1, sizeof(os_ip), copy->keyentries[i]->ip);
+            copy->keyentries[i]->ip->ip = strdup(keys->keyentries[i]->ip->ip);
+        }
+
+        copy->keyentries[i]->sock = keys->keyentries[i]->sock;
+        copy->keyentries[i]->peer_info = keys->keyentries[i]->peer_info;
+        copy->keyentries[i]->fp = keys->keyentries[i]->fp;
+    }
+
+    return copy;
 }
