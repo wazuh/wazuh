@@ -73,7 +73,7 @@ void HandleSecure()
 
     /* Read authentication keys */
     verbose(ENC_READ, ARGV0);
-    OS_ReadKeys(&keys);
+    OS_ReadKeys(&keys, 1);
     OS_StartCounter(&keys);
 
     /* Set up peer size */
