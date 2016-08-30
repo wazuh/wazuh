@@ -419,7 +419,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *finalkey;
     SSL *ssl;
     char *id_exist = NULL;
-    int error;
     char buf[4096 + 1];
     int index;
 
@@ -441,18 +440,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         strncpy(srcip, inet_ntoa(client.addr), IPSIZE - 1);
         ssl = SSL_new(ctx);
         SSL_set_fd(ssl, client.socket);
+        ret = SSL_accept(ssl);
 
-        error = 0;
-
-        do {
-            ret = SSL_accept(ssl);
-
-            if (ssl_error(ssl, ret))
-                error = 1;
-
-        } while (ret <= 0);
-
-        if (error) {
+        if (ssl_error(ssl, ret)) {
             SSL_free(ssl);
             close(client.socket);
             continue;
@@ -460,16 +450,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         verbose("%s: INFO: New connection from %s", ARGV0, srcip);
         buf[0] = '\0';
+        ret = SSL_read(ssl, buf, sizeof(buf));
 
-        do {
-            ret = SSL_read(ssl, buf, sizeof(buf));
-
-            if (ssl_error(ssl, ret))
-                error = 1;
-
-        } while (ret <= 0);
-
-        if (error) {
+        if (ssl_error(ssl, ret)) {
             SSL_free(ssl);
             close(client.socket);
             continue;
