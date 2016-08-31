@@ -447,18 +447,31 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
+double OS_AgentAntiquity_ID(const char *id) {
+    char *name = getFullnameById(id);
+    char *ip;
+    double ret = -1;
+
+    if (!name) {
+        return -1;
+    }
+
+    if ((ip = strchr(name, '-'))) {
+        *(ip++) = 0;
+        ret = OS_AgentAntiquity(name, ip);
+    }
+
+    free(name);
+    return ret;
+}
+
 /* Returns the number of seconds since last agent connection, or -1 if error. */
-double OS_AgentAntiquity(const char *id)
+double OS_AgentAntiquity(const char *name, const char *ip)
 {
     struct stat file_stat;
     char file_name[OS_FLSIZE];
-    char *full_name = getFullnameById(id);
 
-    if (!full_name)
-        return -1;
-
-    snprintf(file_name, OS_FLSIZE - 1, "%s/%s", AGENTINFO_DIR, full_name);
-    free(full_name);
+    snprintf(file_name, OS_FLSIZE - 1, "%s/%s-%s", AGENTINFO_DIR, name, ip);
 
     if (stat(file_name, &file_stat) < 0)
         return -1;
@@ -589,34 +602,37 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
     return (0);
 }
 
-/* Backup agent information before force deleting */
-void OS_BackupAgentInfo(const char *id)
-{
-    char *path_backup;
-    char path_src[OS_FLSIZE];
-    char path_dst[OS_FLSIZE];
+void OS_BackupAgentInfo_ID(const char *id) {
     char *name = getFullnameById(id);
     char *ip;
-    time_t timer = time(NULL);
-    int status = 0;
 
     if (!name) {
         merror("%s: ERROR: Agent id %s not found.", ARGV0, id);
         return;
     }
 
-    if (!(ip = strchr(name, '-'))) {
-        free(name);
-        return;
+    if ((ip = strchr(name, '-'))) {
+        *(ip++) = 0;
+        OS_BackupAgentInfo(id, name, ip);
     }
 
-    *(ip++) = 0;
+    free(name);
+}
+
+/* Backup agent information before force deleting */
+void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
+{
+    char *path_backup;
+    char path_src[OS_FLSIZE];
+    char path_dst[OS_FLSIZE];
+
+    time_t timer = time(NULL);
+    int status = 0;
 
     path_backup = OS_CreateBackupDir(id, name, ip, timer);
 
     if (!path_backup) {
         merror("%s: ERROR: Couldn't create backup directory.", ARGV0);
-        free(name);
         return;
     }
 
@@ -656,7 +672,6 @@ void OS_BackupAgentInfo(const char *id)
         }
     }
 
-    free(name);
     free(path_backup);
 }
 
