@@ -56,6 +56,13 @@ struct client {
     struct in_addr addr;
 };
 
+struct keynode {
+    char *id;
+    char *name;
+    char *ip;
+    struct keynode *next;
+};
+
 SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const char *key, const char *ca_cert);
 SSL_CTX *get_ssl_context(void);
 int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key);

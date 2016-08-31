@@ -49,6 +49,12 @@ static void* run_dispatcher(void *arg);
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
 
+/* Append key to insertion queue */
+static void add_insert(const keyentry *entry);
+
+/* Append key to deletion queue */
+static void add_backup(const keyentry *entry);
+
 /* Shared variables */
 char *authpass = NULL;
 int use_ip_address = 0;
@@ -61,6 +67,10 @@ struct client pool[POOL_SIZE];
 volatile int pool_i = 0;
 volatile int pool_j = 0;
 volatile int write_pending = 0;
+struct keynode *queue_insert = NULL;
+struct keynode *queue_backup = NULL;
+struct keynode * volatile *insert_tail;
+struct keynode * volatile *backup_tail;
 
 pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
@@ -362,6 +372,11 @@ int main(int argc, char **argv)
         merror("%s: WARN: Can't connect to queue.", ARGV0);
     }
 
+    /* Initialize queues */
+
+    insert_tail = &queue_insert;
+    backup_tail = &queue_backup;
+
     /* Start working threads */
 
     status = pthread_create(&thread_dispatcher, NULL, run_dispatcher, NULL);
@@ -530,11 +545,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
                 if (index >= 0) {
                     id_exist = keys.keyentries[index]->id;
-                    antiquity = OS_AgentAntiquity(id_exist);
+                    antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip);
 
                     if (force_antiquity >= 0 && (antiquity >= force_antiquity || antiquity < 0)) {
                         verbose("INFO: Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
-                        OS_BackupAgentInfo(id_exist);
+                        add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist);
                     } else {
                         pthread_mutex_unlock(&mutex_keys);
@@ -586,9 +601,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             /* Add the new agent */
 
             finalkey = OS_AddNewAgent(&keys, agentname, use_ip_address ? srcip : NULL);
-            pthread_mutex_unlock(&mutex_keys);
 
             if (!finalkey) {
+                pthread_mutex_unlock(&mutex_keys);
                 merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
                 snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
                 SSL_write(ssl, response, strlen(response));
@@ -607,14 +622,17 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 merror("%s: ERROR: SSL write error (%d)", ARGV0, ret);
                 merror("%s: ERROR: Agent key not saved for %s", ARGV0, agentname);
                 ERR_print_errors_fp(stderr);
+                OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id);
             } else {
                 verbose("%s: INFO: Agent key created for %s (requested by %s)", ARGV0, agentname, srcip);
 
                 /* Add pending key to write */
+                add_insert(keys.keyentries[keys.keysize - 1]);
                 write_pending = 1;
                 pthread_cond_signal(&cond_pending);
             }
 
+            pthread_mutex_unlock(&mutex_keys);
             free(finalkey);
             SSL_free(ssl);
             close(client.socket);
@@ -627,7 +645,12 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
 /* Thread for writing keystore onto disk */
 void* run_writer(__attribute__((unused)) void *arg) {
-    keystore *copy;
+    keystore *copy_keys;
+    struct keynode *copy_insert;
+    struct keynode *copy_backup;
+    struct keynode *cur;
+    struct keynode *next;
+    time_t cur_time;
 
     while (1) {
         pthread_mutex_lock(&mutex_keys);
@@ -635,22 +658,69 @@ void* run_writer(__attribute__((unused)) void *arg) {
         while (!write_pending)
             pthread_cond_wait(&cond_pending, &mutex_keys);
 
-        copy = OS_DupKeys(&keys);
+        copy_keys = OS_DupKeys(&keys);
+        copy_insert = queue_insert;
+        copy_backup = queue_backup;
+        queue_insert = NULL;
+        queue_backup = NULL;
+        insert_tail = &queue_insert;
+        backup_tail = &queue_backup;
         write_pending = 0;
         pthread_mutex_unlock(&mutex_keys);
 
-        if (OS_WriteKeys(copy) < 0)
+        if (OS_WriteKeys(copy_keys) < 0)
             merror("%s: ERROR: Could't write file client.keys", ARGV0);
 
-        OS_FreeKeys(copy);
-        free(copy);
+        OS_FreeKeys(copy_keys);
+        free(copy_keys);
+        cur_time = time(0);
 
-        // TODO
-        // OS_AddAgentTimestamp(id, name, ip, time(0));
-        // wdb_insert_agent(atoi(id), name, ip, finals);
+        for (cur = copy_insert; cur; cur = next) {
+            next = cur->next;
+            OS_AddAgentTimestamp(cur->id, cur->name, cur->ip, cur_time);
+            free(cur->id);
+            free(cur->name);
+            free(cur->ip);
+            free(cur);
+        }
+
+        for (cur = copy_backup; cur; cur = next) {
+            next = cur->next;
+            OS_BackupAgentInfo(cur->id, cur->name, cur->ip);
+            free(cur->id);
+            free(cur->name);
+            free(cur->ip);
+            free(cur);
+        }
     }
 
     return NULL;
+}
+
+/* Append key to insertion queue */
+void add_insert(const keyentry *entry) {
+    struct keynode *node;
+
+    os_calloc(1, sizeof(struct keynode), node);
+    node->id = strdup(entry->id);
+    node->name = strdup(entry->name);
+    node->ip = strdup(entry->ip->ip);
+
+    (*insert_tail) = node;
+    insert_tail = &node->next;
+}
+
+/* Append key to deletion queue */
+void add_backup(const keyentry *entry) {
+    struct keynode *node;
+
+    os_calloc(1, sizeof(struct keynode), node);
+    node->id = strdup(entry->id);
+    node->name = strdup(entry->name);
+    node->ip = strdup(entry->ip->ip);
+
+    (*backup_tail) = node;
+    backup_tail = &node->next;
 }
 
 #endif /* LIBOPENSSL_ENABLED */
