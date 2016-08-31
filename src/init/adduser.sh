@@ -49,8 +49,8 @@ else
 	# All current linux distributions should support system accounts for
 	# users/groups. If not, leave the GROUPADD/USERADD as it was before
 	# this change
-	sys_acct_chk () { 
-	    $1 --help | grep -e " *-r.*system account" >/dev/null 2>&1 && echo "$1 -r" || echo "$1"
+	sys_acct_chk () {
+	    $1 --help 2>&1 | grep -e " *-r.*system account" >/dev/null 2>&1 && echo "$1 -r" || echo "$1"
 	  }
 	GROUPADD=$(sys_acct_chk "/usr/sbin/groupadd")
 	USERADD=$(sys_acct_chk "/usr/sbin/useradd")
