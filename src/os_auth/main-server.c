@@ -426,6 +426,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     memset(srcip, '\0', IPSIZE + 1);
 
     OS_ReadKeys(&keys, 0);
+    debug1("%s: DEBUG: Dispatch thread ready", ARGV0);
 
     while (1) {
         pthread_mutex_lock(&mutex_pool);
