@@ -323,8 +323,12 @@ void OS_FreeKeys(keystore *keys)
     keys->keyhash_ip = NULL;
 
     /* Free the hashes */
-    OSHash_Free(hashid);
-    OSHash_Free(haship);
+
+    if (hashid)
+        OSHash_Free(hashid);
+
+    if (haship)
+        OSHash_Free(haship);
 
     for (i = 0; i <= _keysize; i++) {
         if (keys->keyentries[i]) {
@@ -489,15 +493,15 @@ int OS_WriteKeys(const keystore *keys) {
     return 0;
 }
 
-/* Duplicate complete keystore */
+/* Duplicate keystore except key hashes */
 keystore* OS_DupKeys(const keystore *keys) {
     keystore *copy;
     unsigned int i;
 
     os_calloc(1, sizeof(keystore), copy);
     os_calloc(keys->keysize + 1, sizeof(keyentry *), copy->keyentries);
-    copy->keyhash_id = OSHash_Duplicate(keys->keyhash_id);
-    copy->keyhash_ip = OSHash_Duplicate(keys->keyhash_ip);
+    copy->keyhash_id = NULL;
+    copy->keyhash_ip = NULL;
 
     copy->keysize = keys->keysize;
     copy->file_change = keys->file_change;
