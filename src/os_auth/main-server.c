@@ -55,18 +55,23 @@ static void add_insert(const keyentry *entry);
 /* Append key to deletion queue */
 static void add_backup(const keyentry *entry);
 
+/* Signal handler */
+static void handler(int signum);
+
 /* Shared variables */
 char *authpass = NULL;
 int use_ip_address = 0;
 SSL_CTX *ctx;
 int force_antiquity = -1;
 int m_queue = 0;
+int sock = 0;
 
 keystore keys;
 struct client pool[POOL_SIZE];
 volatile int pool_i = 0;
 volatile int pool_j = 0;
 volatile int write_pending = 0;
+volatile int running = 1;
 struct keynode *queue_insert = NULL;
 struct keynode *queue_backup = NULL;
 struct keynode * volatile *insert_tail;
@@ -170,7 +175,7 @@ int main(int argc, char **argv)
     int c = 0, test_config = 0, status;
     int use_pass = 0;
     gid_t gid;
-    int client_sock = 0, sock = 0, port = DEFAULT_PORT;
+    int client_sock = 0, port = DEFAULT_PORT;
     const char *dir  = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     const char *server_cert = NULL;
@@ -292,7 +297,13 @@ int main(int argc, char **argv)
     }
 
     /* Signal manipulation */
-    StartSIG(ARGV0);
+
+    {
+        struct sigaction action = { .sa_handler = handler };
+        sigaction(SIGTERM, &action, NULL);
+        sigaction(SIGHUP, &action, NULL);
+        sigaction(SIGINT, &action, NULL);
+    }
 
     /* Create PID files */
     if (CreatePID(ARGV0, getpid()) < 0) {
@@ -355,9 +366,6 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    fcntl(sock, F_SETFL, O_NONBLOCK);
-    debug1("%s: DEBUG: Going into listening mode.", ARGV0);
-
     /* Setup random */
     srandom_init();
 
@@ -395,7 +403,7 @@ int main(int argc, char **argv)
 
     /* Main loop */
 
-    while (1) {
+    while (running) {
         memset(&_nc, 0, sizeof(_nc));
         _ncl = sizeof(_nc);
 
@@ -413,8 +421,24 @@ int main(int argc, char **argv)
             }
 
             pthread_mutex_unlock(&mutex_pool);
-        }
+        } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
+            merror("%s: ERROR: accept(): %s", ARGV0, strerror(errno));
     }
+
+    /* Join threads */
+
+    pthread_mutex_lock(&mutex_pool);
+    pthread_cond_signal(&cond_new_client);
+    pthread_mutex_unlock(&mutex_pool);
+    pthread_mutex_lock(&mutex_keys);
+    pthread_cond_signal(&cond_pending);
+    pthread_mutex_unlock(&mutex_keys);
+
+    pthread_join(thread_dispatcher, NULL);
+    pthread_join(thread_writer, NULL);
+
+    DeletePID(ARGV0);
+    verbose("%s: Exiting...", ARGV0);
 
     return (0);
 }
@@ -443,15 +467,18 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     OS_ReadKeys(&keys, 0);
     debug1("%s: DEBUG: Dispatch thread ready", ARGV0);
 
-    while (1) {
+    while (running) {
         pthread_mutex_lock(&mutex_pool);
 
-        while (empty(pool_i, pool_j))
+        while (empty(pool_i, pool_j) && running)
             pthread_cond_wait(&cond_new_client, &mutex_pool);
 
         client = pool[pool_j];
         forward(pool_j);
         pthread_mutex_unlock(&mutex_pool);
+
+        if (!running)
+            break;
 
         strncpy(srcip, inet_ntoa(client.addr), IPSIZE - 1);
         ssl = SSL_new(ctx);
@@ -652,10 +679,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
     struct keynode *next;
     time_t cur_time;
 
-    while (1) {
+    while (running) {
         pthread_mutex_lock(&mutex_keys);
 
-        while (!write_pending)
+        while (!write_pending && running)
             pthread_cond_wait(&cond_pending, &mutex_keys);
 
         copy_keys = OS_DupKeys(&keys);
@@ -721,6 +748,22 @@ void add_backup(const keyentry *entry) {
 
     (*backup_tail) = node;
     backup_tail = &node->next;
+}
+
+/* Signal handler */
+static void handler(int signum) {
+    switch (signum) {
+    case SIGHUP:
+    case SIGINT:
+    case SIGTERM:
+        merror(SIGNAL_RECV, ARGV0, signum, strsignal(signum));
+        running = 0;
+        close(sock);
+        sock = -1;
+        break;
+    default:
+        merror("%s: ERROR: unknown signal (%d)", ARGV0, signum);
+    }
 }
 
 #endif /* LIBOPENSSL_ENABLED */
