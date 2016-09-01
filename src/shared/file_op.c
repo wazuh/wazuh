@@ -1585,3 +1585,124 @@ int rmdir_ex(const char *path) {
     closedir(dir);
     return rmdir(path);
 }
+
+int TempFile(File *file, const char *source, int copy) {
+    FILE *fp_src;
+    int fd;
+    char template[OS_FLSIZE + 1];
+
+    snprintf(template, OS_FLSIZE, "%s.XXXXXX", source);
+    fd = mkstemp(template);
+
+    if (fd < 0) {
+        return -1;
+    }
+
+#ifndef WIN32
+    if (fchmod(fd, 0640) < 0) {
+        close(fd);
+        unlink(template);
+        return -1;
+    }
+#endif
+
+    file->fp = fdopen(fd, "w");
+
+    if (!file->fp) {
+        close(fd);
+        unlink(template);
+        return -1;
+    }
+
+    if (copy) {
+        size_t count_r;
+        size_t count_w;
+        char buffer[4096];
+
+        fp_src = fopen(source, "r");
+
+        if (!fp_src) {
+            file->name = strdup(template);
+            return 0;
+        }
+
+        while (!feof(fp_src)) {
+            count_r = fread(buffer, 1, 4096, fp_src);
+
+            if (ferror(fp_src)) {
+                fclose(fp_src);
+                fclose(file->fp);
+                unlink(template);
+                return -1;
+            }
+
+            count_w = fwrite(buffer, 1, count_r, file->fp);
+
+            if (count_w != count_r || ferror(file->fp)) {
+                fclose(fp_src);
+                fclose(file->fp);
+                unlink(template);
+                return -1;
+            }
+        }
+
+        fclose(fp_src);
+    }
+
+    file->name = strdup(template);
+    return 0;
+}
+
+int OS_MoveFile(const char *src, const char *dst) {
+    FILE *fp_src;
+    FILE *fp_dst;
+    size_t count_r;
+    size_t count_w;
+    char buffer[4096];
+    int status = 0;
+
+    if (rename(src, dst) == 0) {
+        return 0;
+    }
+
+    debug1("%s: WARN: Couldn't rename %s: %s", ARGV0, dst, strerror(errno));
+
+    fp_src = fopen(src, "r");
+
+    if (!fp_src) {
+        merror("%s: ERROR: Couldn't open file '%s'", ARGV0, src);
+        return -1;
+    }
+
+    fp_dst = fopen(dst, "w");
+
+    if (!fp_dst) {
+        merror("%s: ERROR: Couldn't open file '%s'", ARGV0, dst);
+        fclose(fp_src);
+        unlink(src);
+        return -1;
+    }
+
+    while (!feof(fp_src)) {
+        count_r = fread(buffer, 1, 4096, fp_src);
+
+        if (ferror(fp_src)) {
+            merror("%s: ERROR: Couldn't read file '%s'", ARGV0, src);
+            status = -1;
+            break;
+        }
+
+        count_w = fwrite(buffer, 1, count_r, fp_dst);
+
+        if (count_w != count_r || ferror(fp_dst)) {
+            merror("%s: ERROR: Couldn't write file '%s'", ARGV0, dst);
+            status = -1;
+            break;
+        }
+    }
+
+    fclose(fp_src);
+    fclose(fp_dst);
+    unlink(dst);
+    return status;
+}
