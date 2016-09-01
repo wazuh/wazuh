@@ -96,7 +96,6 @@ SSL_ERROR:
 
 SSL_CTX *get_ssl_context()
 {
-    const SSL_METHOD *sslmeth = NULL;
     SSL_CTX *ctx = NULL;
 
     SSL_library_init();
@@ -104,8 +103,7 @@ SSL_CTX *get_ssl_context()
     OpenSSL_add_all_algorithms();
 
     /* Create our context */
-    sslmeth = TLSv1_2_method();
-    if (!(ctx = SSL_CTX_new(sslmeth))) {
+    if (!(ctx = SSL_CTX_new(SSLv23_method()))) {
         goto CONTEXT_ERR;
     }
 
@@ -200,4 +198,3 @@ int verify_callback(int ok, X509_STORE_CTX *store)
 }
 
 #endif /* LIBOPENSSL_ENABLED */
-
