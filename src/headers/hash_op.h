@@ -53,5 +53,6 @@ void *OSHash_Get(const OSHash *self, const char *key) __attribute__((nonnull));
 
 int OSHash_setSize(OSHash *self, unsigned int new_size) __attribute__((nonnull));
 
-#endif
+OSHash *OSHash_Duplicate(const OSHash *hash);
 
+#endif
