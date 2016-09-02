@@ -370,7 +370,7 @@ char *GetRandomNoise()
     }
 
     n = fread(buf, 1, 2048, fp);
-    fclose(buf);
+    fclose(fp);
 
     if (n == 2048) {
         buf[2048] = '\0';
