@@ -36,7 +36,7 @@ char *OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
 
     srandom_init();
     muname = getuname();
-    snprintf(id, 9, "%d", ++keys->id_counter);
+    snprintf(id, 9, "%03d", ++keys->id_counter);
 
     snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, (int)random(), muname);
     snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)random());
