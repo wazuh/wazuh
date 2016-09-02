@@ -105,8 +105,6 @@ int OS_RemoveAgent(const char *u_id) {
         return 0;
     }
 
-    wdb_remove_agent_db(atoi(u_id));
-
 #ifndef REUSE_ID
     char *ptr_name = strchr(buf_curline, ' ');
 
@@ -124,9 +122,6 @@ int OS_RemoveAgent(const char *u_id) {
     memcpy(buffer + fp_read, buf_curline, curline_len);
     fp_read += curline_len;
 
-    wdb_disable_agent(atoi(u_id));
-#else
-    wdb_remove_agent(atoi(u_id));
 #endif
 
     if (!feof(fp))

@@ -374,7 +374,6 @@ int add_agent(int json_output)
 
             free(file.name);
             OS_AddAgentTimestamp(id, name, ip, time3);
-            wdb_insert_agent(atoi(id), name, ip, key);
 
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
