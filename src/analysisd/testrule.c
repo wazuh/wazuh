@@ -494,13 +494,17 @@ void OS_ReadMSG(char *ut_str)
                     continue;
                 }
 
+                /* Pointer to the rule that generated it */
+                lf->generated_rule = currently_rule;
+
 #ifdef TESTRULE
                 if (!alert_only) {
                     const char *(ruleinfodetail_text[]) = {"Text", "Link", "CVE", "OSVDB", "BUGTRACKID"};
+                    lf->comment = ParseRuleComment(lf);
                     print_out("\n**Phase 3: Completed filtering (rules).");
                     print_out("       Rule id: '%d'", currently_rule->sigid);
                     print_out("       Level: '%d'", currently_rule->level);
-                    print_out("       Description: '%s'", currently_rule->comment);
+                    print_out("       Description: '%s'", lf->comment);
                     for (last_info_detail = currently_rule->info_details; last_info_detail != NULL; last_info_detail = last_info_detail->next) {
                         print_out("       Info - %s: '%s'", ruleinfodetail_text[last_info_detail->type], last_info_detail->data);
                     }
@@ -528,10 +532,6 @@ void OS_ReadMSG(char *ut_str)
                         currently_rule->time_ignored = 0;
                     }
                 }
-
-                /* Pointer to the rule that generated it */
-                lf->generated_rule = currently_rule;
-
 
                 /* Check if we should ignore it */
                 if (currently_rule->ckignore && IGnore(lf)) {
