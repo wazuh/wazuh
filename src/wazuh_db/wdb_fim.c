@@ -116,14 +116,32 @@ int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const
 
         sqlite3_bind_int64(stmt, 4, atol(sum->size));
         sqlite3_bind_text(stmt, 5, perm, -1, NULL);
+
+        // UID and GID from Windows is 0. It should be NULL
         sqlite3_bind_int(stmt, 6, atoi(sum->uid));
         sqlite3_bind_int(stmt, 7, atoi(sum->gid));
+
         sqlite3_bind_text(stmt, 8, sum->md5, -1, NULL);
         sqlite3_bind_text(stmt, 9, sum->sha1, -1, NULL);
-        sqlite3_bind_text(stmt, 10, sum->uname, -1, NULL);
-        sqlite3_bind_text(stmt, 11, sum->gname, -1, NULL);
-        sqlite3_bind_int64(stmt, 12, sum->mtime);
-        sqlite3_bind_int64(stmt, 13, sum->inode);
+        
+        if (sum->uname){
+            sqlite3_bind_text(stmt, 10, sum->uname, -1, NULL);
+            sqlite3_bind_text(stmt, 11, sum->gname, -1, NULL);
+        }
+        else{ // Old agents
+            sqlite3_bind_null(stmt, 10); // uname
+            sqlite3_bind_null(stmt, 11); // gname
+        }
+
+        if (sum->mtime)
+            sqlite3_bind_int64(stmt, 12, sum->mtime);
+        else // Old agents
+            sqlite3_bind_null(stmt, 12); // mtime
+
+        if (sum->inode)
+            sqlite3_bind_int64(stmt, 13, sum->inode);
+        else // Old agents
+            sqlite3_bind_null(stmt, 13); // inode
     } else {
         sqlite3_bind_null(stmt, 4);
         sqlite3_bind_null(stmt, 5);
