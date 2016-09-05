@@ -18,8 +18,6 @@ patch_version(){
 WazuhSetup(){
     install_ruleset_updater
     patch_version
-
-    env python ./src/init/wazuh/database.py -c -v -d $INSTALLDIR/var/db
 }
 
 WazuhUpgrade()
