@@ -651,6 +651,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 return (1);
             }
 
+            break;
+
         case 1:
             merror("%s: WARN: Missing file entry.", ARGV0);
             break;
