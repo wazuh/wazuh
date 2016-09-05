@@ -170,11 +170,17 @@ int wdb_create_file(const char *path, const char *source) {
 
         result = sqlite3_step(stmt);
 
-        if (result != SQLITE_DONE && result != SQLITE_ROW && result != SQLITE_MISUSE) {
+        switch (result) {
+        case SQLITE_MISUSE:
+        case SQLITE_ROW:
+        case SQLITE_DONE:
+            break;
+        default:
             debug1("%s: ERROR: Stepping statement: %s", ARGV0, sqlite3_errmsg(db));
             sqlite3_finalize(stmt);
             sqlite3_close(db);
             return -1;
+
         }
 
         sqlite3_finalize(stmt);
