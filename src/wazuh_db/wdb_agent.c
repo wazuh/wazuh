@@ -14,7 +14,7 @@
 
 static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key) VALUES (?, ?, ?, ?);";
 static const char *SQL_UPDATE_AGENT = "UPDATE agent SET os = ?, version = ? WHERE id = ?;";
-static const char *SQL_DISABLE_AGENT = "UPDATE agent SET enabled = 0 WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = CURRENT_TIMESTAMP WHERE id = ?;";
 static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
@@ -73,15 +73,15 @@ int wdb_update_agent(int id, const char *os, const char *version) {
     return result;
 }
 
-/* Disable agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_disable_agent(int id) {
+/* Update agent keepalive timestamp. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_keepalive(int id) {
     int result = 0;
     sqlite3_stmt *stmt;
 
     if (wdb_open_global() < 0)
         return -1;
 
-    if (wdb_prepare(wdb_global, SQL_DISABLE_AGENT, -1, &stmt, NULL)) {
+    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_KEEPALIVE, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
         return -1;
     }

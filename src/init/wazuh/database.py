@@ -129,15 +129,15 @@ def create(destdir=_dest_dir, srcdir=_src_dir, force=False):
     _create_profile(destdir, srcdir, force)
     return True
 
-def _insert_agent(destdir, cursor, id, name, ip, key, osname, version, enabled):
-    sql = "INSERT INTO agent (id, name, ip, key, os, version, enabled) values (?, ?, ?, ?, ?, ?, ?)"
+def _insert_agent(destdir, cursor, id, name, ip, key, osname, version):
+    sql = "INSERT INTO agent (id, name, ip, key, os, version) values (?, ?, ?, ?, ?, ?)"
     profile = destdir + _prof_name
 
     if _verbose:
         print("INFO: Inserting agent '{0}'.".format(id))
 
     try:
-        cursor.execute(sql, (id, name, ip, key, osname, version, enabled))
+        cursor.execute(sql, (id, name, ip, key, osname, version))
     except sqlite3.IntegrityError:
         sys.stderr.write("WARN: Agent '{0}' already exists.\n".format(id))
         return
@@ -190,19 +190,13 @@ def insert_agents(destdir=_dest_dir, srcdir=_src_dir, keyspath=_keys_path):
             except ValueError:
                 continue
 
-        if name[0] in '!#':
-            name = name[1:]
-            enabled = 0
-        else:
-            enabled = 1
-
         try:
             with open('{0}/queue/agent-info/{1}-{2}'.format(_ossec_path, name, ip), 'r') as f:
                 osname, version = f.read().split(' - ')
         except IOError:
             osname = version = None
 
-        _insert_agent(destdir, cursor, int(id), name, ip, key, osname, version, enabled)
+        _insert_agent(destdir, cursor, int(id), name, ip, key, osname, version)
 
     if _verbose:
         print("INFO: Committing changes...")
@@ -275,7 +269,7 @@ def insert_fim(destdir=_dest_dir):
     destglob = destdir + '/global.db'
     connglob = sqlite3.connect(destglob)
 
-    for id_agent, name, ip, os in connglob.cursor().execute('SELECT id, name, ip, os FROM agent WHERE enabled = 1'):
+    for id_agent, name, ip, os in connglob.cursor().execute('SELECT id, name, ip, os FROM agent'):
         path = _ossec_path + '/queue/syscheck/'
         path += '({0}) {1}->syscheck'.format(name, ip) if id_agent else 'syscheck'
         destagent = destagents.format(id_agent, name)
@@ -338,7 +332,7 @@ def insert_pm(destdir=_dest_dir):
     destglob = destdir + '/global.db'
     connglob = sqlite3.connect(destglob)
 
-    for id_agent, name, ip, os in connglob.cursor().execute('SELECT id, name, ip, os FROM agent WHERE enabled = 1'):
+    for id_agent, name, ip, os in connglob.cursor().execute('SELECT id, name, ip, os FROM agent'):
         path = _ossec_path + '/queue/rootcheck/'
         path += '({0}) {1}->rootcheck'.format(name, ip) if id_agent else 'rootcheck'
         destagent = destagents.format(id_agent, name)
