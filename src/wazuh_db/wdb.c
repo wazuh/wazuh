@@ -39,6 +39,7 @@ int wdb_open_global() {
             if (sqlite3_open_v2(dir, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
                 merror("%s: ERROR: Can't open SQLite database '%s': %s", ARGV0, dir, sqlite3_errmsg(wdb_global));
                 sqlite3_close_v2(wdb_global);
+                wdb_global = NULL;
                 return -1;
             }
         }
@@ -157,7 +158,6 @@ int wdb_create_file(const char *path, const char *source) {
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
         debug1("%s: ERROR: Couldn't create SQLite database '%s': %s", ARGV0, path, sqlite3_errmsg(db));
         sqlite3_close_v2(db);
-        db = NULL;
         return -1;
     }
 
@@ -187,5 +187,7 @@ int wdb_create_file(const char *path, const char *source) {
     }
 
     sqlite3_close(db);
+    chmod(path, 0664);
+
     return 0;
 }
