@@ -36,7 +36,7 @@ int wdb_open_global() {
                 return -1;
             }
 
-            wdb_insert_agent(0, "localhost", NULL, NULL);
+            wdb_insert_agent(0, "localhost", "127.0.0.1", NULL);
 
             // Retry to open
 
