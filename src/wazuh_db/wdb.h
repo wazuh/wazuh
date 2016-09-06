@@ -60,8 +60,8 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key);
 /* Update agent info. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent(int id, const char *os, const char *version);
 
-/* Disable agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_disable_agent(int id);
+/* Update agent keepalive timestamp. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_keepalive(int id);
 
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_agent(int id);

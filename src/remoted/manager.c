@@ -132,9 +132,11 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         /* Store uname on database */
 
         if ((os = strstr(uname, " - "))) {
+            int id = atoi(keys.keyentries[agentid]->id);
             *os = '\0';
             os += 3;
-            wdb_update_agent(atoi(keys.keyentries[agentid]->id), os, uname);
+            wdb_update_agent(id, os, uname);
+            wdb_update_agent_keepalive(id);
         }
     }
 

@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS agent (
     os TEXT,
     version TEXT,
     date_add NUMERIC DEFAULT CURRENT_TIMESTAMP,
-    enabled INTEGER DEFAULT 1
+    last_keepalive NUMERIC
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
