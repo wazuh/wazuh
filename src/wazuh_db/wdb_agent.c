@@ -17,6 +17,7 @@ static const char *SQL_UPDATE_AGENT = "UPDATE agent SET os = ?, version = ? WHER
 static const char *SQL_DISABLE_AGENT = "UPDATE agent SET enabled = 0 WHERE id = ?;";
 static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
+static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key) {
@@ -170,6 +171,7 @@ int wdb_create_agent_db(int id, const char *name) {
     snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
 
     if (!(dest = fopen(path, "w"))) {
+        fclose(source);
         merror("%s: Couldn't create database '%s'.", ARGV0, path);
         return -1;
     }
@@ -207,4 +209,50 @@ int wdb_remove_agent_db(int id) {
         return 0;
     } else
         return -1;
+}
+
+/* Get an array containint the ID of every agent, ended with -1 */
+int* wdb_get_all_agents() {
+    int i;
+    int n = 1;
+    int *array;
+    sqlite3_stmt *stmt = NULL;
+
+    if (!(array = malloc(sizeof(int)))) {
+        merror("%s: ERROR: wdb_get_all_agents(): memory error", ARGV0);
+        return NULL;
+    }
+
+    if (wdb_open_global() < 0)
+        return NULL;
+
+    if (wdb_prepare(wdb_global, SQL_SELECT_AGENTS, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
+        wdb_close_global();
+        return NULL;
+    }
+
+    for (i = 0; wdb_step(stmt) == SQLITE_ROW; i++) {
+        if (i + 1 == n) {
+            int *newarray;
+
+            if (!(newarray = realloc(array, sizeof(int) * (n *= 2)))) {
+                merror("%s: ERROR: wdb_get_all_agents(): memory error", ARGV0);
+                free(array);
+                sqlite3_finalize(stmt);
+                wdb_close_global();
+                return NULL;
+            }
+
+            array = newarray;
+        }
+
+        array[i] = sqlite3_column_int(stmt, 0);
+    }
+
+    array[i] = -1;
+
+    sqlite3_finalize(stmt);
+    wdb_close_global();
+    return array;
 }

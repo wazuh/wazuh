@@ -16,6 +16,12 @@
 
 #define OS_PIDFILE  "/var/run"
 
+typedef struct File {
+    char *name;
+    FILE *fp;
+} File;
+
+
 /* Set the program name - must be done before *anything* else */
 void OS_SetName(const char *name) __attribute__((nonnull));
 
@@ -52,6 +58,9 @@ int rename_ex(const char *source, const char *destination) __attribute__((nonnul
 
 /* Create temporary file */
 int mkstemp_ex(char *tmp_path) __attribute__((nonnull));
+
+int TempFile(File *file, const char *source, int copy);
+int OS_MoveFile(const char *src, const char *dst);
 
 /* Checks for Windows Vista */
 #ifdef WIN32

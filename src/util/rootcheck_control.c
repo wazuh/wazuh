@@ -249,7 +249,7 @@ int main(int argc, char **argv)
             int i;
             keystore keys;
 
-            OS_ReadKeys(&keys);
+            OS_ReadKeys(&keys, 1);
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {
@@ -306,7 +306,7 @@ int main(int argc, char **argv)
                 printf("%s", cJSON_PrintUnformatted(json_root));
             }
         } else {
-            OS_ReadKeys(&keys);
+            OS_ReadKeys(&keys, 1);
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {

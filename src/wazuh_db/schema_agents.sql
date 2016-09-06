@@ -1,8 +1,10 @@
--- SQL Schema for per-agent database
--- Copyright 2016 Wazuh, Inc. <info@wazuh.com>
--- June 30, 2016.
--- This program is a free software, you can redistribute it
--- and/or modify it under the terms of GPLv2.
+/*
+ * SQL Schema for global database
+ * Copyright 2016 Wazuh, Inc. <info@wazuh.com>
+ * June 30, 2016.
+ * This program is a free software, you can redistribute it
+ * and/or modify it under the terms of GPLv2.
+ */
 
 CREATE TABLE IF NOT EXISTS fim_file (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -147,9 +147,8 @@ int wdb_step(sqlite3_stmt *stmt) {
 }
 
 /* Create new database file from SQL script */
-int wdb_create_file(const char *path, const char *source, unsigned int size) {
+int wdb_create_file(const char *path, const char *source) {
     sqlite3 *db;
-    char *schema;
     const char *sql;
     const char *tail;
     sqlite3_stmt *stmt;
@@ -162,32 +161,31 @@ int wdb_create_file(const char *path, const char *source, unsigned int size) {
         return -1;
     }
 
-    schema = malloc(size + 1);
-    memcpy(schema, source, size);
-    schema[size] = '\0';
-
-    for (sql = schema; sql && *sql; sql = tail) {
+    for (sql = source; sql && *sql; sql = tail) {
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
             debug1("%s: ERROR: Preparing statement: %s", ARGV0, sqlite3_errmsg(db));
-            free(schema);
             sqlite3_close(db);
             return -1;
         }
 
         result = sqlite3_step(stmt);
 
-        if (result != SQLITE_DONE && result != SQLITE_ROW && result != SQLITE_MISUSE) {
+        switch (result) {
+        case SQLITE_MISUSE:
+        case SQLITE_ROW:
+        case SQLITE_DONE:
+            break;
+        default:
             debug1("%s: ERROR: Stepping statement: %s", ARGV0, sqlite3_errmsg(db));
-            free(schema);
             sqlite3_finalize(stmt);
             sqlite3_close(db);
             return -1;
+
         }
 
         sqlite3_finalize(stmt);
     }
 
-    free(schema);
     sqlite3_close(db);
     return 0;
 }

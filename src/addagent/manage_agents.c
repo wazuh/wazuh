@@ -215,14 +215,14 @@ int add_agent(int json_output)
 
             if (env_remove_dup) {
                 force_antiquity = strtol(env_remove_dup, NULL, 10);
-                antiquity = OS_AgentAntiquity(id_exist);
+                antiquity = OS_AgentAntiquity_ID(id_exist);
             }
 
             if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
 #ifdef REUSE_ID
                 strncpy(id, id_exist, FILE_SIZE);
 #endif
-                OS_BackupAgentInfo(id_exist);
+                OS_BackupAgentInfo_ID(id_exist);
                 OS_RemoveAgent(id_exist);
             } else {
                 if (json_output) {
@@ -374,7 +374,6 @@ int add_agent(int json_output)
 
             free(file.name);
             OS_AddAgentTimestamp(id, name, ip, time3);
-            wdb_insert_agent(atoi(id), name, ip, key);
 
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();

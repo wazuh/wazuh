@@ -18,21 +18,14 @@
 #define WDB_FILE_TYPE_FILE 0
 #define WDB_FILE_TYPE_REGISTRY 1
 
-#define SQL_SCHEMA_GLOBAL wazuh_db_schema_global_sql
-#define SQL_SCHEMA_GLOBAL_LEN wazuh_db_schema_global_sql_len
-#define SQL_SCHEMA_AGENTS wazuh_db_schema_agents_sql
-#define SQL_SCHEMA_AGENTS_LEN wazuh_db_schema_agents_sql_len
-
-#define wdb_create_global(path) wdb_create_file(path, (char*)SQL_SCHEMA_GLOBAL, SQL_SCHEMA_GLOBAL_LEN)
-#define wdb_create_profile(path) wdb_create_file(path, (char*)SQL_SCHEMA_AGENTS, SQL_SCHEMA_AGENTS_LEN)
+#define wdb_create_global(path) wdb_create_file(path, schema_global_sql)
+#define wdb_create_profile(path) wdb_create_file(path, schema_agents_sql)
 
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
 
-extern unsigned char SQL_SCHEMA_GLOBAL[];
-extern unsigned int SQL_SCHEMA_GLOBAL_LEN;
-extern unsigned char SQL_SCHEMA_AGENTS[];
-extern unsigned int SQL_SCHEMA_AGENTS_LEN;
+extern char *schema_global_sql;
+extern char *schema_agents_sql;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global();
@@ -89,6 +82,9 @@ int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, c
 int wdb_step(sqlite3_stmt *stmt);
 
 /* Create new database file from SQL script */
-int wdb_create_file(const char *path, const char *source, unsigned int size);
+int wdb_create_file(const char *path, const char *source);
+
+/* Get an array containint the ID of every agent, ended with -1 */
+int* wdb_get_all_agents();
 
 #endif
