@@ -17,7 +17,7 @@ static const char *SQL_UPDATE_AGENT = "UPDATE agent SET os = ?, version = ? WHER
 static const char *SQL_DISABLE_AGENT = "UPDATE agent SET enabled = 0 WHERE id = ?;";
 static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
-static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent;";
+static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key) {
@@ -34,8 +34,15 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key) 
 
     sqlite3_bind_int(stmt, 1, id);
     sqlite3_bind_text(stmt, 2, name, -1, NULL);
-    sqlite3_bind_text(stmt, 3, ip, -1, NULL);
-    sqlite3_bind_text(stmt, 4, key, -1, NULL);
+
+    if (ip)
+        sqlite3_bind_text(stmt, 3, ip, -1, NULL);
+    else
+        sqlite3_bind_null(stmt, 3);
+    if (key)
+        sqlite3_bind_text(stmt, 4, key, -1, NULL);
+    else
+        sqlite3_bind_null(stmt, 4);
 
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
     sqlite3_finalize(stmt);
@@ -211,7 +218,7 @@ int wdb_remove_agent_db(int id) {
         return -1;
 }
 
-/* Get an array containint the ID of every agent, ended with -1 */
+/* Get an array containint the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents() {
     int i;
     int n = 1;
