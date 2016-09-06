@@ -67,7 +67,7 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
 #else
 
     struct stat buffer;
-    time_t timetamp = 0;
+    time_t timestamp = 0;
 
     while (1) {
         if (stat(KEYS_FILE, &buffer) < 0) {
