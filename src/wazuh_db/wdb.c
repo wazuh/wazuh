@@ -28,11 +28,15 @@ int wdb_open_global() {
 
         if (sqlite3_open_v2(dir, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
             debug1("%s: Global database not found, creating.", ARGV0);
+            sqlite3_close_v2(wdb_global);
+            wdb_global = NULL;
 
             if (wdb_create_global(dir) < 0) {
                 wdb_global = NULL;
                 return -1;
             }
+
+            wdb_insert_agent(0, "localhost", NULL, NULL);
 
             // Retry to open
 
@@ -65,6 +69,7 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
     if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
         sqlite3_close_v2(db);
         debug1("%s: No SQLite database found for agent '%s', creating.", ARGV0, name);
+        sqlite3_close_v2(db);
 
         if (wdb_create_agent_db(id_agent, name) < 0) {
             merror("%s: ERROR: Couldn't create SQLite database '%s'", ARGV0, dir);

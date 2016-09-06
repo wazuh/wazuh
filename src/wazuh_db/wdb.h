@@ -84,7 +84,7 @@ int wdb_step(sqlite3_stmt *stmt);
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
 
-/* Get an array containint the ID of every agent, ended with -1 */
+/* Get an array containint the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents();
 
 #endif

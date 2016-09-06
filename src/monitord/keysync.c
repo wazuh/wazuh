@@ -27,11 +27,34 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
     int fd = inotify_init();
     int wd = -1;
     ssize_t count;
+    char *name;
+    char *uname;
+
+    /* Start inotify */
 
     if (fd < 0) {
         merror("%s: ERROR: Couldn't init inotify: %s", ARGV0, strerror(errno));
         return NULL;
     }
+
+    /* Update manager information */
+
+    if (!(name = wdb_agent_name(0)))
+        wdb_insert_agent(0, "localhost", NULL, NULL);
+    else
+        free(name);
+
+    if ((uname = getuname())) {
+        char *ptr;
+
+        if ((ptr = strstr(uname, " - ")))
+            *ptr = '\0';
+
+        wdb_update_agent(0, uname, __ossec_name " " __version);
+        free(uname);
+    }
+
+    /* Loop */
 
     while (1) {
         while (wd < 0) {
