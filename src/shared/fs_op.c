@@ -13,6 +13,9 @@
 
 
 #include "shared.h"
+#ifndef ARGV0
+#define ARGV0 "fs_op"
+#endif
 
 const struct file_system_type network_file_systems[] = {
     {.name="NFS",  .f_type=0x6969,     .flag=1},
