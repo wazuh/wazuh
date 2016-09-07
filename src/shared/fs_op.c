@@ -22,6 +22,14 @@ const struct file_system_type network_file_systems[] = {
     {.name=NULL, .f_type=0, .flag=0}
 };
 
+/* List of filesystem to skip the link count test */
+const struct file_system_type skip_file_systems[] = {
+    {.name="BTRFS", .f_type=0x9123683E, .flag=1},
+
+    /*  The last entry must be name=NULL */
+    {.name=NULL, .f_type=0, .flag=0}
+};
+
 short IsNFS(const char *dir_name)
 {
 #if !defined(WIN32) && (defined(Linux) || defined(FreeBSD))
@@ -55,5 +63,40 @@ short IsNFS(const char *dir_name)
 #endif
     return(0);
 }
+
+short skipFS(const char *dir_name)
+{
+#if !defined(WIN32) && (defined(Linux) || defined(FreeBSD))
+    struct statfs stfs;
+
+    if ( ! statfs(dir_name, &stfs) )
+    {
+        int i;
+        for ( i=0; skip_file_systems[i].name != NULL; i++ ) {
+            if(skip_file_systems[i].f_type == stfs.f_type ) {
+                debug1("%s: Skipping dir (FS %s): %s ", ARGV0, skip_file_systems[i].name, dir_name);
+                return skip_file_systems[i].flag;
+            }
+        }
+        return(0);
+    }
+    else
+    {
+        /* If the file exists, throw an error and retreat! If the file does not exist, there
+         * is no reason to spam the log with these errors. */
+        if(errno != ENOENT) {
+            merror("ERROR: statfs('%s') produced error: %s", dir_name, strerror(errno));
+        }
+        return(-1);
+    }
+#else
+    verbose(
+        "INFO: Attempted to check FS status for '%s', but we don't know how on this OS.",
+        dir_name
+    );
+#endif
+    return(0);
+}
+
 
 /* EOF */
