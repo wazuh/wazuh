@@ -50,7 +50,7 @@ static pthread_cond_t awake_mutex;
 void save_controlmsg(unsigned int agentid, char *r_msg)
 {
     char msg_ack[OS_FLSIZE + 1];
-    char *os;
+    char *version;
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
@@ -131,11 +131,11 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
 
         /* Store uname on database */
 
-        if ((os = strstr(uname, " - "))) {
+        if ((version = strstr(uname, " - "))) {
             int id = atoi(keys.keyentries[agentid]->id);
-            *os = '\0';
-            os += 3;
-            wdb_update_agent(id, os, uname);
+            *version = '\0';
+            version += 3;
+            wdb_update_agent(id, uname, version);
             wdb_update_agent_keepalive(id);
         }
     }
