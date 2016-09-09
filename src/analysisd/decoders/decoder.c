@@ -233,6 +233,9 @@ void DecodeEvent(Eventinfo *lf)
 int FindField(const OSDecoderInfo *decoder, const char *name) {
     int i;
 
+    if (!decoder->fields)
+        return -1;
+
     for (i = 0; i < Config.decoder_order_size; i++)
         if (decoder->fields[i])
             if (strcasecmp(decoder->fields[i], name) == 0)
