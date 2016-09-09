@@ -36,8 +36,6 @@ int wdb_open_global() {
                 return -1;
             }
 
-            wdb_insert_agent(0, "localhost", "127.0.0.1", NULL);
-
             // Retry to open
 
             if (sqlite3_open_v2(dir, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {

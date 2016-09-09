@@ -20,4 +20,6 @@ CREATE TABLE IF NOT EXISTS agent (
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 
+INSERT INTO agent (id, name, last_keepalive) VALUES (0, 'localhost', 106751991167);
+
 PRAGMA journal_mode=WAL;
