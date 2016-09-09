@@ -27,7 +27,6 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
     int fd = inotify_init();
     int wd = -1;
     ssize_t count;
-    char *name;
     char *uname;
 
     /* Start inotify */
@@ -38,11 +37,6 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
     }
 
     /* Update manager information */
-
-    if (!(name = wdb_agent_name(0)))
-        wdb_insert_agent(0, "localhost", "127.0.0.1", NULL);
-    else
-        free(name);
 
     if ((uname = getuname())) {
         char *ptr;
