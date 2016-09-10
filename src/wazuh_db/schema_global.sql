@@ -13,13 +13,13 @@ CREATE TABLE IF NOT EXISTS agent (
     key TEXT,
     os TEXT,
     version TEXT,
-    date_add NUMERIC DEFAULT CURRENT_TIMESTAMP,
-    last_keepalive NUMERIC
+    date_add TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_keepalive TEXT
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 
-INSERT INTO agent (id, name, last_keepalive) VALUES (0, 'localhost', 106751991167);
+INSERT INTO agent (id, name, last_keepalive) VALUES (0, 'localhost', '9999-12-31 23:59:59');
 
 PRAGMA journal_mode=WAL;
