@@ -135,7 +135,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             int id = atoi(keys.keyentries[agentid]->id);
             *version = '\0';
             version += 3;
-            wdb_update_agent(id, uname, version);
+            wdb_update_agent_version(id, uname, version);
             wdb_update_agent_keepalive(id);
         }
     }

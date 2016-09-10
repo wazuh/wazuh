@@ -57,8 +57,11 @@ int wdb_update_pm(int id_agent, const char *location, const char *log, long int 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key);
 
-/* Update agent info. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_update_agent(int id, const char *os, const char *version);
+/* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_name(int id, const char *name);
+
+/* Update agent version info. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_version(int id, const char *os, const char *version);
 
 /* Update agent keepalive timestamp. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_keepalive(int id);
