@@ -20,23 +20,18 @@ static void sync_keys();
 #endif
 
 void* run_keysync(__attribute__ ((unused)) void *args) {
-
-#ifdef INOTIFY_ENABLED
-    char buffer[IN_BUFFER_SIZE];
-    struct inotify_event *event = (struct inotify_event *)buffer;
-    int fd = inotify_init();
-    int wd = -1;
-    ssize_t count;
     char *uname;
 
-    /* Start inotify */
-
-    if (fd < 0) {
-        merror("%s: ERROR: Couldn't init inotify: %s", ARGV0, strerror(errno));
-        return NULL;
-    }
-
     /* Update manager information */
+
+    {
+        char hostname[1024];
+
+        if (gethostname(hostname, 1024) == 0)
+            wdb_update_agent_name(0, hostname);
+        else
+            merror("%s: ERROR: Couldn't get manager's hostname: %s", ARGV0, strerror(errno));
+    }
 
     if ((uname = getuname())) {
         char *ptr;
@@ -44,8 +39,22 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
         if ((ptr = strstr(uname, " - ")))
             *ptr = '\0';
 
-        wdb_update_agent(0, uname, __ossec_name " " __version);
+        wdb_update_agent_version(0, uname, __ossec_name " " __version);
         free(uname);
+    }
+
+#ifdef INOTIFY_ENABLED
+    char buffer[IN_BUFFER_SIZE];
+    struct inotify_event *event = (struct inotify_event *)buffer;
+    int fd = inotify_init();
+    int wd = -1;
+    ssize_t count;
+
+    /* Start inotify */
+
+    if (fd < 0) {
+        merror("%s: ERROR: Couldn't init inotify: %s", ARGV0, strerror(errno));
+        return NULL;
     }
 
     /* Loop */
