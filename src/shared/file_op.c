@@ -294,8 +294,11 @@
 #endif
 #endif /* WIN32 */
 
-const char *__local_name = "unset";
+#ifdef WIN32
+#define mkstemp(x) 0
+#endif
 
+const char *__local_name = "unset";
 
 /* Set the name of the starting program */
 void OS_SetName(const char *name)
@@ -1590,7 +1593,6 @@ int TempFile(File *file, const char *source, int copy) {
     FILE *fp_src;
     int fd;
     char template[OS_FLSIZE + 1];
-
     snprintf(template, OS_FLSIZE, "%s.XXXXXX", source);
     fd = mkstemp(template);
 
