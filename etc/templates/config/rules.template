@@ -1,6 +1,5 @@
   <rules>
-    <decoder_dir>etc/ossec_decoders</decoder_dir>
-    <decoder_dir>etc/wazuh_decoders</decoder_dir>
+    <decoder_dir>etc/decoders</decoder_dir>
     <include>rules_config.xml</include>
     <include>pam_rules.xml</include>
     <include>sshd_rules.xml</include>
@@ -65,6 +64,21 @@
     <include>sysmon_rules.xml</include>
     <include>auditd_rules.xml</include>
     <include>opensmtpd_rules.xml</include>
+    <!-- <include>firewalld_rules.xml</include> -->
+    <!-- <include>systemd_rules.xml</include> -->
+    <!-- <include>unbound_rules.xml</include> -->
+    <include>netscaler_rules.xml</include>
+    <include>amazon_rules.xml</include>
+    <include>amazon-ec2_rules.xml</include>
+    <include>amazon-iam_rules.xml</include>
+    <include>puppet_rules.xml</include>
+    <include>serv-u_rules.xml</include>
+    <include>redis_rules.xml</include>
+    <include>usb_rules.xml</include>
+    <include>hp_rules.xml</include>
+    <include>ossec_ruleset_rules.xml</include>
+    <include>fortigate_rules.xml</include>
+    <include>openvpn_rules.xml</include>
     <include>oscap_rules.xml</include>
     <include>local_rules.xml</include>
-  </rules>  
+  </rules>
