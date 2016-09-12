@@ -113,6 +113,9 @@ Install()
         UpdateStopOSSEC
     fi
 
+    # Move old decoders (ossec_decodes and wazuh_decoders) to etc/decoders
+    UpdateLegacyDecoders
+
     ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install
 
     cd ../

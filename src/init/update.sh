@@ -113,7 +113,7 @@ UpdateOSSECRules()
     grep -Ev "</*rules>|<include>|<list>|<decoder>|<decoder_dir|<rule_dir>|rules global entry" ${OSSEC_CONF_FILE} > "${OSSEC_CONF_FILE}.$$.tmp"
 
     # Customer decoder, decoder_dir, rule_dir are carried over during upgrade
-    grep -E '<decoder>|<decoder_dir|<rule_dir>' ${OSSEC_CONF_FILE} | grep -v '<decoder>etc/decoder.xml'| grep -v '<decoder_dir>etc/ossec_decoders' | grep -v '<decoder_dir>etc/wazuh_decoders' | grep -v '<!--' >> "${OSSEC_CONF_FILE}.$$.tmp2"
+    grep -E '<decoder>|<decoder_dir|<rule_dir>' ${OSSEC_CONF_FILE} | grep -v '<decoder>etc/decoder.xml'| grep -v '<decoder_dir>etc/decoders' | grep -v '<decoder_dir>etc/ossec_decoders' | grep -v '<decoder_dir>etc/wazuh_decoders' | grep -v '<!--' >> "${OSSEC_CONF_FILE}.$$.tmp2"
 
     # Check for custom files that may have been added in <rules> element
     for i in `grep -E '<include>|<list>' ${OSSEC_CONF_FILE} | grep -v '<!--'`
@@ -131,4 +131,38 @@ UpdateOSSECRules()
     echo "</rules>" >> ${OSSEC_CONF_FILE}
     echo "</ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
     rm "${OSSEC_CONF_FILE}.$$.tmp2"
+
+}
+
+UpdateLegacyDecoders()
+{
+    . ${OSSEC_INIT}
+
+    if [ -d "$DIRECTORY/etc/decoders" ]; then
+        return
+    fi
+
+    OSSEC_CONF_FILE="$DIRECTORY/etc/ossec.conf"
+
+    # Backing up the old config
+    cp -pr ${OSSEC_CONF_FILE} "${OSSEC_CONF_FILE}.$$_i.bak"
+
+    # Replace old decoders
+    sed -i 's#\s*<decoder_dir>etc/ossec_decoders</decoder_dir>#    <decoder_dir>etc/decoders</decoder_dir>#' "$OSSEC_CONF_FILE"
+    sed -i 's#\s*<decoder_dir>etc/wazuh_decoders</decoder_dir>##' "$OSSEC_CONF_FILE"
+
+    # Create directory
+    mkdir "$DIRECTORY/etc/decoders"
+    chmod 550 "$DIRECTORY/etc/decoders"
+    chown root:ossec "$DIRECTORY/etc/decoders"
+
+    # Moving decoders
+    old_decoders="ossec_decoders wazuh_decoders"
+    for old_decoder in $old_decoders
+    do
+        if [ -d "$DIRECTORY/etc/$old_decoder" ]; then
+            mv $DIRECTORY/etc/$old_decoder/* $DIRECTORY/etc/decoders/
+            rmdir "$DIRECTORY/etc/$old_decoder"
+        fi
+    done
 }
