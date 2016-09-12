@@ -703,7 +703,7 @@ char* ParseRuleComment(Eventinfo *lf) {
 
         *(end++) = '\0';
 
-        if ((i = FindField(lf->decoder_info, var)) < 0)
+        if ((i = FindField(lf->decoder_info, var)) < 0 || !lf->fields[i])
             return strdup(lf->generated_rule->comment);
 
         if (n + (z = strlen(lf->fields[i])) >= OS_COMMENT_MAX)
