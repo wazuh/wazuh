@@ -391,10 +391,11 @@ install-common: build
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
 	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/policies
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
 
 	install -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
-	install -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/policies/* ${PREFIX}/wodles/oscap/policies
+	install -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
+	install -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/* ${PREFIX}/wodles/oscap/content
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
 	install -m 0440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc

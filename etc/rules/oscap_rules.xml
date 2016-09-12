@@ -91,7 +91,7 @@ Wodle OpenSCAP: 81500 - 81600
     -->
     <rule id="81504" level="7">
         <if_sid>81501</if_sid>
-        <match>: File "</match>
+        <match>: File "</match> <!-- !!!!!!!!! -->
         <description>OpenSCAP ERROR: Wrong configuration - Inexistent policy.</description>
         <group>errors,</group>
     </rule>
@@ -127,29 +127,9 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: ERROR: could not extract "severity" field from ARF XML results file.
-    -->
-    <rule id="81508" level="1">
-        <if_sid>81501</if_sid>
-        <match>could not extract "severity"</match>
-        <description>OpenSCAP ERROR: ARF XML error.</description>
-        <group>errors,</group>
-    </rule>
-
-    <!--
-    oscap: ERROR: Unknown line: "???".
-    -->
-    <rule id="81509" level="1">
-        <if_sid>81501</if_sid>
-        <match>Unknown line</match>
-        <description>OpenSCAP ERROR: Report has an unknown line.</description>
-        <group>errors,</group>
-    </rule>
-
-    <!--
     "oscap: ERROR: Timeout expired."
     -->
-    <rule id="81510" level="7">
+    <rule id="81508" level="7">
         <if_sid>81501</if_sid>
         <match>Timeout expired</match>
         <description>OpenSCAP ERROR: Timeout expired</description>
@@ -159,109 +139,120 @@ Wodle OpenSCAP: 81500 - 81600
     <!-- -->
 
 
-    <!-- RULES -->
+    <!-- XCCDF RULES -->
 
     <!--
-    oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "pass", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
-    <rule id="81521" level="1">
+    <rule id="81520" level="1">
         <if_sid>81400</if_sid>
+        <match>msg: "xccdf-result"</match>
+        <description>OpenSCAP XCCDF messages grouped.</description>
+        <group>rule-result,pci_dss_2.2,</group>
+    </rule>
+
+    <!--
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "pass", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    -->
+
+    <rule id="81521" level="1">
+        <if_sid>81520</if_sid>
         <field name="result">pass</field>
         <description>OpenSCAP: $(title) (passed)</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "notchecked", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "notchecked", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81522" level="1">
-        <if_sid>81400</if_sid>
+        <if_sid>81520</if_sid>
         <field name="result">notchecked</field>
         <description>OpenSCAP: $(title) (not checked)</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "notapplicable", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "notapplicable", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81523" level="1">
-        <if_sid>81400</if_sid>
+        <if_sid>81520</if_sid>
         <field name="result">notapplicable</field>
         <description>OpenSCAP: $(title) (not applied)</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "fixed", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "fixed", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81524" level="2">
-        <if_sid>81400</if_sid>
+        <if_sid>81520</if_sid>
         <field name="result">fixed</field>
         <description>OpenSCAP: $(title) (fixed)</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "informational", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "informational", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81525" level="1">
-        <if_sid>81400</if_sid>
+        <if_sid>81520</if_sid>
         <field name="result">informational</field>
         <description>OpenSCAP: $(title) (informational)</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "error", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "error", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81526" level="2">
-        <if_sid>81400</if_sid>
+        <if_sid>81520</if_sid>
         <field name="result">error</field>
         <description>OpenSCAP: $(title) (error)</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "unknown", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "unknown", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81527" level="1">
-        <if_sid>81400</if_sid>
+        <if_sid>81520</if_sid>
         <field name="result">unknown</field>
         <description>OpenSCAP: $(title) (unknown)</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "notselected", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81528" level="1">
-        <if_sid>81400</if_sid>
+        <if_sid>81520</if_sid>
         <field name="result">notselected</field>
         <description>OpenSCAP: $(title) (not selected)</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "fail", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "low".
-    oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "fail", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
-    oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "fail", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "high".
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "low", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "high", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81529" level="5">
-        <if_sid>81400</if_sid>
+        <if_sid>81520</if_sid>
         <field name="result">fail</field>
         <description>OpenSCAP: $(title) (not passed)</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81530" level="7">
-        <if_sid>81529</if_sid>
+        <if_sid>81520</if_sid>
         <field name="severity">medium</field>
         <description>OpenSCAP: $(title) (not passed)</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81531" level="9">
-        <if_sid>81529</if_sid>
+        <if_sid>81520</if_sid>
         <field name="severity">high</field>
         <description>OpenSCAP: $(title) (not passed)</description>
         <group>rule-result,pci_dss_2.2,</group>
@@ -273,11 +264,11 @@ Wodle OpenSCAP: 81500 - 81600
     <!-- Report Overview -->
 
     <!--
-    oscap: msg: "report-overview", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", score: "56.835060" / "100.000000", severity of failed rules: "high": "1", "medium": "9", "low": "34", "n/a": "0".
+    oscap: msg: "xccdf-overview", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", score: "62.500000".
     -->
     <rule id="81540" level="1">
         <if_sid>81400</if_sid>
-        <match>msg: "report-overview"</match>
+        <match>msg: "xccdf-overview"</match>
         <description>OpenSCAP Report overview.</description>
         <group>report-overview,pci_dss_2.2,</group>
     </rule>
@@ -311,5 +302,107 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--  -->
+
+    <!-- OVAL RULES -->
+
+    <!--
+    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    -->
+    <rule id="81550" level="0">
+        <if_sid>81400</if_sid>
+        <match>msg: "oval-result"</match>
+        <description>OpenSCAP: $(title)</description>
+        <group>rule-result,pci_dss_2.2,</group>
+    </rule>
+
+    <!--
+    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "error", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    -->
+    <rule id="81551" level="7">
+        <if_sid>81550</if_sid>
+        <field name="result">error</field>
+        <description>OpenSCAP: $(title) (error)</description>
+        <group>rule-result,pci_dss_2.2,</group>
+    </rule>
+
+    <!--
+    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    -->
+    <rule id="81552" level="0" noalert="1">
+        <if_sid>81550</if_sid>
+        <field name="class">compliance</field>
+        <description>OpenSCAP: $(title)</description>
+        <group>rule-result,pci_dss_2.2,</group>
+    </rule>
+
+    <!--
+    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    -->
+    <rule id="81553" level="7">
+        <if_sid>81552</if_sid>
+        <field name="result">false</field>
+        <description>OpenSCAP: $(title) (not passed)</description>
+        <group>rule-result,pci_dss_2.2,</group>
+    </rule>
+
+    <!--
+    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "patch", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    -->
+    <rule id="81554" level="0" noalert="1">
+        <if_sid>81550</if_sid>
+        <field name="class">patch</field>
+        <description>OpenSCAP: $(title)</description>
+        <group>rule-result,pci_dss_2.2,</group>
+    </rule>
+
+    <!--
+    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "patch", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    -->
+    <rule id="81555" level="7">
+        <if_sid>81554</if_sid>
+        <field name="result">false</field>
+        <description>OpenSCAP: $(title) (not passed)</description>
+        <group>rule-result,pci_dss_2.2,</group>
+    </rule>
+
+    <!--
+    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "vulnerability", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    -->
+    <rule id="81556" level="0" noalert="1">
+        <if_sid>81550</if_sid>
+        <field name="class">vulnerability</field>
+        <description>OpenSCAP: $(title)</description>
+        <group>rule-result,pci_dss_2.2,</group>
+    </rule>
+
+    <!--
+    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "vulnerability", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    -->
+    <rule id="81557" level="7">
+        <if_sid>81556</if_sid>
+        <field name="result">true</field>
+        <description>OpenSCAP: $(title) (not passed)</description>
+        <group>rule-result,pci_dss_2.2,</group>
+    </rule>
+
+    <!--
+    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "inventory", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    -->
+    <rule id="81558" level="0" noalert="1">
+        <if_sid>81550</if_sid>
+        <field name="class">inventory</field>
+        <description>OpenSCAP: $(title)</description>
+        <group>rule-result,pci_dss_2.2,</group>
+    </rule>
+
+    <!--
+    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "miscellaneous", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    -->
+    <rule id="81559" level="0" noalert="1">
+        <if_sid>81550</if_sid>
+        <field name="class">miscellaneous</field>
+        <description>OpenSCAP: $(title)</description>
+        <group>rule-result,pci_dss_2.2,</group>
+    </rule>
 
 </group>
