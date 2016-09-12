@@ -1467,7 +1467,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                 case RULE_DYNAMIC:
                     i = FindField(lf->decoder_info, list_holder->dfield);
 
-                    if (i < 0)
+                    if (i < 0 || !lf->fields[i])
                         return NULL;
 
                     if (!OS_DBSearch(list_holder, lf->fields[i]))
