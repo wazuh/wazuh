@@ -24,25 +24,36 @@ Logs from wodle
 
 <!--
 Rule Result
-oscap: msg: "rule-result", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", rule_id: "xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking", result: "fail", title: "Configure Periodic Execution of AIDE", ident: "CCE-RHEL7-CCE-TBD", severity: "medium".
+oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
 -->
-<decoder name="oscap-wodle-rule-result">
+<decoder name="oscap-wodle-xccdf-result">
   <parent>oscap</parent>
-  <prematch offset="after_parent">^msg: "rule-result"</prematch>
-  <regex offset="after_prematch">^, id: "(\S+)", policy: "(\S+)", profile: "(\S+)", rule_id: "(\S+)", result: "(\S+)", title: "(\.+)", ident: "(\.+)", severity: "(\S+)".$</regex>
-  <order>scan_id, policy, profile, oscap_rule_id, result, title, ident, severity</order>
+  <prematch offset="after_parent">^msg: "xccdf-result", </prematch>
+  <regex offset="after_prematch">^title: "(\.+)", benchmark: "(\S+)", profile: "(\S+)", severity: "(\S+)", result: "(\S+)", id: "(\S+)", oval: "(\S*)", reference: "(\S*)".$</regex>
+  <order>title, benchmark, profile, severity, result, id, oval, reference</order>
+</decoder>
+
+<!--
+Rule Result
+oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+-->
+<decoder name="oscap-wodle-oval-result">
+  <parent>oscap</parent>
+  <prematch offset="after_parent">^msg: "oval-result", </prematch>
+  <regex offset="after_prematch">^id: "(\S+)", title: "(\.+)", class: "(\S+)", result: "(\S+)", reference: "(\S*)".$</regex>
+  <order>id, title, class, result, reference</order>
 </decoder>
 
 
 <!--
 Report overview
-oscap: msg: "report-overview", id: "Ee7O5Xnw8OsxErxZ3Dc5", policy: "ssg-centos7-ds.xml", profile: "xccdf_org.ssgproject.content_profile_pci-dss", score: "56.835060" / "100.000000", severity of failed rules: "high": "1", "medium": "9", "low": "34", "n/a": "0".
+oscap: msg: "xccdf-overview", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", score: "62.500000".
 -->
-<decoder name="oscap-wodle-repor-overview">
+<decoder name="oscap-wodle-xccdf-overview">
   <parent>oscap</parent>
-  <prematch offset="after_parent">^msg: "report-overview"</prematch>
-  <regex offset="after_prematch">^, id: "(\S+)", policy: "(\S+)", profile: "(\S+)", score: "(\S+)" / "(\S+)", severity of failed rules: "high": "(\S+)", "medium": "(\S+)", "low": "(\S+)",</regex>
-  <order>scan_id, policy, profile, score, max_score, severity_high, severity_medium, severity_low</order>
+  <prematch offset="after_parent">^msg: "xccdf-overview", </prematch>
+  <regex offset="after_prematch">^benchmark: "(\S+)", profile: "(\S+)", score: "(\S+)".$</regex>
+  <order>benchmark, profile, score</order>
 </decoder>
 
 <!--

@@ -19,11 +19,14 @@ import random
 import string
 
 OSCAP_BIN = "oscap"
+XSLT_BIN = "xsltproc"
 PATTERN_HEAD = "Profiles:\n"
 PATTERN_PROFILE = "(\t+)(\S+)\n"
 OSCAP_LOG_ERROR = "oscap: ERROR:"
 OSSEC_PATH = "/var/ossec"
-POLICIES_PATH = "{0}/wodles/oscap/policies".format(OSSEC_PATH)
+TEMPLATE_XCCDF = "{0}/wodles/oscap/template_xccdf.xsl".format(OSSEC_PATH)
+TEMPLATE_OVAL = "{0}/wodles/oscap/template_oval.xsl".format(OSSEC_PATH)
+CONTENT_PATH = "{0}/wodles/oscap/content".format(OSSEC_PATH)
 
 tempfile.tempdir = OSSEC_PATH + "/tmp"
 
@@ -47,49 +50,6 @@ except ImportError:
             raise error_cmd
         else:
             return cmd_output
-
-
-def search_element_in_xml(xml_tree, element, idref):
-    """
-    Search element in XML
-    :param xml_tree: XML
-    :param element: 'severity' or 'idref'
-    :param idref: rule ID
-    :return: String
-    """
-    if not xml_tree:
-        return None
-
-    root = xml_tree.getroot()
-
-    for reports in root.getchildren():
-        if reports.tag.endswith("reports"):
-            for report in reports.getchildren():
-                content = report.getchildren()[0]
-                testresult = content.getchildren()[0]
-
-                # Reports -> Report -> Content -> TestResult
-                if testresult.tag.endswith("TestResult"):
-                    for item in testresult.getchildren():
-                        # -> rule-result
-                        # <rule-result idref="xccdf_org.ssgproject.content_rule_update_process" time="2016-05-09T06:42:40" severity="low" weight="1.000000">
-                        if element == "severity" and item.tag.endswith("rule-result"):
-                            attrib = item.attrib
-                            if attrib["idref"] == idref:
-                                if "severity" in attrib:
-                                    return attrib["severity"]
-                                else:
-                                    return "n/a"
-
-                        # -> score
-                        # <score system="urn:xccdf:scoring:default" maximum="100.000000">56.835060</score>
-                        if element == "score" and item.tag.endswith("score"):
-                            if "maximum" in item.attrib:
-                                max_score = item.attrib["maximum"]
-                            else:
-                                max_score = 0
-                            return "\"{0}\" / \"{1}\"".format(item.text, max_score)
-
 
 def extract_profiles_from_file(oscap_file):
     regex_head = compile(PATTERN_HEAD)
@@ -129,149 +89,73 @@ def extract_profiles_from_file(oscap_file):
 
     return ex_profiles
 
-
-def exec_and_parse_oscap(profile_selected="no-profiles"):
-    result_printed = False
+def oscap(profile=None):
     temp = mkstemp()
     close(temp[0])
 
-    rand1 = temp[1].split("/")[-1][3:]
-    rand2 = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(14))
-    eval_id = rand1 + rand2
-
     try:
-        cmd = [OSCAP_BIN, "xccdf", "eval", "--results-arf", temp[1]]
+        cmd = [OSCAP_BIN, arg_module, 'eval', '--results', temp[1]]
 
-        if profile_selected != "no-profiles":
-            cmd.extend(["--profile", profile_selected])
+        if profile:
+            cmd.extend(["--profile", profile])
         if arg_xccdfid:
             for arg_id in arg_xccdfid:
                 cmd.extend(["--xccdf-id", arg_id])
+        if arg_ovalid:
+            for arg_id in arg_ovalid:
+                cmd.extend(["--oval-id", arg_id])
         if arg_dsid:
             for arg_id in arg_dsid:
                 cmd.extend(["--datastream-id", arg_id])
         if arg_cpe:
             cmd.extend(["--cpe", arg_cpe])
 
-        cmd.append(arg_policy)
+        cmd.append(arg_file)
 
         if debug:
             print("\nCMD: '{0}'".format(' '.join(cmd)))
 
-        output = check_output(cmd, stderr=STDOUT)
+        check_output(cmd, stderr=STDOUT)
+
     except CalledProcessError as error:
 
         # return code 2 means that some checks failed
-        if error.returncode == 2:
-            output = error.output
-        else:
+        if error.returncode != 2:
             # output = error.output
-            print("{0} Executing profile \"{1}\" of file \"{2}\": Return Code: \"{3}\" Error: \"{4}\".".format(OSCAP_LOG_ERROR, profile_selected, arg_policy, error.returncode,
+            print("{0} Executing profile \"{1}\" of file \"{2}\": Return Code: \"{3}\" Error: \"{4}\".".format(OSCAP_LOG_ERROR, profile, arg_file, error.returncode,
                                                                                                                error.output.replace('\r', '').split("\n")[0]))
+            remove(temp[1])
             return
 
-    # Open ARF XML results file
     try:
-        tree = ElementTree.parse(temp[1])
-    except IOError:
-        if debug:
-            print("oscap: Error reading temporary file \"{0}\".".format(temp[1]))
-        tree = None
-    except ElementTree.ParseError:
-        if debug:
-            print("oscap: Error parsing temporary file \"{0}\".".format(temp[1]))
-        tree = None
-
-    if not (tree or debug):
-        print("{0} could not extract \"severity\" field from ARF XML results file.".format(OSCAP_LOG_ERROR))
+        print(check_output((XSLT_BIN, TEMPLATE_XCCDF if arg_module == 'xccdf' else TEMPLATE_OVAL, temp[1])))
+    except CalledProcessError as error:
+        print("{0} Formatting data for profile \"{1}\" of file \"{2}\": Return Code: \"{3}\" Error: \"{4}\".".format(OSCAP_LOG_ERROR, profile, arg_file, error.returncode,
+                                                                                                           error.output.replace('\r', '').split("\n")[0]))
 
     remove(temp[1])
-
-    # Print check results
-    severity_failed_rules = {'low': 0, 'medium': 0, 'high': 0, 'n/a': 0}
-
-    ident = ""
-    for line in output.replace('\r', '').splitlines():
-        line = line.split('\t')
-
-        if len(line) < 2:
-            continue
-
-        if line[0] == "Title":
-            title = line[1].replace("\"", "")
-            ident = ""
-        elif line[0] == "Rule":
-            rule = line[1].replace("\"", "")
-        elif line[0] == "Ident":
-            ident += line[1].replace("\"", "") + ", "
-        elif line[0] == "Result":
-            result = line[1].replace("\"", "")
-            ident = ident[:-2]
-
-            if tree:
-                severity = search_element_in_xml(tree, "severity", rule)
-            else:
-                severity = "n/a"
-
-            if result == "fail":
-                severity_failed_rules[severity] += 1
-
-            # Filters
-            skip_line = False
-            if (arg_result and result in arg_result) or (arg_severity and severity in arg_severity):
-                skip_line = True
-
-            if not skip_line:
-                print("oscap: msg: \"rule-result\", id: \"{0}\", policy: \"{1}\", profile: \"{2}\", rule_id: \"{3}\", result: \"{4}\", title: \"{5}\", ident: \"{6}\", severity: \"{7}\".".format(eval_id,
-                                                                                                                                                                                     policy_name,
-                                                                                                                                                                                     profile_selected, rule,
-                                                                                                                                                                                     result, title, ident,
-                                                                                                                                                                                     severity))
-                result_printed = True
-
-            ident = ""
-        else:
-            print("{0} Unknown line: \"{1}\".".format(OSCAP_LOG_ERROR, line[0]))
-
-    if debug and not result_printed:
-        print("oscap: No results printed due to skip-result and skip-severity.")
-
-    score = search_element_in_xml(tree, "score", None)
-
-    msg_failed_r = ""
-    for k in severity_failed_rules:
-        msg_failed_r += "\"{0}\": \"{1}\", ".format(k, severity_failed_rules[k])
-
-    print("oscap: msg: \"report-overview\", id: \"{0}\", policy: \"{1}\", profile: \"{2}\", score: {3}, severity of failed rules: {4}.".format(eval_id, policy_name, profile_selected, score, msg_failed_r[:-2]))
-
 
 def signal_handler(n_signal, frame):
     print("\nExiting...({0})".format(n_signal))
     exit(1)
-
 
 def usage():
     help_msg = '''
     Wazuh wrapper for OpenSCAP
     Perform evaluation of a policy (XCCDF or DataStrem file).
 
-    Usage: oscap.py --policy file.xml [--profiles profileA,profileB --skip-result resultA,resultB --skip-severity severityA,severityB | --view-profiles] [--debug]
+    Usage: oscap.py --[xccdf|oval] file.xml [--profiles profileA,profileB | --view-profiles] [--debug]
 
-    Mandatory arguments
-    \t-f, --policy           Select policty (SCAP content).
+    Mandatory arguments (one of them)
+    \t-x, --xccdf           Select XCCDF content (XCCDF or DS file).
+    \t-o, --oval            Select OVAL content.
 
     Optional arguments:
-    \t-p, --profiles       Select profile. Multiple profiles can be defined if separated by a comma.
-    \t-r, --skip-result    Do not print rules with the specified result.
-                             Values: pass, notchecked, notapplicable, fail, fixed, informational, error, unknown, notselected.
-                             Multiple results can be defined if separated by a comma.
-    \t-s, --skip-severity  Do not print rules with the specified severity.
-                             Values: high, medium, low.
-                             Multiple results can be defined if separated by a comma.
-    \t-x, --xccdf-id       Select a particular XCCDF component.
-    \t-d, --ds-id          Use a datastream with that particular ID from the given datastream collection.
-    \t-c, --cpe            Use given CPE dictionary for applicability checks.
-
+    \t-p, --profiles        Select XCCDF profile. Multiple profiles can be defined if separated by a comma.
+    \t--xccdf-id            Select a particular XCCDF component.
+    \t--oval-id             Select particular OVAL component.
+    \t--ds-id               Use a datastream with that particular ID from the given datastream collection.
+    \t--cpe                 Use given CPE dictionary for applicability checks.
 
     Other arguments:
     \t-v, --view-profiles  Do not launch oscap. Only show extracted profiles.
@@ -282,24 +166,22 @@ def usage():
     print(help_msg)
     exit(1)
 
-
 ################################################################################
 
 if __name__ == "__main__":
-    arg_policy = None
+    arg_file = None
     arg_profiles = None
-    arg_result = None
-    arg_severity = None
     arg_xccdfid = None
+    arg_ovalid = None
     arg_dsid = None
     arg_cpe = None
     arg_view_profiles = False
     debug = False
-    mandatory_args = 0
+    arg_module = None
 
     # Reading arguments
     try:
-        opts, args = getopt(argv[1:], "f:p:r:s:x:d:c:vdh", ["policy=", "profiles=", "skip-result=", "skip-severity=", "xccdf-id=", "ds-id=", "cpe=", "view-profiles", "debug", "help"])
+        opts, args = getopt(argv[1:], "p:x:o:vdh", ["xccdf=", "oval=", "profiles=", "xccdf-id=", "oval-id=", "ds-id=", "cpe=", "view-profiles", "debug", "help"])
         n_args = len(opts)
         if not (1 <= n_args <= 5):
             print("Incorrect number of arguments.\nTry '--help' for more information.")
@@ -310,27 +192,31 @@ if __name__ == "__main__":
         exit(1)
 
     for o, a in opts:
-        if o in ("-f", "--policy"):
+        if o in ("-x", "--xccdf"):
             if a[0] == '/' or a[0] == '.':
-                arg_policy = a
+                arg_file = a
             else:
-                arg_policy = "{0}/{1}".format(POLICIES_PATH, a)
-            mandatory_args += 1
+                arg_file = "{0}/{1}".format(CONTENT_PATH, a)
+            arg_module = 'xccdf'
+        elif o in ("-o", "--oval"):
+            if a[0] == '/' or a[0] == '.':
+                arg_file = a
+            else:
+                arg_file = "{0}/{1}".format(CONTENT_PATH, a)
+            arg_module = 'oval'
         elif o in ("-p", "--profiles"):
             arg_profiles = a.split(",") if a != '_' else None
-        elif o in ("-r", "--skip-result"):
-            arg_result = a.split(",") if a != '_' else None
-        elif o in ("-s", "--skip-severity"):
-            arg_severity = a.split(",") if a != '_' else None
-        elif o in ("-x", "--xccdf-id"):
+        elif o == "--xccdf-id":
             arg_xccdfid = a.split(",") if a != '_' else None
-        elif o in ("-d", "--ds-id"):
+        elif o == "--oval-id":
+            arg_ovalid = a.split(",") if a != '_' else None
+        elif o == "--ds-id":
             arg_dsid = a.split(",") if a != '_' else None
-        elif o in ("-c", "--cpe"):
+        elif o == "--cpe":
             if a[0] == '/' or a[0] == '.':
                 arg_cpe = a
             else:
-                arg_cpe = "{0}/{1}".format(POLICIES_PATH, a)
+                arg_cpe = "{0}/{1}".format(CONTENT_PATH, a)
         elif o in ("-v", "--view-profiles"):
             arg_view_profiles = True
         elif o in ("-d", "--debug"):
@@ -341,12 +227,11 @@ if __name__ == "__main__":
             exit(1)
 
     if debug:
-        print("Arguments:\n\tPolicy: {0}\n\tProfiles: {1}\n\tskip-result: {2}\n\tskip-severity: {3}\n\txccdf-id: {4}\n\tds-id: {5}\n\tcpe: {6}\n\tview-profiles: {7}\n".format(arg_policy, arg_profiles,
-                                                                                                                                                                               arg_result, arg_severity,
-                                                                                                                                                                               arg_xccdfid, arg_dsid, arg_cpe,
-                                                                                                                                                                               arg_view_profiles))
-    if mandatory_args != 1:
-        print("No argument '--policy'.\nTry '--help' for more information.")
+        print("Arguments:\n\tPolicy: {0}\n\tProfiles: {1}\n\txccdf-id: {2}\n\tds-id: {3}\n\tcpe: {4}\n\tview-profiles: {5}\n".format(arg_file, arg_profiles,
+                                                                                                                                     arg_xccdfid, arg_dsid, arg_cpe,
+                                                                                                                                     arg_view_profiles))
+    if not arg_module:
+        print("No argument '--xccdf' or '--oval'.\nTry '--help' for more information.")
         exit(1)
 
     # Capture Cntrl + C
@@ -363,22 +248,22 @@ if __name__ == "__main__":
         exit(1)
 
     # Check policy
-    if not isfile(arg_policy):
-        print("{0} File \"{1}\" does not exist.".format(OSCAP_LOG_ERROR, arg_policy))
+    if not isfile(arg_file):
+        print("{0} File \"{1}\" does not exist.".format(OSCAP_LOG_ERROR, arg_file))
         exit(1)
-    policy_name = arg_policy.split("/")[-1]
-
-    # Get profiles
-    profiles = extract_profiles_from_file(arg_policy)
+    policy_name = arg_file.split("/")[-1]
 
     # Check profile argument
     if arg_profiles:
         for p in arg_profiles:
             if p not in profiles:
-                print("{0} Profile \"{1}\" does not exist at \"{2}\".".format(OSCAP_LOG_ERROR, p, arg_policy))
+                print("{0} Profile \"{1}\" does not exist at \"{2}\".".format(OSCAP_LOG_ERROR, p, arg_file))
                 exit(1)
 
         profiles = arg_profiles
+    else:
+        # Get profiles
+        profiles = extract_profiles_from_file(arg_file)
 
     # Execute checkings
     if profiles:
@@ -387,6 +272,6 @@ if __name__ == "__main__":
                 print("\t{0}".format(profile))
                 continue
 
-            exec_and_parse_oscap(profile)
+            oscap(profile)
     else:
-        exec_and_parse_oscap()
+        oscap()
