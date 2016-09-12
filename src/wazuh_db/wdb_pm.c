@@ -12,7 +12,7 @@
 #include "wdb.h"
 
 static const char *SQL_INSERT_PM = "INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (datetime(?, 'unixepoch', 'localtime'), datetime(?, 'unixepoch', 'localtime'), ?, ?, ?);";
-static const char *SQL_UPDATE_PM = "UPDATE pm_event SET date_last = ? WHERE log = ?;";
+static const char *SQL_UPDATE_PM = "UPDATE pm_event SET date_last = datetime(?, 'unixepoch', 'localtime') WHERE log = ?;";
 
 /* Get PCI_DSS requirement from log string */
 static char* get_pci_dss(const char *string);
@@ -84,8 +84,7 @@ int wdb_update_pm(int id_agent, const char *location, const char *log, long int 
     }
 
     sqlite3_bind_int(stmt, 1, date_last);
-    sqlite3_bind_int(stmt, 2, id_agent);
-    sqlite3_bind_text(stmt, 3, log, -1, NULL);
+    sqlite3_bind_text(stmt, 2, log, -1, NULL);
 
     result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
     sqlite3_finalize(stmt);
