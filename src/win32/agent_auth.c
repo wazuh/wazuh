@@ -26,6 +26,7 @@ void report_help()
     printf("\t-p <port>           Manager port (default 1515).\n");
     printf("\t-A <agent name>     Agent name (default is the hostname).\n");
     printf("\t-D <OSSEC Dir>      Location where OSSEC is installed.\n");
+    printf("\t-P <pass>           Authorization password.\n");
     exit(1);
 }
 
@@ -124,7 +125,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
         InBuffers[0].pvBuffer = buffer;
         InBuffers[0].cbBuffer = total_read;
         InBuffers[0].BufferType = SECBUFFER_TOKEN;
-        
+
         InBuffers[1].pvBuffer = NULL;
         InBuffers[1].cbBuffer = 0;
         InBuffers[1].BufferType = SECBUFFER_EMPTY;
@@ -219,7 +220,7 @@ char *ReceiveSecureMessage(const int socket, CtxtHandle *context)
         {
             read = recv(socket, buffer + buffer_length, IO_BUFFER_SIZE - buffer_length, 0);
             if (read <= 0)
-                ErrorExit("%s: Could not receive message from server", ARGV0);
+                ErrorExit("%s: Could not receive message from server (or invalid password)", ARGV0);
 
             buffer_length += read;
         }
@@ -279,7 +280,7 @@ void InstallAuthKeys(char *msg)
 
         if (!tmpstr)
             ErrorExit("%s: Invalid key received. Closing connection.", ARGV0);
-                        
+
         *tmpstr = '\0';
         entry = OS_StrBreak(' ', key, 4);
 
@@ -291,10 +292,10 @@ void InstallAuthKeys(char *msg)
 
         if (!fp)
             ErrorExit("%s: Unable to open key file: %s", ARGV0, KEYSFILE_PATH);
-        
+
         fprintf(fp, "%s\n", key);
         fclose(fp);
-        
+
         printf("INFO: Valid key created. Finished.\n");
     }
     else
@@ -357,6 +358,8 @@ int main(int argc, char **argv)
     char *agentname = NULL;
     char hostname[512];
     char *msg = NULL;
+    char *authpass = NULL;
+    char buf[4096 + 1] = { '\0' };
     WSADATA wsa;
     CtxtHandle context;
     CredHandle cred;
@@ -364,7 +367,7 @@ int main(int argc, char **argv)
     /* Setting the name */
     OS_SetName(ARGV0);
 
-    while((c = getopt(argc, argv, "hm:p:A:")) != -1)
+    while((c = getopt(argc, argv, "hm:p:A:P:")) != -1)
     {
         switch(c){
             case 'h':
@@ -389,6 +392,12 @@ int main(int argc, char **argv)
                     ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
                 }
                 break;
+            case 'P':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+
+                authpass = optarg;
+                break;
             default:
                 report_help();
                 break;
@@ -409,13 +418,40 @@ int main(int argc, char **argv)
         agentname = hostname;
     }
 
+    /* Checking if there is a custom password file */
+    if (authpass == NULL) {
+        FILE *fp;
+        fp = fopen(AUTHDPASS_PATH, "r");
+        buf[0] = '\0';
+
+        if (fp) {
+            buf[4096] = '\0';
+            char *ret = fgets(buf, 4095, fp);
+
+            if (ret && strlen(buf) > 2) {
+                authpass = buf;
+            }
+
+            fclose(fp);
+            printf("INFO: Using password specified on file: %s\n", AUTHDPASS_PATH);
+        }
+    }
+    if (!authpass) {
+        printf("WARN: No authentication password provided. Insecure mode started.\n");
+    }
+
     // Connect to socket and init security context
     CreateSecureConnection(manager, port, &socket, &context, &cred);
 
     printf("INFO: Using agent name as: %s\n", agentname);
 
     // Send request
-    SendSecureMessage(socket, &context, "OSSEC A:'%s'\n", agentname);
+
+    if (authpass)
+        SendSecureMessage(socket, &context, "OSSEC PASS: %s OSSEC A:'%s'\n", authpass, agentname);
+    else
+        SendSecureMessage(socket, &context, "OSSEC A:'%s'\n", agentname);
+
     printf("INFO: Sent request to manager. Waiting for reply.\n");
 
     // Get response
@@ -423,7 +459,7 @@ int main(int argc, char **argv)
 
     // Install received keys
     InstallAuthKeys(msg);
- 
+
     // Disconnect
     DisconnectFromServer(socket, &context, &cred);
 
