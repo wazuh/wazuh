@@ -253,6 +253,9 @@ if __name__ == "__main__":
         exit(1)
     policy_name = arg_file.split("/")[-1]
 
+    # Get profiles
+    profiles = extract_profiles_from_file(arg_file)
+
     # Check profile argument
     if arg_profiles:
         for p in arg_profiles:
