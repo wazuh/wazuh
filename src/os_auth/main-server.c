@@ -661,9 +661,10 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             pthread_mutex_unlock(&mutex_keys);
             free(finalkey);
-            SSL_free(ssl);
-            close(client.socket);
         }
+
+        SSL_free(ssl);
+        close(client.socket);
     }
 
     SSL_CTX_free(ctx);
