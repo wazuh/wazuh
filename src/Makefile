@@ -487,6 +487,10 @@ else
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/etc/decoders
 endif
 
+ifeq (,$(wildcard ${PREFIX}/etc/local_decoder.xml))
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/local_decoder.xml
+endif
+
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck

@@ -1,0 +1,7 @@
+<!-- Local Decoders -->
+
+<!-- Modify it at your will. -->
+
+<decoder name="local_decoder_example">
+    <program_name>local_decoder_example</program_name>
+</decoder>
