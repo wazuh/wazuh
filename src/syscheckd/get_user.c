@@ -47,7 +47,7 @@ const char *get_user(const char *path, __attribute__((unused)) int uid)
     hFile = CreateFile(
                        TEXT(path),
                        GENERIC_READ,
-                       FILE_SHARE_READ,
+                       FILE_SHARE_WRITE,
                        NULL,
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
@@ -72,6 +72,8 @@ const char *get_user(const char *path, __attribute__((unused)) int uid)
                                 NULL,
                                 NULL,
                                 &pSD);
+
+    CloseHandle(hFile);
 
     // Check GetLastError for GetSecurityInfo error condition.
     if (dwRtnCode != ERROR_SUCCESS) {
