@@ -227,6 +227,8 @@ http://www.ossec.net/main/license/\n"
 #else
 #define KEYS_FILE       "client.keys"
 #define KEYSFILE_PATH   KEYS_FILE
+#define AUTHD_PASS      "authd.pass"
+#define AUTHDPASS_PATH  AUTHD_PASS
 #endif
 
 #ifndef AUTH_FILE
