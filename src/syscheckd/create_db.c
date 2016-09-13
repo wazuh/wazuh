@@ -175,7 +175,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
                      opts & CHECK_MD5SUM ? mf_sum : "xxx",
                      opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                     opts & CHECK_OWNER ? get_user(statbuf.st_uid) : "",
+                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
                      opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                      opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0);
@@ -194,7 +194,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
                      opts & CHECK_MD5SUM ? mf_sum : "xxx",
                      opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                     opts & CHECK_OWNER ? get_user(statbuf.st_uid) : "",
+                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
                      opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                      opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
