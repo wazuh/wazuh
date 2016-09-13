@@ -1,5 +1,6 @@
   <rules>
     <decoder_dir>etc/decoders</decoder_dir>
+    <decoder>etc/local_decoder.xml</decoder>
     <include>rules_config.xml</include>
     <include>pam_rules.xml</include>
     <include>sshd_rules.xml</include>
