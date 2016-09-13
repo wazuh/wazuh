@@ -64,9 +64,9 @@
     <include>sysmon_rules.xml</include>
     <include>auditd_rules.xml</include>
     <include>opensmtpd_rules.xml</include>
-    <!-- <include>firewalld_rules.xml</include> -->
-    <!-- <include>systemd_rules.xml</include> -->
-    <!-- <include>unbound_rules.xml</include> -->
+    <include>firewalld_rules.xml</include>
+    <include>systemd_rules.xml</include>
+    <include>unbound_rules.xml</include>
     <include>netscaler_rules.xml</include>
     <include>amazon_rules.xml</include>
     <include>amazon-ec2_rules.xml</include>
