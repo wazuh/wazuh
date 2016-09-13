@@ -413,7 +413,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
              group == 0 ? 0 : (int)statbuf.st_gid,
              md5sum   == 0 ? "xxx" : mf_sum,
              sha1sum  == 0 ? "xxx" : sf_sum,
-             owner == 0 ? "" : get_user(statbuf.st_uid),
+             owner == 0 ? "" : get_user(file_name, statbuf.st_uid),
              group == 0 ? "" : get_group(statbuf.st_gid),
              mtime ? (long)statbuf.st_mtime : 0,
              inode ? (long)statbuf.st_ino : 0);
