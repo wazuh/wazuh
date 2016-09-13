@@ -113,7 +113,7 @@ UpdateOSSECRules()
     grep -Ev "</*rules>|<include>|<list>|<decoder>|<decoder_dir|<rule_dir>|rules global entry" ${OSSEC_CONF_FILE} > "${OSSEC_CONF_FILE}.$$.tmp"
 
     # Customer decoder, decoder_dir, rule_dir are carried over during upgrade
-    grep -E '<decoder>|<decoder_dir|<rule_dir>' ${OSSEC_CONF_FILE} | grep -v '<decoder>etc/decoder.xml'| grep -v '<decoder_dir>etc/decoders' | grep -v '<decoder_dir>etc/ossec_decoders' | grep -v '<decoder_dir>etc/wazuh_decoders' | grep -v '<!--' >> "${OSSEC_CONF_FILE}.$$.tmp2"
+    grep -E '<decoder>|<decoder_dir|<rule_dir>' ${OSSEC_CONF_FILE} | grep -v '<decoder>etc/decoder.xml' | grep -v '<decoder_dir>etc/decoders' | grep -v '<decoder>etc/local_decoder.xml' | grep -v '<decoder_dir>etc/ossec_decoders' | grep -v '<decoder_dir>etc/wazuh_decoders' | grep -v '<!--' >> "${OSSEC_CONF_FILE}.$$.tmp2"
 
     # Check for custom files that may have been added in <rules> element
     for i in `grep -E '<include>|<list>' ${OSSEC_CONF_FILE} | grep -v '<!--'`
