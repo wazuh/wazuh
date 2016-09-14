@@ -90,4 +90,16 @@ int wdb_create_file(const char *path, const char *source);
 /* Get an array containint the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents();
 
+/* Delete FIM events of an agent. Returns 0 on success or -1 on error. */
+int wdb_delete_fim(int id);
+
+/* Delete FIM events of all agents. */
+void wdb_delete_fim_all();
+
+/* Delete PM events of an agent. Returns 0 on success or -1 on error. */
+int wdb_delete_pm(int id);
+
+/* Delete PM events of all agents */
+void wdb_delete_pm_all();
+
 #endif
