@@ -102,4 +102,7 @@ int wdb_delete_pm(int id);
 /* Delete PM events of all agents */
 void wdb_delete_pm_all();
 
+/* Rebuild database. Returns 0 on success or -1 on error. */
+int wdb_vacuum(sqlite3 *db);
+
 #endif

@@ -14,6 +14,8 @@
 #define BUSY_SLEEP 1
 #define MAX_ATTEMPTS 1000
 
+static const char *SQL_VACUUM = "VACUUM;";
+
 sqlite3 *wdb_global = NULL;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
@@ -193,4 +195,21 @@ int wdb_create_file(const char *path, const char *source) {
     chmod(path, 0664);
 
     return 0;
+}
+
+/* Rebuild database. Returns 0 on success or -1 on error. */
+int wdb_vacuum(sqlite3 *db) {
+    sqlite3_stmt *stmt;
+    int result;
+
+    if (!wdb_prepare(db, SQL_VACUUM, -1, &stmt, NULL)) {
+        result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
+        sqlite3_finalize(stmt);
+    } else {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        result = -1;
+    }
+
+    sqlite3_close_v2(db);
+    return result;
 }

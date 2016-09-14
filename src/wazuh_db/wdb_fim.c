@@ -205,6 +205,7 @@ int wdb_delete_fim(int id) {
 
     result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
     sqlite3_finalize(stmt);
+    wdb_vacuum(db);
     sqlite3_close_v2(db);
     return result;
 }
