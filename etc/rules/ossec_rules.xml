@@ -24,7 +24,7 @@
     <decoded_as>ossec</decoded_as>
     <description>Grouping of ossec rules.</description>
   </rule>
-  
+
   <rule id="501" level="3">
     <if_sid>500</if_sid>
     <if_fts />
@@ -33,7 +33,7 @@
     <description>New ossec agent connected.</description>
     <group>pci_dss_10.6.1,</group>
   </rule>
-  
+
   <rule id="502" level="3">
     <if_sid>500</if_sid>
     <options>alert_by_email</options>
@@ -47,7 +47,7 @@
     <options>alert_by_email</options>
     <match>Agent started</match>
     <description>Ossec agent started.</description>
-    <group>pci_dss_10.6.1,</group>
+    <group>pci_dss_10.6.1,pci_dss_10.2.6,</group>
   </rule>
 
   <rule id="504" level="3">
@@ -55,9 +55,9 @@
     <options>alert_by_email</options>
     <match>Agent disconnected</match>
     <description>Ossec agent disconnected.</description>
-    <group>pci_dss_10.6.1,</group>
+    <group>pci_dss_10.6.1,pci_dss_10.2.6,</group>
   </rule>
-  
+
   <rule id="509" level="0">
     <category>ossec</category>
     <decoded_as>rootcheck</decoded_as>
@@ -87,14 +87,14 @@
     <description>Windows Audit event.</description>
     <group>rootcheck</group>
   </rule>
-  
+
   <rule id="513" level="9">
     <if_sid>510</if_sid>
     <match>^Windows Malware</match>
     <description>Windows malware detected.</description>
     <group>rootcheck</group>
   </rule>
-  
+
   <rule id="514" level="2">
     <if_sid>510</if_sid>
     <match>^Application Found</match>
@@ -116,7 +116,7 @@
     <description>System Audit event.</description>
     <group>rootcheck</group>
   </rule>
-  
+
   <rule id="518" level="9">
     <if_sid>514</if_sid>
     <match>Adware|Spyware</match>
@@ -150,21 +150,21 @@
     <if_sid>530</if_sid>
     <match>ossec: output: 'df -P': /dev/</match>
     <regex>100%</regex>
-    <description>Partition usage reached 100% (disk space monitor).</description> 
+    <description>Partition usage reached 100% (disk space monitor).</description>
     <group>low_diskspace,pci_dss_10.6.1,</group>
   </rule>
 
  <rule id="532" level="0">
     <if_sid>531</if_sid>
     <match>cdrom|/media|usb|/mount|floppy|dvd</match>
-    <description>Ignoring external medias.</description> 
+    <description>Ignoring external medias.</description>
   </rule>
 
   <rule id="533" level="7">
     <if_sid>530</if_sid>
     <match>ossec: output: 'netstat -tan</match>
     <check_diff />
-    <description>Listened ports status (netstat) changed (new port opened or closed).</description> 
+    <description>Listened ports status (netstat) changed (new port opened or closed).</description>
     <group>pci_dss_10.2.7,pci_dss_10.6.1,</group>
   </rule>
 
@@ -173,7 +173,7 @@
     <match>ossec: output: 'w'</match>
     <check_diff />
     <options>no_log</options>
-    <description>List of logged in users. It will not be alerted by default.</description> 
+    <description>List of logged in users. It will not be alerted by default.</description>
   </rule>
 
   <rule id="535" level="1">
@@ -181,7 +181,7 @@
     <match>ossec: output: 'last -n </match>
     <check_diff />
     <options>no_log</options>
-    <description>List of the last logged in users.</description> 
+    <description>List of the last logged in users.</description>
   </rule>
 
   <rule id="550" level="7">
@@ -190,28 +190,28 @@
     <description>Integrity checksum changed.</description>
     <group>syscheck,pci_dss_11.5,</group>
   </rule>
-  
+
   <rule id="551" level="7">
     <category>ossec</category>
     <decoded_as>syscheck_integrity_changed_2nd</decoded_as>
     <description>Integrity checksum changed again (2nd time).</description>
     <group>syscheck,pci_dss_11.5,</group>
   </rule>
-  
+
   <rule id="552" level="7">
     <category>ossec</category>
     <decoded_as>syscheck_integrity_changed_3rd</decoded_as>
     <description>Integrity checksum changed again (3rd time).</description>
     <group>syscheck,pci_dss_11.5,</group>
   </rule>
-  
+
   <rule id="553" level="7">
     <category>ossec</category>
     <decoded_as>syscheck_deleted</decoded_as>
     <description>File deleted. Unable to retrieve checksum.</description>
     <group>syscheck,pci_dss_11.5,</group>
   </rule>
-  
+
   <rule id="554" level="0">
     <category>ossec</category>
     <decoded_as>syscheck_new_entry</decoded_as>
@@ -226,14 +226,14 @@
     <group>syscheck,agentless,pci_dss_11.5,pci_dss_10.6.1,</group>
   </rule>
 
-  <!-- Hostinfo rules -->  
+  <!-- Hostinfo rules -->
   <rule id="580" level="8">
     <category>ossec</category>
     <decoded_as>hostinfo_modified</decoded_as>
     <description>Host information changed.</description>
     <group>hostinfo,pci_dss_10.2.7,</group>
   </rule>
-  
+
   <rule id="581" level="8">
     <category>ossec</category>
     <decoded_as>hostinfo_new</decoded_as>
@@ -249,7 +249,7 @@
     <description>Log file rotated.</description>
     <group>pci_dss_10.5.2,pci_dss_10.5.5,</group>
   </rule>
-  
+
   <rule id="592" level="8">
     <if_sid>500</if_sid>
     <match>^ossec: File size reduced</match>

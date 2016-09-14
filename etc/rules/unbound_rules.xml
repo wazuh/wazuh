@@ -20,7 +20,7 @@
     <description>Unbound: Notice grouping.</description>
   </rule>
 
-  <rule id="500002" level="1">
+  <rule id="500002" level="0">
     <if_sid>500000</if_sid>
     <match> info: </match>
     <description>Unbound: Info grouping.</description>

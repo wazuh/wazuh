@@ -68,18 +68,21 @@
     <include>firewalld_rules.xml</include>
     <include>systemd_rules.xml</include>
     <include>unbound_rules.xml</include>
+    <include>puppet_rules.xml</include>
     <include>netscaler_rules.xml</include>
+    <include>serv-u_rules.xml</include>
     <include>amazon_rules.xml</include>
     <include>amazon-ec2_rules.xml</include>
     <include>amazon-iam_rules.xml</include>
-    <include>puppet_rules.xml</include>
-    <include>serv-u_rules.xml</include>
-    <include>redis_rules.xml</include>
     <include>usb_rules.xml</include>
-    <include>hp_rules.xml</include>
-    <include>ossec_ruleset_rules.xml</include>
-    <include>fortigate_rules.xml</include>
-    <include>openvpn_rules.xml</include>
+    <include>redis_rules.xml</include>
     <include>oscap_rules.xml</include>
+    <include>fortigate_rules.xml</include>
+    <include>hp_rules.xml</include>
+    <include>openvpn_rules.xml</include>
+    <include>rsa-auth-manager_rules.xml</include>
+    <include>imperva_rules.xml</include>
+    <include>sophos_rules.xml</include>
+    <include>freeipa_rules.xml</include>
     <include>local_rules.xml</include>
   </rules>
