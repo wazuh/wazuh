@@ -9,6 +9,7 @@
 
 #include "addagent/manage_agents.h"
 #include "sec.h"
+#include "wazuh_db/wdb.h"
 
 #undef ARGV0
 #define ARGV0 "syscheck_update"
@@ -115,6 +116,8 @@ int main(int argc, char **argv)
         }
 
         closedir(sys_dir);
+        wdb_delete_fim_all();
+
         printf("\n** Integrity check database updated.\n\n");
         exit(0);
     } else {
@@ -142,6 +145,8 @@ int main(int argc, char **argv)
             fclose(fp);
         }
         /* unlink(final_dir); */
+
+        wdb_delete_fim(0);
     }
 
     /* External agents */
@@ -159,6 +164,7 @@ int main(int argc, char **argv)
 
         /* Delete syscheck */
         delete_syscheck(keys.keyentries[i]->name, keys.keyentries[i]->ip->ip, 0);
+        wdb_delete_fim(atoi(keys.keyentries[i]->id));
     }
 
     printf("\n** Integrity check database updated.\n\n");

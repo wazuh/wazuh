@@ -9,6 +9,7 @@
 
 #include "addagent/manage_agents.h"
 #include "sec.h"
+#include "wazuh_db/wdb.h"
 #include <external/cJSON/cJSON.h>
 
 #undef ARGV0
@@ -211,6 +212,7 @@ int main(int argc, char **argv)
             }
 
             closedir(sys_dir);
+            wdb_delete_pm_all();
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
@@ -233,6 +235,8 @@ int main(int argc, char **argv)
                 fclose(fp);
             }
             unlink(final_dir);
+
+            wdb_delete_pm(0);
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
@@ -268,6 +272,8 @@ int main(int argc, char **argv)
             /* Delete syscheck */
             delete_rootcheck(keys.keyentries[i]->name,
                              keys.keyentries[i]->ip->ip, 0);
+
+            wdb_delete_pm(atoi(keys.keyentries[i]->id));
 
             if (json_output) {
                  cJSON_AddNumberToObject(json_root, "error", 0);
