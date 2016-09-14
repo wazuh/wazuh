@@ -45,3 +45,18 @@
   <regex>"\w+ (\S+) HTTP\S+" (\d+) </regex>
   <order>srcip, url, id</order>
 </decoder>
+
+<!--
+Created by C.L. Martinez
+Updated by Wazuh
+
+OpenBSD http daemon
+lapdev01.mydom.com 172.22.55.1 - - [12/Sep/2016:15:24:41 +0000] "GET /tt-rss/errors.php?1472571229%26mode=js HTTP/1.1" 200 0 "https://lapdev01.mydom.com/tt-rss/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.101 Safari/537.36"
+-->
+<decoder name="openbsd-httpd-accesslog">
+  <type>web-log</type>
+  <prematch>^\S+ \S+ \S+ \S+ [\S+ \S\d+] "\w+ \S+ HTTP\S+" </prematch>
+  <regex>^\S+ (\S+) \S+ \S+ [\S+ \S\d+] </regex>
+  <regex>"\w+ (\S+) HTTP\S+" (\d+) </regex>
+  <order>srcip, url, id</order>
+</decoder>

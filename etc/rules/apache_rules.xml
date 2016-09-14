@@ -133,14 +133,14 @@
     <if_sid>30101</if_sid>
     <match>mod_security: Access denied|ModSecurity: Access denied</match>
     <description>ModSecurity: Access attempt blocked.</description>
-    <group>access_denied,pci_dss_10.2.4,</group>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,</group>
   </rule>
 
   <rule id="30119" level="12" frequency="6" timeframe="120">
     <if_matched_sid>30118</if_matched_sid>
     <same_source_ip />
     <description>ModSecurity: Multiple attempts blocked.</description>
-    <group>access_denied,pci_dss_10.2.4,pci_dss_11.4,</group>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,</group>
   </rule>
 
   <rule id="30120" level="12">
@@ -153,19 +153,20 @@
   <rule id="30200" level="6" noalert="1">
     <match>^mod_security-message: </match>
     <description>Modsecurity alert.</description>
+    <group>modsecurity,</group>
   </rule>
 
   <rule id="30201" level="6">
     <if_sid>30200</if_sid>
     <match>^mod_security-message: Access denied </match>
     <description>ModSecurity: access denied.</description>
-    <group>access_denied,pci_dss_10.2.4,</group>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,</group>
   </rule>
 
   <rule id="30202" level="10" frequency="8" timeframe="120">
     <if_matched_sid>30201</if_matched_sid>
     <description>ModSecurity: Multiple attempts blocked.</description>
-    <group>access_denied,pci_dss_10.2.4,pci_dss_11.4,</group>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,</group>
   </rule>
 
   <!-- Apache 2.4 Rules -->
@@ -280,25 +281,28 @@
     <if_sid>30301</if_sid>
     <match>ModSecurity: Warning</match>
     <description>ModSecurity Warning messages grouped</description>
+    <group>modsecurity,</group>
   </rule>
 
   <rule id="30402" level="0">
     <if_sid>30301</if_sid>
     <match>ModSecurity: Access denied</match>
     <description>ModSecurity Access denied messages grouped</description>
-    <group>pci_dss_10.2.4,</group>
+    <group>modsecurity,pci_dss_10.2.4,</group>
   </rule>
 
   <rule id="30403" level="0">
     <if_sid>30301</if_sid>
     <match>ModSecurity: Audit log:</match>
     <description>ModSecurity Audit log messages grouped</description>
+    <group>modsecurity,</group>
   </rule>
 
   <rule id="30411" level="7">
     <if_sid>30402</if_sid>
     <match>with code 403</match>
     <description>ModSecurity rejected a query</description>
+    <group>modsecurity,</group>
   </rule>
 
     <!--
