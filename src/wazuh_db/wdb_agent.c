@@ -12,10 +12,10 @@
 #include "wdb.h"
 #include "defs.h"
 
-static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key) VALUES (?, ?, ?, ?);";
+static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key, date_add) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'));";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os = ?, version = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = CURRENT_TIMESTAMP WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(CURRENT_TIMESTAMP, 'localtime') WHERE id = ?;";
 static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
