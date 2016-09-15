@@ -18,8 +18,8 @@ if [ $? = 0 ]; then
 . ${PLIST};
 fi
 
-NAME="OSSEC HIDS"
-VERSION="v2.8"
+NAME="OSSEC Wazuh"
+VERSION="v1.2"
 AUTHOR="Trend Micro Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-moduled ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 USE_JSON=false

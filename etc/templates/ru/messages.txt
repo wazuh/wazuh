@@ -10,9 +10,9 @@ help="помощь"
 
 # Global
 moreinfo="Дополнительная информация: "
-starting="Запуск  OSSEC HIDS"
+starting="Запуск  OSSEC Wazuh"
 systemis="Система"
-modifiedinit="Init скрипт модифицирован чтобы програма  OSSEC HIDS запускалась при перезагрузке компьютера."
+modifiedinit="Init скрипт модифицирован чтобы програма  OSSEC Wazuh запускалась при перезагрузке компьютера."
 noboot="Система неизвестна. Никаких скриптов начала запуска не добавлено."
 
 # Part 1
@@ -28,7 +28,7 @@ localchose="Выбран локальный тип утановки"
 
 # Part 2
 settingupenv="Производится конфигурация параметров установки"
-wheretoinstall="Укажите куда установить OSSEC HIDS"
+wheretoinstall="Укажите куда установить OSSEC Wazuh"
 installat="Программа будет установлена в "
 deletedir="Указанный каталог уже существует. Удалить его?"
 
@@ -43,8 +43,8 @@ usingsmtp="Испльзуется SMTP сервер: "
 whatsmtp="Каков Ваш SMTP сервер ip/host?"
 
 # Part 3.1/agent
-serverip="Какой IP адрес у Вашего OSSEC HIDS сервера?"
-serveraddr="Какой IP адрес (Hostname) у Вашего OSSEC HIDS сервера?"
+serverip="Какой IP адрес у Вашего OSSEC Wazuh сервера?"
+serveraddr="Какой IP адрес (Hostname) у Вашего OSSEC Wazuh сервера?"
 addingip="Добавляется IP адрес сервера"
 addingname="Добавляется IP (host) адрес сервера"
 
@@ -85,8 +85,8 @@ runningmake="Исполняется Makefile"
 
 # Final
 configurationdone="Конфигурация произведена успешно"
-tostart="Запустить OSSEC HIDS"
-tostop="Завершить работу OSSEC HIDS"
+tostart="Запустить OSSEC Wazuh"
+tostop="Завершить работу OSSEC Wazuh"
 configat="Вы можете прочитать и отредактировать конфигурацию здесь"
 addserveragent="Вы должны добавить агентов прежде чем они получат права доступа"
 runma="Запустите 'manage_agents' чтобы добавить или удалить их"

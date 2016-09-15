@@ -1,5 +1,5 @@
 
-    OSSEC HIDS kullandığınız için teşekkürler.
+    OSSEC Wazuh kullandığınız için teşekkürler.
     Sorularınız, önerileriniz olursa veya her hangi bir yanlış
     bulursanız contact@ossec.net adresi ile veya kamuya açık
     e-posta listemiz ile ossec-list@ossec.net adresinden iletişime 

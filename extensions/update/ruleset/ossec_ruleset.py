@@ -169,16 +169,19 @@ def exit(code, msg=None):
 def get_ossec_version():
     try:
         ossec_v = "old"
+        is_wazuh = False
         init_file = "{0}/etc/ossec-init.conf".format(ossec_path)
 
         f_ossec = open(init_file)
         for line in f_ossec.readlines():
-            if "WAZUH_VERSION" in line:
+            if "OSSEC Wazuh" in line:
+                is_wazuh = True
+            elif "VERSION" in line:
                 ossec_v = line.strip("\n").split("=")[1]
                 break
         f_ossec.close()
 
-        return ossec_v
+        return ossec_v if is_wazuh else "old"
     except:
         exit(2, "Reading '{0}'.".format(init_file))
 

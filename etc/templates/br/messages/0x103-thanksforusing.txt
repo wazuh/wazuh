@@ -1,5 +1,5 @@
 
-    Obrigado por usar o OSSEC HIDS.
+    Obrigado por usar o OSSEC Wazuh.
     Se você tiver alguma pergunta, sugestão ou encontrar algum 
     "bug", nos contate através do e-mail contact@ossec.net ou
     utilize nossa lista de e-mail: 

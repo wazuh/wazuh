@@ -20,7 +20,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: Manages the integrity checking database.\n",
+    printf("\nOSSEC Wazuh %s: Manages the integrity checking database.\n",
            ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
@@ -177,7 +177,7 @@ int main(int argc, char **argv)
         } else if (csv_output)
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         else {
-            printf("\nOSSEC HIDS %s. List of available agents:", ARGV0);
+            printf("\nOSSEC Wazuh %s. List of available agents:", ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, "
                    "Active/Local\n", shost);
         }

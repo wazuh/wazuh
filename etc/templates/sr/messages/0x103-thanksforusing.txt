@@ -1,4 +1,4 @@
-    Hvala što koristiš OSSEC HIDS.
+    Hvala što koristiš OSSEC Wazuh.
     Ako imaš bilo kakvo pitanje, predlog ili ako nađeš neki bag,
     kontaktiraj nas na contact@ossec.net ili koristeći našu javnu maillistu na
     ossec-list@ossec.net

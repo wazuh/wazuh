@@ -1,4 +1,4 @@
 
- Vous êtes sur le point d'installer OSSEC HIDS.
+ Vous êtes sur le point d'installer OSSEC Wazuh.
  Vous devez avoir une compilateur C préinstallé sur votre système.
 
