@@ -21,7 +21,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: Verify agent.conf syntax for errors.\n", ARGV0);
+    printf("\nOSSEC Wazuh %s: Verify agent.conf syntax for errors.\n", ARGV0);
     printf("Usage:  %s [-f <agent.conf file>]\n\n", ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
@@ -81,4 +81,3 @@ int main(int argc, char **argv)
 
     return (0);
 }
-

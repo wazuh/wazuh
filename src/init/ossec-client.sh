@@ -9,8 +9,8 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 ###  Do not modify bellow here ###
-NAME="OSSEC HIDS"
-VERSION="v2.8"
+NAME="OSSEC Wazuh"
+VERSION="v1.2"
 AUTHOR="Trend Micro Inc."
 DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd wazuh-moduled"
 

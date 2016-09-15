@@ -1,5 +1,5 @@
 
-    Köszönjük, hogy az OSSEC HIDS programot használja!
+    Köszönjük, hogy az OSSEC Wazuh programot használja!
     Ha egyéb kérdése, javaslata van, illetve valamilyen bugot talált
     a programban, lépjen velünk kapcsolatba a contact@ossec.net,
     vagy a nyilvános levelezőlistánkat használva az

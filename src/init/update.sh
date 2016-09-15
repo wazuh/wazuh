@@ -76,7 +76,7 @@ getPreinstalledDir()
 getPreinstalledVersion()
 {
     . ${OSSEC_INIT}
-    echo $WAZUH_VERSION
+    echo $VERSION
 }
 
 UpdateStartOSSEC()

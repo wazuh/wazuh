@@ -1,5 +1,5 @@
 
- - Nie została podjęta żadna akcja aby skonfigurować OSSEC HIDS
+ - Nie została podjęta żadna akcja aby skonfigurować OSSEC Wazuh
    do startowania podczas bootowania.
    Dodaj następującą linię do skryptu init: 
 

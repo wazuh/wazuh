@@ -1,4 +1,4 @@
 
- Rozpoczynasz proces instalacji programu  OSSEC HIDS.
+ Rozpoczynasz proces instalacji programu  OSSEC Wazuh.
  Aby kontynuować musisz mieć zainstalowany kompilator C.
 

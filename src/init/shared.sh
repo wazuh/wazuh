@@ -5,8 +5,6 @@
 ### Setting up variables
 VERSION_FILE="./src/VERSION"
 VERSION=`cat ${VERSION_FILE}`
-WVERSION_FILE="./src/WAZUH_VERSION"
-WVERSION=`cat ${WVERSION_FILE}`
 LOCATION="./src/LOCATION"
 UNAME=`uname -snr`
 NUNAME=`uname`
@@ -27,7 +25,7 @@ HOST=`hostname`
 NAMESERVERS=`cat /etc/resolv.conf | grep "^nameserver" | cut -d " " -sf 2`
 NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
 HOST_CMD=`which host`
-NAME="OSSEC HIDS"
+NAME="OSSEC Wazuh"
 INSTYPE="server"
 DEFAULT_DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 INSTALLDIR="$DEFAULT_DIR";
@@ -63,4 +61,3 @@ OSSECMX3="devmail.ossec.net mail is handled by 10 ossec.mooo.COM."
 
 ## Predefined file
 PREDEF_FILE="./etc/preloaded-vars.conf"
-

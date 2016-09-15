@@ -10,9 +10,9 @@ help="pomoć"
 
 # Global
 moreinfo="Vise informacija na: "
-starting="Zapocinje OSSEC HIDS"
+starting="Zapocinje OSSEC Wazuh"
 systemis="Sistem je"
-modifiedinit="Init skript je modifikovan da započne OSSEC HIDS za vreme startovanja ."
+modifiedinit="Init skript je modifikovan da započne OSSEC Wazuh za vreme startovanja ."
 noboot="Nepoznat sistem. Init skript nije dodat."
 
 # Part 1
@@ -28,7 +28,7 @@ localchose="Izabrana lokalna instalacija"
 
 # Part 2
 settingupenv="Postavljanje instalacionog okruženja"
-wheretoinstall="Izaberi gde želiš da instaliraš OSSEC HIDS"
+wheretoinstall="Izaberi gde želiš da instaliraš OSSEC Wazuh"
 installat="Instalacija će biti izvršena na "
 deletedir="Instalacioni direktorij već postoji. Da li da ga obrišem?"
 
@@ -43,8 +43,8 @@ usingsmtp="Koristi SMTP server: "
 whatsmtp="Koji je tvoj SMTP server IP/host?"
 
 # Part 3.1/agent
-serverip="Koja je IP adresa OSSEC HIDS servera?"
-serveraddr="Koja je IP adresa/host OSSEC HIDS servera?"
+serverip="Koja je IP adresa OSSEC Wazuh servera?"
+serveraddr="Koja je IP adresa/host OSSEC Wazuh servera?"
 addingip="Dodaje serverov IP"
 addingname="Dodaje serverov hostname"
 
@@ -85,8 +85,8 @@ runningmake="Vrši Makefile"
 
 # Final
 configurationdone="Konfiguracija je dobro završena"
-tostart="Da se započne OSSEC HIDS"
-tostop="Da se zaustavi OSSEC HIDS"
+tostart="Da se započne OSSEC Wazuh"
+tostop="Da se zaustavi OSSEC Wazuh"
 configat="Konfiguracija se može videti ili modifikovati na"
 addserveragent="Da bi se agent povezao sa serverom, treba da dodaš svakog od tvojih agenata
 serveru."

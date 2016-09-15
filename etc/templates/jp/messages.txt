@@ -11,10 +11,10 @@ help="help"
 
 # Global
 moreinfo="詳細な情報は以下にあります: "
-starting="OSSEC HIDS を起動します"
+starting="OSSEC Wazuh を起動します"
 systemis="システムは"
-modifiedinit="Init script modified to start OSSEC HIDS during boot."
-modifiedinit="初期スクリプトはブート中に OSSEC HIDS を起動するよう修正しました．"
+modifiedinit="Init script modified to start OSSEC Wazuh during boot."
+modifiedinit="初期スクリプトはブート中に OSSEC Wazuh を起動するよう修正しました．"
 noboot="不明なシステムです．初期スクリプトは追加されません．"
 
 # Part 1
@@ -30,8 +30,8 @@ localchose="Local インストールを選択しました"
 
 # Part 2
 settingupenv="インストール環境を設定しています"
-wheretoinstall="Choose where to install the OSSEC HIDS"
-wheretoinstall="OSSEC HIDS のインストール先を選択してください"
+wheretoinstall="Choose where to install the OSSEC Wazuh"
+wheretoinstall="OSSEC Wazuh のインストール先を選択してください"
 installat="インストール先を以下に作成します "
 deletedir="インストール先のディレクトリが既に存在します．削除してよろしいですか?"
 
@@ -46,8 +46,8 @@ usingsmtp="この SMTP サーバを使用します: "
 whatsmtp="使用する SMTP サーバの ip/host は何ですか?"
 
 # Part 3.1/agent
-serverip="OSSEC HIDS サーバの IP アドレスは何ですか?"
-serveraddr="OSSEC HIDS サーバの IP/hostname アドレスは何ですか?"
+serverip="OSSEC Wazuh サーバの IP アドレスは何ですか?"
+serveraddr="OSSEC Wazuh サーバの IP/hostname アドレスは何ですか?"
 addingip="サーバの IP を加えています"
 addingname="サーバの hostname を加えています"
 
@@ -91,8 +91,8 @@ runningmake="Makefile を実行します"
 
 # Final
 configurationdone="設定が完全に終了しました"
-tostart="OSSEC HIDS を開始させます"
-tostop="OSSEC HIDS を停止させます"
+tostart="OSSEC Wazuh を開始させます"
+tostop="OSSEC Wazuh を停止させます"
 configat="以下のファイルで設定についての確認と変更ができます"
 addserveragent="エージェントを追加する前にアクセスするための認証が必要になります．"
 runma="エージェントを追加するか削除する際は 'manage_agents' を実行してください"
