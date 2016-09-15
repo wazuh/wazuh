@@ -23,7 +23,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     Apr 12 10:50:32 centos oscap: Evaluation started. Content: /usr/share/xml/scap/ssg/content/ssg-centos7-ds.xml, Profile: xccdf_org.ssgproject.content_profile_standard.
     -->
-    <rule id="81401" level="1">
+    <rule id="81401" level="0">
         <if_sid>81400</if_sid>
         <match>Evaluation started</match>
         <description>OpenSCAP: Evaluation started.</description>
@@ -33,7 +33,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     Apr 12 10:50:42 centos oscap: Evaluation finished. Return code: 0, Base score 100.000000.
     -->
-    <rule id="81402" level="1">
+    <rule id="81402" level="0">
         <if_sid>81400</if_sid>
         <match>Evaluation finished</match>
         <description>OpenSCAP: Evaluation finished.</description>
@@ -43,7 +43,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     Apr 12 10:50:42 centos oscap: Evaluation finished. Return code: 2, Base score 100.000000.
     -->
-    <rule id="81403" level="1">
+    <rule id="81403" level="0">
         <if_sid>81402</if_sid>
         <field name="return_code">2</field>
         <description>OpenSCAP: Evaluation finished with some failures.</description>
@@ -91,7 +91,7 @@ Wodle OpenSCAP: 81500 - 81600
     -->
     <rule id="81504" level="7">
         <if_sid>81501</if_sid>
-        <match>: File "</match> <!-- !!!!!!!!! -->
+        <match>: File "</match>
         <description>OpenSCAP ERROR: Wrong configuration - Inexistent policy.</description>
         <group>errors,</group>
     </rule>
@@ -144,7 +144,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
-    <rule id="81520" level="1">
+    <rule id="81520" level="0">
         <if_sid>81400</if_sid>
         <match>msg: "xccdf-result"</match>
         <description>OpenSCAP XCCDF messages grouped.</description>
@@ -155,7 +155,7 @@ Wodle OpenSCAP: 81500 - 81600
     oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "pass", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
 
-    <rule id="81521" level="1">
+    <rule id="81521" level="0">
         <if_sid>81520</if_sid>
         <field name="result">pass</field>
         <description>OpenSCAP: $(title) (passed)</description>
@@ -165,7 +165,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "notchecked", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
-    <rule id="81522" level="1">
+    <rule id="81522" level="0">
         <if_sid>81520</if_sid>
         <field name="result">notchecked</field>
         <description>OpenSCAP: $(title) (not checked)</description>
@@ -175,7 +175,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "notapplicable", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
-    <rule id="81523" level="1">
+    <rule id="81523" level="0">
         <if_sid>81520</if_sid>
         <field name="result">notapplicable</field>
         <description>OpenSCAP: $(title) (not applied)</description>
@@ -185,7 +185,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "fixed", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
-    <rule id="81524" level="2">
+    <rule id="81524" level="0">
         <if_sid>81520</if_sid>
         <field name="result">fixed</field>
         <description>OpenSCAP: $(title) (fixed)</description>
@@ -205,7 +205,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "error", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
-    <rule id="81526" level="2">
+    <rule id="81526" level="3">
         <if_sid>81520</if_sid>
         <field name="result">error</field>
         <description>OpenSCAP: $(title) (error)</description>
@@ -215,7 +215,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "unknown", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
-    <rule id="81527" level="1">
+    <rule id="81527" level="3">
         <if_sid>81520</if_sid>
         <field name="result">unknown</field>
         <description>OpenSCAP: $(title) (unknown)</description>
@@ -225,7 +225,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
-    <rule id="81528" level="1">
+    <rule id="81528" level="0">
         <if_sid>81520</if_sid>
         <field name="result">notselected</field>
         <description>OpenSCAP: $(title) (not selected)</description>
@@ -245,14 +245,14 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <rule id="81530" level="7">
-        <if_sid>81520</if_sid>
+        <if_sid>81529</if_sid>
         <field name="severity">medium</field>
         <description>OpenSCAP: $(title) (not passed)</description>
         <group>rule-result,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81531" level="9">
-        <if_sid>81520</if_sid>
+        <if_sid>81529</if_sid>
         <field name="severity">high</field>
         <description>OpenSCAP: $(title) (not passed)</description>
         <group>rule-result,pci_dss_2.2,</group>
@@ -266,21 +266,21 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     oscap: msg: "xccdf-overview", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", score: "62.500000".
     -->
-    <rule id="81540" level="1">
+    <rule id="81540" level="3">
         <if_sid>81400</if_sid>
         <match>msg: "xccdf-overview"</match>
         <description>OpenSCAP Report overview.</description>
         <group>report-overview,pci_dss_2.2,</group>
     </rule>
 
-    <rule id="81541" level="2">
+    <rule id="81541" level="4">
         <if_sid>81540</if_sid>
         <field name="score">8\d.</field>
         <description>OpenSCAP Report overview: Score less than 90</description>
         <group>report-overview,pci_dss_2.2,</group>
     </rule>
 
-    <rule id="81542" level="4">
+    <rule id="81542" level="5">
         <if_sid>81540</if_sid>
         <field name="score">7\d.|6\d.|5\d.</field>
         <description>OpenSCAP Report overview: Score less than 80</description>
@@ -318,7 +318,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!--
     oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "error", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
     -->
-    <rule id="81551" level="7">
+    <rule id="81551" level="3">
         <if_sid>81550</if_sid>
         <field name="result">error</field>
         <description>OpenSCAP: $(title) (error)</description>

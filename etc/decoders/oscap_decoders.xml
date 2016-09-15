@@ -29,7 +29,7 @@ oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchm
 <decoder name="oscap-wodle-xccdf-result">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "xccdf-result", </prematch>
-  <regex offset="after_prematch">^title: "(\.+)", benchmark: "(\S+)", profile: "(\S+)", severity: "(\S+)", result: "(\S+)", id: "(\S+)", oval: "(\S*)", reference: "(\S*)".$</regex>
+  <regex offset="after_prematch">^title: "(\.*)", benchmark: "(\.*)", profile: "(\.*)", severity: "(\.*)", result: "(\.*)", id: "(\.*)", oval: "(\.*)", reference: "(\.*)".$</regex>
   <order>title, benchmark, profile, severity, result, id, oval, reference</order>
 </decoder>
 
@@ -40,7 +40,7 @@ oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configurat
 <decoder name="oscap-wodle-oval-result">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "oval-result", </prematch>
-  <regex offset="after_prematch">^id: "(\S+)", title: "(\.+)", class: "(\S+)", result: "(\S+)", reference: "(\S*)".$</regex>
+  <regex offset="after_prematch">^id: "(\.*)", title: "(\.*)", class: "(\.*)", result: "(\.*)", reference: "(\.*)".$</regex>
   <order>id, title, class, result, reference</order>
 </decoder>
 
@@ -52,7 +52,7 @@ oscap: msg: "xccdf-overview", benchmark: "xccdf_org.ssgproject.content_benchmark
 <decoder name="oscap-wodle-xccdf-overview">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "xccdf-overview", </prematch>
-  <regex offset="after_prematch">^benchmark: "(\S+)", profile: "(\S+)", score: "(\S+)".$</regex>
+  <regex offset="after_prematch">^benchmark: "(\.*)", profile: "(\.*)", score: "(\.*)".$</regex>
   <order>benchmark, profile, score</order>
 </decoder>
 
@@ -62,7 +62,7 @@ Apr 12 10:50:32 centos oscap: Evaluation started. Content: /usr/share/xml/scap/s
 <decoder name="oscap-eval-start">
     <parent>oscap</parent>
     <prematch offset="after_parent">^Evaluation started. </prematch>
-    <regex offset="after_prematch">^Content: (\.+), Profile: (\S+).$</regex>
+    <regex offset="after_prematch">^Content: (\S+), Profile: (\S+).$</regex>
     <order>policy, profile</order>
 </decoder>
 
