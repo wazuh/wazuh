@@ -148,7 +148,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81400</if_sid>
         <match>msg: "xccdf-result"</match>
         <description>OpenSCAP XCCDF messages grouped.</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -159,7 +159,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81520</if_sid>
         <field name="result">pass</field>
         <description>OpenSCAP: $(title) (passed)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -169,7 +169,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81520</if_sid>
         <field name="result">notchecked</field>
         <description>OpenSCAP: $(title) (not checked)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -179,7 +179,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81520</if_sid>
         <field name="result">notapplicable</field>
         <description>OpenSCAP: $(title) (not applied)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -189,7 +189,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81520</if_sid>
         <field name="result">fixed</field>
         <description>OpenSCAP: $(title) (fixed)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -199,7 +199,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81520</if_sid>
         <field name="result">informational</field>
         <description>OpenSCAP: $(title) (informational)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -209,7 +209,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81520</if_sid>
         <field name="result">error</field>
         <description>OpenSCAP: $(title) (error)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -219,7 +219,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81520</if_sid>
         <field name="result">unknown</field>
         <description>OpenSCAP: $(title) (unknown)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -229,7 +229,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81520</if_sid>
         <field name="result">notselected</field>
         <description>OpenSCAP: $(title) (not selected)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -241,21 +241,21 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81520</if_sid>
         <field name="result">fail</field>
         <description>OpenSCAP: $(title) (not passed)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81530" level="7">
         <if_sid>81529</if_sid>
         <field name="severity">medium</field>
         <description>OpenSCAP: $(title) (not passed)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81531" level="9">
         <if_sid>81529</if_sid>
         <field name="severity">high</field>
         <description>OpenSCAP: $(title) (not passed)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!-- -->
@@ -270,35 +270,35 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81400</if_sid>
         <match>msg: "xccdf-overview"</match>
         <description>OpenSCAP Report overview.</description>
-        <group>report-overview,pci_dss_2.2,</group>
+        <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81541" level="4">
         <if_sid>81540</if_sid>
         <field name="score">8\d.</field>
         <description>OpenSCAP Report overview: Score less than 90</description>
-        <group>report-overview,pci_dss_2.2,</group>
+        <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81542" level="5">
         <if_sid>81540</if_sid>
         <field name="score">7\d.|6\d.|5\d.</field>
         <description>OpenSCAP Report overview: Score less than 80</description>
-        <group>report-overview,pci_dss_2.2,</group>
+        <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81543" level="7">
         <if_sid>81540</if_sid>
         <field name="score">4\d.|3\d.\d+</field>
         <description>OpenSCAP Report overview: Score less than 50</description>
-        <group>report-overview,pci_dss_2.2,</group>
+        <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81544" level="9">
         <if_sid>81540</if_sid>
         <field name="score">2\d.|1\d.|^\d.</field>
         <description>OpenSCAP Report overview: Score less than 30</description>
-        <group>report-overview,pci_dss_2.2,</group>
+        <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
     <!--  -->
@@ -312,7 +312,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81400</if_sid>
         <match>msg: "oval-result"</match>
         <description>OpenSCAP: $(title)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -322,7 +322,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81550</if_sid>
         <field name="result">error</field>
         <description>OpenSCAP: $(title) (error)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -332,7 +332,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81550</if_sid>
         <field name="class">compliance</field>
         <description>OpenSCAP: $(title)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -342,7 +342,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81552</if_sid>
         <field name="result">false</field>
         <description>OpenSCAP: $(title) (not passed)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -352,7 +352,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81550</if_sid>
         <field name="class">patch</field>
         <description>OpenSCAP: $(title)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -362,7 +362,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81554</if_sid>
         <field name="result">false</field>
         <description>OpenSCAP: $(title) (not passed)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -372,7 +372,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81550</if_sid>
         <field name="class">vulnerability</field>
         <description>OpenSCAP: $(title)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -382,7 +382,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81556</if_sid>
         <field name="result">true</field>
         <description>OpenSCAP: $(title) (not passed)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -392,7 +392,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81550</if_sid>
         <field name="class">inventory</field>
         <description>OpenSCAP: $(title)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
@@ -402,7 +402,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81550</if_sid>
         <field name="class">miscellaneous</field>
         <description>OpenSCAP: $(title)</description>
-        <group>rule-result,pci_dss_2.2,</group>
+        <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
 </group>
