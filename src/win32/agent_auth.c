@@ -25,7 +25,6 @@ void report_help()
     printf("\t-m <manager ip>     Manager IP Address.\n");
     printf("\t-p <port>           Manager port (default 1515).\n");
     printf("\t-A <agent name>     Agent name (default is the hostname).\n");
-    printf("\t-D <OSSEC Dir>      Location where OSSEC is installed.\n");
     printf("\t-P <pass>           Authorization password.\n");
     exit(1);
 }
