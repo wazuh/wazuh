@@ -51,6 +51,13 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
     }
 
+    if( lf->decoder_info->name ) {
+        cJSON_AddStringToObject(root, "decoder", lf->decoder_info->name);
+    }
+
+    if( lf->decoder_info->parent ) {
+        cJSON_AddStringToObject(root, "decoder_parent", lf->decoder_info->parent);
+    }
 
     if(lf->protocol) {
         cJSON_AddStringToObject(root, "protocol", lf->protocol);
@@ -258,6 +265,14 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
 
     if(lf->protocol)
         cJSON_AddStringToObject(root, "protocol", lf->protocol);
+
+    if( lf->decoder_info->name ) {
+        cJSON_AddStringToObject(root, "decoder", lf->decoder_info->name);
+    }
+
+    if( lf->decoder_info->parent ) {
+        cJSON_AddStringToObject(root, "decoder_parent", lf->decoder_info->parent);
+    }
 
     if(lf->action)
         cJSON_AddStringToObject(root, "action", lf->action);
