@@ -47,7 +47,7 @@
 /* Some global names */
 #define __ossec_name    "OSSEC Wazuh"
 #define __version       "v1.2"
-#define __author        "Trend Micro Inc."
+#define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
 #define __license       "\

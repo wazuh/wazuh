@@ -20,7 +20,7 @@ fi
 
 NAME="OSSEC Wazuh"
 VERSION="v1.2"
-AUTHOR="Trend Micro Inc."
+AUTHOR="Wazuh Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-moduled ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 
 ## Locking for the start/stop
@@ -184,7 +184,7 @@ start()
 {
     SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} wazuh-moduled ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
 
-    echo "Starting $NAME $VERSION (by $AUTHOR)..."
+    echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
         echo "ossec-analysisd: Configuration error. Exiting."

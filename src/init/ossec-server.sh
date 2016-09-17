@@ -20,7 +20,7 @@ fi
 
 NAME="OSSEC Wazuh"
 VERSION="v1.2"
-AUTHOR="Trend Micro Inc."
+AUTHOR="Wazuh Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-moduled ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 USE_JSON=false
 
@@ -219,7 +219,7 @@ start()
     SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} wazuh-moduled ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
 
     if [ $USE_JSON = false ]; then
-        echo "Starting $NAME $VERSION (by $AUTHOR)..."
+        echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     fi
     ${DIR}/bin/ossec-logtest -t > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
