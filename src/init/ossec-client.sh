@@ -11,7 +11,7 @@ DIR=`dirname $PWD`;
 ###  Do not modify bellow here ###
 NAME="OSSEC Wazuh"
 VERSION="v1.2"
-AUTHOR="Trend Micro Inc."
+AUTHOR="Wazuh Inc."
 DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd wazuh-moduled"
 
 [ -f /etc/ossec-init.conf ] && . /etc/ossec-init.conf
@@ -119,7 +119,7 @@ start()
 {
     SDAEMONS="ossec-execd wazuh-moduled ossec-agentd ossec-logcollector ossec-syscheckd"
 
-    echo "Starting $NAME $VERSION (by $AUTHOR)..."
+    echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     lock;
     checkpid;
 
