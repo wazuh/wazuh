@@ -176,6 +176,22 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if (lf->diff) {
             cJSON_AddStringToObject(file_diff, "diff", lf->diff);
         }
+
+        switch (lf->event_type) {
+        case FIM_ADDED:
+            cJSON_AddStringToObject(file_diff, "event", "added");
+            break;
+        case FIM_MODIFIED:
+            cJSON_AddStringToObject(file_diff, "event", "modified");
+            break;
+        case FIM_READDED:
+            cJSON_AddStringToObject(file_diff, "event", "readded");
+            break;
+        case FIM_DELETED:
+            cJSON_AddStringToObject(file_diff, "event", "deleted");
+            break;
+        default: ;
+        }
     }
 
     if(lf->program_name)
@@ -376,6 +392,22 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
         }
         if (lf->diff) {
             cJSON_AddStringToObject(file_diff, "diff", lf->diff);
+        }
+
+        switch (lf->event_type) {
+        case FIM_ADDED:
+            cJSON_AddStringToObject(file_diff, "event", "added");
+            break;
+        case FIM_MODIFIED:
+            cJSON_AddStringToObject(file_diff, "event", "modified");
+            break;
+        case FIM_READDED:
+            cJSON_AddStringToObject(file_diff, "event", "readded");
+            break;
+        case FIM_DELETED:
+            cJSON_AddStringToObject(file_diff, "event", "deleted");
+            break;
+        default: ;
         }
     }
 
