@@ -13,6 +13,8 @@
 #include "rules.h"
 #include "decoders/decoder.h"
 
+typedef enum syscheck_event_t { FIM_ADDED, FIM_MODIFIED, FIM_READDED, FIM_DELETED } syscheck_event_t;
+
 /* Event Information structure */
 typedef struct _Eventinfo {
     /* Extracted from the event */
@@ -66,6 +68,7 @@ typedef struct _Eventinfo {
     char mon[4];
 
     /* SYSCHECK Results variables */
+    syscheck_event_t event_type;
     char *filename;
     int perm_before;
     int perm_after;
