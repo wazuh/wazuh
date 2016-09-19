@@ -32,15 +32,15 @@
         },
         "AgentID": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "dstuser": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "AlertsFile": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "full_log": {
           "type": "text"
@@ -104,11 +104,11 @@
         },
         "host": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "AgentName": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "SyscheckFile": {
           "properties": {
@@ -198,23 +198,11 @@
               "type": "long",
               "doc_values": "true"
             },
-            "perm_before": {
-              "type": "keyword",
-              "doc_values": "true"
-            },
-            "perm_after": {
-              "type": "keyword",
-              "doc_values": "true"
-            },
-            "owner_before": {
-              "type": "keyword",
-              "doc_values": "true"
-            },
-            "owner_after": {
-              "type": "keyword",
-              "doc_values": "true"
-          },
             "diff": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "event": {
               "type": "keyword",
               "doc_values": "true"
             }
@@ -222,7 +210,7 @@
         },
         "location": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "message": {
           "type": "text"
@@ -300,116 +288,112 @@
         },
         "srcip": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "protocol": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "action": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "dstip": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "dstport": {
           "type": "keyword",
-           "doc_values": "true"
-        },
-        "dstuser": {
-          "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "srcuser": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "program_name": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "id": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "status": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "command": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "url": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "data": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "systemname": {
           "type": "keyword",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "type": {
           "type": "text"
         },
         "score": {
           "type": "double",
-           "doc_values": "true"
+          "doc_values": "true"
         },
         "max_score": {
           "type": "double",
           "doc_values": "true"
         },
-		"scan_id": {
+        "scan_id": {
           "type": "keyword",
           "doc_values": "true"
         },
-		"policy": {
+        "policy": {
           "type": "keyword",
           "doc_values": "true"
         },
-		"profile": {
+        "profile": {
           "type": "keyword",
           "doc_values": "true"
         },
-		"severity_high": {
+        "severity_high": {
           "type": "long",
           "doc_values": "true"
         },
-		"severity_medium": {
+        "severity_medium": {
           "type": "long",
           "doc_values": "true"
         },
-		"severity_low": {
+        "severity_low": {
           "type": "long",
           "doc_values": "true"
         },
-		"return_code": {
-         "type": "long",
-         "doc_values": "true"
+        "return_code": {
+          "type": "long",
+          "doc_values": "true"
         },
-		"oscap_rule_id": {
+        "oscap_rule_id": {
           "type": "keyword",
           "doc_values": "true"
         },
-		"result": {
+        "result": {
           "type": "keyword",
           "doc_values": "true"
         },
-		"ident": {
+        "ident": {
           "type": "keyword",
           "doc_values": "true"
         },
-		"severity": {
+        "severity": {
           "type": "keyword",
           "doc_values": "true"
         },
-		"title": {
+        "title": {
           "type": "keyword",
           "doc_values": "true"
         }
