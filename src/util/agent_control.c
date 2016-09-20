@@ -437,6 +437,9 @@ int main(int argc, char **argv)
 
     /* Restart syscheck everywhere */
     if (restart_all_agents && restart_syscheck) {
+        /* Restart agent 000 */
+        os_set_restart_syscheck();
+
         /* Connect to remoted */
         debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
         arq = connect_to_remoted();
