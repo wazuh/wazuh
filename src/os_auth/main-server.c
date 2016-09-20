@@ -37,6 +37,7 @@ int main()
 #include <pthread.h>
 #include <sys/wait.h>
 #include "auth.h"
+#include "check_cert.h"
 #include "os_crypto/md5/md5_op.h"
 
 /* Prototypes */
@@ -60,6 +61,8 @@ static void handler(int signum);
 
 /* Shared variables */
 char *authpass = NULL;
+const char *ca_cert = NULL;
+int validate_host = 0;
 int use_ip_address = 0;
 SSL_CTX *ctx;
 int force_antiquity = -1;
@@ -86,7 +89,7 @@ pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 static void help_authd()
 {
     print_header();
-    print_out("  %s: -[Vhdti] [-f sec] [-g group] [-D dir] [-p port] [-P] [-v path] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[Vhdti] [-f sec] [-g group] [-D dir] [-p port] [-P] [-v path [-s]] [-x path] [-k path]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -100,6 +103,7 @@ static void help_authd()
     print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
     print_out("    -P          Enable shared password authentication (at %s or random).", AUTHDPASS_PATH);
     print_out("    -v <path>   Full path to CA certificate used to verify clients");
+    print_out("    -s          Used with -v, enable source host verification");
     print_out("    -x <path>   Full path to server certificate (default: %s%s)", DEFAULTDIR, CERTFILE);
     print_out("    -k <path>   Full path to server key (default: %s%s)", DEFAULTDIR, KEYFILE);
     print_out(" ");
@@ -180,7 +184,6 @@ int main(int argc, char **argv)
     const char *group = GROUPGLOBAL;
     const char *server_cert = NULL;
     const char *server_key = NULL;
-    const char *ca_cert = NULL;
     char buf[4096 + 1];
     struct sockaddr_in _nc;
     socklen_t _ncl;
@@ -193,7 +196,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:Pf:")) != -1) {
+    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:sx:k:Pf:")) != -1) {
         char *end;
 
         switch (c) {
@@ -241,6 +244,9 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -%c needs an argument", ARGV0, c);
                 }
                 ca_cert = optarg;
+                break;
+            case 's':
+                validate_host = 1;
                 break;
             case 'x':
                 if (!optarg) {
@@ -492,6 +498,18 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
 
         verbose("%s: INFO: New connection from %s", ARGV0, srcip);
+
+        /* Additional verification of the agent's certificate. */
+
+        if (validate_host && ca_cert) {
+            if (check_x509_cert(ssl, srcip) != VERIFY_TRUE) {
+                merror("%s: DEBUG: Unable to verify server certificate.", ARGV0);
+                SSL_free(ssl);
+                close(client.socket);
+                continue;
+            }
+        }
+
         buf[0] = '\0';
         ret = SSL_read(ssl, buf, sizeof(buf));
 
