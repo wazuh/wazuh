@@ -111,10 +111,10 @@ Install()
     # If update, stop ossec
     if [ "X${update_only}" = "Xyes" ]; then
         UpdateStopOSSEC
+        # Move old decoders (ossec_decodes and wazuh_decoders) to etc/decoders
+        UpdateLegacyDecoders
     fi
 
-    # Move old decoders (ossec_decodes and wazuh_decoders) to etc/decoders
-    UpdateLegacyDecoders
 
     ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install
 

@@ -152,9 +152,9 @@ UpdateLegacyDecoders()
     sed -i 's#\s*<decoder_dir>etc/wazuh_decoders</decoder_dir>##' "$OSSEC_CONF_FILE"
 
     # Create directory
-    mkdir "$DIRECTORY/etc/decoders"
-    chmod 550 "$DIRECTORY/etc/decoders"
-    chown root:ossec "$DIRECTORY/etc/decoders"
+    mkdir "$DIRECTORY/etc/decoders" > /dev/null 2>&1
+    chmod 550 "$DIRECTORY/etc/decoders" > /dev/null 2>&1
+    chown root:ossec "$DIRECTORY/etc/decoders" > /dev/null 2>&1
 
     # Moving decoders
     old_decoders="ossec_decoders wazuh_decoders"
