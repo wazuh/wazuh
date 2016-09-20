@@ -100,8 +100,8 @@ static void help_authd()
     print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
     print_out("    -P          Enable shared password authentication (at %s or random).", AUTHDPASS_PATH);
     print_out("    -v <path>   Full path to CA certificate used to verify clients");
-    print_out("    -x <path>   Full path to server certificate");
-    print_out("    -k <path>   Full path to server key");
+    print_out("    -x <path>   Full path to server certificate (default: %s%s)", DEFAULTDIR, CERTFILE);
+    print_out("    -k <path>   Full path to server key (default: %s%s)", DEFAULTDIR, KEYFILE);
     print_out(" ");
     exit(1);
 }
