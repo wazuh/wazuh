@@ -341,7 +341,7 @@ int main(int argc, char **argv)
             verbose("Accepting connections. Random password chosen for agent authentication: %s", authpass);
         }
     } else
-        verbose("Accepting insecure connections. No password required.");
+        verbose("Accepting connections. No password required.");
 
     /* Getting SSL cert. */
 
