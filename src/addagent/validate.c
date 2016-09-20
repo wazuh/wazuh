@@ -18,6 +18,9 @@
     #define link(x,y) 0
     #define difftime(x,y) 0
     #define mkstemp(x) 0
+#else
+    #define str_startwith(x, y) strncmp(x, y, strlen(y))
+    #define str_endwith(x, y) (strlen(x) < strlen(y) || strcmp(x + strlen(x) - strlen(y), y))
 #endif
 
 /* Global variables */
@@ -807,4 +810,27 @@ void FormatID(char *id) {
         if (!*end)
             sprintf(id, "%03d", number);
     }
+}
+
+/*
+ * Check whether ossec-authd is running (returns 1) or not (returns 0).
+ * Returns -1 on error.
+ */
+int check_authd() {
+    DIR *dir;
+    struct dirent *entry;
+    int found = 0;
+
+    if (!(dir = opendir(isChroot() ? "/var/run" : DEFAULTDIR "/var/run")))
+        return -1;
+
+    while ((entry = readdir(dir))) {
+        if (!(str_startwith(entry->d_name, "ossec-authd-") || str_endwith(entry->d_name, ".pid"))) {
+            found = 1;
+            break;
+        }
+    }
+
+    closedir(dir);
+    return found;
 }
