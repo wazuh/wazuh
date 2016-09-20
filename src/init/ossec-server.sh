@@ -37,6 +37,8 @@ MAX_ITERATION="10"
 
 checkpid()
 {
+    DAEMONS="${DAEMONS} ossec-authd"
+
     for i in ${DAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
             ps --no-headers -p $j >/dev/null 2>&1
@@ -165,6 +167,11 @@ status()
 {
     RETVAL=0
     first=true
+
+    lock;
+    checkpid;
+    unlock;
+
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
