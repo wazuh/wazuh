@@ -99,6 +99,21 @@ int add_agent(int json_output)
     char *id_exist = NULL;
     int force_antiquity;
 
+    /* Check that ossec-authd isn't running */
+
+    if (check_authd()) {
+        if (json_output) {
+            char buffer[1024];
+            cJSON *json_root = cJSON_CreateObject();
+            snprintf(buffer, 1023, "ossec-authd is running");
+            cJSON_AddNumberToObject(json_root, "error", 72);
+            cJSON_AddStringToObject(json_root, "message", buffer);
+            printf("%s", cJSON_PrintUnformatted(json_root));
+            exit(1);
+        } else
+            ErrorExit("%s: ERROR: ossec-authd is running", ARGV0);
+    }
+
     /* Check if we can open the auth_file */
     fp = fopen(AUTH_FILE, "a");
     if (!fp) {
@@ -407,6 +422,19 @@ int remove_agent(int json_output)
     int id_exist;
 
     u_id[FILE_SIZE] = '\0';
+
+    if (check_authd()) {
+        if (json_output) {
+            char buffer[1024];
+            cJSON *json_root = cJSON_CreateObject();
+            snprintf(buffer, 1023, "ossec-authd is running");
+            cJSON_AddNumberToObject(json_root, "error", 72);
+            cJSON_AddStringToObject(json_root, "message", buffer);
+            printf("%s", cJSON_PrintUnformatted(json_root));
+            exit(1);
+        } else
+            ErrorExit("%s: ERROR: ossec-authd is running", ARGV0);
+    }
 
     if (!(json_output || print_agents(0, 0, 0, 0))) {
         printf(NO_AGENT);

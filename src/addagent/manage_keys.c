@@ -256,7 +256,7 @@ int k_extract(const char *cmdextract, int json_output)
 
     if (fsetpos(fp, &fp_pos)) {
         if (json_output) {
-            cJSON_AddNumberToObject(json_root, "error", 72);
+            cJSON_AddNumberToObject(json_root, "error", 71);
             cJSON_AddStringToObject(json_root, "message", "Can not set fileposition");
             printf("%s", cJSON_PrintUnformatted(json_root));
         } else
@@ -328,6 +328,10 @@ int k_bulkload(const char *cmdbulk)
     char ip[FILE_SIZE + 1];
     char delims[] = AGENT_FILE_DELIMS;
     char *token = NULL;
+
+    if (check_authd()) {
+        ErrorExit("%s: ERROR: ossec-authd is running", ARGV0);
+    }
 
     /* Check if we can open the input file */
     printf("Opening: [%s]\n", cmdbulk);
