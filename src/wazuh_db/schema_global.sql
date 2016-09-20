@@ -22,4 +22,9 @@ CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 
 INSERT INTO agent (id, name, date_add, last_keepalive) VALUES (0, 'localhost', datetime(CURRENT_TIMESTAMP, 'localtime'), '9999-12-31 23:59:59');
 
+CREATE TABLE IF NOT EXISTS info (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+
 PRAGMA journal_mode=WAL;

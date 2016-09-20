@@ -15,6 +15,7 @@
 #define MAX_ATTEMPTS 1000
 
 static const char *SQL_VACUUM = "VACUUM;";
+static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 
 sqlite3 *wdb_global = NULL;
 
@@ -152,6 +153,18 @@ int wdb_step(sqlite3_stmt *stmt) {
     return result;
 }
 
+/* Create global database */
+int wdb_create_global(const char *path) {
+    char max_agents[16];
+    snprintf(max_agents, 15, "%d", MAX_AGENTS);
+    return (wdb_create_file(path, schema_global_sql) || wdb_insert_info("max_agents", max_agents)) ? -1 : 0;
+}
+
+/* Create profile database */
+int wdb_create_profile(const char *path) {
+    return wdb_create_file(path, schema_agents_sql);
+}
+
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source) {
     sqlite3 *db;
@@ -211,5 +224,27 @@ int wdb_vacuum(sqlite3 *db) {
     }
 
     sqlite3_close_v2(db);
+    return result;
+}
+
+/* Insert key-value pair into info table */
+int wdb_insert_info(const char *key, const char *value) {
+    int result = 0;
+    sqlite3_stmt *stmt;
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, SQL_INSERT_INFO, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, key, -1, NULL);
+    sqlite3_bind_text(stmt, 2, value, -1, NULL);
+
+    result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
+    sqlite3_finalize(stmt);
+    wdb_close_global();
     return result;
 }
