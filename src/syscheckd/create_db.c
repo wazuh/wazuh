@@ -175,7 +175,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
                      opts & CHECK_MD5SUM ? mf_sum : "xxx",
                      opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                     opts & CHECK_OWNER ? get_user(statbuf.st_uid) : "",
+                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
                      opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                      opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0);
@@ -194,7 +194,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
                      opts & CHECK_MD5SUM ? mf_sum : "xxx",
                      opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                     opts & CHECK_OWNER ? get_user(statbuf.st_uid) : "",
+                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
                      opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                      opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
@@ -324,8 +324,13 @@ static int read_dir(const char *dir_name, int opts, OSMatch *restriction)
 
     /* Check for real time flag */
     if (opts & CHECK_REALTIME) {
-#ifdef INOTIFY_ENABLED
+#if defined(INOTIFY_ENABLED) || defined(WIN32)
         realtime_adddir(dir_name);
+#else
+        merror("%s: WARN: realtime monitoring request on unsupported system for '%s'",
+                ARGV0,
+                dir_name
+        );
 #endif
     }
 
@@ -398,11 +403,7 @@ int create_db()
     __counter = 0;
     do {
         if (read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]) == 0) {
-#ifdef WIN32
-            if (syscheck.opts[i] & CHECK_REALTIME) {
-                realtime_adddir(syscheck.dir[i]);
-            }
-#endif
+            debug2("%s: Directory loaded from syscheck db: %s", ARGV0, syscheck.dir[i]);
         }
         i++;
     } while (syscheck.dir[i] != NULL);

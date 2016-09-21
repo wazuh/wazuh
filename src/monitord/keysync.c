@@ -20,6 +20,28 @@ static void sync_keys();
 #endif
 
 void* run_keysync(__attribute__ ((unused)) void *args) {
+    char *uname;
+
+    /* Update manager information */
+
+    {
+        char hostname[1024];
+
+        if (gethostname(hostname, 1024) == 0)
+            wdb_update_agent_name(0, hostname);
+        else
+            merror("%s: ERROR: Couldn't get manager's hostname: %s", ARGV0, strerror(errno));
+    }
+
+    if ((uname = getuname())) {
+        char *ptr;
+
+        if ((ptr = strstr(uname, " - ")))
+            *ptr = '\0';
+
+        wdb_update_agent_version(0, uname, __ossec_name " " __version);
+        free(uname);
+    }
 
 #ifdef INOTIFY_ENABLED
     char buffer[IN_BUFFER_SIZE];
@@ -28,10 +50,14 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
     int wd = -1;
     ssize_t count;
 
+    /* Start inotify */
+
     if (fd < 0) {
         merror("%s: ERROR: Couldn't init inotify: %s", ARGV0, strerror(errno));
         return NULL;
     }
+
+    /* Loop */
 
     while (1) {
         while (wd < 0) {

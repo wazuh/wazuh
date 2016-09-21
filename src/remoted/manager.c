@@ -11,6 +11,7 @@
 #include "remoted.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
+#include "wazuh_db/wdb.h"
 #include <pthread.h>
 
 /* Internal structures */
@@ -49,6 +50,7 @@ static pthread_cond_t awake_mutex;
 void save_controlmsg(unsigned int agentid, char *r_msg)
 {
     char msg_ack[OS_FLSIZE + 1];
+    char *version;
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
@@ -127,6 +129,15 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             fclose(fp);
         }
 
+        /* Store uname on database */
+
+        if ((version = strstr(uname, " - "))) {
+            int id = atoi(keys.keyentries[agentid]->id);
+            *version = '\0';
+            version += 3;
+            wdb_update_agent_version(id, uname, version);
+            wdb_update_agent_keepalive(id);
+        }
     }
 
     /* Lock now to notify of change */

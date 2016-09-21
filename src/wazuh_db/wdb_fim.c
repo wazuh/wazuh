@@ -11,9 +11,11 @@
 
 #include "wdb.h"
 
-static const char *SQL_INSERT_FIM = "INSERT INTO fim_event (id_file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+static const char *SQL_INSERT_EVENT = "INSERT INTO fim_event (id_file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, datetime(?, 'unixepoch', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, datetime(?, 'unixepoch', 'localtime'), ?);";
 static const char *SQL_INSERT_FILE = "INSERT INTO fim_file (path, type) VALUES (?, ?);";
 static const char *SQL_FIND_FILE = "SELECT id FROM fim_file WHERE type = ? AND path = ?;";
+static const char *SQL_DELETE_EVENT = "DELETE FROM fim_event;";
+static const char *SQL_DELETE_FILE = "DELETE FROM fim_file;";
 
 static int get_type(const char *location);
 
@@ -88,7 +90,7 @@ int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const
     if (!db)
         return -1;
 
-    if (wdb_prepare(db, SQL_INSERT_FIM, -1, &stmt, NULL)) {
+    if (wdb_prepare(db, SQL_INSERT_EVENT, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
         sqlite3_close_v2(db);
         return -1;
@@ -116,14 +118,32 @@ int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const
 
         sqlite3_bind_int64(stmt, 4, atol(sum->size));
         sqlite3_bind_text(stmt, 5, perm, -1, NULL);
+
+        // UID and GID from Windows is 0. It should be NULL
         sqlite3_bind_int(stmt, 6, atoi(sum->uid));
         sqlite3_bind_int(stmt, 7, atoi(sum->gid));
+
         sqlite3_bind_text(stmt, 8, sum->md5, -1, NULL);
         sqlite3_bind_text(stmt, 9, sum->sha1, -1, NULL);
-        sqlite3_bind_text(stmt, 10, sum->uname, -1, NULL);
-        sqlite3_bind_text(stmt, 11, sum->gname, -1, NULL);
-        sqlite3_bind_int64(stmt, 12, sum->mtime);
-        sqlite3_bind_int64(stmt, 13, sum->inode);
+
+        if (sum->uname){
+            sqlite3_bind_text(stmt, 10, sum->uname, -1, NULL);
+            sqlite3_bind_text(stmt, 11, sum->gname, -1, NULL);
+        }
+        else{ // Old agents
+            sqlite3_bind_null(stmt, 10); // uname
+            sqlite3_bind_null(stmt, 11); // gname
+        }
+
+        if (sum->mtime)
+            sqlite3_bind_int64(stmt, 12, sum->mtime);
+        else // Old agents
+            sqlite3_bind_null(stmt, 12); // mtime
+
+        if (sum->inode)
+            sqlite3_bind_int64(stmt, 13, sum->inode);
+        else // Old agents
+            sqlite3_bind_null(stmt, 13); // inode
     } else {
         sqlite3_bind_null(stmt, 4);
         sqlite3_bind_null(stmt, 5);
@@ -141,6 +161,68 @@ int wdb_insert_fim(int id_agent, const char *location, const char *f_name, const
     sqlite3_finalize(stmt);
     sqlite3_close_v2(db);
     return result;
+}
+
+/* Delete FIM events of an agent. Returns 0 on success or -1 on error. */
+int wdb_delete_fim(int id) {
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    char *name = id ? wdb_agent_name(id) : strdup("localhost");
+    int result;
+
+    if (!name)
+        return -1;
+
+    db = wdb_open_agent(id, name);
+    free(name);
+
+    if (!db)
+        return -1;
+
+    // Delete files first to maintain reference integrity on insertion
+
+    if (wdb_prepare(db, SQL_DELETE_FILE, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        sqlite3_close_v2(db);
+        return -1;
+    }
+
+    result = wdb_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (result != SQLITE_DONE) {
+        sqlite3_close_v2(db);
+        return -1;
+    }
+
+    // Delete events
+
+    if (wdb_prepare(db, SQL_DELETE_EVENT, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        sqlite3_close_v2(db);
+        return -1;
+    }
+
+    result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
+    sqlite3_finalize(stmt);
+    wdb_vacuum(db);
+    sqlite3_close_v2(db);
+    return result;
+}
+
+/* Delete FIM events of all agents */
+void wdb_delete_fim_all() {
+    int *agents = wdb_get_all_agents();
+    int i;
+
+    if (agents) {
+        wdb_delete_fim(0);
+
+        for (i = 0; agents[i] >= 0; i++)
+            wdb_delete_fim(agents[i]);
+
+            free(agents);
+    }
 }
 
 int get_type(const char *location) {

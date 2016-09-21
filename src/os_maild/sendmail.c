@@ -24,9 +24,9 @@
 #define MAILFROM            "Mail From: <%s>\r\n"
 #define RCPTTO              "Rcpt To: <%s>\r\n"
 #define DATAMSG             "DATA\r\n"
-#define FROM                "From: OSSEC HIDS <%s>\r\n"
+#define FROM                "From: OSSEC Wazuh <%s>\r\n"
 #define TO                  "To: <%s>\r\n"
-#define REPLYTO             "Reply-To: OSSEC HIDS <%s>\r\n"
+#define REPLYTO             "Reply-To: OSSEC Wazuh <%s>\r\n"
 /*#define CC                "Cc: <%s>\r\n"*/
 #define SUBJECT             "Subject: %s\r\n"
 #define ENDHEADER           "\r\n"
@@ -547,4 +547,3 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     return (0);
 }
-

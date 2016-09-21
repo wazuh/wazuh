@@ -89,6 +89,35 @@
     <group>invalid_request,pci_dss_10.2.4,</group>
   </rule>
 
+  <!-- ModSecurity Rules -->
+  <rule id="31330" level="0">
+    <if_sid>31301</if_sid>
+    <match>ModSecurity: Warning</match>
+    <description>ModSecurity Warning messages grouped</description>
+    <group>modsecurity,</group>
+  </rule>
+
+  <rule id="31331" level="0">
+    <if_sid>31301</if_sid>
+    <match>ModSecurity: Access denied</match>
+    <description>ModSecurity Access denied messages grouped</description>
+    <group>modsecurity,pci_dss_10.2.4,</group>
+  </rule>
+
+  <rule id="31332" level="0">
+    <if_sid>31301</if_sid>
+    <match>ModSecurity: Audit log:</match>
+    <description>ModSecurity Audit log messages grouped</description>
+    <group>modsecurity,</group>
+  </rule>
+
+  <rule id="31333" level="7">
+    <if_sid>31331</if_sid>
+    <match>with code 403</match>
+    <description>ModSecurity rejected a query</description>
+    <group>modsecurity,</group>
+  </rule>
+
 </group> <!-- ERROR_LOG,NGINX -->
 
 <!-- EOF -->

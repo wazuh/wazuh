@@ -12,12 +12,13 @@
 #include "wdb.h"
 #include "defs.h"
 
-static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key) VALUES (?, ?, ?, ?);";
-static const char *SQL_UPDATE_AGENT = "UPDATE agent SET os = ?, version = ? WHERE id = ?;";
-static const char *SQL_DISABLE_AGENT = "UPDATE agent SET enabled = 0 WHERE id = ?;";
+static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key, date_add) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'));";
+static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os = ?, version = ? WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(CURRENT_TIMESTAMP, 'localtime') WHERE id = ?;";
 static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
-static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent;";
+static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key) {
@@ -34,8 +35,15 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key) 
 
     sqlite3_bind_int(stmt, 1, id);
     sqlite3_bind_text(stmt, 2, name, -1, NULL);
-    sqlite3_bind_text(stmt, 3, ip, -1, NULL);
-    sqlite3_bind_text(stmt, 4, key, -1, NULL);
+
+    if (ip)
+        sqlite3_bind_text(stmt, 3, ip, -1, NULL);
+    else
+        sqlite3_bind_null(stmt, 3);
+    if (key)
+        sqlite3_bind_text(stmt, 4, key, -1, NULL);
+    else
+        sqlite3_bind_null(stmt, 4);
 
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
     sqlite3_finalize(stmt);
@@ -43,15 +51,37 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key) 
     return result;
 }
 
-/* Update agent info. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_update_agent(int id, const char *os, const char *version) {
+/* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_name(int id, const char *name) {
     int result = 0;
     sqlite3_stmt *stmt;
 
     if (wdb_open_global() < 0)
         return -1;
 
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT, -1, &stmt, NULL)) {
+    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_NAME, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+    sqlite3_bind_int(stmt, 2, id);
+
+    result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
+    sqlite3_finalize(stmt);
+    wdb_close_global();
+    return result;
+}
+
+/* Update agent version info. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_version(int id, const char *os, const char *version) {
+    int result = 0;
+    sqlite3_stmt *stmt;
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_VERSION, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
         return -1;
     }
@@ -66,15 +96,15 @@ int wdb_update_agent(int id, const char *os, const char *version) {
     return result;
 }
 
-/* Disable agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_disable_agent(int id) {
+/* Update agent keepalive timestamp. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_keepalive(int id) {
     int result = 0;
     sqlite3_stmt *stmt;
 
     if (wdb_open_global() < 0)
         return -1;
 
-    if (wdb_prepare(wdb_global, SQL_DISABLE_AGENT, -1, &stmt, NULL)) {
+    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_KEEPALIVE, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
         return -1;
     }
@@ -186,7 +216,7 @@ int wdb_create_agent_db(int id, const char *name) {
     fclose(source);
     fclose(dest);
 
-    return retval == 0 ? chmod(path, 0660) : retval;
+    return retval == 0 ? chmod(path, 0640) : retval;
 }
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
@@ -211,7 +241,7 @@ int wdb_remove_agent_db(int id) {
         return -1;
 }
 
-/* Get an array containint the ID of every agent, ended with -1 */
+/* Get an array containint the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents() {
     int i;
     int n = 1;

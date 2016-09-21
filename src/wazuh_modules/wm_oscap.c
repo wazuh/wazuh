@@ -111,8 +111,10 @@ void wm_oscap_setup(wm_oscap *_oscap) {
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
         sleep(WM_MAX_WAIT);
 
-    if (i == WM_MAX_ATTEMPTS)
-        ErrorExit("%s: ERROR: Can't connect to queue.", WM_OSCAP_LOGTAG);
+    if (i == WM_MAX_ATTEMPTS) {
+        merror("%s: ERROR: Can't connect to queue.", WM_OSCAP_LOGTAG);
+        pthread_exit(NULL);
+    }
 
     // Cleanup exiting
 
@@ -134,72 +136,51 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     char *output = NULL;
     char *line;
     char *arg_profiles = NULL;
-    char *arg_skip_result = NULL;
-    char *arg_skip_severity = NULL;
     wm_oscap_profile *profile;
 
     // Create arguments
 
     wm_strcat(&command, WM_OSCAP_SCRIPT_PATH, '\0');
-    wm_strcat(&command, "-f", ' ');
-    wm_strcat(&command, eval->policy, ' ');
+
+    switch (eval->type) {
+    case WM_OSCAP_XCCDF:
+        wm_strcat(&command, "--xccdf", ' ');
+        break;
+    case WM_OSCAP_OVAL:
+        wm_strcat(&command, "--oval", ' ');
+        break;
+    default:
+        merror("%s: ERROR: Unspecified content type for file '%s'. This shouln't happen.", WM_OSCAP_LOGTAG, eval->path);
+        pthread_exit(NULL);
+    }
+
+    wm_strcat(&command, eval->path, ' ');
 
     for (profile = eval->profiles; profile; profile = profile->next)
         wm_strcat(&arg_profiles, profile->name, ',');
 
     if (arg_profiles) {
-        wm_strcat(&command, "-p", ' ');
+        wm_strcat(&command, "--profiles", ' ');
         wm_strcat(&command, arg_profiles, ' ');
     }
 
-    if (eval->flags.skip_result_pass)
-        wm_strcat(&arg_skip_result, "pass", ',');
-    if (eval->flags.skip_result_fail)
-        wm_strcat(&arg_skip_result, "fail", ',');
-    if (eval->flags.skip_result_notchecked)
-        wm_strcat(&arg_skip_result, "notchecked", ',');
-    if (eval->flags.skip_result_notapplicable)
-        wm_strcat(&arg_skip_result, "notapplicable", ',');
-    if (eval->flags.skip_result_fixed)
-        wm_strcat(&arg_skip_result, "fixed", ',');
-    if (eval->flags.skip_result_informational)
-        wm_strcat(&arg_skip_result, "informational", ',');
-    if (eval->flags.skip_result_error)
-        wm_strcat(&arg_skip_result, "error", ',');
-    if (eval->flags.skip_result_unknown)
-        wm_strcat(&arg_skip_result, "unknown", ',');
-    if (eval->flags.skip_result_notselected)
-        wm_strcat(&arg_skip_result, "notselected", ',');
-
-    if (arg_skip_result) {
-        wm_strcat(&command, "-r", ' ');
-        wm_strcat(&command, arg_skip_result, ' ');
-    }
-
-    if (eval->flags.skip_severity_low)
-        wm_strcat(&arg_skip_severity, "low", ',');
-    if (eval->flags.skip_severity_medium)
-        wm_strcat(&arg_skip_severity, "medium", ',');
-    if (eval->flags.skip_severity_high)
-        wm_strcat(&arg_skip_severity, "high", ',');
-
-    if (arg_skip_severity) {
-        wm_strcat(&command, "-s", ' ');
-        wm_strcat(&command, arg_skip_severity, ' ');
-    }
-
     if (eval->xccdf_id) {
-        wm_strcat(&command, "-x", ' ');
+        wm_strcat(&command, "--xccdf-id", ' ');
         wm_strcat(&command, eval->xccdf_id, ' ');
     }
 
+    if (eval->oval_id) {
+        wm_strcat(&command, "--oval-id", ' ');
+        wm_strcat(&command, eval->oval_id, ' ');
+    }
+
     if (eval->ds_id) {
-        wm_strcat(&command, "-d", ' ');
+        wm_strcat(&command, "--ds-id", ' ');
         wm_strcat(&command, eval->ds_id, ' ');
     }
 
     if (eval->cpe) {
-        wm_strcat(&command, "-c", ' ');
+        wm_strcat(&command, "--cpe", ' ');
         wm_strcat(&command, eval->cpe, ' ');
     }
 
@@ -210,7 +191,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     switch (wm_exec(command, &output, &status, eval->timeout)) {
     case 0:
         if (status > 0) {
-            merror("%s: WARN: Ignoring policy '%s' due to error.", WM_OSCAP_LOGTAG, eval->policy);
+            merror("%s: WARN: Ignoring content '%s' due to error.", WM_OSCAP_LOGTAG, eval->path);
             eval->flags.error = 1;
         }
 
@@ -220,7 +201,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         free(output);
         output = NULL;
         wm_strcat(&output, "oscap: ERROR: Timeout expired.", '\0');
-        merror("%s: ERROR: Timeout expired executing '%s'.", WM_OSCAP_LOGTAG, eval->policy);
+        merror("%s: ERROR: Timeout expired executing '%s'.", WM_OSCAP_LOGTAG, eval->path);
         break;
 
     default:
@@ -234,8 +215,6 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     free(output);
     free(command);
     free(arg_profiles);
-    free(arg_skip_result);
-    free(arg_skip_severity);
 }
 
 // Check configuration
@@ -245,8 +224,10 @@ void wm_oscap_check() {
 
     // Check if evals
 
-    if (!oscap->evals)
-        ErrorExit("%s: WARN: No evals defined. Exiting...", WM_OSCAP_LOGTAG);
+    if (!oscap->evals) {
+        merror("%s: WARN: No evals defined. Exiting...", WM_OSCAP_LOGTAG);
+        pthread_exit(NULL);
+    }
 
     // Check if interval
 
@@ -259,12 +240,6 @@ void wm_oscap_check() {
         if (!eval->timeout)
             if (!(eval->timeout = oscap->timeout))
                 eval->timeout = WM_DEF_TIMEOUT;
-
-        if (!eval->flags.custom_result_flags)
-            eval->flags.skip_result = oscap->flags.skip_result;
-
-        if (!eval->flags.custom_severity_flags)
-            eval->flags.skip_severity = oscap->flags.skip_severity;
     }
 }
 
@@ -279,16 +254,7 @@ void wm_oscap_info() {
     verbose("%s: INFO: Policies:", WM_OSCAP_LOGTAG);
 
     for (eval = (wm_oscap_eval*)oscap->evals; eval; eval = eval->next){
-        verbose("%s: INFO: [%s]", WM_OSCAP_LOGTAG, eval->policy);
-
-        verbose("%s: INFO: \tSkip result:", WM_OSCAP_LOGTAG);
-        verbose("%s: INFO: \t\t[Pass: %d] [Fail: %d] [NotChecked: %d]", WM_OSCAP_LOGTAG, eval->flags.skip_result_pass, eval->flags.skip_result_fail, eval->flags.skip_result_notchecked);
-        verbose("%s: INFO: \t\t[NotApplicable: %d] [Fixed: %d] [Informational: %d]", WM_OSCAP_LOGTAG, eval->flags.skip_result_notapplicable, eval->flags.skip_result_fixed, eval->flags.skip_result_informational);
-        verbose("%s: INFO: \t\t[Error: %d] [Unknown: %d] [NotSelected: %d]", WM_OSCAP_LOGTAG, eval->flags.skip_result_error, eval->flags.skip_result_unknown, eval->flags.skip_result_notselected);
-
-        verbose("%s: INFO: \tSkip severity:", WM_OSCAP_LOGTAG);
-        verbose("%s: INFO: \t\t[Low: %d] [Medium: %d] [High: %d]", WM_OSCAP_LOGTAG, eval->flags.skip_severity_low, eval->flags.skip_severity_medium, eval->flags.skip_severity_high);
-
+        verbose("%s: INFO: [%s]", WM_OSCAP_LOGTAG, eval->path);
         verbose("%s: INFO: \tProfiles:", WM_OSCAP_LOGTAG);
 
         for (profile = (wm_oscap_profile*)eval->profiles; profile; profile = profile->next)
@@ -319,8 +285,9 @@ void wm_oscap_destroy(wm_oscap *oscap) {
         }
 
         next_eval = cur_eval->next;
-        free(cur_eval->policy);
+        free(cur_eval->path);
         free(cur_eval->xccdf_id);
+        free(cur_eval->oval_id);
         free(cur_eval->ds_id);
         free(cur_eval->cpe);
         free(cur_eval);

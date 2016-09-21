@@ -158,6 +158,9 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
     /* Check if ar is disabled */
     if (ar_flag == -1) {
+        /* reset ar_flag, the next ar command may not be disabled */
+        ar_flag = 0;
+        debug1("active response command '%s' is disabled", tmp_ar->command);
         fclose(fp);
         free(tmp_ar);
         free(tmp_location);
@@ -166,6 +169,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
     /* Command and location must be there */
     if (!tmp_ar->command || !tmp_location) {
+        debug1("command or location missing");
         fclose(fp);
         free(tmp_ar);
         free(tmp_location);
@@ -188,6 +192,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
     if (OS_Regex("defined-agent", tmp_location)) {
         if (!tmp_ar->agent_id) {
+            debug1("'defined-agent' agent_id not defined");
             merror(AR_DEF_AGENT, __local_name);
             fclose(fp);
             free(tmp_ar);
@@ -204,6 +209,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
     /* If we didn't set any value for the location */
     if (tmp_ar->location == 0) {
+        debug1("no location defined");
         merror(AR_INV_LOC, __local_name, tmp_location);
         fclose(fp);
         free(tmp_ar);
@@ -234,6 +240,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
         /* Didn't find a valid command */
         if (tmp_ar->ar_cmd == NULL) {
+            debug1("invalid command");
             merror(AR_INV_CMD, __local_name, tmp_ar->command);
             fclose(fp);
             free(tmp_ar);
@@ -243,6 +250,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
     /* Check if timeout is allowed */
     if (tmp_ar->timeout && !tmp_ar->ar_cmd->timeout_allowed) {
+        debug1("timeout is not allowed");
         merror(AR_NO_TIMEOUT, __local_name, tmp_ar->ar_cmd->name);
         fclose(fp);
         free(tmp_ar);
@@ -267,6 +275,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
              tmp_ar->timeout);
 
     /* Add to shared file */
+    debug1("writing command '%s' to '%s'", tmp_ar->command, DEFAULTARPATH);
     fprintf(fp, "%s - %s - %d\n",
             tmp_ar->name,
             tmp_ar->ar_cmd->executable,

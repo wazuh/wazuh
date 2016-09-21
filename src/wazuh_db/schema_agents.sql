@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS fim_event (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     id_file INTEGER NOT NULL REFERENCES fim_file (id),
     type TEXT NOT NULL CHECK (type IN ('added', 'modified', 'readded', 'deleted')),
-    date NUMERIC,
+    date TEXT,
     size INTEGER,
     perm TEXT,
     uid INTEGER,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS fim_event (
     sha1 TEXT,
     uname TEXT,
     gname TEXT,
-    mtime NUMERIC,
+    mtime TEXT,
     inode INTEGER
 );
 
@@ -39,8 +39,8 @@ CREATE INDEX IF NOT EXISTS fim_event_sha1 ON fim_event (sha1);
 
 CREATE TABLE IF NOT EXISTS pm_event (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date_first NUMERIC,
-    date_last NUMERIC,
+    date_first TEXT,
+    date_last TEXT,
     log TEXT,
     pci_dss TEXT,
     cis TEXT

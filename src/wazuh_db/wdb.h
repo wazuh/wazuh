@@ -18,9 +18,6 @@
 #define WDB_FILE_TYPE_FILE 0
 #define WDB_FILE_TYPE_REGISTRY 1
 
-#define wdb_create_global(path) wdb_create_file(path, schema_global_sql)
-#define wdb_create_profile(path) wdb_create_file(path, schema_agents_sql)
-
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
 
@@ -57,11 +54,14 @@ int wdb_update_pm(int id_agent, const char *location, const char *log, long int 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key);
 
-/* Update agent info. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_update_agent(int id, const char *os, const char *version);
+/* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_name(int id, const char *name);
 
-/* Disable agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_disable_agent(int id);
+/* Update agent version info. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_version(int id, const char *os, const char *version);
+
+/* Update agent keepalive timestamp. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_keepalive(int id);
 
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_agent(int id);
@@ -81,10 +81,34 @@ int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, c
 /* Execute statement with availability waiting */
 int wdb_step(sqlite3_stmt *stmt);
 
+/* Create global database */
+int wdb_create_global(const char *path);
+
+/* Create profile database */
+int wdb_create_profile(const char *path);
+
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
 
-/* Get an array containint the ID of every agent, ended with -1 */
+/* Get an array containint the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents();
+
+/* Delete FIM events of an agent. Returns 0 on success or -1 on error. */
+int wdb_delete_fim(int id);
+
+/* Delete FIM events of all agents. */
+void wdb_delete_fim_all();
+
+/* Delete PM events of an agent. Returns 0 on success or -1 on error. */
+int wdb_delete_pm(int id);
+
+/* Delete PM events of all agents */
+void wdb_delete_pm_all();
+
+/* Rebuild database. Returns 0 on success or -1 on error. */
+int wdb_vacuum(sqlite3 *db);
+
+/* Insert key-value pair into info table */
+int wdb_insert_info(const char *key, const char *value);
 
 #endif

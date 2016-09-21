@@ -391,10 +391,11 @@ install-common: build
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
 	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/policies
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
 
 	install -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
-	install -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/policies/* ${PREFIX}/wodles/oscap/policies
+	install -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
+	install -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/* ${PREFIX}/wodles/oscap/content
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
 	install -m 0440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
@@ -444,10 +445,9 @@ endif
 
 
 install-server-generic: install-common
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/ossec_decoders
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/wazuh_decoders
-	install -d -m 770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/var/db
-	install -d -m 770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/var/db/agents
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/decoders
+	install -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db
+	install -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db/agents
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
@@ -479,14 +479,16 @@ install-server-generic: install-common
 ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
 	cp ${PREFIX}/rules/local_rules.xml ${PREFIX}/rules/local_rules.xml.installbackup
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/ossec_decoders/*.xml ${PREFIX}/etc/ossec_decoders
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/wazuh_decoders/*.xml ${PREFIX}/etc/wazuh_decoders
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/etc/decoders
 	install -m 0640 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules/local_rules.xml.installbackup ${PREFIX}/rules/local_rules.xml
 	rm ${PREFIX}/rules/local_rules.xml.installbackup
 else
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/ossec_decoders/*.xml ${PREFIX}/etc/ossec_decoders
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/wazuh_decoders/*.xml ${PREFIX}/etc/wazuh_decoders
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/etc/decoders
+endif
+
+ifeq (,$(wildcard ${PREFIX}/etc/local_decoder.xml))
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/local_decoder.xml
 endif
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
@@ -639,7 +641,7 @@ endif
 agent: ${BUILD_AGENT}
 
 
-WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe
+WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
@@ -928,7 +930,7 @@ remoted_o := $(remoted_c:.c=.o)
 remoted/%.o: remoted/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./remoted ${ZLIB_INCLUDE} -DARGV0=\"ossec-remoted\" -c $^ -o $@
 
-ossec-remoted: ${remoted_o} ${ossec_libs} ${ZLIB_LIB}
+ossec-remoted: ${remoted_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
 #### ossec-agentd ####
@@ -1318,6 +1320,8 @@ win32/resource.o: win32/ui/win32ui.rc
 win32/os_win32ui.exe: win32/resource.o win32/win_service_rk.o ${win32_ui_o} addagent/b64.o ${ossec_libs}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-win32ui\" ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -mwindows -o $@
 
+win32/agent-auth.exe: win32/win_service_rk.o addagent/validate.c ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB} win32/agent_auth.c os_regex/*.c os_net/*.c os_xml/*.c
+	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -lshlwapi -lwsock32 -lsecur32 -flto -o $@
 
 ####################
 #### Clean #########
