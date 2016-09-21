@@ -311,11 +311,6 @@ int main(int argc, char **argv)
         sigaction(SIGINT, &action, NULL);
     }
 
-    /* Create PID files */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
-    }
-
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
@@ -405,6 +400,11 @@ int main(int argc, char **argv)
     if (status != 0) {
         merror("%s: ERROR: Couldn't create thread: %s", ARGV0, strerror(status));
         return EXIT_FAILURE;
+    }
+
+    /* Create PID files */
+    if (CreatePID(ARGV0, getpid()) < 0) {
+        ErrorExit(PID_ERROR, ARGV0);
     }
 
     /* Main loop */
