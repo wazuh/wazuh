@@ -37,9 +37,9 @@ MAX_ITERATION="10"
 
 checkpid()
 {
-    DAEMONS="${DAEMONS} ossec-authd"
+    CDAEMONS="${DAEMONS} ossec-authd"
 
-    for i in ${DAEMONS}; do
+    for i in ${CDAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
             ps --no-headers -p $j >/dev/null 2>&1
             if [ ! $? = 0 ]; then
