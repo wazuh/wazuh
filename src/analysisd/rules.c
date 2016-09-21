@@ -1023,6 +1023,13 @@ int Rules_OP_ReadRules(const char *rulefile)
                     k++;
                 }
 
+                /* Check for a valid description */
+                if (!config_ruleinfo->comment) {
+                    merror("%s: No such description at rule '%d'.", ARGV0, config_ruleinfo->sigid);
+                    OS_ClearXML(&xml);
+                    return (-1);
+                }
+
                 /* Check for valid use of frequency */
                 if ((config_ruleinfo->context_opts ||
                         config_ruleinfo->frequency) &&

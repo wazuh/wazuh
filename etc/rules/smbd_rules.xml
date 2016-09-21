@@ -60,6 +60,7 @@
 
   <rule id="13106" level="0" noalert="1">
     <decoded_as>nmbd</decoded_as>
+    <description />
   </rule>
 
   <rule id="13108" level="1">
