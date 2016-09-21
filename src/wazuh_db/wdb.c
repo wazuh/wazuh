@@ -157,7 +157,21 @@ int wdb_step(sqlite3_stmt *stmt) {
 int wdb_create_global(const char *path) {
     char max_agents[16];
     snprintf(max_agents, 15, "%d", MAX_AGENTS);
-    return (wdb_create_file(path, schema_global_sql) || wdb_insert_info("max_agents", max_agents)) ? -1 : 0;
+
+    if (wdb_create_file(path, schema_global_sql) < 0)
+        return -1;
+    else if (wdb_insert_info("max_agents", max_agents) < 0)
+        return -1;
+    else if (wdb_insert_info("openssl_support",
+#ifdef LIBOPENSSL_ENABLED
+        "yes"
+#else
+        "no"
+#endif
+    ) < 0)
+        return -1;
+    else
+        return 0;
 }
 
 /* Create profile database */
