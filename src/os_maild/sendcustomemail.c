@@ -23,8 +23,8 @@
 #define MAILFROM            "Mail From: <%s>\r\n"
 #define RCPTTO              "Rcpt To: <%s>\r\n"
 #define DATAMSG             "DATA\r\n"
-#define FROM                "From: OSSEC HIDS <%s>\r\n"
-#define REPLYTO             "Reply-To: OSSEC HIDS <%s>\r\n"
+#define FROM                "From: OSSEC Wazuh <%s>\r\n"
+#define REPLYTO             "Reply-To: OSSEC Wazuh <%s>\r\n"
 #define TO                  "To: <%s>\r\n"
 #define CC                  "Cc: <%s>\r\n"
 #define SUBJECT             "Subject: %s\r\n"
@@ -245,4 +245,3 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
 
     return (0);
 }
-

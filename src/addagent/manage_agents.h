@@ -54,6 +54,12 @@ int list_agents(int cmdlist);
 /* Clear a line */
 char *chomp(char *str);
 
+/*
+ * Check whether ossec-authd is running (returns 1) or not (returns 0).
+ * Returns -1 on error.
+ */
+int check_authd();
+
 /* Shared variables */
 extern int restart_necessary;
 extern time_t time1;
@@ -132,7 +138,7 @@ extern fpos_t fp_pos;
 #define EXIT            ARGV0 ": Exiting.\n"
 
 #define BANNER          "\n****************************************" \
-                        "\n* %s %s Agent manager.     *" \
+                        "\n* %s %s Agent manager.      *" \
                         "\n* The following options are available: *" \
                         "\n****************************************\n"
 

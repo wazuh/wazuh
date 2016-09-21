@@ -1,4 +1,4 @@
 
- - No action was made to configure the OSSEC HIDS to start
+ - No action was made to configure the OSSEC Wazuh to start
    during the boot. Add the following line to your init script: 
 

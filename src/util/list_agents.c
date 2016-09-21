@@ -19,7 +19,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: List available agents.\n", ARGV0);
+    printf("\nOSSEC Wazuh %s: List available agents.\n", ARGV0);
     printf("Available options:\n");
     printf("\t-h    This help message.\n");
     printf("\t-a    List all agents.\n");
@@ -105,4 +105,3 @@ int main(int argc, char **argv)
     }
     return (0);
 }
-

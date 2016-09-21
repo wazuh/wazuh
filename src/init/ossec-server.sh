@@ -18,9 +18,9 @@ if [ $? = 0 ]; then
 . ${PLIST};
 fi
 
-NAME="OSSEC HIDS"
-VERSION="v2.8"
-AUTHOR="Trend Micro Inc."
+NAME="OSSEC Wazuh"
+VERSION="v1.2"
+AUTHOR="Wazuh Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-moduled ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 USE_JSON=false
 
@@ -37,7 +37,9 @@ MAX_ITERATION="10"
 
 checkpid()
 {
-    for i in ${DAEMONS}; do
+    CDAEMONS="${DAEMONS} ossec-authd"
+
+    for i in ${CDAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
             ps --no-headers -p $j >/dev/null 2>&1
             if [ ! $? = 0 ]; then
@@ -165,6 +167,11 @@ status()
 {
     RETVAL=0
     first=true
+
+    lock;
+    checkpid;
+    unlock;
+
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
@@ -219,7 +226,7 @@ start()
     SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} wazuh-moduled ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
 
     if [ $USE_JSON = false ]; then
-        echo "Starting $NAME $VERSION (by $AUTHOR)..."
+        echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     fi
     ${DIR}/bin/ossec-logtest -t > /dev/null 2>&1;
     if [ ! $? = 0 ]; then

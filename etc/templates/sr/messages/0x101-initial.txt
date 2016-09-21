@@ -1,4 +1,4 @@
 
- Nalaziš se pred početkom instalacionog proces OSSEC HIDS.
+ Nalaziš se pred početkom instalacionog proces OSSEC Wazuh.
  Moraš imati c kompajler već instaliran u svoj sistem.
 

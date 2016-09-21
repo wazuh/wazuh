@@ -1,0 +1,77 @@
+<!--
+  -  OpenSCAP decoder
+  -  v1.0 2016/05/17
+  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+-->
+
+<!--
+OpenSCAP
+Logs from syslog.
+-->
+<decoder name="oscap">
+    <program_name>oscap</program_name>
+</decoder>
+
+<!--
+OpenSCAP
+Logs from wodle
+-->
+<decoder name="oscap">
+  <prematch>oscap: </prematch>
+</decoder>
+
+
+<!--
+Rule Result
+oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+-->
+<decoder name="oscap-wodle-xccdf-result">
+  <parent>oscap</parent>
+  <prematch offset="after_parent">^msg: "xccdf-result", </prematch>
+  <regex offset="after_prematch">^title: "(\.*)", benchmark: "(\.*)", profile: "(\.*)", severity: "(\.*)", result: "(\.*)", id: "(\.*)", oval: "(\.*)", reference: "(\.*)".$</regex>
+  <order>title, benchmark, profile, severity, result, id, oval, reference</order>
+</decoder>
+
+<!--
+Rule Result
+oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+-->
+<decoder name="oscap-wodle-oval-result">
+  <parent>oscap</parent>
+  <prematch offset="after_parent">^msg: "oval-result", </prematch>
+  <regex offset="after_prematch">^id: "(\.*)", title: "(\.*)", class: "(\.*)", result: "(\.*)", reference: "(\.*)".$</regex>
+  <order>id, title, class, result, reference</order>
+</decoder>
+
+
+<!--
+Report overview
+oscap: msg: "xccdf-overview", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", score: "62.500000".
+-->
+<decoder name="oscap-wodle-xccdf-overview">
+  <parent>oscap</parent>
+  <prematch offset="after_parent">^msg: "xccdf-overview", </prematch>
+  <regex offset="after_prematch">^benchmark: "(\.*)", profile: "(\.*)", score: "(\.*)".$</regex>
+  <order>benchmark, profile, score</order>
+</decoder>
+
+<!--
+Apr 12 10:50:32 centos oscap: Evaluation started. Content: /usr/share/xml/scap/ssg/content/ssg-centos7-ds.xml, Profile: xccdf_org.ssgproject.content_profile_standard.
+-->
+<decoder name="oscap-eval-start">
+    <parent>oscap</parent>
+    <prematch offset="after_parent">^Evaluation started. </prematch>
+    <regex offset="after_prematch">^Content: (\S+), Profile: (\S+).$</regex>
+    <order>policy, profile</order>
+</decoder>
+
+<!--
+Apr 12 10:50:42 centos oscap: Evaluation finished. Return code: 0, Base score 100.000000.
+-->
+<decoder name="oscap-eval-finish">
+    <parent>oscap</parent>
+    <prematch offset="after_parent">^Evaluation finished. </prematch>
+    <regex offset="after_prematch">^Return code: (\d+), Base score (\S+).</regex>
+    <order>return_code, score</order>
+</decoder>

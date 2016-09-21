@@ -1,0 +1,47 @@
+<!--
+  -  RSA Authentication Manager rules
+  -  v1.0 2016/08/09
+  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
+  -  jesus@wazuh.com
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+-->
+
+<!-- ID: 81900 - 81999 -->
+
+<group name="rsa-auth-manager,">
+
+    <rule id="81900" level="0">
+        <decoded_as>rsa-auth-manager</decoded_as>
+        <description>RSA Authentication Manager messages grouped.</description>
+    </rule>
+
+    <rule id="81901" level="2">
+        <if_sid>81900</if_sid>
+        <id>AUTHN_LOGIN_EVENT</id>
+        <description>RSA Authentication Manager: Loging event</description>
+    </rule>
+
+    <rule id="81902" level="4">
+        <if_sid>81901</if_sid>
+        <id>AUTHN_LOGIN_EVENT</id>
+        <action>SUCCESS</action>
+        <description>RSA Authentication Manager: Authentication success</description>
+        <group>authentication_success,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="81903" level="5">
+        <if_sid>81901</if_sid>
+        <id>AUTHN_LOGIN_EVENT</id>
+        <action>FAIL</action>
+        <description>RSA Authentication Manager: Authentication fail</description>
+        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="81904" level="10" frequency="6" timeframe="120">
+        <if_matched_sid>81903</if_matched_sid>
+        <same_user />
+        <description>RSA Authentication Manager: Multiple authentication failures.</description>
+        <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
+    </rule>
+
+</group>

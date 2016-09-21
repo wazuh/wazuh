@@ -269,7 +269,7 @@
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
-    <rule id="80695" level="5">
+    <rule id="80895" level="5">
         <if_sid>80894</if_sid>
         <match>"errorCode":"AccessDenied"</match>
         <description>Amazon-iam: Role creation denied</description>

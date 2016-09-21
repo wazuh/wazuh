@@ -1,4 +1,4 @@
 
- Ön elindította az OSSEC HIDS telepítési folyamatát.
+ Ön elindította az OSSEC Wazuh telepítési folyamatát.
  Egy C fordító programnak, már előzőleg telepítve kell lennie a rendszerén.
 

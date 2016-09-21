@@ -1,4 +1,4 @@
 
- Você está iniciando o processo de instalação do OSSEC HIDS.
+ Você está iniciando o processo de instalação do OSSEC Wazuh.
  Você precisará de um compilador C pré-instalado em seu sistema.
 

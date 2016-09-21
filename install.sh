@@ -111,7 +111,10 @@ Install()
     # If update, stop ossec
     if [ "X${update_only}" = "Xyes" ]; then
         UpdateStopOSSEC
+        # Move old decoders (ossec_decodes and wazuh_decoders) to etc/decoders
+        UpdateLegacyDecoders
     fi
+
 
     ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install
 
@@ -120,13 +123,11 @@ Install()
 
     # Generate the /etc/ossec-init.conf
     VERSION_FILE="./src/VERSION"
-    WVERSION_FILE="./src/WAZUH_VERSION"
     VERSION=`cat ${VERSION_FILE}`
-    WVERSION=`cat ${WVERSION_FILE}`
     chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
     echo "DIRECTORY=\"${INSTALLDIR}\"" > ${OSSEC_INIT}
+    echo "NAME=\"${NAME}\"" >> ${OSSEC_INIT}
     echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}
-    echo "WAZUH_VERSION=\"${WVERSION}\"" >> ${OSSEC_INIT}
     echo "DATE=\"`date`\"" >> ${OSSEC_INIT}
     echo "TYPE=\"${INSTYPE}\"" >> ${OSSEC_INIT}
     chmod 600 ${OSSEC_INIT}
@@ -976,8 +977,7 @@ main()
 
 
     # Initial message
-    echo " $NAME $VERSION ${installscript} - http://www.ossec.net"
-    echo " OSSEC WAZUH $WVERSION ${installscript} - http://www.wazuh.com"
+    echo " $NAME $VERSION ${installscript} - http://www.wazuh.com"
     catMsg "0x101-initial"
 
     echo "  - $system: $UNAME"

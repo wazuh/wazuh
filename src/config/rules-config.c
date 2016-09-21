@@ -141,6 +141,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             f_name[PATH_MAX + 1] = '\0';
             dfd = opendir(path);
 
+	    att_count = 0; // Reset this variable after it was used in decoder 
+
             if (dfd != NULL) {
                 start_point = decoders_size - 1;
                 while ((entry = readdir(dfd)) != NULL) {

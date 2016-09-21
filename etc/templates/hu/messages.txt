@@ -10,9 +10,9 @@ help="segítség"
 
 # Global
 moreinfo="További információk: "
-starting="OSSEC HIDS Indítása"
+starting="OSSEC Wazuh Indítása"
 systemis="A rendszer"
-modifiedinit="Init script módosítva, hogy bootoláskor automatikusan indítsa az OSSEC HIDS-et."
+modifiedinit="Init script módosítva, hogy bootoláskor automatikusan indítsa az OSSEC Wazuh-et."
 noboot="Ismeretlen rendszer. Nincs init script hozzáadva."
 
 # Part 1
@@ -28,7 +28,7 @@ localchose="Lokális telepítés kiválasztva"
 
 # Part 2
 settingupenv="A telepítési környezet létrehozása"
-wheretoinstall="Válassza ki az OSSEC HIDS telepítési helyét"
+wheretoinstall="Válassza ki az OSSEC Wazuh telepítési helyét"
 installat="A telepítés a következő helyre történik: "
 deletedir="A célkönyvtár már létezik. Törölhetem?"
 
@@ -43,8 +43,8 @@ usingsmtp="SMTP szerver használata: "
 whatsmtp="Mi az ön SMTP szerverének ip címe/hoszt neve?"
 
 # Part 3.1/agent
-serverip="Mi az IP címe az OSSEC HIDS szervernek?"
-serveraddr="Mi az IP címe/hoszt neve az OSSEC HIDS szervernek?"
+serverip="Mi az IP címe az OSSEC Wazuh szervernek?"
+serveraddr="Mi az IP címe/hoszt neve az OSSEC Wazuh szervernek?"
 addingip="Szerver IP hozzáadása"
 addingname="Szerver hoszt neve hozzáadása"
 
@@ -85,8 +85,8 @@ runningmake="A Make fájl futtatása"
 
 # Final
 configurationdone="A konfiguráció sikeresen befejeződött"
-tostart="Az OSSEC HIDS indítása"
-tostop="Az OSSEC HIDS leállítása"
+tostart="Az OSSEC Wazuh indítása"
+tostop="Az OSSEC Wazuh leállítása"
 configat="A konfigurációs fájl megtekinthető vagy módosítható itt: "
 addserveragent="A kliens és szerver összekapcsolásához, minden egyes klienst 
    hozzá kell adnia a szerverhez."

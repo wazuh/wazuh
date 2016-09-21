@@ -18,7 +18,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: ossec-regex pattern\n", ARGV0);
+    printf("\nOSSEC Wazuh %s: ossec-regex pattern\n", ARGV0);
     exit(1);
 }
 
@@ -93,4 +93,3 @@ int main(int argc, char **argv)
     }
     return (0);
 }
-

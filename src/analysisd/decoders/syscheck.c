@@ -560,6 +560,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 if (lf->data)
                     os_strdup(lf->data, lf->diff);
 
+                lf->event_type = FIM_MODIFIED;
+
                 if (wdb_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "modified", &newsum, (long int)lf->time) < 0) {
                     merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
                     debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
@@ -570,6 +572,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
             case 1:
                 /* If file was re-added, do not compare changes */
                 sdb.syscheck_dec->id = sdb.idn;
+                lf->event_type = FIM_READDED;
                 FillEvent(lf, f_name, &newsum);
                 snprintf(sdb.comment, OS_MAXSTR,
                      "File '%.756s' was re-added.", f_name);
@@ -588,6 +591,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
             /* File deleted */
             sdb.syscheck_dec->id = sdb.idd;
             os_strdup(f_name, lf->filename);
+            lf->event_type = FIM_DELETED;
             snprintf(sdb.comment, OS_MAXSTR,
                  "File '%.756s' was deleted. Unable to retrieve "
                  "checksum.", f_name);
@@ -624,6 +628,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
             break;
 
         case 0:
+            lf->event_type = FIM_ADDED;
+
             if (wdb_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "added", &newsum, (long int)lf->time) < 0) {
                 merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
                 debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);

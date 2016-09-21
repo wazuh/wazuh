@@ -9,6 +9,7 @@
 
 #include "addagent/manage_agents.h"
 #include "sec.h"
+#include "wazuh_db/wdb.h"
 #include <external/cJSON/cJSON.h>
 
 #undef ARGV0
@@ -20,7 +21,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: Manages the policy and auditing database.\n",
+    printf("\nOSSEC Wazuh %s: Manages the policy and auditing database.\n",
            ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
@@ -155,7 +156,7 @@ int main(int argc, char **argv)
     /* List available agents */
     if (list_agents) {
         if (!csv_output) {
-            printf("\nOSSEC HIDS %s. List of available agents:",
+            printf("\nOSSEC Wazuh %s. List of available agents:",
                    ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, "
                    "Active/Local\n", shost);
@@ -211,6 +212,7 @@ int main(int argc, char **argv)
             }
 
             closedir(sys_dir);
+            wdb_delete_pm_all();
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
@@ -233,6 +235,8 @@ int main(int argc, char **argv)
                 fclose(fp);
             }
             unlink(final_dir);
+
+            wdb_delete_pm(0);
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
@@ -268,6 +272,8 @@ int main(int argc, char **argv)
             /* Delete syscheck */
             delete_rootcheck(keys.keyentries[i]->name,
                              keys.keyentries[i]->ip->ip, 0);
+
+            wdb_delete_pm(atoi(keys.keyentries[i]->id));
 
             if (json_output) {
                  cJSON_AddNumberToObject(json_root, "error", 0);

@@ -10,9 +10,9 @@ help="yardım"
 
 # Global
 moreinfo="Daha fazla bilgi: "
-starting="OSSEC HIDS başlatılıyor"
+starting="OSSEC Wazuh başlatılıyor"
 systemis="Sistem"
-modifiedinit="OSSEC HIDS'i önyüklemede başlatmak için başlangıç betiği değiştirildi."
+modifiedinit="OSSEC Wazuh'i önyüklemede başlatmak için başlangıç betiği değiştirildi."
 noboot="Bilinmeyen sistem. Başlangıç betiği eklenmedi."
 
 # Part 1
@@ -28,7 +28,7 @@ localchose="Yerel kurulum seçildi"
 
 # Part 2
 settingupenv="Kurulum ortamı hazırlanıyor"
-wheretoinstall="OSSEC HIDS kurulacak yeri seçin"
+wheretoinstall="OSSEC Wazuh kurulacak yeri seçin"
 installat="Kurulum buraya yapılacak: "
 deletedir="Kurulum dizini zaten var. Silinsin mi?"
 
@@ -43,8 +43,8 @@ usingsmtp="SMTP sunucu kullanılıyor: "
 whatsmtp="SMTP sunucunuzun IP adresi veya ismi nedir?"
 
 # Part 3.1/agent
-serverip="OSSEC HIDS sunucusunun IP adresi nedir?"
-serveraddr="OSSEC HIDS sunucusunun IP adresi veya ismi nedir?"
+serverip="OSSEC Wazuh sunucusunun IP adresi nedir?"
+serveraddr="OSSEC Wazuh sunucusunun IP adresi veya ismi nedir?"
 addingip="Sunucu IP adresi ekleniyor"
 addingname="Sunucu ismi ekleniyor"
 
@@ -85,8 +85,8 @@ runningmake="Makefile çalıştırılıyor"
 
 # Final
 configurationdone="Yapılandırma doğru olarak tamamlandı"
-tostart="OSSEC HIDS'i başlatmak için"
-tostop="OSSEC HIDS'i durdurmak için"
+tostart="OSSEC Wazuh'i başlatmak için"
+tostop="OSSEC Wazuh'i durdurmak için"
 configat="Yapılandırma buradan görülebilir veya değiştirilebilir:"
 addserveragent="Her bir aracıyı/istemciyi erişim için yetkilendirmeden önce eklemeniz gerekmektedir."
 runma="Eklemek ve çıkarmak için 'manage_agents' komutunu kullanın."
