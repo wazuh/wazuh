@@ -219,7 +219,7 @@ int wdb_create_file(const char *path, const char *source) {
     }
 
     sqlite3_close(db);
-    chmod(path, 0664);
+    chmod(path, 0640);
 
     return 0;
 }
