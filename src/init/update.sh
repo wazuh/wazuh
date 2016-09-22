@@ -153,7 +153,7 @@ UpdateLegacyDecoders()
 
     # Create directory
     mkdir "$DIRECTORY/etc/decoders" > /dev/null 2>&1
-    chmod 550 "$DIRECTORY/etc/decoders" > /dev/null 2>&1
+    chmod 750 "$DIRECTORY/etc/decoders" > /dev/null 2>&1
     chown root:ossec "$DIRECTORY/etc/decoders" > /dev/null 2>&1
 
     # Moving decoders

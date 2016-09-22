@@ -219,7 +219,7 @@ int wdb_create_file(const char *path, const char *source) {
     }
 
     sqlite3_close(db);
-    return chmod(path, 0640);
+    return chmod(path, 0660);
 }
 
 /* Rebuild database. Returns 0 on success or -1 on error. */

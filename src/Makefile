@@ -351,8 +351,8 @@ endif
 install: install-${TARGET}
 
 install-agent: install-common
-	install -m 0550 -o root -g 0 ossec-agentd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 agent-auth ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-agentd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 agent-auth ${PREFIX}/bin
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 
@@ -364,25 +364,25 @@ install-server: install-server-generic
 
 install-common: build
 	./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
 
-	install -d -m 0550 -o root -g 0 ${PREFIX}/bin
-	install -d -m 0550 -o root -g 0 ${PREFIX}/lua
-	install -d -m 0550 -o root -g 0 ${PREFIX}/lua/native
-	install -d -m 0550 -o root -g 0 ${PREFIX}/lua/compiled
-	install -m 0550 -o root -g 0 ossec-logcollector ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-execd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 manage_agents ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ${EXTERNAL_LUA}src/ossec-lua ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 ${EXTERNAL_LUA}src/ossec-luac ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
-	install -m 0550 -o root -g 0 wazuh-moduled ${PREFIX}/bin/
+	install -d -m 0750 -o root -g 0 ${PREFIX}/bin
+	install -d -m 0750 -o root -g 0 ${PREFIX}/lua
+	install -d -m 0750 -o root -g 0 ${PREFIX}/lua/native
+	install -d -m 0750 -o root -g 0 ${PREFIX}/lua/compiled
+	install -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-lua ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-luac ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
+	install -m 0750 -o root -g 0 wazuh-moduled ${PREFIX}/bin/
 
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
@@ -397,18 +397,18 @@ install-common: build
 	install -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
 	install -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/* ${PREFIX}/wodles/oscap/content
 
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
-	install -m 0440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
+	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
+	install -m 0640 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
 
-	install -d -m 1550 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
+	install -d -m 1750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
 ifneq (,$(wildcard /etc/TIMEZONE))
-	install -m 440 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
+	install -m 0640 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
 endif
 # Solaris Needs some extra files
 ifeq (${uname_S},SunOS)
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
-	install -m 0440 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
+	install -m 0640 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
 endif
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
 ifeq (,$(wildcard ${PREFIX}/etc/local_internal_options.conf))
@@ -427,17 +427,17 @@ endif
 
 	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
 	install -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
-	install -m 0550 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
+	install -m 0750 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
 
 	install -d -m 0700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
 
-	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
-	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
+	install -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
+	install -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
 
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
 	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
 
 	./init/fw-check.sh execute
@@ -445,7 +445,7 @@ endif
 
 
 install-server-generic: install-common
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/decoders
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/decoders
 	install -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db
 	install -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db/agents
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
@@ -453,29 +453,29 @@ install-server-generic: install-common
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
 
-	install -m 0550 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-analysisd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-monitord ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-reportd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-maild ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-remoted ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-logtest ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-authd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-dbd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-makelists ${PREFIX}/bin
-	install -m 0550 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 clear_stats ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 list_agents ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 ossec-regex ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 syscheck_update ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 agent_control ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 syscheck_control ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 rootcheck_control ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 ossec-integratord ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-analysisd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-monitord ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-reportd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-maild ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-logtest ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-dbd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
+	install -m 0750 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 clear_stats ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 list_agents ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ossec-regex ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 syscheck_update ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 agent_control ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 syscheck_control ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 rootcheck_control ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
 ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
 	cp ${PREFIX}/rules/local_rules.xml ${PREFIX}/rules/local_rules.xml.installbackup
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules

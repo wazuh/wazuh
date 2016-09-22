@@ -216,7 +216,7 @@ int wdb_create_agent_db(int id, const char *name) {
     fclose(source);
     fclose(dest);
 
-    return retval == 0 ? chmod(path, 0640) : retval;
+    return retval == 0 ? chmod(path, 0660) : retval;
 }
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
