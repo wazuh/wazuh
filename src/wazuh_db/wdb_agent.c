@@ -253,12 +253,15 @@ int* wdb_get_all_agents() {
         return NULL;
     }
 
-    if (wdb_open_global() < 0)
+    if (wdb_open_global() < 0) {
+        free(array);
         return NULL;
+    }
 
     if (wdb_prepare(wdb_global, SQL_SELECT_AGENTS, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
         wdb_close_global();
+        free(array);
         return NULL;
     }
 
