@@ -47,7 +47,7 @@ int AR_ReadConfig(const char *cfgfile)
     fclose(fp);
 
     /* Set right permission */
-    if (chmod(DEFAULTARPATH, 0440) == -1) {
+    if (chmod(DEFAULTARPATH, 0640) == -1) {
         merror(CHMOD_ERROR, ARGV0, DEFAULTARPATH, errno, strerror(errno));
         return (OS_INVALID);
     }
@@ -59,4 +59,3 @@ int AR_ReadConfig(const char *cfgfile)
 
     return (0);
 }
-

@@ -130,9 +130,9 @@ Install()
     echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}
     echo "DATE=\"`date`\"" >> ${OSSEC_INIT}
     echo "TYPE=\"${INSTYPE}\"" >> ${OSSEC_INIT}
-    chmod 600 ${OSSEC_INIT}
+    chmod 640 ${OSSEC_INIT}
+    chown root:ossec ${OSSEC_INIT}
     ln -sf ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
-    chmod 640 ${INSTALLDIR}${OSSEC_INIT}
 
     # Install Wazuh ruleset updater
     if [ "X$INSTYPE" = "Xserver" ]; then

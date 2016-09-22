@@ -525,6 +525,11 @@ int MergeAppendFile(const char *finalpath, const char *files)
         }
         fclose(finalfp);
 
+        if (chmod(finalpath, 0640) < 0) {
+            merror(CHMOD_ERROR, ARGV0, finalpath, errno, strerror(errno));
+            return 0;
+        }
+
         return (1);
     }
 
