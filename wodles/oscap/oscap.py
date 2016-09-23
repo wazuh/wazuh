@@ -67,7 +67,7 @@ def search_element_in_xml(xml_tree, element, idref):
             for report in reports.getchildren():
                 content = report.getchildren()[0]
                 testresult = content.getchildren()[0]
-
+                
                 # Reports -> Report -> Content -> TestResult
                 if testresult.tag.endswith("TestResult"):
                     for item in testresult.getchildren():
