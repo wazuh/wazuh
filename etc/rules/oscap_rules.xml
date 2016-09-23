@@ -136,6 +136,16 @@ Wodle OpenSCAP: 81500 - 81600
         <group>errors,</group>
     </rule>
 
+    <!--
+    oscap: ERROR: xsltproc not installed. Details: [Errno 2] No such file or directory
+    -->
+    <rule id="81509" level="7">
+        <if_sid>81501</if_sid>
+        <match>xsltproc not installed</match>
+        <description>OpenSCAP ERROR: xsltproc not installed.</description>
+        <group>errors,</group>
+    </rule>
+
     <!-- -->
 
 
