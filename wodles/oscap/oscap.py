@@ -263,20 +263,23 @@ if __name__ == "__main__":
         exit(1)
     policy_name = arg_file.split("/")[-1]
 
-    # Get profiles
-    profiles = extract_profiles_from_file(arg_file)
+    if arg_module == 'xccdf':
+        # Check profile argument
+        if arg_profiles:
+            # Get profiles
+            profiles = extract_profiles_from_file(arg_file)
 
-    # Check profile argument
-    if arg_profiles:
-        for p in arg_profiles:
-            if p not in profiles:
-                print("{0} Profile \"{1}\" does not exist at \"{2}\".".format(OSCAP_LOG_ERROR, p, arg_file))
-                exit(1)
+            for p in arg_profiles:
+                if p not in profiles:
+                    print("{0} Profile \"{1}\" does not exist at \"{2}\".".format(OSCAP_LOG_ERROR, p, arg_file))
+                    exit(1)
 
-        profiles = arg_profiles
+            profiles = arg_profiles
+        else:
+            # Get profiles
+            profiles = extract_profiles_from_file(arg_file)
     else:
-        # Get profiles
-        profiles = extract_profiles_from_file(arg_file)
+        profiles = None
 
     # Execute checkings
     if profiles:
