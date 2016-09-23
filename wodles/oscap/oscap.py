@@ -247,6 +247,16 @@ if __name__ == "__main__":
             print("{0} Impossible to execute OpenSCAP. Details: {1}.".format(OSCAP_LOG_ERROR, e))
         exit(1)
 
+    # Check xsltproc installed
+    try:
+        output_installed = check_output([XSLT_BIN, "-V"], stderr=STDOUT)
+    except Exception as e:
+        if "No such file or directory" in e:
+            print("{0} xsltproc not installed. Details: {1}.".format(OSCAP_LOG_ERROR, e))
+        else:
+            print("{0} Impossible to execute xsltproc. Details: {1}.".format(OSCAP_LOG_ERROR, e))
+        exit(1)
+
     # Check policy
     if not isfile(arg_file):
         print("{0} File \"{1}\" does not exist.".format(OSCAP_LOG_ERROR, arg_file))
