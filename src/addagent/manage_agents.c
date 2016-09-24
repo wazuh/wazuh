@@ -12,6 +12,7 @@
  */
 
 #include "manage_agents.h"
+#include "wazuh_db/wdb.h"
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
 #include <stdlib.h>
@@ -34,7 +35,6 @@ time_t time2;
 time_t time3;
 long int rand1;
 long int rand2;
-
 
 /* Remove spaces, newlines, etc from a string */
 char *chomp(char *str)
@@ -77,11 +77,13 @@ int add_agent(int json_output)
 {
     int i = 1;
     FILE *fp;
+    File file;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
 
     os_md5 md1;
     os_md5 md2;
+    char key[65];
 
     char *user_input;
     char *_name;
@@ -96,6 +98,21 @@ int add_agent(int json_output)
 
     char *id_exist = NULL;
     int force_antiquity;
+
+    /* Check that ossec-authd isn't running */
+
+    if (check_authd()) {
+        if (json_output) {
+            char buffer[1024];
+            cJSON *json_root = cJSON_CreateObject();
+            snprintf(buffer, 1023, "ossec-authd is running");
+            cJSON_AddNumberToObject(json_root, "error", 72);
+            cJSON_AddStringToObject(json_root, "message", buffer);
+            printf("%s", cJSON_PrintUnformatted(json_root));
+            exit(1);
+        } else
+            ErrorExit("%s: ERROR: ossec-authd is running", ARGV0);
+    }
 
     /* Check if we can open the auth_file */
     fp = fopen(AUTH_FILE, "a");
@@ -113,24 +130,8 @@ int add_agent(int json_output)
     }
     fclose(fp);
 
-#ifndef WIN32
-    if (chmod(AUTH_FILE, 0440) == -1) {
-        if (json_output) {
-            char buffer[1024];
-            cJSON *json_root = cJSON_CreateObject();
-            snprintf(buffer, 1023, "Could not chmod object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
-            cJSON_AddNumberToObject(json_root, "error", 71);
-            cJSON_AddStringToObject(json_root, "message", buffer);
-            printf("%s", cJSON_PrintUnformatted(json_root));
-            exit(1);
-        } else
-            ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
-    }
-#endif
-
     /* Set time 2 */
     time2 = time(0);
-
     rand1 = random();
 
     /* Zero strings */
@@ -216,24 +217,27 @@ int add_agent(int json_output)
         }
 
         strncpy(ip, _ip, FILE_SIZE - 1);
+        free(c_ip.ip);
 
         if (!OS_IsValidIP(ip, &c_ip)) {
             printf(IP_ERROR, ip);
             _ip = NULL;
+            free(c_ip.ip);
+            c_ip.ip = NULL;
         } else if ((id_exist = IPExist(ip))) {
             double antiquity = -1;
             const char *env_remove_dup = getenv("OSSEC_REMOVE_DUPLICATED");
 
             if (env_remove_dup) {
                 force_antiquity = strtol(env_remove_dup, NULL, 10);
-                antiquity = OS_AgentAntiquity(id_exist);
+                antiquity = OS_AgentAntiquity_ID(id_exist);
             }
 
             if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
 #ifdef REUSE_ID
                 strncpy(id, id_exist, FILE_SIZE);
 #endif
-                OS_BackupAgentInfo(id_exist);
+                OS_BackupAgentInfo_ID(id_exist);
                 OS_RemoveAgent(id_exist);
             } else {
                 if (json_output) {
@@ -246,12 +250,13 @@ int add_agent(int json_output)
                     printf(IP_DUP_ERROR, ip);
                     setenv("OSSEC_AGENT_IP", "", 1);
                     _ip = NULL;
+                    free(c_ip.ip);
+                    c_ip.ip = NULL;
                 }
             }
 
             free(id_exist);
         }
-
     } while (!_ip);
 
     if (!*id) {
@@ -297,9 +302,10 @@ int add_agent(int json_output)
                 strncpy(id, _id, FILE_SIZE - 1);
             }
 
-            if (!OS_IsValidID(id)) {
+            if (OS_IsValidID(id)) {
+                FormatID(id);
+            } else
                 printf(INVALID_ID, id);
-            }
 
             /* Search for ID KEY  -- no duplicates */
             if (IDExist(id)) {
@@ -334,8 +340,7 @@ int add_agent(int json_output)
             time3 = time(0);
             rand2 = random();
 
-            fp = fopen(AUTH_FILE, "a");
-            if (!fp) {
+            if (TempFile(&file, AUTH_FILE, 1) < 0 ) {
                 if (json_output) {
                     char buffer[1024];
                     cJSON *json_root = cJSON_CreateObject();
@@ -347,20 +352,6 @@ int add_agent(int json_output)
                 } else
                     ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
             }
-#ifndef WIN32
-            if (chmod(AUTH_FILE, 0440) < 0) {
-                if (json_output) {
-                    char buffer[1024];
-                    cJSON *json_root = cJSON_CreateObject();
-                    snprintf(buffer, 1023, "Could not chmod object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
-                    cJSON_AddNumberToObject(json_root, "error", 71);
-                    cJSON_AddStringToObject(json_root, "message", buffer);
-                    printf("%s", cJSON_PrintUnformatted(json_root));
-                    exit(1);
-                } else
-                    ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
-            }
-#endif
 
             /* Random 1: Time took to write the agent information
              * Random 2: Time took to choose the action
@@ -379,8 +370,24 @@ int add_agent(int json_output)
                      (int)time3);
             OS_MD5_Str(str1, md1);
 
-            fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
-            fclose(fp);
+            snprintf(key, 65, "%s%s", md1, md2);
+            fprintf(file.fp, "%s %s %s %s\n", id, name, c_ip.ip, key);
+            fclose(file.fp);
+
+            if (OS_MoveFile(file.name, AUTH_FILE) < 0) {
+                if (json_output) {
+                    char buffer[1024];
+                    cJSON *json_root = cJSON_CreateObject();
+                    snprintf(buffer, 1023, "Could not write file '%s'", AUTH_FILE);
+                    cJSON_AddNumberToObject(json_root, "error", 71);
+                    cJSON_AddStringToObject(json_root, "message", buffer);
+                    printf("%s", cJSON_PrintUnformatted(json_root));
+                    exit(1);
+                } else
+                    ErrorExit("%s: Could not write file '%s'", ARGV0, AUTH_FILE);
+            }
+
+            free(file.name);
             OS_AddAgentTimestamp(id, name, ip, time3);
 
             if (json_output) {
@@ -416,6 +423,19 @@ int remove_agent(int json_output)
 
     u_id[FILE_SIZE] = '\0';
 
+    if (check_authd()) {
+        if (json_output) {
+            char buffer[1024];
+            cJSON *json_root = cJSON_CreateObject();
+            snprintf(buffer, 1023, "ossec-authd is running");
+            cJSON_AddNumberToObject(json_root, "error", 72);
+            cJSON_AddStringToObject(json_root, "message", buffer);
+            printf("%s", cJSON_PrintUnformatted(json_root));
+            exit(1);
+        } else
+            ErrorExit("%s: ERROR: ossec-authd is running", ARGV0);
+    }
+
     if (!(json_output || print_agents(0, 0, 0, 0))) {
         printf(NO_AGENT);
         return (0);
@@ -438,8 +458,8 @@ int remove_agent(int json_output)
             return (0);
         }
 
+        FormatID(user_input);
         strncpy(u_id, user_input, FILE_SIZE);
-
         id_exist = IDExist(user_input);
 
         if (!id_exist) {

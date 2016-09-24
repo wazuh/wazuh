@@ -100,7 +100,7 @@ int Start_win32_Syscheck()
         if (!syscheck.registry) {
             dump_syscheck_entry(&syscheck, "", 0, 1, NULL);
         }
-        syscheck.registry[0] = NULL;
+        syscheck.registry[0].entry = NULL;
 
         merror("%s: WARN: Syscheck disabled.", ARGV0);
     }
@@ -115,9 +115,9 @@ int Start_win32_Syscheck()
 
     /* Print options */
     r = 0;
-    while (syscheck.registry[r] != NULL) {
-        verbose("%s: INFO: Monitoring registry entry: '%s'.",
-                ARGV0, syscheck.registry[r]);
+    while (syscheck.registry[r].entry != NULL) {
+        verbose("%s: INFO: Monitoring registry entry: '%s%s'.",
+                ARGV0, syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
         r++;
     }
 
@@ -297,7 +297,7 @@ int main(int argc, char **argv)
 
     /* Create pid */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        merror(PID_ERROR, ARGV0);
+        ErrorExit(PID_ERROR, ARGV0);
     }
 
     /* Start up message */
@@ -359,4 +359,3 @@ int main(int argc, char **argv)
 }
 
 #endif /* !WIN32 */
-

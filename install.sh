@@ -111,7 +111,10 @@ Install()
     # If update, stop ossec
     if [ "X${update_only}" = "Xyes" ]; then
         UpdateStopOSSEC
+        # Move old decoders (ossec_decodes and wazuh_decoders) to etc/decoders
+        UpdateLegacyDecoders
     fi
+
 
     ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install
 
@@ -120,24 +123,21 @@ Install()
 
     # Generate the /etc/ossec-init.conf
     VERSION_FILE="./src/VERSION"
-    WVERSION_FILE="./src/WAZUH_VERSION"
     VERSION=`cat ${VERSION_FILE}`
-    WVERSION=`cat ${WVERSION_FILE}`
     chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
     echo "DIRECTORY=\"${INSTALLDIR}\"" > ${OSSEC_INIT}
-    echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}   
-    echo "WAZUH_VERSION=\"${WVERSION}\"" >> ${OSSEC_INIT}
+    echo "NAME=\"${NAME}\"" >> ${OSSEC_INIT}
+    echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}
     echo "DATE=\"`date`\"" >> ${OSSEC_INIT}
     echo "TYPE=\"${INSTYPE}\"" >> ${OSSEC_INIT}
-    chmod 600 ${OSSEC_INIT}
-    cp -pr ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
-    chmod 640 ${INSTALLDIR}${OSSEC_INIT}
+    chmod 640 ${OSSEC_INIT}
+    chown root:ossec ${OSSEC_INIT}
+    ln -sf ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
 
     # Install Wazuh ruleset updater
     if [ "X$INSTYPE" = "Xserver" ]; then
-        if [ "X${INSTALLDIR}" = "X/var/ossec" ]; then
 		WazuhSetup
-        fi
+
     fi
    # If update_rules is set, we need to tweak
     # ossec.conf to read the new signatures.
@@ -239,7 +239,7 @@ UseRootcheck()
         # Patch for systems that use s-nail instead of GNU Mailutils (such as Arch Linux).
         if strings /usr/bin/mail | grep "x-shsh bash" 1> /dev/null; then
           sed -i 's/mail        !bash|/mail        !/' ./src/rootcheck/db/rootkit_trojans.txt
-        fi       
+        fi
     else
       echo "" >> $NEWCONFIG
       echo "  <rootcheck>" >> $NEWCONFIG
@@ -956,7 +956,7 @@ main()
     . ./src/init/language.sh
     . ./src/init/functions.sh
     . ./src/init/init.sh
-    . ./src/init/wazuh.sh
+    . ./src/init/wazuh/wazuh.sh
     . ${TEMPLATE}/${LANGUAGE}/messages.txt
 
 
@@ -977,8 +977,7 @@ main()
 
 
     # Initial message
-    echo " $NAME $VERSION ${installscript} - http://www.ossec.net"
-    echo " OSSEC WAZUH $WVERSION ${installscript} - http://www.wazuh.com"
+    echo " $NAME $VERSION ${installscript} - http://www.wazuh.com"
     catMsg "0x101-initial"
 
     echo "  - $system: $UNAME"
@@ -1036,6 +1035,7 @@ main()
                 USER_INSTALL_TYPE=`getPreinstalled`
                 USER_DIR=`getPreinstalledDir`
                 USER_DELETE_DIR="$nomatch"
+                USER_OLD_VERSION=`getPreinstalledVersion`
             fi
 
             ct="1"

@@ -3,7 +3,7 @@
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 EXTERNAL_JSON=external/cJSON/
-EXTERNAL_LUA=external/lua/
+EXTERNAL_LUA=external/lua-5.2.3/
 EXTERNAL_ZLIB=external/zlib-1.2.8/
 LUA_PLAT=posix
 MAXAGENTS?=2048
@@ -52,7 +52,7 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-pthread -lrt
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
 else
 ifeq (${uname_S},AIX)
@@ -351,8 +351,8 @@ endif
 install: install-${TARGET}
 
 install-agent: install-common
-	install -m 0550 -o root -g 0 ossec-agentd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 agent-auth ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-agentd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 agent-auth ${PREFIX}/bin
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 
@@ -364,25 +364,25 @@ install-server: install-server-generic
 
 install-common: build
 	./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
 
-	install -d -m 0550 -o root -g 0 ${PREFIX}/bin
-	install -d -m 0550 -o root -g 0 ${PREFIX}/lua
-	install -d -m 0550 -o root -g 0 ${PREFIX}/lua/native
-	install -d -m 0550 -o root -g 0 ${PREFIX}/lua/compiled
-	install -m 0550 -o root -g 0 ossec-logcollector ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-execd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 manage_agents ${PREFIX}/bin
-	install -m 0550 -o root -g 0 external/lua/src/ossec-lua ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 external/lua/src/ossec-luac ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
-	install -m 0550 -o root -g 0 wazuh-moduled ${PREFIX}/bin/
+	install -d -m 0750 -o root -g 0 ${PREFIX}/bin
+	install -d -m 0750 -o root -g 0 ${PREFIX}/lua
+	install -d -m 0750 -o root -g 0 ${PREFIX}/lua/native
+	install -d -m 0750 -o root -g 0 ${PREFIX}/lua/compiled
+	install -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-lua ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-luac ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
+	install -m 0750 -o root -g 0 wazuh-moduled ${PREFIX}/bin/
 
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
@@ -391,23 +391,24 @@ install-common: build
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
 	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/policies
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
 
 	install -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
-	install -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/policies/* ${PREFIX}/wodles/oscap/policies
+	install -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
+	install -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/* ${PREFIX}/wodles/oscap/content
 
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
-	install -m 0440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
+	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
+	install -m 0640 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
 
-	install -d -m 1550 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
+	install -d -m 1750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
 ifneq (,$(wildcard /etc/TIMEZONE))
-	install -m 440 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
+	install -m 0640 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
 endif
 # Solaris Needs some extra files
 ifeq (${uname_S},SunOS)
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
-	install -m 0440 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
+	install -m 0640 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
 endif
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
 ifeq (,$(wildcard ${PREFIX}/etc/local_internal_options.conf))
@@ -426,17 +427,17 @@ endif
 
 	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
 	install -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
-	install -m 0550 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
+	install -m 0750 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
 
 	install -d -m 0700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
 
-	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
-	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
+	install -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
+	install -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
 
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
 	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
 
 	./init/fw-check.sh execute
@@ -444,47 +445,50 @@ endif
 
 
 install-server-generic: install-common
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/ossec_decoders
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/wazuh_decoders
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/decoders
+	install -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db
+	install -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db/agents
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
 
-	install -m 0550 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-analysisd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-monitord ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-reportd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-maild ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-remoted ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-logtest ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-authd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-dbd ${PREFIX}/bin
-	install -m 0550 -o root -g 0 ossec-makelists ${PREFIX}/bin
-	install -m 0550 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 clear_stats ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 list_agents ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 ossec-regex ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 syscheck_update ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 agent_control ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 syscheck_control ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 rootcheck_control ${PREFIX}/bin/
-	install -m 0550 -o root -g 0 ossec-integratord ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-analysisd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-monitord ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-reportd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-maild ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-logtest ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-dbd ${PREFIX}/bin
+	install -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
+	install -m 0750 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 clear_stats ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 list_agents ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ossec-regex ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 syscheck_update ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 agent_control ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 syscheck_control ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 rootcheck_control ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
 ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
 	cp ${PREFIX}/rules/local_rules.xml ${PREFIX}/rules/local_rules.xml.installbackup
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/ossec_decoders/*.xml ${PREFIX}/etc/ossec_decoders
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/wazuh_decoders/*.xml ${PREFIX}/etc/wazuh_decoders
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/etc/decoders
 	install -m 0640 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules/local_rules.xml.installbackup ${PREFIX}/rules/local_rules.xml
 	rm ${PREFIX}/rules/local_rules.xml.installbackup
 else
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/ossec_decoders/*.xml ${PREFIX}/etc/ossec_decoders
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/wazuh_decoders/*.xml ${PREFIX}/etc/wazuh_decoders
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/etc/decoders
+endif
+
+ifeq (,$(wildcard ${PREFIX}/etc/local_decoder.xml))
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/local_decoder.xml
 endif
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
@@ -497,7 +501,6 @@ endif
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
-
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
 	install -m 750 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations
 	touch ${PREFIX}/logs/integrations.log
@@ -638,7 +641,7 @@ endif
 agent: ${BUILD_AGENT}
 
 
-WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe
+WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
@@ -708,8 +711,6 @@ libcJSON.a: ${cjson_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
-
-
 ####################
 #### OSSEC Libs ####
 ####################
@@ -771,11 +772,23 @@ wmodules_c := $(wildcard wazuh_modules/wm*.c)
 wmodules_o := $(wmodules_c:.c=.o)
 
 wazuh_modules/%.o: wazuh_modules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
 
 wmodules.a: ${wmodules_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
+
+#### SQLite ####
+
+sqlite_c := $(wildcard wazuh_db/*.c)
+sqlite_sql := $(wildcard wazuh_db/*.sql)
+sqlite_o := $(sqlite_c:.c=.o) $(sqlite_sql:.sql=.o)
+
+wazuh_db/schema_%.o: wazuh_db/schema_%.sql
+	${QUIET_CC}echo 'const char *'$(word 2, $(subst /, ,$(subst .,_,$<))) '= "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
+
+wazuh_db/%.o: wazuh_db/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-analysisd\" -c $^ -o $@
 
 #### Config ##########
 
@@ -917,7 +930,7 @@ remoted_o := $(remoted_c:.c=.o)
 remoted/%.o: remoted/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./remoted ${ZLIB_INCLUDE} -DARGV0=\"ossec-remoted\" -c $^ -o $@
 
-ossec-remoted: ${remoted_o} ${ossec_libs} ${ZLIB_LIB}
+ossec-remoted: ${remoted_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
 #### ossec-agentd ####
@@ -940,7 +953,7 @@ addagent/%.o: addagent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./addagent ${ZLIB_INCLUDE} -DARGV0=\"manage_agents\" -c $^ -o $@
 
 
-manage_agents: ${addagent_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+manage_agents: ${addagent_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} ${JSON_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
 #### Util ##########
@@ -956,7 +969,7 @@ util_o := $(util_c:.c=.o)
 util/%.o: util/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./util ${ZLIB_INCLUDE} -DARGV0=\"utils\" -c $^ -o $@
 
-syscheck_update: util/syscheck_update.o addagent/validate.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+syscheck_update: util/syscheck_update.o addagent/validate.o ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} ${JSON_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
 clear_stats: util/clear_stats.o ${ossec_libs} ${ZLIB_LIB}
@@ -968,13 +981,13 @@ list_agents: util/list_agents.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 verify-agent-conf: util/verify-agent-conf.o ${ossec_libs} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
-agent_control: util/agent_control.o addagent/validate.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+agent_control: util/agent_control.o addagent/validate.o ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} ${JSON_INCLUDE} $^ -lm ${OSSEC_LDFLAGS} -o $@
 
-syscheck_control: util/syscheck_control.o addagent/validate.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+syscheck_control: util/syscheck_control.o addagent/validate.o ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} ${JSON_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
-rootcheck_control: util/rootcheck_control.o addagent/validate.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+rootcheck_control: util/rootcheck_control.o addagent/validate.o ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} ${JSON_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
 ossec-regex: util/ossec-regex.o ${ossec_libs} ${ZLIB_LIB}
@@ -1026,7 +1039,7 @@ monitor_o := $(monitor_c:.c=.o)
 monitord/%.o: monitord/%.c ${ZLIB_LIB}
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-monitord\" -c $< -o $@
 
-ossec-monitord: ${monitor_o} ${ossec_libs} os_maild/sendcustomemail.o ${ZLIB_LIB} ${JSON_LIB}
+ossec-monitord: ${monitor_o} ${ossec_libs} ${sqlite_o} os_maild/sendcustomemail.o ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
 
@@ -1048,12 +1061,12 @@ os_auth_c := ${wildcard os_auth/*.c}
 os_auth_o := $(os_auth_c:.c=.o)
 
 os_auth/%.o: os_auth/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS}  -I./os_auth -DARGV0=\"ossec-authd\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -I./os_auth -DARGV0=\"ossec-authd\" -c $^ -o $@
 
-agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${JSON_INCLUDE} -I./os_auth $^ ${OSSEC_LDFLAGS} -o $@
 
-ossec-authd: addagent/validate.o os_auth/main-server.o os_auth/ssl.o os_auth/check_cert.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+ossec-authd: addagent/validate.o os_auth/main-server.o os_auth/ssl.o os_auth/check_cert.o ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${JSON_INCLUDE} -I./os_auth $^ ${OSSEC_LDFLAGS} -o $@
 
 #### integratord #####
@@ -1163,10 +1176,10 @@ analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"ossec-analysisd\" -I./analysisd -c $< -o $@
 
 
-ossec-logtest: ${analysisd_test_o} ${output_o} ${format_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+ossec-logtest: ${analysisd_test_o} ${output_o} ${format_o} ${sqlite_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} -DTESTRULE $^ ${OSSEC_LDFLAGS} -o $@
 
-ossec-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+ossec-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} ${sqlite_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
@@ -1277,16 +1290,16 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"ossec-win32ui\" -c $^ -o $@
 
-win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o $(filter-out syscheckd/seechanges.o, ${syscheck_o}) ${rootcheck_o} $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} ${ossec_libs} ${ZLIB_LIB}
+win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o ${syscheck_o} ${rootcheck_o} $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} ${ossec_libs} ${ZLIB_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
-win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o $(filter-out syscheckd/seechanges.o, ${syscheck_o}) ${rootcheck_o} $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} ${ossec_libs} ${ZLIB_LIB}
+win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o ${syscheck_o} ${rootcheck_o} $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} ${ossec_libs} ${ZLIB_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 win32/ossec-rootcheck.exe: win32/icon.o win32/win_service_rk.o ${rootcheck_rk_o} ${ossec_libs}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-rootcheck\" ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
-win32/manage_agents.exe: win32/win_service_rk.o ${addagent_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+win32/manage_agents.exe: win32/win_service_rk.o ${addagent_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 win32/setup-windows.exe: win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o ${ossec_libs}
@@ -1307,6 +1320,8 @@ win32/resource.o: win32/ui/win32ui.rc
 win32/os_win32ui.exe: win32/resource.o win32/win_service_rk.o ${win32_ui_o} addagent/b64.o ${ossec_libs}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-win32ui\" ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -mwindows -o $@
 
+win32/agent-auth.exe: win32/win_service_rk.o addagent/validate.c ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB} win32/agent_auth.c os_regex/*.c os_net/*.c os_xml/*.c
+	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -lshlwapi -lwsock32 -lsecur32 -flto -o $@
 
 ####################
 #### Clean #########
@@ -1352,7 +1367,8 @@ clean-internals:
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
 	rm -f ${integrator_o} ossec-integratord
-	rm -f ${wmoduled_o} ${wmodules_o} wazuh-moduled
+	rm -f ${wmoduled_o} ${wmodules_o} wazuh-moduled wmodules.a
+	rm -f ${sqlite_o} sqlite.a
 
 clean-windows:
 	rm -f win32/LICENSE.txt
@@ -1365,9 +1381,9 @@ clean-windows:
 	rm -f ${win32_o} ${win32_ui_o} win32/win_service_rk.o
 	rm -f win32/icon.o win32/resource.o
 	rm -f ${WINDOWS_BINS}
-	rm -f external/lua-5.2.3/src/lua52.dll
-	rm -f external/lua-5.2.3/src/ossec-lua.exe
-	rm -f external/lua-5.2.3/src/ossec-luac.exe
+	rm -f ${EXTERNAL_LUA}src/lua52.dll
+	rm -f ${EXTERNAL_LUA}src/ossec-lua.exe
+	rm -f ${EXTERNAL_LUA}src/ossec-luac.exe
 	rm -f win32/ossec-lua.exe
 	rm -f win32/ossec-luac.exe
 	rm -f win32/ossec-win32-agent.exe

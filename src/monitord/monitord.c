@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "monitord.h"
+#include <pthread.h>
 
 /* Global variables */
 monitor_config mond;
@@ -18,6 +19,7 @@ void Monitord()
 {
     time_t tm;
     struct tm *p;
+    pthread_t thread_keysync;
 
     int today = 0;
     int thismonth = 0;
@@ -50,6 +52,11 @@ void Monitord()
         merror(QUEUE_SEND, ARGV0);
     }
 
+    /* Start keysync thread */
+
+    if (pthread_create(&thread_keysync, NULL, run_keysync, NULL) < 0)
+        merror("%s: Error creating keysync thread: %s", ARGV0, strerror(errno));
+
     /* Main monitor loop */
     while (1) {
         tm = time(NULL);
@@ -75,4 +82,3 @@ void Monitord()
         sleep(120);
     }
 }
-

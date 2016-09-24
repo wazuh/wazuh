@@ -27,9 +27,6 @@
 #define ANALYZER_MODEL "Ossec"
 #define ANALYZER_MANUFACTURER __site
 #define ANALYZER_VERSION __version
-#define FILE_USER 0
-#define FILE_GROUP 1
-#define FILE_OTHER 2
 
 /** OSSEC to prelude severity mapping. **/
 static const char *(ossec2prelude_sev[]) = {"info", "info", "info", "info",
@@ -186,7 +183,7 @@ void prelude_start(const char *profile, int argc, char **argv)
 }
 
 static void FileAccess_PreludeLog(idmef_message_t *idmef,
-                           int filenum,
+                           const char *category,
                            const char *filename,
                            const char *md5,
                            const char *sha1,
@@ -195,112 +192,82 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
                            int perm)
 {
 
-    int _checksum_counter = 0;
-    char _prelude_section[128];
-    _prelude_section[127] = '\0';
-
     debug1("%s: DEBUG: filename = %s.", ARGV0, filename);
-    debug1("%s: DEBUG: filenum = %d.", ARGV0, filenum);
-    if (filenum == 0) {
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).name", filenum);
-        add_idmef_object(idmef, _prelude_section, filename);
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).category", filenum);
-        add_idmef_object(idmef, _prelude_section, "original");
-    } else if (filenum == 1) {
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).name", filenum);
-        add_idmef_object(idmef, _prelude_section, filename);
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).category", filenum);
-        add_idmef_object(idmef, _prelude_section, "current");
-    } else {
-        return;
-    }
+    debug1("%s: DEBUG: category = %s.", ARGV0, category);
+    add_idmef_object(idmef, "alert.target(0).file(>>).name", filename);
+    add_idmef_object(idmef, "alert.target(0).file(-1).category", category);
 
     /* Add the hashes */
     if (md5) {
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).checksum(%d).algorithm", filenum, _checksum_counter);
-        add_idmef_object(idmef, _prelude_section, "MD5");
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).checksum(%d).value", filenum, _checksum_counter);
-        add_idmef_object(idmef, _prelude_section, md5);
-        _checksum_counter++;
+        add_idmef_object(idmef, "alert.target(0).file(-1).checksum(>>).algorithm", "MD5");
+        add_idmef_object(idmef, "alert.target(0).file(-1).checksum(-1).value", md5);
     }
     if (sha1) {
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).checksum(%d).algorithm", filenum, _checksum_counter);
-        add_idmef_object(idmef, _prelude_section, "SHA1");
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).checksum(%d).value", filenum, _checksum_counter);
-        add_idmef_object(idmef, _prelude_section, sha1);
-        _checksum_counter++;
+        add_idmef_object(idmef, "alert.target(0).file(-1).checksum(>>).algorithm", "SHA1");
+        add_idmef_object(idmef, "alert.target(0).file(-1).checksum(-1).value", sha1);
     }
 
     /* Add the owner */
     if (owner) {
         debug1("%s: DEBUG: owner = %s.", ARGV0, owner);
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).user_id.number", filenum, FILE_USER);
-        add_idmef_object(idmef, _prelude_section, owner);
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).user_id.type", filenum, FILE_USER);
-        add_idmef_object(idmef, _prelude_section, "user-privs");
+        add_idmef_object(idmef, "alert.target(0).file(-1).file_access(>>).user_id.number", owner);
+        add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).user_id.type", "user-privs");
+
+        if (perm) {
+            /* Add the permissions */
+            if (perm & S_IWUSR) {
+                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "write");
+                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "delete");
+            }
+            if (perm & S_IXUSR) {
+                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "execute");
+            }
+            if (perm & S_IRUSR ) {
+                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "read");
+            }
+            if (perm & S_ISUID) {
+                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "executeAs");
+            }
+        }
     }
 
     /* Add the group owner */
     if (gowner) {
         debug1("%s: DEBUG: gowner = %s.", ARGV0, gowner);
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).user_id.number", filenum, FILE_GROUP);
-        add_idmef_object(idmef, _prelude_section, gowner);
-        snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).user_id.type", filenum, FILE_GROUP);
-        add_idmef_object(idmef, _prelude_section, "group-privs");
+        add_idmef_object(idmef, "alert.target(0).file(-1).file_access(>>).user_id.number", gowner);
+        add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).user_id.type", "group-privs");
+
+        if (perm) {
+            /* Add the permissions */
+            if (perm & S_IWGRP) {
+                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "write");
+                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "delete");
+            }
+            if (perm & S_IXGRP) {
+                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "execute");
+            }
+            if (perm & S_IRGRP ) {
+                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "read");
+            }
+            if (perm & S_ISGID) {
+                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "executeAs");
+            }
+        }
     }
 
-    /* Add the permissions */
-    if (perm) {
-        if (perm & S_IWUSR) {
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(0)", filenum, FILE_USER);
-            add_idmef_object(idmef, _prelude_section, "write");
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(1)", filenum, FILE_USER);
-            add_idmef_object(idmef, _prelude_section, "delete");
-        }
-        if (perm & S_IXUSR) {
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(2)", filenum, FILE_USER);
-            add_idmef_object(idmef, _prelude_section, "execute");
-        }
-        if (perm & S_IRUSR ) {
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(3)", filenum, FILE_USER);
-            add_idmef_object(idmef, _prelude_section, "read");
-        }
-        if (perm & S_ISUID) {
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(4)", filenum, FILE_USER);
-            add_idmef_object(idmef, _prelude_section, "executeAs");
-        }
+    add_idmef_object(idmef, "alert.target(0).file(-1).file_access(>>).user_id.type", "other-privs");
 
-        if (perm & S_IWGRP) {
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(0)", filenum, FILE_GROUP);
-            add_idmef_object(idmef, _prelude_section, "write");
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(1)", filenum, FILE_GROUP);
-            add_idmef_object(idmef, _prelude_section, "delete");
-        }
-        if (perm & S_IXGRP) {
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(2)", filenum, FILE_GROUP);
-            add_idmef_object(idmef, _prelude_section, "execute");
-        }
-        if (perm & S_IRGRP ) {
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(3)", filenum, FILE_GROUP);
-            add_idmef_object(idmef, _prelude_section, "read");
-        }
-        if (perm & S_ISGID) {
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(4)", filenum, FILE_GROUP);
-            add_idmef_object(idmef, _prelude_section, "executeAs");
-        }
+    if (perm) {
+        /* Add the permissions */
         if (perm & S_IWOTH) {
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(0)", filenum, FILE_OTHER);
-            add_idmef_object(idmef, _prelude_section, "write");
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(1)", filenum, FILE_OTHER);
-            add_idmef_object(idmef, _prelude_section, "delete");
+            add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "write");
+            add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "delete");
         }
         if (perm & S_IXOTH) {
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(2)", filenum, FILE_OTHER);
-            add_idmef_object(idmef, _prelude_section, "execute");
+            add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "execute");
         }
         if (perm & S_IROTH ) {
-            snprintf(_prelude_section, 128, "alert.target(0).file(%d).File_Access(%d).permission(3)", filenum, FILE_OTHER);
-            add_idmef_object(idmef, _prelude_section, "read");
+            add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "read");
         }
     }
     return;
@@ -309,10 +276,8 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
 void OS_PreludeLog(const Eventinfo *lf)
 {
     int ret;
-    int classification_counter = 0;
-    int additional_data_counter = 0;
-    char _prelude_section[128];
     char _prelude_data[256];
+    char *origin;
     idmef_message_t *idmef;
     RuleInfoDetail *last_info_detail;
 
@@ -381,41 +346,24 @@ void OS_PreludeLog(const Eventinfo *lf)
          * infomation if present in the triggering rule
          */
         if (lf->generated_rule->cve) {
-            snprintf(_prelude_section, 128, "alert.classification.reference(%d).origin",
-                     classification_counter);
-            add_idmef_object(idmef, _prelude_section, "cve");
-            snprintf(_prelude_section, 128, "alert.classification.reference(%d).name",
-                     classification_counter);
-            add_idmef_object(idmef, _prelude_section, lf->generated_rule->cve);
-            snprintf(_prelude_section, 128, "alert.classification.reference(%d).meaning",
-                     classification_counter);
+            add_idmef_object(idmef, "alert.classification.reference(>>).origin", "cve");
+            add_idmef_object(idmef, "alert.classification.reference(-1).name", lf->generated_rule->cve);
+
             snprintf(_prelude_data, 256, "CVE:%s", lf->generated_rule->cve);
-            add_idmef_object(idmef, _prelude_section, _prelude_data);
-            classification_counter++;
+            add_idmef_object(idmef, "alert.classification.reference(-1).meaning", _prelude_data);
         }
 
         /* Rule sid is used to create a link to the rule on the OSSEC wiki */
         if (lf->generated_rule->sigid) {
-            snprintf(_prelude_section, 128, "alert.classification.reference(%d).origin",
-                     classification_counter);
-            add_idmef_object(idmef, _prelude_section, "vendor-specific");
+            add_idmef_object(idmef, "alert.classification.reference(>>).origin", "vendor-specific");
 
-            snprintf(_prelude_section, 128, "alert.classification.reference(%d).name",
-                     classification_counter);
             snprintf(_prelude_data, 256, "Rule:%d", lf->generated_rule->sigid);
-            add_idmef_object(idmef, _prelude_section, _prelude_data);
+            add_idmef_object(idmef, "alert.classification.reference(-1).name", _prelude_data);
+            add_idmef_object(idmef, "alert.classification.reference(-1).meaning", "OSSEC Rule Wiki Documentation");
 
-            snprintf(_prelude_section, 128, "alert.classification.reference(%d).meaning",
-                     classification_counter);
-            add_idmef_object(idmef, _prelude_section, "OSSEC Rule Wiki Documentation");
-
-            snprintf(_prelude_section, 128, "alert.classification.reference(%d).url",
-                     classification_counter);
             snprintf(_prelude_data, 256, "http://www.ossec.net/wiki/Rule:%d",
                      lf->generated_rule->sigid);
-            add_idmef_object(idmef, _prelude_section, _prelude_data);
-
-            classification_counter++;
+            add_idmef_object(idmef, "alert.classification.reference(-1).url", _prelude_data);
         }
 
         /* Extended Info Details */
@@ -423,53 +371,37 @@ void OS_PreludeLog(const Eventinfo *lf)
                 last_info_detail != NULL;
                 last_info_detail = last_info_detail->next) {
             if (last_info_detail->type == RULEINFODETAIL_LINK) {
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).origin",
-                         classification_counter);
-                add_idmef_object(idmef, _prelude_section, "vendor-specific");
+                add_idmef_object(idmef, "alert.classification.reference(>>).origin", "vendor-specific");
 
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).name",
-                         classification_counter);
                 snprintf(_prelude_data, 256, "Rule:%d link", lf->generated_rule->sigid);
-                add_idmef_object(idmef, _prelude_section, _prelude_data);
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).url",
-                         classification_counter);
-                add_idmef_object(idmef, _prelude_section, last_info_detail->data);
+                add_idmef_object(idmef, "alert.classification.reference(-1).name", _prelude_data);
+                add_idmef_object(idmef, "alert.classification.reference(-1).url", last_info_detail->data);
 
-                classification_counter++;
             } else if (last_info_detail->type == RULEINFODETAIL_TEXT) {
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).origin",
-                         classification_counter);
-                add_idmef_object(idmef, _prelude_section, "vendor-specific");
+                add_idmef_object(idmef, "alert.classification.reference(>>).origin", "vendor-specific");
 
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).name",
-                         classification_counter);
                 snprintf(_prelude_data, 256, "Rule:%d info", lf->generated_rule->sigid);
-                add_idmef_object(idmef, _prelude_section, _prelude_data);
+                add_idmef_object(idmef, "alert.classification.reference(-1).name", _prelude_data);
 
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).meaning",
-                         classification_counter);
-                add_idmef_object(idmef, _prelude_section, last_info_detail->data);
-                classification_counter++;
+                add_idmef_object(idmef, "alert.classification.reference(-1).meaning", last_info_detail->data);
+
             } else {
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).origin",
-                         classification_counter);
                 switch (last_info_detail->type) {
                     case RULEINFODETAIL_CVE:
-                        add_idmef_object(idmef, _prelude_section, "cve");
+                        origin = "cve";
                         break;
                     case RULEINFODETAIL_OSVDB:
-                        add_idmef_object(idmef, _prelude_section, "osvdb");
+                        origin = "osvdb";
                         break;
                     case RULEINFODETAIL_BUGTRACK:
-                        add_idmef_object(idmef, _prelude_section, "bugtraqid");
+                        origin = "bugtraqid";
                         break;
                     default:
-                        add_idmef_object(idmef, _prelude_section, "vendor-specific");
+                        origin = "vendor-specific";
                         break;
                 }
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).name",
-                         classification_counter);
-                add_idmef_object(idmef, _prelude_section, last_info_detail->data);
+                add_idmef_object(idmef, "alert.classification.reference(>>).origin", origin);
+                add_idmef_object(idmef, "alert.classification.reference(-1).name", last_info_detail->data);
             }
         }
 
@@ -484,26 +416,17 @@ void OS_PreludeLog(const Eventinfo *lf)
             strncpy(new_generated_rule_group, lf->generated_rule->group, 255);
             copy_group = strtok(new_generated_rule_group, ",");
             while (copy_group) {
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).origin",
-                         classification_counter);
-                add_idmef_object(idmef, _prelude_section, "vendor-specific");
+                add_idmef_object(idmef, "alert.classification.reference(>>).origin", "vendor-specific");
 
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).name",
-                         classification_counter);
                 snprintf(_prelude_data, 256, "Group:%s", copy_group);
-                add_idmef_object(idmef, _prelude_section, _prelude_data);
+                add_idmef_object(idmef, "alert.classification.reference(-1).name", _prelude_data);
 
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).meaning",
-                         classification_counter);
-                add_idmef_object(idmef, _prelude_section, "OSSEC Group Wiki Documenation");
+                add_idmef_object(idmef, "alert.classification.reference(-1).meaning", "OSSEC Group Wiki Documentation");
 
-                snprintf(_prelude_section, 128, "alert.classification.reference(%d).url",
-                         classification_counter);
                 snprintf(_prelude_data, 256, "http://www.ossec.net/wiki/Group:%s",
                          copy_group);
-                add_idmef_object(idmef, _prelude_section, _prelude_data);
+                add_idmef_object(idmef, "alert.classification.reference(-1).url", _prelude_data);
 
-                classification_counter++;
                 copy_group = strtok(NULL, ",");
             }
         }
@@ -512,21 +435,21 @@ void OS_PreludeLog(const Eventinfo *lf)
     /* Begin Node infomation block */
     {
         /* Set source info */
-        add_idmef_object(idmef, "alert.source(0).Spoofed", "no");
-        add_idmef_object(idmef, "alert.source(0).Node.Address(0).address",
+        add_idmef_object(idmef, "alert.source(0).spoofed", "no");
+        add_idmef_object(idmef, "alert.source(0).node.address(0).address",
                          lf->srcip);
-        add_idmef_object(idmef, "alert.source(0).Service.port", lf->srcport);
+        add_idmef_object(idmef, "alert.source(0).service.port", lf->srcport);
 
         if (lf->srcuser) {
-            add_idmef_object(idmef, "alert.source(0).User.user_id(0).name", lf->srcuser);
+            add_idmef_object(idmef, "alert.source(0).user.user_id(0).name", lf->srcuser);
         }
 
         /* Set target */
-        add_idmef_object(idmef, "alert.target(0).Service.name", lf->program_name);
-        add_idmef_object(idmef, "alert.target(0).Spoofed", "no");
+        add_idmef_object(idmef, "alert.target(0).service.name", lf->program_name);
+        add_idmef_object(idmef, "alert.target(0).spoofed", "no");
 
         if (lf->dstip) {
-            add_idmef_object(idmef, "alert.target(0).Node.Address(0).address",
+            add_idmef_object(idmef, "alert.target(0).node.address(0).address",
                              lf->dstip);
         } else {
             char *tmp_str;
@@ -544,15 +467,15 @@ void OS_PreludeLog(const Eventinfo *lf)
             if (tmp_str) {
                 *tmp_str = '\0';
             }
-            add_idmef_object(idmef, "alert.target(0).Node.Address(0).address",
+            add_idmef_object(idmef, "alert.target(0).node.address(0).address",
                              new_prelude_target);
         }
-        add_idmef_object(idmef, "alert.target(0).Service.name", lf->hostname);
-        add_idmef_object(idmef, "alert.target(0).Service.port", lf->dstport);
+        add_idmef_object(idmef, "alert.target(0).service.name", lf->hostname);
+        add_idmef_object(idmef, "alert.target(0).service.port", lf->dstport);
 
         if (lf->dstuser) {
-            add_idmef_object(idmef, "alert.target(0).User.category", "2");
-            add_idmef_object(idmef, "alert.target(0).User.user_id(0).name", lf->dstuser);
+            add_idmef_object(idmef, "alert.target(0).user.category", "2");
+            add_idmef_object(idmef, "alert.target(0).user.user_id(0).name", lf->dstuser);
         }
     } /* end Node infomation block */
 
@@ -560,13 +483,11 @@ void OS_PreludeLog(const Eventinfo *lf)
     add_idmef_object(idmef, "alert.additional_data(0).type", "string");
     add_idmef_object(idmef, "alert.additional_data(0).meaning", "Source file");
     add_idmef_object(idmef, "alert.additional_data(0).data", lf->location);
-    additional_data_counter++;
 
     /* Set full log */
     add_idmef_object(idmef, "alert.additional_data(1).type", "string");
     add_idmef_object(idmef, "alert.additional_data(1).meaning", "Full Log");
     add_idmef_object(idmef, "alert.additional_data(1).data", lf->full_log);
-    additional_data_counter++;
 
     idmef_alert_set_analyzer(idmef_message_get_alert(idmef),
                              idmef_analyzer_ref
@@ -575,7 +496,7 @@ void OS_PreludeLog(const Eventinfo *lf)
     debug1("%s: DEBUG: lf->filename = %s.", ARGV0, lf->filename);
     if (lf->filename) {
         FileAccess_PreludeLog(idmef,
-                              0,
+                              "original",
                               lf->filename,
                               lf->md5_before,
                               lf->sha1_before,
@@ -583,7 +504,7 @@ void OS_PreludeLog(const Eventinfo *lf)
                               lf->gowner_before,
                               lf->perm_before);
         FileAccess_PreludeLog(idmef,
-                              1,
+                              "current",
                               lf->filename,
                               lf->md5_after,
                               lf->sha1_after,

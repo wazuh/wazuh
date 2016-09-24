@@ -1,4 +1,4 @@
-   Спасибо что воспользовались OSSEC HIDS .
+   Спасибо что воспользовались OSSEC Wazuh .
   Со всеми вопросами  замечаниями или багами пожалуйста обращайтесь на  
  contact@ossec.net или в свободно доступную почтовую рассылку ossec-list@ossec.net
     ( http://www.ossec.net/main/support/ ).

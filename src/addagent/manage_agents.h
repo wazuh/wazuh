@@ -36,13 +36,16 @@ int IDExist(const char *id);
 int NameExist(const char *u_name);
 char *IPExist(const char *u_ip);
 char *getFullnameById(const char *id);
-char *OS_AddNewAgent(const char *name, const char *ip, const char *id);
+char *OS_AddNewAgent(keystore *keys, const char *name, const char *ip);
 int OS_RemoveAgent(const char *id);
-double OS_AgentAntiquity(const char *id);
-void OS_BackupAgentInfo(const char *id);
+double OS_AgentAntiquity(const char *name, const char *ip);
+double OS_AgentAntiquity_ID(const char *id);
+void OS_BackupAgentInfo(const char *id, const char *name, const char *ip);
+void OS_BackupAgentInfo_ID(const char *id);
 char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now);
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
 void OS_RemoveAgentTimestamp(const char *id);
+void FormatID(char *id);
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output);
@@ -50,6 +53,12 @@ int list_agents(int cmdlist);
 
 /* Clear a line */
 char *chomp(char *str);
+
+/*
+ * Check whether ossec-authd is running (returns 1) or not (returns 0).
+ * Returns -1 on error.
+ */
+int check_authd();
 
 /* Shared variables */
 extern int restart_necessary;
@@ -129,7 +138,7 @@ extern fpos_t fp_pos;
 #define EXIT            ARGV0 ": Exiting.\n"
 
 #define BANNER          "\n****************************************" \
-                        "\n* %s %s Agent manager.     *" \
+                        "\n* %s %s Agent manager.      *" \
                         "\n* The following options are available: *" \
                         "\n****************************************\n"
 

@@ -7,6 +7,7 @@
 -->
 
 <!-- amazon-iam messages -->
+<!-- ID: 80800 - 80999 -->
 
 <group name="amazon-iam,">
 
@@ -268,7 +269,7 @@
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
-    <rule id="80695" level="5">
+    <rule id="80895" level="5">
         <if_sid>80894</if_sid>
         <match>"errorCode":"AccessDenied"</match>
         <description>Amazon-iam: Role creation denied</description>
@@ -329,7 +330,7 @@
         <action>CreateAccountAlias</action>
         <description>Amazon-iam: Account alias created</description>
         <group>amazon,pci_dss_10.2.5,</group>
-    </rule> 
+    </rule>
 
     <rule id="80904" level="5">
         <if_sid>80903</if_sid>
@@ -379,14 +380,14 @@
         <description>Amazon-iam: The group cant be found</description>
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
-    
+
     <rule id="80911" level="5">
         <if_sid>80909</if_sid>
         <match>"errorCode":"</match>
         <description>Amazon-iam: Get group error</description>
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
-    
+
     <rule id="80912" level="2">
         <if_sid>80202</if_sid>
         <action>ListGroups</action>
@@ -400,14 +401,14 @@
         <description>Amazon-iam: The group cant be listed</description>
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
-    
+
     <rule id="80914" level="5">
         <if_sid>80912</if_sid>
         <match>"errorCode":"</match>
         <description>Amazon-iam: List group error</description>
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
-    
+
     <rule id="80915" level="2">
         <if_sid>80202</if_sid>
         <action>ListUsers</action>

@@ -152,7 +152,6 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             char alert_msg[916 + 1];    /* to accommodate a long */
             alert_msg[916] = '\0';
 
-            #ifndef WIN32
             if (opts & CHECK_SEECHANGES) {
                 char *alertdump = seechanges_addfile(file_name);
                 if (alertdump) {
@@ -160,21 +159,26 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                     alertdump = NULL;
                 }
             }
-            #endif
 
-            snprintf(alert_msg, 916, "%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s",
+            snprintf(alert_msg, 916, "%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld",
                      opts & CHECK_SIZE ? '+' : '-',
                      opts & CHECK_PERM ? '+' : '-',
                      opts & CHECK_OWNER ? '+' : '-',
                      opts & CHECK_GROUP ? '+' : '-',
                      opts & CHECK_MD5SUM ? '+' : '-',
                      sha1s,
+                     opts & CHECK_MTIME ? '+' : '-',
+                     opts & CHECK_INODE ? '+' : '-',
                      opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                      opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                      opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
                      opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
                      opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                     opts & CHECK_SHA1SUM ? sf_sum : "xxx");
+                     opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
+                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
+                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0);
 
             if (OSHash_Add(syscheck.fp, file_name, strdup(alert_msg)) <= 0) {
                 merror("%s: ERROR: Unable to add file to db: %s", ARGV0, file_name);
@@ -183,13 +187,17 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             /* Send the new checksum to the analysis server */
             alert_msg[916] = '\0';
 
-            snprintf(alert_msg, 916, "%ld:%d:%d:%d:%s:%s %s",
+            snprintf(alert_msg, 916, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld %s",
                      opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                      opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                      opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
                      opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
                      opts & CHECK_MD5SUM ? mf_sum : "xxx",
                      opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
+                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
+                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                      file_name);
             send_syscheck_msg(alert_msg);
         } else {
@@ -209,9 +217,6 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             if (strcmp(c_sum, buf + 6) != 0) {
                 /* Send the new checksum to the analysis server */
                 alert_msg[OS_MAXSTR] = '\0';
-                #ifdef WIN32
-                snprintf(alert_msg, 916, "%s %s", c_sum, file_name);
-                #else
                 char *fullalert = NULL;
                 if (buf[5] == 's' || buf[5] == 'n') {
                     fullalert = seechanges_addfile(file_name);
@@ -225,7 +230,6 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 } else {
                     snprintf(alert_msg, 916, "%s %s", c_sum, file_name);
                 }
-                #endif
                 send_syscheck_msg(alert_msg);
             }
         }
@@ -320,8 +324,13 @@ static int read_dir(const char *dir_name, int opts, OSMatch *restriction)
 
     /* Check for real time flag */
     if (opts & CHECK_REALTIME) {
-#ifdef INOTIFY_ENABLED
+#if defined(INOTIFY_ENABLED) || defined(WIN32)
         realtime_adddir(dir_name);
+#else
+        merror("%s: WARN: realtime monitoring request on unsupported system for '%s'",
+                ARGV0,
+                dir_name
+        );
 #endif
     }
 
@@ -394,11 +403,7 @@ int create_db()
     __counter = 0;
     do {
         if (read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]) == 0) {
-#ifdef WIN32
-            if (syscheck.opts[i] & CHECK_REALTIME) {
-                realtime_adddir(syscheck.dir[i]);
-            }
-#endif
+            debug2("%s: Directory loaded from syscheck db: %s", ARGV0, syscheck.dir[i]);
         }
         i++;
     } while (syscheck.dir[i] != NULL);

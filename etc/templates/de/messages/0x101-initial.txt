@@ -1,4 +1,4 @@
 
- Um OSSEC HIDS zu installieren muﬂ auf Ihrem System ein C-Compiler
+ Um OSSEC Wazuh zu installieren muﬂ auf Ihrem System ein C-Compiler
  installiert sein.
 

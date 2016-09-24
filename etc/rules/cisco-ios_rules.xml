@@ -27,7 +27,7 @@
     <id>-0-</id>
     <description>Cisco IOS emergency message.</description>
   </rule>
-                
+
 
   <rule id="4711" level="5">
     <if_sid>4700</if_sid>
@@ -40,7 +40,7 @@
     <id>-2-</id>
     <description>Cisco IOS critical message.</description>
   </rule>
-  
+
   <rule id="4713" level="4">
     <if_sid>4700</if_sid>
     <id>-3-</id>
@@ -70,7 +70,7 @@
     <id>-7-</id>
     <description>Cisco IOS debug message.</description>
   </rule>
-  
+
   <rule id="4721" level="3">
     <if_sid>4715</if_sid>
     <id>^%SYS-5-CONFIG</id>
@@ -81,14 +81,14 @@
   <rule id="4722" level="3">
     <if_sid>4715</if_sid>
     <id>^%SEC_LOGIN-5-LOGIN_SUCCESS</id>
-    <description>Successful login to the router.</description>
+    <description>Cisco IOS: Successful login to the router.</description>
     <group>authentication_success,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="4724" level="9">
     <if_sid>4714</if_sid>
     <id>^%SEC_LOGIN-4-LOGIN_FAILED</id>
-    <description>Failed login to the router.</description>
+    <description>Cisco IOS: Failed login to the router.</description>
     <group>authentication_failed,pci_dss_10.2.5,pci_dss_10.2.4,</group>
   </rule>
 

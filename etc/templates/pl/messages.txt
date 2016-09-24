@@ -10,9 +10,9 @@ help="pomoc"
 
 # Ogólne
 moreinfo="Więcej informacji na: "
-starting="Rozpoczynam OSSEC HIDS"
+starting="Rozpoczynam OSSEC Wazuh"
 systemis="System "
-modifiedinit="Init skrypt zmodyfikowany do uruchomiania OSSEC HIDS podczas bootowania."
+modifiedinit="Init skrypt zmodyfikowany do uruchomiania OSSEC Wazuh podczas bootowania."
 noboot="Nieznany system. Skrypt init nie został dodany."
 
 # Część 1
@@ -28,8 +28,8 @@ localchose="Wybrana instalacja: lokalnie"
 
 # Część 2
 settingupenv="Ustawianie środowiska instalacyjnego"
-wheretoinstall="Wybierz katalog w którym zainstalować OSSEC HIDS"
-installat="OSSEC HIDS zostanie zainstalowane w :"
+wheretoinstall="Wybierz katalog w którym zainstalować OSSEC Wazuh"
+installat="OSSEC Wazuh zostanie zainstalowane w :"
 deletedir="Wybrany katalog istnieje, skasować go?"
 
 # Część 3
@@ -43,8 +43,8 @@ usingsmtp="Używam SMTP serwer: "
 whatsmtp="Podaj SMTP serwer (ip/host)?"
 
 # Część 3.1/agent
-serverip="Podaj adres IP serwera OSSEC HIDS."
-serveraddr="Podaj adres IP (hostname) serwera OSSEC HIDS."
+serverip="Podaj adres IP serwera OSSEC Wazuh."
+serveraddr="Podaj adres IP (hostname) serwera OSSEC Wazuh."
 addingip="Dodaje IP serwera"
 addingname="Dodaje hostname serwera"
 
@@ -85,8 +85,8 @@ runningmake="Uruchomiono Makefile"
 
 # Finał
 configurationdone="Konfiguracja zakończona pomyślnie"
-tostart="Aby wystartować OSSEC HIDS"
-tostop="Aby zatrzymać OSSEC HIDS"
+tostart="Aby wystartować OSSEC Wazuh"
+tostop="Aby zatrzymać OSSEC Wazuh"
 configat="Konfiguracja może być wyświetlona lub zmodyfikowana w"
 addserveragent="Powinieneś dodać agent(a/ów) przed ich autoryzacją dostępu."
 runma="Uruchom 'manage_agents' aby je dodać lub usunąć"

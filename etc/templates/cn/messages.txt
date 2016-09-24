@@ -10,9 +10,9 @@ help="help"
 
 # Global
 moreinfo="详细信息请参考: "
-starting="正在启动 OSSEC HIDS "
+starting="正在启动 OSSEC Wazuh "
 systemis="系统类型是 "
-modifiedinit="修改启动脚本使 OSSEC HIDS 在系统启动时自动运行 "
+modifiedinit="修改启动脚本使 OSSEC Wazuh 在系统启动时自动运行 "
 noboot="未知系统,启动脚本未能添加."
 
 # Part 1
@@ -28,8 +28,8 @@ localchose="选择了 Local 类型的安装"
 
 # Part 2
 settingupenv="正在初始化安装环境"
-wheretoinstall="请选择 OSSEC HIDS 的安装路径"
-installat="OSSEC HIDS 将安装在 "
+wheretoinstall="请选择 OSSEC Wazuh 的安装路径"
+installat="OSSEC Wazuh 将安装在 "
 deletedir="安装路径已存在. 要删除它吗?"
 
 # Part 3
@@ -43,8 +43,8 @@ usingsmtp="使用 SMTP 服务器: "
 whatsmtp="请输入您的 SMTP 服务器IP或主机名 ?"
 
 # Part 3.1/agent
-serverip="请输入 OSSEC HIDS 服务器的IP地址"
-serveraddr="请输入 OSSEC HIDS 服务器的IP地址或主机名"
+serverip="请输入 OSSEC Wazuh 服务器的IP地址"
+serveraddr="请输入 OSSEC Wazuh 服务器的IP地址或主机名"
 addingip="添加服务器IP "
 addingname="添加服务器主机名 "
 
@@ -85,8 +85,8 @@ runningmake="正在运行Makefile"
 
 # Final
 configurationdone="已正确完成系统配置"
-tostart="要启动 OSSEC HIDS"
-tostop="要停止 OSSEC HIDS"
+tostart="要启动 OSSEC Wazuh"
+tostop="要停止 OSSEC Wazuh"
 configat="要查看或修改系统配置,请编辑 "
 addserveragent="为使代理能够联接服务器端, 您需要将每个代理添加到服务器."
 runma="允许'manage_agents'来添加活删除代理"

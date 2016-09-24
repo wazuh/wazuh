@@ -1,0 +1,38 @@
+<!-- @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+
+
+<!--
+   - Allowed fields:
+   - location - where the log came from (only on FTS)
+   - srcuser  - extracts the source username
+   - dstuser  - extracts the destination (target) username
+   - user     - an alias to dstuser (only one of the two can be used)
+   - srcip    - source ip
+   - dstip    - dst ip
+   - srcport  - source port
+   - dstport  - destination port
+   - protocol - protocol
+   - id       - event id
+   - url      - url of the event
+   - action   - event action (deny, drop, accept, etc)
+   - status   - event status (success, failure, etc)
+   - extra_data     - Any extra data
+  -->
+
+
+<!-- Cisco VPN Concentrator
+  - Will exatract srcip and username.
+  - Examples:
+  -
+  - Jan 8 09:10:37 vpn.example.com 11504 01/08/2007 09:10:37.780 SEV=3 AUTH/5 RPT=124 192.168.0.1 Authentication rejected: Reason = Unspecified handle = 805, server = auth.example.com, user = testuser, domain = <not specified>
+  11504 01/08/2007 09:10:37.780 SEV=3
+  -->
+<decoder name="cisco-vpn-concentrator">
+  <prematch>^\d+ \d\d/\d\d/\d\d\d\d \S+ SEV=\d </prematch>
+  <regex offset="after_prematch">^(\S+) RPT=\d+ (\d+.\d+.\d+.\d+) </regex>
+  <order>id, srcip</order>
+</decoder>

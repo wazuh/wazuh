@@ -11,6 +11,7 @@
 #include "remoted.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
+#include "wazuh_db/wdb.h"
 #include <pthread.h>
 
 /* Internal structures */
@@ -49,6 +50,7 @@ static pthread_cond_t awake_mutex;
 void save_controlmsg(unsigned int agentid, char *r_msg)
 {
     char msg_ack[OS_FLSIZE + 1];
+    char *version;
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
@@ -63,7 +65,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     }
 
     else if (strcmp(r_msg, HC_STARTUP) == 0) {
-        debug1("%s: DEBUG: Agent %s sent HC_STARTUP from %s.", ARGV0, keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
+        debug1("%s: DEBUG: Agent %s sent HC_STARTUP from %s.", ARGV0, keys.keyentries[agentid]->name, inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr));
         return;
     }
 
@@ -127,6 +129,15 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             fclose(fp);
         }
 
+        /* Store uname on database */
+
+        if ((version = strstr(uname, " - "))) {
+            int id = atoi(keys.keyentries[agentid]->id);
+            *version = '\0';
+            version += 3;
+            wdb_update_agent_version(id, uname, version);
+            wdb_update_agent_keepalive(id);
+        }
     }
 
     /* Lock now to notify of change */
@@ -377,9 +388,7 @@ static void read_controlmsg(unsigned int agentid, char *msg)
                 debug1("%s: DEBUG Sending file '%s' to agent.", ARGV0,
                        f_sum[0]->name);
                 if (send_file_toagent(agentid, f_sum[0]->name, f_sum[0]->sum) < 0) {
-                    merror("%s: ERROR: Unable to send file '%s' to agent.",
-                           ARGV0,
-                           f_sum[0]->name);
+                    merror(SHARED_ERROR, ARGV0, f_sum[0]->name, keys.keyentries[agentid]->id, keys.keyentries[agentid]->name);
                 }
             }
 
@@ -423,9 +432,7 @@ static void read_controlmsg(unsigned int agentid, char *msg)
 
             debug1("%s: Sending file '%s' to agent.", ARGV0, f_sum[i]->name);
             if (send_file_toagent(agentid, f_sum[i]->name, f_sum[i]->sum) < 0) {
-                merror("%s: Error sending file '%s' to agent.",
-                       ARGV0,
-                       f_sum[i]->name);
+                merror(SHARED_ERROR, ARGV0, f_sum[i]->name, keys.keyentries[agentid]->id, keys.keyentries[agentid]->name);
             }
         }
 

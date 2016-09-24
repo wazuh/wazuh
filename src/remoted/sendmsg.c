@@ -92,6 +92,7 @@ int send_msg(unsigned int agentid, const char *msg)
 
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[agentid]->rcvd < (time(0) - (2 * NOTIFY_TIME))) {
+        merror(SEND_DISCON, ARGV0, keys.keyentries[agentid]->id);
         return (-1);
     }
 
@@ -130,4 +131,3 @@ int send_msg(unsigned int agentid, const char *msg)
 
     return (0);
 }
-

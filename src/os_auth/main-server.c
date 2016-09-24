@@ -34,21 +34,62 @@ int main()
 
 #else
 
+#include <pthread.h>
 #include <sys/wait.h>
 #include "auth.h"
+#include "check_cert.h"
 #include "os_crypto/md5/md5_op.h"
 
 /* Prototypes */
 static void help_authd(void) __attribute((noreturn));
 static int ssl_error(const SSL *ssl, int ret);
-static void clean_exit(SSL_CTX *ctx, int sock) __attribute__((noreturn));
 
+/* Thread for dispatching connection pool */
+static void* run_dispatcher(void *arg);
+
+/* Thread for writing keystore onto disk */
+static void* run_writer(void *arg);
+
+/* Append key to insertion queue */
+static void add_insert(const keyentry *entry);
+
+/* Append key to deletion queue */
+static void add_backup(const keyentry *entry);
+
+/* Signal handler */
+static void handler(int signum);
+
+/* Shared variables */
+char *authpass = NULL;
+const char *ca_cert = NULL;
+int validate_host = 0;
+int use_ip_address = 0;
+SSL_CTX *ctx;
+int force_antiquity = -1;
+int m_queue = 0;
+int sock = 0;
+
+keystore keys;
+struct client pool[POOL_SIZE];
+volatile int pool_i = 0;
+volatile int pool_j = 0;
+volatile int write_pending = 0;
+volatile int running = 1;
+struct keynode *queue_insert = NULL;
+struct keynode *queue_backup = NULL;
+struct keynode * volatile *insert_tail;
+struct keynode * volatile *backup_tail;
+
+pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond_new_client = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
 /* Print help statement */
 static void help_authd()
 {
     print_header();
-    print_out("  %s: -[Vhdti] [-f sec] [-g group] [-D dir] [-p port] [-P] [-v path] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[Vhdti] [-f sec] [-g group] [-D dir] [-p port] [-P] [-v path [-s]] [-x path] [-k path]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -62,8 +103,9 @@ static void help_authd()
     print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
     print_out("    -P          Enable shared password authentication (at %s or random).", AUTHDPASS_PATH);
     print_out("    -v <path>   Full path to CA certificate used to verify clients");
-    print_out("    -x <path>   Full path to server certificate");
-    print_out("    -k <path>   Full path to server key");
+    print_out("    -s          Used with -v, enable source host verification");
+    print_out("    -x <path>   Full path to server certificate (default: %s%s)", DEFAULTDIR, CERTFILE);
+    print_out("    -k <path>   Full path to server key (default: %s%s)", DEFAULTDIR, KEYFILE);
     print_out(" ");
     exit(1);
 }
@@ -130,48 +172,31 @@ static int ssl_error(const SSL *ssl, int ret)
     return (0);
 }
 
-static void clean_exit(SSL_CTX *ctx, int sock)
-{
-    SSL_CTX_free(ctx);
-    close(sock);
-    exit(0);
-}
-
 int main(int argc, char **argv)
 {
     FILE *fp;
-    char *authpass = NULL;
-    /* Bucket to keep pids in */
-    int process_pool[POOL_SIZE];
     /* Count of pids we are wait()ing on */
-    int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
-    int m_queue = 0;
+    int c = 0, test_config = 0, status;
     int use_pass = 0;
-    int force_antiquity = -1;
-    char *id_exist = NULL;
     gid_t gid;
-    int client_sock = 0, sock = 0, port = DEFAULT_PORT, ret = 0;
+    int client_sock = 0, port = DEFAULT_PORT;
     const char *dir  = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     const char *server_cert = NULL;
     const char *server_key = NULL;
-    const char *ca_cert = NULL;
     char buf[4096 + 1];
-    SSL_CTX *ctx;
-    SSL *ssl;
-    char srcip[IPSIZE + 1];
     struct sockaddr_in _nc;
     socklen_t _ncl;
+    pthread_t thread_dispatcher;
+    pthread_t thread_writer;
 
     /* Initialize some variables */
-    memset(srcip, '\0', IPSIZE + 1);
-    memset(process_pool, 0x0, POOL_SIZE * sizeof(*process_pool));
     bio_err = 0;
 
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:Pf:")) != -1) {
+    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:sx:k:Pf:")) != -1) {
         char *end;
 
         switch (c) {
@@ -219,6 +244,9 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -%c needs an argument", ARGV0, c);
                 }
                 ca_cert = optarg;
+                break;
+            case 's':
+                validate_host = 1;
                 break;
             case 'x':
                 if (!optarg) {
@@ -275,11 +303,12 @@ int main(int argc, char **argv)
     }
 
     /* Signal manipulation */
-    StartSIG(ARGV0);
 
-    /* Create PID files */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+    {
+        struct sigaction action = { .sa_handler = handler };
+        sigaction(SIGTERM, &action, NULL);
+        sigaction(SIGHUP, &action, NULL);
+        sigaction(SIGINT, &action, NULL);
     }
 
     /* Start up message */
@@ -296,7 +325,9 @@ int main(int argc, char **argv)
 
             if (ret && strlen(buf) > 2) {
                 /* Remove newline */
-                buf[strlen(buf) - 1] = '\0';
+                if (buf[strlen(buf) - 1] == '\n')
+                    buf[strlen(buf) - 1] = '\0';
+
                 authpass = strdup(buf);
             }
 
@@ -311,7 +342,7 @@ int main(int argc, char **argv)
             verbose("Accepting connections. Random password chosen for agent authentication: %s", authpass);
         }
     } else
-        verbose("Accepting insecure connections. No password required.");
+        verbose("Accepting connections. No password required.");
 
     /* Getting SSL cert. */
 
@@ -336,9 +367,6 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    fcntl(sock, F_SETFL, O_NONBLOCK);
-    debug1("%s: DEBUG: Going into listening mode.", ARGV0);
-
     /* Setup random */
     srandom_init();
 
@@ -350,225 +378,411 @@ int main(int argc, char **argv)
 
     /* Queue for sending alerts */
     if ((m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-        merror("%s: ERROR: Can't connect to queue.", ARGV0);
+        merror("%s: WARN: Can't connect to queue.", ARGV0);
     }
 
-    while (1) {
-        /* No need to completely pin the cpu, 100ms should be fast enough */
-        usleep(100 * 1000);
+    /* Initialize queues */
 
-        /* Only check process-pool if we have active processes */
-        if (active_processes > 0) {
-            for (i = 0; i < POOL_SIZE; i++) {
-                int rv = 0;
-                status = 0;
-                if (process_pool[i]) {
-                    rv = waitpid(process_pool[i], &status, WNOHANG);
-                    if (rv != 0) {
-                        debug1("%s: DEBUG: Process %d exited", ARGV0, process_pool[i]);
-                        process_pool[i] = 0;
-                        active_processes = active_processes - 1;
-                    }
-                }
-            }
-        }
+    insert_tail = &queue_insert;
+    backup_tail = &queue_backup;
+
+    /* Start working threads */
+
+    status = pthread_create(&thread_dispatcher, NULL, run_dispatcher, NULL);
+
+    if (status != 0) {
+        merror("%s: ERROR: Couldn't create thread: %s", ARGV0, strerror(status));
+        return EXIT_FAILURE;
+    }
+
+    status = pthread_create(&thread_writer, NULL, run_writer, NULL);
+
+    if (status != 0) {
+        merror("%s: ERROR: Couldn't create thread: %s", ARGV0, strerror(status));
+        return EXIT_FAILURE;
+    }
+
+    /* Create PID files */
+    if (CreatePID(ARGV0, getpid()) < 0) {
+        ErrorExit(PID_ERROR, ARGV0);
+    }
+
+    /* Main loop */
+
+    while (running) {
         memset(&_nc, 0, sizeof(_nc));
         _ncl = sizeof(_nc);
 
         if ((client_sock = accept(sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
-            if (active_processes >= POOL_SIZE) {
-                merror("%s: Error: Max concurrency reached. Unable to fork", ARGV0);
-                break;
-            }
-            pid = fork();
-            if (pid) {
-                active_processes = active_processes + 1;
+            pthread_mutex_lock(&mutex_pool);
+
+            if (full(pool_i, pool_j)) {
+                merror("%s: ERROR: Too many connections. Rejecting.", ARGV0);
                 close(client_sock);
-                for (i = 0; i < POOL_SIZE; i++) {
-                    if (! process_pool[i]) {
-                        process_pool[i] = pid;
-                        break;
-                    }
-                }
             } else {
-                strncpy(srcip, inet_ntoa(_nc.sin_addr), IPSIZE - 1);
-                char *agentname = NULL;
-                ssl = SSL_new(ctx);
-                SSL_set_fd(ssl, client_sock);
-
-                do {
-                    ret = SSL_accept(ssl);
-
-                    if (ssl_error(ssl, ret)) {
-                        clean_exit(ctx, client_sock);
-                    }
-
-                } while (ret <= 0);
-                verbose("%s: INFO: New connection from %s", ARGV0, srcip);
-                buf[0] = '\0';
-
-                do {
-                    ret = SSL_read(ssl, buf, sizeof(buf));
-
-                    if (ssl_error(ssl, ret)) {
-                        clean_exit(ctx, client_sock);
-                    }
-
-                } while (ret <= 0);
-
-                int parseok = 0;
-                char *tmpstr = buf;
-
-                /* Checking for shared password authentication. */
-                if(authpass) {
-                    /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
-                    if (strncmp(tmpstr, "OSSEC PASS: ", 12) == 0) {
-                        tmpstr = tmpstr + 12;
-
-                        if (strlen(tmpstr) > strlen(authpass) && strncmp(tmpstr, authpass, strlen(authpass)) == 0) {
-                            tmpstr += strlen(authpass);
-
-                            if (*tmpstr == ' ') {
-                                tmpstr++;
-                                parseok = 1;
-                            }
-                        }
-                    }
-                    if (parseok == 0) {
-                        merror("%s: ERROR: Invalid password provided by %s. Closing connection.", ARGV0, srcip);
-                        SSL_CTX_free(ctx);
-                        close(client_sock);
-                        exit(0);
-                    }
-                }
-
-                /* Checking for action A (add agent) */
-                parseok = 0;
-                if (strncmp(tmpstr, "OSSEC A:'", 9) == 0) {
-                    agentname = tmpstr + 9;
-                    tmpstr += 9;
-                    while (*tmpstr != '\0') {
-                        if (*tmpstr == '\'') {
-                            *tmpstr = '\0';
-                            verbose("%s: INFO: Received request for a new agent (%s) from: %s", ARGV0, agentname, srcip);
-                            parseok = 1;
-                            break;
-                        }
-                        tmpstr++;
-                    }
-                }
-                if (parseok == 0) {
-                    merror("%s: ERROR: Invalid request for new agent from: %s", ARGV0, srcip);
-                } else {
-                    int acount = 2;
-                    char fname[2048 + 1];
-                    char response[2048 + 1];
-                    char *finalkey = NULL;
-                    response[2048] = '\0';
-                    fname[2048] = '\0';
-                    
-                    if (!OS_IsValidName(agentname)) {
-                        merror("%s: ERROR: Invalid agent name: %s from %s", ARGV0, agentname, srcip);
-                        snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        sleep(1);
-                        exit(0);
-                    }
-
-                    /* Check for duplicated IP */
-
-                    if (use_ip_address) {
-                        id_exist = IPExist(srcip);
-                        if (id_exist) {
-                            double antiquity = OS_AgentAntiquity(id_exist);
-                            
-                            if (force_antiquity >= 0 && (antiquity >= force_antiquity || antiquity < 0)) {
-                                verbose("INFO: Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
-                                OS_BackupAgentInfo(id_exist);
-                                OS_RemoveAgent(id_exist);
-                            } else {
-                                merror("%s: ERROR: Duplicated IP %s", ARGV0, srcip);
-                                snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
-
-                                if (m_queue >= 0) {
-                                    char buffer[64];
-                                    snprintf(buffer, 64, "ossec: Duplicated IP %s", srcip);
-                                    if (SendMSG(m_queue, buffer, "ossec-authd", AUTH_MQ) < 0) {
-                                        merror("%s: ERROR: Can't send event across socket.", ARGV0);
-                                    }
-                                }
-
-                                SSL_write(ssl, response, strlen(response));
-                                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                                SSL_write(ssl, response, strlen(response));
-                                sleep(1);
-                                exit(0);
-                            }
-                        }
-                    }
-                    
-                    /* Check for duplicated names */
-                    strncpy(fname, agentname, 2048);
-                    
-                    while (NameExist(fname)) {
-                        snprintf(fname, 2048, "%s%d", agentname, acount);
-                        acount++;
-                        if (acount > MAX_TAG_COUNTER) {
-                            merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
-                            snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                            SSL_write(ssl, response, strlen(response));
-                            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                            SSL_write(ssl, response, strlen(response));
-                            sleep(1);
-                            exit(0);
-                        }
-                    }
-                    
-                    agentname = fname;
-
-                    /* Add the new agent */
-                    if (use_ip_address) {
-#ifdef REUSE_ID
-                        if (id_exist)
-                            finalkey = OS_AddNewAgent(agentname, srcip, id_exist);
-                        else
-#endif
-                            finalkey = OS_AddNewAgent(agentname, srcip, NULL);
-                    } else
-                        finalkey = OS_AddNewAgent(agentname, NULL, NULL);
-
-                    if (!finalkey) {
-                        merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
-                        snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        sleep(1);
-                        exit(0);
-                    }
-
-                    snprintf(response, 2048, "OSSEC K:'%s'\n\n", finalkey);
-                    verbose("%s: INFO: Agent key generated for %s (requested by %s)", ARGV0, agentname, srcip);
-                    ret = SSL_write(ssl, response, strlen(response));
-                    if (ret < 0) {
-                        merror("%s: ERROR: SSL write error (%d)", ARGV0, ret);
-                        merror("%s: ERROR: Agen key not saved for %s", ARGV0, agentname);
-                        ERR_print_errors_fp(stderr);
-                    } else {
-                        verbose("%s: INFO: Agent key created for %s (requested by %s)", ARGV0, agentname, srcip);
-                    }
-                }
-
-                clean_exit(ctx, client_sock);
+                pool[pool_i].socket = client_sock;
+                pool[pool_i].addr = _nc.sin_addr;
+                forward(pool_i);
+                pthread_cond_signal(&cond_new_client);
             }
-        }
+
+            pthread_mutex_unlock(&mutex_pool);
+        } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
+            merror("%s: ERROR: accept(): %s", ARGV0, strerror(errno));
     }
 
-    /* Shut down the socket */
-    clean_exit(ctx, sock);
+    /* Join threads */
+
+    pthread_mutex_lock(&mutex_pool);
+    pthread_cond_signal(&cond_new_client);
+    pthread_mutex_unlock(&mutex_pool);
+    pthread_mutex_lock(&mutex_keys);
+    pthread_cond_signal(&cond_pending);
+    pthread_mutex_unlock(&mutex_keys);
+
+    pthread_join(thread_dispatcher, NULL);
+    pthread_join(thread_writer, NULL);
+
+    DeletePID(ARGV0);
+    verbose("%s: Exiting...", ARGV0);
 
     return (0);
 }
+
+/* Thread for dispatching connection pool */
+void* run_dispatcher(__attribute__((unused)) void *arg) {
+    struct client client;
+    char srcip[IPSIZE + 1];
+    char *agentname;
+    int ret;
+    int parseok;
+    char *tmpstr;
+    double antiquity;
+    int acount;
+    char fname[2048 + 1];
+    char response[2048 + 1];
+    char *finalkey;
+    SSL *ssl;
+    char *id_exist = NULL;
+    char buf[4096 + 1];
+    int index;
+
+    /* Initialize some variables */
+    memset(srcip, '\0', IPSIZE + 1);
+
+    OS_ReadKeys(&keys, 0);
+    debug1("%s: DEBUG: Dispatch thread ready", ARGV0);
+
+    while (running) {
+        pthread_mutex_lock(&mutex_pool);
+
+        while (empty(pool_i, pool_j) && running)
+            pthread_cond_wait(&cond_new_client, &mutex_pool);
+
+        client = pool[pool_j];
+        forward(pool_j);
+        pthread_mutex_unlock(&mutex_pool);
+
+        if (!running)
+            break;
+
+        strncpy(srcip, inet_ntoa(client.addr), IPSIZE - 1);
+        ssl = SSL_new(ctx);
+        SSL_set_fd(ssl, client.socket);
+        ret = SSL_accept(ssl);
+
+        if (ssl_error(ssl, ret)) {
+            SSL_free(ssl);
+            close(client.socket);
+            continue;
+        }
+
+        verbose("%s: INFO: New connection from %s", ARGV0, srcip);
+
+        /* Additional verification of the agent's certificate. */
+
+        if (validate_host && ca_cert) {
+            if (check_x509_cert(ssl, srcip) != VERIFY_TRUE) {
+                merror("%s: DEBUG: Unable to verify server certificate.", ARGV0);
+                SSL_free(ssl);
+                close(client.socket);
+                continue;
+            }
+        }
+
+        buf[0] = '\0';
+        ret = SSL_read(ssl, buf, sizeof(buf));
+
+        if (ssl_error(ssl, ret)) {
+            SSL_free(ssl);
+            close(client.socket);
+            continue;
+        }
+
+        parseok = 0;
+        tmpstr = buf;
+
+        /* Checking for shared password authentication. */
+        if(authpass) {
+            /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
+            if (strncmp(tmpstr, "OSSEC PASS: ", 12) == 0) {
+                tmpstr = tmpstr + 12;
+
+                if (strlen(tmpstr) > strlen(authpass) && strncmp(tmpstr, authpass, strlen(authpass)) == 0) {
+                    tmpstr += strlen(authpass);
+
+                    if (*tmpstr == ' ') {
+                        tmpstr++;
+                        parseok = 1;
+                    }
+                }
+            }
+
+            if (parseok == 0) {
+                merror("%s: ERROR: Invalid password provided by %s. Closing connection.", ARGV0, srcip);
+                SSL_free(ssl);
+                close(client.socket);
+                continue;
+            }
+        }
+
+        /* Checking for action A (add agent) */
+        parseok = 0;
+        if (strncmp(tmpstr, "OSSEC A:'", 9) == 0) {
+            agentname = tmpstr + 9;
+            tmpstr += 9;
+            while (*tmpstr != '\0') {
+                if (*tmpstr == '\'') {
+                    *tmpstr = '\0';
+                    verbose("%s: INFO: Received request for a new agent (%s) from: %s", ARGV0, agentname, srcip);
+                    parseok = 1;
+                    break;
+                }
+                tmpstr++;
+            }
+        }
+
+        if (parseok == 0) {
+            merror("%s: ERROR: Invalid request for new agent from: %s", ARGV0, srcip);
+        } else {
+            acount = 2;
+            finalkey = NULL;
+            response[2048] = '\0';
+            fname[2048] = '\0';
+
+            if (!OS_IsValidName(agentname)) {
+                merror("%s: ERROR: Invalid agent name: %s from %s", ARGV0, agentname, srcip);
+                snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
+                SSL_write(ssl, response, strlen(response));
+                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                SSL_write(ssl, response, strlen(response));
+                SSL_free(ssl);
+                close(client.socket);
+                continue;
+            }
+
+            pthread_mutex_lock(&mutex_keys);
+
+            /* Check for duplicated IP */
+
+            if (use_ip_address) {
+                index = OS_IsAllowedIP(&keys, srcip);
+
+                if (index >= 0) {
+                    id_exist = keys.keyentries[index]->id;
+                    antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip);
+
+                    if (force_antiquity >= 0 && (antiquity >= force_antiquity || antiquity < 0)) {
+                        verbose("INFO: Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
+                        add_backup(keys.keyentries[index]);
+                        OS_DeleteKey(&keys, id_exist);
+                    } else {
+                        pthread_mutex_unlock(&mutex_keys);
+                        merror("%s: ERROR: Duplicated IP %s", ARGV0, srcip);
+                        snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
+
+                        if (m_queue >= 0) {
+                            char buffer[64];
+                            snprintf(buffer, 64, "ossec: Duplicated IP %s", srcip);
+
+                            if (SendMSG(m_queue, buffer, "ossec-authd", AUTH_MQ) < 0) {
+                                merror("%s: ERROR: Can't send event across socket.", ARGV0);
+                            }
+                        }
+
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        continue;
+                    }
+                }
+            }
+
+            /* Check for duplicated names */
+            strncpy(fname, agentname, 2048);
+
+            while (OS_IsAllowedName(&keys, fname) >= 0) {
+                snprintf(fname, 2048, "%s%d", agentname, acount);
+                acount++;
+                if (acount > MAX_TAG_COUNTER) {
+                    pthread_mutex_unlock(&mutex_keys);
+                    merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
+                    snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                }
+            }
+
+            if (acount > MAX_TAG_COUNTER)
+                continue;
+
+            agentname = fname;
+
+            /* Add the new agent */
+
+            finalkey = OS_AddNewAgent(&keys, agentname, use_ip_address ? srcip : NULL);
+
+            if (!finalkey) {
+                pthread_mutex_unlock(&mutex_keys);
+                merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
+                snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
+                SSL_write(ssl, response, strlen(response));
+                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                SSL_write(ssl, response, strlen(response));
+                SSL_free(ssl);
+                close(client.socket);
+                continue;
+            }
+
+            snprintf(response, 2048, "OSSEC K:'%s'\n\n", finalkey);
+            verbose("%s: INFO: Agent key generated for %s (requested by %s)", ARGV0, agentname, srcip);
+            ret = SSL_write(ssl, response, strlen(response));
+
+            if (ret < 0) {
+                merror("%s: ERROR: SSL write error (%d)", ARGV0, ret);
+                merror("%s: ERROR: Agent key not saved for %s", ARGV0, agentname);
+                ERR_print_errors_fp(stderr);
+                OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id);
+            } else {
+                verbose("%s: INFO: Agent key created for %s (requested by %s)", ARGV0, agentname, srcip);
+
+                /* Add pending key to write */
+                add_insert(keys.keyentries[keys.keysize - 1]);
+                write_pending = 1;
+                pthread_cond_signal(&cond_pending);
+            }
+
+            pthread_mutex_unlock(&mutex_keys);
+            free(finalkey);
+        }
+
+        SSL_free(ssl);
+        close(client.socket);
+    }
+
+    SSL_CTX_free(ctx);
+    return NULL;
+}
+
+/* Thread for writing keystore onto disk */
+void* run_writer(__attribute__((unused)) void *arg) {
+    keystore *copy_keys;
+    struct keynode *copy_insert;
+    struct keynode *copy_backup;
+    struct keynode *cur;
+    struct keynode *next;
+    time_t cur_time;
+
+    while (running) {
+        pthread_mutex_lock(&mutex_keys);
+
+        while (!write_pending && running)
+            pthread_cond_wait(&cond_pending, &mutex_keys);
+
+        copy_keys = OS_DupKeys(&keys);
+        copy_insert = queue_insert;
+        copy_backup = queue_backup;
+        queue_insert = NULL;
+        queue_backup = NULL;
+        insert_tail = &queue_insert;
+        backup_tail = &queue_backup;
+        write_pending = 0;
+        pthread_mutex_unlock(&mutex_keys);
+
+        if (OS_WriteKeys(copy_keys) < 0)
+            merror("%s: ERROR: Could't write file client.keys", ARGV0);
+
+        OS_FreeKeys(copy_keys);
+        free(copy_keys);
+        cur_time = time(0);
+
+        for (cur = copy_insert; cur; cur = next) {
+            next = cur->next;
+            OS_AddAgentTimestamp(cur->id, cur->name, cur->ip, cur_time);
+            free(cur->id);
+            free(cur->name);
+            free(cur->ip);
+            free(cur);
+        }
+
+        for (cur = copy_backup; cur; cur = next) {
+            next = cur->next;
+            OS_BackupAgentInfo(cur->id, cur->name, cur->ip);
+            free(cur->id);
+            free(cur->name);
+            free(cur->ip);
+            free(cur);
+        }
+    }
+
+    return NULL;
+}
+
+/* Append key to insertion queue */
+void add_insert(const keyentry *entry) {
+    struct keynode *node;
+
+    os_calloc(1, sizeof(struct keynode), node);
+    node->id = strdup(entry->id);
+    node->name = strdup(entry->name);
+    node->ip = strdup(entry->ip->ip);
+
+    (*insert_tail) = node;
+    insert_tail = &node->next;
+}
+
+/* Append key to deletion queue */
+void add_backup(const keyentry *entry) {
+    struct keynode *node;
+
+    os_calloc(1, sizeof(struct keynode), node);
+    node->id = strdup(entry->id);
+    node->name = strdup(entry->name);
+    node->ip = strdup(entry->ip->ip);
+
+    (*backup_tail) = node;
+    backup_tail = &node->next;
+}
+
+/* Signal handler */
+static void handler(int signum) {
+    switch (signum) {
+    case SIGHUP:
+    case SIGINT:
+    case SIGTERM:
+        merror(SIGNAL_RECV, ARGV0, signum, strsignal(signum));
+        running = 0;
+        close(sock);
+        sock = -1;
+        break;
+    default:
+        merror("%s: ERROR: unknown signal (%d)", ARGV0, signum);
+    }
+}
+
 #endif /* LIBOPENSSL_ENABLED */

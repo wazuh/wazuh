@@ -13,14 +13,18 @@
 #include "rules.h"
 #include "decoders/decoder.h"
 
+typedef enum syscheck_event_t { FIM_ADDED, FIM_MODIFIED, FIM_READDED, FIM_DELETED } syscheck_event_t;
+
 /* Event Information structure */
 typedef struct _Eventinfo {
     /* Extracted from the event */
     char *log;
     char *full_log;
+    char *agent_id;
     char *location;
     char *hostname;
     char *program_name;
+    char *comment;
 
     /* Extracted from the decoders */
     char *srcip;
@@ -64,6 +68,7 @@ typedef struct _Eventinfo {
     char mon[4];
 
     /* SYSCHECK Results variables */
+    syscheck_event_t event_type;
     char *filename;
     int perm_before;
     int perm_after;
@@ -77,6 +82,15 @@ typedef struct _Eventinfo {
     char *owner_after;
     char *gowner_before;
     char *gowner_after;
+    char *uname_before;
+    char *uname_after;
+    char *gname_before;
+    char *gname_after;
+    long mtime_before;
+    long mtime_after;
+    long inode_before;
+    long inode_after;
+    char *diff;
 } Eventinfo;
 
 /* Events List structure */
@@ -137,6 +151,9 @@ EventNode *OS_GetLastEvent(void);
 
 /* Create the event list. Maxsize must be specified */
 void OS_CreateEventList(int maxsize);
+
+/* Parse rule comment with dynamic fields */
+char* ParseRuleComment(Eventinfo *lf);
 
 /* Pointers to the event decoders */
 void *SrcUser_FP(Eventinfo *lf, char *field, int order);

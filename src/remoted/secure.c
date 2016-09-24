@@ -73,7 +73,7 @@ void HandleSecure()
 
     /* Read authentication keys */
     verbose(ENC_READ, ARGV0);
-    OS_ReadKeys(&keys);
+    OS_ReadKeys(&keys, 1);
     OS_StartCounter(&keys);
 
     /* Set up peer size */
@@ -284,8 +284,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     }
 
     /* Generate srcmsg */
-    snprintf(srcmsg, OS_FLSIZE, "(%s) %s", keys.keyentries[agentid]->name,
-             keys.keyentries[agentid]->ip->ip);
+    snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
+             keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
 
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
