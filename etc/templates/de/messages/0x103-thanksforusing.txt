@@ -1,5 +1,5 @@
 
-    Danke das Sie OSSEC HIDS benutzen.
+    Danke das Sie OSSEC Wazuh benutzen.
     Bei Fragen, Anregungen oder wenn Sie einen Fehler gefunden
     haben, können Sie die Entwickler per E-Mail contact@ossec.net 
     oder über die Mailingliste unter ossec-list@ossec.net erreichen

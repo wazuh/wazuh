@@ -36,20 +36,20 @@
 #define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size          */
 #define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
 #define IPSIZE          16              /* IP Address size              */
-#define POOL_SIZE       512	            /* Max number of children       */
+#define POOL_SIZE       1000            /* Max number of connections    */
 #define BACKLOG         32              /* Socket input queue length    */
 #define MAX_EVENTS      1024            /* Max number of epoll events   */
 #define EPOLL_MILLIS    -1              /* Epoll wait time              */
 #define MAX_TAG_COUNTER 256             /* Max retrying counter         */
 #define SOCK_RECV_TIME0 300             /* Socket receiving timeout (s) */
+#define MIN_ORDER_SIZE  10              /* Minimum size of orders array */
 
 /* Some global names */
-#define __ossec_name    "OSSEC HIDS"
-#define __version       "v2.8"
-#define __wazuh_version "v1.1"
-#define __author        "Trend Micro Inc."
-#define __contact       "contact@ossec.net"
-#define __site          "http://www.ossec.net"
+#define __ossec_name    "OSSEC Wazuh"
+#define __version       "v1.2"
+#define __author        "Wazuh Inc."
+#define __contact       "info@wazuh.com"
+#define __site          "http://www.wazuh.com"
 #define __license       "\
 This program is free software; you can redistribute it and/or modify\n\
 it under the terms of the GNU General Public License (version 2) as \n\
@@ -135,9 +135,18 @@ http://www.ossec.net/main/license/\n"
 /* Backup directory for agents */
 #define AGNBACKUP_DIR    "/backup/agents"
 
+/* Wazuh Database */
+#define WDB_DIR         "var/db"
+#define WDB_GLOB_NAME   "global.db"
+#define WDB_PROF_NAME   ".profile.db"
+
 /* Diff queue */
+#ifndef WIN32
 #define DIFF_DIR        "/queue/diff"
 #define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
+#else
+#define DIFF_DIR_PATH "queue/diff"
+#endif
 #define DIFF_NEW_FILE  "new-entry"
 #define DIFF_LAST_FILE "last-entry"
 #define DIFF_TEST_HOST "__test"
@@ -217,6 +226,8 @@ http://www.ossec.net/main/license/\n"
 #else
 #define KEYS_FILE       "client.keys"
 #define KEYSFILE_PATH   KEYS_FILE
+#define AUTHD_PASS      "authd.pass"
+#define AUTHDPASS_PATH  AUTHD_PASS
 #endif
 
 #ifndef AUTH_FILE

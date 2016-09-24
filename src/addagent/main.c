@@ -286,14 +286,26 @@ int main(int argc, char **argv)
         switch (user_msg[0]) {
             case 'A':
             case 'a':
+#ifdef CLIENT
+                printf("\n ** Agent adding only available on a master ** \n\n");
+                break;
+#endif
                 add_agent(json_output);
                 break;
             case 'e':
             case 'E':
+#ifdef CLIENT
+                printf("\n ** Key export only available on a master ** \n\n");
+                break;
+#endif
                 k_extract(NULL, json_output);
                 break;
             case 'i':
             case 'I':
+#ifndef CLIENT
+                printf("\n ** Key import only available on an agent ** \n\n");
+                break;
+#endif
                 k_import(NULL);
                 break;
             case 'l':
@@ -302,6 +314,10 @@ int main(int argc, char **argv)
                 break;
             case 'r':
             case 'R':
+#ifdef CLIENT
+                printf("\n ** Key removal only available on a master ** \n\n");
+                break;
+#endif
                 remove_agent(json_output);
                 break;
             case 'q':

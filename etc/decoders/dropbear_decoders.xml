@@ -1,0 +1,62 @@
+<!-- @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+
+
+<!--
+   - Allowed fields:
+   - location - where the log came from (only on FTS)
+   - srcuser  - extracts the source username
+   - dstuser  - extracts the destination (target) username
+   - user     - an alias to dstuser (only one of the two can be used)
+   - srcip    - source ip
+   - dstip    - dst ip
+   - srcport  - source port
+   - dstport  - destination port
+   - protocol - protocol
+   - id       - event id
+   - url      - url of the event
+   - action   - event action (deny, drop, accept, etc)
+   - status   - event status (success, failure, etc)
+   - extra_data     - Any extra data
+  -->
+
+  
+<!-- Dropbear rules -->
+<decoder name="dropbear">
+  <program_name>^dropbear</program_name>
+</decoder>
+
+<!--
+Jan  8 16:39:33 tp.lan dropbear[14824]: Bad password attempt for 'root' from 193.219.28.149:48629
+-->
+
+<decoder name="dropbear-bad-password">
+  <parent>dropbear</parent>
+  <prematch>password</prematch>
+  <regex offset="after_prematch">for '(\S+)' from (\S+):\d+$</regex>
+  <order>dstuser, srcip</order>
+</decoder>
+
+<!--
+Jan  8 19:54:12 tp.lan dropbear[15197]: Login attempt for nonexistent user from 182.72.89.122:4328
+-->
+
+<decoder name="dropbear-nonexist">
+  <parent>dropbear</parent>
+  <prematch>nonexistent</prematch>
+  <regex offset="after_prematch">from (\S+):\d+$</regex>
+  <order>srcip</order>
+</decoder>
+
+<!--
+Jan  8 19:32:41 tp.lan dropbear[15165]: Pubkey auth succeeded for 'root' with key md5 78:d6:41:ca:78:37:80:88:1d:15:0a:68:91:d1:4e:ad from 10.10.10.241:51737
+-->
+
+<decoder name="dropbear-from">
+  <parent>dropbear</parent>
+  <regex>(\S+) for '(\S+)' with key \S+ (\S+) from (\S+):\d+$</regex>
+  <order>status,dstuser,extra_data,srcip</order>
+</decoder>

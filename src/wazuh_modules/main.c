@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 
 void wm_help()
 {
-    print_out("Wazuh Module Manager - %s\nWazuh Inc.", __wazuh_version);
+    print_out("Wazuh Module Manager - %s\nWazuh Inc.", __version);
     print_out(" ");
     print_out("Usage: %s -[d|f|h|t]", ARGV0);
     print_out(" ");
@@ -137,7 +137,7 @@ void wm_setup()
     // Create PID file
 
     if (CreatePID(ARGV0, getpid()) < 0)
-        merror("%s: ERROR: Couldn't create PID file: (%s)", ARGV0, strerror(errno));
+        ErrorExit("%s: ERROR: Couldn't create PID file: (%s)", ARGV0, strerror(errno));
 
     // Signal management
 

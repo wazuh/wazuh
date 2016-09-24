@@ -17,32 +17,32 @@
   <rule id="500001" level="1">
     <if_sid>500000</if_sid>
     <match> notice: </match>
-    <description>Notice grouping.</description>
+    <description>Unbound: Notice grouping.</description>
   </rule>
 
-  <rule id="500002" level="1">
+  <rule id="500002" level="0">
     <if_sid>500000</if_sid>
     <match> info: </match>
-    <description>Info grouping.</description>
+    <description>Unbound: Info grouping.</description>
   </rule>
 
   <rule id="500100" level="2">
     <if_sid>500001</if_sid>
     <match>sendto failed: Can't assign requested address</match>
-    <description>Can't assign requested address.</description>
+    <description>Unbound: Can't assign requested address.</description>
   </rule>
 
   <rule id="500101" level="0">
     <if_sid>500002</if_sid>
     <match> A IN$</match>
-    <description>DNS A request.</description>
+    <description>Unbound: DNS A request.</description>
   </rule>
 
   <rule id="500102" level="0">
     <if_sid>500002</if_sid>
     <match> AAAA IN$</match>
-    <description>DNS AAAA request.</description>
+    <description>Unbound: DNS AAAA request.</description>
   </rule>
- 
+
 
 </group>

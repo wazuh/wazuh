@@ -18,8 +18,14 @@
   
 <group name="sysmon_process-anomalies,">
   
- <rule id="184666" level="12">
+ <rule id="184665" level="0">
   <if_sid>18100</if_sid>
+  <match>Microsoft-Windows-Sysmon/Operational: INFORMATION(1)</match>
+  <description>Sysmon - Event 1</description>
+ </rule>
+  
+ <rule id="184666" level="12">
+  <if_sid>184665</if_sid>
   <status>svchost.exe</status>
   <description>Sysmon - Suspicious Process - svchost.exe</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -33,7 +39,7 @@
 
 
 <rule id="184676" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <status>lsm.exe</status>
   <description>Sysmon - Suspicious Process - lsm.exe</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -46,7 +52,7 @@
 </rule>
 
 <rule id="184678" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <extra_data>lsm.exe</extra_data>
   <description>Sysmon - Suspicious Process - lsm.exe is a Parent Image</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -54,7 +60,7 @@
 
 
 <rule id="184686" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <status>csrss.exe</status>
   <description>Sysmon - Suspicious Process - csrss.exe</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -68,7 +74,7 @@
 
 
 <rule id="184696" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <status>lsass.exe</status>
   <description>Sysmon - Suspicious Process - lsass</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -81,7 +87,7 @@
 </rule>
 
 <rule id="184698" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <extra_data>lsass.exe</extra_data>
   <description>Sysmon - Suspicious Process - lsass.exe is a Parent Image</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -89,7 +95,7 @@
 
 
 <rule id="184706" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <status>winlogon.exe</status>
   <description>Sysmon - Suspicious Process - winlogon.exe</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -103,7 +109,7 @@
 
 
 <rule id="184716" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <status>wininit.exe</status>
   <description>Sysmon - Suspicious Process - wininit</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -117,7 +123,7 @@
 
 
 <rule id="184726" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <status>smss.exe</status>
   <description>Sysmon - Suspicious Process - smss.exe</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -131,7 +137,7 @@
 
 
 <rule id="184736" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <status>taskhost.exe</status>
   <description>Sysmon - Suspicious Process - taskhost.exe</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -145,7 +151,7 @@
 
 
 <rule id="184746" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <status>/services.exe</status>
   <description>Sysmon - Suspicious Process - services.exe</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -159,7 +165,7 @@
 
 
 <rule id="184766" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <status>dllhost.exe</status>
   <description>Sysmon - Suspicious Process - dllhost.exe</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>
@@ -173,7 +179,7 @@
 
 
 <rule id="184776" level="12">
-  <if_sid>18100</if_sid>
+  <if_sid>184665</if_sid>
   <status>\explorer.exe</status>
   <description>Sysmon - Suspicious Process - explorer.exe</description>
   <group>pci_dss_10.6.1,pci_dss_11.4,</group>

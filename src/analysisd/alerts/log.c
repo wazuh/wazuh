@@ -82,6 +82,8 @@ void OS_Store(const Eventinfo *lf)
 
 void OS_LogOutput(Eventinfo *lf)
 {
+    int i;
+
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
         if (lf->srcip) {
@@ -110,7 +112,7 @@ void OS_LogOutput(Eventinfo *lf)
         lf->location,
         lf->generated_rule->sigid,
         lf->generated_rule->level,
-        lf->generated_rule->comment,
+        lf->comment,
 
         lf->srcip == NULL ? "" : "\nSrc IP: ",
         lf->srcip == NULL ? "" : lf->srcip,
@@ -149,6 +151,78 @@ void OS_LogOutput(Eventinfo *lf)
 
         lf->full_log);
 
+    /* FIM events */
+
+    if (lf->filename) {
+        printf("File: %s\n", lf->filename);
+
+        if (lf->size_before)
+            printf("Old size: %s\n", lf->size_before);
+        if (lf->size_after)
+            printf("New size: %s\n", lf->size_after);
+
+        if (lf->perm_before)
+            printf("Old permissions: %6o\n", lf->perm_before);
+        if (lf->perm_after)
+            printf("New permissions: %6o\n", lf->perm_after);
+
+        if (lf->owner_before) {
+            if (lf->uname_before)
+                printf("Old user: %s (%s)\n", lf->uname_before, lf->owner_before);
+            else
+                printf("Old user: %s\n", lf->owner_before);
+        }
+        if (lf->owner_after) {
+            if (lf->uname_after)
+                printf("New user: %s (%s)\n", lf->uname_after, lf->owner_after);
+            else
+                printf("New user: %s\n", lf->owner_after);
+        }
+
+        if (lf->gowner_before) {
+            if (lf->gname_before)
+                printf("Old group: %s (%s)\n", lf->gname_before, lf->gowner_before);
+            else
+                printf("Old group: %s\n", lf->gowner_before);
+        }
+        if (lf->gowner_after) {
+            if (lf->gname_after)
+                printf("New group: %s (%s)\n", lf->gname_after, lf->gowner_after);
+            else
+                printf("New group: %s\n", lf->gowner_after);
+        }
+
+        if (lf->md5_before)
+            printf("Old MD5: %s\n", lf->md5_before);
+        if (lf->md5_after)
+            printf("New MD5: %s\n", lf->md5_after);
+
+
+        if (lf->sha1_before)
+            printf("Old SHA1: %s\n", lf->sha1_before);
+        if (lf->sha1_after)
+            printf("New SHA1: %s\n", lf->sha1_after);
+
+        if (lf->mtime_before)
+            printf("Old date: %s", ctime(&lf->mtime_before));
+        if (lf->mtime_after)
+            printf("New date: %s", ctime(&lf->mtime_after));
+
+        if (lf->inode_before)
+            printf("Old inode: %ld\n", lf->inode_before);
+        if (lf->inode_after)
+            printf("New inode: %ld\n", lf->inode_after);
+    }
+
+    // Dynamic fields, except for syscheck events
+    if (lf->decoder_info->fields && !lf->filename) {
+        for (i = 0; i < Config.decoder_order_size; i++) {
+            if (lf->decoder_info->fields[i] && lf->fields[i]) {
+                printf("%s: %s\n", lf->decoder_info->fields[i], lf->fields[i]);
+            }
+        }
+    }
+
     /* Print the last events if present */
     if (lf->generated_rule->last_events) {
         char **lasts = lf->generated_rule->last_events;
@@ -167,6 +241,8 @@ void OS_LogOutput(Eventinfo *lf)
 
 void OS_Log(Eventinfo *lf)
 {
+    int i;
+
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
         if (lf->srcip) {
@@ -196,7 +272,7 @@ void OS_Log(Eventinfo *lf)
             lf->location,
             lf->generated_rule->sigid,
             lf->generated_rule->level,
-            lf->generated_rule->comment,
+            lf->comment,
 
             lf->srcip == NULL ? "" : "\nSrc IP: ",
             lf->srcip == NULL ? "" : lf->srcip,
@@ -233,6 +309,78 @@ void OS_Log(Eventinfo *lf)
             lf->dstuser == NULL ? "" : lf->dstuser,
 
             lf->full_log);
+
+    /* FIM events */
+
+    if (lf->filename) {
+        fprintf(_aflog, "File: %s\n", lf->filename);
+
+        if (lf->size_before)
+            fprintf(_aflog, "Old size: %s\n", lf->size_before);
+        if (lf->size_after)
+            fprintf(_aflog, "New size: %s\n", lf->size_after);
+
+        if (lf->perm_before)
+            fprintf(_aflog, "Old permissions: %6o\n", lf->perm_before);
+        if (lf->perm_after)
+            fprintf(_aflog, "New permissions: %6o\n", lf->perm_after);
+
+        if (lf->owner_before) {
+            if (lf->uname_before)
+                fprintf(_aflog, "Old user: %s (%s)\n", lf->uname_before, lf->owner_before);
+            else
+                fprintf(_aflog, "Old user: %s\n", lf->owner_before);
+        }
+        if (lf->owner_after) {
+            if (lf->uname_after)
+                fprintf(_aflog, "New user: %s (%s)\n", lf->uname_after, lf->owner_after);
+            else
+                fprintf(_aflog, "New user: %s\n", lf->owner_after);
+        }
+
+        if (lf->gowner_before) {
+            if (lf->gname_before)
+                fprintf(_aflog, "Old group: %s (%s)\n", lf->gname_before, lf->gowner_before);
+            else
+                fprintf(_aflog, "Old group: %s\n", lf->gowner_before);
+        }
+        if (lf->gowner_after) {
+            if (lf->gname_after)
+                fprintf(_aflog, "New group: %s (%s)\n", lf->gname_after, lf->gowner_after);
+            else
+                fprintf(_aflog, "New group: %s\n", lf->gowner_after);
+        }
+
+        if (lf->md5_before)
+            fprintf(_aflog, "Old MD5: %s\n", lf->md5_before);
+        if (lf->md5_after)
+            fprintf(_aflog, "New MD5: %s\n", lf->md5_after);
+
+
+        if (lf->sha1_before)
+            fprintf(_aflog, "Old SHA1: %s\n", lf->sha1_before);
+        if (lf->sha1_after)
+            fprintf(_aflog, "New SHA1: %s\n", lf->sha1_after);
+
+        if (lf->mtime_before)
+            fprintf(_aflog, "Old date: %s", ctime(&lf->mtime_before));
+        if (lf->mtime_after)
+            fprintf(_aflog, "New date: %s", ctime(&lf->mtime_after));
+
+        if (lf->inode_before)
+            fprintf(_aflog, "Old inode: %ld\n", lf->inode_before);
+        if (lf->inode_after)
+            fprintf(_aflog, "New inode: %ld\n", lf->inode_after);
+    }
+
+    // Dynamic fields, except for syscheck events
+    if (lf->decoder_info->fields && !lf->filename) {
+        for (i = 0; i < Config.decoder_order_size; i++) {
+            if (lf->decoder_info->fields[i] && lf->fields[i]) {
+                fprintf(_aflog, "%s: %s\n", lf->decoder_info->fields[i], lf->fields[i]);
+            }
+        }
+    }
 
     /* Print the last events if present */
     if (lf->generated_rule->last_events) {
@@ -335,7 +483,7 @@ void OS_CustomLog(const Eventinfo *lf, const char *format)
         escaped_log = NULL;
     }
 
-    snprintf(tmp_buffer, 1024, "%s", lf->generated_rule->comment ? lf->generated_rule->comment : "");
+    snprintf(tmp_buffer, 1024, "%s", lf->comment ? lf->comment : "");
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_COMMENT], tmp_buffer);
     if (log) {
         os_free(log);
@@ -457,4 +605,3 @@ int FW_Log(Eventinfo *lf)
 
     return (1);
 }
-

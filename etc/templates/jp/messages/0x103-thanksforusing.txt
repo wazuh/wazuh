@@ -1,5 +1,5 @@
 
-	OSSEC HIDS の使用に感謝します．
+	OSSEC Wazuh の使用に感謝します．
 	あなたが何らかの質問，提案したいときや，バグを発見したときは，
 	contact@ossec.net まで連絡するか ossec-list@ossec.net にある
 	我々の公開メーリングリストを使ってください．

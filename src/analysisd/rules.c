@@ -1023,6 +1023,13 @@ int Rules_OP_ReadRules(const char *rulefile)
                     k++;
                 }
 
+                /* Check for a valid description */
+                if (!config_ruleinfo->comment) {
+                    merror("%s: No such description at rule '%d'.", ARGV0, config_ruleinfo->sigid);
+                    OS_ClearXML(&xml);
+                    return (-1);
+                }
+
                 /* Check for valid use of frequency */
                 if ((config_ruleinfo->context_opts ||
                         config_ruleinfo->frequency) &&
@@ -1583,11 +1590,11 @@ static int getattributes(char **attributes, char **values,
         }
         /* Get rule id */
         else if (strcasecmp(attributes[k], xml_id) == 0) {
-            if (OS_StrIsNum(values[k])) {
+            if (OS_StrIsNum(values[k]) && strlen(values[k]) <= 6) {
                 sscanf(values[k], "%6d", id);
             } else {
                 merror("rules_op: Invalid rule id: %s. "
-                       "Must be integer" ,
+                       "Must be integer (max 6 digits)" ,
                        values[k]);
                 return (-1);
             }

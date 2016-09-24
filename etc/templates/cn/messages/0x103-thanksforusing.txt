@@ -1,6 +1,6 @@
 
 
-    感谢使用 OSSEC HIDS.
+    感谢使用 OSSEC Wazuh.
     如果您有任何疑问,建议或您找到任何bug,
     请通过　contact@ossec.net 或邮件列表 ossec-list@ossec.net 联系我们.    
     ( http://www.ossec.net/en/mailing_lists.html ).

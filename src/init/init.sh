@@ -14,7 +14,7 @@ runInit()
             echo " - ${systemis} Redhat Linux."
             echo " - ${modifiedinit}"
             cp -pr ./src/init/ossec-hids-rh.init /etc/rc.d/init.d/ossec
-            chmod 555 /etc/rc.d/init.d/ossec
+            chmod 755 /etc/rc.d/init.d/ossec
             chown root:ossec /etc/rc.d/init.d/ossec
             /sbin/chkconfig --add ossec > /dev/null 2>&1
             return 0;
@@ -25,7 +25,7 @@ runInit()
         echo " - ${systemis} Gentoo Linux."
         echo " - ${modifiedinit}"
         cp -pr ./src/init/ossec-hids-gentoo.init /etc/init.d/ossec
-        chmod 555 /etc/init.d/ossec
+        chmod 755 /etc/init.d/ossec
         chown root:ossec /etc/init.d/ossec
         rc-update add ossec default
         return 0;
@@ -37,7 +37,7 @@ runInit()
         echo " - ${modifiedinit}"
 
         cp -pr ./src/init/ossec-hids-suse.init  /etc/init.d/ossec
-        chmod 555 /etc/init.d/ossec
+        chmod 755 /etc/init.d/ossec
         chown root:ossec /etc/init.d/ossec
 
         /sbin/chkconfig --add ossec > /dev/null 2>&1
@@ -49,7 +49,7 @@ runInit()
         echo " - ${systemis} Slackware Linux."
         echo " - ${modifiedinit}"
         cp -pr ./src/init/ossec-hids.init /etc/rc.d/rc.ossec
-        chmod 555 /etc/rc.d/rc.ossec
+        chmod 755 /etc/rc.d/rc.ossec
         chown root:ossec /etc/rc.d/rc.ossec
 
         grep ossec /etc/rc.d/rc.local > /dev/null 2>&1
@@ -117,7 +117,7 @@ runInit()
             echo " - ${systemis} Linux (SysV)."
             echo " - ${modifiedinit}"
             cp -pr ./src/init/ossec-hids.init  /etc/rc.d/init.d/ossec
-            chmod 555 /etc/rc.d/init.d/ossec
+            chmod 755 /etc/rc.d/init.d/ossec
             chown root:ossec /etc/rc.d/init.d/ossec
             return 0;
         # Taken from Stephen Bunn ossec howto.
@@ -139,4 +139,3 @@ runInit()
 
     return 1;
 }
-

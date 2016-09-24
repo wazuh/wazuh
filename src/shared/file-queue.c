@@ -90,6 +90,10 @@ static int Handle_Queue(file_queue *fileq, int flags)
 
     /* Seek to the end of the file */
     if (!(flags & CRALERT_READ_ALL)) {
+        if (!fileq->fp) {
+            return (0);
+        }
+
         if (fseek(fileq->fp, 0, SEEK_END) < 0) {
             merror(FSEEK_ERROR, __local_name, fileq->file_name, errno, strerror(errno));
             fclose(fileq->fp);

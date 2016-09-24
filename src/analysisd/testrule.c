@@ -75,6 +75,7 @@ int main(int argc, char **argv)
     uid_t uid;
     gid_t gid;
     struct sigaction action = { .sa_handler = onsignal };
+    int quiet = 0;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -92,7 +93,7 @@ int main(int argc, char **argv)
     geoipdb = NULL;
 #endif
 
-    while ((c = getopt(argc, argv, "VatvdhU:D:c:")) != -1) {
+    while ((c = getopt(argc, argv, "VatvdhU:D:c:q")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -126,6 +127,9 @@ int main(int argc, char **argv)
                 break;
             case 'a':
                 alert_only = 1;
+                break;
+            case 'q':
+                quiet = 1;
                 break;
             case 'v':
                 full_output = 1;
@@ -188,7 +192,7 @@ int main(int argc, char **argv)
     }
     nowChroot();
 
-    Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", 8, MAX_DECODER_ORDER_SIZE);
+    Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
     /*
      * Anonymous Section: Load rules, decoders, and lists
@@ -225,7 +229,9 @@ int main(int argc, char **argv)
                 decodersfiles = Config.decoders;
                 while ( decodersfiles && *decodersfiles) {
 
-                    verbose("%s: INFO: Reading decoder file %s.", ARGV0, *decodersfiles);
+                    if(!quiet) {
+                        verbose("%s: INFO: Reading decoder file %s.", ARGV0, *decodersfiles);
+                    }
                     if (!ReadDecodeXML(*decodersfiles)) {
                         ErrorExit(CONFIG_ERROR, ARGV0, *decodersfiles);
                     }
@@ -494,13 +500,17 @@ void OS_ReadMSG(char *ut_str)
                     continue;
                 }
 
+                /* Pointer to the rule that generated it */
+                lf->generated_rule = currently_rule;
+
 #ifdef TESTRULE
                 if (!alert_only) {
                     const char *(ruleinfodetail_text[]) = {"Text", "Link", "CVE", "OSVDB", "BUGTRACKID"};
+                    lf->comment = ParseRuleComment(lf);
                     print_out("\n**Phase 3: Completed filtering (rules).");
                     print_out("       Rule id: '%d'", currently_rule->sigid);
                     print_out("       Level: '%d'", currently_rule->level);
-                    print_out("       Description: '%s'", currently_rule->comment);
+                    print_out("       Description: '%s'", lf->comment);
                     for (last_info_detail = currently_rule->info_details; last_info_detail != NULL; last_info_detail = last_info_detail->next) {
                         print_out("       Info - %s: '%s'", ruleinfodetail_text[last_info_detail->type], last_info_detail->data);
                     }
@@ -528,10 +538,6 @@ void OS_ReadMSG(char *ut_str)
                         currently_rule->time_ignored = 0;
                     }
                 }
-
-                /* Pointer to the rule that generated it */
-                lf->generated_rule = currently_rule;
-
 
                 /* Check if we should ignore it */
                 if (currently_rule->ckignore && IGnore(lf)) {

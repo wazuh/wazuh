@@ -110,6 +110,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_zeromq_output_server_cert = "zeromq_server_cert";
     const char *xml_zeromq_output_client_cert = "zeromq_client_cert";
     const char *xml_jsonout_output = "jsonout_output";
+    const char *xml_alerts_log = "alerts_log";
     const char *xml_stats = "stats";
     const char *xml_memorysize = "memory_size";
     const char *xml_white_list = "white_list";
@@ -296,6 +297,21 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 return (OS_INVALID);
             }
         }
+        /* Standard alerts output */
+        else if (strcmp(node[i]->element, xml_alerts_log) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                if (Config) {
+                    Config->alerts_log = 1;
+                }
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                if (Config) {
+                    Config->alerts_log = 0;
+                }
+            } else {
+                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+        }
         /* Log all */
         else if (strcmp(node[i]->element, xml_logall) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
@@ -325,7 +341,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        }           
+        }
         /* Compress alerts */
         else if (strcmp(node[i]->element, xml_compress_alerts) == 0) {
             /* removed from here -- compatility issues only */
@@ -530,4 +546,3 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
     return (0);
 }
-

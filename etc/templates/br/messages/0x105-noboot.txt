@@ -1,5 +1,5 @@
 
- - Nenhuma ação foi tomada para que OSSEC HIDS inicie
+ - Nenhuma ação foi tomada para que OSSEC Wazuh inicie
    durrante o 'boot'. Adicione a seguinte linha em seu 
    script de inicialização:
 

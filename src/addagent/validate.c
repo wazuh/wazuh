@@ -10,98 +10,54 @@
 #include <time.h>
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
+#include "wazuh_db/wdb.h"
+
+#define str_startwith(x, y) strncmp(x, y, strlen(y))
+#define str_endwith(x, y) (strlen(x) < strlen(y) || strcmp(x + strlen(x) - strlen(y), y))
 
 #ifdef WIN32
-    #define chmod(x,y) 0
+    #define fchmod(x,y) 0
     #define mkdir(x,y) 0
     #define link(x,y) 0
     #define difftime(x,y) 0
+    #define mkstemp(x) 0
 #endif
 
 /* Global variables */
 fpos_t fp_pos;
 
-
-char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
+char *OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
 {
-    FILE *fp;
     os_md5 md1;
     os_md5 md2;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
     char *muname;
     char *finals;
-    char nid[9] = { '\0' };
+    char id[9] = { '\0' };
+    char key[KEYSIZE] = { '\0' };
 
     srandom_init();
     muname = getuname();
+    snprintf(id, 9, "%03d", ++keys->id_counter);
 
     snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, (int)random(), muname);
     snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)random());
     OS_MD5_Str(str1, md1);
     OS_MD5_Str(str2, md2);
-
     free(muname);
 
-    if (id == NULL) {
-#ifdef REUSE_ID
-        int i = 1024;
-        snprintf(nid, 6, "%d", i);
-        while (IDExist(nid)) {
-            i++;
-            snprintf(nid, 6, "%d", i);
-            if (i >= (MAX_AGENTS + 1024))
-                return (NULL);
-        }
-#else
-        char nid_p[9] = { '\0' };
-        int i = AUTHD_FIRST_ID;
-        int j = MAX_AGENTS + AUTHD_FIRST_ID;
-        int m = (i + j) / 2;
-
-        snprintf(nid, 8, "%d", m);
-        snprintf(nid_p, 8, "%d", m - 1);
-
-        /* Dichotomic search */
-
-        while (1) {
-            if (IDExist(nid)) {
-                if (m == i)
-                    return NULL;
-
-                i = m;
-            } else if (!IDExist(nid_p) && m > i )
-                j = m;
-            else
-                break;
-
-            m = (i + j) / 2;
-            snprintf(nid, 8, "%d", m);
-            snprintf(nid_p, 8, "%d", m - 1);
-        }
-#endif
-        id = nid;
-    }
-
-    fp = fopen(AUTH_FILE, "a");
-    if (!fp) {
-        return (NULL);
-    }
+    snprintf(key, KEYSIZE, "%s%s", md1, md2);
+    OS_AddKey(keys, id, name, ip ? ip : "any", key);
 
     os_calloc(2048, sizeof(char), finals);
-    if (ip == NULL) {
-        snprintf(finals, 2048, "%s %s any %s%s", id, name, md1, md2);
-    } else {
-        snprintf(finals, 2048, "%s %s %s %s%s", id, name, ip, md1, md2);
-    }
-    fprintf(fp, "%s\n", finals);
-    fclose(fp);
-    OS_AddAgentTimestamp(id, name, ip, time(0));
-    return (finals);
+    snprintf(finals, 2048, "%s %s %s %s", id, name, ip ? ip : "any", key);
+    return finals;
 }
 
 int OS_RemoveAgent(const char *u_id) {
     FILE *fp;
+    File file;
     int id_exist;
     char *full_name;
     long fp_seek;
@@ -120,9 +76,6 @@ int OS_RemoveAgent(const char *u_id) {
     if (!fp)
         return 0;
 
-    if (chmod(AUTH_FILE, 0440) < 0)
-        return 0;
-
     if (fstat(fileno(fp), &fp_stat) < 0) {
         fclose(fp);
         return 0;
@@ -136,11 +89,13 @@ int OS_RemoveAgent(const char *u_id) {
 
     if (fsetpos(fp, &fp_pos) < 0) {
         fclose(fp);
+        free(buffer);
         return 0;
     }
 
     if ((fp_seek = ftell(fp)) < 0) {
         fclose(fp);
+        free(buffer);
         return 0;
     }
 
@@ -169,21 +124,29 @@ int OS_RemoveAgent(const char *u_id) {
     size_t curline_len = strlen(buf_curline);
     memcpy(buffer + fp_read, buf_curline, curline_len);
     fp_read += curline_len;
+
 #endif
 
     if (!feof(fp))
         fp_read += fread(buffer + fp_read, sizeof(char), fp_stat.st_size, fp);
 
     fclose(fp);
-    fp = fopen(AUTH_FILE, "w");
 
-    if (!fp) {
+    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {
         free(buffer);
         return 0;
     }
 
-    fwrite(buffer, sizeof(char), fp_read, fp);
-    fclose(fp);
+    fwrite(buffer, sizeof(char), fp_read, file.fp);
+    fclose(file.fp);
+
+    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+        free(file.name);
+        free(buffer);
+        return 0;
+    }
+
+    free(file.name);
     free(buffer);
 
     if ((full_name = getFullnameById(u_id))) {
@@ -193,7 +156,6 @@ int OS_RemoveAgent(const char *u_id) {
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
-
     OS_RemoveAgentTimestamp(u_id);
     return 1;
 }
@@ -483,18 +445,31 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
+double OS_AgentAntiquity_ID(const char *id) {
+    char *name = getFullnameById(id);
+    char *ip;
+    double ret = -1;
+
+    if (!name) {
+        return -1;
+    }
+
+    if ((ip = strchr(name, '-'))) {
+        *(ip++) = 0;
+        ret = OS_AgentAntiquity(name, ip);
+    }
+
+    free(name);
+    return ret;
+}
+
 /* Returns the number of seconds since last agent connection, or -1 if error. */
-double OS_AgentAntiquity(const char *id)
+double OS_AgentAntiquity(const char *name, const char *ip)
 {
     struct stat file_stat;
     char file_name[OS_FLSIZE];
-    char *full_name = getFullnameById(id);
 
-    if (!full_name)
-        return -1;
-
-    snprintf(file_name, OS_FLSIZE - 1, "%s/%s", AGENTINFO_DIR, full_name);
-    free(full_name);
+    snprintf(file_name, OS_FLSIZE - 1, "%s/%s-%s", AGENTINFO_DIR, name, ip);
 
     if (stat(file_name, &file_stat) < 0)
         return -1;
@@ -625,34 +600,37 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
     return (0);
 }
 
-/* Backup agent information before force deleting */
-void OS_BackupAgentInfo(const char *id)
-{
-    char *path_backup;
-    char path_src[OS_FLSIZE];
-    char path_dst[OS_FLSIZE];
+void OS_BackupAgentInfo_ID(const char *id) {
     char *name = getFullnameById(id);
     char *ip;
-    time_t timer = time(NULL);
-    int status = 0;
 
     if (!name) {
         merror("%s: ERROR: Agent id %s not found.", ARGV0, id);
         return;
     }
 
-    if (!(ip = strchr(name, '-'))) {
-        free(name);
-        return;
+    if ((ip = strchr(name, '-'))) {
+        *(ip++) = 0;
+        OS_BackupAgentInfo(id, name, ip);
     }
 
-    *(ip++) = 0;
+    free(name);
+}
+
+/* Backup agent information before force deleting */
+void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
+{
+    char *path_backup;
+    char path_src[OS_FLSIZE];
+    char path_dst[OS_FLSIZE];
+
+    time_t timer = time(NULL);
+    int status = 0;
 
     path_backup = OS_CreateBackupDir(id, name, ip, timer);
 
     if (!path_backup) {
         merror("%s: ERROR: Couldn't create backup directory.", ARGV0);
-        free(name);
         return;
     }
 
@@ -692,7 +670,6 @@ void OS_BackupAgentInfo(const char *id)
         }
     }
 
-    free(name);
     free(path_backup);
 }
 
@@ -763,24 +740,25 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
 
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now)
 {
-    FILE *fp;
+    File file;
     char timestamp[40];
 
-    fp = fopen(TIMESTAMP_FILE, "a");
-
-    if (!fp) {
+    if (TempFile(&file, TIMESTAMP_FILE, 1) < 0) {
         merror("%s: ERROR: Couldn't open timestamp file.", ARGV0);
         return;
     }
 
     strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&now));
-    fprintf(fp, "%s %s %s %s\n", id, name, ip, timestamp);
-    fclose(fp);
+    fprintf(file.fp, "%s %s %s %s\n", id, name, ip, timestamp);
+    fclose(file.fp);
+    OS_MoveFile(file.name, TIMESTAMP_FILE);
+    free(file.name);
 }
 
 void OS_RemoveAgentTimestamp(const char *id)
 {
     FILE *fp;
+    File file;
     char *buffer;
     char line[OS_BUFFER_SIZE];
     int idlen = strlen(id);
@@ -794,6 +772,7 @@ void OS_RemoveAgentTimestamp(const char *id)
     }
 
     if (fstat(fileno(fp), &fp_stat) < 0) {
+        fclose(fp);
         return;
     }
 
@@ -807,15 +786,51 @@ void OS_RemoveAgentTimestamp(const char *id)
     }
 
     fclose(fp);
-    fp = fopen(TIMESTAMP_FILE, "w");
 
-    if (!fp) {
-        merror("%s: ERROR: Couldn't open timetamp file.", ARGV0);
+    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
+        merror("%s: ERROR: Couldn't open timestamp file.", ARGV0);
         free(buffer);
         return;
     }
 
-    fprintf(fp, "%s", buffer);
-    fclose(fp);
+    fprintf(file.fp, "%s", buffer);
+    fclose(file.fp);
     free(buffer);
+    OS_MoveFile(file.name, TIMESTAMP_FILE);
+    free(file.name);
+}
+
+void FormatID(char *id) {
+    int number;
+    char *end;
+
+    if (id && *id) {
+        number = strtol(id, &end, 10);
+
+        if (!*end)
+            sprintf(id, "%03d", number);
+    }
+}
+
+/*
+ * Check whether ossec-authd is running (returns 1) or not (returns 0).
+ * Returns -1 on error.
+ */
+int check_authd() {
+    DIR *dir;
+    struct dirent *entry;
+    int found = 0;
+
+    if (!(dir = opendir(isChroot() ? "/var/run" : DEFAULTDIR "/var/run")))
+        return -1;
+
+    while ((entry = readdir(dir))) {
+        if (!(str_startwith(entry->d_name, "ossec-authd-") || str_endwith(entry->d_name, ".pid"))) {
+            found = 1;
+            break;
+        }
+    }
+
+    closedir(dir);
+    return found;
 }

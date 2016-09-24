@@ -25,9 +25,8 @@
 ; general
 !define MUI_ICON favicon.ico
 !define MUI_UNICON ossec-uninstall.ico
-!define VERSION "2.8"
-!define WAZUH_VERSION "1.1.1"
-!define NAME "OSSEC HIDS"
+!define VERSION "1.2"
+!define NAME "OSSEC Wazuh"
 !define SERVICE "OssecSvc"
 
 Name "${NAME} Windows Agent v${VERSION}"
@@ -172,6 +171,8 @@ Section "OSSEC Agent (required)" MainSec
     File vista_sec.txt
     File /oname=active-response\bin\route-null.cmd route-null.cmd
     File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
+    File /oname=libwinpthread-1.dll /usr/i686-w64-mingw32/lib/libwinpthread-1.dll
+	File agent-auth.exe
 
     ; use appropriate version of "ossec-agent.exe"
     ${If} ${AtLeastWinVista}
@@ -201,7 +202,7 @@ Section "OSSEC Agent (required)" MainSec
     ; write version and install information
     VersionInstall:
         FileOpen $0 "$INSTDIR\VERSION.txt" w
-        FileWrite $0 "${NAME} v${VERSION} / WAZUH v${WAZUH_VERSION} - Installed on $CURRENTTIME"
+        FileWrite $0 "${NAME} v${VERSION} - Installed on $CURRENTTIME"
         FileClose $0
         IfErrors VersionError VersionComplete
     VersionError:
@@ -408,6 +409,7 @@ Section "Uninstall"
 
     ; remove files and uninstaller
     Delete "$INSTDIR\ossec-agent.exe"
+	Delete "$INSTDIR\agent-auth.exe"
     Delete "$INSTDIR\ossec-lua.exe"
     Delete "$INSTDIR\ossec-luac.exe"
     Delete "$INSTDIR\manage_agents.exe"

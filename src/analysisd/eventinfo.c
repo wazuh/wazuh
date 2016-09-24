@@ -18,6 +18,7 @@ int full_output;
 int alert_only;
 #endif
 
+#define OS_COMMENT_MAX 1024
 
 /* Search last times a signature fired
  * Will look for only that specific signature.
@@ -454,9 +455,11 @@ void Zero_Eventinfo(Eventinfo *lf)
 {
     lf->log = NULL;
     lf->full_log = NULL;
+    lf->agent_id = NULL;
     lf->hostname = NULL;
     lf->program_name = NULL;
     lf->location = NULL;
+    lf->comment = NULL;
 
     lf->srcip = NULL;
     lf->srcgeoip = NULL;
@@ -500,6 +503,15 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->owner_after = NULL;
     lf->gowner_before = NULL;
     lf->gowner_after = NULL;
+    lf->uname_before = NULL;
+    lf->uname_after = NULL;
+    lf->gname_before = NULL;
+    lf->gname_after = NULL;
+    lf->mtime_before = 0;
+    lf->mtime_after = 0;
+    lf->inode_before = 0;
+    lf->inode_after = 0;
+    lf->diff = NULL;
 
     return;
 }
@@ -512,9 +524,17 @@ void Free_Eventinfo(Eventinfo *lf)
         return;
     }
 
+    if (lf->comment)
+        free(lf->comment);
+
     if (lf->full_log) {
         free(lf->full_log);
     }
+
+    if (lf->agent_id) {
+        free(lf->agent_id);
+    }
+
     if (lf->location) {
         free(lf->location);
     }
@@ -617,6 +637,21 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->gowner_after) {
         free(lf->gowner_after);
     }
+    if (lf->uname_before) {
+        free(lf->uname_before);
+    }
+    if (lf->uname_after) {
+        free(lf->uname_after);
+    }
+    if (lf->gname_before) {
+        free(lf->gname_before);
+    }
+    if (lf->gname_after) {
+        free(lf->gname_after);
+    }
+    if (lf->diff) {
+        free(lf->diff);
+    }
 
     /* Free node to delete */
     if (lf->sid_node_to_delete) {
@@ -639,4 +674,49 @@ void Free_Eventinfo(Eventinfo *lf)
     lf = NULL;
 
     return;
+}
+
+/* Parse rule comment with dynamic fields */
+char* ParseRuleComment(Eventinfo *lf) {
+    static char final[OS_COMMENT_MAX + 1] = { '\0' };
+    char orig[OS_COMMENT_MAX + 1] = { '\0' };
+    char *str;
+    char *var;
+    char *end;
+    size_t n = 0;
+    size_t z;
+    int i;
+
+    strncpy(orig, lf->generated_rule->comment, OS_COMMENT_MAX);
+
+    for (str = orig; (var = strstr(str, "$(")); str = end) {
+        *(var) = '\0';
+
+        if (n + (z = strlen(str)) >= OS_COMMENT_MAX)
+            return strdup(lf->generated_rule->comment);
+
+        strncpy(&final[n], str, z);
+        n += z;
+
+        if (!(end = strchr(var += 2, ')')))
+            return strdup(lf->generated_rule->comment);
+
+        *(end++) = '\0';
+
+        if ((i = FindField(lf->decoder_info, var)) < 0 || !lf->fields[i])
+            return strdup(lf->generated_rule->comment);
+
+        if (n + (z = strlen(lf->fields[i])) >= OS_COMMENT_MAX)
+            return strdup(lf->generated_rule->comment);
+
+        strncpy(&final[n], lf->fields[i], z);
+        n += z;
+    }
+
+    if (n + (z = strlen(str)) >= OS_COMMENT_MAX)
+        return strdup(lf->generated_rule->comment);
+
+    strncpy(&final[n], str, z);
+    final[n + z] = '\0';
+    return strdup(final);
 }

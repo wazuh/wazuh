@@ -244,23 +244,25 @@ void W_JSON_ParseTimestamp(cJSON* root, const Eventinfo* lf)
 // ** TODO ** Regex instead str_cut
 void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
 {
-    if(lf->hostname[0] == '(') {
-        char* search;
-        char string[MAX_STRING];
-        strncpy(string, lf->hostname, MAX_STRING);
-        int index;
-        search = strchr(string, ')');
-        if(search) {
-            index = (int)(search - string);
-            str_cut(string, 0, index);
-            str_cut(string, 0, 2);
-            search = strchr(string, '-');
-            index = (int)(search - string);
-            str_cut(string, index, -1);
-            cJSON_AddStringToObject(root, "agentip", string);
+    char *string;
+    char *ip;
+    char *end;
+
+    if (lf->hostname[0] == '(') {
+        string = strdup(lf->hostname);
+
+        if ((ip = strchr(string, ')'))) {
+            if ((end = strchr(ip += 2, '-')))
+                *end = '\0';
+
+            if (strcmp(ip, "any"))
+                cJSON_AddStringToObject(root, "agentip", ip);
         }
+
+        free(string);
     }
 }
+
 // The file location usually comes with more information about the alert (like hostname or ip) we will extract just the
 // "/var/folder/file.log".
 void W_JSON_ParseLocation(cJSON* root, const Eventinfo* lf, int archives)

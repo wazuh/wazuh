@@ -308,7 +308,7 @@ int main_analysisd(int argc, char **argv)
     }
     nowChroot();
 
-    Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", 8, MAX_DECODER_ORDER_SIZE);
+    Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
     /*
      * Anonymous Section: Load rules, decoders, and lists
@@ -847,7 +847,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                         __crt_ftell = ftell(_aflog);
                         if (Config.custom_alert_output) {
                             OS_CustomLog(lf, Config.custom_alert_output_format);
-                        } else {
+                        } else if (Config.alerts_log) {
                             OS_Log(lf);
                         }
                         /* Log to json file */
@@ -935,11 +935,12 @@ void OS_ReadMSG_analysisd(int m_queue)
 
                 /* Log the alert if configured to */
                 if (currently_rule->alert_opts & DO_LOGALERT) {
+                    lf->comment = ParseRuleComment(lf);
                     __crt_ftell = ftell(_aflog);
 
                     if (Config.custom_alert_output) {
                         OS_CustomLog(lf, Config.custom_alert_output_format);
-                    } else {
+                    } else if (Config.alerts_log) {
                         OS_Log(lf);
                     }
                     /* Log to json file */
@@ -1466,7 +1467,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                 case RULE_DYNAMIC:
                     i = FindField(lf->decoder_info, list_holder->dfield);
 
-                    if (i < 0)
+                    if (i < 0 || !lf->fields[i])
                         return NULL;
 
                     if (!OS_DBSearch(list_holder, lf->fields[i]))

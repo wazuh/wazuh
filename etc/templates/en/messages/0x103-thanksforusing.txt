@@ -1,5 +1,5 @@
 
-    Thanks for using the OSSEC HIDS.
+    Thanks for using the OSSEC Wazuh.
     If you have any question, suggestion or if you find any bug,
     contact us at contact@ossec.net or using our public maillist at
     ossec-list@ossec.net

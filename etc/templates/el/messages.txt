@@ -10,9 +10,9 @@ help="help"
 
 # Global
 moreinfo="Περισσότερες πληροφορίες στο: "
-starting="Εκκινώντας το OSSEC HIDS"
+starting="Εκκινώντας το OSSEC Wazuh"
 systemis="Το σύστημα είναι"
-modifiedinit="To init script τροποποιήθηκε προκειμένου να ξεκινάει το OSSEC HIDS κατά την εκκίνηση του συστήματος."
+modifiedinit="To init script τροποποιήθηκε προκειμένου να ξεκινάει το OSSEC Wazuh κατά την εκκίνηση του συστήματος."
 noboot="Άγνωστο σύστημα. Το init script δεν προστέθηκε."
 
 # Part 1
@@ -28,7 +28,7 @@ localchose="Επιλέχθηκε η τοπική (local) εγκατάσταση"
 
 # Part 2
 settingupenv="Ρυθμίζεται το περιβάλλον εγκατάστασης"
-wheretoinstall="Επιλέξτε την τοποθεσία εγκατάστασης του OSSEC HIDS"
+wheretoinstall="Επιλέξτε την τοποθεσία εγκατάστασης του OSSEC Wazuh"
 installat="Η εγκατάσταση θα γίνει στο "
 deletedir="Ο κατάλογος εγκατάστασης υπάρχει ήδη. Θέλετε να διαγραφεί;"
 
@@ -43,8 +43,8 @@ usingsmtp="Διακομιστής εξερχόμενης αλληλογραφί�
 whatsmtp="Ποιά είναι η διεύθυνση του διακομιστή της εξερχόμενης αλληλογραφίας σας ip/host?"
 
 # Part 3.1/agent
-serverip="Ποιά είναι η διεύθυνση IP του διακομιστή OSSEC HIDS;"
-serveraddr="Ποιά είναι η διεύθυνση IP/Host του διακομιστή OSSEC HIDS;"
+serverip="Ποιά είναι η διεύθυνση IP του διακομιστή OSSEC Wazuh;"
+serveraddr="Ποιά είναι η διεύθυνση IP/Host του διακομιστή OSSEC Wazuh;"
 addingip="Προστέθηκε η διεύθυνση διακομιστή"
 addingname="Προστέθηκε η διεύθυνση διακομιστή"
 
@@ -85,8 +85,8 @@ runningmake="Το Makefile εκτελείται"
 
 # Final
 configurationdone="Οι ρυθμίσεις πραγματοποιήθηκαν με επιτυχία"
-tostart="Για να ξεκινήσετε το OSSEC HIDS"
-tostop="Για να σταματήσετε το OSSEC HIDS"
+tostart="Για να ξεκινήσετε το OSSEC Wazuh"
+tostop="Για να σταματήσετε το OSSEC Wazuh"
 configat="Το αρχείο ρυθμίσεων μπορεί να αναγνωστεί ή να τροποποιηθεί στην τοποθεσία"
 addserveragent="Προκειμένου να διασυνδέσετε τον agent με τον server, πρέπει να προσθέσετε κάθε agent στο server."
 runma="Εκτελέστε το αρχείο 'manage_agents' για να τους προσθέσετε ή να τους αφαιρέσετε"

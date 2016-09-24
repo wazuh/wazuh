@@ -9,6 +9,7 @@
 
 #include "addagent/manage_agents.h"
 #include "sec.h"
+#include "wazuh_db/wdb.h"
 
 #undef ARGV0
 #define ARGV0 "syscheck_control"
@@ -19,7 +20,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: Manages the integrity checking database.\n",
+    printf("\nOSSEC Wazuh %s: Manages the integrity checking database.\n",
            ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
@@ -176,7 +177,7 @@ int main(int argc, char **argv)
         } else if (csv_output)
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         else {
-            printf("\nOSSEC HIDS %s. List of available agents:", ARGV0);
+            printf("\nOSSEC Wazuh %s. List of available agents:", ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, "
                    "Active/Local\n", shost);
         }
@@ -235,6 +236,7 @@ int main(int argc, char **argv)
             }
 
             closedir(sys_dir);
+            wdb_delete_fim_all();
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
@@ -268,6 +270,8 @@ int main(int argc, char **argv)
             }
             unlink(final_dir);
 
+            wdb_delete_fim(0);
+
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
                 cJSON_AddStringToObject(json_root, "data", "Integrity check database updated");
@@ -283,7 +287,7 @@ int main(int argc, char **argv)
             int i;
             keystore keys;
 
-            OS_ReadKeys(&keys);
+            OS_ReadKeys(&keys, 1);
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {
@@ -303,6 +307,8 @@ int main(int argc, char **argv)
             /* Delete syscheck */
             delete_syscheck(keys.keyentries[i]->name,
                             keys.keyentries[i]->ip->ip, 0);
+
+            wdb_delete_fim(atoi(keys.keyentries[i]->id));
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
@@ -347,7 +353,7 @@ int main(int argc, char **argv)
                            csv_output, json_entries, zero_counter);
         } else {
 
-            OS_ReadKeys(&keys);
+            OS_ReadKeys(&keys, 1);
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {

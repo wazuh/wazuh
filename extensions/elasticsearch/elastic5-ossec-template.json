@@ -1,0 +1,403 @@
+{
+  "order": 0,
+  "template": "ossec*",
+  "settings": {
+    "index.refresh_interval": "5s"
+  },
+  "mappings": {
+    "ossec": {
+      "dynamic_templates": [
+        {
+          "notanalyzed": {
+            "match": "*",
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "@timestamp": {
+          "type": "date",
+          "format": "dateOptionalTime"
+        },
+        "@version": {
+          "type": "text"
+        },
+        "AgentIP": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "AgentID": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "dstuser": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "AlertsFile": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "full_log": {
+          "type": "text"
+        },
+        "GeoLocation": {
+          "properties": {
+            "area_code": {
+              "type": "long"
+            },
+            "city_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "continent_code": {
+              "type": "text"
+            },
+            "coordinates": {
+              "type": "double"
+            },
+            "country_code2": {
+              "type": "text"
+            },
+            "country_code3": {
+              "type": "text"
+            },
+            "country_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "dma_code": {
+              "type": "long"
+            },
+            "ip": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "latitude": {
+              "type": "double"
+            },
+            "location": {
+              "type": "geo_point"
+            },
+            "longitude": {
+              "type": "double"
+            },
+            "postal_code": {
+              "type": "keyword"
+            },
+            "real_region_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "region_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "timezone": {
+              "type": "text"
+            }
+          }
+        },
+        "host": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "AgentName": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "SyscheckFile": {
+          "properties": {
+            "path": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "sha1_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "sha1_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "owner_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "owner_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "gowner_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "gowner_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "perm_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "perm_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "md5_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "md5_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "gname_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "gname_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "inode_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "inode_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "mtime_after": {
+              "type": "date",
+              "format": "dateOptionalTime",
+              "doc_values": "true"
+            },
+            "mtime_before": {
+              "type": "date",
+              "format": "dateOptionalTime",
+              "doc_values": "true"
+            },
+            "uname_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "uname_before": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "size_before": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "size_after": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "diff": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "event": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        },
+        "location": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "message": {
+          "type": "text"
+        },
+        "offset": {
+          "type": "keyword"
+        },
+        "rule": {
+          "properties": {
+            "description": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "groups": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "AlertLevel": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "sidid": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "cve": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "info": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "frequency": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "firedtimes": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "CIS": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "PCI_DSS": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        },
+        "decoder": {
+          "properties": {
+            "parent": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "ftscomment": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "fts": {
+              "type": "long",
+              "doc_values": "true"
+            },
+            "accumulate": {
+              "type": "long",
+              "doc_values": "true"
+            }
+          }
+        },
+        "srcip": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "protocol": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "action": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "dstip": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "dstport": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "srcuser": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "program_name": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "id": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "status": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "command": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "url": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "data": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "systemname": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "type": {
+          "type": "text"
+        },
+        "score": {
+          "type": "double",
+          "doc_values": "true"
+        },
+        "max_score": {
+          "type": "double",
+          "doc_values": "true"
+        },
+        "scan_id": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "policy": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "profile": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "severity_high": {
+          "type": "long",
+          "doc_values": "true"
+        },
+        "severity_medium": {
+          "type": "long",
+          "doc_values": "true"
+        },
+        "severity_low": {
+          "type": "long",
+          "doc_values": "true"
+        },
+        "return_code": {
+          "type": "long",
+          "doc_values": "true"
+        },
+        "oscap_rule_id": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "result": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "ident": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "severity": {
+          "type": "keyword",
+          "doc_values": "true"
+        },
+        "title": {
+          "type": "keyword",
+          "doc_values": "true"
+        }
+      }
+    }
+  }
+}
