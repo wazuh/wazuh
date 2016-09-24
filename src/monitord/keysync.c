@@ -49,6 +49,8 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
     int fd = inotify_init();
     int wd = -1;
     ssize_t count;
+    ssize_t i;
+    int sync = 1;
 
     /* Start inotify */
 
@@ -72,20 +74,36 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
         }
 
         /* Synchronize */
-        debug1("%s: Synchronizing client.keys", ARGV0);
-        sync_keys();
+
+        if (sync) {
+            debug1("%s: Synchronizing client.keys", ARGV0);
+            sync_keys();
+        }
 
         /* Wait for changes */
 
-        switch ((count = read(fd, buffer, IN_BUFFER_SIZE))) {
-        case -1:
+        if ((count = read(fd, buffer, IN_BUFFER_SIZE)) < 0) {
             merror("%s: ERROR: read(): %s", ARGV0, strerror(errno));
-        case 0:
-            break;
-        default:
-            if ((event->mask & IN_DELETE_SELF) == IN_DELETE_SELF) {
+            continue;
+        }
+
+        for (i = 0; i < count; i += sizeof(struct inotify_event) + event->len) {
+            event = (struct inotify_event*)&buffer[i];
+
+            switch (event->mask) {
+            case IN_CLOSE_WRITE:
+                sync = 1;
+                break;
+            case IN_DELETE_SELF:
+                sync = 0;
+                break;
+            case IN_IGNORED:
                 inotify_rm_watch(fd, wd);
                 wd = -1;
+                sync = 1;
+                break;
+            default:
+                merror("%s: WARN: Unknown inotify mask: 0x%x\n", ARGV0, event->mask);
             }
         }
     }
