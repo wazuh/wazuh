@@ -437,6 +437,11 @@ int ReadDecodeXML(const char *file)
                 int order_int = 0;
 
                 /* Maximum number for the order is limited by decoder_order_size */
+
+                if (os_strcnt(elements[j]->content, ',') >= (size_t)Config.decoder_order_size) {
+                    ErrorExit("%s: ERROR: Order has too many fields.", ARGV0);
+                }
+
                 norder = OS_StrBreak(',', elements[j]->content, Config.decoder_order_size);
                 s_norder = norder;
                 os_calloc(Config.decoder_order_size, sizeof(void *), pi->order);
@@ -444,10 +449,6 @@ int ReadDecodeXML(const char *file)
 
                 /* Check the values from the order */
                 while (*norder) {
-
-                    if (order_int >= Config.decoder_order_size) {
-                        ErrorExit("%s: ERROR: Order has too many fields.", ARGV0);
-                    }
                     char *word = &(*norder)[strspn(*norder, " ")];
                     word[strcspn(word, " ")] = '\0';
 
