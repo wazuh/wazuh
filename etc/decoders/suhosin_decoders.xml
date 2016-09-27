@@ -34,7 +34,7 @@
 <decoder name="suhosin">
   <program_name>^suhosin</program_name>
   <type>ids</type>
-  <regex>^ALERT - (\.+) \(attacker '(\d+.\d+.\d+.\d+)', </regex>
+  <regex>^ALERT - (\.+) \(attacker '(\S+)', </regex>
   <order>id, srcip</order>
   <fts>name, location, id</fts>
 </decoder>

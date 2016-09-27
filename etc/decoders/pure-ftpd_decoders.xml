@@ -23,7 +23,7 @@
    - extra_data     - Any extra data
   -->
 
-  
+
 <!-- Pure-FTPd decoder.
   - Will extract the username/srcip whenever possible.
   - Samples by Peter Ahlert <peter@ifup.de> (thanks!)

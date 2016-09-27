@@ -35,7 +35,7 @@
   -->
 <decoder name="squid-accesslog">
   <type>squid</type>
-  <prematch>^\d+ \d+.\d+.\d+.\d+ </prematch>
-  <regex>^\d+ (\d+.\d+.\d+.\d+) (\w+)/(\d+) \d+ \w+ (\S+) </regex>
+  <prematch>^\d+ \S+ </prematch>
+  <regex>^\d+ (\S+) (\w+)/(\d+) \d+ \w+ (\S+) </regex>
   <order>srcip,action,id,url</order>
 </decoder>

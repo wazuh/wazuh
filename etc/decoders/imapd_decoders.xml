@@ -35,6 +35,6 @@
   -->
 <decoder name="imapd">
   <program_name>^imapd</program_name>
-  <regex offset="after_prematch">user=(\S+) \.+ [(\d+.\d+.\d+.\d+)]$</regex>
+  <regex offset="after_prematch">user=(\S+) \.+ [(\S+)]$</regex>
   <order>user,srcip</order>
 </decoder>

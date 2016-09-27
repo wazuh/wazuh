@@ -43,21 +43,21 @@
 <decoder name="sendmail-pre-greeting">
   <parent>sendmail-reject</parent>
   <prematch>^\S+: rejecting commands from</prematch>
-  <regex offset="after_prematch">^ \S+ [(\d+.\d+.\d+.\d+)]</regex>
+  <regex offset="after_prematch">^ \S+ [(\S+)]</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="sendmail-reject-nodns">
   <parent>sendmail-reject</parent>
   <prematch>relay=[</prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+)]</regex>
+  <regex offset="after_prematch">^(\S+)]</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="sendmail-reject-dns">
   <parent>sendmail-reject</parent>
   <prematch>relay=\S+ [</prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+)]</regex>
+  <regex offset="after_prematch">^(\S+)]</regex>
   <order>srcip</order>
 </decoder>
 
@@ -75,7 +75,7 @@
   <program_name>^smf-sav</program_name>
   <prematch>^sender check failed|</prematch>
   <prematch>^sender check tempfailed</prematch>
-  <regex offset="after_prematch">^ \(cached\): \S+, (\d+.\d+.\d+.\d+),|</regex>
-  <regex>^: \S+, (\d+.\d+.\d+.\d+),</regex>
+  <regex offset="after_prematch">^ \(cached\): \S+, (\S+),|</regex>
+  <regex>^: \S+, (\S+),</regex>
   <order>srcip</order>
 </decoder>

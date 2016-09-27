@@ -20,7 +20,7 @@
   <rule id="11401" level="3">
     <if_sid>11400</if_sid>
     <match>CONNECT: Client</match>
-    <group>connection_attempt</group>
+    <group>connection_attempt,</group>
     <description>vsftpd: FTP session opened.</description>
   </rule>
 

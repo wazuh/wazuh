@@ -41,7 +41,7 @@
 <decoder name="roundcube-success">
   <parent>roundcube</parent>
   <prematch>^: Successful login for </prematch>
-  <regex offset="after_prematch">^(\S+) \(id \d+\) from (\d+.\d+.\d+.\d+)$</regex>
+  <regex offset="after_prematch">^(\S+) \(id \d+\) from (\S+)$</regex>
   <order>user, srcip</order>
 </decoder>
 

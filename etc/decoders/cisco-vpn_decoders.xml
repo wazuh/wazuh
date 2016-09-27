@@ -33,6 +33,6 @@
   -->
 <decoder name="cisco-vpn-concentrator">
   <prematch>^\d+ \d\d/\d\d/\d\d\d\d \S+ SEV=\d </prematch>
-  <regex offset="after_prematch">^(\S+) RPT=\d+ (\d+.\d+.\d+.\d+) </regex>
+  <regex offset="after_prematch">^(\S+) RPT=\d+ (\S+) </regex>
   <order>id, srcip</order>
 </decoder>

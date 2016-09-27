@@ -33,6 +33,6 @@
 <decoder name="wordpress">
   <program_name>^WPsyslog</program_name>
   <prematch>^[</prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) </regex>
+  <regex offset="after_prematch">^(\S+) </regex>
   <order>srcip</order>
 </decoder>

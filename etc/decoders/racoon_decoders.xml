@@ -38,7 +38,7 @@
   <use_own_name>true</use_own_name>
 
   <prematch offset="after_parent">^ERROR: couldn't find the pskey </prematch>
-  <regex offset="after_prematch">^for (\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_prematch">^for (\S+)</regex>
   <order>srcip</order>
 </decoder>
 

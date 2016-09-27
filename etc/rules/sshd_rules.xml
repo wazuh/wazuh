@@ -226,7 +226,7 @@
     <if_sid>5700</if_sid>
     <regex>error: connect to \S+ port \d+ failed: Connection refused</regex>
     <description>sshd: SSHD is not accepting connections.</description>
-    <group>pci_dss_10.6.1</group>
+    <group>pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="5731" level="6">
@@ -273,7 +273,7 @@
     <if_sid>5700</if_sid>
     <match>^fatal: Cannot bind any address.$</match>
     <description>sshd: cannot bind to configured address.</description>
-    <group>pci_dss_10.6.1</group>
+    <group>pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="5738" level="5">
@@ -348,7 +348,7 @@
     <if_sid>5700</if_sid>
     <match>Corrupted MAC on input.</match>
     <description>sshd: corrupted MAC on input</description>
-    <group>pci_dss_10.6.1</group>
+    <group>pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="5749" level="4">

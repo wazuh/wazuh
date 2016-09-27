@@ -64,25 +64,25 @@
 <decoder name="vsftpd_login">
   <parent>vsftpd</parent>
   <prematch offset="after_parent"> LOGIN:</prematch>
-  <regex offset="after_parent">[(\S+)] (\S+ LOGIN): Client "(\d+.\d+.\d+.\d+)"$</regex>
+  <regex offset="after_parent">[(\S+)] (\S+ LOGIN): Client "(\S+\w)"$</regex>
   <order>user,status,srcip</order>
 </decoder>
 
 <decoder name="vsftpd_connect">
   <parent>vsftpd</parent>
   <prematch offset="after_parent">^CONNECT:</prematch>
-  <regex offset="after_parent">(CONNECT): Client "(\d+.\d+.\d+.\d+)"$</regex>
+  <regex offset="after_parent">(CONNECT): Client "(\S+\w)"$</regex>
   <order>action,srcip</order>
 </decoder>
 
 <decoder name="vsftpd_cmd">
   <parent>vsftpd</parent>
-  <regex offset="after_parent">[(\S+)] (OK \S+): Client "(\d+.\d+.\d+.\d+)", "(\.+)"\.*</regex>
+  <regex offset="after_parent">[(\S+)] (OK \S+): Client "(\S+)", "(\.+\w)"\.*</regex>
   <order>user,status,srcip,url</order>
 </decoder>
 
 <decoder name="vsftpd_default">
   <parent>vsftpd</parent>
-  <regex offset="after_parent">Client "(\d+.\d+.\d+.\d+)"$</regex>
+  <regex offset="after_parent">Client "(\S+\w)"$</regex>
   <order>srcip</order>
 </decoder>

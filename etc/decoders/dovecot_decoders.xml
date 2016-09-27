@@ -49,27 +49,27 @@
 <decoder name="dovecot-success">
   <parent>dovecot</parent>
   <prematch offset="after_parent">^\w\w\w\w-login: Login: </prematch>
-  <regex offset="after_prematch">^user=\p(\S+)\p, method=\S+, rip=\S*(\d+.\d+.\d+.\d+), lip=\S*(\d+.\d+.\d+.\d+), (\S*)$</regex>
+  <regex offset="after_prematch">^user=\p(\S+)\p, method=\S+, rip=(\S+), lip=(\S+), mpid=\S+, (\S*)$</regex>
   <order>user, srcip, dstip, protocol</order>
 </decoder>
 
 <decoder name="dovecot-aborted">
   <parent>dovecot</parent>
   <prematch offset="after_parent">^\w\w\w\w-login: Aborted login</prematch>
-  <regex offset="after_prematch">: user=\p(\S+)\p, method=\S+, rip=::ffff:(\d+.\d+.\d+.\d+), lip=::ffff:(\d+.\d+.\d+.\d+)$</regex>
-  <order>user, srcip, dstip</order>
+  <regex offset="after_prematch">: user=\p(\S+)\p, method=\S+, rip=(\S+), lip=(\S+), (\S*)$</regex>
+  <order>user, srcip, dstip, protocol</order>
 </decoder>
 
 <decoder name="dovecot-fail">
   <parent>dovecot</parent>
   <prematch offset="after_parent">^auth\(default\)|auth-worker\(default\)</prematch>
-  <regex offset="after_prematch">^: \S+\((\S+),(\d+.\d+.\d+.\d+)\)</regex>
+  <regex offset="after_prematch">^: \S+\((\S+),(\S+)\)</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="dovecot-disconnect">
   <parent>dovecot</parent>
   <prematch offset="after_parent">^\w\w\w\w-login: Disconnected: </prematch>
-  <regex offset="after_prematch">^rip=(\S+), lip=(\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_prematch">^rip=(\S+), lip=(\S+)</regex>
   <order>srcip, dstip</order>
 </decoder>

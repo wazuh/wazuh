@@ -962,7 +962,7 @@ vpc: ID: 81000 - 81099
 
 </group>
 <!-- amazon-ec2 -->
-<group name="Amazon-vpc,">
+<group name="amazon-vpc,">
 
     <rule id="81000" level="2">
         <if_sid>80201</if_sid>

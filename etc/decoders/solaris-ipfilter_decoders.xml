@@ -37,7 +37,7 @@
 <decoder name="ipfilter">
    <type>firewall</type>
    <program_name>^ipmon</program_name>
-   <regex> (\w) (\d+.\d+.\d+.\d+),(\d+) -> </regex>
-   <regex>(\d+.\d+.\d+.\d+),(\d+) PR (\w+) </regex>
+   <regex> (\w) (\S+),(\d+) -> </regex>
+   <regex>(\S+),(\d+) PR (\w+) </regex>
    <order>action,srcip,srcport,dstip,dstport,protocol</order>
 </decoder>

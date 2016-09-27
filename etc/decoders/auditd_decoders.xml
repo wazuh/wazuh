@@ -1,5 +1,5 @@
 <!-- Auditd
-  -  auditd decoder 
+  -  auditd decoder
   -  v1.0 2015/12/30
   -  Updated by Wazuh, Inc. <ossec@wazuh.com>.
   -  jesus@wazuh.com
@@ -41,7 +41,7 @@ AUDITD
     type=DAEMON_END msg=audit(1450876093.165:8729): auditd normal halt, sending auid=0 pid=1 subj= res=success
     type=DAEMON_RESUME msg=audit(1300385209.456:8846): auditd resuming logging, sending auid=? pid=? subj=? res=success
     type=DAEMON_START msg=audit(1450875964.131:8728): auditd start, ver=2.4 format=raw kernel=3.16.0-4-amd64 auid=4294967295 pid=1437 res=success
-    
+
     action       = Event Type
     id             = ID Audit Event
     extra_data = path
@@ -83,7 +83,7 @@ Devices
 SELinux
     type=AVC msg=audit(1226270358.848:238): avc:  denied  { write } for  pid=13349 comm="certwatch" name="cache" dev=dm-0 ino=218171 scontext=system_u:system_r:certwatch_t:s0 tcontext=system_u:object_r:var_t:s0 tclass=dir
     type=MAC_STATUS msg=audit(1336836093.835:406): enforcing=1 old_enforcing=0 auid=0 ses=2
-    
+
     action       = Event Type
     id             = ID Audit Event
     extra_data = comm | enforcing
@@ -109,7 +109,7 @@ SYSCALL
     type=SYSCALL msg=audit(1307045440.943:148): arch=c000003e syscall=59 success=yes exit=0 a0=de1fa8 a1=de23a8 a2=dc3008 a3=7fff1db3cc60 items=2 ppid=11719 pid=12140 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts8 ses=4294967295 comm="wget" exe="/tmp/wget" key="webserver-watch-tmp"
     type=SYSCALL msg=audit(1307045820.403:151): arch=c000003e syscall=59 success=no exit=-13 a0=de24c8 a1=de2408 a2=dc3008 a3=7fff1db3cc60 items=1 ppid=11719 pid=12347 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts8 ses=4294967295 comm="bash" exe="/bin/bash" key=(null)
     type=SYSCALL msg=audit(1306939143.715:67933): arch=40000003 syscall=94 success=yes exit=0 a0=5 a1=180 a2=8ebd360 a3=8ec4978 items=1 ppid=4383 pid=4388 auid=500 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=8038 comm="less" exe="/usr/bin/less" subj=user_u:system_r:unconfined_t:s0 key="perm_mod"
-    
+
     action        = Event Type
     id              = ID Audit Event
     extra_data  = exe
@@ -130,7 +130,7 @@ Path
     type=PATH msg=audit(1147986115.721:257529): item=0 name=/proc/self/stat inode=21375 dev=00:03 mode=file,444 ouid=guido ogid=guido rdev=00:00 obj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 nametype=NORMAL
     type=PATH msg=audit(1306967989.163:119): item=0 name="./ls" inode=261813 dev=fb:00 mode=0100755 ouid=0 ogid=0 rdev=00:00
     type=PATH msg=audit(1273924468.947:179534): item=0 name=(null) inode=424783 dev=fd:07 mode=0100640 ouid=0 ogid=502 rdev=00:00 obj=user_u:object_r:file_t:s0
-    
+
     action        = Event Type
     id              = ID Audit Event
     extra_data  = name
@@ -145,7 +145,7 @@ Path
 <!--
 CRYPT
     type=CRYPTO_SESSION msg=audit(1150750972.008:3281471): user pid=1111 uid=2 auid=1111 msg='op=start direction=from-server cipher=aes128-ctr ksize=128 rport=40791 laddr=192.168.22.22 lport=22 id=4294967295 exe="/usr/sbin/sshd" (hostname=?, addr=205.22.22.22, terminal=? res=success)'
-    
+
     action       = Event Type
     id             = ID Audit Event
     user          = uid
@@ -163,7 +163,7 @@ CRYPT
 <!--
 CWD
     type=CWD msg=audit(1450767416.248:3295858):  cwd="/"
-    
+
     action       = Event Type
     id             = ID Audit Event
     extra_data = cwd
@@ -184,11 +184,11 @@ USER_
     type=USER_ACCT msg=audit(1306939201.750:67934): user pid=4401 uid=0 auid=4294967295 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='PAM: accounting acct="root" : exe="/usr/sbin/crond" (hostname=www.example.com, addr=12.12.12.12, terminal=cron res=success)'
     type=USER_AUTH msg=audit(1305666163.690:51871): user pid=21269 uid=0 auid=500 subj=user_u:system_r:unconfined_t:s0 msg='PAM: authentication acct="root" : exe="/bin/su" (hostname=www.example.com, addr=12.12.12.12, terminal=pts/0 res=success)'
     type=USER_START msg=audit(1306939201.756:67937): user pid=4401 uid=0 auid=0 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='PAM: session open acct="root" : exe="/usr/sbin/crond" (hostname=www.example.com, addr=12.12.12.12, terminal=cron res=success)'
-    
+
     type=USER_CHAUTHTOK msg=audit(1304523288.952:37394): user pid=7258 uid=0 auid=500 subj=user_u:system_r:unconfined_t:s0 msg='op=change password id=505 exe="/usr/bin/passwd" (hostname=www.example.com, addr=12.12.12.12, terminal=pts/1 res=success)'
     type=USER_ROLE_CHANGE msg=audit(1280266360.845:51): user pid=1978 uid=0 auid=500 subj=system_u:system_r:local_login_t:s0-s0:c0.c1023 msg='pam: default-context=user_u:system_r:unconfined_t:s0 selected-context=user_u:system_r:unconfined_t:s0: exe="/bin/login" (hostname=www.example.com, addr=12.12.12.12, terminal=tty1 res=success)'
 
-    
+
 CRED_
     type=CRED_ACQ msg=audit(1450780201.778:3309947): user pid=19590 uid=0 auid=4294967295 msg='PAM: setcred acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=12.12.12.12, terminal=cron res=success)'
     type=CRED_REFR msg=audit(1450785560.181:3316339): user pid=21600 uid=0 auid=526 msg='PAM: setcred acct="root" : exe="/usr/sbin/sshd" (hostname=www.example.com, addr=12.12.12.12, terminal=ssh res=success)'
@@ -272,7 +272,7 @@ type=ANOM_EXEC msg=audit(1222174623.498:608): user pid=12965 uid=1 auid=2 ses=1 
 <!--
     type=SERVICE_START msg=audit(1450876900.115:30): pid=1 uid=0 auid=4294967295 ses=4294967295 msg=' comm="Serv-U" exe="/lib/systemd/systemd" hostname=example.com addr=12.12.12.12, terminal=? res=success'
     type=SERVICE_STOP msg=audit(1450876900.115:31): pid=1 uid=0 auid=4294967295 ses=4294967295 msg=' comm="Serv-U" exe="/lib/systemd/systemd" hostname=example.com addr=12.12.12.12 res=success'
-    
+
     action       = Event Type
     id             = ID Audit Event
     srcuser      = uid

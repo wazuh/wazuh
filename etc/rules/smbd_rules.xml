@@ -67,14 +67,14 @@
     <if_sid>13100</if_sid>
     <match>smbd is already running</match>
     <description>Samba: An attempt has been made to start smbd but the process is already running.</description>
-    <group>pci_dss_10.6.1</group>
+    <group>pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="13109" level="1">
     <if_sid>13106</if_sid>
     <match>nmbd is already running</match>
     <description>Samba: An attempt has been made to start nmbd but the process is already running.</description>
-    <group>pci_dss_10.6.1</group>
+    <group>pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="13110" level="2">

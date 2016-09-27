@@ -39,27 +39,27 @@
 <decoder name="vpopmail-fail">
   <parent>vpopmail</parent>
   <prematch>^vchkpw-\S+: password fail</prematch>
-  <regex offset="after_prematch"> (\S+)@\S+:(\d+.\d+.\d+.\d+)$</regex>
+  <regex offset="after_prematch"> (\S+)@\S+:(\S+)$</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="vpopmail-notfound">
   <parent>vpopmail</parent>
   <prematch>^vchkpw-\S+: vpopmail user not </prematch>
-  <regex offset="after_prematch">^found (\S+):(\d+.\d+.\d+.\d+)$</regex>
+  <regex offset="after_prematch">^found (\S+):(\S+)$</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="vpopmail-empty">
   <parent>vpopmail</parent>
   <prematch>^vchkpw-\S+: null password </prematch>
-  <regex offset="after_prematch">^given (\S+):(\d+.\d+.\d+.\d+)$</regex>
+  <regex offset="after_prematch">^given (\S+):(\S+)$</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="vpopmail-success">
   <parent>vpopmail</parent>
   <prematch>^vchkpw-\S+: \(\S+\) login </prematch>
-  <regex offset="after_prematch">^success (\S+):(\d+.\d+.\d+.\d+)$</regex>
+  <regex offset="after_prematch">^success (\S+):(\S+)$</regex>
   <order>user, srcip</order>
 </decoder>

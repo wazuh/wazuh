@@ -35,6 +35,6 @@
   <parent>vm-pop3d</parent>
   <prematch>^User '</prematch>
   <regex offset="after_prematch">^(\S+)' - \w+ auth, </regex>
-  <regex>from=(\d+.\d+.\d+.\d+)$</regex>
+  <regex>from=(\S+)$</regex>
   <order>user, srcip</order>
 </decoder>

@@ -23,7 +23,7 @@
    - extra_data     - Any extra data
   -->
 
-  
+
 <!-- Sudo decoder.
   -  Will extract the username
   -  Examples:
@@ -35,8 +35,8 @@
   -->
 <decoder name="sudo">
   <program_name>^sudo</program_name>
-  <regex>^\s+(\S+)\s:</regex>
-  <order>user</order>
+  <regex>^\s+(\S+)\s:\sTTY=\S+\s;\sPWD=(\S+)\s;\sUSER=(\S+)\s;\sCOMMAND=(\.+)$</regex>
+  <order>srcuser,url,dstuser,status</order>
   <fts>name,user,location</fts>
   <ftscomment>First time user executed the sudo command</ftscomment>
 </decoder>

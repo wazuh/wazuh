@@ -23,7 +23,7 @@
    - extra_data     - Any extra data
   -->
 
-  
+
 <!-- Dropbear rules -->
 <decoder name="dropbear">
   <program_name>^dropbear</program_name>

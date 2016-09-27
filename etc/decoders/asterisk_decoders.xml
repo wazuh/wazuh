@@ -45,20 +45,20 @@
 <decoder name="asterisk-denied">
   <parent>asterisk</parent>
   <prematch>^NOTICE[\d+]: \S+ in \S+: Registration from </prematch>
-  <regex offset="after_prematch">^\S+ failed for '(\d+.\d+.\d+.\d+)'</regex>
+  <regex offset="after_prematch">^\S+ failed for '(\S+)'</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="asterisk-denied2">
   <parent>asterisk</parent>
   <prematch>Registration from </prematch>
-  <regex offset="after_prematch">failed for '(\d+.\d+.\d+.\d+)'</regex>
+  <regex offset="after_prematch">failed for '(\S+)'</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="asterisk-iax-authentication-denied">
   <parent>asterisk</parent>
   <prematch>^NOTICE[\d+]: \S+ in \S+: Host </prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) failed MD5 authentication for (\S+)</regex>
+  <regex offset="after_prematch">^(\S+) failed MD5 authentication for (\S+)</regex>
   <order>srcip, user</order>
 </decoder>

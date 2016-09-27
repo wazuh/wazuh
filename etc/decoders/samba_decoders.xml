@@ -47,7 +47,7 @@
 
 <decoder name="smbd-ip">
   <parent>smbd</parent>
-  <regex> from \((\d+.\d+.\d+.\d+)\)</regex>
+  <regex> from \((\S+)\)</regex>
   <order>srcip</order>
 </decoder>
 

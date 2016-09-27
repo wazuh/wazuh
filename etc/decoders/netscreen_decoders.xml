@@ -38,10 +38,6 @@
   -->
 
 <decoder name="netscreenfw">
-    <prematch>^\S+ \S+: NetScreen device_id</prematch>
-</decoder>
-
-<decoder name="netscreenfw">
     <program_name />
     <prematch>^NetScreen device_id</prematch>
 </decoder>
@@ -64,7 +60,7 @@
   <prematch>system-alert-\.+ from </prematch>
 
   <regex offset="after_parent">system-(\w+)-(\d+): \.+ </regex>
-  <regex>from\.+(\d+.\d+.\d+.\d+)</regex>
+  <regex>from\.+(\S+)</regex>
   <order>action, id, srcip</order>
 </decoder>
 
