@@ -23,7 +23,7 @@
    - extra_data     - Any extra data
   -->
 
-  
+
 <!-- ProFTPD decoder.
   - Will extract the username/srcip
   - Examples:
@@ -49,6 +49,6 @@
 
 <decoder name="proftpd-ip">
   <parent>proftpd</parent>
-  <regex>^\S+ \(\S+[(\S+)]\)|^\S+ \(\S+[::ffff:(\S+)]\)</regex>
+  <regex>^\S+ \(\S+[(\S+)]\)|^\S+ \(\S+[(\S+)]\)</regex>
   <order>srcip</order>
 </decoder>

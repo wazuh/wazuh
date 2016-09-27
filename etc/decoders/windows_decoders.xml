@@ -64,8 +64,8 @@
   <parent>windows-date-format</parent>
   <type>web-log</type>
   <use_own_name>true</use_own_name>
-  <prematch offset="after_parent">^\d+.\d+.\d+.\d+ \S+ W3SVC</prematch>
-  <regex offset="after_parent">^(\d+.\d+.\d+.\d+) \S+ \S+ \S+ \S+ </regex>
+  <prematch offset="after_parent">^\S+ \S+ W3SVC</prematch>
+  <regex offset="after_parent">^(\S+) \S+ \S+ \S+ \S+ </regex>
   <regex>\d+ \S+ (\S+ \S+) (\d+) </regex>
   <order>srcip,url,id</order>
 </decoder>
@@ -84,10 +84,11 @@
   <type>web-log</type>
   <use_own_name>true</use_own_name>
   <prematch offset="after_parent">^W3SVC\d+ \S+ \S+ \S+ </prematch>
-  <regex offset="after_prematch">^(\S+ \S+) \d+ \S+ (\d+.\d+.\d+.\d+) </regex>
+  <regex offset="after_prematch">^(\S+ \S+) \d+ \S+ (\S+) </regex>
   <regex>\S+ \S+ \S+ \S+ \S+ (\d+) </regex>
   <order>url, srcip, id</order>
 </decoder>
+
 
 <!-- Windows IIS decoder for default settings
   -  Tested with IIS 7.5 and IIS 8.5 (Windows 2008R2 and Windows 2012R2)
@@ -105,8 +106,8 @@
   <parent>windows-date-format</parent>
   <type>web-log</type>
   <use_own_name>true</use_own_name>
-  <prematch offset="after_parent">^\d+.\d+.\d+.\d+ GET |^\d+.\d+.\d+.\d+ POST </prematch>
-  <regex offset="after_prematch">(\S+ \S*) \.* (\d+.\d+.\d+.\d+) \S*\.* (\d\d\d) \S+ \S+ \S+</regex>
+  <prematch offset="after_parent">^\S+ GET |^\S+ POST </prematch>
+  <regex offset="after_prematch">(\S+ \S*) \.* (\S+) \S*\.* (\d\d\d) \S+ \S+ \S+</regex>
   <order>url,srcip,id</order>
 </decoder>
 
@@ -119,12 +120,11 @@
 <decoder name="msftp">
   <parent>windows-date-format</parent>
   <use_own_name>true</use_own_name>
-  <prematch offset="after_parent">^\d+.\d+.\d+.\d+ \S+ MSFTPSVC</prematch>
-  <regex offset="after_parent">^(\d+.\d+.\d+.\d+) (\S+) \S+ \S+ \S+ </regex>
+  <prematch offset="after_parent">^\S+ \S+ MSFTPSVC</prematch>
+  <regex offset="after_parent">^(\S+) (\S+) \S+ \S+ \S+ </regex>
   <regex>\d+ [\d+](\S+) \S+ \S+ (\d+) </regex>
   <order>srcip,user,action,id</order>
 </decoder>
-
 
 
 <!-- IIS 5 W3C SMTP log format (Exchange).
@@ -136,12 +136,11 @@
 <decoder name="msexchange">
   <parent>windows-date-format</parent>
   <use_own_name>true</use_own_name>
-  <prematch offset="after_parent">^\d+.\d+.\d+.\d+ \S+ SMTPSVC</prematch>
-  <regex offset="after_parent">^(\d+.\d+.\d+.\d+) \S+ \S+ \S+ \S+ </regex>
+  <prematch offset="after_parent">^\S+ \S+ SMTPSVC</prematch>
+  <regex offset="after_parent">^(\S+) \S+ \S+ \S+ \S+ </regex>
   <regex>\d+ (\S+) \S+ \S+ (\d+) </regex>
   <order>srcip, action, id</order>
 </decoder>
-
 
 <!-- Microsoft Windows 2003 ipv4, 2008 ipv4/ipv6 DHCP decoder for OSSEC
   -  Author: phishphreek@gmail.com
@@ -157,7 +156,7 @@
 <decoder name="ms-dhcp-ipv4">
   <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,|</prematch>
   <prematch>^\d\d,\d+/\d+/\d\d,\d+:\d+:\d+,</prematch>
-  <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\w+),(\d+.\d+.\d+.\d+)</regex>
+  <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\w+),(\S+)</regex>
   <order>id,extra_data,srcip</order>
 </decoder>
 
@@ -188,45 +187,47 @@
     Package: Negotiate       Workstation Name:   ad
   - WinEvtLog: Security: AUDIT_SUCCESS(538): Security: lac: OSSEC-HM: OSSEC-HM: User Logoff:        User Name:      lac     Domain:         OSSEC-HM        Logon ID:               (0x0,0x7C966E)          Logon Type:     2
   - 2013 Oct 09 17:09:04 WinEvtLog: Application: INFORMATION(1): My Script: (no user): no domain: demo1.foo.example.com: test
+  - 2016 Sep 27 10:48:30 WinEvtLog: Security: AUDIT_SUCCESS(4624): Microsoft-Windows-Security-Auditing: AAAABCC: KKKKK: 01.KKKKK.com: An account was successfully logged on. Subject:  Security ID:  S-1-0-0  Account Name:  -  Account Domain:  -  Logon ID:  0x0  Logon Type:   3  New Logon:  Security ID:  S-1-5-21-1119803419-263072742-1537874043-22758  Account Name:  AAAABCC  Account Domain:  KKKKK  Logon ID:  0x2b111bcc  Logon GUID:  {C609F1DB-667E-654F-AC26-48E1A2C6FA5F}  Process Information:  Process ID:  0x0  Process Name:  -  Network Information:  Workstation Name:   Source Network Address: 192.168.12.123  Source Port:  54200  Detailed Authentication Information:  Logon Process:  Kerberos  Authentication Package: Kerberos  Transited Services: -  Package Name (NTLM only): -  Key Length:  0  This event is generated when a logon session is created. It is generated on the computer that was accessed.
+  - 2016 Sep 27 07:51:56 WinEvtLog: Application: AUDIT_FAILURE(18456): MSSQLSERVER: (no user): no domain: BBBB.AAAA.com: Login failed for user ''. Reason: An attempt to login using SQL authentication failed. Server is configured for Windows authentication only. [CLIENT: 10.1.4.21]
   -->
 <decoder name="windows">
   <type>windows</type>
-  <prematch>^\d\d\d\d \w\w\w \d\d \d\d:\d\d:\d\d WinEvtLog: |^WinEvtLog: </prematch>
+  <program_name>^WinEvtLog</program_name>
 </decoder>
 
 <!-- WinEvtLog: sysmon decoder -->
 <!--
     -  v1.1 2015/11/24
-    
-    - Event 1 
+
+    - Event 1
     -  Originally created by Josh Brower, Josh@DefensiveDepth.com
     -  Updated by Wazuh for support  new logs:
         - OLD version:  "[...] HashType: SHA1  Hash: 9FEF303BEDF8430403915951564E0D9888F6F365 [...] "
         - NEW version: "[...] Hashes: SHA1=9FEF303BEDF8430403915951564E0D9888F6F365 [...] "
-    
+
     - Event 2-8
     -  Created by Wazuh <ossec@wazuh.com>.
-    
+
     -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
 
 
-<!-- 
+<!--
 Event ID 1: Process Created
-  
+
     -  OSSEC to Sysmon Fields Mapping:
-    
+
     -  user = User
     -  status = Image
     -  url = Hash
     -  extra_data = ParentImage
-  
+
   - Examples Old version:
-  - 2014 Dec 20 09:29:47 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(1): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-U93G48C7BOP: Process Create:  UtcTime: 12/20/2014 2:29 PM  ProcessGuid: {00000000-87DB-5495-0000-001045F25A00}  ProcessId: 3048  Image: C:\Windows\system32\svchost.exe  CommandLine: "C:\Windows\system32\NOTEPAD.EXE" C:\Users\Administrator\Desktop\ossec.log  User: WIN-U93G48C7BOP\Administrator  LogonGuid: {00000000-84B8-5494-0000-0020CB330200}  LogonId: 0x233CB  TerminalSessionId: 1  IntegrityLevel: High  HashType: SHA1  Hash: 9FEF303BEDF8430403915951564E0D9888F6F365  ParentProcessGuid: {00000000-84B9-5494-0000-0010BE4A0200}  ParentProcessId: 848  ParentImage: C:\Windows\Explorer.EXE  ParentCommandLine: C:\Windows\Explorer.EXE 
-  
+  - 2014 Dec 20 09:29:47 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(1): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-U93G48C7BOP: Process Create:  UtcTime: 12/20/2014 2:29 PM  ProcessGuid: {00000000-87DB-5495-0000-001045F25A00}  ProcessId: 3048  Image: C:\Windows\system32\svchost.exe  CommandLine: "C:\Windows\system32\NOTEPAD.EXE" C:\Users\Administrator\Desktop\ossec.log  User: WIN-U93G48C7BOP\Administrator  LogonGuid: {00000000-84B8-5494-0000-0020CB330200}  LogonId: 0x233CB  TerminalSessionId: 1  IntegrityLevel: High  HashType: SHA1  Hash: 9FEF303BEDF8430403915951564E0D9888F6F365  ParentProcessGuid: {00000000-84B9-5494-0000-0010BE4A0200}  ParentProcessId: 848  ParentImage: C:\Windows\Explorer.EXE  ParentCommandLine: C:\Windows\Explorer.EXE
+
   - Examples New version*:
   - 2015 Nov 19 18:32:31 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(1): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: Process Create:  UtcTime: 2015-11-19 17:32:31.562  ProcessGuid: {0B364D7C-07AF-564E-0000-001098C90800}  ProcessId: 2188  Image: C:\Windows\System32\rundll32.exe  CommandLine: C:\Windows\system32\rundll32.exe C:\Windows\system32\inetcpl.cpl,ClearMyTracksByProcess Flags:65800 WinX:0 WinY:0 IEFrame:0000000000000000  CurrentDirectory: C:\Users\Administrator.WIN-K3UD9R5LCEL\Desktop\  User: WIN-K3UD9R5LCEL\Administrator  LogonGuid: {0B364D7C-FDDB-564D-0000-00209CA10100}  LogonId: 0x1a19c  TerminalSessionId: 1  IntegrityLevel: High  Hashes: SHA1=963B55ACC8C566876364716D5AAFA353995812A8  ParentProcessGuid: {0B364D7C-FE43-564D-0000-0010F1720200}  ParentProcessId: 576  ParentImage: C:\Program Files\Internet Explorer\iexplore.exe  ParentCommandLine: "C:\Program Files\Internet Explorer\iexplore.exe"
-  
+
   - With option <HashAlgorithms>*</HashAlgorithms> the log would be:
     ...Hashes: SHA1=8F86B5A06E440A9B60AC591F814F6A8FCA58DC1D,MD5=E3BD0CF8CD561F4D33255B2E6EB0C987,SHA256=B8BC88623FD2DCDB81A31777B4B82F7A24BA6086A8A58A00B4AF198DE8CB307D,IMPHASH=8F2AF1C4B2891D7DD75333449A5C4131  ParentProcessGuid...
     The new decoder captures everything between "=" and "ParentProcessGuid".
@@ -405,19 +406,29 @@ Example:
 </decoder>
 <!-- sysmon decoder END -->
 
-
-<!-- WinEvtLog Generic -->
-<decoder name="windows-EvtLog">
+<!-- Windows generic -->
+<decoder name="windows1">
   <type>windows</type>
   <parent>windows</parent>
   <regex offset="after_parent">^\.+: (\w+)\((\d+)\): (\.+): </regex>
   <regex>(\.+): \.+: (\S+): </regex>
   <order>status, id, extra_data, user, system_name</order>
-  <fts>name, location, user, system_name</fts>
+  <fts>name, location, system_name</fts>
 </decoder>
 
+<decoder name="windows1">
+  <type>windows</type>
+  <parent>windows</parent>
+  <regex> Source Network Address: (\S+)</regex>
+  <order>srcip</order>
+</decoder>
 
-
+<decoder name="windows1">
+  <type>windows</type>
+  <parent>windows</parent>
+  <regex> Account Name: (\S+) Account</regex>
+  <order>user</order>
+</decoder>
 
 <!-- Windows decoder -NTsyslog format
   - Will extract extra_data (as win source),action (as win category), id,
@@ -467,4 +478,3 @@ Example:
   <order>id, extra_data, user, status, system_name</order>
   <fts>name, id, location, user, system_name</fts>
 </decoder>
-

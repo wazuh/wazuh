@@ -24,13 +24,13 @@
     <rule id="80000" level="0" noalert="1" >
         <decoded_as>puppet-master</decoded_as>
         <description>Puppet Master messages grouped.</description>
-        <group>master</group>
+        <group>master,</group>
     </rule>
 
     <rule id="80001" level="0" noalert="1" >
         <decoded_as>puppet-agent</decoded_as>
         <description>Puppet Agent messages grouped.</description>
-        <group>agent</group>
+        <group>agent,</group>
     </rule>
 
     <!-- Mater Rules -->

@@ -541,6 +541,7 @@
         <if_sid>5400</if_sid>
         <match>user NOT in sudoers</match>
         <description>Unauthorized user attempted to use sudo.</description>
+        <group>pci_dss_10.2.2,pci_dss_10.2.5,</group>
     </rule>
 
 </group> <!-- SYSLOG, SUDO -->
@@ -575,7 +576,7 @@
     <if_group>authentication_success</if_group>
     <options>alert_by_email</options>
     <if_fts></if_fts>
-    <group>authentication_success</group>
+    <group>authentication_success,</group>
     <description>First time user logged in.</description>
   </rule>
 </group>

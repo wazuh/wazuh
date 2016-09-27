@@ -39,12 +39,12 @@
 <decoder name="courier-login">
   <parent>courier</parent>
   <prematch>^LOGIN, </prematch>
-  <regex offset="after_prematch">^user=(\S+), ip=[(\S+\d)]$</regex>
+  <regex offset="after_prematch">^user=(\S+), ip=[(\S+)]$</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="courier-generic">
   <parent>courier</parent>
-  <regex>, ip=[(\S+\d)]$|, ip=[::ffff:(\S+\d)]$</regex>
+  <regex>, ip=[(\S+)]$|, ip=[(\S+)]$</regex>
   <order>srcip</order>
 </decoder>

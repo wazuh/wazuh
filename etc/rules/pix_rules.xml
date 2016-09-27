@@ -98,7 +98,7 @@
     <if_sid>4313</if_sid>
     <id>^4-405001</id>
     <description>PIX: ARP collision detected.</description>
-    <group>pci_dss_10.6.1</group>
+    <group>pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="4326" level="8">
@@ -112,7 +112,7 @@
     <if_sid>4313</if_sid>
     <id>^4-710004</id>
     <description>PIX: Connection limit exceeded.</description>
-    <group>pci_dss_10.6.1</group>
+    <group>pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="4330" level="8">

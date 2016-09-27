@@ -44,6 +44,6 @@
 <decoder name="mailscanner-ip">
   <parent>mailscanner</parent>
   <prematch>^Message \S+ from </prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) \S+ to \S+ is (\w+)</regex>
+  <regex offset="after_prematch">^(\S+) \S+ to \S+ is (\w+)</regex>
   <order>srcip, action</order>
 </decoder>

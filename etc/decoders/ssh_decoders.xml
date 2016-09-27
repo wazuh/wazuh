@@ -23,7 +23,7 @@
    - extra_data     - Any extra data
   -->
 
-  
+
 <!-- SSH decoder.
   -  Will extract username and srcip from the logs.
   -  Only add to the FTS if the login was successful
@@ -116,8 +116,8 @@
 <decoder name="ssh-failed">
   <parent>sshd</parent>
   <prematch>^Failed \S+ </prematch>
-  <regex offset="after_prematch">^for (\S+) from (\S+) port \d+ \w+$</regex>
-  <order>user, srcip</order>
+  <regex offset="after_prematch">^for (\S+) from (\S+) port (\d+)</regex>
+  <order>user, srcip, srcport</order>
 </decoder>
 
 <decoder name="ssh-error">

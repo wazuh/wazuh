@@ -55,9 +55,9 @@
    <parent>snort</parent>
    <type>ids</type>
    <prematch>^[**] |^[\d+:\d+:\d+] </prematch>
-   <regex>^[**] [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+)\p*\d* -> </regex>
-   <regex>(\d+.\d+.\d+.\d+)|^[(\d+:\d+:\d+)] \.+ </regex>
-   <regex>(\d+.\d+.\d+.\d+)\p*\d* -> (\d+.\d+.\d+.\d+)</regex>
+   <regex>^[**] [(\d+:\d+:\d+)] \.+ (\S+)\p*\d* -> </regex>
+   <regex>(\S+)|^[(\d+:\d+:\d+)] \.+ </regex>
+   <regex>(\S+)\p*\d* -> (\S+)</regex>
    <order>id,srcip,dstip</order>
    <fts>name,id,srcip,dstip</fts>
 </decoder>

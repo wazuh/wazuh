@@ -101,7 +101,7 @@
   <type>firewall</type>
   <prematch offset="after_parent">^2-106006|^2-106007</prematch>
   <regex offset="after_parent">^(\S+): (\w+) \S+ (\w+) from </regex>
-  <regex>(\d+.\d+.\d+.\d+)/(\d+) to (\d+.\d+.\d+.\d+)/(\d+) </regex>
+  <regex>(\S+)/(\d+) to (\S+)/(\d+) </regex>
   <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
 
@@ -135,9 +135,9 @@
 <decoder name="pix-url-success">
   <parent>pix</parent>
   <prematch offset="after_parent">^5-304001: </prematch>
-  <regex offset="after_parent">^(\S+): (\d+.\d+.\d+.\d+) Accessed URL </regex>
-  <regex>(\d+.\d+.\d+.\d+):(http\w*://\.+)|</regex>
-  <regex>^(\S+): (\d+.\d+.\d+.\d+) Accessed URL (\d+.\d+.\d+.\d+):</regex>
+  <regex offset="after_parent">^(\S+): (\S+) Accessed URL </regex>
+  <regex>(\S+):(http\w*://\.+)|</regex>
+  <regex>^(\S+): (\S+) Accessed URL (\S+):</regex>
   <order>id, srcip, dstip, url</order>
 </decoder>
 
@@ -145,7 +145,7 @@
   <parent>pix</parent>
   <prematch offset="after_parent">^5-304002: </prematch>
   <regex offset="after_parent">^(\S+): Access (denied) URL (http\w*://\.+) </regex>
-  <regex>SRC (\d+.\d+.\d+.\d+) DEST (\d+.\d+.\d+.\d+) on interface</regex>
+  <regex>SRC (\S+) DEST (\S+) on interface</regex>
   <order>id, action, url, srcip, dstip</order>
 </decoder>
 
@@ -154,14 +154,14 @@
   <prematch offset="after_parent">^2-106012: |^2-106017: |</prematch>
   <prematch>^2-106020|^1-106021|^1-106022|</prematch>
   <prematch>^4-4000</prematch>
-  <regex offset="after_parent">^(\S+): \.+ from (\d+.\d+.\d+.\d+) </regex>
+  <regex offset="after_parent">^(\S+): \.+ from (\S+) </regex>
   <order>id, srcip</order>
 </decoder>
 
 <decoder name="pix-srcip">
   <parent>pix</parent>
   <prematch offset="after_parent">^6-605004|^6-308001|^6-605005</prematch>
-  <regex offset="after_parent">^(\S+): \.+ (\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_parent">^(\S+): \.+ (\S+)</regex>
   <order>id, srcip</order>
 </decoder>
 

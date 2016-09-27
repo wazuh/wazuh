@@ -53,7 +53,7 @@
 <decoder name="postfix-sasl">
   <parent>postfix</parent>
   <prematch>^warning: \S+: SASL </prematch>
-  <regex>^warning: \S+[(\d+.\d+.\d+.\d+)]:</regex>
+  <regex>^warning: \S+[(\S+)]:</regex>
   <order>srcip</order>
 </decoder>
 
@@ -61,6 +61,6 @@
   <use_own_name>true</use_own_name>
   <parent>postfix</parent>
   <prematch>^warning:</prematch>
-  <regex>^warning: (\d+.\d+.\d+.\d+)|warning: Illegal address syntax from unknown[(\d+.\d+.\d+.\d+)]</regex>
+  <regex>^warning: (\S+)|warning: Illegal address syntax from unknown[(\S+)]</regex>
   <order>srcip</order>
 </decoder>

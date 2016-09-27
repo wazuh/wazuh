@@ -40,7 +40,7 @@
 <decoder name="arpwatch-new">
   <parent>arpwatch</parent>
   <prematch>^new station |^bogon </prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) (\S+)</regex>
+  <regex offset="after_prematch">^(\S+) (\S+)</regex>
   <order>srcip, extra_data</order>
   <fts>name, srcip, extra_data</fts>
 </decoder>

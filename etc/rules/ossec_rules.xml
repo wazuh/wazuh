@@ -68,7 +68,7 @@
   <rule id="510" level="7">
     <if_sid>509</if_sid>
     <description>Host-based anomaly detection event (rootcheck).</description>
-    <group>rootcheck</group>
+    <group>rootcheck,</group>
    <!-- <if_fts />  -->
   </rule>
 
@@ -78,28 +78,28 @@
     <regex>Thumbs.db:encryptable'.|:Zone.Identifier'.|</regex>
     <regex>Exchsrvr/Mailroot/vsi</regex>
     <description>Ignored common NTFS ADS entries.</description>
-    <group>rootcheck</group>
+    <group>rootcheck,</group>
   </rule>
 
   <rule id="512" level="3">
     <if_sid>510</if_sid>
     <match>^Windows Audit</match>
     <description>Windows Audit event.</description>
-    <group>rootcheck</group>
+    <group>rootcheck,</group>
   </rule>
 
   <rule id="513" level="9">
     <if_sid>510</if_sid>
     <match>^Windows Malware</match>
     <description>Windows malware detected.</description>
-    <group>rootcheck</group>
+    <group>rootcheck,</group>
   </rule>
 
   <rule id="514" level="2">
     <if_sid>510</if_sid>
     <match>^Application Found</match>
     <description>Windows application monitor event.</description>
-    <group>rootcheck</group>
+    <group>rootcheck,</group>
   </rule>
 
   <rule id="515" level="0">
@@ -114,21 +114,21 @@
     <if_sid>510</if_sid>
     <match>^System Audit</match>
     <description>System Audit event.</description>
-    <group>rootcheck</group>
+    <group>rootcheck,</group>
   </rule>
 
   <rule id="518" level="9">
     <if_sid>514</if_sid>
     <match>Adware|Spyware</match>
     <description>Windows Adware/Spyware application found.</description>
-    <group>rootcheck</group>
+    <group>rootcheck,</group>
   </rule>
 
   <rule id="519" level="7">
     <if_sid>516</if_sid>
     <match>^System Audit: Web vulnerability</match>
     <description>System Audit: Vulnerable web application found.</description>
-    <group>rootcheck</group>
+    <group>rootcheck,</group>
   </rule>
 
   <rule id="520" level="3">

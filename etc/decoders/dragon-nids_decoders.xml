@@ -34,7 +34,7 @@
    <type>ids</type>
    <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\|</prematch>
    <regex offset="after_prematch">^\S+\|(\S+)\|</regex>
-   <regex>(\d+.\d+.\d+.\d+)\|(\d+.\d+.\d+.\d+)\|</regex>
+   <regex>(\S+)\|(\S+)\|</regex>
    <order>id, srcip, dstip</order>
    <fts>name, id, srcip, dstip</fts>
 </decoder>

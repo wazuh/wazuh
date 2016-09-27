@@ -35,7 +35,7 @@
 <decoder name="aix-ipsec">
    <type>firewall</type>
    <program_name>^ipsec_logd</program_name>
-   <regex> R:(\w)  \w:\S+ S:(\d+.\d+.\d+.\d+) </regex>
-   <regex>D:(\d+.\d+.\d+.\d+) P:(\S+) SP:(\d+) DP:(\d+) </regex>
+   <regex> R:(\w)  \w:\S+ S:(\S+) </regex>
+   <regex>D:(\S+) P:(\S+) SP:(\d+) DP:(\d+) </regex>
    <order>action,srcip,dstip,protocol,srcport,dstport</order>
 </decoder>

@@ -37,13 +37,13 @@
 <decoder name="horde_imp_success">
   <parent>horde_imp</parent>
   <prematch offset="after_parent">^Login success </prematch>
-  <regex offset="after_prematch">^for (\S+) [(\d+.\d+.\d+.\d+)] </regex>
+  <regex offset="after_prematch">^for (\S+) [(\S+)] </regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="horde_imp_failed">
   <parent>horde_imp</parent>
   <prematch offset="after_parent">^FAILED LOGIN</prematch>
-  <regex offset="after_prematch">^ (\d+.\d+.\d+.\d+) to \S+ as (\S+) </regex>
+  <regex offset="after_prematch">^ (\S+) to \S+ as (\S+) </regex>
   <order>srcip, user</order>
 </decoder>

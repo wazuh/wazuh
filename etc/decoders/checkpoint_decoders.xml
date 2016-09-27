@@ -78,7 +78,7 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
   <type>firewall</type>
   <prematch offset="after_parent">^drop|^accept|^reject</prematch>
   <regex offset="after_parent">^(\w+)\s+\S+ \p\S+ rule:\.+</regex>
-  <regex>src: (\d+.\d+.\d+.\d+); dst: (\d+.\d+.\d+.\d+); proto: (\S+);</regex>
+  <regex>src: (\S+); dst: (\S+); proto: (\S+);</regex>
   <order>action,srcip,dstip,protocol</order>
 </decoder>
 
@@ -94,7 +94,7 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
   <type>ids</type>
   <prematch offset="after_parent">^monitor|^drop</prematch>
   <regex offset="after_prematch">attack: (\.+); </regex>
-  <regex>src: (\d+.\d+.\d+.\d+); dst: (\d+.\d+.\d+.\d+); </regex>
+  <regex>src: (\S+); dst: (\S+); </regex>
   <regex>proto: (\S+);</regex>
   <order>extra_data, srcip, dstip, protocol</order>
   <fts>name, extra_data, srcip, dstip</fts>

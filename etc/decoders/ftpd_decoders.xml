@@ -40,20 +40,20 @@
   <prematch>^Failed authentication from: \S+ |</prematch>
   <prematch>^repeated login failures from </prematch>
   <!--<regex offset="after_prematch">(\S+)</regex>-->
-  <regex offset="after_prematch">^\S+ [(\d+.\d+.\d+.\d+)]$|^(\S+)</regex>
+  <regex offset="after_prematch">^\S+ [(\S+)]$|^(\S+)</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="ftpd-refused">
   <parent>ftpd</parent>
   <prematch>^FTP LOGIN REFUSED </prematch>
-  <regex offset="after_prematch">[(\d+.\d+.\d+.\d+)]$</regex>
+  <regex offset="after_prematch">[(\S+)]$</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="ftpd-ip">
   <parent>ftpd</parent>
-  <regex>from (\d+.\d+.\d+.\d+)$</regex>
+  <regex>from (\S+)$</regex>
   <order>srcip</order>
 </decoder>
 

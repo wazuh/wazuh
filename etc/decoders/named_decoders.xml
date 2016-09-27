@@ -46,19 +46,19 @@
 <decoder name="named_client">
   <parent>named</parent>
   <prematch>^client </prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+)#</regex>
+  <regex offset="after_prematch">^(\S+)#</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="named_from">
   <parent>named</parent>
-  <regex offset="after_parent"> from [(\d+.\d+.\d+.\d+)]</regex>
+  <regex offset="after_parent"> from [(\S+)]</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="named-master">
   <parent>named</parent>
   <prematch> for master</prematch>
-  <regex>for master (\d+.\d+.\d+.\d+):(\d+) \S+ \(source (\d+.\d+.\d+.\d+)#d+\)$</regex>
+  <regex>for master (\S+):(\d+) \S+ \(source (\S+)#d+\)$</regex>
   <order>dstip,dstport,srcip</order>
 </decoder>

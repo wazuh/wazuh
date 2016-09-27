@@ -56,7 +56,7 @@
     <id>^401</id>
     <description>Squid: Unauthorized: Failed attempt to access </description>
     <description>authorization-required file or directory.</description>
-    <group>pci_dss_10.2.4, pci_dss_10.2.5,</group>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="35005" level="5">

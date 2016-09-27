@@ -23,7 +23,7 @@
    - extra_data     - Any extra data
   -->
 
-  
+
 <!--
  - Telnet decoder
  - Will extract the srcip
@@ -42,6 +42,6 @@
 
 <decoder name="telnetd-ip">
   <parent>telnetd</parent>
-  <regex>from (\d+.\d+.\d+.\d+)$</regex>
+  <regex>from (\S+)$</regex>
   <order>srcip</order>
 </decoder>
