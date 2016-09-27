@@ -683,14 +683,16 @@ char* ParseRuleComment(Eventinfo *lf) {
     char *str;
     char *var;
     char *end;
+    char *tok;
     size_t n = 0;
     size_t z;
     int i;
 
     strncpy(orig, lf->generated_rule->comment, OS_COMMENT_MAX);
 
-    for (str = orig; (var = strstr(str, "$(")); str = end) {
-        *(var) = '\0';
+    for (str = orig; (tok = strstr(str, "$(")); str = end) {
+        *tok = '\0';
+        var = tok + 2;
 
         if (n + (z = strlen(str)) >= OS_COMMENT_MAX)
             return strdup(lf->generated_rule->comment);
@@ -698,19 +700,30 @@ char* ParseRuleComment(Eventinfo *lf) {
         strncpy(&final[n], str, z);
         n += z;
 
-        if (!(end = strchr(var += 2, ')')))
-            return strdup(lf->generated_rule->comment);
+        if (!(end = strchr(var, ')'))) {
+            *tok = '$';
+            str = tok;
+            break;
+        }
 
         *(end++) = '\0';
 
-        if ((i = FindField(lf->decoder_info, var)) < 0 || !lf->fields[i])
-            return strdup(lf->generated_rule->comment);
+        if ((i = FindField(lf->decoder_info, var)) >= 0 && lf->fields[i]) {
+            if (n + (z = strlen(lf->fields[i])) >= OS_COMMENT_MAX)
+                return strdup(lf->generated_rule->comment);
 
-        if (n + (z = strlen(lf->fields[i])) >= OS_COMMENT_MAX)
-            return strdup(lf->generated_rule->comment);
+            strncpy(&final[n], lf->fields[i], z);
+            n += z;
+        } else {
+            *tok = '$';
 
-        strncpy(&final[n], lf->fields[i], z);
-        n += z;
+            if (n + (z = strlen(tok)) + 1 >= OS_COMMENT_MAX)
+                return strdup(lf->generated_rule->comment);
+
+            strncpy(&final[n], tok, z);
+            n += z;
+            final[n++] = ')';
+        }
     }
 
     if (n + (z = strlen(str)) >= OS_COMMENT_MAX)
