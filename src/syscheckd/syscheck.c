@@ -96,6 +96,7 @@ int Start_win32_Syscheck()
             merror(SK_NO_DIR, ARGV0);
         }
         syscheck.dir[0] = NULL;
+        syscheck.ignore[0] = NULL;
 
         if (!syscheck.registry) {
             dump_syscheck_entry(&syscheck, "", 0, 1, NULL);
@@ -246,6 +247,8 @@ int main(int argc, char **argv)
             }
         }
         syscheck.dir[0] = NULL;
+        syscheck.ignore[0] = NULL;
+
         if (!test_config) {
             merror("%s: WARN: Syscheck disabled.", ARGV0);
         }
