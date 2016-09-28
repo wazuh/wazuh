@@ -46,9 +46,9 @@ static char* filter(const char *string) {
     out[len] = '\0';
     return out;
 #else
-        /* Windoes file names can't contain the following characters:
+        /* Windows file names can't contain the following characters:
            \ / : * ? " < > |
-           We'll ban strings that contain dangeour characters and convert / into \ */
+           We'll ban strings that contain dangerous characters and convert / into \ */
 
         char *s;
         char *c;
@@ -381,7 +381,7 @@ char *seechanges_addfile(const char *filename)
         diff_location_filtered = filter(diff_location);
 
         if (!(tmp_location_filtered && old_location_filtered && diff_location_filtered)) {
-            debug1("%s: DEBUG: Diff execution skipped for contain insecure characters.", ARGV0);
+            debug1("%s: DEBUG: Diff execution skipped for containing insecure characters.", ARGV0);
             goto cleanup;
         }
 
