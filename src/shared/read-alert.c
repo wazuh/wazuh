@@ -46,6 +46,16 @@
 #define OLDSHA1_BEGIN_SZ  17
 #define NEWSHA1_BEGIN     "New sha1sum is : "
 #define NEWSHA1_BEGIN_SZ  17
+/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
+#define SIZE_BEGIN        "Size changed from "
+#define SIZE_BEGIN_SZ     18
+#define OWNER_BEGIN        "Ownership was "
+#define OWNER_BEGIN_SZ     14
+#define GROUP_BEGIN        "Group ownership was "
+#define GROUP_BEGIN_SZ     20
+#define PERM_BEGIN        "Permissions changed from "
+#define PERM_BEGIN_SZ     25
+/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
 
 
 void FreeAlertData(alert_data *al_data)
@@ -104,6 +114,28 @@ void FreeAlertData(alert_data *al_data)
         free(al_data->new_sha1);
         al_data->new_sha1 = NULL;
     }
+/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
+    if(al_data->file_size)
+    {
+        free(al_data->file_size);
+        al_data->file_size = NULL;
+    }
+    if(al_data->owner_chg)
+    {
+        free(al_data->owner_chg);
+        al_data->owner_chg = NULL;
+    }
+    if(al_data->group_chg)
+    {
+        free(al_data->group_chg);
+        al_data->group_chg = NULL;
+    }
+    if(al_data->perm_chg)
+    {
+        free(al_data->perm_chg);
+        al_data->perm_chg = NULL;
+    }
+/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
     if (al_data->log) {
         p = al_data->log;
 
@@ -150,6 +182,12 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *old_sha1 = NULL;
     char *new_sha1 = NULL;
     char **log = NULL;
+/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
+    char *file_size = NULL;
+    char *owner_chg = NULL;
+    char *group_chg = NULL;
+    char *perm_chg = NULL;
+/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
 #ifdef LIBGEOIP_ENABLED
     char *srcgeoip = NULL;
     char *dstgeoip = NULL;
@@ -188,6 +226,12 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 al_data->new_md5 = new_md5;
                 al_data->old_sha1 = old_sha1;
                 al_data->new_sha1 = new_sha1;
+            /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
+                al_data->file_size = file_size;
+                al_data->owner_chg = owner_chg;
+                al_data->group_chg = group_chg;
+                al_data->perm_chg = perm_chg;
+            /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
 
 
                 return (al_data);
@@ -408,6 +452,40 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 free(new_sha1);
                 os_strdup(p, new_sha1);
             }
+         /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
+            /* File Size */
+            else if(strncmp(SIZE_BEGIN, str, SIZE_BEGIN_SZ) == 0)
+            {
+                os_clearnl(str,p);
+
+                p = str + SIZE_BEGIN_SZ;
+                os_strdup(p, file_size);
+            }
+            /* File Ownership */
+            else if(strncmp(OWNER_BEGIN, str, OWNER_BEGIN_SZ) == 0)
+            {
+                os_clearnl(str,p);
+
+                p = str + OWNER_BEGIN_SZ;
+                os_strdup(p, owner_chg);
+            }
+            /* File Group Ownership */
+            else if(strncmp(GROUP_BEGIN, str, GROUP_BEGIN_SZ) == 0)
+            {
+                os_clearnl(str,p);
+
+                p = str + GROUP_BEGIN_SZ;
+                os_strdup(p, group_chg);
+            }
+            /* File Permissions */
+            else if(strncmp(PERM_BEGIN, str, PERM_BEGIN_SZ) == 0)
+            {
+                os_clearnl(str,p);
+
+                p = str + PERM_BEGIN_SZ;
+                os_strdup(p, perm_chg);
+            }
+         /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
             /* It is a log message */
             else if (log_size < 20) {
                 os_clearnl(str, p);
@@ -490,6 +568,28 @@ l_error:
             free(new_sha1);
             new_sha1 = NULL;
         }
+/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
+        if(file_size)
+        {
+            free(file_size);
+            file_size = NULL;
+        }
+        if(owner_chg)
+        {
+            free(owner_chg);
+            owner_chg = NULL;
+        }
+        if(group_chg)
+        {
+            free(group_chg);
+            group_chg = NULL;
+        }
+        if(perm_chg)
+        {
+            free(perm_chg);
+            perm_chg = NULL;
+        }
+/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
         while (log_size > 0) {
             log_size--;
             if (log[log_size]) {
@@ -534,6 +634,12 @@ l_error:
     free(old_sha1);
     free(new_sha1);
     free(filename);
+/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
+    free(file_size);
+    free(owner_chg);
+    free(group_chg);
+    free(perm_chg);
+/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
 #ifdef LIBGEOIP_ENABLED
     free(srcgeoip);
     free(dstgeoip);
