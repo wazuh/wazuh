@@ -127,7 +127,9 @@ void start_daemon()
         rootcheck.time = 604800;
     }
     /* Printing syscheck propierties */
-    merror("%s: INFO: Syscheck scan frequency: %d seconds", ARGV0, syscheck.time);
+
+    if (!syscheck.disabled)
+        merror("%s: INFO: Syscheck scan frequency: %d seconds", ARGV0, syscheck.time);
 
     /* Will create the db to store syscheck data */
     if (syscheck.scan_on_start) {
