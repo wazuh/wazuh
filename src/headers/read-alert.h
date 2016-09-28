@@ -37,6 +37,12 @@ typedef struct _alert_data {
     char **log;
     char *srcgeoip;
     char *dstgeoip;
+    /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
+    char *file_size;
+    char *owner_chg;
+    char *group_chg;
+    char *perm_chg;
+    /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
 } alert_data;
 
 alert_data *GetAlertData(int flag, FILE *fp) __attribute__((nonnull));
