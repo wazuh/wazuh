@@ -212,7 +212,7 @@
     <group>syscheck,pci_dss_11.5,</group>
   </rule>
 
-  <rule id="554" level="0">
+  <rule id="554" level="5">
     <category>ossec</category>
     <decoded_as>syscheck_new_entry</decoded_as>
     <description>File added to the system.</description>
