@@ -2,6 +2,9 @@
     <!-- Frequency that syscheck is executed default every 12 hours -->
     <frequency>43200</frequency>
 
+    <!-- Generate alert when new file detected -->
+    <alert_new_files>yes</alert_new_files>
+
     <!-- Directories to check  (perform all possible verifications) -->
     <directories check_all="yes">/etc,/usr/bin,/usr/sbin</directories>
     <directories check_all="yes">/bin,/sbin,/boot</directories>
