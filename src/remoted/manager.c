@@ -62,6 +62,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             (strcmp(_msg[agentid], r_msg) == 0)) {
 
         utimes(_keep_alive[agentid], NULL);
+        wdb_update_agent_keepalive(atoi(keys.keyentries[agentid]->id));
     }
 
     else if (strcmp(r_msg, HC_STARTUP) == 0) {
