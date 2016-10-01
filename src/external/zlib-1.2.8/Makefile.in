@@ -252,12 +252,9 @@ clean:
 	rm -f contrib/infback9/*.gcda contrib/infback9/*.gcno contrib/infback9/*.gcov
 
 maintainer-clean: distclean
-distclean: clean zconf zconf.h.cmakein docs
-	rm -f Makefile zlib.pc configure.log
+distclean: clean zconf.h.cmakein docs
+	rm -f Makefile zlib.pc configure.log zconf.h
 	-@rm -f .DS_Store
-	-@printf 'all:\n\t-@echo "Please use ./configure first.  Thank you."\n' > Makefile
-	-@printf '\ndistclean:\n\tmake -f Makefile.in distclean\n' >> Makefile
-	-@touch -r Makefile.in Makefile
 
 tags:
 	etags *.[ch]
