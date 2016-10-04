@@ -22,6 +22,7 @@ typedef struct _IntegratorConfig
     unsigned int level;
     unsigned int enabled;
     unsigned int *rule_id;
+    unsigned int max_log;
 
     char *name;
     char *apikey;

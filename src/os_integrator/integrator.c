@@ -234,7 +234,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                         log_count++;
                         tmpstr++;
 
-                        if(log_count >= 165)
+                        if(log_count >= (int)integrator_config[s]->max_log)
                         {
                             *tmpstr='\0';
                             *(tmpstr -1)='.';
