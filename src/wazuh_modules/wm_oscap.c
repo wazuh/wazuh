@@ -186,7 +186,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
 
     // Execute
 
-    debug1("Launching command: %s", command);
+    debug1("%s: DEBUG: Launching command: %s", WM_OSCAP_LOGTAG, command);
 
     switch (wm_exec(command, &output, &status, eval->timeout)) {
     case 0:
