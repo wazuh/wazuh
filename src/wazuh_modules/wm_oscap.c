@@ -191,7 +191,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     switch (wm_exec(command, &output, &status, eval->timeout)) {
     case 0:
         if (status > 0) {
-            merror("%s: WARN: Ignoring content '%s' due to error.", WM_OSCAP_LOGTAG, eval->path);
+            merror("%s: WARN: Ignoring content '%s' due to error (%d).", WM_OSCAP_LOGTAG, eval->path, status);
             eval->flags.error = 1;
         }
 
