@@ -35,7 +35,7 @@ MAX_ITERATION="10"
 checkpid() {
     for i in ${DAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
-            ps --no-headers -p $j > /dev/null 2>&1
+            ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
                 rm ${DIR}/var/run/${i}-${j}.pid
@@ -237,7 +237,7 @@ pstatus()
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps --no-headers -p $j > /dev/null 2>&1
+            ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "${pfile}: Process $j not used by ossec, removing .."
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
