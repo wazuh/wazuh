@@ -84,5 +84,6 @@
     <include>imperva_rules.xml</include>
     <include>sophos_rules.xml</include>
     <include>freeipa_rules.xml</include>
+    <include>cisco-estreamer_rules.xml</include>
     <include>local_rules.xml</include>
   </rules>
