@@ -103,7 +103,7 @@ int doDiff(RuleInfo *rule, const Eventinfo *lf)
 
     /* lf->size can't be too long */
     if (lf->size >= OS_SIZE_8192) {
-        merror("%s: ERROR: event size (%ld) too long for diff.", ARGV0, lf->size);
+        merror("%s: ERROR: event size (%zd) too long for diff.", ARGV0, lf->size);
         return (0);
     }
 

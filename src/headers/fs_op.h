@@ -37,7 +37,7 @@ struct file_system_type {
 #ifdef WIN32
     const unsigned __int32 f_type;
 #else
-    const uint32_t f_type;
+    const int32_t f_type;
 #endif
     const int flag;
 };
