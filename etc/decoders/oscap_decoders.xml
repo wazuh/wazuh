@@ -24,13 +24,13 @@ Logs from wodle
 
 <!--
 Rule Result
-oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
 -->
 <decoder name="oscap-wodle-xccdf-result">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "xccdf-result", </prematch>
-  <regex offset="after_prematch">^title: "(\.*)", benchmark: "(\.*)", profile: "(\.*)", severity: "(\.*)", result: "(\.*)", id: "(\.*)", oval: "(\.*)", reference: "(\.*)".$</regex>
-  <order>title, benchmark, profile, severity, result, id, oval, reference</order>
+  <regex offset="after_prematch">^title: "(\.*)", benchmark-id: "(\.*)", benchmark-title: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)", severity: "(\.*)", result: "(\.*)", id: "(\.*)", oval: "(\.*)", reference: "(\.*)".$</regex>
+  <order>title, benchmark_id, benchmark_title, profile_id, profile_title, severity, result, id, oval, reference</order>
 </decoder>
 
 <!--
@@ -47,13 +47,13 @@ oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configurat
 
 <!--
 Report overview
-oscap: msg: "xccdf-overview", benchmark: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile: "xccdf_org.ssgproject.content_profile_common", score: "62.500000".
+oscap: msg: "xccdf-overview", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
 -->
 <decoder name="oscap-wodle-xccdf-overview">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "xccdf-overview", </prematch>
-  <regex offset="after_prematch">^benchmark: "(\.*)", profile: "(\.*)", score: "(\.*)".$</regex>
-  <order>benchmark, profile, score</order>
+  <regex offset="after_prematch">^benchmark-id: "(\.*)", benchmark-title: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)", score: "(\.*)".$</regex>
+  <order>benchmark_id, benchmark_title, profile_id, profile_title, score</order>
 </decoder>
 
 <!--
