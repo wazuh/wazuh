@@ -544,17 +544,14 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          "%s"
                          "%s"
                          "%s"
-                         "%s"
-                         "%s%s",
+                         "%s",
                          f_name,
                          sdb.size,
                          sdb.perm,
                          sdb.owner,
                          sdb.gowner,
                          sdb.md5,
-                         sdb.sha1,
-                         lf->data == NULL ? "" : "What changed:\n",
-                         lf->data == NULL ? "" : lf->data
+                         sdb.sha1
                         );
 
                 if (lf->data)
