@@ -152,7 +152,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!-- XCCDF RULES -->
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81520" level="0">
         <if_sid>81400</if_sid>
@@ -162,7 +162,7 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "pass", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "pass", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
 
     <rule id="81521" level="0">
@@ -173,7 +173,7 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notchecked", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notchecked", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81522" level="0">
         <if_sid>81520</if_sid>
@@ -183,7 +183,7 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notapplicable", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notapplicable", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81523" level="0">
         <if_sid>81520</if_sid>
@@ -193,7 +193,7 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "fixed", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "fixed", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81524" level="0">
         <if_sid>81520</if_sid>
@@ -203,7 +203,7 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "informational", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "informational", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81525" level="1">
         <if_sid>81520</if_sid>
@@ -213,7 +213,7 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "error", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "error", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81526" level="3">
         <if_sid>81520</if_sid>
@@ -223,7 +223,7 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "unknown", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "unknown", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81527" level="3">
         <if_sid>81520</if_sid>
@@ -233,7 +233,7 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81528" level="0">
         <if_sid>81520</if_sid>
@@ -243,9 +243,9 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "low", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "high", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "low", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "high", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
     -->
     <rule id="81529" level="5">
         <if_sid>81520</if_sid>
@@ -274,7 +274,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!-- Report Overview -->
 
     <!--
-    oscap: msg: "xccdf-overview", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
+    oscap: msg: "xccdf-overview", content: "ssg-centos-7-ds.xml", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
     -->
     <rule id="81540" level="3">
         <if_sid>81400</if_sid>
@@ -316,7 +316,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!-- OVAL RULES -->
 
     <!--
-    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", profile-title: "compliance", result: "pass", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
     -->
     <rule id="81550" level="0">
         <if_sid>81400</if_sid>
@@ -326,7 +326,7 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "error", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", profile-title: "compliance", result: "error", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
     -->
     <rule id="81551" level="3">
         <if_sid>81550</if_sid>
@@ -336,81 +336,81 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", profile-title: "compliance", result: "pass", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
     -->
     <rule id="81552" level="0" noalert="1">
         <if_sid>81550</if_sid>
-        <field name="class">compliance</field>
+        <field name="profile_title">compliance</field>
         <description>OpenSCAP: $(title)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", profile-title: "compliance", result: "fail", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
     -->
     <rule id="81553" level="7">
         <if_sid>81552</if_sid>
-        <field name="result">false</field>
+        <field name="result">fail</field>
         <description>OpenSCAP: $(title) (not passed)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "patch", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", profile-title: "patch", result: "pass", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
     -->
     <rule id="81554" level="0" noalert="1">
         <if_sid>81550</if_sid>
-        <field name="class">patch</field>
+        <field name="profile_title">patch</field>
         <description>OpenSCAP: $(title)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "patch", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", profile-title: "patch", result: "fail", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
     -->
     <rule id="81555" level="7">
         <if_sid>81554</if_sid>
-        <field name="result">false</field>
+        <field name="result">fail</field>
         <description>OpenSCAP: $(title) (not passed)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "vulnerability", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", profile-title: "vulnerability", result: "pass", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
     -->
     <rule id="81556" level="0" noalert="1">
         <if_sid>81550</if_sid>
-        <field name="class">vulnerability</field>
+        <field name="profile_title">vulnerability</field>
         <description>OpenSCAP: $(title)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "vulnerability", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", profile-title: "vulnerability", result: "fail", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
     -->
     <rule id="81557" level="7">
         <if_sid>81556</if_sid>
-        <field name="result">true</field>
+        <field name="result">fail</field>
         <description>OpenSCAP: $(title) (not passed)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "inventory", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", profile-title: "inventory", result: "pass", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
     -->
     <rule id="81558" level="0" noalert="1">
         <if_sid>81550</if_sid>
-        <field name="class">inventory</field>
+        <field name="profile_title">inventory</field>
         <description>OpenSCAP: $(title)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "miscellaneous", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", profile-title: "miscellaneous", result: "pass", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
     -->
     <rule id="81559" level="0" noalert="1">
         <if_sid>81550</if_sid>
-        <field name="class">miscellaneous</field>
+        <field name="profile_title">miscellaneous</field>
         <description>OpenSCAP: $(title)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>

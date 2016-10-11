@@ -24,36 +24,36 @@ Logs from wodle
 
 <!--
 Rule Result: xccdf
-oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
 -->
 <decoder name="oscap-wodle-xccdf-result">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "xccdf-result", </prematch>
-  <regex offset="after_prematch">^title: "(\.*)", benchmark-id: "(\.*)", benchmark-title: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)", severity: "(\.*)", result: "(\.*)", id: "(\.*)", oval: "(\.*)", reference: "(\.*)".$</regex>
-  <order>title, benchmark_id, benchmark_title, profile_id, profile_title, severity, result, id, oval, reference</order>
+  <regex offset="after_prematch">^content: "(\.*)", title: "(\.*)", benchmark-id: "(\.*)", benchmark-title: "\.*", profile-id: "(\.*)", profile-title: "(\.*)", severity: "(\.*)", result: "(\.*)", id: "(\.*)", oval: "(\.*)", reference: "(\.*)".$</regex>
+  <order>content, title, benchmark_id, profile_id, profile_title, severity, result, id, oval, reference</order>
 </decoder>
 
 <!--
 Rule Result: oval
-oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:com.ubuntu.xenial:def:20022439000", title: "CVE-2002-2439 on Ubuntu 16.04 LTS (xenial) - low.", class: "vulnerability", result: "true", reference: "CVE-2002-2439".
+oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:com.ubuntu.xenial:def:20022439000", title: "CVE-2002-2439 on Ubuntu 16.04 LTS (xenial) - low.", profile-title: "vulnerability", result: "fail", reference: "CVE-2002-2439".
 -->
 <decoder name="oscap-wodle-oval-result">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "oval-result", </prematch>
-  <regex offset="after_prematch">^content: "(\.*)", id: "(\.*)", title: "(\.*)", class: "(\.*)", result: "(\.*)", reference: "(\.*)".$</regex>
-  <order>content, id, title, class, result, reference</order>
+  <regex offset="after_prematch">^content: "(\.*)", id: "(\.*)", title: "(\.*)", profile-title: "(\.*)", result: "(\.*)", reference: "(\.*)".$</regex>
+  <order>content, id, title, profile_title, result, reference</order>
 </decoder>
 
 
 <!--
 Report overview: xccdf
-oscap: msg: "xccdf-overview", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
+oscap: msg: "xccdf-overview", content: "cve-redhat-7-ds.xml", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
 -->
 <decoder name="oscap-wodle-xccdf-overview">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "xccdf-overview", </prematch>
-  <regex offset="after_prematch">^benchmark-id: "(\.*)", benchmark-title: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)", score: "(\.*)".$</regex>
-  <order>benchmark_id, benchmark_title, profile_id, profile_title, score</order>
+  <regex offset="after_prematch">^content: "(\.*)", benchmark-id: "(\.*)", benchmark-title: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)", score: "(\.*)".$</regex>
+  <order>content, benchmark_id, benchmark_title, profile_id, profile_title, score</order>
 </decoder>
 
 <!--
