@@ -2,7 +2,7 @@
 ################################################################################
 # Wazuh wrapper for OpenSCAP
 # Wazuh Inc.
-# May 12, 2016
+# Oct 11, 2016
 ################################################################################
 
 from re import compile
@@ -128,7 +128,39 @@ def oscap(profile=None):
             return
 
     try:
-        print(check_output((XSLT_BIN, TEMPLATE_XCCDF if arg_module == 'xccdf' else TEMPLATE_OVAL, temp[1])))
+        if arg_module == 'xccdf':
+            print(check_output((XSLT_BIN, TEMPLATE_XCCDF, temp[1])))
+        else:
+            output = check_output((XSLT_BIN, TEMPLATE_OVAL, temp[1]))
+            oval_filename = arg_file.split('/')[-1]
+
+            total = 0
+            total_KO = 0
+            for line in output.split("\n"):
+                if not line:
+                    continue
+
+                # Adding file
+                new_line = line.replace('", id: "', '", content: "{0}", id: "'.format(oval_filename))
+
+                print(new_line)
+
+                total += 1
+
+                if ', class: "compliance", result: "false",' in line:
+                    total_KO += 1
+                elif ', class: "patch", result: "false",' in line:
+                    total_KO += 1
+                elif ', class: "vulnerability", result: "true",' in line:
+                    total_KO += 1
+                elif ', class: "inventory", result: "false",' in line:
+                    total_KO += 1
+
+            score = (float((total-total_KO))/float(total)) * 100
+
+            # summary
+            print('oscap: msg: "oval-overview", content: "{0}", score: "{1:.2f}".'.format(oval_filename, score))
+
     except CalledProcessError as error:
         print("{0} Formatting data for profile \"{1}\" of file \"{2}\": Return Code: \"{3}\" Error: \"{4}\".".format(OSCAP_LOG_ERROR, profile, arg_file, error.returncode,
                                                                                                            error.output.replace('\r', '').split("\n")[0]))
