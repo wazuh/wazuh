@@ -367,3 +367,25 @@ int startsWith(const char *pre, const char *str)
            lenstr = strlen(str);
     return lenstr < lenpre ? 0 : strncmp(pre, str, lenpre) == 0;
 }
+
+// Add a dynamic field with object nesting
+void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
+    cJSON *object;
+    char *current;
+    char *nest = strchr(key, '.');
+    size_t length;
+
+    if (nest) {
+        length = nest - key;
+        current = malloc(length + 1);
+        strncpy(current, key, length);
+        current[length] = '\0';
+
+        if (!(object = cJSON_GetObjectItem(root, current)))
+            cJSON_AddItemToObject(root, current, object = cJSON_CreateObject());
+
+        W_JSON_AddField(object, nest + 1, value);
+        free(current);
+    } else
+        cJSON_AddStringToObject(root, key, value);
+}

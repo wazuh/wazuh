@@ -40,4 +40,6 @@ int compile_regex (regex_t * r, const char * regex_text);
 int match_regex (regex_t * r, const char * to_match, char * results[MAX_MATCHES]);
 void trim(char * s);
 int startsWith(const char *pre, const char *str);
+// Add a dynamic field with object nesting
+void W_JSON_AddField(cJSON *root, const char *key, const char *value);
 #endif
