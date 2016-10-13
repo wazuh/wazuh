@@ -103,7 +103,7 @@ int connect_server(int initial_id)
                     merror("%s: ERROR: Unable to connect to any server.", ARGV0);
                 }
 
-                sleep(attempts);
+                sleep(attempts < MAX_CONN_SLEEP ? attempts : MAX_CONN_SLEEP);
                 rc = 0;
             }
         } else {
@@ -236,14 +236,14 @@ void start_agent(int is_startup)
             connect_server(agt->rip_id + 1);
 
             if (agt->rip_id == curr_rip) {
-                sleep(g_attempts);
+                sleep(g_attempts < MAX_CONN_SLEEP ? g_attempts : MAX_CONN_SLEEP);
                 g_attempts += (attempts * 3);
             } else {
                 g_attempts += 5;
-                sleep(g_attempts);
+                sleep(g_attempts < MAX_CONN_SLEEP ? g_attempts : MAX_CONN_SLEEP);
             }
         } else {
-            sleep(g_attempts);
+            sleep(g_attempts < MAX_CONN_SLEEP ? g_attempts : MAX_CONN_SLEEP);
             g_attempts += (attempts * 3);
 
             connect_server(0);

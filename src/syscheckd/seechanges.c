@@ -16,6 +16,8 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time) __attr
 static int seechanges_dupfile(const char *old, const char *current) __attribute__((nonnull));
 static int seechanges_createpath(const char *filename) __attribute__((nonnull));
 
+static const char *STR_MORE_CHANGES = "More changes...";
+
 #ifndef WIN32
 #define PATH_OFFSET 1
 #else
@@ -120,13 +122,10 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 {
     size_t n = 0;
     FILE *fp;
-    char *tmp_str;
     char *diff_str;
     char buf[OS_MAXSTR + 1];
-    char diff_alert[OS_MAXSTR + 1];
 
     buf[OS_MAXSTR] = '\0';
-    diff_alert[OS_MAXSTR] = '\0';
 
     snprintf(buf, OS_MAXSTR, "%s/local/%s/diff.%d",
              DIFF_DIR_PATH, filename + PATH_OFFSET, (int)alert_diff_time);
@@ -140,24 +139,21 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     n = fread(buf, 1, 4096 - 1, fp);
     fclose(fp);
 
-    if (n <= 0) {
+    switch (n) {
+    case 0:
         merror("%s: ERROR: Unable to generate diff alert (fread).", ARGV0);
         return (NULL);
-    } else if (n >= 4000) {
-        /* Clear the last newline */
-        buf[n] = '\0';
-        tmp_str = strrchr(buf, '\n');
-        if (tmp_str) {
-            *tmp_str = '\0';
-        } else {
-            /* Weird diff with only one large line */
-            buf[256] = '\0';
-        }
-    } else {
+    case 4095:
+        n -= strlen(STR_MORE_CHANGES);
+
+        while (n > 0 && buf[n - 1] != '\n')
+            n--;
+
+        strcpy(buf + n, STR_MORE_CHANGES);
+        break;
+    default:
         buf[n] = '\0';
     }
-
-    n = 0;
 
 #ifdef WIN32
     diff_str = strchr(buf, '\n');
@@ -173,28 +169,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     diff_str = buf;
 #endif
 
-    /* Get up to 20 line changes */
-    tmp_str = diff_str;
-
-    while (tmp_str && (*tmp_str != '\0')) {
-        tmp_str = strchr(tmp_str, '\n');
-        if (!tmp_str) {
-            break;
-        } else if (n >= 19) {
-            *tmp_str = '\0';
-            break;
-        }
-        n++;
-        tmp_str++;
-    }
-
-    /* Create alert */
-    snprintf(diff_alert, 4096 - 1, "%s%s",
-             diff_str, n >= 19 ?
-             "\nMore changes.." :
-             "");
-
-    return (strdup(diff_alert));
+    return (strdup(diff_str));
 }
 
 static int seechanges_dupfile(const char *old, const char *current)

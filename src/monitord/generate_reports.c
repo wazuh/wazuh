@@ -73,6 +73,7 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
                                               mond.reports[s]->title,
                                               mond.smtpserver,
                                               mond.emailfrom,
+                                              NULL,
                                               mond.emailidsname,
                                               mond.reports[s]->r_filter.fp,
                                               p)
