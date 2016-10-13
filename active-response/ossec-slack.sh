@@ -37,7 +37,7 @@ if [ ! $? = 0 ]; then
         exit 0;
     fi
 else
-    curl -X POST --data-urlencode "payload=${PAYLOAD}" ${SITE} 2>>${PWD}/../logs/active-responses.log
+    curl -s -X POST --data-urlencode "payload=${PAYLOAD}" ${SITE} 2>>${PWD}/../logs/active-responses.log
     exit 0;
 fi
 
