@@ -254,8 +254,8 @@ start()
 
         ## If ossec-maild is disabled, don't try to start it.
         if [ X"$i" = "Xossec-maild" ]; then
-             MRET = grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
-             if [ $MRET = 0 ]; then
+             grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
+             if [ $? = 0 ]; then
                  continue
              fi
         else
