@@ -68,7 +68,6 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
     snprintf(dir, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id_agent, name);
 
     if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
-        sqlite3_close_v2(db);
         debug1("%s: No SQLite database found for agent '%s', creating.", ARGV0, name);
         sqlite3_close_v2(db);
 
