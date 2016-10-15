@@ -15,6 +15,11 @@
 
 typedef enum syscheck_event_t { FIM_ADDED, FIM_MODIFIED, FIM_READDED, FIM_DELETED } syscheck_event_t;
 
+typedef struct _DynamicField {
+    const char *key;
+    char *value;
+} DynamicField;
+
 /* Event Information structure */
 typedef struct _Eventinfo {
     /* Extracted from the event */
@@ -43,7 +48,8 @@ typedef struct _Eventinfo {
     char *url;
     char *data;
     char *systemname;
-    char **fields;
+    DynamicField *fields;
+    int nfields;
 
     /* Pointer to the rule that generated it */
     RuleInfo *generated_rule;
@@ -152,24 +158,27 @@ EventNode *OS_GetLastEvent(void);
 /* Create the event list. Maxsize must be specified */
 void OS_CreateEventList(int maxsize);
 
+/* Find index of a dynamic field. Returns -1 if not found. */
+const char* FindField(const Eventinfo *lf, const char *name);
+
 /* Parse rule comment with dynamic fields */
 char* ParseRuleComment(Eventinfo *lf);
 
 /* Pointers to the event decoders */
-void *SrcUser_FP(Eventinfo *lf, char *field, int order);
-void *DstUser_FP(Eventinfo *lf, char *field, int order);
-void *SrcIP_FP(Eventinfo *lf, char *field, int order);
-void *DstIP_FP(Eventinfo *lf, char *field, int order);
-void *SrcPort_FP(Eventinfo *lf, char *field, int order);
-void *DstPort_FP(Eventinfo *lf, char *field, int order);
-void *Protocol_FP(Eventinfo *lf, char *field, int order);
-void *Action_FP(Eventinfo *lf, char *field, int order);
-void *ID_FP(Eventinfo *lf, char *field, int order);
-void *Url_FP(Eventinfo *lf, char *field, int order);
-void *Data_FP(Eventinfo *lf, char *field, int order);
-void *Status_FP(Eventinfo *lf, char *field, int order);
-void *SystemName_FP(Eventinfo *lf, char *field, int order);
-void *DynamicField_FP(Eventinfo *lf, char *field, int order);
-void *None_FP(Eventinfo *lf, char *field, int order);
+void *SrcUser_FP(Eventinfo *lf, char *field, const char *order);
+void *DstUser_FP(Eventinfo *lf, char *field, const char *order);
+void *SrcIP_FP(Eventinfo *lf, char *field, const char *order);
+void *DstIP_FP(Eventinfo *lf, char *field, const char *order);
+void *SrcPort_FP(Eventinfo *lf, char *field, const char *order);
+void *DstPort_FP(Eventinfo *lf, char *field, const char *order);
+void *Protocol_FP(Eventinfo *lf, char *field, const char *order);
+void *Action_FP(Eventinfo *lf, char *field, const char *order);
+void *ID_FP(Eventinfo *lf, char *field, const char *order);
+void *Url_FP(Eventinfo *lf, char *field, const char *order);
+void *Data_FP(Eventinfo *lf, char *field, const char *order);
+void *Status_FP(Eventinfo *lf, char *field, const char *order);
+void *SystemName_FP(Eventinfo *lf, char *field, const char *order);
+void *DynamicField_FP(Eventinfo *lf, char *field, const char *order);
+void *None_FP(Eventinfo *lf, char *field, const char *order);
 
 #endif /* _EVTINFO__H */
