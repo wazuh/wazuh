@@ -665,7 +665,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         if (!lf) {
             ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
-        os_calloc(Config.decoder_order_size, sizeof(char*), lf->fields);
+        os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
         lf->year = prev_year;
         strncpy(lf->mon, prev_month, 3);
         lf->day = today;
@@ -686,7 +686,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Daemon loop */
     while (1) {
         lf = (Eventinfo *)calloc(1, sizeof(Eventinfo));
-        os_calloc(Config.decoder_order_size, sizeof(char*), lf->fields);
+        os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
 
         /* This shouldn't happen */
         if (lf == NULL) {
@@ -1088,6 +1088,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
      */
     RuleInfo *rule = curr_node->ruleinfo;
     int i;
+    const char *field;
 
     /* Can't be null */
     if (!rule) {
@@ -1172,12 +1173,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Check for dynamic fields */
 
     for (i = 0; i < Config.decoder_order_size && rule->fields[i]; i++) {
-        int j = FindField(lf->decoder_info, rule->fields[i]->name);
+        field = FindField(lf, rule->fields[i]->name);
 
-        if (j < 0)
-            return NULL;
-
-        if (!OSRegex_Execute(lf->fields[j], rule->fields[i]->regex))
+        if (!(field && OSRegex_Execute(field, rule->fields[i]->regex)))
             return NULL;
     }
 
@@ -1465,12 +1463,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                     }
                     break;
                 case RULE_DYNAMIC:
-                    i = FindField(lf->decoder_info, list_holder->dfield);
+                    field = FindField(lf, list_holder->dfield);
 
-                    if (i < 0 || !lf->fields[i])
-                        return NULL;
-
-                    if (!OS_DBSearch(list_holder, lf->fields[i]))
+                    if (!(field &&OS_DBSearch(list_holder, (char*)field)))
                         return NULL;
 
                     break;

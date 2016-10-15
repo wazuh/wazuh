@@ -445,7 +445,7 @@ int ReadDecodeXML(const char *file)
                 norder = OS_StrBreak(',', elements[j]->content, Config.decoder_order_size);
                 s_norder = norder;
                 os_calloc(Config.decoder_order_size, sizeof(void *), pi->order);
-                os_calloc(Config.decoder_order_size, sizeof(char *), pi->fields);
+                os_calloc(Config.decoder_order_size, sizeof(DynamicField), pi->fields);
 
                 /* Check the values from the order */
                 while (*norder) {
@@ -558,9 +558,14 @@ int ReadDecodeXML(const char *file)
                     } else if (!strcmp(word, "name")) {
                         pi->fts |= FTS_NAME;
                     } else {
-                        int i = FindField(pi, word);
+                        int i;
 
-                        if (i < 0)
+                        for (i = 0; pi->fields[i]; i++)
+                            if (!strcasecmp(pi->fields[i], word))
+                                break;
+
+
+                        if (!pi->fields[i])
                             ErrorExit("decode-xml: Wrong field '%s' in the fts"
                                       " decoder '%s'", *norder, pi->name);
 

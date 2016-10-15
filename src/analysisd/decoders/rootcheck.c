@@ -19,8 +19,9 @@
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
 /* Rootcheck fields */
-#define RKF_TITLE 0
-#define RKF_FILE 1
+#define RCK_TITLE   0
+#define RCK_FILE    1
+#define RCK_NFIELDS 2
 
 /* Local variables */
 static char *rk_agent_ips[MAX_AGENTS];
@@ -58,8 +59,8 @@ void RootcheckInit()
     /* New fields as dynamic */
 
     os_calloc(Config.decoder_order_size, sizeof(char *), rootcheck_dec->fields);
-    rootcheck_dec->fields[RKF_TITLE] = "title";
-    rootcheck_dec->fields[RKF_FILE] = "file";
+    rootcheck_dec->fields[RCK_TITLE] = "title";
+    rootcheck_dec->fields[RCK_FILE] = "file";
 
     debug1("%s: RootcheckInit completed.", ARGV0);
 
@@ -181,8 +182,11 @@ int DecodeRootcheck(Eventinfo *lf)
             if (strcmp(lf->log, rk_buf) == 0) {
                 rootcheck_dec->fts = 0;
                 lf->decoder_info = rootcheck_dec;
-                lf->fields[RKF_TITLE] = rk_get_title(lf->log);
-                lf->fields[RKF_FILE] = rk_get_file(lf->log);
+                lf->nfields = RCK_NFIELDS;
+                lf->fields[RCK_TITLE].key = rootcheck_dec->fields[RCK_TITLE];
+                lf->fields[RCK_TITLE].value = rk_get_title(lf->log);
+                lf->fields[RCK_FILE].key = rootcheck_dec->fields[RCK_FILE];
+                lf->fields[RCK_FILE].value = rk_get_file(lf->log);
                 wdb_update_pm(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, lf->log, (long int)lf->time);
                 return (1);
             }
@@ -202,8 +206,11 @@ int DecodeRootcheck(Eventinfo *lf)
                 fprintf(fp, "!%ld", (long int)lf->time);
                 rootcheck_dec->fts = 0;
                 lf->decoder_info = rootcheck_dec;
-                lf->fields[RKF_TITLE] = rk_get_title(lf->log);
-                lf->fields[RKF_FILE] = rk_get_file(lf->log);
+                lf->nfields = RCK_NFIELDS;
+                lf->fields[RCK_TITLE].key = rootcheck_dec->fields[RCK_TITLE];
+                lf->fields[RCK_TITLE].value = rk_get_title(lf->log);
+                lf->fields[RCK_FILE].key = rootcheck_dec->fields[RCK_FILE];
+                lf->fields[RCK_FILE].value = rk_get_file(lf->log);
                 wdb_update_pm(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, lf->log, (long int)lf->time);
                 return (1);
             }
@@ -223,8 +230,11 @@ int DecodeRootcheck(Eventinfo *lf)
 
     rootcheck_dec->fts = FTS_DONE;
     lf->decoder_info = rootcheck_dec;
-    lf->fields[RKF_TITLE] = rk_get_title(lf->log);
-    lf->fields[RKF_FILE] = rk_get_file(lf->log);
+    lf->nfields = RCK_NFIELDS;
+    lf->fields[RCK_TITLE].key = rootcheck_dec->fields[RCK_TITLE];
+    lf->fields[RCK_TITLE].value = rk_get_title(lf->log);
+    lf->fields[RCK_FILE].key = rootcheck_dec->fields[RCK_FILE];
+    lf->fields[RCK_FILE].value = rk_get_file(lf->log);
     wdb_insert_pm(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, (long int)lf->time, lf->log);
     return (1);
 }

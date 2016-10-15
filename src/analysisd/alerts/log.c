@@ -218,11 +218,9 @@ void OS_LogOutput(Eventinfo *lf)
     }
 
     // Dynamic fields, except for syscheck events
-    if (lf->decoder_info->fields && !lf->filename) {
-        for (i = 0; i < Config.decoder_order_size; i++) {
-            if (lf->decoder_info->fields[i] && lf->fields[i]) {
-                printf("%s: %s\n", lf->decoder_info->fields[i], lf->fields[i]);
-            }
+    if (lf->fields && !lf->filename) {
+        for (i = 0; i < lf->nfields; i++) {
+            printf("%s: %s\n", lf->fields[i].key, lf->fields[i].value);
         }
     }
 
@@ -380,11 +378,9 @@ void OS_Log(Eventinfo *lf)
     }
 
     // Dynamic fields, except for syscheck events
-    if (lf->decoder_info->fields && !lf->filename) {
-        for (i = 0; i < Config.decoder_order_size; i++) {
-            if (lf->decoder_info->fields[i] && lf->fields[i]) {
-                fprintf(_aflog, "%s: %s\n", lf->decoder_info->fields[i], lf->fields[i]);
-            }
+    if (lf->fields && !lf->filename) {
+        for (i = 0; i < lf->nfields; i++) {
+            fprintf(_aflog, "%s: %s\n", lf->fields[i].key, lf->fields[i].value);
         }
     }
 
