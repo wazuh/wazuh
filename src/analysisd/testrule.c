@@ -430,6 +430,7 @@ void OS_ReadMSG(char *ut_str)
 
             /* Make sure we ignore blank lines */
             if (strlen(msg) < 10) {
+                Free_Eventinfo(lf);
                 continue;
             }
 
