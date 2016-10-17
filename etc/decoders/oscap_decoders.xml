@@ -1,6 +1,6 @@
 <!--
   -  OpenSCAP decoder
-  -  v1.0 2016/10/11
+  -  v1.0 2016/10/13
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
@@ -24,13 +24,13 @@ Logs from wodle
 
 <!--
 Rule Result: xccdf
-oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
 -->
 <decoder name="oscap-wodle-xccdf-result">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "xccdf-result", </prematch>
-  <regex offset="after_prematch">^content: "(\.*)", title: "(\.*)", benchmark-id: "(\.*)", benchmark-title: "\.*", profile-id: "(\.*)", profile-title: "(\.*)", severity: "(\.*)", result: "(\.*)", id: "(\.*)", oval: "(\.*)", reference: "(\.*)".$</regex>
-  <order>content, title, benchmark_id, profile_id, profile_title, severity, result, id, oval, reference</order>
+  <regex offset="after_prematch">^content: "(\.*)", title: "(\.*)", benchmark-id: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)", severity: "(\.*)", result: "(\.*)", id: "(\.*)", oval: "(\.*)", reference: "(\.*)".$</regex>
+  <order>oscap.content, oscap.check.title, oscap.benchmark.id, oscap.profile.id, oscap.profile.title, oscap.check.severity, oscap.check.result, oscap.check.id, oscap.check.oval.id, oscap.check.reference</order>
 </decoder>
 
 <!--
@@ -41,19 +41,19 @@ oscap: msg: "oval-result", content: "com.ubuntu.xenial.cve.oval.xml", id: "oval:
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "oval-result", </prematch>
   <regex offset="after_prematch">^content: "(\.*)", id: "(\.*)", title: "(\.*)", profile-title: "(\.*)", result: "(\.*)", reference: "(\.*)".$</regex>
-  <order>content, id, title, profile_title, result, reference</order>
+  <order>oscap.content, oscap.check.oval.id, oscap.check.title, oscap.profile.title, oscap.check.result, oscap.reference</order>
 </decoder>
 
 
 <!--
 Report overview: xccdf
-oscap: msg: "xccdf-overview", content: "cve-redhat-7-ds.xml", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
+oscap: msg: "xccdf-overview", content: "cve-redhat-7-ds.xml", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
 -->
 <decoder name="oscap-wodle-xccdf-overview">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "xccdf-overview", </prematch>
-  <regex offset="after_prematch">^content: "(\.*)", benchmark-id: "(\.*)", benchmark-title: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)", score: "(\.*)".$</regex>
-  <order>content, benchmark_id, benchmark_title, profile_id, profile_title, score</order>
+  <regex offset="after_prematch">^content: "(\.*)", benchmark-id: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)", score: "(\.*)".$</regex>
+  <order>oscap.content, oscap.benchmark.id, oscap.profile.id, oscap.profile.title, oscap.score</order>
 </decoder>
 
 <!--
@@ -64,7 +64,7 @@ oscap: msg: "oval-overview", content: "com.ubuntu.xenial.cve.oval.xml", score: "
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "oval-overview", </prematch>
   <regex offset="after_prematch">^content: "(\.*)", score: "(\.*)".$</regex>
-  <order>content, score</order>
+  <order>oscap.content, oscap.score</order>
 </decoder>
 
 
@@ -75,7 +75,7 @@ Apr 12 10:50:32 centos oscap: Evaluation started. Content: /usr/share/xml/scap/s
     <parent>oscap</parent>
     <prematch offset="after_parent">^Evaluation started. </prematch>
     <regex offset="after_prematch">^Content: (\S+), Profile: (\S+).$</regex>
-    <order>policy, profile</order>
+    <order>oscap.content, oscap.profile</order>
 </decoder>
 
 <!--
@@ -85,5 +85,5 @@ Apr 12 10:50:42 centos oscap: Evaluation finished. Return code: 0, Base score 10
     <parent>oscap</parent>
     <prematch offset="after_parent">^Evaluation finished. </prematch>
     <regex offset="after_prematch">^Return code: (\d+), Base score (\S+).</regex>
-    <order>return_code, score</order>
+    <order>oscap.return_code, oscap.score</order>
 </decoder>

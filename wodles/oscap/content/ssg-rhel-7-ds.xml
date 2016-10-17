@@ -8751,7 +8751,7 @@ respective companies.</rear-matter>
     <select idref="xccdf_org.ssgproject.content_group_srg_support" selected="false"/>
   </Profile>
   <Profile id="xccdf_org.ssgproject.content_profile_pci-dss">
-    <title xml:lang="en-US">Draft PCI-DSS v3 Control Baseline for Red Hat Enterprise Linux 7</title>
+    <title xml:lang="en-US">PCI-DSS v3 Control Baseline for Red Hat Enterprise Linux 7</title>
     <description xml:lang="en-US">This is a *draft* profile for PCI-DSS v3</description>
     <select idref="xccdf_org.ssgproject.content_rule_service_auditd_enabled" selected="true"/>
     <select idref="xccdf_org.ssgproject.content_rule_bootloader_audit_argument" selected="true"/>

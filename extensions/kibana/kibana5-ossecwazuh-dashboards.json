@@ -1,22 +1,5 @@
 [
   {
-    "_id": "File-Integrity-Monitoring",
-    "_type": "dashboard",
-    "_source": {
-      "title": "File Integrity Monitoring",
-      "hits": 0,
-      "description": "",
-      "panelsJSON": "[{\"col\":11,\"id\":\"FIM-Top-15-Agents\",\"panelIndex\":2,\"row\":1,\"size_x\":2,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"FIM-Alerts-over-time\",\"panelIndex\":3,\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"FIM-Top-15-changed-users\",\"panelIndex\":15,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":3,\"id\":\"FIM-Top-15-new-users\",\"panelIndex\":16,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":5,\"id\":\"FIM-Top-15-changed-groups\",\"panelIndex\":17,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"FIM-Top-15-new-groups\",\"panelIndex\":18,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":11,\"id\":\"FIM-Top-15-new-permissions\",\"panelIndex\":19,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":9,\"id\":\"FIM-Top-15-changed-permissions\",\"panelIndex\":21,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"FIM-Top-5-files-changed-at-the-same-time\",\"panelIndex\":24,\"row\":9,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":10,\"id\":\"FIM-Top-10-Files-converted-to-executable\",\"panelIndex\":28,\"row\":9,\"size_x\":3,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"columns\":[\"AgentName\",\"path\",\"full_log\",\"SyscheckFile.mtime_after\"],\"id\":\"FIM-Alerts\",\"panelIndex\":29,\"row\":12,\"size_x\":12,\"size_y\":2,\"sort\":[\"@timestamp\",\"desc\"],\"type\":\"search\"},{\"col\":10,\"id\":\"FIM-Alerts\",\"panelIndex\":32,\"row\":4,\"size_x\":3,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"FIM-Top-10-files-with-Root-slash-Admin-owner\",\"panelIndex\":33,\"row\":9,\"size_x\":3,\"size_y\":3,\"type\":\"visualization\"},{\"id\":\"FIM-Top-10-Added\",\"type\":\"visualization\",\"panelIndex\":34,\"size_x\":3,\"size_y\":3,\"col\":1,\"row\":4},{\"id\":\"FIM-Top-10-Changed\",\"type\":\"visualization\",\"panelIndex\":35,\"size_x\":3,\"size_y\":3,\"col\":4,\"row\":4},{\"id\":\"FIM-Top-10-Deleted\",\"type\":\"visualization\",\"panelIndex\":36,\"size_x\":3,\"size_y\":3,\"col\":7,\"row\":4}]",
-      "optionsJSON": "{\"darkTheme\":false}",
-      "uiStateJSON": "{\"P-1\":{\"vis\":{\"legendOpen\":true}},\"P-10\":{\"vis\":{\"legendOpen\":false}},\"P-3\":{\"vis\":{\"legendOpen\":true}},\"P-30\":{\"vis\":{\"legendOpen\":false}},\"P-4\":{\"vis\":{\"legendOpen\":false}}}",
-      "version": 1,
-      "timeRestore": false,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}}}]}"
-      }
-    }
-  },
-  {
     "_id": "PCI-Compliance",
     "_type": "dashboard",
     "_source": {
@@ -26,6 +9,40 @@
       "panelsJSON": "[{\"col\":7,\"id\":\"PCIDSS:-By-section\",\"row\":4,\"size_x\":3,\"size_y\":4,\"type\":\"visualization\"},{\"col\":1,\"id\":\"Requirements-by-agent\",\"row\":19,\"size_x\":12,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"PCI-DSS:-Requirement-11.4\",\"row\":4,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"High-Risk-Alerts-slash-PCI-DSS\",\"row\":8,\"size_x\":12,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"PCI-DSS:-Signature-Area-Chart\",\"row\":10,\"size_x\":12,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"PCI-Requirements-by-time\",\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":7,\"id\":\"Requirements-slash-Groups\",\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":10,\"id\":\"PCI-Requirements-slash-Agent\",\"row\":4,\"size_x\":3,\"size_y\":4,\"type\":\"visualization\"},{\"col\":1,\"id\":\"Integrity-checksum-changed\",\"row\":13,\"size_x\":5,\"size_y\":3,\"type\":\"visualization\"},{\"col\":6,\"id\":\"File-table-integrity-checksum-changed\",\"row\":13,\"size_x\":7,\"size_y\":3,\"type\":\"visualization\"},{\"col\":4,\"id\":\"PCI-DSS:-Requirement-10.2.2\",\"row\":4,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"PCI-DSS:-Requirement-10.2.5\",\"row\":6,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"PCI-DSS:-Requirement-10.6.1\",\"row\":6,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"id\":\"Last-Alerts\",\"type\":\"search\",\"size_x\":12,\"size_y\":3,\"col\":1,\"row\":16,\"columns\":[\"AgentName\",\"rule.AlertLevel\",\"rule.PCI_DSS\",\"rule.description\"],\"sort\":[\"rule.groups\",\"desc\"]}]",
       "optionsJSON": "{\"darkTheme\":false}",
       "uiStateJSON": "{}",
+      "version": 1,
+      "timeRestore": false,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}}}]}"
+      }
+    }
+  },
+  {
+    "_id": "Policy-Monitoring",
+    "_type": "dashboard",
+    "_source": {
+      "title": "Policy Monitoring",
+      "hits": 0,
+      "description": "",
+      "panelsJSON": "[{\"col\":7,\"id\":\"PM-Alerts-over-time\",\"panelIndex\":1,\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"PM-Top-15-Agents\",\"panelIndex\":4,\"row\":4,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"PM-Top-10-monitored-files\",\"panelIndex\":5,\"row\":4,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"PM-Top-10-Type-of-alerts\",\"panelIndex\":8,\"row\":1,\"size_x\":3,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"PM-Top-10-Alerts\",\"panelIndex\":9,\"row\":1,\"size_x\":3,\"size_y\":3,\"type\":\"visualization\"},{\"id\":\"PM-Search\",\"type\":\"search\",\"panelIndex\":10,\"size_x\":12,\"size_y\":4,\"col\":1,\"row\":6,\"columns\":[\"AgentName\",\"rule.description\",\"title\",\"AlertsFile\",\"rule.CIS\",\"rule.PCI_DSS\",\"rule.AlertLevel\"],\"sort\":[\"@timestamp\",\"desc\"]},{\"id\":\"PM-Top-10-CIS-Requirements\",\"type\":\"visualization\",\"panelIndex\":11,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":4},{\"id\":\"PM-Top-10-PCI-DSS-Requirements\",\"type\":\"visualization\",\"panelIndex\":12,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":4}]",
+      "optionsJSON": "{\"darkTheme\":false}",
+      "uiStateJSON": "{}",
+      "version": 1,
+      "timeRestore": false,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}}}]}"
+      }
+    }
+  },
+  {
+    "_id": "File-Integrity-Monitoring",
+    "_type": "dashboard",
+    "_source": {
+      "title": "File Integrity Monitoring",
+      "hits": 0,
+      "description": "",
+      "panelsJSON": "[{\"col\":11,\"id\":\"FIM-Top-15-Agents\",\"panelIndex\":2,\"row\":1,\"size_x\":2,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"FIM-Alerts-over-time\",\"panelIndex\":3,\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"FIM-Top-15-changed-users\",\"panelIndex\":15,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":3,\"id\":\"FIM-Top-15-new-users\",\"panelIndex\":16,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":5,\"id\":\"FIM-Top-15-changed-groups\",\"panelIndex\":17,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"FIM-Top-15-new-groups\",\"panelIndex\":18,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":11,\"id\":\"FIM-Top-15-new-permissions\",\"panelIndex\":19,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":9,\"id\":\"FIM-Top-15-changed-permissions\",\"panelIndex\":21,\"row\":7,\"size_x\":2,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"FIM-Top-5-files-changed-at-the-same-time\",\"panelIndex\":24,\"row\":9,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":10,\"id\":\"FIM-Top-10-Files-converted-to-executable\",\"panelIndex\":28,\"row\":9,\"size_x\":3,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"columns\":[\"AgentName\",\"path\",\"full_log\",\"SyscheckFile.mtime_after\"],\"id\":\"FIM-Alerts\",\"panelIndex\":29,\"row\":12,\"size_x\":12,\"size_y\":2,\"sort\":[\"@timestamp\",\"desc\"],\"type\":\"search\"},{\"col\":10,\"id\":\"FIM-Alerts\",\"panelIndex\":32,\"row\":4,\"size_x\":3,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"FIM-Top-10-files-with-Root-slash-Admin-owner\",\"panelIndex\":33,\"row\":9,\"size_x\":3,\"size_y\":3,\"type\":\"visualization\"},{\"id\":\"FIM-Top-10-Added\",\"type\":\"visualization\",\"panelIndex\":34,\"size_x\":3,\"size_y\":3,\"col\":1,\"row\":4},{\"id\":\"FIM-Top-10-Changed\",\"type\":\"visualization\",\"panelIndex\":35,\"size_x\":3,\"size_y\":3,\"col\":4,\"row\":4},{\"id\":\"FIM-Top-10-Deleted\",\"type\":\"visualization\",\"panelIndex\":36,\"size_x\":3,\"size_y\":3,\"col\":7,\"row\":4}]",
+      "optionsJSON": "{\"darkTheme\":false}",
+      "uiStateJSON": "{\"P-1\":{\"vis\":{\"legendOpen\":true}},\"P-10\":{\"vis\":{\"legendOpen\":false}},\"P-3\":{\"vis\":{\"legendOpen\":true}},\"P-30\":{\"vis\":{\"legendOpen\":false}},\"P-4\":{\"vis\":{\"legendOpen\":false}}}",
       "version": 1,
       "timeRestore": false,
       "kibanaSavedObjectMeta": {
@@ -47,23 +64,6 @@
       "timeRestore": true,
       "timeTo": "now",
       "timeFrom": "now-24h",
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}}}]}"
-      }
-    }
-  },
-  {
-    "_id": "Policy-Monitoring",
-    "_type": "dashboard",
-    "_source": {
-      "title": "Policy Monitoring",
-      "hits": 0,
-      "description": "",
-      "panelsJSON": "[{\"col\":7,\"id\":\"PM-Alerts-over-time\",\"panelIndex\":1,\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"PM-Top-15-Agents\",\"panelIndex\":4,\"row\":4,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"PM-Top-10-monitored-files\",\"panelIndex\":5,\"row\":4,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"PM-Top-10-Type-of-alerts\",\"panelIndex\":8,\"row\":1,\"size_x\":3,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"PM-Top-10-Alerts\",\"panelIndex\":9,\"row\":1,\"size_x\":3,\"size_y\":3,\"type\":\"visualization\"},{\"id\":\"PM-Search\",\"type\":\"search\",\"panelIndex\":10,\"size_x\":12,\"size_y\":4,\"col\":1,\"row\":6,\"columns\":[\"AgentName\",\"rule.description\",\"title\",\"AlertsFile\",\"rule.CIS\",\"rule.PCI_DSS\",\"rule.AlertLevel\"],\"sort\":[\"@timestamp\",\"desc\"]},{\"id\":\"PM-Top-10-CIS-Requirements\",\"type\":\"visualization\",\"panelIndex\":11,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":4},{\"id\":\"PM-Top-10-PCI-DSS-Requirements\",\"type\":\"visualization\",\"panelIndex\":12,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":4}]",
-      "optionsJSON": "{\"darkTheme\":false}",
-      "uiStateJSON": "{}",
-      "version": 1,
-      "timeRestore": false,
       "kibanaSavedObjectMeta": {
         "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}}}]}"
       }
@@ -93,9 +93,9 @@
       "title": "OpenSCAP",
       "hits": 0,
       "description": "",
-      "panelsJSON": "[{\"col\":10,\"id\":\"OSCAP-Errors:-History\",\"panelIndex\":23,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":10,\"id\":\"OSCAP-Wodle-Errors\",\"panelIndex\":31,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Profiles\",\"panelIndex\":33,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Agents\",\"panelIndex\":34,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Score-of-scans\",\"panelIndex\":35,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Severity-of-rules\",\"panelIndex\":36,\"row\":5,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Result-of-rules\",\"panelIndex\":37,\"row\":7,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Scans:-Score-average\",\"panelIndex\":38,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Scans-History\",\"panelIndex\":39,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Top-20-failed-rules\",\"panelIndex\":40,\"row\":5,\"size_x\":9,\"size_y\":4,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Content\",\"panelIndex\":46,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"id\":\"OSCAP-Scans\",\"type\":\"search\",\"panelIndex\":47,\"size_x\":12,\"size_y\":3,\"col\":1,\"row\":9,\"columns\":[\"AgentName\",\"content\",\"profile_title\",\"score\"],\"sort\":[\"@timestamp\",\"desc\"]},{\"id\":\"OSCAP-Rules\",\"type\":\"search\",\"panelIndex\":48,\"size_x\":12,\"size_y\":3,\"col\":1,\"row\":12,\"columns\":[\"AgentName\",\"content\",\"title\",\"profile_title\",\"result\",\"reference\",\"rule.description\",\"severity\"],\"sort\":[\"@timestamp\",\"desc\"]}]",
+      "panelsJSON": "[{\"col\":4,\"id\":\"OSCAP-Profiles\",\"panelIndex\":33,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Agents\",\"panelIndex\":34,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Scans:-Score-average\",\"panelIndex\":38,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Content\",\"panelIndex\":46,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"columns\":[\"AgentName\",\"oscap.content\",\"oscap.profile.title\",\"oscap.score\"],\"id\":\"OSCAP-Scans\",\"panelIndex\":47,\"row\":9,\"size_x\":12,\"size_y\":3,\"sort\":[\"@timestamp\",\"desc\"],\"type\":\"search\"},{\"col\":1,\"id\":\"OSCAP-Checks:-Result\",\"panelIndex\":49,\"row\":5,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Checks:-Severity\",\"panelIndex\":50,\"row\":7,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":10,\"id\":\"OSCAP-Errors\",\"panelIndex\":51,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":10,\"id\":\"OSCAP-Errors:-History\",\"panelIndex\":52,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Scans:-History\",\"panelIndex\":53,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Scans:-Score-ranges\",\"panelIndex\":54,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Top-20-failed-checks\",\"panelIndex\":55,\"row\":5,\"size_x\":4,\"size_y\":4,\"type\":\"visualization\"},{\"id\":\"OSCAP-Top-20-failed-checks:-Details\",\"type\":\"visualization\",\"panelIndex\":57,\"size_x\":5,\"size_y\":4,\"col\":8,\"row\":5},{\"id\":\"OSCAP-Checks\",\"type\":\"search\",\"panelIndex\":58,\"size_x\":12,\"size_y\":4,\"col\":1,\"row\":12,\"columns\":[\"AgentName\",\"oscap.content\",\"oscap.profile.title\",\"oscap.check.title\",\"oscap.check.result\",\"oscap.check.reference\",\"oscap.check.severity\"],\"sort\":[\"@timestamp\",\"desc\"]}]",
       "optionsJSON": "{\"darkTheme\":false}",
-      "uiStateJSON": "{\"P-35\":{\"vis\":{\"legendOpen\":false}},\"P-36\":{\"vis\":{\"legendOpen\":false}},\"P-37\":{\"vis\":{\"legendOpen\":false}},\"P-38\":{\"vis\":{\"legendOpen\":false}},\"P-39\":{\"vis\":{\"legendOpen\":false}},\"P-40\":{\"vis\":{\"legendOpen\":true}}}",
+      "uiStateJSON": "{\"P-38\":{\"vis\":{\"legendOpen\":false}},\"P-49\":{\"vis\":{\"legendOpen\":false}},\"P-50\":{\"vis\":{\"legendOpen\":false}},\"P-53\":{\"vis\":{\"legendOpen\":false}},\"P-54\":{\"vis\":{\"legendOpen\":false}},\"P-34\":{\"vis\":{\"colors\":{\"Redhat6.4\":\"#6ED0E0\"}}},\"P-57\":{\"vis\":{\"params\":{\"sort\":{\"columnIndex\":null,\"direction\":null}}}}}",
       "version": 1,
       "timeRestore": false,
       "kibanaSavedObjectMeta": {
@@ -254,9 +254,9 @@
       "hits": 0,
       "columns": [
         "AgentName",
-        "content",
-        "profile_title",
-        "score"
+        "oscap.content",
+        "oscap.profile.title",
+        "oscap.score"
       ],
       "sort": [
         "@timestamp",
@@ -269,21 +269,20 @@
     }
   },
   {
-    "_id": "OSCAP-Rules",
+    "_id": "OSCAP-Checks",
     "_type": "search",
     "_source": {
-      "title": "OSCAP Rules",
+      "title": "OSCAP Checks",
       "description": "",
       "hits": 0,
       "columns": [
         "AgentName",
-        "content",
-        "title",
-        "profile_title",
-        "result",
-        "reference",
-        "rule.description",
-        "severity"
+        "oscap.content",
+        "oscap.profile.title",
+        "oscap.check.title",
+        "oscap.check.result",
+        "oscap.check.reference",
+        "oscap.check.severity"
       ],
       "sort": [
         "@timestamp",
@@ -408,11 +407,11 @@
     }
   },
   {
-    "_id": "FIM-Top-15-changed-groups",
+    "_id": "FIM-Top-15-new-groups",
     "_type": "visualization",
     "_source": {
-      "title": "FIM Top 15 changed groups",
-      "visState": "{\"title\":\"FIM Top 15 changed groups\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":true},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"SyscheckFile.gname_before\",\"size\":15,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "title": "FIM Top 15 new groups",
+      "visState": "{\"title\":\"FIM Top 15 new groups\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":true},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"SyscheckFile.gname_after\",\"size\":15,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
       "uiStateJSON": "{}",
       "description": "",
       "version": 1,
@@ -422,11 +421,11 @@
     }
   },
   {
-    "_id": "FIM-Top-15-new-groups",
+    "_id": "FIM-Top-15-changed-groups",
     "_type": "visualization",
     "_source": {
-      "title": "FIM Top 15 new groups",
-      "visState": "{\"title\":\"FIM Top 15 new groups\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":true},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"SyscheckFile.gname_after\",\"size\":15,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "title": "FIM Top 15 changed groups",
+      "visState": "{\"title\":\"FIM Top 15 changed groups\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":true},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"SyscheckFile.gname_before\",\"size\":15,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
       "uiStateJSON": "{}",
       "description": "",
       "version": 1,
@@ -660,20 +659,6 @@
     }
   },
   {
-    "_id": "CIS:-By-time",
-    "_type": "visualization",
-    "_source": {
-      "title": "CIS: By time",
-      "visState": "{\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":false,\"mode\":\"stacked\",\"defaultYExtents\":false,\"scale\":\"linear\",\"times\":[],\"addTimeMarker\":false,\"setYExtents\":false,\"yAxis\":{}},\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}},{\"id\":\"3\",\"type\":\"filters\",\"schema\":\"group\",\"params\":{\"filters\":[{\"input\":{\"query\":{\"query_string\":{\"query\":\"_exists_:rule.CIS\",\"analyze_wildcard\":true}}}}]}}],\"listeners\":{},\"title\":\"CIS: By time\"}",
-      "uiStateJSON": "{}",
-      "description": "",
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}},\"filter\":[]}"
-      }
-    }
-  },
-  {
     "_id": "PM-Alerts-over-time",
     "_type": "visualization",
     "_source": {
@@ -684,6 +669,20 @@
       "version": 1,
       "kibanaSavedObjectMeta": {
         "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
+    "_id": "CIS:-By-time",
+    "_type": "visualization",
+    "_source": {
+      "title": "CIS: By time",
+      "visState": "{\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":false,\"mode\":\"stacked\",\"defaultYExtents\":false,\"scale\":\"linear\",\"times\":[],\"addTimeMarker\":false,\"setYExtents\":false,\"yAxis\":{}},\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}},{\"id\":\"3\",\"type\":\"filters\",\"schema\":\"group\",\"params\":{\"filters\":[{\"input\":{\"query\":{\"query_string\":{\"query\":\"_exists_:rule.CIS\",\"analyze_wildcard\":true}}}}]}}],\"listeners\":{},\"title\":\"CIS: By time\"}",
+      "uiStateJSON": "{}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}},\"filter\":[]}"
       }
     }
   },
@@ -1122,62 +1121,6 @@
     }
   },
   {
-    "_id": "OSCAP-Wodle-Errors",
-    "_type": "visualization",
-    "_source": {
-      "title": "OSCAP Wodle Errors",
-      "visState": "{\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false},\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"rule.description\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{},\"title\":\"OSCAP Wodle Errors\"}",
-      "uiStateJSON": "{}",
-      "description": "",
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"errors\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
-      }
-    }
-  },
-  {
-    "_id": "OSCAP-Errors:-History",
-    "_type": "visualization",
-    "_source": {
-      "title": "OSCAP Wodle Errors: History",
-      "visState": "{\"type\":\"line\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"showCircles\":true,\"smoothLines\":false,\"interpolate\":\"linear\",\"scale\":\"linear\",\"drawLinesBetweenPoints\":true,\"radiusRatio\":9,\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{}},\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}}],\"listeners\":{},\"title\":\"OSCAP Wodle Errors: History\"}",
-      "uiStateJSON": "{}",
-      "description": "",
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"errors\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
-      }
-    }
-  },
-  {
-    "_id": "OSCAP-Score-of-scans",
-    "_type": "visualization",
-    "_source": {
-      "title": "OSCAP Score of scans",
-      "visState": "{\"title\":\"OSCAP Score of scans\",\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"scale\":\"linear\",\"mode\":\"stacked\",\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{}},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"range\",\"schema\":\"segment\",\"params\":{\"field\":\"score\",\"ranges\":[{\"from\":0,\"to\":15},{\"from\":15.01,\"to\":30},{\"from\":30.01,\"to\":50},{\"from\":50.01,\"to\":70},{\"from\":70.01,\"to\":90},{\"from\":90.01,\"to\":100}]}}],\"listeners\":{}}",
-      "uiStateJSON": "{}",
-      "description": "",
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-report\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
-      }
-    }
-  },
-  {
-    "_id": "OSCAP-Severity-of-rules",
-    "_type": "visualization",
-    "_source": {
-      "title": "OSCAP Severity of rules",
-      "visState": "{\"title\":\"OSCAP Severity of rules\",\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"scale\":\"linear\",\"mode\":\"stacked\",\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{}},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"severity\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
-      "uiStateJSON": "{}",
-      "description": "",
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-result\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
-      }
-    }
-  },
-  {
     "_id": "OSCAP-Agents",
     "_type": "visualization",
     "_source": {
@@ -1192,39 +1135,11 @@
     }
   },
   {
-    "_id": "OSCAP-Result-of-rules",
-    "_type": "visualization",
-    "_source": {
-      "title": "OSCAP Result of rules",
-      "visState": "{\"title\":\"OSCAP Result of rules\",\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"scale\":\"linear\",\"mode\":\"stacked\",\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{}},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"result\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
-      "uiStateJSON": "{}",
-      "description": "",
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-result\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
-      }
-    }
-  },
-  {
     "_id": "OSCAP-Scans:-Score-average",
     "_type": "visualization",
     "_source": {
       "title": "OSCAP Scans: Score average",
-      "visState": "{\"title\":\"OSCAP Scans: Score average\",\"type\":\"line\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"showCircles\":true,\"smoothLines\":false,\"interpolate\":\"linear\",\"scale\":\"linear\",\"drawLinesBetweenPoints\":true,\"radiusRatio\":9,\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{}},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"avg\",\"schema\":\"metric\",\"params\":{\"field\":\"score\"}},{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}}],\"listeners\":{}}",
-      "uiStateJSON": "{}",
-      "description": "",
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-report\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
-      }
-    }
-  },
-  {
-    "_id": "OSCAP-Scans-History",
-    "_type": "visualization",
-    "_source": {
-      "title": "OSCAP Scans History",
-      "visState": "{\"title\":\"OSCAP Scans History\",\"type\":\"line\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"showCircles\":true,\"smoothLines\":false,\"interpolate\":\"linear\",\"scale\":\"linear\",\"drawLinesBetweenPoints\":true,\"radiusRatio\":9,\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{}},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}}],\"listeners\":{}}",
+      "visState": "{\"title\":\"OSCAP Scans: Score average\",\"type\":\"line\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"showCircles\":true,\"smoothLines\":false,\"interpolate\":\"linear\",\"scale\":\"linear\",\"drawLinesBetweenPoints\":true,\"radiusRatio\":9,\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{}},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"avg\",\"schema\":\"metric\",\"params\":{\"field\":\"oscap.score\"}},{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}}],\"listeners\":{}}",
       "uiStateJSON": "{}",
       "description": "",
       "version": 1,
@@ -1238,26 +1153,12 @@
     "_type": "visualization",
     "_source": {
       "title": "OSCAP Profiles",
-      "visState": "{\"title\":\"OSCAP Profiles\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false,\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"3\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"profile_title\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "visState": "{\"title\":\"OSCAP Profiles\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false,\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"3\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"oscap.profile.title\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
       "uiStateJSON": "{}",
       "description": "",
       "version": 1,
       "kibanaSavedObjectMeta": {
         "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND NOT rule.groups:\\\"syslog\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
-      }
-    }
-  },
-  {
-    "_id": "OSCAP-Top-20-failed-rules",
-    "_type": "visualization",
-    "_source": {
-      "title": "OSCAP Top 20 failed rules",
-      "visState": "{\"title\":\"OSCAP Top 20 failed rules\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"title\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
-      "uiStateJSON": "{}",
-      "description": "",
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-result\\\" AND result:\\\"fail\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       }
     }
   },
@@ -1266,7 +1167,7 @@
     "_type": "visualization",
     "_source": {
       "title": "OSCAP Benchmarks",
-      "visState": "{\"title\":\"OSCAP Benchmarks\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false,\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"content\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "visState": "{\"title\":\"OSCAP Benchmarks\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false,\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"oscap.content\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
       "uiStateJSON": "{}",
       "description": "",
       "version": 1,
@@ -1276,16 +1177,128 @@
     }
   },
   {
+    "_id": "OSCAP-Scans:-History",
+    "_type": "visualization",
+    "_source": {
+      "title": "OSCAP Scans: History",
+      "visState": "{\"title\":\"OSCAP Scans: History\",\"type\":\"line\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"showCircles\":true,\"smoothLines\":false,\"interpolate\":\"linear\",\"scale\":\"linear\",\"drawLinesBetweenPoints\":true,\"radiusRatio\":9,\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{},\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}}],\"listeners\":{}}",
+      "uiStateJSON": "{}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-report\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
+    "_id": "OSCAP-Scans:-Score-ranges",
+    "_type": "visualization",
+    "_source": {
+      "title": "OSCAP Scans: Score ranges",
+      "visState": "{\"title\":\"OSCAP Scans: Score ranges\",\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"scale\":\"linear\",\"mode\":\"stacked\",\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{},\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"range\",\"schema\":\"segment\",\"params\":{\"field\":\"oscap.score\",\"ranges\":[{\"from\":0,\"to\":15},{\"from\":15.01,\"to\":30},{\"from\":30.01,\"to\":50},{\"from\":50.01,\"to\":70},{\"from\":70.01,\"to\":90},{\"from\":90.01,\"to\":100}]}}],\"listeners\":{}}",
+      "uiStateJSON": "{}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-report\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
     "_id": "OSCAP-Content",
     "_type": "visualization",
     "_source": {
       "title": "OSCAP Content",
-      "visState": "{\"title\":\"OSCAP Content\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false,\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"content\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "visState": "{\"title\":\"OSCAP Content\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false,\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"oscap.content\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
       "uiStateJSON": "{}",
       "description": "",
       "version": 1,
       "kibanaSavedObjectMeta": {
         "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND NOT rule.groups:\\\"syslog\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
+    "_id": "OSCAP-Errors",
+    "_type": "visualization",
+    "_source": {
+      "title": "OSCAP Errors",
+      "visState": "{\"title\":\"OSCAP Errors\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false,\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"rule.description\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "uiStateJSON": "{}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"errors\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
+    "_id": "OSCAP-Errors:-History",
+    "_type": "visualization",
+    "_source": {
+      "title": "OSCAP Errors: History",
+      "visState": "{\"title\":\"OSCAP Errors: History\",\"type\":\"line\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"showCircles\":true,\"smoothLines\":false,\"interpolate\":\"linear\",\"scale\":\"linear\",\"drawLinesBetweenPoints\":true,\"radiusRatio\":9,\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{},\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}}],\"listeners\":{}}",
+      "uiStateJSON": "{}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"errors\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
+    "_id": "OSCAP-Checks:-Severity",
+    "_type": "visualization",
+    "_source": {
+      "title": "OSCAP Checks: Severity",
+      "visState": "{\"title\":\"OSCAP Checks: Severity\",\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"scale\":\"linear\",\"mode\":\"stacked\",\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{},\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"oscap.check.severity\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "uiStateJSON": "{}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-result\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
+    "_id": "OSCAP-Checks:-Result",
+    "_type": "visualization",
+    "_source": {
+      "title": "OSCAP Checks: Result",
+      "visState": "{\"title\":\"OSCAP Checks: Result\",\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"scale\":\"linear\",\"mode\":\"stacked\",\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{},\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"oscap.check.result\",\"size\":10000,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "uiStateJSON": "{}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-result\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
+    "_id": "OSCAP-Top-20-failed-checks",
+    "_type": "visualization",
+    "_source": {
+      "title": "OSCAP Top 20 failed checks",
+      "visState": "{\"title\":\"OSCAP Top 20 failed checks\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false,\"legendPosition\":\"right\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"oscap.check.title\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "uiStateJSON": "{}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-result\\\" AND oscap.check.result:\\\"fail\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
+    "_id": "OSCAP-Top-20-failed-checks:-Details",
+    "_type": "visualization",
+    "_source": {
+      "title": "OSCAP Top 20 failed checks: Details",
+      "visState": "{\"title\":\"OSCAP Top 20 failed checks: Details\",\"type\":\"table\",\"params\":{\"perPage\":10,\"showPartialRows\":false,\"showMeticsAtAllLevels\":false,\"sort\":{\"columnIndex\":null,\"direction\":null},\"showTotal\":false,\"totalFunc\":\"sum\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.check.title\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"3\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.check.severity\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"4\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.check.reference\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"5\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.content\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"6\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.profile.title\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "uiStateJSON": "{\"vis\":{\"params\":{\"sort\":{\"columnIndex\":null,\"direction\":null}}}}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-result\\\" AND oscap.check.result:\\\"fail\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       }
     }
   }
