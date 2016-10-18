@@ -2,7 +2,7 @@
 ################################################################################
 # Wazuh wrapper for OpenSCAP
 # Wazuh Inc.
-# Oct 11, 2016
+# Oct 18, 2016
 ################################################################################
 
 from re import compile
@@ -138,9 +138,9 @@ def oscap(profile=None):
 
                 # Adding file
                 if 'msg: "xccdf-overview"' in line:
-                    new_line = line.replace('", benchmark-id: "', '", content: "{0}", benchmark-id: "'.format(content_filename))
+                    new_line = line.replace('oscap: msg: "xccdf-overview",', 'oscap: msg: "xccdf-overview", content: "{0}",'.format(content_filename))
                 else:
-                    new_line = line.replace('", title: "', '", content: "{0}", title: "'.format(content_filename))
+                    new_line = line.replace('oscap: msg: "xccdf-result",', 'oscap: msg: "xccdf-result", content: "{0}",'.format(content_filename))
 
 
                 print(new_line)
@@ -157,7 +157,7 @@ def oscap(profile=None):
                 total += 1
 
                 # Adding file
-                new_line = line.replace('", id: "', '", content: "{0}", id: "'.format(content_filename))
+                new_line = line.replace('oscap: msg: "oval-result"', 'oscap: msg: "oval-result", content: "{0}"'.format(content_filename))
 
                 class1 = ['class: "compliance"', 'class: "patch"', 'class: "inventory"']
                 class2 = ['class: "vulnerability"']
