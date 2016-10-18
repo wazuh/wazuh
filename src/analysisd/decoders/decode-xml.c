@@ -536,8 +536,7 @@ int ReadDecodeXML(const char *file)
 
                     if (!strcmp(word, "dstuser")) {
                         pi->fts |= FTS_DSTUSER;
-                    }
-                    if (!strcmp(word, "user")) {
+                    } else if (!strcmp(word, "user")) {
                         pi->fts |= FTS_DSTUSER;
                     } else if (!strcmp(word, "srcuser")) {
                         pi->fts |= FTS_SRCUSER;
