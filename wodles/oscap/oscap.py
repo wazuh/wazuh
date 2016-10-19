@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 ################################################################################
 # Wazuh wrapper for OpenSCAP
 # Wazuh Inc.
