@@ -31,12 +31,12 @@ if {[string compare $hostname "test"] == 0} {
 }
 
 # Read the password list
-if [catch {
-    set in [open "$passlist" r]
-} loc_error] {
+if {! [file isfile $passlist]} {
     send_user "ERROR: Password list not present (use \"register_host\" first).\n"
     exit 1;
 }
+
+set in [open "|base64 -d $passlist"]
 
 while {[gets $in line] != -1} {
         set me [string first "|" $line]
