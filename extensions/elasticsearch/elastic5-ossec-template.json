@@ -343,60 +343,69 @@
         "type": {
           "type": "text"
         },
-        "oscap": {
-          "properties": {
-            "score": {
-              "type": "double"
-            }
-          }
-        },
-        "scan_id": {
-          "type": "keyword",
-          "doc_values": "true"
-        },
-        "policy": {
-          "type": "keyword",
-          "doc_values": "true"
-        },
-        "profile": {
-          "type": "keyword",
-          "doc_values": "true"
-        },
-        "severity_high": {
-          "type": "long",
-          "doc_values": "true"
-        },
-        "severity_medium": {
-          "type": "long",
-          "doc_values": "true"
-        },
-        "severity_low": {
-          "type": "long",
-          "doc_values": "true"
-        },
-        "return_code": {
-          "type": "long",
-          "doc_values": "true"
-        },
-        "oscap_rule_id": {
-          "type": "keyword",
-          "doc_values": "true"
-        },
-        "result": {
-          "type": "keyword",
-          "doc_values": "true"
-        },
-        "ident": {
-          "type": "keyword",
-          "doc_values": "true"
-        },
-        "severity": {
-          "type": "keyword",
-          "doc_values": "true"
-        },
         "title": {
           "type": "keyword",
           "doc_values": "true"
+        },
+        "oscap": {
+            "properties": {
+                "content": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "benchmark.id": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "profile.title": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "profile.id": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "score": {
+                    "type": "double",
+                    "doc_values": "true"
+                },
+                "check.title": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "check.id": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "check.result": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "check.severity": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "check.description": {
+                    "type": "text"
+                },
+                "check.rationale": {
+                    "type": "text"
+                },
+                "check.references": {
+                    "type": "text"
+                },
+                "check.identifiers": {
+                    "type": "text"
+                },
+                "check.oval.id": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "return_code": {
+                    "type": "long",
+                    "doc_values": "true"
+                }
+            }
         }
       }
     }
