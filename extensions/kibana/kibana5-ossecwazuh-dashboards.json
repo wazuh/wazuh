@@ -51,21 +51,19 @@
     }
   },
   {
-    "_id": "OSSEC-Alerts",
+    "_id": "OpenSCAP",
     "_type": "dashboard",
     "_source": {
-      "title": "OSSEC Alerts",
+      "title": "OpenSCAP",
       "hits": 0,
       "description": "",
-      "panelsJSON": "[{\"col\":7,\"id\":\"Total-Alerts-Time-Bar\",\"panelIndex\":5,\"row\":4,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"Signature:-Area-Chart\",\"panelIndex\":8,\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"Stacked-Groups\",\"panelIndex\":11,\"row\":4,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":7,\"id\":\"Alert-level-evolution\",\"panelIndex\":12,\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"id\":\"Alerts:-Geolocation\",\"type\":\"visualization\",\"panelIndex\":13,\"size_x\":6,\"size_y\":4,\"col\":1,\"row\":7},{\"id\":\"Agents-total-alerts\",\"type\":\"visualization\",\"panelIndex\":14,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":7},{\"id\":\"Pie-Chart:-Signature\",\"type\":\"visualization\",\"panelIndex\":15,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":7},{\"id\":\"Alerts:-By-country\",\"type\":\"visualization\",\"panelIndex\":16,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":9},{\"id\":\"Alerts:-Top-5-Groups\",\"type\":\"visualization\",\"panelIndex\":17,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":9},{\"id\":\"Signature-counts\",\"type\":\"visualization\",\"panelIndex\":18,\"size_x\":6,\"size_y\":2,\"col\":1,\"row\":11},{\"id\":\"Alerts-level-greater-than-9\",\"type\":\"search\",\"panelIndex\":19,\"size_x\":6,\"size_y\":2,\"col\":7,\"row\":11,\"columns\":[\"AgentName\",\"rule.AlertLevel\",\"rule.description\"],\"sort\":[\"@timestamp\",\"desc\"]},{\"id\":\"Last-alerts\",\"type\":\"search\",\"panelIndex\":20,\"size_x\":12,\"size_y\":4,\"col\":1,\"row\":13,\"columns\":[\"AgentName\",\"AgentIP\",\"rule.sidid\",\"rule.AlertLevel\",\"rule.description\",\"full_log\"],\"sort\":[\"@timestamp\",\"desc\"]}]",
+      "panelsJSON": "[{\"col\":4,\"id\":\"OSCAP-Profiles\",\"panelIndex\":33,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Agents\",\"panelIndex\":34,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Scans:-Score-average\",\"panelIndex\":38,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Content\",\"panelIndex\":46,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"columns\":[\"AgentName\",\"oscap.content\",\"oscap.profile.title\",\"oscap.score\"],\"id\":\"OSCAP-Scans\",\"panelIndex\":47,\"row\":9,\"size_x\":12,\"size_y\":3,\"sort\":[\"@timestamp\",\"desc\"],\"type\":\"search\"},{\"col\":1,\"id\":\"OSCAP-Checks:-Result\",\"panelIndex\":49,\"row\":5,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Checks:-Severity\",\"panelIndex\":50,\"row\":7,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":10,\"id\":\"OSCAP-Errors\",\"panelIndex\":51,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":10,\"id\":\"OSCAP-Errors:-History\",\"panelIndex\":52,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Scans:-History\",\"panelIndex\":53,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Scans:-Score-ranges\",\"panelIndex\":54,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Top-20-failed-checks\",\"panelIndex\":55,\"row\":5,\"size_x\":4,\"size_y\":4,\"type\":\"visualization\"},{\"id\":\"OSCAP-Top-20-failed-checks:-Details\",\"type\":\"visualization\",\"panelIndex\":57,\"size_x\":5,\"size_y\":4,\"col\":8,\"row\":5},{\"id\":\"OSCAP-Checks\",\"type\":\"search\",\"panelIndex\":58,\"size_x\":12,\"size_y\":4,\"col\":1,\"row\":12,\"columns\":[\"AgentName\",\"oscap.content\",\"oscap.profile.title\",\"oscap.check.title\",\"oscap.check.result\",\"oscap.check.references\",\"oscap.check.severity\"],\"sort\":[\"@timestamp\",\"desc\"]}]",
       "optionsJSON": "{\"darkTheme\":false}",
-      "uiStateJSON": "{\"P-11\":{\"vis\":{\"legendOpen\":true}}}",
+      "uiStateJSON": "{\"P-38\":{\"vis\":{\"legendOpen\":false}},\"P-49\":{\"vis\":{\"legendOpen\":false}},\"P-50\":{\"vis\":{\"legendOpen\":false}},\"P-53\":{\"vis\":{\"legendOpen\":false}},\"P-54\":{\"vis\":{\"legendOpen\":false}},\"P-34\":{\"vis\":{\"colors\":{\"Redhat6.4\":\"#6ED0E0\"}}},\"P-57\":{\"vis\":{\"params\":{\"sort\":{\"columnIndex\":null,\"direction\":null}}}}}",
       "version": 1,
-      "timeRestore": true,
-      "timeTo": "now",
-      "timeFrom": "now-24h",
+      "timeRestore": false,
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}}}]}"
+        "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}}}]}"
       }
     }
   },
@@ -87,19 +85,21 @@
     }
   },
   {
-    "_id": "OpenSCAP",
+    "_id": "OSSEC-Alerts",
     "_type": "dashboard",
     "_source": {
-      "title": "OpenSCAP",
+      "title": "OSSEC Alerts",
       "hits": 0,
       "description": "",
-      "panelsJSON": "[{\"col\":4,\"id\":\"OSCAP-Profiles\",\"panelIndex\":33,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Agents\",\"panelIndex\":34,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Scans:-Score-average\",\"panelIndex\":38,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Content\",\"panelIndex\":46,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"columns\":[\"AgentName\",\"oscap.content\",\"oscap.profile.title\",\"oscap.score\"],\"id\":\"OSCAP-Scans\",\"panelIndex\":47,\"row\":9,\"size_x\":12,\"size_y\":3,\"sort\":[\"@timestamp\",\"desc\"],\"type\":\"search\"},{\"col\":1,\"id\":\"OSCAP-Checks:-Result\",\"panelIndex\":49,\"row\":5,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Checks:-Severity\",\"panelIndex\":50,\"row\":7,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":10,\"id\":\"OSCAP-Errors\",\"panelIndex\":51,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":10,\"id\":\"OSCAP-Errors:-History\",\"panelIndex\":52,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Scans:-History\",\"panelIndex\":53,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Scans:-Score-ranges\",\"panelIndex\":54,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Top-20-failed-checks\",\"panelIndex\":55,\"row\":5,\"size_x\":4,\"size_y\":4,\"type\":\"visualization\"},{\"id\":\"OSCAP-Top-20-failed-checks:-Details\",\"type\":\"visualization\",\"panelIndex\":57,\"size_x\":5,\"size_y\":4,\"col\":8,\"row\":5},{\"id\":\"OSCAP-Checks\",\"type\":\"search\",\"panelIndex\":58,\"size_x\":12,\"size_y\":4,\"col\":1,\"row\":12,\"columns\":[\"AgentName\",\"oscap.content\",\"oscap.profile.title\",\"oscap.check.title\",\"oscap.check.result\",\"oscap.check.reference\",\"oscap.check.severity\"],\"sort\":[\"@timestamp\",\"desc\"]}]",
+      "panelsJSON": "[{\"col\":7,\"id\":\"Total-Alerts-Time-Bar\",\"panelIndex\":5,\"row\":4,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"Signature:-Area-Chart\",\"panelIndex\":8,\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"Stacked-Groups\",\"panelIndex\":11,\"row\":4,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":7,\"id\":\"Alert-level-evolution\",\"panelIndex\":12,\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"id\":\"Alerts:-Geolocation\",\"type\":\"visualization\",\"panelIndex\":13,\"size_x\":6,\"size_y\":4,\"col\":1,\"row\":7},{\"id\":\"Agents-total-alerts\",\"type\":\"visualization\",\"panelIndex\":14,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":7},{\"id\":\"Pie-Chart:-Signature\",\"type\":\"visualization\",\"panelIndex\":15,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":7},{\"id\":\"Alerts:-By-country\",\"type\":\"visualization\",\"panelIndex\":16,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":9},{\"id\":\"Alerts:-Top-5-Groups\",\"type\":\"visualization\",\"panelIndex\":17,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":9},{\"id\":\"Signature-counts\",\"type\":\"visualization\",\"panelIndex\":18,\"size_x\":6,\"size_y\":2,\"col\":1,\"row\":11},{\"id\":\"Alerts-level-greater-than-9\",\"type\":\"search\",\"panelIndex\":19,\"size_x\":6,\"size_y\":2,\"col\":7,\"row\":11,\"columns\":[\"AgentName\",\"rule.AlertLevel\",\"rule.description\"],\"sort\":[\"@timestamp\",\"desc\"]},{\"id\":\"Last-alerts\",\"type\":\"search\",\"panelIndex\":20,\"size_x\":12,\"size_y\":4,\"col\":1,\"row\":13,\"columns\":[\"AgentName\",\"AgentIP\",\"rule.sidid\",\"rule.AlertLevel\",\"rule.description\",\"full_log\"],\"sort\":[\"@timestamp\",\"desc\"]}]",
       "optionsJSON": "{\"darkTheme\":false}",
-      "uiStateJSON": "{\"P-38\":{\"vis\":{\"legendOpen\":false}},\"P-49\":{\"vis\":{\"legendOpen\":false}},\"P-50\":{\"vis\":{\"legendOpen\":false}},\"P-53\":{\"vis\":{\"legendOpen\":false}},\"P-54\":{\"vis\":{\"legendOpen\":false}},\"P-34\":{\"vis\":{\"colors\":{\"Redhat6.4\":\"#6ED0E0\"}}},\"P-57\":{\"vis\":{\"params\":{\"sort\":{\"columnIndex\":null,\"direction\":null}}}}}",
+      "uiStateJSON": "{\"P-11\":{\"vis\":{\"legendOpen\":true}}}",
       "version": 1,
-      "timeRestore": false,
+      "timeRestore": true,
+      "timeTo": "now",
+      "timeFrom": "now-24h",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}}}]}"
+        "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}}}]}"
       }
     }
   },
@@ -281,7 +281,7 @@
         "oscap.profile.title",
         "oscap.check.title",
         "oscap.check.result",
-        "oscap.check.reference",
+        "oscap.check.references",
         "oscap.check.severity"
       ],
       "sort": [
@@ -701,11 +701,11 @@
     }
   },
   {
-    "_id": "PM-Top-10-Type-of-alerts",
+    "_id": "PM-Top-10-CIS-Requirements",
     "_type": "visualization",
     "_source": {
-      "title": "PM Top 10 Type of alerts",
-      "visState": "{\"title\":\"PM Top 10 Type of alerts\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"rule.description\",\"size\":10,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "title": "PM Top 10 CIS Requirements",
+      "visState": "{\"title\":\"PM Top 10 CIS Requirements\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":true},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"rule.CIS\",\"size\":10,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
       "uiStateJSON": "{}",
       "description": "",
       "version": 1,
@@ -715,11 +715,11 @@
     }
   },
   {
-    "_id": "PM-Top-10-CIS-Requirements",
+    "_id": "PM-Top-10-Type-of-alerts",
     "_type": "visualization",
     "_source": {
-      "title": "PM Top 10 CIS Requirements",
-      "visState": "{\"title\":\"PM Top 10 CIS Requirements\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":true},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"rule.CIS\",\"size\":10,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "title": "PM Top 10 Type of alerts",
+      "visState": "{\"title\":\"PM Top 10 Type of alerts\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"rule.description\",\"size\":10,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
       "uiStateJSON": "{}",
       "description": "",
       "version": 1,
@@ -757,20 +757,6 @@
     }
   },
   {
-    "_id": "PM-Top-10-Alerts",
-    "_type": "visualization",
-    "_source": {
-      "title": "PM Top 10 Alerts",
-      "visState": "{\"title\":\"PM Top 10 Alerts\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"title\",\"size\":10,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
-      "uiStateJSON": "{}",
-      "description": "",
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
-      }
-    }
-  },
-  {
     "_id": "FIM-Alerts-over-time",
     "_type": "visualization",
     "_source": {
@@ -781,6 +767,20 @@
       "version": 1,
       "kibanaSavedObjectMeta": {
         "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
+    "_id": "PM-Top-10-Alerts",
+    "_type": "visualization",
+    "_source": {
+      "title": "PM Top 10 Alerts",
+      "visState": "{\"title\":\"PM Top 10 Alerts\",\"type\":\"pie\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"isDonut\":false},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"title\",\"size\":10,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "uiStateJSON": "{}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"ossec-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       }
     }
   },
@@ -953,11 +953,11 @@
     }
   },
   {
-    "_id": "Stacked-Groups",
+    "_id": "Total-Alerts-Time-Bar",
     "_type": "visualization",
     "_source": {
-      "title": "Stacked Groups",
-      "visState": "{\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"mode\":\"stacked\",\"defaultYExtents\":false},\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"min_doc_count\":1,\"extended_bounds\":{}}},{\"id\":\"3\",\"type\":\"terms\",\"schema\":\"group\",\"params\":{\"field\":\"rule.groups\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{},\"title\":\"Stacked Groups\"}",
+      "title": "Total Alerts Time Bar",
+      "visState": "{\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":false,\"mode\":\"stacked\",\"defaultYExtents\":false},\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"minute\",\"min_doc_count\":1,\"extended_bounds\":{}}}],\"listeners\":{},\"title\":\"Total Alerts Time Bar\"}",
       "uiStateJSON": "{}",
       "description": "",
       "version": 1,
@@ -967,11 +967,11 @@
     }
   },
   {
-    "_id": "Total-Alerts-Time-Bar",
+    "_id": "Stacked-Groups",
     "_type": "visualization",
     "_source": {
-      "title": "Total Alerts Time Bar",
-      "visState": "{\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":false,\"mode\":\"stacked\",\"defaultYExtents\":false},\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"minute\",\"min_doc_count\":1,\"extended_bounds\":{}}}],\"listeners\":{},\"title\":\"Total Alerts Time Bar\"}",
+      "title": "Stacked Groups",
+      "visState": "{\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"mode\":\"stacked\",\"defaultYExtents\":false},\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"min_doc_count\":1,\"extended_bounds\":{}}},{\"id\":\"3\",\"type\":\"terms\",\"schema\":\"group\",\"params\":{\"field\":\"rule.groups\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{},\"title\":\"Stacked Groups\"}",
       "uiStateJSON": "{}",
       "description": "",
       "version": 1,
@@ -1293,7 +1293,7 @@
     "_type": "visualization",
     "_source": {
       "title": "OSCAP Top 20 failed checks: Details",
-      "visState": "{\"title\":\"OSCAP Top 20 failed checks: Details\",\"type\":\"table\",\"params\":{\"perPage\":10,\"showPartialRows\":false,\"showMeticsAtAllLevels\":false,\"sort\":{\"columnIndex\":null,\"direction\":null},\"showTotal\":false,\"totalFunc\":\"sum\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.check.title\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"3\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.check.severity\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"4\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.check.reference\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"5\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.content\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"6\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.profile.title\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
+      "visState": "{\"title\":\"OSCAP Top 20 failed checks: Details\",\"type\":\"table\",\"params\":{\"perPage\":10,\"showPartialRows\":false,\"showMeticsAtAllLevels\":false,\"sort\":{\"columnIndex\":null,\"direction\":null},\"showTotal\":false,\"totalFunc\":\"sum\"},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.check.title\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"3\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.check.severity\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"5\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.content\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"6\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"oscap.profile.title\",\"size\":20,\"order\":\"desc\",\"orderBy\":\"1\"}}],\"listeners\":{}}",
       "uiStateJSON": "{\"vis\":{\"params\":{\"sort\":{\"columnIndex\":null,\"direction\":null}}}}",
       "description": "",
       "version": 1,
