@@ -187,15 +187,14 @@ void DecodeEvent(Eventinfo *lf)
                     regex_prev++;
                 }
 
-                lf->decoder_info = nnode;
-
                 for (i = 0; nnode->regex->sub_strings[i]; i++) {
-                    if (i >= Config.decoder_order_size) {
-                        ErrorExit("%s: ERROR: Regex has too many groups.", ARGV0);
+                    if (lf->nfields >= Config.decoder_order_size) {
+                        merror("%s: ERROR: Regex has too many groups.", ARGV0);
+                        return;
                     }
 
                     if (nnode->order[i])
-                        nnode->order[i](lf, nnode->regex->sub_strings[i], i);
+                        nnode->order[i](lf, nnode->regex->sub_strings[i], nnode->fields[i]);
                     else
                         /* We do not free any memory used above */
                         os_free(nnode->regex->sub_strings[i]);
@@ -230,23 +229,19 @@ void DecodeEvent(Eventinfo *lf)
 
 /* Find index of a dynamic field. Returns -1 if not found. */
 
-int FindField(const OSDecoderInfo *decoder, const char *name) {
+const char* FindField(const Eventinfo *lf, const char *key) {
     int i;
 
-    if (!decoder->fields)
-        return -1;
+    for (i = 0; i < lf->nfields; i++)
+        if (!strcasecmp(lf->fields[i].key, key))
+            return lf->fields[i].value;
 
-    for (i = 0; i < Config.decoder_order_size; i++)
-        if (decoder->fields[i])
-            if (strcasecmp(decoder->fields[i], name) == 0)
-                return i;
-
-    return -1;
+    return NULL;
 }
 
 /*** Event decoders ****/
 
-void *DstUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *DstUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -258,7 +253,7 @@ void *DstUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
     return (NULL);
 }
 
-void *SrcUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *SrcUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -270,7 +265,7 @@ void *SrcUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
     return (NULL);
 }
 
-void *SrcIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *SrcIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -294,7 +289,7 @@ void *SrcIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
     return (NULL);
 }
 
-void *DstIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *DstIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -318,7 +313,7 @@ void *DstIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
 
 }
 
-void *SrcPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *SrcPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -330,7 +325,7 @@ void *SrcPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
     return (NULL);
 }
 
-void *DstPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *DstPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -342,7 +337,7 @@ void *DstPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
     return (NULL);
 }
 
-void *Protocol_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *Protocol_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -354,7 +349,7 @@ void *Protocol_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
     return (NULL);
 }
 
-void *Action_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *Action_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -366,7 +361,7 @@ void *Action_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
     return (NULL);
 }
 
-void *ID_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *ID_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -378,7 +373,7 @@ void *ID_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
     return (NULL);
 }
 
-void *Url_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *Url_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -390,7 +385,7 @@ void *Url_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
     return (NULL);
 }
 
-void *Data_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *Data_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -402,7 +397,7 @@ void *Data_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
     return (NULL);
 }
 
-void *Status_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *Status_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -414,7 +409,7 @@ void *Status_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
     return (NULL);
 }
 
-void *SystemName_FP(Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *SystemName_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
@@ -426,19 +421,20 @@ void *SystemName_FP(Eventinfo *lf, char *field, __attribute__((unused)) int orde
     return (NULL);
 }
 
-void *DynamicField_FP(Eventinfo *lf, char *field, int order)
+void *DynamicField_FP(Eventinfo *lf, char *field, const char *order)
 {
 #ifdef TESTRULE
     if (!alert_only) {
-        print_out("       %s: '%s'", lf->decoder_info->fields[order], field);
+        print_out("       %s: '%s'", order, field);
     }
 #endif
 
-    lf->fields[order] = field;
+    lf->fields[lf->nfields].key = order;
+    lf->fields[lf->nfields++].value = field;
     return (NULL);
 }
 
-void *None_FP(__attribute__((unused)) Eventinfo *lf, char *field, __attribute__((unused)) int order)
+void *None_FP(__attribute__((unused)) Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
     free(field);
     return (NULL);

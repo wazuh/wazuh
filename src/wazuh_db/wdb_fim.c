@@ -221,7 +221,7 @@ void wdb_delete_fim_all() {
         for (i = 0; agents[i] >= 0; i++)
             wdb_delete_fim(agents[i]);
 
-            free(agents);
+        free(agents);
     }
 }
 

@@ -7,12 +7,12 @@
  * Foundation
  */
 
-#ifndef __MACH__
+#if !(defined(__MACH__) || defined(__FreeBSD__))
 #include <sys/epoll.h>
 #else
 #include <sys/types.h>
 #include <sys/event.h>
-#endif /* __MACH__ */
+#endif /* __MACH__ || __FreeBSD__ */
 
 #include "shared.h"
 #include "os_net/os_net.h"
@@ -32,7 +32,7 @@ void HandleSecure()
     netsize_t length;
     struct sockaddr_in peer_info;
 
-#ifdef __MACH__
+#if defined(__MACH__) || defined(__FreeBSD__)
     const struct timespec TS_ZERO = { 0, 0 };
     struct timespec ts_timeout = { EPOLL_MILLIS / 1000, (EPOLL_MILLIS % 1000) * 1000000 };
     struct timespec *p_timeout = EPOLL_MILLIS < 0 ? NULL : &ts_timeout;
@@ -41,7 +41,7 @@ void HandleSecure()
 #else
     int epoll_fd = 0;
     struct epoll_event request, *events;
-#endif /* __MACH__ */
+#endif /* __MACH__ || __FreeBSD__ */
 
     /* Send msg init */
     send_msg_init();
@@ -83,7 +83,7 @@ void HandleSecure()
     memset(buffer, '\0', OS_MAXSTR + 1);
 
     if (protocol == TCP_PROTO) {
-#ifdef __MACH__
+#if defined(__MACH__) || defined(__FreeBSD__)
         os_calloc(MAX_EVENTS, sizeof(struct kevent), events);
         kqueue_fd = kqueue();
 
@@ -108,7 +108,7 @@ void HandleSecure()
         if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, logr.sock, &request) < 0) {
             ErrorExit(EPOLL_ERROR, ARGV0);
         }
-#endif /* __MACH__ */
+#endif /* __MACH__ || __FreeBSD__ */
     } else {
         events = NULL;
     }
@@ -116,19 +116,19 @@ void HandleSecure()
     while (1) {
         /* Receive message  */
         if (protocol == TCP_PROTO) {
-#ifdef __MACH__
+#if defined(__MACH__) || defined(__FreeBSD__)
             n_events = kevent(kqueue_fd, NULL, 0, events, MAX_EVENTS, p_timeout);
 #else
             n_events = epoll_wait(epoll_fd, events, MAX_EVENTS, EPOLL_MILLIS);
-#endif /* __MACH__ */
+#endif /* __MACH__ || __FreeBSD__ */
 
             int i;
             for (i = 0; i < n_events; i++) {
-#ifdef __MACH__
+#if defined(__MACH__) || defined(__FreeBSD__)
                 int fd = events[i].ident;
 #else
                 int fd = events[i].data.fd;
-#endif /* __MACH__ */
+#endif /* __MACH__ || __FreeBSD__ */
                 if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
@@ -136,7 +136,7 @@ void HandleSecure()
                     }
 
                     debug1("%s: DEBUG: New TCP connection at %s.", ARGV0, inet_ntoa(peer_info.sin_addr));
-#ifdef __MACH__
+#if defined(__MACH__) || defined(__FreeBSD__)
                     EV_SET(&request, sock_client, EVFILT_READ, EV_ADD, 0, 0, 0);
                     kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO);
 #else
@@ -144,7 +144,7 @@ void HandleSecure()
                     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_client, &request) < 0) {
                         ErrorExit(EPOLL_ERROR, ARGV0);
                     }
-#endif /* __MACH__ */
+#endif /* __MACH__ || __FreeBSD__ */
                 } else {
                     sock_client = fd;
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
@@ -158,13 +158,13 @@ void HandleSecure()
                         } else {
                             merror(RECV_ERROR, ARGV0);
                         }
-#ifndef __MACH__
+#if !(defined(__MACH__) || defined(__FreeBSD__))
                         /* Kernel event is automatically deleted when closed */
                         request.data.fd = sock_client;
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
                             ErrorExit(EPOLL_ERROR, ARGV0);
                         }
-#endif /* !__MACH__ */
+#endif /* ! __MACH__ && ! __FreeBSD__ */
 
                         close(sock_client);
                         continue;
@@ -174,12 +174,12 @@ void HandleSecure()
 
                     if (recv_b != length) {
                         merror(RECV_ERROR, ARGV0);
-#ifndef __MACH__
+#if !(defined(__MACH__) || defined(__FreeBSD__))
                         request.data.fd = sock_client;
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
                             ErrorExit(EPOLL_ERROR, ARGV0);
                         }
-#endif /* !__MACH__ */
+#endif /* ! __MACH__ && ! __FreeBSD__ */
                         close(sock_client);
                         continue;
                     } else {

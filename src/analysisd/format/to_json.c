@@ -213,11 +213,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON* decoder;
 
         // Dynamic fields, except for syscheck events
-        if (lf->decoder_info->fields && !lf->filename) {
-            for (i = 0; i < Config.decoder_order_size; i++) {
-                if (lf->decoder_info->fields[i] && lf->fields[i]) {
-                    cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
-                }
+        if (lf->fields && !lf->filename) {
+            for (i = 0; i < lf->nfields; i++) {
+                W_JSON_AddField(root, lf->fields[i].key, lf->fields[i].value);
             }
         }
 
@@ -436,11 +434,9 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
         cJSON* decoder;
 
         // Dynamic fields, except for syscheck events
-        if (lf->decoder_info->fields && !lf->filename) {
-            for (i = 0; i < Config.decoder_order_size; i++) {
-                if (lf->decoder_info->fields[i] && lf->fields[i]) {
-                    cJSON_AddStringToObject(root, lf->decoder_info->fields[i], lf->fields[i]);
-                }
+        if (lf->fields && !lf->filename) {
+            for (i = 0; i < lf->nfields; i++) {
+                W_JSON_AddField(root, lf->fields[i].key, lf->fields[i].value);
             }
         }
 

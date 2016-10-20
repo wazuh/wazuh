@@ -1,6 +1,6 @@
 <!--
   -  OpenSCAP decoder
-  -  v1.0 2016/05/17
+  -  v1.0 2016/10/18
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
@@ -23,38 +23,50 @@ Logs from wodle
 
 
 <!--
-Rule Result
-oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+Rule Result: xccdf
+oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "fail", severity: "low", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
 -->
 <decoder name="oscap-wodle-xccdf-result">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "xccdf-result", </prematch>
-  <regex offset="after_prematch">^title: "(\.*)", benchmark-id: "(\.*)", benchmark-title: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)", severity: "(\.*)", result: "(\.*)", id: "(\.*)", oval: "(\.*)", reference: "(\.*)".$</regex>
-  <order>title, benchmark_id, benchmark_title, profile_id, profile_title, severity, result, id, oval, reference</order>
+  <regex offset="after_prematch">^content: "(\.*)", title: "(\.*)", id: "(\.*)", result: "(\.*)", severity: "(\.*)", description: "(\.*)", rationale: "(\.*)" references: "(\.*)", identifiers: "(\.*)", oval-id: "(\.*)", benchmark-id: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)".$</regex>
+  <order>oscap.content, oscap.check.title, oscap.check.id, oscap.check.result, oscap.check.severity, oscap.check.description, oscap.check.rationale, oscap.check.references, oscap.check.identifiers, oscap.check.oval.id, oscap.benchmark.id, oscap.profile.id, oscap.profile.title</order>
 </decoder>
 
 <!--
-Rule Result
-oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+Rule Result: oval
+oscap: msg: "oval-result", content: "cve-ubuntu-xenial-oval.xml", title: "CVE-2002-2439 on Ubuntu 16.04 LTS (xenial) - low.", id: "oval:com.ubuntu.xenial:def:20022439000", result: "fail", description: "operator new[] sometimes returns pointers to heap blocks which are too small. When a new array is allocated, the C++ run-time has to calculate its size. The product may exceed the maximum value which can be stored in a machine register. This error is ignored, and the truncated value is used for the heap allocation. This may lead to heap overflows and therefore security bugs. (See http://cert.uni-stuttgart.de/advisories/calloc.php for further references.)", profile-title: "vulnerability", reference: "CVE-2002-2439 (https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2002-2439)".
 -->
 <decoder name="oscap-wodle-oval-result">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "oval-result", </prematch>
-  <regex offset="after_prematch">^id: "(\.*)", title: "(\.*)", class: "(\.*)", result: "(\.*)", reference: "(\.*)".$</regex>
-  <order>id, title, class, result, reference</order>
+  <regex offset="after_prematch">^content: "(\.*)", title: "(\.*)", id: "(\.*)", result: "(\.*)", description: "(\.*)", profile-title: "(\.*)", reference: "(\.*)".$</regex>
+  <order>oscap.content, oscap.check.title, oscap.check.id, oscap.check.result, oscap.check.description, oscap.profile.title, oscap.check.reference</order>
 </decoder>
 
 
 <!--
-Report overview
-oscap: msg: "xccdf-overview", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
+Report overview: xccdf
+oscap: msg: "xccdf-overview", content: "cve-redhat-7-ds.xml", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
 -->
 <decoder name="oscap-wodle-xccdf-overview">
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "xccdf-overview", </prematch>
-  <regex offset="after_prematch">^benchmark-id: "(\.*)", benchmark-title: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)", score: "(\.*)".$</regex>
-  <order>benchmark_id, benchmark_title, profile_id, profile_title, score</order>
+  <regex offset="after_prematch">^content: "(\.*)", benchmark-id: "(\.*)", profile-id: "(\.*)", profile-title: "(\.*)", score: "(\.*)".$</regex>
+  <order>oscap.content, oscap.benchmark.id, oscap.profile.id, oscap.profile.title, oscap.score</order>
 </decoder>
+
+<!--
+Report overview: oval
+oscap: msg: "oval-overview", content: "com.ubuntu.xenial.cve.oval.xml", score: "48.19".
+-->
+<decoder name="oscap-wodle-oval-overview">
+  <parent>oscap</parent>
+  <prematch offset="after_parent">^msg: "oval-overview", </prematch>
+  <regex offset="after_prematch">^content: "(\.*)", score: "(\.*)".$</regex>
+  <order>oscap.content, oscap.score</order>
+</decoder>
+
 
 <!--
 Apr 12 10:50:32 centos oscap: Evaluation started. Content: /usr/share/xml/scap/ssg/content/ssg-centos7-ds.xml, Profile: xccdf_org.ssgproject.content_profile_standard.
@@ -63,7 +75,7 @@ Apr 12 10:50:32 centos oscap: Evaluation started. Content: /usr/share/xml/scap/s
     <parent>oscap</parent>
     <prematch offset="after_parent">^Evaluation started. </prematch>
     <regex offset="after_prematch">^Content: (\S+), Profile: (\S+).$</regex>
-    <order>policy, profile</order>
+    <order>oscap.content, oscap.profile</order>
 </decoder>
 
 <!--
@@ -73,5 +85,5 @@ Apr 12 10:50:42 centos oscap: Evaluation finished. Return code: 0, Base score 10
     <parent>oscap</parent>
     <prematch offset="after_parent">^Evaluation finished. </prematch>
     <regex offset="after_prematch">^Return code: (\d+), Base score (\S+).</regex>
-    <order>return_code, score</order>
+    <order>oscap.return_code, oscap.score</order>
 </decoder>

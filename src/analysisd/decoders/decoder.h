@@ -43,7 +43,7 @@ typedef struct {
     OSMatch *program_name;
 
     void (*plugindecoder)(void *lf);
-    void* (**order)(struct _Eventinfo *, char *, int);
+    void* (**order)(struct _Eventinfo *, char *, const char *);
 } OSDecoderInfo;
 
 /* List structure */
@@ -81,8 +81,5 @@ void SyscheckInit(void);
 void RootcheckInit(void);
 
 int ReadDecodeXML(const char *file);
-
-/* Find index of a dynamic field. Returns -1 if not found. */
-int FindField(const OSDecoderInfo *decoder, const char *name);
 
 #endif

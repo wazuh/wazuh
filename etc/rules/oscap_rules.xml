@@ -1,6 +1,6 @@
 <!--
   -  OpenSCAP rules
-  -  v1.0 2016/05/19
+  -  v1.0 2016/10/18
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
@@ -45,7 +45,7 @@ Wodle OpenSCAP: 81500 - 81600
     -->
     <rule id="81403" level="0">
         <if_sid>81402</if_sid>
-        <field name="return_code">2</field>
+        <field name="oscap.return_code">2</field>
         <description>OpenSCAP: Evaluation finished with some failures.</description>
         <group>syslog,</group>
     </rule>
@@ -152,7 +152,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!-- XCCDF RULES -->
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "???", severity: "low", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
     -->
     <rule id="81520" level="0">
         <if_sid>81400</if_sid>
@@ -162,109 +162,109 @@ Wodle OpenSCAP: 81500 - 81600
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "pass", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "pass", severity: "low", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
     -->
 
     <rule id="81521" level="0">
         <if_sid>81520</if_sid>
-        <field name="result">pass</field>
-        <description>OpenSCAP: $(title) (passed)</description>
+        <field name="oscap.check.result">pass</field>
+        <description>OpenSCAP: $(oscap.check.title) (passed)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notchecked", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "notchecked", severity: "low", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
     -->
     <rule id="81522" level="0">
         <if_sid>81520</if_sid>
-        <field name="result">notchecked</field>
-        <description>OpenSCAP: $(title) (not checked)</description>
+        <field name="oscap.check.result">notchecked</field>
+        <description>OpenSCAP: $(oscap.check.title) (not checked)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notapplicable", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "notapplicable", severity: "low", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
     -->
     <rule id="81523" level="0">
         <if_sid>81520</if_sid>
-        <field name="result">notapplicable</field>
-        <description>OpenSCAP: $(title) (not applied)</description>
+        <field name="oscap.check.result">notapplicable</field>
+        <description>OpenSCAP: $(oscap.check.title) (not applied)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "fixed", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "fixed", severity: "low", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
     -->
     <rule id="81524" level="0">
         <if_sid>81520</if_sid>
-        <field name="result">fixed</field>
-        <description>OpenSCAP: $(title) (fixed)</description>
+        <field name="oscap.check.result">fixed</field>
+        <description>OpenSCAP: $(oscap.check.title) (fixed)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "informational", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "informational", severity: "low", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
     -->
     <rule id="81525" level="1">
         <if_sid>81520</if_sid>
-        <field name="result">informational</field>
-        <description>OpenSCAP: $(title) (informational)</description>
+        <field name="oscap.check.result">informational</field>
+        <description>OpenSCAP: $(oscap.check.title) (informational)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "error", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "error", severity: "low", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
     -->
     <rule id="81526" level="3">
         <if_sid>81520</if_sid>
-        <field name="result">error</field>
-        <description>OpenSCAP: $(title) (error)</description>
+        <field name="oscap.check.result">error</field>
+        <description>OpenSCAP: $(oscap.check.title) (error)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "unknown", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "unknown", severity: "low", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
     -->
     <rule id="81527" level="3">
         <if_sid>81520</if_sid>
-        <field name="result">unknown</field>
-        <description>OpenSCAP: $(title) (unknown)</description>
+        <field name="oscap.check.result">unknown</field>
+        <description>OpenSCAP: $(oscap.check.title) (unknown)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "notselected", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "notselected", severity: "low", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
     -->
     <rule id="81528" level="0">
         <if_sid>81520</if_sid>
-        <field name="result">notselected</field>
-        <description>OpenSCAP: $(title) (not selected)</description>
+        <field name="oscap.check.result">notselected</field>
+        <description>OpenSCAP: $(oscap.check.title) (not selected)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "low", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "medium", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
-    oscap: msg: "xccdf-result", title: "Ensure Default Password Is Not Used", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", severity: "high", result: "fail", id: "xccdf_org.ssgproject.content_rule_snmpd_not_default_password", oval: "oval:ssg:def:769", reference: "CCE-RHEL7-CCE-TBD".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "fail", severity: "low", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "fail", severity: "medium", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
+    oscap: msg: "xccdf-result", content: "ssg-centos-7-ds.xml", title: "Ensure /tmp Located On Separate Partition", id: "xccdf_org.ssgproject.content_rule_partition_for_tmp", result: "fail", severity: "high", description: "The /tmp directory is a world-writable directory used for temporary file storage. Ensure it has its own partition or logical volume at installation time, or migrate it using LVM.", rationale: "The /tmp partition is used as temporary storage by many programs. Placing /tmp in its own partition enables the setting of more restrictive mount options, which can help protect programs which use it." references: "SC-32 (http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf), Test attestation on 20120928 by MM (https://github.com/OpenSCAP/scap-security-guide/wiki/Contributors)", identifiers: "CCE-27173-4 (http://cce.mitre.org)", oval-id: "oval:ssg:def:522", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_rht-ccp", profile-title: "CentOS Profile for Cloud Providers (CPCP)".
     -->
     <rule id="81529" level="5">
         <if_sid>81520</if_sid>
-        <field name="result">fail</field>
-        <description>OpenSCAP: $(title) (not passed)</description>
+        <field name="oscap.check.result">fail</field>
+        <description>OpenSCAP: $(oscap.check.title) (not passed)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81530" level="7">
         <if_sid>81529</if_sid>
-        <field name="severity">medium</field>
-        <description>OpenSCAP: $(title) (not passed)</description>
+        <field name="oscap.check.severity">medium</field>
+        <description>OpenSCAP: $(oscap.check.title) (not passed)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81531" level="9">
         <if_sid>81529</if_sid>
-        <field name="severity">high</field>
-        <description>OpenSCAP: $(title) (not passed)</description>
+        <field name="oscap.check.severity">high</field>
+        <description>OpenSCAP: $(oscap.check.title) (not passed)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
@@ -274,7 +274,7 @@ Wodle OpenSCAP: 81500 - 81600
     <!-- Report Overview -->
 
     <!--
-    oscap: msg: "xccdf-overview", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", benchmark-title: "Guide to the Secure Configuration of Red Hat Enterprise Linux 7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
+    oscap: msg: "xccdf-overview", content: "ssg-centos-7-ds.xml", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
     -->
     <rule id="81540" level="3">
         <if_sid>81400</if_sid>
@@ -285,28 +285,28 @@ Wodle OpenSCAP: 81500 - 81600
 
     <rule id="81541" level="4">
         <if_sid>81540</if_sid>
-        <field name="score">8\d.</field>
+        <field name="oscap.score">8\d.</field>
         <description>OpenSCAP Report overview: Score less than 90</description>
         <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81542" level="5">
         <if_sid>81540</if_sid>
-        <field name="score">7\d.|6\d.|5\d.</field>
+        <field name="oscap.score">7\d.|6\d.|5\d.</field>
         <description>OpenSCAP Report overview: Score less than 80</description>
         <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81543" level="7">
         <if_sid>81540</if_sid>
-        <field name="score">4\d.|3\d.\d+</field>
+        <field name="oscap.score">4\d.|3\d.\d+</field>
         <description>OpenSCAP Report overview: Score less than 50</description>
         <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
     <rule id="81544" level="9">
         <if_sid>81540</if_sid>
-        <field name="score">2\d.|1\d.|^\d.</field>
+        <field name="oscap.score">2\d.|1\d.|^\d.</field>
         <description>OpenSCAP Report overview: Score less than 30</description>
         <group>oscap-report,pci_dss_2.2,</group>
     </rule>
@@ -316,103 +316,74 @@ Wodle OpenSCAP: 81500 - 81600
     <!-- OVAL RULES -->
 
     <!--
-    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "cve-ubuntu-xenial-oval.xml", title: "CVE-2002-2439 on Ubuntu 16.04 LTS (xenial) - low.", id: "oval:com.ubuntu.xenial:def:20022439000", result: "??", description: "operator new[] sometimes returns pointers to heap blocks which are too small. When a new array is allocated, the C++ run-time has to calculate its size. The product may exceed the maximum value which can be stored in a machine register. This error is ignored, and the truncated value is used for the heap allocation. This may lead to heap overflows and therefore security bugs. (See http://cert.uni-stuttgart.de/advisories/calloc.php for further references.)", profile-title: "vulnerability", reference: "CVE-2002-2439 (https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2002-2439)".
     -->
     <rule id="81550" level="0">
         <if_sid>81400</if_sid>
         <match>msg: "oval-result"</match>
-        <description>OpenSCAP: $(title)</description>
+        <description>OpenSCAP OVAL messages grouped.</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
     <!--
-    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "error", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-result", content: "cve-ubuntu-xenial-oval.xml", title: "CVE-2002-2439 on Ubuntu 16.04 LTS (xenial) - low.", id: "oval:com.ubuntu.xenial:def:20022439000", result: "pass", description: "operator new[] sometimes returns pointers to heap blocks which are too small. When a new array is allocated, the C++ run-time has to calculate its size. The product may exceed the maximum value which can be stored in a machine register. This error is ignored, and the truncated value is used for the heap allocation. This may lead to heap overflows and therefore security bugs. (See http://cert.uni-stuttgart.de/advisories/calloc.php for further references.)", profile-title: "vulnerability", reference: "CVE-2002-2439 (https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2002-2439)".
+    oscap: msg: "oval-result", content: "cve-ubuntu-xenial-oval.xml", title: "CVE-2002-2439 on Ubuntu 16.04 LTS (xenial) - low.", id: "oval:com.ubuntu.xenial:def:20022439000", result: "pass", description: "operator new[] sometimes returns pointers to heap blocks which are too small. When a new array is allocated, the C++ run-time has to calculate its size. The product may exceed the maximum value which can be stored in a machine register. This error is ignored, and the truncated value is used for the heap allocation. This may lead to heap overflows and therefore security bugs. (See http://cert.uni-stuttgart.de/advisories/calloc.php for further references.)", profile-title: "inventory", reference: "CVE-2002-2439 (https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2002-2439)".
+    oscap: msg: "oval-result", content: "cve-ubuntu-xenial-oval.xml", title: "CVE-2002-2439 on Ubuntu 16.04 LTS (xenial) - low.", id: "oval:com.ubuntu.xenial:def:20022439000", result: "fail", description: "operator new[] sometimes returns pointers to heap blocks which are too small. When a new array is allocated, the C++ run-time has to calculate its size. The product may exceed the maximum value which can be stored in a machine register. This error is ignored, and the truncated value is used for the heap allocation. This may lead to heap overflows and therefore security bugs. (See http://cert.uni-stuttgart.de/advisories/calloc.php for further references.)", profile-title: "compliance", reference: "CVE-2002-2439 (https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2002-2439)".
+    oscap: msg: "oval-result", content: "cve-ubuntu-xenial-oval.xml", title: "CVE-2002-2439 on Ubuntu 16.04 LTS (xenial) - low.", id: "oval:com.ubuntu.xenial:def:20022439000", result: "fail", description: "operator new[] sometimes returns pointers to heap blocks which are too small. When a new array is allocated, the C++ run-time has to calculate its size. The product may exceed the maximum value which can be stored in a machine register. This error is ignored, and the truncated value is used for the heap allocation. This may lead to heap overflows and therefore security bugs. (See http://cert.uni-stuttgart.de/advisories/calloc.php for further references.)", profile-title: "patch", reference: "CVE-2002-2439 (https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2002-2439)".
     -->
-    <rule id="81551" level="3">
+    <rule id="81551" level="0">
         <if_sid>81550</if_sid>
-        <field name="result">error</field>
-        <description>OpenSCAP: $(title) (error)</description>
+        <field name="oscap.check.result">pass</field>
+        <description>OpenSCAP: $(oscap.check.title) (passed)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
-    <!--
-    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
-    -->
-    <rule id="81552" level="0" noalert="1">
+    <rule id="81552" level="7">
         <if_sid>81550</if_sid>
-        <field name="class">compliance</field>
-        <description>OpenSCAP: $(title)</description>
+        <field name="oscap.check.result">fail</field>
+        <description>OpenSCAP: $(oscap.check.title) (not passed)</description>
         <group>oscap-result,pci_dss_2.2,</group>
     </rule>
 
-    <!--
-    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "compliance", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
-    -->
-    <rule id="81553" level="7">
-        <if_sid>81552</if_sid>
-        <field name="result">false</field>
-        <description>OpenSCAP: $(title) (not passed)</description>
-        <group>oscap-result,pci_dss_2.2,</group>
-    </rule>
+
+    <!-- Report Overview -->
 
     <!--
-    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "patch", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
+    oscap: msg: "oval-overview", content: "com.ubuntu.xenial.cve.oval.xml", score: "48.19".
     -->
-    <rule id="81554" level="0" noalert="1">
-        <if_sid>81550</if_sid>
-        <field name="class">patch</field>
-        <description>OpenSCAP: $(title)</description>
-        <group>oscap-result,pci_dss_2.2,</group>
+    <rule id="81560" level="3">
+        <if_sid>81400</if_sid>
+        <match>msg: "oval-overview"</match>
+        <description>OpenSCAP Report overview.</description>
+        <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
-    <!--
-    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "patch", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
-    -->
-    <rule id="81555" level="7">
-        <if_sid>81554</if_sid>
-        <field name="result">false</field>
-        <description>OpenSCAP: $(title) (not passed)</description>
-        <group>oscap-result,pci_dss_2.2,</group>
+    <rule id="81561" level="4">
+        <if_sid>81560</if_sid>
+        <field name="oscap.score">8\d.</field>
+        <description>OpenSCAP Report overview: Score less than 90</description>
+        <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
-    <!--
-    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "vulnerability", result: "false", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
-    -->
-    <rule id="81556" level="0" noalert="1">
-        <if_sid>81550</if_sid>
-        <field name="class">vulnerability</field>
-        <description>OpenSCAP: $(title)</description>
-        <group>oscap-result,pci_dss_2.2,</group>
+    <rule id="81562" level="5">
+        <if_sid>81560</if_sid>
+        <field name="oscap.score">7\d.|6\d.|5\d.</field>
+        <description>OpenSCAP Report overview: Score less than 80</description>
+        <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
-    <!--
-    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "vulnerability", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
-    -->
-    <rule id="81557" level="7">
-        <if_sid>81556</if_sid>
-        <field name="result">true</field>
-        <description>OpenSCAP: $(title) (not passed)</description>
-        <group>oscap-result,pci_dss_2.2,</group>
+    <rule id="81563" level="7">
+        <if_sid>81560</if_sid>
+        <field name="oscap.score">4\d.|3\d.\d+</field>
+        <description>OpenSCAP Report overview: Score less than 50</description>
+        <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
-    <!--
-    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "inventory", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
-    -->
-    <rule id="81558" level="0" noalert="1">
-        <if_sid>81550</if_sid>
-        <field name="class">inventory</field>
-        <description>OpenSCAP: $(title)</description>
-        <group>oscap-result,pci_dss_2.2,</group>
-    </rule>
-
-    <!--
-    oscap: msg: "oval-result", id: "oval:ssg:def:755", title: "Make Audit Configuration Immutable", class: "miscellaneous", result: "true", reference: "RHEL7_20150518,FEDORA20_20150518,audit_rules_immutable".
-    -->
-    <rule id="81559" level="0" noalert="1">
-        <if_sid>81550</if_sid>
-        <field name="class">miscellaneous</field>
-        <description>OpenSCAP: $(title)</description>
-        <group>oscap-result,pci_dss_2.2,</group>
+    <rule id="81564" level="9">
+        <if_sid>81560</if_sid>
+        <field name="oscap.score">2\d.|1\d.|^\d.</field>
+        <description>OpenSCAP Report overview: Score less than 30</description>
+        <group>oscap-report,pci_dss_2.2,</group>
     </rule>
 
 </group>

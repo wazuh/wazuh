@@ -57,18 +57,19 @@
   <order>user</order>
 </decoder>
 
-<decoder name="su-detail2">
-  <parent>su</parent>
-  <regex>^BAD SU (\S+) to (\S+) on|</regex>
-  <regex>^failed: \S+ changing from (\S+) to (\S+)|</regex>
-  <regex>^\S \S+ (\S+)\p(\S+)$|^(\S+) to (\S+) on </regex>
+<decoder name="su">
+  <prematch>^SU \S+ \S+ </prematch>
+  <regex offset="after_prematch">^\S \S+ (\S+)-(\S+)$</regex>
   <order>srcuser, dstuser</order>
   <fts>name, srcuser, location</fts>
 </decoder>
 
-<decoder name="su">
-  <prematch>^SU \S+ \S+ </prematch>
-  <regex offset="after_prematch">^\S \S+ (\S+)-(\S+)$</regex>
+<decoder name="su-detail2">
+  <parent>su</parent>
+  <prematch> </prematch>
+  <regex>^BAD SU (\S+) to (\S+) on|</regex>
+  <regex>^failed: \S+ changing from (\S+) to (\S+)|</regex>
+  <regex>^\S \S+ (\S+)\p(\S+)$|^(\S+) to (\S+) on </regex>
   <order>srcuser, dstuser</order>
   <fts>name, srcuser, location</fts>
 </decoder>

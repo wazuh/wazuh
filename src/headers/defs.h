@@ -75,6 +75,7 @@ http://www.ossec.net/main/license/\n"
 
 /* Notify the manager */
 #define NOTIFY_TIME     600 /* ... every 600 seconds (10 minutes) */
+#define MAX_CONN_SLEEP  60
 
 /* User Configuration */
 #ifndef MAILUSER

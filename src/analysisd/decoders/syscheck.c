@@ -19,16 +19,17 @@
 #include "wazuh_db/wdb.h"
 
 /* Fields for rules */
-#define SCK_FILE  0
-#define SCK_SIZE  1
-#define SCK_PERM  2
-#define SCK_UID   3
-#define SCK_GID   4
-#define SCK_MD5   5
-#define SCK_SHA1  6
-#define SCK_UNAME 7
-#define SCK_GNAME 8
-#define SCK_INODE 9
+#define SCK_FILE    0
+#define SCK_SIZE    1
+#define SCK_PERM    2
+#define SCK_UID     3
+#define SCK_GID     4
+#define SCK_MD5     5
+#define SCK_SHA1    6
+#define SCK_UNAME   7
+#define SCK_GNAME   8
+#define SCK_INODE   9
+#define SCK_NFIELDS 10
 
 typedef struct __sdb {
     char buf[OS_MAXSTR + 1];
@@ -544,17 +545,14 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          "%s"
                          "%s"
                          "%s"
-                         "%s"
-                         "%s%s",
+                         "%s",
                          f_name,
                          sdb.size,
                          sdb.perm,
                          sdb.owner,
                          sdb.gowner,
                          sdb.md5,
-                         sdb.sha1,
-                         lf->data == NULL ? "" : "What changed:\n",
-                         lf->data == NULL ? "" : lf->data
+                         sdb.sha1
                         );
 
                 if (lf->data)
@@ -795,6 +793,8 @@ int DecodeSum(SyscheckSum *sum, char *c_sum) {
 }
 
 void FillEvent(Eventinfo *lf, const char *f_name, const SyscheckSum *sum) {
+    int i;
+
     os_strdup(f_name, lf->filename);
     os_strdup(sum->size, lf->size_after);
     lf->perm_after = sum->perm;
@@ -813,23 +813,29 @@ void FillEvent(Eventinfo *lf, const char *f_name, const SyscheckSum *sum) {
     lf->inode_after = sum->inode;
 
     /* Fields */
-    os_strdup(f_name, lf->fields[SCK_FILE]);
-    os_strdup(sum->size, lf->fields[SCK_SIZE]);
-    os_calloc(7, sizeof(char), lf->fields[SCK_PERM]);
-    snprintf(lf->fields[SCK_PERM], 7, "%06o", sum->perm);
-    os_strdup(sum->uid, lf->fields[SCK_UID]);
-    os_strdup(sum->gid, lf->fields[SCK_GID]);
-    os_strdup(sum->md5, lf->fields[SCK_MD5]);
-    os_strdup(sum->sha1, lf->fields[SCK_SHA1]);
+
+    lf->nfields = SCK_NFIELDS;
+
+    for (i = 0; i < SCK_NFIELDS; i++)
+        lf->fields[i].key = sdb.syscheck_dec->fields[i];
+
+    os_strdup(f_name, lf->fields[SCK_FILE].value);
+    os_strdup(sum->size, lf->fields[SCK_SIZE].value);
+    os_calloc(7, sizeof(char), lf->fields[SCK_PERM].value);
+    snprintf(lf->fields[SCK_PERM].value, 7, "%06o", sum->perm);
+    os_strdup(sum->uid, lf->fields[SCK_UID].value);
+    os_strdup(sum->gid, lf->fields[SCK_GID].value);
+    os_strdup(sum->md5, lf->fields[SCK_MD5].value);
+    os_strdup(sum->sha1, lf->fields[SCK_SHA1].value);
 
     if (sum->uname)
-        os_strdup(sum->uname, lf->fields[SCK_UNAME]);
+        os_strdup(sum->uname, lf->fields[SCK_UNAME].value);
 
     if (sum->gname)
-        os_strdup(sum->gname, lf->fields[SCK_GNAME]);
+        os_strdup(sum->gname, lf->fields[SCK_GNAME].value);
 
     if (sum->inode) {
-        os_calloc(20, sizeof(char), lf->fields[SCK_INODE]);
-        snprintf(lf->fields[SCK_INODE], 20, "%ld", sum->inode);
+        os_calloc(20, sizeof(char), lf->fields[SCK_INODE].value);
+        snprintf(lf->fields[SCK_INODE].value, 20, "%ld", sum->inode);
     }
 }

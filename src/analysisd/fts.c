@@ -176,10 +176,10 @@ void AddtoIGnore(Eventinfo *lf)
         int i;
 
         for (i = 0; i < Config.decoder_order_size && lf->generated_rule->ignore_fields[i]; i++) {
-            int j = FindField(lf->decoder_info, lf->generated_rule->ignore_fields[i]);
+            const char *field = FindField(lf, lf->generated_rule->ignore_fields[i]);
 
-            if (j >= 0)
-                fprintf(fp_ignore, " %s", lf->fields[j]);
+            if (field)
+                fprintf(fp_ignore, " %s", field);
         }
     }
 
@@ -220,11 +220,11 @@ int IGnore(Eventinfo *lf)
         int i;
 
         for (i = 0; i < Config.decoder_order_size && lf->generated_rule->ckignore_fields[i]; i++) {
-            int j = FindField(lf->decoder_info, lf->generated_rule->ckignore_fields[i]);
+            const char *field = FindField(lf, lf->generated_rule->ckignore_fields[i]);
 
-            if (j >= 0) {
+            if (field) {
                 strncat(_line, " ", OS_FLSIZE - strlen(_line));
-                strncat(_line, lf->fields[j], OS_FLSIZE - strlen(_line));
+                strncat(_line, field, OS_FLSIZE - strlen(_line));
             }
         }
     }
@@ -257,6 +257,7 @@ int FTS(Eventinfo *lf)
     char _line[OS_FLSIZE + 1];
     char *line_for_list = NULL;
     OSListNode *fts_node;
+    const char *field;
 
     _line[OS_FLSIZE] = '\0';
 
@@ -273,9 +274,9 @@ int FTS(Eventinfo *lf)
              (lf->decoder_info->fts & FTS_LOCATION) ? lf->location : "");
 
     for (i = 0; i < Config.decoder_order_size; i++) {
-        if (lf->decoder_info->fts_fields[i]) {
+        if (lf->decoder_info->fts_fields[i] && (field = FindField(lf, lf->decoder_info->fields[i]))) {
             strncat(_line, " ", OS_FLSIZE - strlen(_line));
-            strncat(_line, lf->fields[i], OS_FLSIZE - strlen(_line));
+            strncat(_line, field, OS_FLSIZE - strlen(_line));
         }
     }
 

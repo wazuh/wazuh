@@ -133,7 +133,7 @@ void wdb_delete_pm_all() {
         for (i = 0; agents[i] >= 0; i++)
             wdb_delete_pm(agents[i]);
 
-            free(agents);
+        free(agents);
     }
 }
 

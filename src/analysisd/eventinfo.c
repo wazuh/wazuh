@@ -478,6 +478,16 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->data = NULL;
     lf->systemname = NULL;
 
+    if (lf->fields) {
+        int i;
+        for (i = 0; i < lf->nfields; i++)
+            free(lf->fields[i].value);
+
+        memset(lf->fields, 0, sizeof(DynamicField) * Config.decoder_order_size);
+    }
+
+    lf->nfields = 0;
+
     lf->time = 0;
     lf->matched = 0;
 
@@ -597,9 +607,8 @@ void Free_Eventinfo(Eventinfo *lf)
 
     if (lf->fields) {
         int i;
-        for (i = 0; i < Config.decoder_order_size; i++)
-            if (lf->fields[i])
-                free(lf->fields[i]);
+        for (i = 0; i < lf->nfields; i++)
+            free(lf->fields[i].value);
 
         free(lf->fields);
     }
@@ -680,13 +689,13 @@ void Free_Eventinfo(Eventinfo *lf)
 char* ParseRuleComment(Eventinfo *lf) {
     static char final[OS_COMMENT_MAX + 1] = { '\0' };
     char orig[OS_COMMENT_MAX + 1] = { '\0' };
+    const char *field;
     char *str;
     char *var;
     char *end;
     char *tok;
     size_t n = 0;
     size_t z;
-    int i;
 
     strncpy(orig, lf->generated_rule->comment, OS_COMMENT_MAX);
 
@@ -708,11 +717,11 @@ char* ParseRuleComment(Eventinfo *lf) {
 
         *(end++) = '\0';
 
-        if ((i = FindField(lf->decoder_info, var)) >= 0 && lf->fields[i]) {
-            if (n + (z = strlen(lf->fields[i])) >= OS_COMMENT_MAX)
+        if ((field = FindField(lf, var))) {
+            if (n + (z = strlen(field)) >= OS_COMMENT_MAX)
                 return strdup(lf->generated_rule->comment);
 
-            strncpy(&final[n], lf->fields[i], z);
+            strncpy(&final[n], field, z);
             n += z;
         } else {
             *tok = '$';
