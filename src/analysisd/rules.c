@@ -73,12 +73,16 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_dstgeoip = "dstgeoip";
     const char *xml_dstport = "dstport";
     const char *xml_user = "user";
+    const char *xml_srcuser = "srcuser";
+    const char *xml_dstuser = "dstuser";
     const char *xml_url = "url";
     const char *xml_id = "id";
     const char *xml_data = "extra_data";
     const char *xml_hostname = "hostname";
     const char *xml_program_name = "program_name";
     const char *xml_status = "status";
+    const char *xml_protocol = "protocol";
+    const char *xml_system_name = "system_name";
     const char *xml_action = "action";
     const char *xml_compiled = "compiled_rule";
     const char *xml_field = "field";
@@ -589,7 +593,28 @@ int Rules_OP_ReadRules(const char *rulefile)
                             os_calloc(1, sizeof(FieldInfo), config_ruleinfo->fields[ifield]);
 
                             if (strcasecmp(rule_opt[k]->attributes[0], xml_name) == 0) {
-                                config_ruleinfo->fields[ifield]->name = loadmemory(config_ruleinfo->fields[ifield]->name, rule_opt[k]->values[0]);
+                                // Avoid static fields
+                                if (strcasecmp(rule_opt[k]->values[0], xml_srcuser) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_dstuser) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_user) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_srcip) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_dstip) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_srcport) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_dstport) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_protocol) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_action) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_id) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_url) &&
+                                    strcasecmp(rule_opt[k]->values[0], "data") &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_data) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_status) &&
+                                    strcasecmp(rule_opt[k]->values[0], xml_system_name))
+                                    config_ruleinfo->fields[ifield]->name = loadmemory(config_ruleinfo->fields[ifield]->name, rule_opt[k]->values[0]);
+                                else {
+                                    merror("%s: Field '%s' is static.", ARGV0, rule_opt[k]->values[0]);
+                                    return -1;
+                                }
+
                             } else {
                                 merror("%s: Bad attribute '%s' for field.", ARGV0, rule_opt[k]->attributes[0]);
                                 return -1;

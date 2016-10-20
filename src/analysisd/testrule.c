@@ -406,7 +406,7 @@ void OS_ReadMSG(char *ut_str)
     /* Daemon loop */
     while (1) {
         lf = (Eventinfo *)calloc(1, sizeof(Eventinfo));
-        os_calloc(Config.decoder_order_size, sizeof(char*), lf->fields);
+        os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
 
         /* This shouldn't happen */
         if (lf == NULL) {
@@ -430,6 +430,7 @@ void OS_ReadMSG(char *ut_str)
 
             /* Make sure we ignore blank lines */
             if (strlen(msg) < 10) {
+                Free_Eventinfo(lf);
                 continue;
             }
 

@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 ################################################################################
 # Wazuh wrapper for OpenSCAP
 # Wazuh Inc.
-# May 12, 2016
+# Oct 18, 2016
 ################################################################################
 
 from re import compile
@@ -128,7 +128,62 @@ def oscap(profile=None):
             return
 
     try:
-        print(check_output((XSLT_BIN, TEMPLATE_XCCDF if arg_module == 'xccdf' else TEMPLATE_OVAL, temp[1])))
+        content_filename = arg_file.split('/')[-1]
+        if arg_module == 'xccdf':
+            output = check_output((XSLT_BIN, TEMPLATE_XCCDF, temp[1]))
+
+            for line in output.split("\n"):
+                if not line:
+                    continue
+
+                # Adding file
+                if 'msg: "xccdf-overview"' in line:
+                    new_line = line.replace('oscap: msg: "xccdf-overview",', 'oscap: msg: "xccdf-overview", content: "{0}",'.format(content_filename))
+                else:
+                    new_line = line.replace('oscap: msg: "xccdf-result",', 'oscap: msg: "xccdf-result", content: "{0}",'.format(content_filename))
+
+
+                print(new_line)
+
+        else:
+            output = check_output((XSLT_BIN, TEMPLATE_OVAL, temp[1]))
+
+            total = 0
+            total_KO = 0
+            for line in output.split("\n"):
+                if not line:
+                    continue
+
+                total += 1
+
+                # Adding file
+                new_line = line.replace('oscap: msg: "oval-result"', 'oscap: msg: "oval-result", content: "{0}"'.format(content_filename))
+
+                class1 = ['class: "compliance"', 'class: "patch"', 'class: "inventory"']
+                class2 = ['class: "vulnerability"']
+
+                if any(x in line for x in class1):
+                    if 'result: "false"' in line:
+                        total_KO += 1
+                        new_line = new_line.replace('result: "false"', 'result: "fail"')
+                    elif 'result: "true"' in line:
+                        new_line = new_line.replace('result: "true"', 'result: "pass"')
+                elif any(x in line for x in class2):
+                    if 'result: "true"' in line:
+                        total_KO += 1
+                        new_line = new_line.replace('result: "true"', 'result: "fail"')
+                    elif 'result: "false"' in line:
+                        new_line = new_line.replace('result: "false"', 'result: "pass"')
+
+                new_line = new_line.replace('", class: "', '", profile-title: "')
+
+                print(new_line)
+
+            score = (float((total-total_KO))/float(total)) * 100
+
+            # summary
+            print('oscap: msg: "oval-overview", content: "{0}", score: "{1:.2f}".'.format(content_filename, score))
+
     except CalledProcessError as error:
         print("{0} Formatting data for profile \"{1}\" of file \"{2}\": Return Code: \"{3}\" Error: \"{4}\".".format(OSCAP_LOG_ERROR, profile, arg_file, error.returncode,
                                                                                                            error.output.replace('\r', '').split("\n")[0]))
