@@ -1,6 +1,6 @@
 <!--
   -  OpenSCAP decoder
-  -  v1.0 2016/10/18
+  -  v1.0 2016/10/20
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
@@ -41,7 +41,7 @@ oscap: msg: "oval-result", content: "cve-ubuntu-xenial-oval.xml", title: "CVE-20
   <parent>oscap</parent>
   <prematch offset="after_parent">^msg: "oval-result", </prematch>
   <regex offset="after_prematch">^content: "(\.*)", title: "(\.*)", id: "(\.*)", result: "(\.*)", description: "(\.*)", profile-title: "(\.*)", reference: "(\.*)".$</regex>
-  <order>oscap.content, oscap.check.title, oscap.check.id, oscap.check.result, oscap.check.description, oscap.profile.title, oscap.check.reference</order>
+  <order>oscap.content, oscap.check.title, oscap.check.id, oscap.check.result, oscap.check.description, oscap.profile.title, oscap.check.references</order>
 </decoder>
 
 
@@ -75,7 +75,7 @@ Apr 12 10:50:32 centos oscap: Evaluation started. Content: /usr/share/xml/scap/s
     <parent>oscap</parent>
     <prematch offset="after_parent">^Evaluation started. </prematch>
     <regex offset="after_prematch">^Content: (\S+), Profile: (\S+).$</regex>
-    <order>oscap.content, oscap.profile</order>
+    <order>oscap.content, oscap.profile.id</order>
 </decoder>
 
 <!--
