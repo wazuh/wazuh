@@ -1,21 +1,22 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 ################################################################################
 # Wazuh wrapper for OpenSCAP
 # Wazuh Inc.
-# Oct 18, 2016
+# Oct 21, 2016
 ################################################################################
 
 from re import compile
 from sys import argv, exit
-from os.path import isfile
+from os.path import isfile, exists
 from tempfile import mkstemp
 from xml.etree import ElementTree
 from os import remove, close as close
 from subprocess import call, CalledProcessError, STDOUT
 from getopt import getopt, GetoptError
 from signal import signal, SIGINT
+from random import randrange
+from time import time
 import tempfile
-import random
 import string
 
 OSCAP_BIN = "oscap"
@@ -129,6 +130,20 @@ def oscap(profile=None):
 
     try:
         content_filename = arg_file.split('/')[-1]
+
+        # Generate scan ID: agent_id + epoch
+        try:
+            if exists('{0}/rules'.format(OSSEC_PATH)):
+                agent_id = '000'
+            else:
+                with open('{0}/etc/client.keys'.format(OSSEC_PATH), 'r') as f:
+                    first_line = f.readline()
+                agent_id = first_line.split(' ')[0]
+        except:
+            agent_id = randrange(1, 9999)
+
+        scan_id = "{0}{1}".format(agent_id, int(time()))
+
         if arg_module == 'xccdf':
             output = check_output((XSLT_BIN, TEMPLATE_XCCDF, temp[1]))
 
@@ -138,9 +153,9 @@ def oscap(profile=None):
 
                 # Adding file
                 if 'msg: "xccdf-overview"' in line:
-                    new_line = line.replace('oscap: msg: "xccdf-overview",', 'oscap: msg: "xccdf-overview", content: "{0}",'.format(content_filename))
+                    new_line = line.replace('oscap: msg: "xccdf-overview",', 'oscap: msg: "xccdf-overview", scan-id: "{0}", content: "{1}",'.format(scan_id, content_filename))
                 else:
-                    new_line = line.replace('oscap: msg: "xccdf-result",', 'oscap: msg: "xccdf-result", content: "{0}",'.format(content_filename))
+                    new_line = line.replace('oscap: msg: "xccdf-result",', 'oscap: msg: "xccdf-result", scan-id: "{0}", content: "{1}",'.format(scan_id, content_filename))
 
 
                 print(new_line)
@@ -157,7 +172,7 @@ def oscap(profile=None):
                 total += 1
 
                 # Adding file
-                new_line = line.replace('oscap: msg: "oval-result"', 'oscap: msg: "oval-result", content: "{0}"'.format(content_filename))
+                new_line = line.replace('oscap: msg: "oval-result"', 'oscap: msg: "oval-result", scan-id: "{0}", content: "{1}"'.format(scan_id, content_filename))
 
                 class1 = ['class: "compliance"', 'class: "patch"', 'class: "inventory"']
                 class2 = ['class: "vulnerability"']
@@ -182,7 +197,7 @@ def oscap(profile=None):
             score = (float((total-total_KO))/float(total)) * 100
 
             # summary
-            print('oscap: msg: "oval-overview", content: "{0}", score: "{1:.2f}".'.format(content_filename, score))
+            print('oscap: msg: "oval-overview", scan-id: "{0}", content: "{1}", score: "{2:.2f}".'.format(scan_id, content_filename, score))
 
     except CalledProcessError as error:
         print("{0} Formatting data for profile \"{1}\" of file \"{2}\": Return Code: \"{3}\" Error: \"{4}\".".format(OSCAP_LOG_ERROR, profile, arg_file, error.returncode,
