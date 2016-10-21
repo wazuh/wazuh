@@ -5,58 +5,123 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Wazuh modules manager
-- Wazuh module for OpenSCAP
-- Ruleset for OpenSCAP alerts
-- Kibana dashboards for OpenSCAP
-- Option at agent_control to restart all agents
-- Dynamic fields to rules and decoders
-- Dynamic fields to JSON in alerts/archives
-- CDB list lookup with dynamic fields
-- FTS for dynamic fields
-- Logcollector option to set the frequency of file checking
-- GeoIP support in Alerts (by Scott R Shinn)
-- Internal option to output GeoIP data on JSON alerts
-- Matching pattern negation (by Daniel Cid)
-- Syscheck and Rootcheck events on SQLite databases
-- Data migration tool to SQLite databases
-- Jenkins QA
-- 64-bit Windows registry keys support
-- Complete FIM data output to JSON and alerts
-- Username, date and inode attributes to FIM events
-- Report changes (FIM file diffs) to Windows agent
-- File diffs to JSON output
-- Elastic mapping updated for new FIM events
+- Wazuh modules manager.
+- Wazuh module for OpenSCAP.
+- Ruleset for OpenSCAP alerts.
+- Kibana dashboards for OpenSCAP.
+- Option at agent_control to restart all agents.
+- Dynamic fields to rules and decoders.
+- Dynamic fields to JSON in alerts/archives.
+- CDB list lookup with dynamic fields.
+- FTS for dynamic fields.
+- Logcollector option to set the frequency of file checking.
+- GeoIP support in Alerts (by Scott R Shinn).
+- Internal option to output GeoIP data on JSON alerts.
+- Matching pattern negation (by Daniel Cid).
+- Syscheck and Rootcheck events on SQLite databases.
+- Data migration tool to SQLite databases.
+- Jenkins QA.
+- 64-bit Windows registry keys support.
+- Complete FIM data output to JSON and alerts.
+- Username, date and inode attributes to FIM events on Unix.
+- Username attribute to FIM events on Windows.
+- Report changes (FIM file diffs) to Windows agent.
+- File diffs to JSON output.
+- Elastic mapping updated for new FIM events.
+- Title and file fields extracted at Rootcheck alerts.
+- Rule description formatting with dynamic field referencing.
+- Multithreaded design for Authd server for fast and reliable client dispatching, with key caching and write scheduling.
+- New Monitord feature for agent keys synchronization with SQLite database.
+- Auth registration client for Windows (by Gael Muller).
+- Auth password authentication for Windows client.
+- New local decoder file by default.
+- Show server certificate and key paths at Authd help.
+- New option for Authd to verify agent's address.
+- Added support for new format at predecoder (by Brad Lhotsky).
+- Agentless passlist encoding to Base64.
 
 ### Changed
 
-- Isolated logtest directory from analysisd
-- Remoted informs Analysisd about agent ID
-- Updated Kibana dashboards
-- Syscheck FIM attributes to dynamic fields
-- Force services to exit if PID file creation fails
-- Atomic writing of client.keys through temporary files
-- Disabled remote message ID verification by default
+- Isolated logtest directory from analysisd.
+- Remoted informs Analysisd about agent ID.
+- Updated Kibana dashboards.
+- Syscheck FIM attributes to dynamic fields.
+- Force services to exit if PID file creation fails.
+- Atomic writing of client.keys through temporary files.
+- Disabled remote message ID verification by default.
+- Show actual IP on debug message when agents get connected.
+- Enforce rules IDs to max 6 digits.
+- OSSEC users and group as system (UI-hidden) users (by Dennis Golden).
+- Increases Authd connection pool size.
+- Use general-purpose version-flexible SSL/TLS methods for Authd registration.
+- Enforce minimum 3-digit agent ID format.
+- Exclude BTRFS from Rootcheck searching for hidden files inside directories (by Stehpan Joerrens).
+- Moved OSSEC and Wazuh decoders to one directory.
+- Prevent manage_agents from doing invalid actions (such methods for manager at agent).
+- Disabled capturing of security events 5145 and 5156 on Windows agent.
+- Utilities to rename an agent or change the IP address (by Antonio Querubin).
+- Added quiet option for Logtest (by Dan Parriot).
+- Output decoder information onto JSON alerts.
+- Enable mail notifications by default for server installation.
+- Agent control option to restart all agents' Syscheck will also restart manager's Syscheck.
+- Make ossec-control to check Authd PID.
+- Enforce every rule to contain a description.
+- JSON output won't contain field "agentip" if tis value is "any".
+- Don't broadcast Active Response messages to disconnected agents.
+- Don't print Syscheck logs if it's disabled.
+- Set default Syscheck and Rootcheck frequency to 12 hours.
+- Generate FIM new file alert by default.
+- Added option for Integrator to set the maximum log length.
+- JSON output nested objects modelling through dynamic fields.
+- Disable TCP for unsupported OSs.
 
 ### Fixed
 
-- Logcollector bug that inhibited alerts about file reduction
-- Memory issue on string manipulation at JSON
-- Memory bug at JSON alerts
-- Fixed some CLang warnings
-- Issue on marching OSSEC user on installing
-- Memory leaks at configuration
-- Memory leaks at Analysisd
-- Bugs and memory errors at agent management
-- Mistake with incorrect name for PID file (by Tickhon Clearscale)
-- Agent-auth name at messages (it appeared to be the server)
-- Avoid Monitord to log errors when the JSON slerrts file doesn't exists
-- Agents numberig issue (minimum 3 digits)
-- Avoid no-JSON message at agent_control when client.keys empty
-- Memory leaks at manage_agents
-- Authd error messages about connection to queue passed to warning
-- Issue with Authd password checking
-- Avoid ossec-control to use Dash
+- Logcollector bug that inhibited alerts about file reduction.
+- Memory issue on string manipulation at JSON.
+- Memory bug at JSON alerts.
+- Fixed some CLang warnings.
+- Issue on marching OSSEC user on installing.
+- Memory leaks at configuration.
+- Memory leaks at Analysisd.
+- Bugs and memory errors at agent management.
+- Mistake with incorrect name for PID file (by Tickhon Clearscale).
+- Agent-auth name at messages (it appeared to be the server).
+- Avoid Monitord to log errors when the JSON alerts file doesn't exists.
+- Agents numberig issue (minimum 3 digits).
+- Avoid no-JSON message at agent_control when client.keys empty.
+- Memory leaks at manage_agents.
+- Authd error messages about connection to queue passed to warning.
+- Issue with Authd password checking.
+- Avoid ossec-control to use Dash.
+- Fixed false error about disconnected agent when trying to send it the shared files.
+- Avoid Authd to close when it reaches the maximum concurrency.
+- Fixed memory bug at event diff execution.
+- Fixed resource leak at file operations.
+- Hide help message by useadd and groupadd on OpenBSD.
+- Fixed error that made Analysisd to crash if it received a missing FIM file entry.
+- Fixed compile warnings at cJSON library.
+- Fixed bug that made Active Response to disable all commands if one of them was disabled (by Jason Thomas).
+- Fixed segmentation fault at logtest (by Dan Parriot).
+- Fixed SQL injection vulnerability at Database.
+- Fixed Active Response scripts for Slack and Twitter.
+- Fixed potential segmentation fault at file queue operation.
+- Fixed file permissions.
+- Fixed failing test for Apache 2.2 logs (by Brad Lhotsky).
+- Fixed memory error at net test.
+- Limit agent waiting time for retrying to connect.
+- Fixed compile warnings on i386 architecture.
+- Fixed Monitord crash when sending daily report email.
+- Fixed script to null route an IP address on Windows Server 2012+ (by Theresa Meiksner).
+- Fixed memory leak at Logtest.
+- Fixed manager with TCP support on FreeBSD (by Dave Stoddard).
+- Fixed Integrator launching at local-mode installation.
+
+### Removed
+
+- Deleted link to LUA sources.
+- Delete ZLib generated files on cleaning.
+- Removed maximum lines limit from diff messages (that remain limited by length).
 
 ## [v1.1.1] - 2016-05-12
 
