@@ -201,6 +201,8 @@ void LogCollectorStart()
                 logff[i].read = read_djbmultilog;
             } else if (logff[i].logformat[0] >= '0' && logff[i].logformat[0] <= '9') {
                 logff[i].read = read_multiline;
+            } else if (strcmp("audit", logff[i].logformat) == 0) {
+                logff[i].read = read_audit;
             } else {
                 logff[i].read = read_syslog;
             }
