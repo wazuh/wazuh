@@ -349,26 +349,6 @@
         },
         "oscap": {
             "properties": {
-                "content": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "benchmark.id": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "profile.title": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "profile.id": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "score": {
-                    "type": "double",
-                    "doc_values": "true"
-                },
                 "check.title": {
                     "type": "keyword",
                     "doc_values": "true"
@@ -401,7 +381,31 @@
                     "type": "keyword",
                     "doc_values": "true"
                 },
-                "return_code": {
+                "scan.id": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "scan.content": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "scan.benchmark.id": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "scan.profile.title": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "scan.profile.id": {
+                    "type": "keyword",
+                    "doc_values": "true"
+                },
+                "scan.score": {
+                    "type": "double",
+                    "doc_values": "true"
+                },
+                "scan.return_code": {
                     "type": "long",
                     "doc_values": "true"
                 }
