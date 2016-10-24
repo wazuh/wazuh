@@ -52,6 +52,7 @@
 #define EPOLL_ERROR   "%s(1136): ERROR: Could not handle epoll descriptor."
 #define LOST_ERROR   "%s(1137): ERROR: Lost connection with manager."
 #define KQUEUE_ERROR   "%s(1138): ERROR: Could not handle kqueue descriptor."
+#define FTELL_ERROR     "%s(1139): ERROR: Could not get position from file '%s' due to [(%d)-(%s)]."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "%s(1201): ERROR: No remote connection configured."
