@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 ################################################################################
 # Wazuh wrapper for OpenSCAP
 # Wazuh Inc.
-# Oct 21, 2016
+# Oct 24, 2016
 ################################################################################
 
 from re import compile
@@ -57,7 +57,7 @@ def extract_profiles_from_file(oscap_file):
     regex_profile = compile(PATTERN_PROFILE)
 
     try:
-        profiles_output = check_output([OSCAP_BIN, "info", oscap_file], stderr=STDOUT)
+        profiles_output = check_output([OSCAP_BIN, "info", oscap_file], stderr=STDOUT).decode()
     except CalledProcessError as err:
         print("{0} Parsing file \"{1}\". Details: \"{2}\".".format(OSCAP_LOG_ERROR, oscap_file, err.output.replace('\r', '').split("\n")[0]))
         exit(1)
@@ -145,7 +145,7 @@ def oscap(profile=None):
         scan_id = "{0}{1}".format(agent_id, int(time()))
 
         if arg_module == 'xccdf':
-            output = check_output((XSLT_BIN, TEMPLATE_XCCDF, temp[1]))
+            output = check_output((XSLT_BIN, TEMPLATE_XCCDF, temp[1])).decode()
 
             for line in output.split("\n"):
                 if not line:
@@ -161,7 +161,7 @@ def oscap(profile=None):
                 print(new_line)
 
         else:
-            output = check_output((XSLT_BIN, TEMPLATE_OVAL, temp[1]))
+            output = check_output((XSLT_BIN, TEMPLATE_OVAL, temp[1])).decode()
 
             total = 0
             total_KO = 0
