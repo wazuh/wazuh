@@ -74,6 +74,9 @@ static int DecodeSum(SyscheckSum *sum, char *c_sum);
 
 static void FillEvent(Eventinfo *lf, const char *f_name, const SyscheckSum *sum);
 
+/* Compare the first common fields between sum strings */
+int SumCompare(const char *s1, const char *s2);
+
 /* Initialize the necessary information to process the syscheck information */
 void SyscheckInit()
 {
@@ -324,7 +327,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
         saved_sum += 3;
 
         /* Checksum match, we can just return and keep going */
-        if (strcmp(saved_sum, c_sum) == 0) {
+        if (SumCompare(saved_sum, c_sum) == 0) {
             lf->data = NULL;
             return (0);
         }
@@ -838,4 +841,22 @@ void FillEvent(Eventinfo *lf, const char *f_name, const SyscheckSum *sum) {
         os_calloc(20, sizeof(char), lf->fields[SCK_INODE].value);
         snprintf(lf->fields[SCK_INODE].value, 20, "%ld", sum->inode);
     }
+}
+
+/* Compare the first common fields between sum strings */
+int SumCompare(const char *s1, const char *s2) {
+    const char *ptr1 = strchr(s1, ':');
+    const char *ptr2 = strchr(s2, ':');
+    size_t size1;
+    size_t size2;
+
+    while (ptr1 && ptr2) {
+        ptr1 = strchr(ptr1 + 1, ':');
+        ptr2 = strchr(ptr2 + 1, ':');
+    }
+
+    size1 = ptr1 ? (size_t)(ptr1 - s1) : strlen(s1);
+    size2 = ptr2 ? (size_t)(ptr2 - s2) : strlen(s2);
+
+    return size1 == size2 ? strncmp(s1, s2, size1) : 1;
 }
