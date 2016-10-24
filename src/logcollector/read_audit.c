@@ -56,6 +56,11 @@ void *read_audit(int pos, int *rc, int drop_it) {
     char *p;
     size_t z;
     long offset = ftell(logff[pos].fp);
+    
+    if (offset < 0) {
+        merror(FTELL_ERROR, ARGV0, logff[pos].file, errno, strerror(errno));
+        return NULL;
+    }
 
     *rc = 0;
 
@@ -68,7 +73,11 @@ void *read_audit(int pos, int *rc, int drop_it) {
                 while (fgets(buffer, OS_MAXSTR, logff[pos].fp) && !strchr(buffer, '\n'));
             } else {
                 debug1("%s: Message not complete. Trying again: '%s'", ARGV0, buffer);
-                fseek(logff[pos].fp, offset, SEEK_SET);
+                
+                if (fseek(logff[pos].fp, offset, SEEK_SET) < 0) {
+                    merror(FSEEK_ERROR, ARGV0, logff[pos].file, errno, strerror(errno));
+                    break;
+                }
             }
 
             break;
