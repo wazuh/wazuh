@@ -192,6 +192,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     case 0:
         if (status > 0) {
             merror("%s: WARN: Ignoring content '%s' due to error (%d).", WM_OSCAP_LOGTAG, eval->path, status);
+            debug2("%s: DEBUG: OUTPUT: %s", WM_OSCAP_LOGTAG, output);
             eval->flags.error = 1;
         }
 
