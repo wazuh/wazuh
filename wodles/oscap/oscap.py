@@ -2,11 +2,11 @@
 ################################################################################
 # Wazuh wrapper for OpenSCAP
 # Wazuh Inc.
-# Oct 24, 2016
+# Oct 25, 2016
 ################################################################################
 
 from re import compile
-from sys import argv, exit
+from sys import argv, exit, version_info
 from os.path import isfile, exists
 from tempfile import mkstemp
 from xml.etree import ElementTree
@@ -31,6 +31,10 @@ CONTENT_PATH = "{0}/wodles/oscap/content".format(OSSEC_PATH)
 
 tempfile.tempdir = OSSEC_PATH + "/tmp"
 
+if version_info[0] >= 3:
+    import sys
+    sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
+
 ################################################################################
 
 try:
@@ -52,12 +56,15 @@ except ImportError:
         else:
             return cmd_output
 
+
 def extract_profiles_from_file(oscap_file):
     regex_head = compile(PATTERN_HEAD)
     regex_profile = compile(PATTERN_PROFILE)
 
     try:
-        profiles_output = check_output([OSCAP_BIN, "info", oscap_file], stderr=STDOUT).decode()
+        profiles_output = check_output([OSCAP_BIN, "info", oscap_file], stderr=STDOUT)
+        if version_info[0] >= 3:
+            profiles_output = profiles_output.decode('utf-8', 'backslashreplace')
     except CalledProcessError as err:
         print("{0} Parsing file \"{1}\". Details: \"{2}\".".format(OSCAP_LOG_ERROR, oscap_file, err.output.replace('\r', '').split("\n")[0]))
         exit(1)
@@ -145,7 +152,9 @@ def oscap(profile=None):
         scan_id = "{0}{1}".format(agent_id, int(time()))
 
         if arg_module == 'xccdf':
-            output = check_output((XSLT_BIN, TEMPLATE_XCCDF, temp[1])).decode()
+            output = check_output((XSLT_BIN, TEMPLATE_XCCDF, temp[1]))
+            if version_info[0] >= 3:
+                output = output.decode('utf-8', 'backslashreplace')
 
             for line in output.split("\n"):
                 if not line:
@@ -157,11 +166,12 @@ def oscap(profile=None):
                 else:
                     new_line = line.replace('oscap: msg: "xccdf-result",', 'oscap: msg: "xccdf-result", scan-id: "{0}", content: "{1}",'.format(scan_id, content_filename))
 
-
                 print(new_line)
 
         else:
-            output = check_output((XSLT_BIN, TEMPLATE_OVAL, temp[1])).decode()
+            output = check_output((XSLT_BIN, TEMPLATE_OVAL, temp[1]))
+            if version_info[0] >= 3:
+                output = output.decode('utf-8', 'backslashreplace')
 
             total = 0
             total_KO = 0
