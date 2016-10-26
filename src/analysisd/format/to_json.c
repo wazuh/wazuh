@@ -237,6 +237,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddStringToObject(decoder, "ftscomment", lf->decoder_info->ftscomment);
     }
 
+    if (lf->previous)
+        cJSON_AddStringToObject(root, "previous_log", lf->previous);
+
     W_ParseJSON(root, lf);
     out = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -457,6 +460,9 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->decoder_info->ftscomment)
             cJSON_AddStringToObject(decoder, "ftscomment", lf->decoder_info->ftscomment);
     }
+
+    if (lf->previous)
+        cJSON_AddStringToObject(root, "previous_log", lf->previous);
 
     if(lf->full_log)
         cJSON_AddStringToObject(root, "full_log", lf->full_log);

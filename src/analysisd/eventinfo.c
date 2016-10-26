@@ -522,6 +522,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->inode_before = 0;
     lf->inode_after = 0;
     lf->diff = NULL;
+    lf->previous = NULL;
 
     return;
 }

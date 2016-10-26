@@ -97,6 +97,7 @@ typedef struct _Eventinfo {
     long inode_before;
     long inode_after;
     char *diff;
+    const char *previous;
 } Eventinfo;
 
 /* Events List structure */

@@ -66,7 +66,7 @@ static int _add2last(const char *str, size_t strsize, const char *file)
     return (1);
 }
 
-int doDiff(RuleInfo *rule, const Eventinfo *lf)
+int doDiff(RuleInfo *rule, Eventinfo *lf)
 {
     time_t date_of_change;
     char *htpt = NULL;
@@ -146,5 +146,7 @@ int doDiff(RuleInfo *rule, const Eventinfo *lf)
 
     rule->last_events[0] = "Previous output:";
     rule->last_events[1] = flastcontent;
+    lf->previous = flastcontent;
+
     return (1);
 }
