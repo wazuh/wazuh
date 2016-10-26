@@ -47,6 +47,9 @@
         "full_log": {
           "type": "text"
         },
+        "previous_log": {
+          "type": "text"
+        },
         "GeoLocation": {
           "properties": {
             "area_code": {
