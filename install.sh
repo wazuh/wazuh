@@ -136,8 +136,7 @@ Install()
 
     # Install Wazuh ruleset updater
     if [ "X$INSTYPE" = "Xserver" ]; then
-		WazuhSetup
-
+        WazuhSetup
     fi
    # If update_rules is set, we need to tweak
     # ossec.conf to read the new signatures.
@@ -147,6 +146,7 @@ Install()
 
     # If update, start OSSEC
     if [ "X${update_only}" = "Xyes" ]; then
+        WazuhUpgrade
         UpdateStartOSSEC
     fi
 
