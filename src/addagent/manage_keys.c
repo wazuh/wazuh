@@ -160,8 +160,6 @@ int k_import(const char *cmdimport)
                     OS_RemoveCounter("sender");
 
                     printf(ADDED);
-                    printf(PRESS_ENTER);
-                    read_from_user();
                     restart_necessary = 1;
 
                     free(b64_dec);
