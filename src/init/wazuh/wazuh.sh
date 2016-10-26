@@ -22,9 +22,20 @@ WazuhSetup(){
 
 WazuhUpgrade()
 {
-    if [ -n "$USER_OLD_VERSION" ]; then
-        env python ./src/init/wazuh/upgrade.py -d $INSTALLDIR $USER_OLD_VERSION
-    else
-        env python ./src/init/wazuh/upgrade.py -d $INSTALLDIR "v1.0"
+    # Encode Agentd passlist if not encoded
+    
+    passlist=$DIRECTORY/agentless/.passlist
+    
+    if [ -f $passlist ] && ! base64 -d $passlist > /dev/null 2>&1; then
+        cp $passlist $passlist.bak
+        base64 $passlist.bak > $passlist
+
+        if [ $? = 0 ]; then
+            echo "Agentless passlist encoded successfully."
+            rm -f $passlist.bak
+        else
+            echo "ERROR: Couldn't encode Agentless passlist."
+            mv $passlist.bak $passlist
+        fi
     fi
 }
