@@ -26,7 +26,6 @@ int alert_only;
 Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
 {
     Eventinfo *lf;
-    Eventinfo *first_lf;
     OSListNode *lf_node;
 
     /* Set frequency to 0 */
@@ -43,20 +42,12 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
     if (!lf_node) {
         return (NULL);
     }
-    first_lf = (Eventinfo *)lf_node->data;
 
     do {
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
         if ((c_time - lf->time) > rule->timeframe) {
-            return (NULL);
-        }
-
-        /* We avoid multiple triggers for the same rule
-         * or rules with a lower level.
-         */
-        else if (lf->matched >= rule->level) {
             return (NULL);
         }
 
@@ -136,6 +127,13 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
             }
         }
 
+        /* We avoid multiple triggers for the same rule
+         * or rules with a lower level.
+         */
+        else if (lf->matched >= rule->level) {
+            return (NULL);
+        }
+
         /* Check if the number of matches worked */
         if (rule->__frequency <= 10) {
             rule->last_events[rule->__frequency]
@@ -150,11 +148,9 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
         }
         rule->__frequency++;
 
-
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
-        first_lf->matched = rule->level;
 
         return (lf);
 
@@ -169,7 +165,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
 Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
 {
     Eventinfo *lf;
-    Eventinfo *first_lf;
     OSListNode *lf_node;
 
     /* Set frequency to 0 */
@@ -186,20 +181,12 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
     if (!lf_node) {
         return (NULL);
     }
-    first_lf = (Eventinfo *)lf_node->data;
 
     do {
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
         if ((c_time - lf->time) > rule->timeframe) {
-            return (NULL);
-        }
-
-        /* We avoid multiple triggers for the same rule
-         * or rules with a lower level.
-         */
-        else if (lf->matched >= rule->level) {
             return (NULL);
         }
 
@@ -266,7 +253,6 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
                     continue;
                 }
             }
-
 
             /* Check for different URLs */
             if (rule->context_opts & DIFFERENT_URL) {
@@ -292,6 +278,13 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
             }
         }
 
+        /* We avoid multiple triggers for the same rule
+         * or rules with a lower level.
+         */
+        else if (lf->matched >= rule->level) {
+            return (NULL);
+        }
+
         /* Check if the number of matches worked */
         if (rule->__frequency < rule->frequency) {
             if (rule->__frequency <= 10) {
@@ -305,14 +298,11 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
             continue;
         }
 
-
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
-        first_lf->matched = rule->level;
 
         return (lf);
-
 
     } while ((lf_node = lf_node->prev) != NULL);
 
@@ -327,7 +317,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
 {
     EventNode *eventnode_pt;
     Eventinfo *lf;
-    Eventinfo *first_lf;
 
     /* Last events */
     eventnode_pt = OS_GetLastEvent();
@@ -338,7 +327,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
 
     /* Set frequency to 0 */
     rule->__frequency = 0;
-    first_lf = (Eventinfo *)eventnode_pt->event;
 
     /* Search all previous events */
     do {
@@ -346,13 +334,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
 
         /* If time is outside the timeframe, return */
         if ((c_time - lf->time) > rule->timeframe) {
-            return (NULL);
-        }
-
-        /* We avoid multiple triggers for the same rule
-         * or rules with a lower level.
-         */
-        else if (lf->matched >= rule->level) {
             return (NULL);
         }
 
@@ -425,6 +406,13 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
             }
         }
 
+        /* We avoid multiple triggers for the same rule
+         * or rules with a lower level.
+         */
+        else if (lf->matched >= rule->level) {
+            return (NULL);
+        }
+
         /* Check if the number of matches worked */
         if (rule->__frequency < rule->frequency) {
             if (rule->__frequency <= 10) {
@@ -441,7 +429,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
-        first_lf->matched = rule->level;
 
         return (lf);
 
