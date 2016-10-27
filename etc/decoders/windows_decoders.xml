@@ -407,28 +407,81 @@ Example:
 <!-- sysmon decoder END -->
 
 <!-- Windows generic -->
-<decoder name="windows1">
+
+<!--
+2013 Oct 09 17:09:04 WinEvtLog: Application: INFORMATION(1): My Script: (no user): no domain: demo1.foo.example.com: test
+fts:
+2016 Oct 14 11:44:25 WinEvtLog: Security: AUDIT_SUCCESS(528): Microsoft-Windows-Security-Auditing: homer: no domain: my.domain.com: A handle
+2016 Oct 14 11:44:25 WinEvtLog: Security: AUDIT_SUCCESS(528): Microsoft-Windows-Security-Auditing: bart: no domain: my.domain.com: A handle
+-->
+<decoder name="windows_fields">
   <type>windows</type>
   <parent>windows</parent>
+  <prematch>\s</prematch>
   <regex offset="after_parent">^\.+: (\w+)\((\d+)\): (\.+): </regex>
   <regex>(\.+): \.+: (\S+): </regex>
   <order>status, id, extra_data, user, system_name</order>
-  <fts>name, location, system_name</fts>
+  <fts>name, location, user, system_name</fts>
 </decoder>
 
-<decoder name="windows1">
+<!--
+General:
+2016 Oct 14 11:44:25 WinEvtLog: Security: AUDIT_SUCCESS(4656): Microsoft-Windows-Security-Auditing: (no user): no domain: my.domain.com: A handle to an object was requested. Subject:  Security ID:  S-1-5-21-4109284664-1754905691-1510191782-1615  Account Name:  snaowpc  Account Domain:  DEV  Logon ID:  0x2054e3a2  Object:  Object Server:  Security  Object Type:  File  Object Name:  C:\ossec_test\test_file.txt  Handle ID:  0x15d4  Process Information: Process ID:  0  Process Name:  0xbd0  Access Request Information:  Transaction ID:  {00000000-0000-0000-0000-000000000000}  Accesses:  %%1541      %%4423       Access Mask:  %%1541: %%1801     D:(A;ID;FA;;;S-1-5-21-4109284664-1754905691-1510191782-1615)      %%4423: %%1801 D:(A;ID;FA;;;S-1-5-21-4109284664-1754905691-1510191782-1615)       Privileges Used for Access Check: 0x100080  Restricted SID Count: -
+
+General with '-':
+2016 Oct 14 11:44:25 WinEvtLog: Security: AUDIT_SUCCESS(4656): Microsoft-Windows-Security-Auditing: (no user): no domain: my.domain.com: A handle to an object was requested. Subject:  Security ID:  S-1-5-21-4109284664-1754905691-1510191782-1615  Account Name:  -  Account Domain:  -  Logon ID:  0x2054e3a2  Object:  Object Server:  Security  Object Type:  File  Object Name:  C:\ossec_test\test_file.txt  Handle ID:  0x15d4  Process Information: Process ID:  0  Process Name:  0xbd0  Access Request Information:  Transaction ID:  {00000000-0000-0000-0000-000000000000}  Accesses:  %%1541      %%4423       Access Mask:  %%1541: %%1801     D:(A;ID;FA;;;S-1-5-21-4109284664-1754905691-1510191782-1615)      %%4423: %%1801 D:(A;ID;FA;;;S-1-5-21-4109284664-1754905691-1510191782-1615)       Privileges Used for Access Check: 0x100080  Restricted SID Count: -
+
+Tabs:
+2016 Oct 14 11:44:25 WinEvtLog: Security: AUDIT_SUCCESS(4656): Microsoft-Windows-Security-Auditing: (no user): no domain: my.domain.com: A handle to an object was requested. Subject:	Security ID:	S-1-5-21-4109284664-1754905691-1510191782-1615	Account Name:	snaowpc	Account Domain:	DEV	Logon ID:	0x2054e3a2	Object:	Object Server:	Security	Object Type:	File	Object Name:	C:\ossec_test\test_file.txt	Handle ID:	0x15d4	Process Information: Process ID:	0	Process Name:	0xbd0	Access Request Information:	Transaction ID:	{00000000-0000-0000-0000-000000000000}	Accesses:	%%1541			%%4423			 Access Mask:	%%1541: %%1801		 D:(A;ID;FA;;;S-1-5-21-4109284664-1754905691-1510191782-1615)			%%4423: %%1801 D:(A;ID;FA;;;S-1-5-21-4109284664-1754905691-1510191782-1615)			 Privileges Used for Access Check: 0x100080	Restricted SID Count: -
+-->
+<decoder name="windows_fields">
   <type>windows</type>
   <parent>windows</parent>
-  <regex> Source Network Address: (\S+)</regex>
+  <regex>Account Name:\t*\s*(\S\S+)\t*\s*</regex>
+  <order>account_name</order>
+</decoder>
+
+<decoder name="windows_fields">
+  <type>windows</type>
+  <parent>windows</parent>
+  <regex>Account Domain:\t*\s*(\S\S+)\t*\s*</regex>
+  <order>account_domain</order>
+</decoder>
+
+<decoder name="windows_fields">
+  <type>windows</type>
+  <parent>windows</parent>
+  <regex>Logon ID:\t*\s*(\S+)\t*\s*</regex>
+  <order>logon_id</order>
+</decoder>
+
+<decoder name="windows_fields">
+  <type>windows</type>
+  <parent>windows</parent>
+  <regex>Accesses:\s+(\.+)\s+Access Mask:|Accesses:\t+(\.+)Access Mask:</regex>
+  <order>accesses</order>
+</decoder>
+
+<decoder name="windows_fields">
+  <type>windows</type>
+  <parent>windows</parent>
+  <regex>File\s+Object Name:\s+(\w\.+)\s+|File\t+Object Name:\t+(\w\.+)\t+</regex>
+  <order>target_file</order>
+</decoder>
+
+<!--
+2016 Oct 20 09:42:00 WinEvtLog: Security: AUDIT_SUCCESS(4656): Microsoft-Windows-Security-Auditing: (no user): no domain: snaowpc: A handle to an object was requested.    Subject:   Security ID:  S-1-5-21-466511811-1859800458-3340017162-1001   Account Name:  Pedro   Account Domain:  snaowpc   Logon ID:  0x1274A0BE    Object:   Source Network Address: 10.0.0.4 Object Server:  Security   Object Type:  File   Object Name:  C:\ossec_test\perro1 - copia (2).txt   Handle ID:  0x1dd0 Resource Attributes: -    Process Information:   Process ID:  0x1024   Process Name:  C:\Windows\explorer.exe    Access Request Information:   Transaction ID:  {00000000-0000-0000-0000-000000000000}   Accesses:  DELETE      READ_CONTROL      WRITE_DAC      SYNCHRONIZE      ReadData (or ListDirectory)      WriteData (or AddFile)      AppendData (or AddSubdirectory or CreatePipeInstance)      ReadEA      WriteEA      ReadAttributes      Write Attributes         Access Reasons:  -   Access Mask:  0x17019F   Privileges Used for Access Check: -   Restricted SID Count: 0
+
+2016 Oct 20 09:42:00 WinEvtLog: Security: AUDIT_SUCCESS(4656): Microsoft-Windows-Security-Auditing: (no user): no domain: snaowpc: A handle to an object was requested.    Subject:   Security ID:  S-1-5-21-466511811-1859800458-3340017162-1001   Account Name:  Pedro   Account Domain:  snaowpc   Logon ID:  0x1274A0BE    Object:   Source Network Address: - Object Server:  Security   Object Type:  File   Object Name:  C:\ossec_test\perro1 - copia (2).txt   Handle ID:  0x1dd0 Resource Attributes: -    Process Information:   Process ID:  0x1024   Process Name:  C:\Windows\explorer.exe    Access Request Information:   Transaction ID:  {00000000-0000-0000-0000-000000000000}   Accesses:  DELETE      READ_CONTROL      WRITE_DAC      SYNCHRONIZE      ReadData (or ListDirectory)      WriteData (or AddFile)      AppendData (or AddSubdirectory or CreatePipeInstance)      ReadEA      WriteEA      ReadAttributes      Write Attributes         Access Reasons:  -   Access Mask:  0x17019F   Privileges Used for Access Check: -   Restricted SID Count: 0
+-->
+<decoder name="windows_fields">
+  <type>windows</type>
+  <parent>windows</parent>
+  <regex>Source Network Address:\t*\s*(\S+.\S+.\S+.\S+)|Source Network Address:\t*\s*(\S*:\S*:\S*:\S*:\S*:\S*:\S*:\S*)</regex>
   <order>srcip</order>
 </decoder>
 
-<decoder name="windows1">
-  <type>windows</type>
-  <parent>windows</parent>
-  <regex> Account Name: (\S+) Account</regex>
-  <order>user</order>
-</decoder>
+<!-- Windows generic END -->
 
 <!-- Windows decoder -NTsyslog format
   - Will extract extra_data (as win source),action (as win category), id,

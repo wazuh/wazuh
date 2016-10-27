@@ -1,7 +1,6 @@
 <!--
-  -  **DRAFT**
   -  Fortigate decoders
-  -  v1.0 2016/07/19
+  -  v1.0 2016/10/27
   -  Created by Tom Hancock <t.m.h.a.ncoc.k+wazuh@gmail.com>
   -  Updated by jesus@wazuh.com
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -68,6 +67,18 @@ date=2016-06-15 time=09:41:35 devname=Device_Name devid=FGTXXXX9999999999 logid=
     <prematch offset="after_parent">type=utm subtype=ips</prematch>
     <regex offset="after_prematch">level=(\S+) \.+ srcip=(\S+) dstip=(\S+) \.*srcport=(\d+) dstport=(\d+) \.*msg=(\.*)</regex>
     <order>action,srcip,dstip,srcport,dstport,extra_data</order>
+</decoder>
+
+<!--
+Mar 22 19:21:00 10.10.10.10 date=2016-03-22 time=19:20:46 devname=Text devid=FGT3HD0000000000 logid=0000018000 type=anomaly subtype=anomaly level=alert vd="root" severity=critical srcip=10.10.10.35 dstip=10.10.10.84 srcintf="port2" sessionid=0 action=detected proto=6 service=tcp/36875 count=1903 attack="tcp_syn_flood" srcport=32835 dstport=2960 attackid=100663396 profile="DoS-policy1" ref="http://www.fortinet.com/ids/VID100663396" msg="anomaly: tcp_syn_flood, 2001 > threshold 2000, repeats 1903 times" crscore=50 crlevel=critical
+
+Mar 22 19:21:00 10.10.10.10 date=2016-03-22 time=19:20:46 devname=Text devid=FGT3HD0000000000 logid=0000018000 type=anomaly subtype=anomaly level=alert vd="root" severity=critical srcip=10.10.10.61 dstip=10.10.10.84 srcintf="port2" sessionid=0 action=dropped proto=6 service=NONE count=9 attack="IP.Bad.Header" attackid=127 profile="N/A" ref="http://www.fortinet.com/ids/VID127" msg="anomaly: IP.Bad.Header, repeats 9 times" crscore=50 crlevel=critical
+-->
+<decoder name="fortigate-firewall-v5-anomaly">
+    <parent>fortigate-firewall-v5</parent>
+    <prematch offset="after_parent">type=anomaly</prematch>
+    <regex offset="after_parent">severity=(\w+) srcip=(\S+) dstip=(\S+) srcintf=\S+ sessionid=\S+ action=(\w+) proto=\d+ service=(\S+) count=\d+ (attack)="(\.+)"</regex>
+    <order>status, srcip, dstip, action, protocol, id, extra_data</order>
 </decoder>
 
 <!--

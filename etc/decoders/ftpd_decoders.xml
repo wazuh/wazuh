@@ -26,9 +26,9 @@
 
 <!-- FTPD decoder - Solaris, MacOS and Wu-ftpd).
   - Examples:
-  - ftpd[811166]: refused connect from 88.225.42.182
-  - in.ftpd[18561]: [ID 484914 daemon.notice] gethostbyaddr: nameservices.net. != 216.117.134.168
-  - ftpd[31918]: FTPD: EXPORT file local , remote
+  - Dec 21 12:21:20 hostname ftpd[811166]: refused connect from 88.225.42.182
+  - Dec 21 12:21:20 hostname in.ftpd[18561]: [ID 484914 daemon.notice] gethostbyaddr: nameservices.net. != 216.117.134.168
+  - Dec 21 12:21:20 hostname ftpd[31918]: FTPD: EXPORT file local , remote
   - Dec 21 12:21:20 hostname ftpd[323115]: login jones_b from client.example.org failed.
   -->
 <decoder name="ftpd">
@@ -51,15 +51,15 @@
   <order>srcip</order>
 </decoder>
 
-<decoder name="ftpd-ip">
-  <parent>ftpd</parent>
-  <regex>from (\S+)$</regex>
-  <order>srcip</order>
-</decoder>
-
 <decoder name="ftpd-tru64">
   <parent>ftpd</parent>
   <prematch>^login \S+ from \S+ failed.</prematch>
   <regex>^login (\S+) from (\S+) failed.$</regex>
   <order>user, srcip</order>
+</decoder>
+
+<decoder name="ftpd-ip">
+  <parent>ftpd</parent>
+  <regex>from (\S+)$</regex>
+  <order>srcip</order>
 </decoder>
