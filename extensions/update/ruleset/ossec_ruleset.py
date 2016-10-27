@@ -434,6 +434,15 @@ def download_ruleset():
     except Exception as e:
         exit(2, "\tError extracting file '{0}': {1}.".format(output, e))
 
+    if 'stable.zip' in url_ruleset:
+        os.rename("{0}/ossec-rules-stable".format(downloads_directory), "{0}/ossec-rules".format(downloads_directory))
+    elif 'development.zip' in url_ruleset:
+        os.rename("{0}/ossec-rules-development".format(downloads_directory), "{0}/ossec-rules".format(downloads_directory))
+    elif 'master.zip' in url_ruleset:
+        os.rename("{0}/ossec-rules-master".format(downloads_directory), "{0}/ossec-rules".format(downloads_directory))
+    else:
+        exit(2, "Invalid downloaded file: {0}".format(url_ruleset))
+
     # Update main directory
     shutil.copyfile("{0}/ossec-rules/VERSION".format(downloads_directory), ruleset_version_path)
 
@@ -778,8 +787,9 @@ if __name__ == "__main__":
 
     # Config
     MAX_BACKUPS = 50
-    #url_ruleset = "http://ossec.wazuh.com/ruleset/ruleset.zip"
-    url_ruleset = "http://54.171.119.114:89/ruleset.zip"
+    url_ruleset = "https://github.com/wazuh/ossec-rules/archive/stable.zip"
+    #url_ruleset = "https://github.com/wazuh/ossec-rules/archive/development.zip"
+    #url_ruleset = "https://github.com/wazuh/ossec-rules/archive/master.zip"
 
     # Paths
     ossec_path = "/var/ossec"

@@ -22,12 +22,14 @@ https://community.sophos.com/kb/en-us/43391
 
 <decoder name="sophos-user">
     <parent>sophos</parent>
+    <prematch>User</prematch>
     <regex offset="after_parent">\((\.+)\) has</regex>
     <order>srcuser</order>
 </decoder>
 
 <decoder name="sophos-update">
     <parent>sophos</parent>
+    <prematch>detection</prematch>
     <regex offset="after_parent"> detection data version (\.+) </regex>
     <order>extra_data</order>
 </decoder>

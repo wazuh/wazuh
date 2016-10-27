@@ -27,10 +27,10 @@
 <!-- Named decoder.
   - Will extract the srcip
   - Examples:
-  -  valhalla named[7885]: client 192.168.1.231#1142: update 'hayaletgemi.edu/IN' denied
-  - named[12637]: client 1.2.3.4#32769: query (cache) 'somedomain.com/MX/IN' denied
-  -  Oct 22 10:12:33 junction named[31687]: /etc/blocked.slave:9892: syntax error near ';'
-  -  Oct 22 10:12:33 junction named[31687]: reloading configuration failed: unexpected token
+  - Oct 22 10:12:33 junction named[7885]: client 192.168.1.231#1142: update 'hayaletgemi.edu/IN' denied
+  - Oct 22 10:12:33 junction named[12637]: client 1.2.3.4#32769: query (cache) 'somedomain.com/MX/IN' denied
+  - Oct 22 10:12:33 junction named[31687]: /etc/blocked.slave:9892: syntax error near ';'
+  - Oct 22 10:12:33 junction named[31687]: reloading configuration failed: unexpected token
  -->
 <decoder name="named">
   <program_name>^named</program_name>
@@ -50,15 +50,15 @@
   <order>srcip</order>
 </decoder>
 
-<decoder name="named_from">
-  <parent>named</parent>
-  <regex offset="after_parent"> from [(\S+)]</regex>
-  <order>srcip</order>
-</decoder>
-
 <decoder name="named-master">
   <parent>named</parent>
   <prematch> for master</prematch>
   <regex>for master (\S+):(\d+) \S+ \(source (\S+)#d+\)$</regex>
   <order>dstip,dstport,srcip</order>
+</decoder>
+
+<decoder name="named_from">
+  <parent>named</parent>
+  <regex offset="after_parent"> from [(\S+)]</regex>
+  <order>srcip</order>
 </decoder>
