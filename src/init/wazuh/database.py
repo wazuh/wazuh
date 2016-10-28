@@ -11,6 +11,8 @@ import sys
 import pwd
 import sqlite3
 from getopt import getopt, GetoptError
+from socket import gethostname
+from os.path import isfile
 
 _ossec_user = 'ossec'
 _ossec_path = '/var/ossec'
@@ -80,7 +82,7 @@ def _create_profile(destdir=_dest_dir, srcdir=_src_dir, force=False):
     os.chown(destprofile, 0, _ossec_gid)
     return True
 
-def create(destdir=_dest_dir, srcdir=_src_dir, force=False):
+def create_global(destdir=_dest_dir, srcdir=_src_dir, force=False):
     '''Create database file, if it doesn't exists.
        If force=True and the DB already exists, it is first deleted.
        Returns True if the database was successfully created.'''
@@ -129,20 +131,13 @@ def create(destdir=_dest_dir, srcdir=_src_dir, force=False):
     _create_profile(destdir, srcdir, force)
     return True
 
-def _insert_agent(destdir, cursor, id, name, ip, key, osname, version):
-    sql = "INSERT INTO agent (id, name, ip, key, os, version) values (?, ?, ?, ?, ?, ?)"
+def _create_agent(id, name):
     profile = destdir + _prof_name
+    destagent = destdir + _agent_dir + _agent_pattern.format(id, 'localhost' if id == 0 else name)
 
-    if _verbose:
-        print("INFO: Inserting agent '{0}'.".format(id))
-
-    try:
-        cursor.execute(sql, (id, name, ip, key, osname, version))
-    except sqlite3.IntegrityError:
-        sys.stderr.write("WARN: Agent '{0}' already exists.\n".format(id))
-        return
-
-    destagent = destdir + _agent_dir + _agent_pattern.format(id, name)
+    if isfile(destagent):
+        sys.stderr.write("WARN: File '{0}' already exists.\n".format(destagent))
+        return False
 
     try:
         source = open(profile, 'rb')
@@ -153,7 +148,7 @@ def _insert_agent(destdir, cursor, id, name, ip, key, osname, version):
     try:
         dest = open(destagent, 'wb')
     except IOError as error:
-        sys.stderr.write("ERROR: Opening '{0}': {1}.\n".format(cursor, error.strerror))
+        sys.stderr.write("ERROR: Opening '{0}': {1}.\n".format(destagent, error.strerror))
         return False
 
     dest.write(source.read())
@@ -161,7 +156,23 @@ def _insert_agent(destdir, cursor, id, name, ip, key, osname, version):
     dest.close()
     os.chmod(destagent, _db_perm)
     os.chown(destagent, 0, _ossec_gid)
+
     return True
+
+def _insert_agent(destdir, cursor, id, name, ip, key, osname, version):
+    sql = "INSERT INTO agent (id, name, ip, key, os, version, date_add) values (?, ?, ?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'))"
+
+    if _verbose:
+        print("INFO: Inserting agent '{0}'.".format(id))
+
+    if (id != 0):
+        try:
+            cursor.execute(sql, (id, name, ip, key, osname, version))
+        except sqlite3.IntegrityError:
+            sys.stderr.write("WARN: Agent '{0}' already exists.\n".format(id))
+            return False
+
+    return _create_agent(id, name)
 
 def insert_agents(destdir=_dest_dir, srcdir=_src_dir, keyspath=_keys_path):
     '''Insert the registered agents into the global database and creates
@@ -173,7 +184,7 @@ def insert_agents(destdir=_dest_dir, srcdir=_src_dir, keyspath=_keys_path):
     cursor = conn.cursor()
 
     cursor.execute('BEGIN')
-    _insert_agent(destdir, cursor, 0, 'localhost', None, None, None, None, 1)
+    _insert_agent(destdir, cursor, 0, gethostname(), None, None, None, None)
 
     for agent in agents:
         try:
@@ -257,7 +268,7 @@ def _fim_insert_file(cursor, dbfile, filetype):
                     cursor.execute('INSERT INTO fim_file (path, type) VALUES (?, ?)', (path, filetype))
                     id_file = cursor.lastrowid
 
-                cursor.execute('INSERT INTO fim_event (id_file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (id_file, event, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode))
+                cursor.execute("INSERT INTO fim_event (id_file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, datetime(?, 'unixepoch', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, datetime(?, 'unixepoch', 'localtime'), ?)", (id_file, event, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode))
     except IOError:
         sys.stderr.write("WARN: No such file '{0}'.\n".format(dbfile))
 
@@ -357,7 +368,7 @@ def insert_pm(destdir=_dest_dir):
                         date_first = date_last = None
                         log = line
 
-                    cursor.execute("INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (?, ?, ?, ?, ?)", (date_first, date_last, log, _pm_pcidss(log), _pm_cis(log)))
+                    cursor.execute("INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (datetime(?, 'unixepoch', 'localtime'), datetime(?, 'unixepoch', 'localtime'), ?, ?, ?)", (date_first, date_last, log, _pm_pcidss(log), _pm_cis(log)))
 
         except IOError:
             sys.stderr.write("WARN: No such file '{0}'.\n".format(path))
@@ -414,7 +425,7 @@ if __name__ == '__main__':
         _print_help()
         sys.exit(1)
 
-    if create(destdir, srcdir, force):
+    if create_global(destdir, srcdir, force):
         insert_agents(destdir, srcdir)
 
         if insert:
