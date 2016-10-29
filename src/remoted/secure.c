@@ -26,7 +26,7 @@ void HandleSecure()
 {
     const int protocol = logr.proto[logr.position];
     int sock_client;
-    int n_events;
+    int n_events = 0;
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
     netsize_t length;
@@ -108,8 +108,6 @@ void HandleSecure()
             ErrorExit(EPOLL_ERROR, ARGV0);
         }
 #endif /* __MACH__ || __FreeBSD__ */
-    } else {
-        events = NULL;
     }
 
     while (1) {
@@ -127,6 +125,8 @@ void HandleSecure()
                 int fd = events[i].ident;
 #elif defined(__linux__)
                 int fd = events[i].data.fd;
+#else
+                int fd = 0;
 #endif /* __MACH__ || __FreeBSD__ */
                 if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);

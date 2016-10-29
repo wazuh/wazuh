@@ -332,7 +332,7 @@ int main(int argc, char **argv)
     sigaction(SIGINT, &action, NULL);
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, getpid());
+    verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
     /* Going to main loop */
     OS_ReadMSG(ut_str);

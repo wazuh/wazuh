@@ -14,7 +14,7 @@
 
 #ifndef __OS_NET_H
 #define __OS_NET_H
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__sun__)
 #include <stdint.h>
 typedef uint8_t u_int8_t;
 typedef uint16_t u_int16_t;
