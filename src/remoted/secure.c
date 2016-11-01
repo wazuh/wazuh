@@ -37,10 +37,12 @@ void HandleSecure()
     struct timespec ts_timeout = { EPOLL_MILLIS / 1000, (EPOLL_MILLIS % 1000) * 1000000 };
     struct timespec *p_timeout = EPOLL_MILLIS < 0 ? NULL : &ts_timeout;
     int kqueue_fd = 0;
-    struct kevent request, *events;
+    struct kevent request;
+    struct kevent *events = NULL;
 #elif defined(__linux__)
     int epoll_fd = 0;
-    struct epoll_event request, *events;
+    struct epoll_event request;
+    struct epoll_event *events = NULL;
 #endif /* __MACH__ || __FreeBSD__ */
 
     /* Send msg init */
