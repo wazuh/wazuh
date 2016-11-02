@@ -125,6 +125,18 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
                     continue;
                 }
             }
+
+            /* Check for different from same srcgeoip */
+            if (rule->context_opts & DIFFERENT_SRCGEOIP) {
+
+                if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
+                    continue;
+                }
+
+                if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                    continue;
+                }
+            }
         }
 
         /* We avoid multiple triggers for the same rule
