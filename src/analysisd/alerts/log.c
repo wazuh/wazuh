@@ -86,11 +86,11 @@ void OS_LogOutput(Eventinfo *lf)
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
-        if (lf->srcip) {
-                lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
+        if (lf->srcip && !lf->srcgeoip) {
+            lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
         }
-        if (lf->dstip) {
-                lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
+        if (lf->dstip && !lf->dstgeoip) {
+            lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
         }
     }
 #endif
@@ -246,11 +246,11 @@ void OS_Log(Eventinfo *lf)
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
-        if (lf->srcip) {
-                lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
+        if (lf->srcip && !lf->srcgeoip) {
+            lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
         }
-        if (lf->dstip) {
-                lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
+        if (lf->dstip && !lf->dstgeoip) {
+            lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
         }
     }
 #endif
