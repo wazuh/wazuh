@@ -263,8 +263,20 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->srcip)
         cJSON_AddStringToObject(root, "srcip", lf->srcip);
 
+    #ifdef LIBGEOIP_ENABLED
+    if (lf->srcgeoip && Config.geoip_jsonout) {
+        cJSON_AddStringToObject(root, "srcgeoip", lf->srcgeoip);
+    }
+    #endif
+
     if(lf->dstip)
         cJSON_AddStringToObject(root, "dstip", lf->dstip);
+
+    #ifdef LIBGEOIP_ENABLED
+    if (lf->dstgeoip && Config.geoip_jsonout) {
+        cJSON_AddStringToObject(root, "dstgeoip", lf->dstgeoip);
+    }
+    #endif
 
     if(lf->srcport)
         cJSON_AddStringToObject(root, "srcport", lf->srcport);
