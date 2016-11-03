@@ -168,6 +168,9 @@ DWORD WINAPI Reader(LPVOID args) {
 
 static void* reader(void *args);   // Reading thread's start point
 
+static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child process pool
+static pthread_mutex_t wm_children_mutex = PTHREAD_MUTEX_INITIALIZER;   // Mutex for child process pool
+
 // Work-around for OS X
 
 static inline void get_time(struct timespec *ts) {
@@ -237,6 +240,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         close(pipe_fd[1]);
         tinfo.pipe = pipe_fd[0];
+        wm_append_sid(pid);
 
         // Launch thread
 
@@ -262,6 +266,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             retval = WM_ERROR_TIMEOUT;
 
         default:
+            wm_remove_sid(pid);
             kill(-pid, SIGTERM);
             pthread_cancel(thread);
         }
@@ -332,6 +337,64 @@ void* reader(void *args) {
 
     close(tinfo->pipe);
     return NULL;
+}
+
+// Add process group to pool
+
+void wm_append_sid(pid_t sid) {
+    int i;
+
+    pthread_mutex_lock(&wm_children_mutex);
+
+    for (i = 0; i < WM_POOL_SIZE; i++) {
+        if (!wm_children[i]) {
+            wm_children[i] = sid;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&wm_children_mutex);
+
+    if (i == WM_POOL_SIZE)
+        merror("%s: ERROR: Child process pool is full. Couldn't register sid %d.", ARGV0, (int)sid);
+}
+
+// Remove process group from pool
+
+void wm_remove_sid(pid_t sid) {
+    int i;
+
+    pthread_mutex_lock(&wm_children_mutex);
+
+    for (i = 0; i < WM_POOL_SIZE; i++) {
+        if (wm_children[i] == sid) {
+            wm_children[i] = 0;
+            break;
+        }
+    }
+
+    if (i == WM_POOL_SIZE)
+        merror("%s: ERROR: Child process %d not found.", ARGV0, (int)sid);
+
+    pthread_mutex_unlock(&wm_children_mutex);
+}
+
+// Terminate every child process group. Does't wait for them!
+
+void wm_kill_children() {
+    // This function can be called from a signal handler
+
+    int i;
+    pid_t sid;
+
+    for (i = 0; i < WM_POOL_SIZE; i++) {
+        sid = wm_children[i];
+
+        if (sid) {
+            kill(-sid, SIGTERM);
+            wm_children[i] = 0;
+        }
+    }
 }
 
 #endif // WIN32
