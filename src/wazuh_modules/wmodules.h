@@ -29,6 +29,7 @@
 #define WM_IO_WRITE     0
 #define WM_IO_READ      1
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
+#define WM_POOL_SIZE    1                           // Child process pool size.
 
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
@@ -72,8 +73,14 @@ void wm_destroy();
  */
 int wm_exec(char *command, char **output, int *exitcode, int secs);
 
-// Check whether the last execution timed out
-int wm_exec_timeout();
+// Add process group to pool
+void wm_append_sid(pid_t sid);
+
+// Remove process group from pool
+void wm_remove_sid(pid_t sid);
+
+// Terminate every child process group
+void wm_kill_children();
 
 /* Concatenate strings with optional separator
  *

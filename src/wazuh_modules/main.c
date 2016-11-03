@@ -158,6 +158,9 @@ void wm_cleanup()
 
     if (DeletePID(ARGV0) < 0)
         merror("%s: ERROR: Couldn't delete PID file.", ARGV0);
+
+    // Kill active child processes
+    wm_kill_children();
 }
 
 // Action on signal
