@@ -63,6 +63,7 @@ static void help_agent_auth()
     print_out("    -x <path>   Full path to agent certificate");
     print_out("    -k <path>   Full path to agent key");
     print_out("    -P <pass>   Authorization password");
+    print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out(" ");
     exit(1);
 }
@@ -72,6 +73,7 @@ int main(int argc, char **argv)
     int key_added = 0;
     int c;
     int test_config = 0;
+    int auto_method = 0;
 #ifndef WIN32
     gid_t gid = 0;
 #endif
@@ -101,7 +103,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtg:m:p:A:v:x:k:D:P:")) != -1) {
+    while ((c = getopt(argc, argv, "Vdhtg:m:p:A:v:x:k:D:P:a")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -172,6 +174,9 @@ int main(int argc, char **argv)
 
                 authpass = optarg;
                 break;
+            case 'a':
+                auto_method = 1;
+                break;
             default:
                 help_agent_auth();
                 break;
@@ -225,7 +230,7 @@ int main(int argc, char **argv)
     }
 
     /* Start SSL */
-    ctx = os_ssl_keys(0, dir, agent_cert, agent_key, ca_cert);
+    ctx = os_ssl_keys(0, dir, agent_cert, agent_key, ca_cert, auto_method);
     if (!ctx) {
         merror("%s: ERROR: SSL error. Exiting.", ARGV0);
         exit(1);

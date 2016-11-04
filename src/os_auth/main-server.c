@@ -106,6 +106,7 @@ static void help_authd()
     print_out("    -s          Used with -v, enable source host verification");
     print_out("    -x <path>   Full path to server certificate (default: %s%s)", DEFAULTDIR, CERTFILE);
     print_out("    -k <path>   Full path to server key (default: %s%s)", DEFAULTDIR, KEYFILE);
+    print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out(" ");
     exit(1);
 }
@@ -178,6 +179,7 @@ int main(int argc, char **argv)
     /* Count of pids we are wait()ing on */
     int c = 0, test_config = 0, status;
     int use_pass = 0;
+    int auto_method = 0;
     gid_t gid;
     int client_sock = 0, port = DEFAULT_PORT;
     const char *dir  = DEFAULTDIR;
@@ -196,7 +198,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtig:D:m:p:v:sx:k:Pf:")) != -1) {
+    while ((c = getopt(argc, argv, "Vdhtig:D:p:v:sx:k:Pf:a")) != -1) {
         char *end;
 
         switch (c) {
@@ -269,6 +271,9 @@ int main(int argc, char **argv)
                 if (optarg == end || force_antiquity < 0)
                     ErrorExit("%s: Invalid number for -f", ARGV0);
 
+                break;
+            case 'a':
+                auto_method = 1;
                 break;
             default:
                 help_authd();
@@ -354,7 +359,7 @@ int main(int argc, char **argv)
     fclose(fp);
 
     /* Start SSL */
-    ctx = os_ssl_keys(1, dir, server_cert, server_key, ca_cert);
+    ctx = os_ssl_keys(1, dir, server_cert, server_key, ca_cert, auto_method);
     if (!ctx) {
         merror("%s: ERROR: SSL error. Exiting.", ARGV0);
         exit(1);
