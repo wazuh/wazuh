@@ -35,11 +35,11 @@ BIO *bio_err;
  * then load the file containing the CA chain and verify the certifcate
  * sent by the peer.
  */
-SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const char *key, const char *ca_cert)
+SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const char *key, const char *ca_cert, int auto_method)
 {
     SSL_CTX *ctx = NULL;
 
-    if (!(ctx = get_ssl_context())) {
+    if (!(ctx = get_ssl_context(auto_method))) {
         goto SSL_ERROR;
     }
 
@@ -94,7 +94,7 @@ SSL_ERROR:
     return (SSL_CTX *)NULL;
 }
 
-SSL_CTX *get_ssl_context()
+SSL_CTX *get_ssl_context(int auto_method)
 {
     SSL_CTX *ctx = NULL;
 
@@ -103,7 +103,7 @@ SSL_CTX *get_ssl_context()
     OpenSSL_add_all_algorithms();
 
     /* Create our context */
-    if (!(ctx = SSL_CTX_new(SSLv23_method()))) {
+    if (!(ctx = auto_method ? SSL_CTX_new(SSLv23_method()) : SSL_CTX_new(TLSv1_2_method()))) {
         goto CONTEXT_ERR;
     }
 
