@@ -48,13 +48,7 @@ except KeyError:
     else:
         raise ImportError("OSSEC group not found.")
 
-def _remove(path):
-    try:
-        os.remove(path)
-    except OSError:
-        pass
-
-def _create_profile(destdir=_dest_dir, srcdir=_src_dir, force=False):
+def create_profile(destdir=_dest_dir, srcdir=_src_dir, force=False):
     sqlagents = srcdir + '/schema_agents.sql'
     destprofile = destdir + _prof_name
 
@@ -82,62 +76,43 @@ def _create_profile(destdir=_dest_dir, srcdir=_src_dir, force=False):
     os.chown(destprofile, 0, _ossec_gid)
     return True
 
-def create_global(destdir=_dest_dir, srcdir=_src_dir, force=False):
-    '''Create database file, if it doesn't exists.
-       If force=True and the DB already exists, it is first deleted.
-       Returns True if the database was successfully created.'''
-
-    agentdir = destdir + _agent_dir
-    destglob = destdir + '/global.db'
-    sqlglobal = srcdir +'/schema_global.sql'
-
-    if os.path.isfile(destglob) or (os.path.isdir(agentdir) and os.listdir(agentdir)):
-        if force:
-            print("INFO: Removing database.")
-
-            if os.path.isfile(destglob):
-                os.remove(destglob)
-
-            if os.path.isdir(agentdir):
-                for path in os.listdir(agentdir):
-                    _remove(agentdir + '/' + path)
-
-        else:
-            sys.stderr.write("WARN: Database already exists.\n")
-            return False
-
-    if _verbose:
-        print("INFO: Creating database schema.")
-
-    if not os.path.isdir(agentdir):
-        os.mkdir(agentdir, _dir_mode)
-        os.chown(agentdir, 0, _ossec_gid)
-
+def get_agents():
     try:
-        script = open(sqlglobal, 'r')
-        conn = sqlite3.connect(destglob)
-    except IOError as error:
-        sys.stderr.write("ERROR: Opening '{0}': {1}.\n".format(sqlglobal, error.strerror))
-        return False
-    except sqlite3.OperationalError as error:
-        sys.stderr.write("ERROR: Creating '{0}': {1}.\n".format(destglob, error))
-        return False
+        agents = open(_keys_path)
+    except IOError:
+        return
 
-    cur = conn.cursor()
-    cur.executescript(script.read())
-    conn.close()
-    os.chmod(destglob, _db_perm)
-    os.chown(destglob, 0, _ossec_gid)
-    _create_profile(destdir, srcdir, force)
-    return True
+    yield (0, gethostname(), None)
 
-def _create_agent(id, name):
+    for agent in agents:
+        try:
+            id, name, ip, key = agent.split()
+        except ValueError:
+            sys.stderr.write("ERROR: Corrupt line at 'client.keys'.\n")
+            continue
+
+        if id[0] in '# ' or name[0] == '!':
+            continue
+
+        try:
+            int(id)
+        except ValueError:
+            continue
+
+        yield (int(id), name, ip)
+
+    agents.close()
+
+def create_agent(id, name, destdir, force):
     profile = destdir + _prof_name
     destagent = destdir + _agent_dir + _agent_pattern.format(id, 'localhost' if id == 0 else name)
 
     if isfile(destagent):
-        sys.stderr.write("WARN: File '{0}' already exists.\n".format(destagent))
-        return False
+        if force:
+            os.remove(destagent)
+        else:
+            sys.stderr.write("WARN: File '{0}' already exists.\n".format(destagent))
+            return False
 
     try:
         source = open(profile, 'rb')
@@ -159,65 +134,6 @@ def _create_agent(id, name):
 
     return True
 
-def _insert_agent(destdir, cursor, id, name, ip, key, osname, version):
-    sql = "INSERT INTO agent (id, name, ip, key, os, version, date_add) values (?, ?, ?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'))"
-
-    if _verbose:
-        print("INFO: Inserting agent '{0}'.".format(id))
-
-    if (id != 0):
-        try:
-            cursor.execute(sql, (id, name, ip, key, osname, version))
-        except sqlite3.IntegrityError:
-            sys.stderr.write("WARN: Agent '{0}' already exists.\n".format(id))
-            return False
-
-    return _create_agent(id, name)
-
-def insert_agents(destdir=_dest_dir, srcdir=_src_dir, keyspath=_keys_path):
-    '''Insert the registered agents into the global database and creates
-       one empty database for each one.'''
-
-    destglob = destdir + '/global.db'
-    agents = open(keyspath, 'r')
-    conn = sqlite3.connect(destglob)
-    cursor = conn.cursor()
-
-    cursor.execute('BEGIN')
-    _insert_agent(destdir, cursor, 0, gethostname(), None, None, None, None)
-
-    for agent in agents:
-        try:
-            id, name, ip, key = agent.split()
-        except ValueError:
-            sys.stderr.write("ERROR: Corrupt line at 'client.keys'.\n")
-            continue
-
-        if id[0] in '# ':
-            id = id[1:]
-
-            try:
-                int(id)
-            except ValueError:
-                continue
-
-        try:
-            with open('{0}/queue/agent-info/{1}-{2}'.format(_ossec_path, name, ip), 'r') as f:
-                osname, version = f.read().split(' - ')
-        except IOError:
-            osname = version = None
-
-        _insert_agent(destdir, cursor, int(id), name, ip, key, osname, version)
-
-    if _verbose:
-        print("INFO: Committing changes...")
-
-    conn.commit()
-
-    if _verbose:
-        print("INFO: Data commited.")
-
-    conn.close()
 
 def _fim_decode(line):
     '''Decode a line from syscheck into a tuple'''
@@ -272,40 +188,20 @@ def _fim_insert_file(cursor, dbfile, filetype):
     except IOError:
         sys.stderr.write("WARN: No such file '{0}'.\n".format(dbfile))
 
-def insert_fim(destdir=_dest_dir):
-    '''Insert the file integrity monitoring events into database.
-       It requires that table agents has been filled'''
+def insert_fim(cursor, id, name, ip):
+    '''Insert the file integrity monitoring events into database.'''
 
-    destagents = destdir + _agent_dir + _agent_pattern
-    destglob = destdir + '/global.db'
-    connglob = sqlite3.connect(destglob)
+    path = _ossec_path + '/queue/syscheck/'
+    path += '({0}) {1}->syscheck'.format(name, ip) if id else 'syscheck'
 
-    for id_agent, name, ip, os in connglob.cursor().execute('SELECT id, name, ip, os FROM agent'):
-        path = _ossec_path + '/queue/syscheck/'
-        path += '({0}) {1}->syscheck'.format(name, ip) if id_agent else 'syscheck'
-        destagent = destagents.format(id_agent, name)
-        conn = sqlite3.connect(destagent)
-        cursor = conn.cursor()
-        cursor.execute('BEGIN')
+    if _verbose:
+        print("INFO: Inserting syscheck database of agent '{0}'.".format(id_agent))
 
-        if _verbose:
-            print("INFO: Inserting syscheck database of agent '{0}'.".format(id_agent))
+    _fim_insert_file(cursor, path, 'file')
+    path = '{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(_ossec_path, name, ip)
 
-        _fim_insert_file(cursor, path, 'file')
-
-        if os and 'Windows' in os:
-            path = '{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(_ossec_path, name, ip)
-            _fim_insert_file(cursor, path, 'registry')
-
-        if _verbose:
-            print("INFO: Committing changes...")
-
-        conn.commit()
-
-        if _verbose:
-            print("INFO: Data commited.")
-
-        conn.close()
+    if isfile(path):
+        _fim_insert_file(cursor, path, 'registry')
 
 def _pm_pcidss(string):
     '''Get PCI_DSS requirement from log string '''
@@ -335,60 +231,63 @@ def _pm_cis(string):
 
     return None
 
-def insert_pm(destdir=_dest_dir):
-    '''Insert the policy monitoring events into database.
-       It requires that table agents has been filled.'''
+def insert_pm(cursor, id, name, ip):
+    '''Insert the policy monitoring events into database.'''
 
+    path = _ossec_path + '/queue/rootcheck/'
+    path += '({0}) {1}->rootcheck'.format(name, ip) if id else 'rootcheck'
+
+    if _verbose:
+        print("INFO: Inserting rootcheck database of agent '{0}'.".format(id_agent))
+
+    try:
+        with open(path, 'r') as rootcheck:
+            for line in rootcheck:
+                if line[0] == '!':
+                    line = line[1:]
+                    i = line.find('!')
+                    j = line.find(' ')
+                    date_last = line[:i]
+                    date_first = line[i+1:j]
+                    log = line[j+1:-1].decode('utf_8')
+                else:
+                    date_first = date_last = None
+                    log = line
+
+                cursor.execute("INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (datetime(?, 'unixepoch', 'localtime'), datetime(?, 'unixepoch', 'localtime'), ?, ?, ?)", (date_first, date_last, log, _pm_pcidss(log), _pm_cis(log)))
+
+    except IOError:
+        sys.stderr.write("WARN: No such file '{0}'.\n".format(path))
+
+def create_db(destdir=_dest_dir, srcdir=_src_dir, force=False):
+    create_profile(destdir, srcdir, force)
     destagents = destdir + _agent_dir + _agent_pattern
-    destglob = destdir + '/global.db'
-    connglob = sqlite3.connect(destglob)
 
-    for id_agent, name, ip, os in connglob.cursor().execute('SELECT id, name, ip, os FROM agent'):
-        path = _ossec_path + '/queue/rootcheck/'
-        path += '({0}) {1}->rootcheck'.format(name, ip) if id_agent else 'rootcheck'
-        destagent = destagents.format(id_agent, name)
-        conn = sqlite3.connect(destagent)
-        cursor = conn.cursor()
-        cursor.execute('BEGIN')
+    for id, name, ip in get_agents():
+        if create_agent(id, 'localhost' if id == 0 else name, destdir, force):
+            destagent = destagents.format(id, 'localhost' if id == 0 else name)
+            conn = sqlite3.connect(destagent)
+            cursor = conn.cursor()
+            cursor.execute('BEGIN')
 
-        if _verbose:
-            print("INFO: Inserting rootcheck database of agent '{0}'.".format(id_agent))
+            insert_fim(cursor, id, name, ip)
+            insert_pm(cursor, id, name, ip)
 
-        try:
-            with open(path, 'r') as rootcheck:
-                for line in rootcheck:
-                    if line[0] == '!':
-                        line = line[1:]
-                        i = line.find('!')
-                        j = line.find(' ')
-                        date_last = line[:i]
-                        date_first = line[i+1:j]
-                        log = line[j+1:-1].decode('utf_8')
-                    else:
-                        date_first = date_last = None
-                        log = line
+            if _verbose:
+                print("INFO: Committing changes...")
 
-                    cursor.execute("INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (datetime(?, 'unixepoch', 'localtime'), datetime(?, 'unixepoch', 'localtime'), ?, ?, ?)", (date_first, date_last, log, _pm_pcidss(log), _pm_cis(log)))
+            conn.commit()
 
-        except IOError:
-            sys.stderr.write("WARN: No such file '{0}'.\n".format(path))
+            if _verbose:
+                print("INFO: Data commited.")
 
-        if _verbose:
-            print("INFO: Committing changes...")
-
-        conn.commit()
-
-        if _verbose:
-            print("INFO: Data commited.")
-
-        conn.close()
+            conn.close()
 
 def _print_help():
     print '''
-    Database creation utility for Wazuh HIDS
+    FIM/PM database creation utility for Wazuh HIDS
 
     Options:
-        -c          Only create global database and agents (do not insert FIM or PM).
         -d <path>   Changes the default destination path for database.
         -f          Remove database if it exists.
         -h, --help  Prints this help.
@@ -402,13 +301,10 @@ if __name__ == '__main__':
     destdir = _dest_dir
     srcdir = _src_dir
     force = False
-    insert = True
 
     try:
-        for opt in getopt(sys.argv[1:], 'cd:fhs:v', '')[0]:
-            if opt[0] == '-c':
-                insert = False
-            elif opt[0] == '-d':
+        for opt in getopt(sys.argv[1:], 'd:fhs:v', '')[0]:
+            if opt[0] == '-d':
                 destdir = opt[1]
             elif opt[0] == '-f':
                 force = True
@@ -425,11 +321,8 @@ if __name__ == '__main__':
         _print_help()
         sys.exit(1)
 
-    if create_global(destdir, srcdir, force):
-        insert_agents(destdir, srcdir)
-
-        if insert:
-            insert_fim(destdir)
-            insert_pm(destdir)
+    if create_db(destdir, srcdir, force):
+        insert_fim(destdir)
+        insert_pm(destdir)
     else:
         sys.exit(1)
