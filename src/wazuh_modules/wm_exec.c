@@ -266,7 +266,6 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             retval = WM_ERROR_TIMEOUT;
 
         default:
-            wm_remove_sid(pid);
             kill(-pid, SIGTERM);
             pthread_cancel(thread);
         }
@@ -275,6 +274,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         pthread_mutex_unlock(&tinfo.mutex);
         pthread_join(thread, NULL);
+        wm_remove_sid(pid);
 
         // Wait for child process
 
