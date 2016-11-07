@@ -107,12 +107,14 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
 
 
         /* Get message if available (timeout of 5 seconds) */
+        debug2("%s: DEBUG: waiting for available alerts...", ARGV0);
         al_data = Read_FileMon(fileq, p, 5);
         if(!al_data)
         {
             continue;
         }
 
+        debug1("%s: DEBUG: sending new alert.", ARGV0);
         temp_file_created = 0;
 
         /* Sending to the configured integrations */
@@ -122,6 +124,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(integrator_config[s]->enabled == 0)
             {
                 s++;
+                debug2("%s: DEBUG: skipping: integration disabled", ARGV0);
                 continue;
             }
 
@@ -132,6 +135,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                                    strlen(al_data->location),
                                    integrator_config[s]->location))
                 {
+                    debug2("%s: DEBUG: skipping: location doesn't match", ARGV0);
                     s++; continue;
                 }
             }
@@ -141,7 +145,8 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             {
                 if(al_data->level < integrator_config[s]->level)
                 {
-                   s++; continue;
+                    debug2("%s: DEBUG: skipping: alert level is too low", ARGV0);
+                    s++; continue;
                 }
             }
 
@@ -152,7 +157,8 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                             strlen(al_data->group),
                             integrator_config[s]->group))
                 {
-                   s++; continue;
+                    debug2("%s: DEBUG: skipping: group doesn't match", ARGV0);
+                    s++; continue;
                 }
             }
 
@@ -177,6 +183,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 /* skip integration if none are matched */
                 if(rule_match == -1)
                 {
+                    debug2("%s: DEBUG: skipping: rule doesn't match", ARGV0);
                     s++; continue;
                 }
             }
@@ -190,6 +197,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 fp = fopen(exec_tmp_file, "w");
                 if(!fp)
                 {
+                    debug2("%s: ERROR: file %s couldn't be created.", ARGV0, exec_tmp_file);
                     exec_tmp_file[0] = '\0';
                 }
                 else
@@ -273,6 +281,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                     }
                     fprintf(fp, "alertdate='%s'\nalertlocation='%s'\nruleid='%d'\nalertlevel='%d'\nruledescription='%s'\nalertlog='%s'\nsrcip='%s'", al_data->date, al_data->location, al_data->rule, al_data->level, al_data->comment, al_data->log[0], al_data->srcip == NULL?"":al_data->srcip);
                     temp_file_created = 1;
+                    debug2("%s: DEBUG: file %s was written.", ARGV0, exec_tmp_file);
                     fclose(fp);
                 }
             }
@@ -280,6 +289,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(temp_file_created == 1)
             {
                 snprintf(exec_full_cmd, 4095, "%s '%s' '%s' '%s' > /dev/null 2>&1", integrator_config[s]->path, exec_tmp_file, integrator_config[s]->apikey == NULL?"":integrator_config[s]->apikey, integrator_config[s]->hookurl==NULL?"":integrator_config[s]->hookurl);
+                debug2("%s: DEBUG: Running: %s", ARGV0, exec_full_cmd);
                 if(system(exec_full_cmd) != 0)
                 {
                     integrator_config[s]->enabled = 0;
@@ -287,6 +297,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                     s++;
                     continue;
                 }
+                debug1("%s: DEBUG: Command run succesfully", ARGV0);
             }
             s++;
         }
