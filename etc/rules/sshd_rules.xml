@@ -389,7 +389,7 @@
     <description>sshd: failed to create a session.</description>
   </rule>
 
-  <rule id="5755" level="2">
+  <rule id="5755" level="3">
     <if_sid>5700</if_sid>
     <match>bad ownership or modes for file</match>
     <description>sshd: Authentication refused due to owner/permissions of authorized_keys.</description>

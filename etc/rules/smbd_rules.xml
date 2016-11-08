@@ -77,7 +77,7 @@
     <group>pci_dss_10.6.1,</group>
   </rule>
 
-  <rule id="13110" level="2">
+  <rule id="13110" level="3">
     <if_sid>13100</if_sid>
     <match>Connection denied from</match>
     <description>Samba: Connection was denied.</description>

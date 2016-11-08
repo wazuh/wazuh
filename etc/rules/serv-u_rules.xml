@@ -64,7 +64,7 @@ TypeMessage:
     User logged in
     [02] Thu 26Nov15 14:27:14 - (000003) User "lin" logged in
     -->
-    <rule id="80503" level="2">
+    <rule id="80503" level="3">
         <if_sid>80500</if_sid>
         <action>02</action>
         <match>logged in</match>
@@ -76,7 +76,7 @@ TypeMessage:
     User logged out
     [02] Thu 26Nov15 14:27:25 - (000003) User "lin" logged out
     -->
-    <rule id="80504" level="2">
+    <rule id="80504" level="3">
         <if_sid>80500</if_sid>
         <action>02</action>
         <match>logged out</match>
@@ -130,7 +130,7 @@ TypeMessage:
     Connection
     [02] Thu 26Nov15 14:29:12 - (000004) Connected to 192.168.2.200 (local address 192.168.2.201, port 22)
     -->
-    <rule id="80509" level="1">
+    <rule id="80509" level="3">
         <if_sid>80500</if_sid>
         <action>02</action>
         <match>Connected to</match>
@@ -178,7 +178,7 @@ TypeMessage:
         <description>Serv-U: File uploaded</description>
     </rule>
 
-    <rule id="80513" level="1">
+    <rule id="80513" level="3">
         <if_sid>80500</if_sid>
         <action>12</action>
         <match>File deleted</match>
@@ -199,7 +199,7 @@ TypeMessage:
         <description>Serv-U: Directory created</description>
     </rule>
 
-    <rule id="80516" level="1">
+    <rule id="80516" level="3">
         <if_sid>80500</if_sid>
         <action>15</action>
         <match>Directory deleted</match>
