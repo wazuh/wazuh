@@ -95,8 +95,14 @@ int Start_win32_Syscheck()
         } else if (!syscheck.dir[0]) {
             merror(SK_NO_DIR, ARGV0);
         }
+
         syscheck.dir[0] = NULL;
-        syscheck.ignore[0] = NULL;
+
+        if (!syscheck.ignore) {
+            os_calloc(1, sizeof(char *), syscheck.ignore);
+        } else {
+            syscheck.ignore[0] = NULL;
+        }
 
         if (!syscheck.registry) {
             dump_syscheck_entry(&syscheck, "", 0, 1, NULL);
@@ -246,8 +252,14 @@ int main(int argc, char **argv)
                 merror(SK_NO_DIR, ARGV0);
             }
         }
+
         syscheck.dir[0] = NULL;
-        syscheck.ignore[0] = NULL;
+
+        if (!syscheck.ignore) {
+            os_calloc(1, sizeof(char *), syscheck.ignore);
+        } else {
+            syscheck.ignore[0] = NULL;
+        }
 
         if (!test_config) {
             merror("%s: WARN: Syscheck disabled.", ARGV0);
