@@ -11,7 +11,7 @@
 
 <group name="amazon-iam,">
 
-    <rule id="80801" level="2">
+    <rule id="80801" level="3">
         <if_sid>80202</if_sid>
         <action>ConsoleLogin</action>
         <description>Amazon-signin: User Login Success</description>
@@ -31,7 +31,7 @@
         <group>amazon,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,</group>
     </rule>
 
-    <rule id="80861" level="2">
+    <rule id="80861" level="3">
         <if_sid>80202</if_sid>
         <action>CreateUser</action>
         <description>Amazon-iam: User created</description>
@@ -52,7 +52,7 @@
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
-    <rule id="80864" level="2">
+    <rule id="80864" level="3">
         <if_sid>80202</if_sid>
         <action>AddUserToGroup</action>
         <description>Amazon-iam: User added to a group</description>
@@ -73,7 +73,7 @@
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
-    <rule id="80867" level="2">
+    <rule id="80867" level="3">
         <if_sid>80202</if_sid>
         <action>RemoveUserFromGroup</action>
         <description>Amazon-iam: User removed from a group</description>
@@ -136,7 +136,7 @@
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
-    <rule id="80876" level="2">
+    <rule id="80876" level="3">
         <if_sid>80202</if_sid>
         <action>DetachGroupPolicy</action>
         <description>Amazon-iam: Group policy deattached to a group</description>
@@ -178,7 +178,7 @@
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
-    <rule id="80882" level="2">
+    <rule id="80882" level="3">
         <if_sid>80202</if_sid>
         <action>DetachUserPolicy</action>
         <description>Amazon-iam: User policy deattached to a user</description>
@@ -220,7 +220,7 @@
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
-    <rule id="80888" level="2">
+    <rule id="80888" level="3">
         <if_sid>80202</if_sid>
         <action>DetachRolePolicy</action>
         <description>Amazon-iam: Rule policy deattached to a user</description>
@@ -339,7 +339,7 @@
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 
-    <rule id="80905" level="2">
+    <rule id="80905" level="3">
         <if_sid>80202</if_sid>
         <action>DeleteAccountAlias</action>
         <description>Amazon-iam: Account alias deleted</description>

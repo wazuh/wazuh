@@ -88,7 +88,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
     <!--SSLVPN LOGOUT
     Oct 31 09:26:29 <local0.info> 172.16.90.10 10/31/2014:09:26:29 GMT HLCNS001 0-PPE-0 : SSLVPN LOGOUT 165769 0 :  User schulz - Client_ip 212.184.206.143 - Nat_ip "Mapped Ip" - Vserver 192.168.10.8:443 - Start_time "10/31/2014:09:26:14 GMT" - End_time "10/31/2014:09:26:29 GMT" - Duration 00:00:15  - Http_resources_accessed 0 - NonHttp_services_accessed 0 - Total_TCP_connections 1 - Total_UDP_flows 0 - Total_policies_allowed 0 - Total_policies_denied 0 - Total_bytes_send 405 - Total_bytes_recv 4844 - Total_compressedbytes_send 0 - Total_compressedbytes_recv 0 - Compression_ratio_send 0.00% - Compression_ratio_recv 0.00% - LogoutMethod "InternalError" - Group(s) "N/A"
     -->
-    <rule id="80108" level="2">
+    <rule id="80108" level="3">
         <if_sid>80100</if_sid>
         <match>SSLVPN LOGOUT</match>
         <description>Netscaler: SSLVPN session logs out</description>
@@ -296,7 +296,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
     APPFW_RESP APPFW_XML_XSS
     APPFW_RESP APPFW_XML_SQL
     -->
-    <rule id="80127" level="2">
+    <rule id="80127" level="3">
         <if_sid>80100</if_sid>
         <match>APPFW APPFW_STARTURL|APPFW APPFW_DENYURL|APPFW APPFW_CONTENT_TYPE|APPFW APPFW_REFERER_HEADER|APPFW APPFW_CSRF_TAG|APPFW APPFW_XSS|APPFW APPFW_XML_XSS|APPFW APPFW_SQL|APPFW APPFW_XML_SQL|APPFW APPFW_COOKIE|APPFW APPFW_FIELDCONSISTENCY|APPFWAPPFW_BUFFEROVERFLOW_URL|APPFW APPFW_BUFFEROVER FLOW_COOKIE|APPFW APPFW_BUFFEROVERFLOW_HDR|APPFW APPFW_FIELDFORMAT|APPFW APPFW_SAFECOMMERCE|APPFW APPFW_SAFECOMMERCE_XFORM|APPFW APPFW_SAFEOBJECT|APPFW APPFW_SIGNATURE_MATCH|APPFW_RESP APPFW_XML_XSS|APPFW_RESP APPFW_XML_SQL</match>
         <description>Netscaler: Firewall violation</description>
@@ -386,7 +386,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
     AAATM LOGOUT
     Jan 13 23:22:25 <local0.info> 10.217.28.160 01/13/2015:23:22:25 GMT  0-PPE-0 : AAATM LOGOUT 3312 0 : Context _57007c730f84b76545378fd2e042fc95@10.252.112.245 - SessionId: 58- User _57007c730f84b76545378fd2e042fc95 - Client_ip 10.252.112.245 - Nat_ip "Mapped Ip" - Vserver 10.217.28.163:443 - Start_time "01/13/2015:23:22:17 GMT" - End_time "01/13/2015:23:22:25 GMT" - Duration 00:00:08  - Http_resources_accessed 0 - Total_TCP_connections 0 - Total_policies_allowed 0 - Total_policies_denied 0 - Total_bytes_send 0 - Total_bytes_recv 0 - Total_compressedbytes_send 0 - Total_compressedbytes_recv 0 - Compression_ratio_send 0.00% - Compression_ratio_recv 0.00% - LogoutMethod "FreedViaDHT" - Group(s) "N/A"
     -->
-    <rule id="80135" level="2">
+    <rule id="80135" level="3">
         <if_sid>80100</if_sid>
         <match>AAATM LOGOUT</match>
         <description>Netscaler: AAA TM session logged out</description>

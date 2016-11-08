@@ -188,7 +188,7 @@ ID: 81600 - 80799
         <group>firewall_drop,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="81621" level="1" frequency="16" timeframe="45" ignore="240">
+    <rule id="81621" level="3" frequency="16" timeframe="45" ignore="240">
         <if_matched_sid>81620</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple URL blocked from same source.</description>

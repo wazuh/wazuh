@@ -37,7 +37,7 @@
     <description>vpopmail: Attempt to login to vpopmail with empty password.</description>
   </rule>
 
-  <rule id="9904" level="1">
+  <rule id="9904" level="3">
     <if_sid>9900</if_sid>
     <match> login success </match>
     <group>authentication_success,pci_dss_10.2.5,</group>

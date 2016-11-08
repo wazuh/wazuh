@@ -18,7 +18,7 @@ vpc: ID: 81000 - 81099
 
     <!-- instances section -->
 
-    <rule id="80301" level="2">
+    <rule id="80301" level="3">
         <if_sid>80201</if_sid>
         <action>RunInstances</action>
         <description>Amazon-ec2: Run instance</description>
@@ -46,7 +46,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
      </rule>
 
-    <rule id="80305" level="2">
+    <rule id="80305" level="3">
         <if_sid>80201</if_sid>
         <action>StartInstances</action>
         <description>Amazon-ec2: Instance started</description>
@@ -67,7 +67,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
      </rule>
 
-    <rule id="80308" level="2">
+    <rule id="80308" level="3">
         <if_sid>80201</if_sid>
         <action>StopInstances</action>
         <description>Amazon-ec2: Instance stopped</description>
@@ -95,7 +95,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
      </rule>
 
-    <rule id="80312" level="2">
+    <rule id="80312" level="3">
         <if_sid>80201</if_sid>
         <action>TerminateInstances</action>
         <description>Amazon-ec2: Instance terminated</description>
@@ -116,35 +116,35 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
      </rule>
 
-    <rule id="80315" level="2">
+    <rule id="80315" level="3">
         <if_sid>80201</if_sid>
         <action>ModifyInstanceAttribute</action>
         <description>Amazon-ec2: Modify Instance attribute</description>
         <group>amazon,</group>
     </rule>
 
-    <rule id="80316" level="2">
+    <rule id="80316" level="3">
         <if_sid>80315</if_sid>
         <match>"errorCode":"Client.UnauthorizedOperation"</match>
         <description>Amazon-ec2: Modify Instance attribute unauthorized</description>
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80317" level="2">
+    <rule id="80317" level="3">
         <if_sid>80315</if_sid>
         <match>"errorCode":"Client.InvalidParameterValue"</match>
         <description>Amazon-ec2: Modify Instance Invalid Parameter Value</description>
         <group>amazon,</group>
     </rule>
 
-    <rule id="80318" level="2">
+    <rule id="80318" level="3">
         <if_sid>80315</if_sid>
         <match>"errorCode":"</match>
         <description>Amazon-ec2: Modify Instance Attribute error</description>
         <group>amazon,</group>
      </rule>
 
-    <rule id="80319" level="2">
+    <rule id="80319" level="3">
         <if_sid>80201</if_sid>
         <action>AttachNetworkInterface</action>
         <description>Amazon-ec2: Network Interface Attached</description>
@@ -158,14 +158,14 @@ vpc: ID: 81000 - 81099
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80321" level="2">
+    <rule id="80321" level="3">
         <if_sid>80319</if_sid>
         <match>"errorCode":"</match>
         <description>Amazon-ec2: Attach Network Interface error</description>
         <group>amazon,</group>
      </rule>
 
-    <rule id="80322" level="2">
+    <rule id="80322" level="3">
         <if_sid>80201</if_sid>
         <action>DetachNetworkInterface</action>
         <description>Amazon-ec2: Network Interface Detached</description>
@@ -179,14 +179,14 @@ vpc: ID: 81000 - 81099
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80324" level="2">
+    <rule id="80324" level="3">
         <if_sid>80322</if_sid>
         <match>"errorCode":"</match>
         <description>Amazon-ec2: Attach Network Interface error</description>
         <group>amazon,</group>
      </rule>
 
-    <rule id="80325" level="2">
+    <rule id="80325" level="3">
         <if_sid>80201</if_sid>
         <action>DisassociateAddress</action>
         <description>Amazon-ec2: Disassociate Address</description>
@@ -207,14 +207,14 @@ vpc: ID: 81000 - 81099
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80328" level="2">
+    <rule id="80328" level="3">
         <if_sid>80325</if_sid>
         <match>"errorCode":"</match>
         <description>Amazon-ec2: Disassociate Address error</description>
         <group>amazon,</group>
      </rule>
 
-    <rule id="80329" level="2">
+    <rule id="80329" level="3">
         <if_sid>80201</if_sid>
         <action>MonitorInstances</action>
         <description>Amazon-ec2: Monitor Instances</description>
@@ -228,14 +228,14 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80331" level="2">
+    <rule id="80331" level="3">
         <if_sid>80329</if_sid>
         <match>"errorCode":"</match>
         <description>Amazon-ec2: MonitorInstances error</description>
         <group>amazon,</group>
      </rule>
 
-    <rule id="80332" level="2">
+    <rule id="80332" level="3">
         <if_sid>80201</if_sid>
         <action>UnmonitorInstances</action>
         <description>Amazon-ec2: Unmonitor Instances</description>
@@ -249,35 +249,35 @@ vpc: ID: 81000 - 81099
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80334" level="2">
+    <rule id="80334" level="3">
         <if_sid>80332</if_sid>
         <match>"errorCode":"</match>
         <description>Amazon-ec2: UnmonitorInstances error</description>
         <group>amazon,</group>
      </rule>
 
-    <rule id="80335" level="2">
+    <rule id="80335" level="3">
         <if_sid>80201</if_sid>
         <action>ModifyNetworkInterfaceAttribute</action>
         <description>Amazon-ec2: Modify Network Interface Attribute</description>
         <group>amazon,</group>
     </rule>
 
-    <rule id="80336" level="2">
+    <rule id="80336" level="3">
         <if_sid>80335</if_sid>
         <match>"errorCode":"Client.UnauthorizedOperation"</match>
         <description>Amazon-ec2: Modify Network Interface Attribute Unauthorized</description>
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80337" level="2">
+    <rule id="80337" level="3">
         <if_sid>80335</if_sid>
         <match>"errorCode":"</match>
         <description>Amazon-ec2: Modify Network Interface Attribute error</description>
         <group>amazon,</group>
      </rule>
 
-    <rule id="80338" level="2">
+    <rule id="80338" level="3">
         <if_sid>80201</if_sid>
         <action>CreateImage</action>
         <description>Amazon-ec2: Create Image</description>
@@ -291,7 +291,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80340" level="2">
+    <rule id="80340" level="3">
         <if_sid>80201</if_sid>
         <action>RebootInstances</action>
         <description>Amazon-ec2: Reboot Instances</description>
@@ -314,7 +314,7 @@ vpc: ID: 81000 - 81099
 
     <!-- images section -->
 
-    <rule id="80350" level="2">
+    <rule id="80350" level="3">
         <if_sid>80201</if_sid>
         <action>CreateImage</action>
         <description>Amazon-ec2: Create AMI</description>
@@ -335,7 +335,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80353" level="2">
+    <rule id="80353" level="3">
         <if_sid>80201</if_sid>
         <action>DeregisterImage</action>
         <description>Amazon-ec2: Deregister AMI</description>
@@ -356,7 +356,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80356" level="2">
+    <rule id="80356" level="3">
         <if_sid>80201</if_sid>
         <action>ModifyImageAttribute</action>
         <description>Amazon-ec2: Modify Image Attribute</description>
@@ -377,7 +377,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80359" level="2">
+    <rule id="80359" level="3">
         <if_sid>80201</if_sid>
         <action>RegisterImage</action>
         <description>Amazon-ec2: Register Image</description>
@@ -407,7 +407,7 @@ vpc: ID: 81000 - 81099
 
     <!-- volumes section -->
 
-    <rule id="80370" level="2">
+    <rule id="80370" level="3">
         <if_sid>80201</if_sid>
         <action>CreateVolume</action>
         <description>Amazon-ec2: Create Volume</description>
@@ -428,7 +428,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80373" level="2">
+    <rule id="80373" level="3">
         <if_sid>80201</if_sid>
         <action>AttachVolume</action>
         <description>Amazon-ec2: Attach Volume</description>
@@ -449,7 +449,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80376" level="2">
+    <rule id="80376" level="3">
         <if_sid>80201</if_sid>
         <action>DetachVolume</action>
         <description>Amazon-ec2: Detach Volume</description>
@@ -470,7 +470,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80379" level="2">
+    <rule id="80379" level="3">
         <if_sid>80201</if_sid>
         <action>CreateSnapshot</action>
         <description>Amazon-ec2: Create Snapshot</description>
@@ -491,7 +491,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80382" level="2">
+    <rule id="80382" level="3">
         <if_sid>80201</if_sid>
         <action>ModifyVolumeAttribute</action>
         <description>Amazon-ec2: Modify Volume Attribute</description>
@@ -512,7 +512,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80385" level="2">
+    <rule id="80385" level="3">
         <if_sid>80201</if_sid>
         <action>CreateTags</action>
         <description>Amazon-ec2-vpc: Create Tags</description>
@@ -533,7 +533,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80388" level="2">
+    <rule id="80388" level="3">
         <if_sid>80201</if_sid>
         <action>DeleteTags</action>
         <description>Amazon-ec2-vpc: Delete Tags</description>
@@ -554,7 +554,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80391" level="2">
+    <rule id="80391" level="3">
         <if_sid>80201</if_sid>
         <action>DeleteVolume</action>
         <description>Amazon-ec2: Delete Volume</description>
@@ -575,7 +575,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80394" level="2">
+    <rule id="80394" level="3">
         <if_sid>80201</if_sid>
         <action>ModifySnapshotAttribute</action>
         <description>Amazon-ec2: Modify Snapshot Attribute</description>
@@ -596,7 +596,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80397" level="2">
+    <rule id="80397" level="3">
         <if_sid>80201</if_sid>
         <action>CopySnapshot</action>
         <description>Amazon-ec2: Copy Snapshot</description>
@@ -617,7 +617,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80400" level="2">
+    <rule id="80400" level="3">
         <if_sid>80201</if_sid>
         <action>DeleteSnapshot</action>
         <description>Amazon-ec2: Delete Snapshot</description>
@@ -645,7 +645,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80404" level="2">
+    <rule id="80404" level="3">
         <if_sid>80201</if_sid>
         <action>CreateSecurityGroup</action>
         <description>Amazon-ec2: Create Security Group</description>
@@ -673,7 +673,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80408" level="2">
+    <rule id="80408" level="3">
         <if_sid>80201</if_sid>
         <action>DeleteSecurityGroup</action>
         <description>Amazon-ec2: Delete Security Group</description>
@@ -694,7 +694,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80411" level="2">
+    <rule id="80411" level="3">
         <if_sid>80201</if_sid>
         <action>AllocateAddress</action>
         <description>Amazon-ec2: Allocate Address</description>
@@ -722,7 +722,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80415" level="2">
+    <rule id="80415" level="3">
         <if_sid>80201</if_sid>
         <action>DisassociateAddress</action>
         <description>Amazon-ec2: Disassociate Address</description>
@@ -757,7 +757,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80420" level="2">
+    <rule id="80420" level="3">
         <if_sid>80201</if_sid>
         <action>CreatePlacementGroup</action>
         <description>Amazon-ec2: Create Placement Group</description>
@@ -778,7 +778,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80423" level="2">
+    <rule id="80423" level="3">
         <if_sid>80201</if_sid>
         <action>DeletePlacementGroup</action>
         <description>Amazon-ec2: Delete Placement Group</description>
@@ -799,7 +799,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80426" level="2">
+    <rule id="80426" level="3">
         <if_sid>80201</if_sid>
         <action>AuthorizeSecurityGroupIngress</action>
         <description>Amazon-ec2: Authorize Security GroupIngress</description>
@@ -848,7 +848,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80433" level="2">
+    <rule id="80433" level="3">
         <if_sid>80201</if_sid>
         <action>RevokeSecurityGroupIngress</action>
         <description>Amazon-ec2: Revoke Security GroupIngress</description>
@@ -897,7 +897,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80440" level="2">
+    <rule id="80440" level="3">
         <if_sid>80201</if_sid>
         <action>CreateLoadBalancer</action>
         <description>Amazon-ec2: Create Load Balancer</description>
@@ -918,7 +918,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80443" level="2">
+    <rule id="80443" level="3">
         <if_sid>80201</if_sid>
         <action>DeleteLoadBalancer</action>
         <description>Amazon-ec2: Delete Load Balancer</description>
@@ -939,7 +939,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
     </rule>
 
-    <rule id="80446" level="2">
+    <rule id="80446" level="3">
         <if_sid>80201</if_sid>
         <action>AssociateAddress</action>
         <description>Amazon-ec2: Associate Elastic IP's Address</description>
@@ -964,7 +964,7 @@ vpc: ID: 81000 - 81099
 <!-- amazon-ec2 -->
 <group name="amazon-vpc,">
 
-    <rule id="81000" level="2">
+    <rule id="81000" level="3">
         <if_sid>80201</if_sid>
         <action>CreateVpc</action>
         <description>Amazon-vpc: Vpc Created</description>
@@ -992,7 +992,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
      </rule>
 
-   <rule id="81004" level="2">
+   <rule id="81004" level="3">
         <if_sid>80201</if_sid>
         <action>AssociateDhcpOptions</action>
         <description>Amazon-vpc: Asssociate Dhcp Options</description>
@@ -1013,7 +1013,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
      </rule>
 
-    <rule id="81007" level="2">
+    <rule id="81007" level="3">
         <if_sid>80201</if_sid>
         <action>CreateSubnet</action>
         <description>Amazon-vpc: Crete Subnet</description>
@@ -1041,7 +1041,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
      </rule>
 
-    <rule id="81011" level="2">
+    <rule id="81011" level="3">
         <if_sid>80201</if_sid>
         <action>ModifySubnetAttribute</action>
         <description>Amazon-vpc: Modify Subnet Attribute</description>
@@ -1062,7 +1062,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
      </rule>
 
-    <rule id="81014" level="2">
+    <rule id="81014" level="3">
         <if_sid>80201</if_sid>
         <action>CreateRouteTable</action>
         <description>Amazon-vpc: Create Route Table</description>
@@ -1083,7 +1083,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
      </rule>
 
-    <rule id="81017" level="2">
+    <rule id="81017" level="3">
         <if_sid>80201</if_sid>
         <action>AssociateRouteTable</action>
         <description>Amazon-vpc: Associate Route Table</description>
@@ -1104,7 +1104,7 @@ vpc: ID: 81000 - 81099
         <group>amazon,</group>
      </rule>
 
-    <rule id="81020" level="2">
+    <rule id="81020" level="3">
         <if_sid>80201</if_sid>
         <action>DisassociateRouteTable</action>
         <description>Amazon-vpc: Disassociate Route Table</description>

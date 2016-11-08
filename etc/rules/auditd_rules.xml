@@ -158,7 +158,7 @@
 
     <!--
         type=SELINUX_ERR msg=audit(1311948547.151:138): op=security_compute_av reason=bounds scontext=system_u:system_r:anon_webapp_t:s0-s0:c0,c100,c200 tcontext=system_u:object_r:security_t:s0 tclass=dir perms=ioctl,read,lock
-        type=USER_SELINUX_ERR msg=audit(1311948547.151:138): 
+        type=USER_SELINUX_ERR msg=audit(1311948547.151:138):
     -->
     <rule id="80716" level="10">
         <if_sid>80700</if_sid>
@@ -181,13 +181,13 @@
     type=SERVICE_STOP msg=audit(1450876900.115:31): pid=1 uid=0 auid=4294967295 ses=4294967295 msg=' comm="Serv-U" exe="/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
     -->
 
-    <rule id="80718" level="1">
+    <rule id="80718" level="2">
         <if_sid>80700</if_sid>
         <action>SERVICE_START</action>
         <description>Auditd: Service started</description>
     </rule>
 
-    <rule id="80719" level="1">
+    <rule id="80719" level="3">
         <if_sid>80700</if_sid>
         <action>SERVICE_STOP</action>
         <description>Auditd: Service stopped</description>
@@ -281,7 +281,7 @@
     <!--
     type=USER_ACCT msg=audit(1450767661.820:3296328): user pid=15789 uid=0 auid=4294967295 msg='PAM: accounting acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=?, terminal=cron res=success)'
     -->
-    <rule id="80729" level="2">
+    <rule id="80729" level="3">
         <if_sid>80700</if_sid>
         <action>USER_ACCT</action>
         <description>Auditd: user account modified</description>
@@ -290,7 +290,7 @@
     <!--
     type=LOGIN msg=audit(1450767601.778:3296208): login pid=15763 uid=0 old auid=4294967295 new auid=0 old ses=4294967295 new ses=2260
     -->
-    <rule id="80730" level="2">
+    <rule id="80730" level="3">
         <if_sid>80700</if_sid>
         <action>LOGIN</action>
         <description>Auditd: LOGIN information</description>
@@ -299,7 +299,7 @@
     <!--
     type=USER_START msg=audit(1450771201.437:3301540): user pid=16878 uid=0 auid=0 msg='PAM: session open acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=?, terminal=cron res=success)'
     -->
-    <rule id="80731" level="2">
+    <rule id="80731" level="3">
         <if_sid>80700</if_sid>
         <action>USER_START</action>
         <description>Auditd: session started</description>
@@ -309,7 +309,7 @@
     <!--
     type=USER_END msg=audit(1450767601.813:3296218): user pid=15764 uid=0 auid=0 msg='PAM: session close acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=?, terminal=cron res=success)'
     -->
-    <rule id="80732" level="2">
+    <rule id="80732" level="3">
         <if_sid>80700</if_sid>
         <action>USER_END</action>
         <description>Auditd: session terminated</description>
@@ -319,7 +319,7 @@
     <!--
     type=USER_LOGIN msg=audit(1450770603.209:3300446): user pid=16649 uid=0 auid=4294967295 msg='acct="root": exe="/usr/sbin/sshd" (hostname=?, addr=11.111.53.58, terminal=sshd res=failed)'
     -->
-    <rule id="80733" level="2">
+    <rule id="80733" level="3">
         <if_sid>80700</if_sid>
         <action>USER_LOGIN</action>
         <description>Auditd: user logged in</description>
@@ -329,7 +329,7 @@
     <!--
     type=USER_LOGOUT msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80734" level="2">
+    <rule id="80734" level="3">
         <if_sid>80700</if_sid>
         <action>USER_LOGOUT</action>
         <description>Auditd: user logged out</description>
@@ -385,7 +385,7 @@
     <!--
     type=CHGRP_ID msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80740" level="2">
+    <rule id="80740" level="3">
         <if_sid>80700</if_sid>
         <action>CHGRP_ID</action>
         <description>Auditd: group ID changed</description>
@@ -394,7 +394,7 @@
     <!--
     type=CHUSER_ID msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80741" level="2">
+    <rule id="80741" level="3">
         <if_sid>80700</if_sid>
         <action>CHUSER_ID</action>
         <description>Auditd: user ID changed</description>
@@ -403,7 +403,7 @@
     <!--
     type=USER_CHAUTHTOK msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80742" level="2">
+    <rule id="80742" level="3">
         <if_sid>80700</if_sid>
         <action>USER_CHAUTHTOK</action>
         <description>Auditd: account attribute modified</description>
@@ -412,7 +412,7 @@
     <!--
     type=DEL_GROUP msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80743" level="2">
+    <rule id="80743" level="3">
         <if_sid>80700</if_sid>
         <action>DEL_GROUP</action>
         <description>Auditd: group deleted</description>
@@ -422,7 +422,7 @@
     <!--
     type=DEL_USER msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80744" level="2">
+    <rule id="80744" level="3">
         <if_sid>80700</if_sid>
         <action>DEL_USER</action>
         <description>Auditd: user deleted</description>
@@ -432,7 +432,7 @@
     <!--
     type=ANOM_ADD_ACCT msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80745" level="2">
+    <rule id="80745" level="3">
         <if_sid>80700</if_sid>
         <action>ANOM_ADD_ACCT</action>
         <description>Auditd: user-space account addition ended abnormally.</description>
@@ -442,7 +442,7 @@
     <!--
     type=ANOM_DEL_ACCT msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80746" level="2">
+    <rule id="80746" level="3">
         <if_sid>80700</if_sid>
         <action>ANOM_DEL_ACCT</action>
         <description>Auditd: user-space account deletion ended abnormally.</description>
@@ -452,7 +452,7 @@
     <!--
     type=ANOM_MOD_ACCT msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80747" level="2">
+    <rule id="80747" level="3">
         <if_sid>80700</if_sid>
         <action>ANOM_MOD_ACCT</action>
         <description>Auditd: user-space account modification ended abnormally.</description>
@@ -518,14 +518,14 @@
         <description>Auditd: login attempt is made at a time when it is prevented by, for example, pam_time.</description>
         <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
     </rule>
-    
+
     <!--
     SYSCALL with KEY
     auditctl -w /var/log/audit/tmp_directory -p w -k monitor-tmp-w
     auditctl -w /var/log/audit/tmp_directory -p a -k monitor-tmp-a
     auditctl -w /var/log/audit/tmp_directory -p r -k monitor-tmp-r
     auditctl -w /var/log/audit/tmp_directory -p x -k monitor-tmp-x
-    
+
     type=SYSCALL msg=audit(1451490775.722:538): arch=c000003e syscall=2 success=yes exit=3 a0=1944728 a1=241 a2=1b6 a3=0 items=2 ppid=964 pid=972 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="bash" exe="/bin/bash" key="monitor-tmp-w"
     type=SYSCALL msg=audit(1451490797.466:539): arch=c000003e syscall=2 success=yes exit=3 a0=7837e0 a1=0 a2=8000 a3=7ffecf096050 items=1 ppid=972 pid=2335 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="nano" exe="/bin/nano" key="monitor-tmp-r"
     type=SYSCALL msg=audit(1451490808.162:542): arch=c000003e syscall=268 success=yes exit=0 a0=ffffffffffffff9c a1=18f90f0 a2=1ff a3=7ffd06c1ae90 items=1 ppid=972 pid=2336 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="chmod" exe="/bin/chmod" key="monitor-tmp-a"
@@ -538,19 +538,19 @@
         <match>key="monitor-tmp-w"</match>
         <description>Auditd: Syscall W</description>
     </rule>
-    
+
     <rule id="80755" level="8">
         <if_sid>80720</if_sid>
         <match>key="monitor-tmp-r"</match>
         <description>Auditd: Syscall R</description>
     </rule>
-    
+
     <rule id="80756" level="8">
         <if_sid>80720</if_sid>
         <match>key="monitor-tmp-a"</match>
         <description>Auditd: Syscall A</description>
     </rule>
-    
+
     <rule id="80757" level="8">
         <if_sid>80720</if_sid>
         <match>key="monitor-tmp-x"</match>

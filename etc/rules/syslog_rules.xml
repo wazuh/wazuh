@@ -481,7 +481,7 @@
     <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,</group>
   </rule>
 
-  <rule id="5903" level="2">
+  <rule id="5903" level="3">
     <match>^delete user|^account deleted|^remove group</match>
     <description>Group (or user) deleted from the system</description>
     <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,</group>
