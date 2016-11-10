@@ -15,10 +15,6 @@
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
 
-/* Prototypes */
-static void read_internal(int debug_level);
-static void help_syscheckd(void) __attribute__((noreturn));
-
 syscheck_config syscheck;
 
 #ifdef USE_MAGIC
@@ -169,8 +165,10 @@ int Start_win32_Syscheck()
 }
 #endif /* WIN32 */
 
+#ifndef WIN32
+
 /* Print help statement */
-static void help_syscheckd()
+__attribute__((noreturn)) static void help_syscheckd()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
@@ -186,7 +184,6 @@ static void help_syscheckd()
     exit(1);
 }
 
-#ifndef WIN32
 /* Syscheck unix main */
 int main(int argc, char **argv)
 {
