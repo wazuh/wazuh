@@ -152,7 +152,7 @@ int OS_RemoveAgent(const char *u_id) {
     free(buffer);
 
     if (full_name) {
-        delete_agentinfo(full_name);
+        delete_agentinfo(u_id, full_name);
         free(full_name);
     }
 
