@@ -456,15 +456,10 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 }
 
 /* StartMQ for Windows */
-int StartMQ(const char *path, short int type)
+int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) short int type)
 {
     /* Connect to the server */
     connect_server(0);
-
-    if ((path == NULL) && (type == 0)) {
-        return (0);
-    }
-
     return (0);
 }
 
