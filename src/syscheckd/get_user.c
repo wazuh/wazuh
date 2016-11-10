@@ -58,7 +58,15 @@ const char *get_user(const char *path, __attribute__((unused)) int uid)
         DWORD dwErrorCode = 0;
 
         dwErrorCode = GetLastError();
-        merror("%s: ERROR: CreateFile (%s) error = %lu", ARGV0, path, dwErrorCode);
+
+        switch (dwErrorCode) {
+        case ERROR_SHARING_VIOLATION: // 32
+            debug1("%s: DEBUG: CreateFile (%s) error = %lu", ARGV0, path, dwErrorCode);
+            break;
+        default:
+            merror("%s: ERROR: CreateFile (%s) error = %lu", ARGV0, path, dwErrorCode);
+        }
+
         return "";
     }
 
