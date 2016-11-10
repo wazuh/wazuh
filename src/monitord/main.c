@@ -11,6 +11,7 @@
 #include "config/config.h"
 #include "monitord.h"
 #include "os_net/os_net.h"
+#include <getopt.h>
 
 /* Prototypes */
 static void help_monitord(void) __attribute__((noreturn));
@@ -32,6 +33,8 @@ static void help_monitord()
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    --no-agents Disable agent monitoring.");
+    print_out("    --no-keys   Disable client keys monitoring and syncing.");
     print_out(" ");
     exit(1);
 }
@@ -39,6 +42,8 @@ static void help_monitord()
 int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
+    int no_agents = 0;
+    int no_keys = 0;
     uid_t uid;
     gid_t gid;
     const char *dir  = DEFAULTDIR;
@@ -46,14 +51,22 @@ int main(int argc, char **argv)
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
 
+    struct option options[] = {
+        { "no-agents", no_argument, &no_agents, 1 },
+        { "no-keys", no_argument, &no_keys, 1 },
+        { 0, 0, 0, 0 }
+    };
+
     /* Initialize global variables */
     mond.a_queue = 0;
 
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1) {
+    while ((c = getopt_long(argc, argv, "Vdhtfu:g:D:c:", options, NULL)) != -1) {
         switch (c) {
+            case 0:
+                break;
             case 'V':
                 print_version();
                 break;
@@ -114,7 +127,9 @@ int main(int argc, char **argv)
     mond.day_wait = (unsigned short) getDefine_Int("monitord", "day_wait", 5, 240);
     mond.compress = (short) getDefine_Int("monitord", "compress", 0, 1);
     mond.sign = (short) getDefine_Int("monitord", "sign", 0, 1);
-    mond.monitor_agents = (short) getDefine_Int("monitord", "monitor_agents", 0, 1);
+    mond.monitor_agents = no_agents ? 0 : (short) getDefine_Int("monitord", "monitor_agents", 0, 1);
+    mond.monitor_keys = no_keys ? 0 : (short) getDefine_Int("monitord", "monitor_keys", 0, 1);
+
     mond.agents = NULL;
     mond.smtpserver = NULL;
     mond.emailfrom = NULL;

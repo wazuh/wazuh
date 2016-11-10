@@ -54,7 +54,7 @@ void Monitord()
 
     /* Start keysync thread */
 
-    if (pthread_create(&thread_keysync, NULL, run_keysync, NULL) < 0)
+    if (mond.monitor_keys && pthread_create(&thread_keysync, NULL, run_keysync, NULL) < 0)
         merror("%s: Error creating keysync thread: %s", ARGV0, strerror(errno));
 
     /* Main monitor loop */
