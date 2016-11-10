@@ -842,8 +842,24 @@ int delete_rootcheck(const char *sk_name, const char *sk_ip, int full_delete)
     return (1);
 }
 
+/* Delete agent SQLite db */
+void delete_sqlite(const char *id, const char *name)
+{
+    char path[512] = { '\0' };
+
+    /* Delete related files */
+    snprintf(path, 511, "%s%s/agents/%s-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+    unlink(path);
+
+    snprintf(path, 511, "%s%s/agents/%s-%s.db-wal", isChroot() ? "/" : "", WDB_DIR, id, name);
+    unlink(path);
+
+    snprintf(path, 511, "%s%s/agents/%s-%s.db-shm", isChroot() ? "/" : "", WDB_DIR, id, name);
+    unlink(path);
+}
+
 /* Delete agent */
-int delete_agentinfo(const char *name)
+int delete_agentinfo(const char *id, const char *name)
 {
     const char *sk_name;
     char *sk_ip;
@@ -870,6 +886,9 @@ int delete_agentinfo(const char *name)
 
     /* Delete rootcheck */
     delete_rootcheck(sk_name, sk_ip, 1);
+
+    /* Delete SQLite database */
+    delete_sqlite(id, sk_name);
 
     return (1);
 }
