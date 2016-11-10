@@ -47,7 +47,7 @@ const char *get_user(const char *path, __attribute__((unused)) int uid)
     hFile = CreateFile(
                        TEXT(path),
                        GENERIC_READ,
-                       FILE_SHARE_WRITE,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE,
                        NULL,
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
