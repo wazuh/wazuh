@@ -139,17 +139,19 @@ int OS_RemoveAgent(const char *u_id) {
 
     fwrite(buffer, sizeof(char), fp_read, file.fp);
     fclose(file.fp);
+    full_name = getFullnameById(u_id);
 
     if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
         free(file.name);
         free(buffer);
+        free(full_name);
         return 0;
     }
 
     free(file.name);
     free(buffer);
 
-    if ((full_name = getFullnameById(u_id))) {
+    if (full_name) {
         delete_agentinfo(full_name);
         free(full_name);
     }
