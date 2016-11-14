@@ -268,16 +268,24 @@ char* rk_get_title(const char *log) {
 
 char* rk_get_file(const char *log) {
     char *c;
-    char *file = strstr(log, "File: ");
+    char *file;
 
-    if (!file)
-        return NULL;
+    if ((file = strstr(log, "File: "))) {
+        file += 6;
 
-    file += 6;
+        if ((c = strstr(file, ". "))) {
+            *c = '\0';
+            return strdup(file);
+        } else
+            return NULL;
+    } else if ((file = strstr(log, "File '"))) {
+        file += 6;
 
-    if ((c = strstr(file, ". "))) {
-        *c = '\0';
-        return strdup(file);
+        if ((c = strstr(file, "' "))) {
+            *c = '\0';
+            return strdup(file);
+        } else
+            return NULL;
     } else
         return NULL;
 }
