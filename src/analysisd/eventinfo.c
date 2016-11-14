@@ -26,6 +26,7 @@ int alert_only;
 Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
 {
     Eventinfo *lf;
+    Eventinfo *first_lf;
     OSListNode *lf_node;
 
     /* Set frequency to 0 */
@@ -42,6 +43,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
     if (!lf_node) {
         return (NULL);
     }
+    first_lf = (Eventinfo *)lf_node->data;
 
     do {
         lf = (Eventinfo *)lf_node->data;
@@ -146,6 +148,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
             return (NULL);
         }
 
+
         /* Check if the number of matches worked */
         if (rule->__frequency <= 10) {
             rule->last_events[rule->__frequency]
@@ -163,6 +166,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
+        first_lf->matched = rule->level;
 
         return (lf);
 
