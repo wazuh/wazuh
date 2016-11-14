@@ -215,7 +215,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         // Dynamic fields, except for syscheck events
         if (lf->fields && !lf->filename) {
             for (i = 0; i < lf->nfields; i++) {
-                W_JSON_AddField(root, lf->fields[i].key, lf->fields[i].value);
+                if (lf->fields[i].value) {
+                    W_JSON_AddField(root, lf->fields[i].key, lf->fields[i].value);
+                }
             }
         }
 
@@ -451,7 +453,9 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
         // Dynamic fields, except for syscheck events
         if (lf->fields && !lf->filename) {
             for (i = 0; i < lf->nfields; i++) {
-                W_JSON_AddField(root, lf->fields[i].key, lf->fields[i].value);
+                if (lf->fields[i].value) {
+                    W_JSON_AddField(root, lf->fields[i].key, lf->fields[i].value);
+                }
             }
         }
 
