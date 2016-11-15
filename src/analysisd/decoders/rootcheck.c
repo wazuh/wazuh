@@ -261,6 +261,12 @@ char* rk_get_title(const char *log) {
         free(orig);
     }
 
+    // Remove "File: ('.*') "
+
+    if ((c = strstr(title, "File '")) && (d = strstr(c + 6, "' "))) {
+        memmove(c + 5, d + 2, strlen(d + 2) + 1);
+    }
+
     return title;
 }
 
