@@ -149,7 +149,6 @@ void OS_ReadKeys(keystore *keys, int rehash_keys)
     FILE *fp;
 
     char buffer[OS_BUFFER_SIZE + 1];
-
     char name[KEYSIZE + 1];
     char ip[KEYSIZE + 1];
     char id[KEYSIZE + 1];
@@ -160,6 +159,8 @@ void OS_ReadKeys(keystore *keys, int rehash_keys)
         merror(NO_AUTHFILE, __local_name, KEYS_FILE);
         ErrorExit(NO_CLIENT_KEYS, __local_name);
     }
+
+    keys->inode = File_Inode(KEYS_FILE);
     fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         /* We can leave from here */
@@ -346,16 +347,13 @@ void OS_FreeKeys(keystore *keys)
 /* Check if key changed */
 int OS_CheckUpdateKeys(const keystore *keys)
 {
-    if (keys->file_change !=  File_DateofChange(KEYS_FILE)) {
-        return (1);
-    }
-    return (0);
+    return keys->file_change != File_DateofChange(KEYS_FILE) || keys->inode != File_Inode(KEYS_FILE);
 }
 
 /* Update the keys if changed */
 int OS_UpdateKeys(keystore *keys)
 {
-    if (keys->file_change !=  File_DateofChange(KEYS_FILE)) {
+    if (keys->file_change != File_DateofChange(KEYS_FILE) || keys->inode != File_Inode(KEYS_FILE)) {
         merror(ENCFILE_CHANGED, __local_name);
         debug1("%s: DEBUG: Freekeys", __local_name);
 
@@ -505,6 +503,7 @@ keystore* OS_DupKeys(const keystore *keys) {
 
     copy->keysize = keys->keysize;
     copy->file_change = keys->file_change;
+    copy->inode = keys->inode;
     copy->id_counter = keys->id_counter;
 
     for (i = 0; i <= keys->keysize; i++) {

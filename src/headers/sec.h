@@ -43,6 +43,7 @@ typedef struct _keystore {
 
     /* Key file stat */
     time_t file_change;
+    ino_t inode;
 
     /* ID counter */
     int id_counter;

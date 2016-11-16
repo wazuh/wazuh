@@ -318,6 +318,12 @@ time_t File_DateofChange(const char *file)
     return (file_status.st_mtime);
 }
 
+ino_t File_Inode(const char *file)
+{
+    struct stat buffer;
+    return stat(file, &buffer) ? 0 : buffer.st_ino;
+}
+
 int IsDir(const char *file)
 {
     struct stat file_status;
