@@ -83,6 +83,7 @@ void send_msg_init()
 
 /* Send message to an agent
  * Returns -1 on error
+ * Must call key_lock() before this
  */
 int send_msg(unsigned int agentid, const char *msg)
 {

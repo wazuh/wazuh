@@ -296,21 +296,31 @@ static int send_file_toagent(unsigned int agentid, const char *name, const char 
     /* Send the file name first */
     snprintf(buf, OS_SIZE_1024, "%s%s%s %s\n",
              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
+
+    key_lock();
     if (send_msg(agentid, buf) == -1) {
+        key_unlock();
         merror(SEC_ERROR, ARGV0);
         fclose(fp);
         return (-1);
     }
 
+    key_unlock();
+
     /* Send the file contents */
     while ((n = fread(buf, 1, 900, fp)) > 0) {
         buf[n] = '\0';
 
+        key_lock();
+
         if (send_msg(agentid, buf) == -1) {
+            key_unlock();
             merror(SEC_ERROR, ARGV0);
             fclose(fp);
             return (-1);
         }
+
+        key_unlock();
 
         /* Sleep 1 every 30 messages -- no flood */
         if (i > 30) {
@@ -322,12 +332,16 @@ static int send_file_toagent(unsigned int agentid, const char *name, const char 
 
     /* Send the message to close the file */
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
+    key_lock();
+
     if (send_msg(agentid, buf) == -1) {
+        key_unlock();
         merror(SEC_ERROR, ARGV0);
         fclose(fp);
         return (-1);
     }
 
+    key_unlock();
     fclose(fp);
 
     return (0);
@@ -363,9 +377,11 @@ static void read_controlmsg(unsigned int agentid, char *msg)
 
         msg = strchr(msg, '\n');
         if (!msg) {
+            key_lock();
             merror("%s: Invalid message from '%s' (strchr \\n)",
                    ARGV0,
                    keys.keyentries[agentid]->ip->ip);
+            key_unlock();
             break;
         }
 
@@ -374,9 +390,11 @@ static void read_controlmsg(unsigned int agentid, char *msg)
 
         file = strchr(file, ' ');
         if (!file) {
+            key_lock();
             merror("%s: Invalid message from '%s' (strchr ' ')",
                    ARGV0,
                    keys.keyentries[agentid]->ip->ip);
+            key_unlock();
             break;
         }
 
@@ -389,7 +407,9 @@ static void read_controlmsg(unsigned int agentid, char *msg)
                 debug1("%s: DEBUG Sending file '%s' to agent.", ARGV0,
                        f_sum[0]->name);
                 if (send_file_toagent(agentid, f_sum[0]->name, f_sum[0]->sum) < 0) {
+                    key_lock();
                     merror(SHARED_ERROR, ARGV0, f_sum[0]->name, keys.keyentries[agentid]->id, keys.keyentries[agentid]->name);
+                    key_unlock();
                 }
             }
 
@@ -433,7 +453,9 @@ static void read_controlmsg(unsigned int agentid, char *msg)
 
             debug1("%s: Sending file '%s' to agent.", ARGV0, f_sum[i]->name);
             if (send_file_toagent(agentid, f_sum[i]->name, f_sum[i]->sum) < 0) {
+                key_lock();
                 merror(SHARED_ERROR, ARGV0, f_sum[i]->name, keys.keyentries[agentid]->id, keys.keyentries[agentid]->name);
+                key_unlock();
             }
         }
 
