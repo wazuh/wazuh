@@ -87,7 +87,7 @@ int OS_DeleteKey(keystore *keys, const char *id);
 /* Write keystore on client keys file */
 int OS_WriteKeys(const keystore *keys);
 
-/* Duplicate keystore except key hashes */
+/* Duplicate keystore except key hashes and file pointer */
 keystore* OS_DupKeys(const keystore *keys);
 
 /** Function prototypes -- agent authorization **/

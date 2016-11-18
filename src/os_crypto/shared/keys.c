@@ -26,6 +26,22 @@ static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
     memset(ip, '\0', size);
 }
 
+static void move_netdata(keystore *keys, const keystore *old_keys)
+{
+    unsigned int i;
+    int keyid;
+
+    for (i = 0; i < old_keys->keysize; i++) {
+        keyid = OS_IsAllowedID(keys, old_keys->keyentries[i]->id);
+
+        if (keyid >= 0 && !strcmp(keys->keyentries[keyid]->ip->ip, old_keys->keyentries[i]->ip->ip)) {
+            keys->keyentries[keyid]->rcvd = old_keys->keyentries[i]->rcvd;
+            keys->keyentries[keyid]->sock = old_keys->keyentries[i]->sock;
+            memcpy(&keys->keyentries[keyid]->peer_info, &old_keys->keyentries[i]->peer_info, sizeof(struct sockaddr_in));
+        }
+    }
+}
+
 /* Create the final key */
 void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
 {
@@ -353,22 +369,31 @@ int OS_CheckUpdateKeys(const keystore *keys)
 /* Update the keys if changed */
 int OS_UpdateKeys(keystore *keys)
 {
+    keystore *old_keys;
+
     if (keys->file_change != File_DateofChange(KEYS_FILE) || keys->inode != File_Inode(KEYS_FILE)) {
         merror(ENCFILE_CHANGED, __local_name);
-        debug1("%s: DEBUG: Freekeys", __local_name);
+        debug1("%s: DEBUG: OS_DupKeys", __local_name);
+        old_keys = OS_DupKeys(keys);
 
+        debug1("%s: DEBUG: Freekeys", __local_name);
         OS_FreeKeys(keys);
-        debug1("%s: DEBUG: OS_ReadKeys", __local_name);
 
         /* Read keys */
+        debug1("%s: DEBUG: OS_ReadKeys", __local_name);
         verbose(ENC_READ, __local_name);
-
         OS_ReadKeys(keys, keys->rehash_keys);
+
         debug1("%s: DEBUG: OS_StartCounter", __local_name);
-
         OS_StartCounter(keys);
-        debug1("%s: DEBUG: OS_UpdateKeys completed", __local_name);
 
+        debug1("%s: DEBUG: move_netdata", __local_name);
+        move_netdata(keys, old_keys);
+
+        OS_FreeKeys(old_keys);
+        free(old_keys);
+
+        debug1("%s: DEBUG: OS_UpdateKeys completed", __local_name);
         return (1);
     }
     return (0);
@@ -491,7 +516,7 @@ int OS_WriteKeys(const keystore *keys) {
     return 0;
 }
 
-/* Duplicate keystore except key hashes */
+/* Duplicate keystore except key hashes and file pointer */
 keystore* OS_DupKeys(const keystore *keys) {
     keystore *copy;
     unsigned int i;
@@ -529,7 +554,6 @@ keystore* OS_DupKeys(const keystore *keys) {
 
         copy->keyentries[i]->sock = keys->keyentries[i]->sock;
         copy->keyentries[i]->peer_info = keys->keyentries[i]->peer_info;
-        copy->keyentries[i]->fp = keys->keyentries[i]->fp;
     }
 
     return copy;
