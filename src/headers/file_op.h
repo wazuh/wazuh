@@ -13,6 +13,7 @@
 #define __FILE_H
 
 #include <time.h>
+#include <sys/stat.h>
 
 #define OS_PIDFILE  "/var/run"
 
