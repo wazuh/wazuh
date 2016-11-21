@@ -3,20 +3,30 @@
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 UN=${NUNAME};
+service="wazuh";
 
 runInit()
 {
     echo ""
     echo ""
+
+    if [ -n "$1" ]; then
+        if [ "X$1" = "Xserver" ]; then
+            service="$service-manager"
+        else
+            service="$service-$1"
+        fi
+    fi
+
     # Checking if it is a Redhat system.
     if [ -r "/etc/redhat-release" ]; then
         if [ -d /etc/rc.d/init.d ]; then
             echo " - ${systemis} Redhat Linux."
             echo " - ${modifiedinit}"
-            cp -pr ./src/init/ossec-hids-rh.init /etc/rc.d/init.d/ossec
-            chmod 755 /etc/rc.d/init.d/ossec
-            chown root:ossec /etc/rc.d/init.d/ossec
-            /sbin/chkconfig --add ossec > /dev/null 2>&1
+            cp -pr ./src/init/ossec-hids-rh.init /etc/rc.d/init.d/${service}
+            chmod 755 /etc/rc.d/init.d/${service}
+            chown root:ossec /etc/rc.d/init.d/${service}
+            /sbin/chkconfig --add ${service} > /dev/null 2>&1
             return 0;
         fi
     fi
@@ -24,10 +34,10 @@ runInit()
     if [ -r "/etc/gentoo-release" ]; then
         echo " - ${systemis} Gentoo Linux."
         echo " - ${modifiedinit}"
-        cp -pr ./src/init/ossec-hids-gentoo.init /etc/init.d/ossec
-        chmod 755 /etc/init.d/ossec
-        chown root:ossec /etc/init.d/ossec
-        rc-update add ossec default
+        cp -pr ./src/init/ossec-hids-gentoo.init /etc/init.d/${service}
+        chmod 755 /etc/init.d/${service}
+        chown root:ossec /etc/init.d/${service}
+        rc-update add ${service} default
         return 0;
     fi
 
@@ -36,11 +46,11 @@ runInit()
         echo " - ${systemis} Suse Linux."
         echo " - ${modifiedinit}"
 
-        cp -pr ./src/init/ossec-hids-suse.init  /etc/init.d/ossec
-        chmod 755 /etc/init.d/ossec
-        chown root:ossec /etc/init.d/ossec
+        cp -pr ./src/init/ossec-hids-suse.init  /etc/init.d/${service}
+        chmod 755 /etc/init.d/${service}
+        chown root:ossec /etc/init.d/${service}
 
-        /sbin/chkconfig --add ossec > /dev/null 2>&1
+        /sbin/chkconfig --add ${service} > /dev/null 2>&1
         return 0;
     fi
 
@@ -48,14 +58,14 @@ runInit()
     if [ -r "/etc/slackware-version" ]; then
         echo " - ${systemis} Slackware Linux."
         echo " - ${modifiedinit}"
-        cp -pr ./src/init/ossec-hids.init /etc/rc.d/rc.ossec
-        chmod 755 /etc/rc.d/rc.ossec
-        chown root:ossec /etc/rc.d/rc.ossec
+        cp -pr ./src/init/ossec-hids.init /etc/rc.d/rc.${service}
+        chmod 755 /etc/rc.d/rc.${service}
+        chown root:ossec /etc/rc.d/rc.${service}
 
-        grep ossec /etc/rc.d/rc.local > /dev/null 2>&1
+        grep ${service} /etc/rc.d/rc.local > /dev/null 2>&1
         if [ $? != 0 ]; then
-            echo "if [ -x /etc/rc.d/rc.ossec ]; then" >> /etc/rc.d/rc.local
-            echo "      /etc/rc.d/rc.ossec start" >>/etc/rc.d/rc.local
+            echo "if [ -x /etc/rc.d/rc.${service} ]; then" >> /etc/rc.d/rc.local
+            echo "      /etc/rc.d/rc.${service} start" >>/etc/rc.d/rc.local
             echo "fi" >>/etc/rc.d/rc.local
         fi
 
@@ -75,20 +85,20 @@ runInit()
     if [ "X${UN}" = "XSunOS" ]; then
         echo " - ${systemis} Solaris (SunOS)."
         echo " - ${modifiedinit}"
-        cp -pr ./src/init/ossec-hids-solaris.init /etc/init.d/ossec
-        chmod 755 /etc/init.d/ossec
-        ln -s /etc/init.d/ossec /etc/rc2.d/S97ossec
-        ln -s /etc/init.d/ossec /etc/rc3.d/S97ossec
+        cp -pr ./src/init/ossec-hids-solaris.init /etc/init.d/${service}
+        chmod 755 /etc/init.d/${service}
+        ln -s /etc/init.d/${service} /etc/rc2.d/S97${service}
+        ln -s /etc/init.d/${service} /etc/rc3.d/S97${service}
         return 0;
     fi
 
     if [ "X${UN}" = "XAIX" ]; then
         echo " - ${systemis} AIX."
         echo " - ${modifiedinit}"
-        cp -pr ./src/init/ossec-hids-aix.init /etc/rc.d/init.d/ossec
-        chmod 755 /etc/rc.d/init.d/ossec
-        ln -s /etc/rc.d/init.d/ossec /etc/rc.d/rc2.d/S97ossec
-        ln -s /etc/rc.d/init.d/ossec /etc/rc.d/rc3.d/S97ossec
+        cp -pr ./src/init/ossec-hids-aix.init /etc/rc.d/init.d/${service}
+        chmod 755 /etc/rc.d/init.d/${service}
+        ln -s /etc/rc.d/init.d/${service} /etc/rc.d/rc2.d/S97${service}
+        ln -s /etc/rc.d/init.d/${service} /etc/rc.d/rc3.d/S97${service}
         return 0;
     fi
 
@@ -116,19 +126,19 @@ runInit()
         elif [ -d "/etc/rc.d/init.d" ]; then
             echo " - ${systemis} Linux (SysV)."
             echo " - ${modifiedinit}"
-            cp -pr ./src/init/ossec-hids.init  /etc/rc.d/init.d/ossec
-            chmod 755 /etc/rc.d/init.d/ossec
-            chown root:ossec /etc/rc.d/init.d/ossec
+            cp -pr ./src/init/ossec-hids.init  /etc/rc.d/init.d/${service}
+            chmod 755 /etc/rc.d/init.d/${service}
+            chown root:ossec /etc/rc.d/init.d/${service}
             return 0;
         # Taken from Stephen Bunn ossec howto.
         elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
             echo " - ${systemis} Debian (Ubuntu or derivative)."
             echo " - ${modifiedinit}"
-            cp -pr ./src/init/ossec-hids-debian.init  /etc/init.d/ossec
-            chmod +x /etc/init.d/ossec
-            chmod go-w /etc/init.d/ossec
-            chown root:ossec /etc/init.d/ossec
-            update-rc.d ossec defaults > /dev/null 2>&1
+            cp -pr ./src/init/ossec-hids-debian.init  /etc/init.d/${service}
+            chmod +x /etc/init.d/${service}
+            chmod go-w /etc/init.d/${service}
+            chown root:ossec /etc/init.d/${service}
+            update-rc.d ${service} defaults > /dev/null 2>&1
             return 0;
         else
             echo " - ${noboot}"

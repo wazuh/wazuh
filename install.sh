@@ -152,7 +152,7 @@ Install()
 
     # Calling the init script  to start ossec hids during boot
     if [ "X${update_only}" = "X" ]; then
-        runInit
+        runInit $INSTYPE
         if [ $? = 1 ]; then
             notmodified="yes"
         fi
