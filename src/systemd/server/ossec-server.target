@@ -1,5 +1,5 @@
 [Unit]
-Description=OSSEC Wazuh server
+Description=Wazuh server
 After=network.target
 Wants=ossec-dbd.service
 Wants=ossec-csyslog.service

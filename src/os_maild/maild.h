@@ -31,7 +31,7 @@
 #endif
 
 #ifdef LIBGEOIP_ENABLED
-#define MAIL_BODY           "\r\nOSSEC Wazuh Notification.\r\n" \
+#define MAIL_BODY           "\r\n" __ossec_name " Notification.\r\n" \
                             "%s\r\n\r\n" \
                             "Received From: %s\r\n" \
                             "Rule: %d fired (level %d) -> \"%s\"\r\n" \
@@ -41,7 +41,7 @@
                             "Portion of the log(s):\r\n\r\n%s\r\n" \
                             "\r\n\r\n --END OF NOTIFICATION\r\n\r\n\r\n"
 #else
-#define MAIL_BODY           "\r\nOSSEC Wazuh Notification.\r\n" \
+#define MAIL_BODY           "\r\n" __ossec_name " Notification.\r\n" \
                             "%s\r\n\r\n" \
                             "Received From: %s\r\n" \
                             "Rule: %d fired (level %d) -> \"%s\"\r\n" \

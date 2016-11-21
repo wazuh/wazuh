@@ -19,7 +19,7 @@
 
 void report_help()
 {
-    printf("\nOSSEC HIDS %s: Connects to the manager to extract the agent key.\n", ARGV0);
+    printf("\n%s %s: Connects to the manager to extract the agent key.\n", __ossec_name, ARGV0);
     printf("Available options:\n");
     printf("\t-h                  This help message.\n");
     printf("\t-m <manager ip>     Manager IP Address.\n");

@@ -19,7 +19,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nOSSEC Wazuh %s: Control remote agents.\n", ARGV0);
+    printf("\n%s %s: Control remote agents.\n", __ossec_name, ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
     printf("\t-l          List available (active or not) agents.\n");
@@ -192,7 +192,7 @@ int main(int argc, char **argv)
     if (list_responses) {
         FILE *fp;
         if (!csv_output && !json_output) {
-            printf("\nOSSEC Wazuh %s. Available active responses:\n", ARGV0);
+            printf("\n%s %s. Available active responses:\n", __ossec_name, ARGV0);
         }
 
         fp = fopen(DEFAULTAR, "r");
@@ -245,8 +245,8 @@ int main(int argc, char **argv)
         cJSON *agents = NULL;
 
         if (!csv_output && !json_output) {
-            printf("\nOSSEC Wazuh %s. List of available agents:",
-                   ARGV0);
+            printf("\n%s %s. List of available agents:",
+                   __ossec_name, ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n",
                    shost);
         } else if(json_output){
@@ -343,7 +343,7 @@ int main(int argc, char **argv)
         cJSON *json_data = cJSON_CreateObject();
 
         if (!csv_output && !json_output) {
-            printf("\nOSSEC Wazuh %s. Agent information:", ARGV0);
+            printf("\n%s %s. Agent information:", __ossec_name, ARGV0);
         }
 
         if (agt_id != -1) {
@@ -464,7 +464,7 @@ int main(int argc, char **argv)
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
-                printf("\nOSSEC Wazuh %s: Restarting Syscheck/Rootcheck on all agents.",ARGV0);
+                printf("\n%s %s: Restarting Syscheck/Rootcheck on all agents.", __ossec_name, ARGV0);
             }
         } else {
             if(json_output){
@@ -491,7 +491,7 @@ int main(int argc, char **argv)
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
-                printf("\nOSSEC Wazuh %s: Restarting Syscheck/Rootcheck ""locally.\n", ARGV0);
+                printf("\n%s %s: Restarting Syscheck/Rootcheck ""locally.\n", __ossec_name, ARGV0);
             }
             exit(0);
         }
@@ -519,7 +519,7 @@ int main(int argc, char **argv)
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
-                printf("\nOSSEC Wazuh %s: Restarting Syscheck/Rootcheck on agent: %s\n",ARGV0, agent_id);
+                printf("\n%s %s: Restarting Syscheck/Rootcheck on agent: %s\n",__ossec_name, ARGV0, agent_id);
             }
         } else {
             if(json_output){
@@ -573,7 +573,7 @@ int main(int argc, char **argv)
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             } else {
-                printf("\nOSSEC Wazuh %s: Restarting agent: %s\n",ARGV0, restart_all_agents ? "(all)" : agent_id);
+                printf("\n%s %s: Restarting agent: %s\n", __ossec_name, ARGV0, restart_all_agents ? "(all)" : agent_id);
             }
         } else {
             if(json_output){
@@ -602,8 +602,8 @@ int main(int argc, char **argv)
         debug1("%s: DEBUG: Connected...", ARGV0);
 
         if (send_msg_to_agent(arq, ar, agent_id, ip_address) == 0) {
-            printf("\nOSSEC Wazuh %s: Running active response '%s' on: %s\n",
-                   ARGV0, ar, agent_id);
+            printf("\n%s %s: Running active response '%s' on: %s\n",
+                   __ossec_name, ARGV0, ar, agent_id);
         } else {
             printf("\n** Unable to restart syscheck on agent: %s\n", agent_id);
             exit(1);

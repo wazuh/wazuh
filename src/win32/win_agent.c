@@ -35,7 +35,7 @@ void send_win32_info(time_t curr_time);
 /* Help message */
 void agent_help()
 {
-    printf("\nOSSEC HIDS %s %s .\n", ARGV0, __version);
+    printf("\n%s %s %s .\n", __ossec_name, ARGV0, __version);
     printf("Available options:\n");
     printf("\t/?                This help message.\n");
     printf("\t-h                This help message.\n");

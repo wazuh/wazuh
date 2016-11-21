@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install functions for the OSSEC Wazuh
+# Install functions for Wazuh
 # Wazuh.com (https://github.com/wazuh)
 
 install_ruleset_updater()
@@ -23,9 +23,9 @@ WazuhSetup(){
 WazuhUpgrade()
 {
     # Encode Agentd passlist if not encoded
-    
+
     passlist=$DIRECTORY/agentless/.passlist
-    
+
     if [ -f $passlist ] && ! base64 -d $passlist > /dev/null 2>&1; then
         cp $passlist $passlist.bak
         base64 $passlist.bak > $passlist

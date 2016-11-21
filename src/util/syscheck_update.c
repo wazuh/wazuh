@@ -20,7 +20,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nOSSEC Wazuh %s: Updates (clears) the integrity check database.\n", ARGV0);
+    printf("\n%s %s: Updates (clears) the integrity check database.\n", __ossec_name, ARGV0);
     printf("Available options:\n");
     printf("\t-h       This help message.\n");
     printf("\t-l       List available agents.\n");
@@ -75,8 +75,8 @@ int main(int argc, char **argv)
     if (strcmp(argv[1], "-h") == 0) {
         helpmsg();
     } else if (strcmp(argv[1], "-l") == 0) {
-        printf("\nOSSEC Wazuh %s: Updates the integrity check database.",
-               ARGV0);
+        printf("\n%s %s: Updates the integrity check database.",
+               __ossec_name, ARGV0);
         print_agents(0, 0, 0, 0);
         printf("\n");
         exit(0);

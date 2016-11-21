@@ -20,7 +20,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nOSSEC Wazuh %s: Clear the events stats (averages).\n", ARGV0);
+    printf("\n%s %s: Clear the events stats (averages).\n", __ossec_name, ARGV0);
     printf("Available options:\n");
     printf("\t-h       This help message.\n");
     printf("\t-a       Clear all the stats (averages).\n");

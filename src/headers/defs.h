@@ -45,7 +45,7 @@
 #define MIN_ORDER_SIZE  10              /* Minimum size of orders array */
 
 /* Some global names */
-#define __ossec_name    "OSSEC Wazuh"
+#define __ossec_name    "Wazuh"
 #define __version       "v1.2"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
