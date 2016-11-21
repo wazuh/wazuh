@@ -9,7 +9,7 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 ###  Do not modify bellow here ###
-NAME="OSSEC Wazuh"
+NAME="Wazuh"
 VERSION="v1.2"
 AUTHOR="Wazuh Inc."
 DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd wazuh-moduled"

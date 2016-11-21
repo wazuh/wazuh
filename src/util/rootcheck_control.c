@@ -21,8 +21,8 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nOSSEC Wazuh %s: Manages the policy and auditing database.\n",
-           ARGV0);
+    printf("\n%s %s: Manages the policy and auditing database.\n",
+           __ossec_name, ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
     printf("\t-l          List available (active or not) agents.\n");
@@ -156,8 +156,8 @@ int main(int argc, char **argv)
     /* List available agents */
     if (list_agents) {
         if (!csv_output) {
-            printf("\nOSSEC Wazuh %s. List of available agents:",
-                   ARGV0);
+            printf("\n%s %s. List of available agents:",
+                   __ossec_name, ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, "
                    "Active/Local\n", shost);
         } else {

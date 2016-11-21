@@ -1,5 +1,5 @@
 [Unit]
-Description=OSSEC Wazuh agent
+Description=Wazuh agent
 After=network.target
 Requires=ossec-execd.service
 Requires=ossec-syscheckd.service

@@ -26,7 +26,7 @@
 !define MUI_ICON favicon.ico
 !define MUI_UNICON ossec-uninstall.ico
 !define VERSION "1.2"
-!define NAME "OSSEC Wazuh"
+!define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
 Name "${NAME} Windows Agent v${VERSION}"

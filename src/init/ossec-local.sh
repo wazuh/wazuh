@@ -18,7 +18,7 @@ if [ $? = 0 ]; then
 . ${PLIST};
 fi
 
-NAME="OSSEC Wazuh"
+NAME="Wazuh"
 VERSION="v1.2"
 AUTHOR="Wazuh Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-moduled ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
