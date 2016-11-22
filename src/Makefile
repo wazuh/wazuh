@@ -1390,4 +1390,4 @@ clean-windows:
 	rm -f ${EXTERNAL_LUA}src/ossec-luac.exe
 	rm -f win32/ossec-lua.exe
 	rm -f win32/ossec-luac.exe
-	rm -f win32/ossec-win32-agent.exe
+	rm -f win32/wazuh-win32-agent.exe

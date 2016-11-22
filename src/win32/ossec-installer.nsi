@@ -19,7 +19,7 @@
 
 ; output file
 !ifndef OutFile
-    !define OutFile "ossec-win32-agent.exe"
+    !define OutFile "wazuh-win32-agent.exe"
 !endif
 
 ; general
