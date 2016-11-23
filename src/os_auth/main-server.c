@@ -319,6 +319,11 @@ int main(int argc, char **argv)
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
+#ifdef LEGACY_SSL
+    auto_method = 1;
+    merror("WARN: TLS v1.2 method-forcing disabled. This program was compiled to use SSL/TLS auto-negotiation.");
+#endif
+
     if (use_pass) {
 
         /* Checking if there is a custom password file */

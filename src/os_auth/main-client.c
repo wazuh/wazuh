@@ -229,6 +229,11 @@ int main(int argc, char **argv)
         agentname = lhostname;
     }
 
+#ifdef LEGACY_SSL
+    auto_method = 1;
+    merror("WARN: TLS v1.2 method-forcing disabled. This program was compiled to use SSL/TLS auto-negotiation.");
+#endif
+
     /* Start SSL */
     ctx = os_ssl_keys(0, dir, agent_cert, agent_key, ca_cert, auto_method);
     if (!ctx) {
