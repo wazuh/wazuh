@@ -174,14 +174,20 @@ def get_ossec_version():
 
         f_ossec = open(init_file)
         for line in f_ossec.readlines():
-            if "name=\"wazuh\"" in line.lower():
+            line_lower = line.lower()
+
+            if "wazuh_version=\"" in line_lower:
                 is_wazuh = True
-            elif "version" in line.lower():
                 ossec_v = line.strip("\n").split("=")[1]
                 break
+            elif "name=\"wazuh\"" in line_lower:
+                is_wazuh = True
+            elif "version=\"" in line_lower:
+                ossec_v = line.strip("\n").split("=")[1]
+
         f_ossec.close()
 
-        return ossec_v if is_wazuh else "old"
+        return is_wazuh, ossec_v
     except:
         exit(2, "Reading '{0}'.".format(init_file))
 
@@ -198,13 +204,13 @@ def previous_checks():
 
     # Check if wazuh is installed
     global ossec_version
-    ossec_version = get_ossec_version()
+    is_wazuh, ossec_version = get_ossec_version()
 
-    if ossec_version == "old":
-        exit(2, "OSSEC version detected. This script only supports Wazuh v1.2 or newer.")
+    if not is_wazuh:
+        exit(2, "OSSEC {0} detected. This script only supports Wazuh v1.2 or newer.".format(ossec_version))
     else:
         if float(ossec_version[2:5]) < 1.2:
-            exit(2, "This script only supports Wazuh v1.2 or newer.")
+            exit(2, "Wazuh {0} detected. This script only supports Wazuh v1.2 or newer.".format(ossec_version))
 
 
 def edit_ossec_conf():
