@@ -315,6 +315,10 @@ ifneq (,$(filter ${USE_OPENSSL},yes y Y 1))
 	endif
 endif
 
+ifneq (,$(filter ${USE_LEGACY_SSL},yes y Y 1))
+	DEFINES+=-DLEGACY_SSL
+endif
+
 ####################
 #### Target ########
 ####################
@@ -572,6 +576,7 @@ settings:
 	@echo "    USE_GEOIP:        ${USE_GEOIP}"
 	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
 	@echo "    USE_OPENSSL:      ${USE_OPENSSL}"
+	@echo "    USE_LEGACY_SSL:   ${USE_LEGACY_SSL}"
 	@echo "    USE_PICVIZ:       ${USE_PICVIZ}"
 	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
 	@echo "Mysql settings:"
