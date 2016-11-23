@@ -210,7 +210,7 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
-- RESTful API no longer included in extensions/api folder. Available now at https://github.com/wazuh/wazuh-API
+- RESTful API no longer included in extensions/api folder. Available now at https://github.com/wazuh/wazuh-api
 
 
 ## [v1.0.3] - 2016-02-11

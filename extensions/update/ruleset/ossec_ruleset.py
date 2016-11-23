@@ -174,9 +174,9 @@ def get_ossec_version():
 
         f_ossec = open(init_file)
         for line in f_ossec.readlines():
-            if "OSSEC Wazuh" in line:
+            if "name=\"wazuh\"" in line.lower():
                 is_wazuh = True
-            elif "VERSION" in line:
+            elif "version" in line.lower():
                 ossec_v = line.strip("\n").split("=")[1]
                 break
         f_ossec.close()
@@ -424,7 +424,7 @@ def download_ruleset():
 
     download_file(url_ruleset, output)
 
-    old_extracted_files = "{0}/ossec-rules/".format(downloads_directory)
+    old_extracted_files = "{0}/wazuh-ruleset/".format(downloads_directory)
     if os.path.exists(old_extracted_files):
         shutil.rmtree(old_extracted_files)
 
@@ -435,18 +435,18 @@ def download_ruleset():
         exit(2, "\tError extracting file '{0}': {1}.".format(output, e))
 
     if 'stable.zip' in url_ruleset:
-        os.rename("{0}/ossec-rules-stable".format(downloads_directory), "{0}/ossec-rules".format(downloads_directory))
+        os.rename("{0}/wazuh-ruleset-stable".format(downloads_directory), "{0}/wazuh-ruleset".format(downloads_directory))
     elif 'development.zip' in url_ruleset:
-        os.rename("{0}/ossec-rules-development".format(downloads_directory), "{0}/ossec-rules".format(downloads_directory))
+        os.rename("{0}/wazuh-ruleset-development".format(downloads_directory), "{0}/wazuh-ruleset".format(downloads_directory))
     elif 'master.zip' in url_ruleset:
-        os.rename("{0}/ossec-rules-master".format(downloads_directory), "{0}/ossec-rules".format(downloads_directory))
+        os.rename("{0}/wazuh-ruleset-master".format(downloads_directory), "{0}/wazuh-ruleset".format(downloads_directory))
     else:
         exit(2, "Invalid downloaded file: {0}".format(url_ruleset))
 
     # Update main directory
-    shutil.copyfile("{0}/ossec-rules/VERSION".format(downloads_directory), ruleset_version_path)
+    shutil.copyfile("{0}/wazuh-ruleset/VERSION".format(downloads_directory), ruleset_version_path)
 
-    new_python_script = "{0}/ossec-rules/ossec_ruleset.py".format(downloads_directory)
+    new_python_script = "{0}/wazuh-ruleset/ossec_ruleset.py".format(downloads_directory)
     if os.path.isfile(new_python_script):
         shutil.copyfile(new_python_script, script_path)
 
@@ -459,7 +459,7 @@ def copy_ruleset(directory):
     if not os.path.exists(directory):
         exit(2, "Directory doest not exist: '{0}'.\nExit.".format(directory))
 
-    old_extracted_files = "{0}/ossec-rules/".format(downloads_directory)
+    old_extracted_files = "{0}/wazuh-ruleset/".format(downloads_directory)
     if os.path.exists(old_extracted_files):
         shutil.rmtree(old_extracted_files)
 
@@ -467,18 +467,18 @@ def copy_ruleset(directory):
     if not os.path.exists(downloads_directory):
         os.makedirs(downloads_directory)
 
-    shutil.copytree(directory, "{0}/ossec-rules/".format(downloads_directory))
+    shutil.copytree(directory, "{0}/wazuh-ruleset/".format(downloads_directory))
 
     # Check new ruleset
     check_files = ["rootchecks", "rules", "decoders", "VERSION"]
     for cf in check_files:
-        if not os.path.exists("{0}/ossec-rules/{1}".format(downloads_directory, cf)):
+        if not os.path.exists("{0}/wazuh-ruleset/{1}".format(downloads_directory, cf)):
             exit(2, "'{0}' doest not exist at '{1}'.\nExit.".format(cf, directory))
 
     # Update main directory
-    shutil.copyfile("{0}/ossec-rules/VERSION".format(downloads_directory), ruleset_version_path)
+    shutil.copyfile("{0}/wazuh-ruleset/VERSION".format(downloads_directory), ruleset_version_path)
 
-    new_python_script = "{0}/ossec-rules/ossec_ruleset.py".format(downloads_directory)
+    new_python_script = "{0}/wazuh-ruleset/ossec_ruleset.py".format(downloads_directory)
     if os.path.isfile(new_python_script):
         shutil.copyfile(new_python_script, script_path)
 
@@ -629,7 +629,7 @@ def update_rootchecks(rootchecks):
 def usage():
     msg = """
     OSSEC Wazuh Ruleset Update v3.0.0
-    Github repository: https://github.com/wazuh/ossec-rules
+    Github repository: https://github.com/wazuh/wazuh-ruleset
     Full documentation: http://documentation.wazuh.com/en/latest/ossec_ruleset.html
 
     Usage: ./ossec_ruleset.py                  # Update Decoders, Rules and Rootchecks
@@ -787,9 +787,9 @@ if __name__ == "__main__":
 
     # Config
     MAX_BACKUPS = 50
-    url_ruleset = "https://github.com/wazuh/ossec-rules/archive/stable.zip"
-    #url_ruleset = "https://github.com/wazuh/ossec-rules/archive/development.zip"
-    #url_ruleset = "https://github.com/wazuh/ossec-rules/archive/master.zip"
+    #url_ruleset = "https://github.com/wazuh/wazuh-ruleset/archive/stable.zip"
+    #url_ruleset = "https://github.com/wazuh/wazuh-ruleset/archive/development.zip"
+    url_ruleset = "https://github.com/wazuh/wazuh-ruleset/archive/master.zip"
 
     # Paths
     ossec_path = "/var/ossec"
@@ -800,9 +800,9 @@ if __name__ == "__main__":
     bk_directory = "{0}/backups".format(update_path)
     script_path = "{0}/ossec_ruleset.py".format(update_path)
     downloads_directory = "{0}/downloads".format(update_path)
-    source_rules_path = "{0}/ossec-rules/rules".format(downloads_directory)
-    source_decoders_path = "{0}/ossec-rules/decoders".format(downloads_directory)
-    source_rootchecks_path = "{0}/ossec-rules/rootchecks".format(downloads_directory)
+    source_rules_path = "{0}/wazuh-ruleset/rules".format(downloads_directory)
+    source_decoders_path = "{0}/wazuh-ruleset/decoders".format(downloads_directory)
+    source_rootchecks_path = "{0}/wazuh-ruleset/rootchecks".format(downloads_directory)
 
     # Vars
     today_date = date.today().strftime('%Y%m%d')
