@@ -1,5 +1,5 @@
 OSSEC Wazuh Ruleset Update v2.3
-Github repository: https://github.com/wazuh/ossec-rules
+Github repository: https://github.com/wazuh/wazuh-ruleset
 Full documentation: http://documentation.wazuh.com/en/latest/ossec_ruleset.html
 
 Usage: ./ossec_ruleset.py                 # Update Rules & Rootchecks
@@ -31,4 +31,3 @@ Configuration file syntax using option -A:
         # Commented line
         rules:rule_name
         rootchecks:rootcheck_name
-
