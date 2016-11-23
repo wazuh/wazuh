@@ -34,10 +34,17 @@ def unit_tests(label){
 //Stage standard ossec compilations
 def  standard_compilations(label){  
     dir ('src') {
-        sh 'sudo make --warn-undefined-variables V=1 TARGET=agent install'
-        sh 'sudo make clean && sudo rm -rf /var/ossec/'
-        sh 'sudo make --warn-undefined-variables V=1 TARGET=server install'
-        sh 'sudo make clean'
+        if(  label != 'centos-5-slave'){
+            sh 'sudo make --warn-undefined-variables V=1 TARGET=agent install'
+            sh 'sudo make clean && sudo rm -rf /var/ossec/'
+            sh 'sudo make --warn-undefined-variables V=1 TARGET=server install'
+            sh 'sudo make clean'
+        } else{
+            sh 'sudo make --warn-undefined-variables USE_LEGACY_SSL=yes V=1 TARGET=agent install'
+            sh 'sudo make clean && sudo rm -rf /var/ossec/'
+            sh 'sudo make --warn-undefined-variables USE_LEGACY_SSL=yes V=1 TARGET=server install'
+            sh 'sudo make clean'
+        }
     } 
 } 
 
@@ -55,9 +62,20 @@ def rule_tests(label){
 def advanced_compilations(label){
     
     dir ('src') {
-        sh 'sudo make --warn-undefined-variables V=1 TARGET=local install'
+        if(  label != 'centos-5-slave'){
+            sh 'sudo make --warn-undefined-variables V=1 TARGET=local install'
+        } else {
+            sh 'sudo make --warn-undefined-variables USE_LEGACY_SSL=yes V=1 TARGET=local install'
+        }
+        
         sh 'sudo make clean && sudo rm -rf /var/ossec/'
-        sh 'sudo make --warn-undefined-variables V=1 TARGET=hybrid install'
+         
+        if(  label != 'centos-5-slave'){
+            sh 'sudo make --warn-undefined-variables V=1 TARGET=hybrid install'
+        } else {
+            sh 'sudo make --warn-undefined-variables USE_LEGACY_SSL=yes V=1 TARGET=hybrid install'
+        }
+        
         sh 'sudo make clean && sudo rm -rf /var/ossec/'
     
         def matrixOptionsX = ['DATABASE=none', 'DATABASE=pgsql', 'DATABASE=mysql']
@@ -66,7 +84,11 @@ def advanced_compilations(label){
         
         for (optionX in matrixOptionsX){
             for (optionY in matrixOptionsY) {
-                sh 'sudo make --warn-undefined-variables V=1 TARGET=server '+optionX+' '+optionY+' install'
+                if(  label != 'centos-5-slave'){
+                    sh 'sudo make --warn-undefined-variables  V=1 TARGET=server '+optionX+' '+optionY+' install'
+                } else {
+                    sh 'sudo make --warn-undefined-variables USE_LEGACY_SSL=yes V=1 TARGET=server '+optionX+' '+optionY+' install'
+                }
                 sh 'sudo make clean && sudo rm -rf /var/ossec/'
             }
         }
