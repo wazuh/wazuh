@@ -104,6 +104,41 @@
 </decoder>
 
 
+<!-- OpenWRT firewall
+Tested on OpenWRT with Chaos Calmer 15.05 with firewall logging to syslog.
+Example:
+ - Nov 18 13:39:49 OpenWRT kernel: [10051.313745] DROP(src wan)IN=eth0 OUT= MAC=c2:56:27:73:33:cf:c4:f0:81:b0:93:24:08:00 SRC=205.205.205.205 DST=192.168.8.100 LEN=44 TOS=0x00 PREC=0x00 TTL=31 ID=8549 PROTO=TCP SPT=40952 DPT=23 WINDOW=64144 RES=0x00 SYN URGP=0 MARK=0xff00
+-->
+
+<decoder name="iptables-OpenWRT">
+   <parent>iptables</parent>
+   <type>firewall</type>
+   <prematch>^[\d+.\d+] \S+\.*IN=</prematch>
+   <regex>^[\d+.\d+] (\S*)\(</regex>
+   <order>action</order>
+</decoder>
+
+<decoder name="iptables-OpenWRT">
+   <parent>iptables</parent>
+   <type>firewall</type>
+   <regex offset="after_regex">SRC=(\S+) DST=(\S+)</regex>
+   <order>srcip,dstip</order>
+</decoder>
+
+<decoder name="iptables-OpenWRT">
+   <parent>iptables</parent>
+   <type>firewall</type>
+   <regex offset="after_regex">PROTO=(\w+)</regex>
+   <order>protocol</order>
+</decoder>
+
+<decoder name="iptables-OpenWRT">
+   <parent>iptables</parent>
+   <type>firewall</type>
+   <regex offset="after_regex">SPT=(\d+) DPT=(\d+) </regex>
+   <order>srcport,dstport</order>
+</decoder>
+
 <!-- apparmor
   - Jun 24 10:35:29 hostname kernel: [49787.970285] audit: type=1400 audit(1403598929.839:88986): apparmor="ALLOWED" operation="getattr" profile="/usr/sbin/dovecot//null-1//null-2//null-4a6" name="/home/admin/mails/new/" pid=19973 comm="imap" requested_mask="r" denied_mask="r" fsuid=1003 ouid=1003
   - Jul 14 11:03:47 hostname kernel: [ 8665.951930] type=1400 audit(1405328627.702:54): apparmor="DENIED" operation="open" profile="/usr/bin/evince" name="/etc/xfce4/defaults.list" pid=16418 comm="evince" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
