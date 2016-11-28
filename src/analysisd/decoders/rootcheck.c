@@ -255,15 +255,21 @@ char* rk_get_title(const char *log) {
             *c = '\0';
     }
 
-    if ((c = strstr(title, ": ")) && (!(d = strstr(title, " - ")) || c < d )) {
+    if ((c = strstr(title, "System Audit: ")) && (!(d = strstr(title, " - ")) || c < d )) {
         orig = title;
-        title = strdup(c + 2);
+        title = strdup(c + 14);
         free(orig);
+    }
+
+    // Remove "\. .*"
+
+    if ((c = strstr(title, ". "))) {
+        c[1] = '\0';
     }
 
     // Remove "File: ('.*') "
 
-    if ((c = strstr(title, "File '")) && (d = strstr(c + 6, "' "))) {
+    if (((c = strstr(title, "File '")) || (c = strstr(title, "file '"))) && (d = strstr(c + 6, "' "))) {
         memmove(c + 5, d + 2, strlen(d + 2) + 1);
     }
 
@@ -284,7 +290,7 @@ char* rk_get_file(const char *log) {
             return strdup(file);
         } else
             return NULL;
-    } else if ((file = strstr(log, "File '"))) {
+    } else if ((file = strstr(log, "File '")) || (file = strstr(log, "file '"))) {
         file += 6;
 
         if ((c = strstr(file, "' "))) {
