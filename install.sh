@@ -78,17 +78,15 @@ Install()
     ## Find make/gmake
     if [ "X$NUNAME" = "XOpenBSD" ]; then
         MAKEBIN=gmake
-    fi
-    if [ "X$NUNAME" = "XFreeBSD" ]; then
+    elif [ "X$NUNAME" = "XFreeBSD" ]; then
         MAKEBIN=gmake
-    fi
-    if [ "X$NUNAME" = "XNetBSD" ]; then
+    elif [ "X$NUNAME" = "XNetBSD" ]; then
         MAKEBIN=gmake
-    fi
-    if [ "X$NUNAME" = "XDragonflyBSD" ]; then
+    elif [ "X$NUNAME" = "XDragonflyBSD" ]; then
         MAKEBIN=gmake
-    fi
-    if [ "X%NUNAME" = "XBitrig" ]; then
+    elif [ "X$NUNAME" = "XBitrig" ]; then
+	MAKEBIN=gmake
+    elif [ "X$NUNAME" = "XSunOS" ]; then
 	MAKEBIN=gmake
     fi
 
