@@ -1,6 +1,0 @@
-  <command>
-    <name>host-deny</name>
-    <executable>host-deny.sh</executable>
-    <expect>srcip</expect>
-    <timeout_allowed>yes</timeout_allowed>
-  </command>  

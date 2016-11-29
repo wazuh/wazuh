@@ -10,9 +10,9 @@ help="help"
 
 # Global
 moreinfo="More information at: "
-starting="Starting OSSEC Wazuh"
+starting="Starting Wazuh"
 systemis="System is"
-modifiedinit="Init script modified to start OSSEC Wazuh during boot."
+modifiedinit="Init script modified to start Wazuh during boot."
 noboot="Unknown system. No init script added."
 
 # Part 1
@@ -22,18 +22,18 @@ user="User"
 host="Host"
 hitanyorabort="Press ENTER to continue or Ctrl-C to abort."
 whattoinstall="What kind of installation do you want (server, agent, local, hybrid or help)?"
-serverchose="Server installation chosen"
-clientchose="Agent(client) installation chosen"
+serverchose="Manager (server) installation chosen"
+clientchose="Agent (client) installation chosen"
 localchose="Local installation chosen"
 
 # Part 2
 settingupenv="Setting up the installation environment"
-wheretoinstall="Choose where to install the OSSEC Wazuh"
+wheretoinstall="Choose where to install Wazuh"
 installat="Installation will be made at "
 deletedir="The installation directory already exists. Should I delete it?"
 
 # Part 3
-configuring="Configuring the"
+configuring="Configuring"
 mailnotify="Do you want e-mail notification?"
 nomail="Email notification disabled"
 whatsemail="What's your e-mail address?"
@@ -43,7 +43,7 @@ usingsmtp="Using SMTP server: "
 whatsmtp="What's your SMTP server ip/host?"
 
 # Part 3.1/agent
-serveraddr="What's the IP Address or hostname of the OSSEC Wazuh server?"
+serveraddr="What's the IP Address or hostname of the Wazuh server?"
 addingip="Adding Server IP"
 addingname="Adding Hostname"
 configprofile="Enter the agent's config profile name (default: blank)"
@@ -60,7 +60,12 @@ runrootcheck="Do you want to run the rootkit detection engine?"
 norootcheck="Not running rootcheck (rootkit detection)"
 yesrootcheck="Running rootcheck (rootkit detection)"
 
-# Part 3.4/server/local
+# Part 3.4
+runopenscap="Do you want to run OpenSCAP?"
+norunopenscap="Not running OpenSCAP"
+yesrunopenscap="Running OpenSCAP"
+
+# Part 3.5/server/local
 enable_ar="Do you want to enable active response?"
 noactive="Active response disabled"
 nohosts="host-deny disabled"
@@ -86,15 +91,15 @@ runningmake="Running the Makefile"
 
 # Final
 configurationdone="Configuration finished properly"
-tostart="To start OSSEC Wazuh"
-tostop="To stop OSSEC Wazuh"
+tostart="To start Wazuh"
+tostop="To stop Wazuh"
 configat="The configuration can be viewed or modified at"
 addserveragent="In order to connect agent and server, you need to add each agent to the server."
 runma="Run the 'manage_agents' to add or remove them"
 presskey="Press ENTER to continue"
 
 # Update
-wanttoupdate="You already have OSSEC installed. Do you want to update it?"
+wanttoupdate="You already have Wazuh installed. Do you want to update it?"
 unabletoupdate="Unable to perform update. A full new install will be required."
 updatecompleted="Update completed."
 updatefailed="Update failed."

@@ -1,11 +1,13 @@
 
-    Thanks for using the OSSEC Wazuh.
-    If you have any question, suggestion or if you find any bug,
-    contact us at contact@ossec.net or using our public maillist at
-    ossec-list@ossec.net
-    ( http://www.ossec.net/main/support/ ).
+   Thanks for using Wazuh.
+   Please don't doubt to contact us if you need any help or find
+   any bug.
 
-    More information can be found at http://www.ossec.net
+   Use our public Mailing List at:
+          https://groups.google.com/forum/#!forum/wazuh
+
+   More information can be found at:
+          - http://www.wazuh.com
+          - http://www.ossec.net
 
     ---  Press ENTER to finish (maybe more information below). ---
-    
