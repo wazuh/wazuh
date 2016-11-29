@@ -2,7 +2,6 @@
    the ossec.conf and add a new localfile entry.
    Any questions about the configuration can be answered
    by visiting us online at http://www.ossec.net .
-   
-   
+
+
    --- Press ENTER to continue ---
-                            

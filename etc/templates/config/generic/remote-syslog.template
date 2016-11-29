@@ -1,0 +1,5 @@
+  <remote>
+    <connection>syslog</connection>
+    <port>514</port>
+    <protocol>udp</protocol>
+  </remote>

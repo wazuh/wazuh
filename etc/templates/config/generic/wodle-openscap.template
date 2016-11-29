@@ -1,0 +1,11 @@
+  <!--
+  <wodle name="open-scap">
+    <timeout>1800</timeout>
+    <interval>1d</interval>
+    <scan-on-start>yes</scan-on-start>
+
+    <content type="xccdf" path="select_scap_content-ds.xml">
+      <profile>select_profile_name</profile>
+    </content>
+  </wodle>
+  -->

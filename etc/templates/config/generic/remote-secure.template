@@ -1,0 +1,5 @@
+  <remote>
+    <connection>secure</connection>
+    <port>1514</port>
+    <protocol>udp</protocol>
+  </remote>

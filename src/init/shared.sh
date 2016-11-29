@@ -8,6 +8,7 @@ VERSION=`cat ${VERSION_FILE}`
 LOCATION="./src/LOCATION"
 UNAME=`uname -snr`
 NUNAME=`uname`
+VERSION_DETECT="yes"
 
 # If whoami does not exist, try id
 ls "`which whoami`" > /dev/null 2>&1
@@ -42,17 +43,37 @@ ERROR="errors"
 MSG="messages"
 
 ## Config templates
-SYSCHECK_TEMPLATE="./etc/templates/config/syscheck.template"
-SYSLOG_TEMPLATE="./etc/templates/config/syslog-logs.template"
-APACHE_TEMPLATE="./etc/templates/config/apache-logs.template"
-SNORT_TEMPLATE="./etc/templates/config/snort-logs.template"
-PGSQL_TEMPLATE="./etc/templates/config/pgsql-logs.template"
-HOST_DENY_TEMPLATE="./etc/templates/config/ar-host-deny.template"
-FIREWALL_DROP_TEMPLATE="./etc/templates/config/ar-firewall-drop.template"
-DISABLE_ACCOUNT_TEMPLATE="./etc/templates/config/ar-disable-account.template"
-ACTIVE_RESPONSE_TEMPLATE="./etc/templates/config/active-response.template"
-ROUTENULL_TEMPLATE="./etc/templates/config/ar-routenull.template"
-RULES_TEMPLATE="./etc/templates/config/rules.template"
+if [ "X$VERSION_DETECT" = "Xyes" ]; then
+  # Detect version
+  . ./src/init/dist-detect.sh
+  . ./src/init/template-select.sh
+
+  SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.template" ${DIST_NAME} ${DIST_VER})
+  RULES_TEMPLATE=$(GetTemplate "rules.template" ${DIST_NAME} ${DIST_VER})
+  OPENSCAP_TEMPLATE=$(GetTemplate "open-scap.template" ${DIST_NAME} ${DIST_VER})
+  ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.template" ${DIST_NAME} ${DIST_VER})
+
+  AR_COMMANDS_TEMPLATE="./etc/templates/config/common/ar-commands.template"
+  AR_DEFINITIONS_TEMPLATE="./etc/templates/config/common/ar-definitions.template"
+
+  SYSLOG_TEMPLATE="./etc/templates/config/common/log-files/syslog-logs.template"
+  APACHE_TEMPLATE="./etc/templates/config/common/log-files/apache-logs.template"
+  SNORT_TEMPLATE="./etc/templates/config/common/log-files/snort-logs.template"
+  PGSQL_TEMPLATE="./etc/templates/config/common/log-files/pgsql-logs.template"
+else
+  SYSCHECK_TEMPLATE="./etc/templates/config/syscheck.template"
+  SYSLOG_TEMPLATE="./etc/templates/config/syslog-logs.template"
+  APACHE_TEMPLATE="./etc/templates/config/apache-logs.template"
+  SNORT_TEMPLATE="./etc/templates/config/snort-logs.template"
+  PGSQL_TEMPLATE="./etc/templates/config/pgsql-logs.template"
+  HOST_DENY_TEMPLATE="./etc/templates/config/ar-host-deny.template"
+  FIREWALL_DROP_TEMPLATE="./etc/templates/config/ar-firewall-drop.template"
+  DISABLE_ACCOUNT_TEMPLATE="./etc/templates/config/ar-disable-account.template"
+  ACTIVE_RESPONSE_TEMPLATE="./etc/templates/config/active-response.template"
+  ROUTENULL_TEMPLATE="./etc/templates/config/ar-routenull.template"
+  RULES_TEMPLATE="./etc/templates/config/rules.template"
+  OPENSCAP_TEMPLATE="./etc/templates/config/open-scap.template"
+fi
 
 ## Host output
 OSSECMX="devmail.ossec.net mail is handled by 10 ossec.mooo.com."

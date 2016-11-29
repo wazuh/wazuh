@@ -1,0 +1,2 @@
+postgresql_log:/var/log/postgresql/postgresql-8.1-main.log
+postgresql_log:/var/log/postgresql/postgresql.log
