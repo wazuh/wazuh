@@ -11,10 +11,10 @@ help="help"
 
 # Global
 moreinfo="詳細な情報は以下にあります: "
-starting="OSSEC Wazuh を起動します"
+starting="Wazuh を起動します"
 systemis="システムは"
-modifiedinit="Init script modified to start OSSEC Wazuh during boot."
-modifiedinit="初期スクリプトはブート中に OSSEC Wazuh を起動するよう修正しました．"
+modifiedinit="Init script modified to start Wazuh during boot."
+modifiedinit="初期スクリプトはブート中に Wazuh を起動するよう修正しました．"
 noboot="不明なシステムです．初期スクリプトは追加されません．"
 
 # Part 1
@@ -30,8 +30,8 @@ localchose="Local インストールを選択しました"
 
 # Part 2
 settingupenv="インストール環境を設定しています"
-wheretoinstall="Choose where to install the OSSEC Wazuh"
-wheretoinstall="OSSEC Wazuh のインストール先を選択してください"
+wheretoinstall="Choose where to install Wazuh"
+wheretoinstall="Wazuh のインストール先を選択してください"
 installat="インストール先を以下に作成します "
 deletedir="インストール先のディレクトリが既に存在します．削除してよろしいですか?"
 
@@ -46,8 +46,8 @@ usingsmtp="この SMTP サーバを使用します: "
 whatsmtp="使用する SMTP サーバの ip/host は何ですか?"
 
 # Part 3.1/agent
-serverip="OSSEC Wazuh サーバの IP アドレスは何ですか?"
-serveraddr="OSSEC Wazuh サーバの IP/hostname アドレスは何ですか?"
+serverip="Wazuh サーバの IP アドレスは何ですか?"
+serveraddr="Wazuh サーバの IP/hostname アドレスは何ですか?"
 addingip="サーバの IP を加えています"
 addingname="サーバの hostname を加えています"
 
@@ -62,7 +62,12 @@ runrootcheck="rootkit 検知エンジンを実行させますか?"
 norootcheck="rootcheck (rootkit 検知) は実行させません"
 yesrootcheck="rootcheck (rootkit 検知) を実行させます"
 
-# Part 3.4/server/local
+# Part 3.4
+runopenscap="OpenSCAP 検知エンジンを実行させますか??"
+norunopenscap="OpenSCAP は実行させません"
+yesrunopenscap="OpenSCAP を実行させます"
+
+# Part 3.5/server/local
 enable_ar="アクティブレスポンスを有効にしますか?"
 noactive="アクティブレスポンスを無効にしました"
 nohosts="host-deny を無効にしました"
@@ -91,15 +96,15 @@ runningmake="Makefile を実行します"
 
 # Final
 configurationdone="設定が完全に終了しました"
-tostart="OSSEC Wazuh を開始させます"
-tostop="OSSEC Wazuh を停止させます"
+tostart="Wazuh を開始させます"
+tostop="Wazuh を停止させます"
 configat="以下のファイルで設定についての確認と変更ができます"
 addserveragent="エージェントを追加する前にアクセスするための認証が必要になります．"
 runma="エージェントを追加するか削除する際は 'manage_agents' を実行してください"
 presskey="続けるには ENTER を押してください"
 
 # Update
-wanttoupdate="既に OSSEC がインストールされています．アップデートしますか?"
+wanttoupdate="既に Wazuh がインストールされています．アップデートしますか?"
 unabletoupdate="アップデート作業を行えません．新しくインストールする必要があります．"
 updatecompleted="アップデートは完了しました．"
 updatefailed="アップデートは失敗しました．"
