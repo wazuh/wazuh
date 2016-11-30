@@ -1,11 +1,14 @@
 
-    Bedankt voor het gebruiken van OSSEC Wazuh.
-    Heeft u een vraag of suggestie of een andere vorm van opmerking,
-    neem contact met ons op via contact@ossec.net of gebruik de mailinglijst
-    ossec-list@ossec.net
-    ( http://www.ossec.net/main/support/ ).
+    Bedankt voor het gebruik Wazuh.
+    Gelieve twijfel niet om ons te contacteren als u hulp
+    nodig hebt of zoek een bug.
 
-    Meer informatie vindt u op http://www.ossec.net
+    Gebruik onze openbare Mailing List:
+             https://groups.google.com/forum/#!forum/wazuh
 
-    ---  Druk op ENTER om te finaliseren (wellicht meer informatie hieronder). ---
-    
+    Meer informatie is te vinden op:
+               - http://www.wazuh.com
+               - http://www.ossec.net
+
+         --- Druk op ENTER om te voltooien. ---
+    --- (Misschien meer informatie hieronder). ---
