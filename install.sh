@@ -665,13 +665,13 @@ main()
 
     fi # for USER_LANGUAGE
 
-    . ./src/init/shared.sh
     . ./src/init/language.sh
-    . ./src/init/functions.sh
     . ./src/init/init.sh
     . ./src/init/wazuh/wazuh.sh
     . ${TEMPLATE}/${LANGUAGE}/messages.txt
     . ./src/init/inst-functions.sh
+    . ./src/init/dist-detect.sh
+    . ./src/init/template-select.sh
 
     # Must be executed as ./install.sh
     if [ `isFile ${VERSION_FILE}` = "${FALSE}" ]; then
