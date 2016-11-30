@@ -724,7 +724,7 @@ libcJSON.a: ${cjson_o}
 #### OSSEC Libs ####
 ####################
 
-ossec_libs = os_crypto.a config.a wmodules.a shared.a os_net.a os_regex.a os_xml.a
+ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a
 
 #### os_xml ########
 
@@ -1048,7 +1048,7 @@ monitor_o := $(monitor_c:.c=.o)
 monitord/%.o: monitord/%.c ${ZLIB_LIB}
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-monitord\" -c $< -o $@
 
-ossec-monitord: ${monitor_o} ${ossec_libs} ${sqlite_o} os_maild/sendcustomemail.o ${ZLIB_LIB} ${JSON_LIB}
+ossec-monitord: ${monitor_o} ${ossec_libs} os_maild/sendcustomemail.o ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
 
@@ -1199,7 +1199,7 @@ ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} aler
 wmoduled_c := wazuh_modules/main.c
 wmoduled_o := $(wmoduled_c:.c=.o)
 
-wazuh-moduled: ${wmoduled_o} ${ossec_libs}
+wazuh-moduled: ${wmoduled_o} ${ossec_libs} ${sqlite_o} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 ####################

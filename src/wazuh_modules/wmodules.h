@@ -53,9 +53,13 @@ typedef struct wmodule {
 // Inclusion of modules
 
 #include "wm_oscap.h"
+#include "wm_database.h"
 
 extern wmodule *wmodules;               // Loaded modules.
 extern int wm_task_nice;                // Nice value for tasks.
+
+// Add module to the global list
+void wm_add(wmodule *module);
 
 // Check general configuration
 void wm_check();

@@ -1,17 +1,17 @@
-/* Copyright (C) 2016 Wazuh Inc.
- * All rights reserved.
+/*
+ * Wazuh Module for SQLite database syncing
+ * Copyright (C) 2016 Wazuh Inc.
+ * November 29, 2016
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
  */
 
-#include "shared.h"
+#include "wmodules.h"
 #include "sec.h"
 #include "wazuh_db/wdb.h"
-
-static void sync_keys();
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
@@ -19,7 +19,20 @@ static void sync_keys();
 #define IN_BUFFER_SIZE sizeof(struct inotify_event) + NAME_MAX + 1
 #endif
 
-void* run_keysync(__attribute__ ((unused)) void *args) {
+static void* wm_database_main(wm_database *data);       // Module main function. It won't return
+static void* wm_database_destroy(wm_database *data);    // Destroy data
+static void wm_sync_agents();                           // Synchronize agents
+
+// Database module context definition
+
+const wm_context WM_DATABASE_CONTEXT = {
+    "database",
+    (wm_routine)wm_database_main,
+    (wm_routine)wm_database_destroy
+};
+
+// Module main function. It won't return
+void* wm_database_main(__attribute__((unused)) wm_database *data) {
     char *uname;
 
     /* Update manager information */
@@ -30,7 +43,7 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
         if (gethostname(hostname, 1024) == 0)
             wdb_update_agent_name(0, hostname);
         else
-            merror("%s: ERROR: Couldn't get manager's hostname: %s", ARGV0, strerror(errno));
+            merror("%s: ERROR: Couldn't get manager's hostname: %s.", WM_DATABASE_LOGTAG, strerror(errno));
     }
 
     if ((uname = getuname())) {
@@ -55,7 +68,7 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
     /* Start inotify */
 
     if (fd < 0) {
-        merror("%s: ERROR: Couldn't init inotify: %s", ARGV0, strerror(errno));
+        merror("%s: ERROR: Couldn't init inotify: %s.", WM_DATABASE_LOGTAG, strerror(errno));
         return NULL;
     }
 
@@ -63,8 +76,8 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
 
     while (1) {
         while (wd < 0) {
-            if ((wd = inotify_add_watch(fd, KEYS_FILE, IN_CLOSE_WRITE | IN_DELETE_SELF)) < 0) {
-                merror("%s: ERROR: Couldn't watch client.keys file: %s", ARGV0, strerror(errno));
+            if ((wd = inotify_add_watch(fd, KEYSFILE_PATH, IN_CLOSE_WRITE | IN_DELETE_SELF)) < 0) {
+                merror("%s: ERROR: Couldn't watch client.keys file: %s.", WM_DATABASE_LOGTAG, strerror(errno));
 
                 if (errno == ENOENT)
                     sleep(120);
@@ -76,14 +89,15 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
         /* Synchronize */
 
         if (sync) {
-            debug1("%s: Synchronizing client.keys", ARGV0);
-            sync_keys();
+            debug1("%s: DEBUG: Synchronizing agents.", WM_DATABASE_LOGTAG);
+            wm_sync_agents();
+            debug1("%s: DEBUG: Agent sync completed.", WM_DATABASE_LOGTAG);
         }
 
         /* Wait for changes */
 
         if ((count = read(fd, buffer, IN_BUFFER_SIZE)) < 0) {
-            merror("%s: ERROR: read(): %s", ARGV0, strerror(errno));
+            merror("%s: ERROR: read(): %s.", WM_DATABASE_LOGTAG, strerror(errno));
             continue;
         }
 
@@ -103,7 +117,7 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
                 sync = 1;
                 break;
             default:
-                merror("%s: WARN: Unknown inotify mask: 0x%x\n", ARGV0, event->mask);
+                merror("%s: WARN: Unknown inotify mask: 0x%x.", WM_DATABASE_LOGTAG, event->mask);
             }
         }
     }
@@ -114,14 +128,15 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
     time_t timestamp = 0;
 
     while (1) {
-        if (stat(KEYS_FILE, &buffer) < 0) {
-            merror("%s: ERROR: Couldn't get client.keys stat: %s", ARGV0, strerror(errno));
+        if (stat(KEYSFILE_PATH, &buffer) < 0) {
+            merror("%s: ERROR: Couldn't get client.keys stat: %s.", WM_DATABASE_LOGTAG, strerror(errno));
             sleep(120);
         } else {
             if (buffer.st_mtime != timestamp) {
                 /* Synchronize */
-                debug1("%s: Synchronizing client.keys", ARGV0);
-                sync_keys();
+                debug1("%s: DEBUG: Synchronizing agents.", WM_DATABASE_LOGTAG);
+                wm_sync_agents();
+                debug1("%s: DEBUG: Agent sync completed.", WM_DATABASE_LOGTAG);
                 timestamp = buffer.st_mtime;
             }
 
@@ -133,7 +148,7 @@ void* run_keysync(__attribute__ ((unused)) void *args) {
     return NULL;
 }
 
-void sync_keys() {
+void wm_sync_agents() {
     unsigned int i;
     keystore keys;
     keyentry *entry;
@@ -148,7 +163,7 @@ void sync_keys() {
         int id;
 
         if (!(id = atoi(entry->id))) {
-            merror("%s: ERROR: at sync_keys(): invalid ID number", ARGV0);
+            merror("%s: ERROR: at wm_sync_agents(): invalid ID number.", WM_DATABASE_LOGTAG);
             continue;
         }
 
@@ -169,4 +184,27 @@ void sync_keys() {
 
         free(agents);
     }
+}
+
+// Destroy data
+void* wm_database_destroy(wm_database *data) {
+    free(data);
+    return NULL;
+}
+
+// Read configuration and return a module (if enabled) or NULL (if disabled)
+wmodule* wm_database_read() {
+    wm_database data;
+    wmodule *module = NULL;
+
+    data.sync_agents = getDefine_Int("wazuh_database", "sync_agents", 0, 1);
+
+    if (data.sync_agents) {
+        module = calloc(1, sizeof(wmodule));
+        module->context = &WM_DATABASE_CONTEXT;
+        module->data = calloc(1, sizeof(wm_database));
+        memcpy(module->data, &data, sizeof(wm_database));
+    }
+
+    return module;
 }
