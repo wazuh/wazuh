@@ -1,4 +1,3 @@
 
- Um OSSEC Wazuh zu installieren muﬂ auf Ihrem System ein C-Compiler
+ Um Wazuh zu installieren muss auf Ihrem System ein C-Compiler
  installiert sein.
-
