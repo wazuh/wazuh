@@ -1,12 +1,14 @@
 
-    Köszönjük, hogy az OSSEC Wazuh programot használja!
-    Ha egyéb kérdése, javaslata van, illetve valamilyen bugot talált
-    a programban, lépjen velünk kapcsolatba a contact@ossec.net,
-    vagy a nyilvános levelezőlistánkat használva az
-    ossec-list@ossec.net e-mail címeken.
-    ( http://www.ossec.net/main/support/ ).
+    Köszönjük, hogy a Wazuh.
+    Kérjük, nem kétséges, hogy lépjen kapcsolatba velünk,
+    ha segítségre van szüksége, vagy talál hibát.
 
-    További információkért látogasson el a http://www.ossec.net weboldalra.
+    Használja nyilvános levelezőlista itt:
+            https://groups.google.com/forum/#!forum/wazuh
 
-    ---  A befejezéshez nyomjon ENTER-t (alább további információkat talál). ---
-    
+    További információk a következő címen található meg:
+               - http://www.wazuh.com
+               - http://www.ossec.net
+
+        --- Nyomja meg az ENTER befejezni. ---
+        --- (Talán több információt lent.) ---
