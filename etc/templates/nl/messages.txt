@@ -10,9 +10,9 @@ help="help"
 
 # Global
 moreinfo="Meer informatie op: "
-starting="Bezig met starten van OSSEC Wazuh"
+starting="Bezig met starten van Wazuh"
 systemis="Systeem is"
-modifiedinit="Init script aangepast om OSSEC Wazuh te laden tijdens opstarten."
+modifiedinit="Init script aangepast om Wazuh te laden tijdens opstarten."
 noboot="Onbekend systeem. Geen init script toegevoegd."
 
 # Part 1
@@ -28,7 +28,7 @@ localchose="Gekozen voor lokale installatie"
 
 # Part 2
 settingupenv="Opzetten van installatie omgeving"
-wheretoinstall="Waar wilt u OSSEC Wazuh installaren"
+wheretoinstall="Waar wilt u Wazuh installaren"
 installat="Installatie word geplaatst in "
 deletedir="De installatie map bestaat reeds. Zal ik deze verwijderen?"
 
@@ -43,8 +43,8 @@ usingsmtp="Gebruik maken van SMTP server: "
 whatsmtp="Wat is uw SMTP server ip/host?"
 
 # Part 3.1/agent
-serverip="Wat is het IP adres van uw OSSEC Wazuh host?"
-serveraddr="Wat is het IP adres/host van uw OSSEC Wazuh host?"
+serverip="Wat is het IP adres van uw Wazuh host?"
+serveraddr="Wat is het IP adres/host van uw Wazuh host?"
 addingip="Toevoegen van server IP"
 addingname="Toevoegen van server host"
 
@@ -59,7 +59,12 @@ runrootcheck="Wilt u de rootkit detectie engine?"
 norootcheck="Geen rootcheck (rootkit detectie)"
 yesrootcheck="Starten van rootcheck (rootkit detectie)"
 
-# Part 3.4/server/local
+# Part 3.4
+runopenscap="Wilt u OpenSCAP?"
+norunopenscap="Geen running OpenSCAP"
+yesrunopenscap="Starten OpenSCAP"
+
+# Part 3.5/server/local
 enable_ar="Wilt u actief handelen?"
 noactive="Actief handelen uitgeschakeld"
 nohosts="host-deny uitgeschakeld"
@@ -85,15 +90,15 @@ runningmake="Uitvoeren van Makefile"
 
 # Final
 configurationdone="Configuratie is succesvol afgesloten"
-tostart="Om OSSEC Wazuh te starten"
-tostop="Om OSSEC Wazuh te stoppen"
+tostart="Om Wazuh te starten"
+tostop="Om Wazuh te stoppen"
 configat="De configuratie kan worden bekeken en gewijzigd in"
 addserveragent="Om verbinding te maken tussen agent en server, moet je alle agenten aan de server toevoegen."
 runma="Voer 'manage_agents' uit om ze toe te voegen of te verwijderen"
 presskey="Druk op ENTER om door te gaan"
 
 # Update
-wanttoupdate="U heeft OSSEC reeds geinstalleerd. Wilt u actualiseren?"
+wanttoupdate="U heeft Wazuh reeds geinstalleerd. Wilt u actualiseren?"
 unabletoupdate="Kan geen actualisatie uitvoeren. Een volledig nieuwe installatie is vereist."
 updatecompleted="Actualisatie succesvol uitgevoerd."
 updatefailed="Actualisatie is gefaald."
