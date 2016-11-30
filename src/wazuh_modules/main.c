@@ -110,6 +110,7 @@ void wm_help()
 void wm_setup()
 {
     struct sigaction action = { .sa_handler = wm_handler };
+    wmodule *database;
 
     // Get defined values from internal_options
 
@@ -125,12 +126,18 @@ void wm_setup()
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, NULL);
 #endif
 
+    if ((database = wm_database_read()))
+        wm_add(database);
+
     // Go daemon
 
     if (!flag_foreground) {
         goDaemon();
         nowDaemon();
     }
+
+    if (chdir(DEFAULTDIR) < 0)
+        ErrorExit("%s: ERROR: chdir(): %s", ARGV0, strerror(errno));
 
     wm_check();
 

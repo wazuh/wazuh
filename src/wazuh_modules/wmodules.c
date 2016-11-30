@@ -14,6 +14,18 @@
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
 
+// Add module to the global list
+
+void wm_add(wmodule *module) {
+    wmodule *current;
+
+    if (wmodules) {
+        for (current = wmodules; current->next; current = current->next);
+        current->next = module;
+    } else
+        wmodules = module;
+}
+
 // Check general configuration
 
 void wm_check() {

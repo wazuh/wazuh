@@ -164,6 +164,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys)
 {
     FILE *fp;
 
+    const char *keys_file = isChroot() ? KEYS_FILE : KEYSFILE_PATH;
     char buffer[OS_BUFFER_SIZE + 1];
     char name[KEYSIZE + 1];
     char ip[KEYSIZE + 1];
@@ -171,16 +172,16 @@ void OS_ReadKeys(keystore *keys, int rehash_keys)
     char key[KEYSIZE + 1];
 
     /* Check if the keys file is present and we can read it */
-    if ((keys->file_change = File_DateofChange(KEYS_FILE)) < 0) {
-        merror(NO_AUTHFILE, __local_name, KEYS_FILE);
+    if ((keys->file_change = File_DateofChange(keys_file)) < 0) {
+        merror(NO_AUTHFILE, __local_name, keys_file);
         ErrorExit(NO_CLIENT_KEYS, __local_name);
     }
 
-    keys->inode = File_Inode(KEYS_FILE);
-    fp = fopen(KEYS_FILE, "r");
+    keys->inode = File_Inode(keys_file);
+    fp = fopen(keys_file, "r");
     if (!fp) {
         /* We can leave from here */
-        merror(FOPEN_ERROR, __local_name, KEYS_FILE, errno, strerror(errno));
+        merror(FOPEN_ERROR, __local_name, keys_file, errno, strerror(errno));
         ErrorExit(NO_CLIENT_KEYS, __local_name);
     }
 
@@ -269,7 +270,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys)
         /* Check for maximum agent size */
         if (keys->keysize >= (MAX_AGENTS - 2)) {
             merror(AG_MAX_ERROR, __local_name, MAX_AGENTS - 2);
-            ErrorExit(CONFIG_ERROR, __local_name, KEYS_FILE);
+            ErrorExit(CONFIG_ERROR, __local_name, keys_file);
         }
 
         continue;
