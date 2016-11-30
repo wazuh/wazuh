@@ -10,9 +10,9 @@ help="help"
 
 # Global
 moreinfo="Maggiori informazioni su: "
-starting="Avvio OSSEC Wazuh"
+starting="Avvio Wazuh"
 systemis="Il Sistema è"
-modifiedinit="Script di Init modificato per eseguire OSSEC Wazuh in fase di boot."
+modifiedinit="Script di Init modificato per eseguire Wazuh in fase di boot."
 noboot="Sistema sconosciuto. Nessuno script di init aggiunto."
 
 # Part 1
@@ -28,7 +28,7 @@ localchose="Scelta installazione Local"
 
 # Part 2
 settingupenv="Configurazione dell'ambiente di installazione"
-wheretoinstall="Scegli dove installare OSSEC Wazuh"
+wheretoinstall="Scegli dove installare Wazuh"
 installat="L'installazione verrà effettuata in "
 deletedir="La directory di installazione è già presente. La devo cancellare?"
 
@@ -43,8 +43,8 @@ usingsmtp="Utilizzo il server SMTP: "
 whatsmtp="Qual'è l'ip/host del tuo server SMTP?"
 
 # Part 3.1/agent
-serverip="Qual'è l'indirizzo IP del server  OSSEC Wazuh?"
-serveraddr="Qual'è l'indirizzo IP/host del server  OSSEC Wazuh?"
+serverip="Qual'è l'indirizzo IP del server Wazuh?"
+serveraddr="Qual'è l'indirizzo IP/host del server Wazuh?"
 addingip="Aggiungo l'IP del Server"
 addingname="Aggiunta di host nome del Server"
 
@@ -58,7 +58,12 @@ runrootcheck="Vuoi attivare il sistema di rilevamento dei rootkit?"
 norootcheck="Rootcheck (Sistema di rilevamento dei rootkit) disattivato"
 yesrootcheck="Rootcheck (Sistema di rilevamento dei rootkit) attivato"
 
-# Part 3.4/server/local
+# Part 3.4
+runopenscap="Vuoi attivare OpenSCAP?"
+norunopenscap="OpenSCAP disattivato"
+yesrunopenscap="OpenSCAP attivato"
+
+# Part 3.5/server/local
 enable_ar="Vuoi abilitare la risposta attiva?"
 noactive="Risposta attiva disabilitata"
 nohosts="host-deny disattivato"
@@ -84,15 +89,15 @@ runningmake="Eseguo il Makefile"
 
 # Final
 configurationdone="Configurazione terminata correttamente"
-tostart="Per avviare OSSEC Wazuh"
-tostop="Per arrestare OSSEC Wazuh"
+tostart="Per avviare Wazuh"
+tostop="Per arrestare Wazuh"
 configat="La configurazione può essere vista o modificata in"
 addserveragent="E' necessario aggiungere gli agent(s) prima che siano autorizzati ad accedere al server."
 runma="Utilizza 'manage_agents' per aggiungerli o rimuoverli"
 presskey="Premi ENTER per continuare."
 
 # update
-wanttoupdate="OSSEC è già stato installato. Vuoi aggiornarlo ?"
+wanttoupdate="Wazuh è già stato installato. Vuoi aggiornarlo ?"
 unabletoupdate="Impossibile eseguire l'aggiornamento. E' necessaria un'installazione completa."
 updatecompleted="Aggiornamento completato."
 updatefailed="Aggiornamento fallito."
@@ -105,4 +110,3 @@ pfenable="Do you want to use the PF firewall in the active response?"
 nopf="PF response disabled."
 pftablename="Name of the PF table to use?"
 pfmessage="Add the following lines to the beginning of your rules"
-
