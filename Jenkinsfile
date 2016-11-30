@@ -1,5 +1,5 @@
 /**
- * Jenkinsfile for OSSEC Wazuh
+ * Jenkinsfile for Wazuh
  * Copyright (C) 2016 Wazuh Inc.
  * June 22, 2016.
  *
