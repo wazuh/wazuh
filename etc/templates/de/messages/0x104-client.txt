@@ -1,5 +1,4 @@
 
- - Um mit dem Server zu kommunizieren müssen Sie erst den
-   Agent auf dem Server hinzufügen. Danach kann der Schlüssel
+ - Um mit dem Server zu kommunizieren mÃ¼ssen Sie erst den
+   Agent auf dem Server hinzufÃ¼gen. Danach kann der SchlÃ¼ssel
    mit dem Tool 'manage_agents' importiert werden.
-   

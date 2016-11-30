@@ -1,7 +1,4 @@
 
-  3.4- Mit 'Active Response' können Befehle abhängig von
-       Events ausführen. Dadurch können zB IP-Adressen
-       geblockt werden oder der Zugriff für bestimmte 
-       Benutzer abgeschaltet werden.
-       http://www.ossec.net/en/manual.html#active-response
-       
+  3.5- Mit 'Active Response' kÃ¶nnen Befehle abhÃ¤ngig von
+       Events ausfÃ¼hren.
+       StandardmÃ¤ÃŸig sind keine 'Active Response' definiert.

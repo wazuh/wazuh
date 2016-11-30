@@ -1,8 +1,7 @@
- - Wenn Sie weitere Files überwachen möchten, fügen Sie
+ - Wenn Sie weitere Files Ã¼berwachen mÃ¶chten, fÃ¼gen Sie
    einen weiteren 'localfile' Eintrag in der Datei
    ossec.conf hinzu. Alle Konfigurationsoptionen werden
    unter http://www.ossec.net/hids/ beschrieben.
-   
-   
-   --- Drücken Sie eine Taste um fortzufahren ---
-                            
+
+
+   --- DrÃ¼cken Sie eine Taste um fortzufahren ---
