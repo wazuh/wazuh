@@ -1,8 +1,4 @@
 
-  3.4- Respostas automáticas permitem você executar um comando
-       específico baseado nos eventos recebidos. Você pode
-       bloquear um endereço de IP ou desabilitar o acesso de
-       um usuário específico, por exemplo.
-       Maiores informações:
-       http://www.ossec.net/en/manual.html#active-response
-
+  3.5- Respostas automáticas permitem você executar um comando
+       específico baseado nos eventos recebidos.
+       Por padrão, nenhuma resposta automática é definida.

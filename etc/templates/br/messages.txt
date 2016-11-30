@@ -11,9 +11,9 @@ help="ajuda"
 
 # Global
 moreinfo="Maiores informações em: "
-starting="Iniciando o OSSEC Wazuh"
+starting="Iniciando Wazuh"
 systemis="O Sistema é"
-modifiedinit="O script de inicialização foi modificado para executar o OSSEC Wazuh durante o boot."
+modifiedinit="O script de inicialização foi modificado para executar Wazuh durante o boot."
 noboot="Sistema desconhecido. Nenhum script de incialização foi adicionado."
 
 # Parte 1
@@ -29,7 +29,7 @@ localchose="Escolhida instalação local"
 
 # Parte 2
 settingupenv="Configurando o ambiente de instalação"
-wheretoinstall="Escolha onde instalar o OSSEC Wazuh"
+wheretoinstall="Escolha onde instalar Wazuh"
 installat="A instalação será feita no diretório"
 deletedir="O diretório de instalação já existe. Deseja removê-lo?"
 
@@ -44,8 +44,8 @@ usingsmtp="Usando servidor SMTP: "
 whatsmtp="Qual é o ip/host de seu servidor SMTP?"
 
 # Parte 3.1/agente
-serverip="Qual é o endereço de IP do servidor OSSEC Wazuh?"
-serveraddr="Qual é o endereço de IP/hostname do servidor OSSEC Wazuh?"
+serverip="Qual é o endereço de IP do servidor Wazuh?"
+serveraddr="Qual é o endereço de IP/hostname do servidor Wazuh?"
 addingip="Adicionando IP do servidor"
 addingname="Adicionando hostname do servidor"
 
@@ -60,7 +60,12 @@ runrootcheck="Deseja habilitar o sistema de detecção de rootkis?"
 norootcheck="Rootcheck (Sistema de detecção de rootkits) desabilitado"
 yesrootcheck="Rootcheck (Sistema de detecção de rootkits) habilitado"
 
-# Parte 3.4/servidor/local
+# Part 3.4
+runopenscap="Deseja habilitar OpenSCAP?"
+norunopenscap="OpenSCAP desabilitado"
+yesrunopenscap="OpenSCAP desabilitado"
+
+# Parte 3.5/servidor/local
 enable_ar="Deseja habilitar o sistema de respostas automáticas?"
 noactive="Sistema de respostas automáticas desabilitado"
 nohosts="host-deny desabilitado"
@@ -68,7 +73,7 @@ yeshosts="host-deny habilitado (local) para niveis >= 6"
 firewallar="Deseja habilitar o firewall-drop?"
 nofirewall="firewall-drop desabilitado."
 yesfirewall="firewall-drop habilitado (local) para níveis >= 6"
-defaultwhitelist="Lista de endereços que não serão bloqueados pela resposta automática:" 
+defaultwhitelist="Lista de endereços que não serão bloqueados pela resposta automática:"
 addwhite="Deseja adicionar mais algum endereço a essa lista?"
 ipswhite="Endereços de IP (separados por espaço): "
 
@@ -87,15 +92,15 @@ runningmake="Executando o Makefile"
 
 # Final
 configurationdone="Configuração finalizada corretamente"
-tostart="Para iniciar o OSSEC Wazuh"
-tostop="Para parar o OSSEC Wazuh"
+tostart="Para iniciar Wazuh"
+tostop="Para parar Wazuh"
 configat="A configuração pode ser vista ou modificada em"
 addserveragent="Você precisa adicionar cada um dos clientes antes que estejam autorizados a acessar o servidor."
 runma="Execute o 'manage_agents' para adicioná-los ou removê-los"
 presskey="Pressione ENTER para continuar."
 
 # Update
-wanttoupdate="OSSEC ja esta instalado. Deseja atualiza-lo?"
+wanttoupdate="Wazuh ja esta instalado. Deseja atualiza-lo?"
 unabletoupdate="Error na atualizacao. Sera necessario reinstala-lo."
 updatecompleted="Atualizacao completada."
 updatefailed="Erro na atualizacao."
@@ -108,4 +113,3 @@ pfenable="Deseja utilizar o firewall PF nas respostas automaticas?"
 nopf="Respostas automaticas com o PF desabilitadas."
 pftablename="Qual o nome da tabela no PF que deseja utilizar?"
 pfmessage="Adicione as seguintes linhas na configuracao do seu firewall"
-
