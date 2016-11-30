@@ -10,9 +10,9 @@ help="yardım"
 
 # Global
 moreinfo="Daha fazla bilgi: "
-starting="OSSEC Wazuh başlatılıyor"
+starting="Wazuh başlatılıyor"
 systemis="Sistem"
-modifiedinit="OSSEC Wazuh'i önyüklemede başlatmak için başlangıç betiği değiştirildi."
+modifiedinit="Wazuh'i önyüklemede başlatmak için başlangıç betiği değiştirildi."
 noboot="Bilinmeyen sistem. Başlangıç betiği eklenmedi."
 
 # Part 1
@@ -28,7 +28,7 @@ localchose="Yerel kurulum seçildi"
 
 # Part 2
 settingupenv="Kurulum ortamı hazırlanıyor"
-wheretoinstall="OSSEC Wazuh kurulacak yeri seçin"
+wheretoinstall="Wazuh kurulacak yeri seçin"
 installat="Kurulum buraya yapılacak: "
 deletedir="Kurulum dizini zaten var. Silinsin mi?"
 
@@ -43,8 +43,8 @@ usingsmtp="SMTP sunucu kullanılıyor: "
 whatsmtp="SMTP sunucunuzun IP adresi veya ismi nedir?"
 
 # Part 3.1/agent
-serverip="OSSEC Wazuh sunucusunun IP adresi nedir?"
-serveraddr="OSSEC Wazuh sunucusunun IP adresi veya ismi nedir?"
+serverip="Wazuh sunucusunun IP adresi nedir?"
+serveraddr="Wazuh sunucusunun IP adresi veya ismi nedir?"
 addingip="Sunucu IP adresi ekleniyor"
 addingname="Sunucu ismi ekleniyor"
 
@@ -59,7 +59,12 @@ runrootcheck="rootkit tespit etme motorunun çalışmasını ister misiniz?"
 norootcheck="rootcheck çalıştırılmıyor (rootkit tespit etme)"
 yesrootcheck="rootcheck çalıştırılıyor (rootkit tespit etme)"
 
-# Part 3.4/server/local
+# Part 3.4
+runopenscap="Güvenilirlik/bütünlük OpenSCAP çalıştırılmasını ister misiniz?"
+norunopenscap="OpenSCAP çalıştırılmıyor"
+yesrunopenscap="OpenSCAP çalıştırılıyor"
+
+# Part 3.5/server/local
 enable_ar="Etkin yanıt üretmenin (Active response) etkin kılınmasını ister misiniz?"
 noactive="Etkin yanıt üretme(Active response) etkisiz kılındı"
 nohosts="host-deny etkin kılınmadı"
@@ -85,15 +90,15 @@ runningmake="Makefile çalıştırılıyor"
 
 # Final
 configurationdone="Yapılandırma doğru olarak tamamlandı"
-tostart="OSSEC Wazuh'i başlatmak için"
-tostop="OSSEC Wazuh'i durdurmak için"
+tostart="Wazuh'i başlatmak için"
+tostop="Wazuh'i durdurmak için"
 configat="Yapılandırma buradan görülebilir veya değiştirilebilir:"
 addserveragent="Her bir aracıyı/istemciyi erişim için yetkilendirmeden önce eklemeniz gerekmektedir."
 runma="Eklemek ve çıkarmak için 'manage_agents' komutunu kullanın."
 presskey="Devam etmek için ENTER tuşuna basınız"
 
 # Update
-wanttoupdate="Bir OSSEC kurulumu mevcut. Güncellemek ister misiniz?"
+wanttoupdate="Bir Wazuh kurulumu mevcut. Güncellemek ister misiniz?"
 unabletoupdate="Güncelleme gerçekleştirilemedi. Yeni kurulum yapılması gerekiyor."
 updatecompleted="Güncelleme tamamlandı."
 updatefailed="Güncelleme başarısız oldu."
@@ -106,4 +111,3 @@ pfenable="Etkin yanıtlarda PF güvenlik duvarını kullanmak istiyor musunuz?"
 nopf="PF yanıtları etkisiz kılındı."
 pftablename="Kullanılacak PF tablosunun adı?"
 pfmessage="Aşağıdaki satırları kurallarınızın başına ekleyin"
-
