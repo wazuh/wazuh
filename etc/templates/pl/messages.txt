@@ -10,9 +10,9 @@ help="pomoc"
 
 # Ogólne
 moreinfo="Więcej informacji na: "
-starting="Rozpoczynam OSSEC Wazuh"
+starting="Rozpoczynam Wazuh"
 systemis="System "
-modifiedinit="Init skrypt zmodyfikowany do uruchomiania OSSEC Wazuh podczas bootowania."
+modifiedinit="Init skrypt zmodyfikowany do uruchomiania Wazuh podczas bootowania."
 noboot="Nieznany system. Skrypt init nie został dodany."
 
 # Część 1
@@ -28,8 +28,8 @@ localchose="Wybrana instalacja: lokalnie"
 
 # Część 2
 settingupenv="Ustawianie środowiska instalacyjnego"
-wheretoinstall="Wybierz katalog w którym zainstalować OSSEC Wazuh"
-installat="OSSEC Wazuh zostanie zainstalowane w :"
+wheretoinstall="Wybierz katalog w którym zainstalować Wazuh"
+installat="Wazuh zostanie zainstalowane w :"
 deletedir="Wybrany katalog istnieje, skasować go?"
 
 # Część 3
@@ -43,8 +43,8 @@ usingsmtp="Używam SMTP serwer: "
 whatsmtp="Podaj SMTP serwer (ip/host)?"
 
 # Część 3.1/agent
-serverip="Podaj adres IP serwera OSSEC Wazuh."
-serveraddr="Podaj adres IP (hostname) serwera OSSEC Wazuh."
+serverip="Podaj adres IP serwera Wazuh."
+serveraddr="Podaj adres IP (hostname) serwera Wazuh."
 addingip="Dodaje IP serwera"
 addingname="Dodaje hostname serwera"
 
@@ -59,7 +59,12 @@ runrootcheck="Czy chcesz aby system detekcji rootkit'ów (rootcheck) był urucho
 norootcheck="Nie uruchomiony rootcheck (system detekcji rootkit'ów)"
 yesrootcheck="Uruchomiony rootcheck (system detekcji rootkit'ów)"
 
-# Część 3.4/server/local
+# Part 3.4
+runopenscap="Czy chcesz OpenSCAP był uruchomiony?"
+norunopenscap="Nie uruchomiony OpenSCAP"
+yesrunopenscap="Uruchomiony OpenSCAP"
+
+# Część 3.5/server/local
 enable_ar="Czy chcesz uaktywnić aktywną ochrone?"
 noactive="Aktywna ochrona wyłączona"
 nohosts="host-deny wyłączone"
@@ -85,20 +90,20 @@ runningmake="Uruchomiono Makefile"
 
 # Finał
 configurationdone="Konfiguracja zakończona pomyślnie"
-tostart="Aby wystartować OSSEC Wazuh"
-tostop="Aby zatrzymać OSSEC Wazuh"
+tostart="Aby wystartować Wazuh"
+tostop="Aby zatrzymać Wazuh"
 configat="Konfiguracja może być wyświetlona lub zmodyfikowana w"
 addserveragent="Powinieneś dodać agent(a/ów) przed ich autoryzacją dostępu."
 runma="Uruchom 'manage_agents' aby je dodać lub usunąć"
 presskey="Wciśnij ENTER aby kontynuować"
 
 # Update
-wanttoupdate="Masz już zainstalowany OSSEC. Czy chcesz dokonać aktualizacji?" 
-unabletoupdate="Nie można dokonać aktualizacji. Pełna nowa instalacja jest konieczna." 
-updatecompleted="Aktualizacja ukończona." 
-updatefailed="Aktualizacja ukończona niepowodzeniem." 
-updaterules="Czy chcesz zaktualizować reguły?" 
-updatingrules="Aktualizacja reguł." 
+wanttoupdate="Masz już zainstalowany Wazuh. Czy chcesz dokonać aktualizacji?"
+unabletoupdate="Nie można dokonać aktualizacji. Pełna nowa instalacja jest konieczna."
+updatecompleted="Aktualizacja ukończona."
+updatefailed="Aktualizacja ukończona niepowodzeniem."
+updaterules="Czy chcesz zaktualizować reguły?"
+updatingrules="Aktualizacja reguł."
 notupdatingrules="Bez aktualizacji reguł."
 
 # Wsparcie dla Pf
@@ -106,4 +111,3 @@ pfenable="Chcesz uywa firewall'a PF jako aktywnej ochrony?"
 nopf="ochrona PF wyczona."
 pftablename="Podaj nazwe tabeli PF?"
 pfmessage="Dodaj nastpujce linie na pocztku Twoich regu"
-
