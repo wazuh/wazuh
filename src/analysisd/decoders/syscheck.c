@@ -14,68 +14,10 @@
 #include "config.h"
 #include "alerts/alerts.h"
 #include "decoder.h"
-
-/* SQLITE DB */
-#include "wazuh_db/wdb.h"
-
-/* Fields for rules */
-#define SCK_FILE    0
-#define SCK_SIZE    1
-#define SCK_PERM    2
-#define SCK_UID     3
-#define SCK_GID     4
-#define SCK_MD5     5
-#define SCK_SHA1    6
-#define SCK_UNAME   7
-#define SCK_GNAME   8
-#define SCK_INODE   9
-#define SCK_NFIELDS 10
-
-typedef struct __sdb {
-    char buf[OS_MAXSTR + 1];
-    char comment[OS_MAXSTR + 1];
-
-    char size[OS_FLSIZE + 1];
-    char perm[OS_FLSIZE + 1];
-    char owner[OS_FLSIZE + 1];
-    char gowner[OS_FLSIZE + 1];
-    char md5[OS_FLSIZE + 1];
-    char sha1[OS_FLSIZE + 1];
-    char mtime[OS_FLSIZE + 1];
-    char inode[OS_FLSIZE + 1];
-
-    char agent_cp[MAX_AGENTS + 1][1];
-    char *agent_ips[MAX_AGENTS + 1];
-    FILE *agent_fps[MAX_AGENTS + 1];
-
-    int db_err;
-
-    /* Ids for decoder */
-    int id1;
-    int id2;
-    int id3;
-    int idn;
-    int idd;
-
-    /* Syscheck rule */
-    OSDecoderInfo  *syscheck_dec;
-
-    /* File search variables */
-    fpos_t init_pos;
-
-} _sdb; /* syscheck db information */
-
-/* Local variables */
-static _sdb sdb;
-
-/* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
-   or -1 on failure. */
-static int DecodeSum(SyscheckSum *sum, char *c_sum);
-
-static void FillEvent(Eventinfo *lf, const char *f_name, const SyscheckSum *sum);
+#include "syscheck_op.h"
 
 /* Compare the first common fields between sum strings */
-int SumCompare(const char *s1, const char *s2);
+static int SumCompare(const char *s1, const char *s2);
 
 /* Initialize the necessary information to process the syscheck information */
 void SyscheckInit()
@@ -111,16 +53,16 @@ void SyscheckInit()
     sdb.syscheck_dec->fts = 0;
 
     os_calloc(Config.decoder_order_size, sizeof(char *), sdb.syscheck_dec->fields);
-    sdb.syscheck_dec->fields[SCK_FILE] = "file";
-    sdb.syscheck_dec->fields[SCK_SIZE] = "size";
-    sdb.syscheck_dec->fields[SCK_PERM] = "perm";
-    sdb.syscheck_dec->fields[SCK_UID] = "uid";
-    sdb.syscheck_dec->fields[SCK_GID] = "gid";
-    sdb.syscheck_dec->fields[SCK_MD5] = "md5";
-    sdb.syscheck_dec->fields[SCK_SHA1] = "sha1";
-    sdb.syscheck_dec->fields[SCK_UNAME] = "uname";
-    sdb.syscheck_dec->fields[SCK_GNAME] = "gname";
-    sdb.syscheck_dec->fields[SCK_INODE] = "inode";
+    sdb.syscheck_dec->fields[SK_FILE] = "file";
+    sdb.syscheck_dec->fields[SK_SIZE] = "size";
+    sdb.syscheck_dec->fields[SK_PERM] = "perm";
+    sdb.syscheck_dec->fields[SK_UID] = "uid";
+    sdb.syscheck_dec->fields[SK_GID] = "gid";
+    sdb.syscheck_dec->fields[SK_MD5] = "md5";
+    sdb.syscheck_dec->fields[SK_SHA1] = "sha1";
+    sdb.syscheck_dec->fields[SK_UNAME] = "uname";
+    sdb.syscheck_dec->fields[SK_GNAME] = "gname";
+    sdb.syscheck_dec->fields[SK_INODE] = "inode";
 
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
     sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);
@@ -260,8 +202,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
     FILE *fp;
 
-    SyscheckSum oldsum;
-    SyscheckSum newsum;
+    sk_sum_t oldsum;
+    sk_sum_t newsum;
 
     /* Get db pointer */
     fp = DB_File(lf->location, &agent_id);
@@ -390,21 +332,21 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 f_name);
         fflush(fp);
 
-        switch (DecodeSum(&newsum, c_sum)) {
+        switch (sk_decode_sum(&newsum, c_sum)) {
         case -1:
             merror("%s: ERROR: Couldn't decode syscheck sum from log.", ARGV0);
             lf->data = NULL;
             return 0;
 
         case 0:
-            switch (DecodeSum(&oldsum, saved_sum)) {
+            switch (sk_decode_sum(&oldsum, saved_sum)) {
             case -1:
                 merror("%s: ERROR: Couldn't decode syscheck sum from database.", ARGV0);
                 lf->data = NULL;
                 return 0;
 
             case 0:
-                FillEvent(lf, f_name, &newsum);
+                sk_fill_event(lf, f_name, &newsum);
 
                 /* Generate size message */
                 if (!oldsum.size || !newsum.size || strcmp(oldsum.size, newsum.size) == 0) {
@@ -562,26 +504,15 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     os_strdup(lf->data, lf->diff);
 
                 lf->event_type = FIM_MODIFIED;
-
-                if (wdb_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "modified", &newsum, (long int)lf->time) < 0) {
-                    merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
-                    debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
-                }
-
                 break;
 
             case 1:
                 /* If file was re-added, do not compare changes */
                 sdb.syscheck_dec->id = sdb.idn;
                 lf->event_type = FIM_READDED;
-                FillEvent(lf, f_name, &newsum);
+                sk_fill_event(lf, f_name, &newsum);
                 snprintf(sdb.comment, OS_MAXSTR,
                      "File '%.756s' was re-added.", f_name);
-
-                if (wdb_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "readded", &newsum, (long int)lf->time) < 0) {
-                    merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
-                    debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
-                }
 
                 break;
             }
@@ -596,11 +527,6 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
             snprintf(sdb.comment, OS_MAXSTR,
                  "File '%.756s' was deleted. Unable to retrieve "
                  "checksum.", f_name);
-
-            if (wdb_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "deleted", NULL, (long int)lf->time) < 0) {
-                merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
-                debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
-            }
         }
 
         /* Create a new log message */
@@ -623,7 +549,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
     /* Insert row in SQLite DB*/
 
-    switch (DecodeSum(&newsum, c_sum)) {
+    switch (sk_decode_sum(&newsum, c_sum)) {
         case -1:
             merror("%s: ERROR: Couldn't decode syscheck sum from log.", ARGV0);
             break;
@@ -631,15 +557,10 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
         case 0:
             lf->event_type = FIM_ADDED;
 
-            if (wdb_insert_fim(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, f_name, "added", &newsum, (long int)lf->time) < 0) {
-                merror("%s: ERROR: Couldn't insert FIM event into database.", ARGV0);
-                debug1("%s: DEBUG: Agent: '%s', file: '%s'", ARGV0, lf->agent_id ? lf->agent_id : "0", f_name);
-            }
-
             /* Alert if configured to notify on new files */
             if ((Config.syscheck_alert_new == 1) && DB_IsCompleted(agent_id)) {
                 sdb.syscheck_dec->id = sdb.idn;
-                FillEvent(lf, f_name, &newsum);
+                sk_fill_event(lf, f_name, &newsum);
 
                 /* New file message */
                 snprintf(sdb.comment, OS_MAXSTR,
@@ -727,120 +648,6 @@ int DecodeSyscheck(Eventinfo *lf)
 
     /* Search for file changes */
     return (DB_Search(f_name, c_sum, lf));
-}
-
-/* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
-   or -1 on failure. */
-int DecodeSum(SyscheckSum *sum, char *c_sum) {
-    char *c_perm;
-    char *c_mtime;
-    char *c_inode;
-
-    memset(sum, 0, sizeof(SyscheckSum));
-
-    if (c_sum[0] == '-' && c_sum[1] == '1')
-        return 1;
-
-    sum->size = c_sum;
-
-    if (!(c_perm = strchr(c_sum, ':')))
-        return -1;
-
-    *(c_perm++) = '\0';
-
-    if (!(sum->uid = strchr(c_perm, ':')))
-        return -1;
-
-    *(sum->uid++) = '\0';
-    sum->perm = atoi(c_perm);
-
-    if (!(sum->gid = strchr(sum->uid, ':')))
-        return -1;
-
-    *(sum->gid++) = '\0';
-
-    if (!(sum->md5 = strchr(sum->gid, ':')))
-        return -1;
-
-    *(sum->md5++) = '\0';
-
-    if (!(sum->sha1 = strchr(sum->md5, ':')))
-        return -1;
-
-    *(sum->sha1++) = '\0';
-
-    // New fields: user name, group name, modification time and inode
-
-    if (!(sum->uname = strchr(sum->sha1, ':')))
-        return 0;
-
-    *(sum->uname++) = '\0';
-
-    if (!(sum->gname = strchr(sum->uname, ':')))
-        return -1;
-
-    *(sum->gname++) = '\0';
-
-    if (!(c_mtime = strchr(sum->gname, ':')))
-        return -1;
-
-    *(c_mtime++) = '\0';
-
-    if (!(c_inode = strchr(c_mtime, ':')))
-        return -1;
-
-    *(c_inode++) = '\0';
-    sum->mtime = atol(c_mtime);
-    sum->inode = atol(c_inode);
-    return 0;
-}
-
-void FillEvent(Eventinfo *lf, const char *f_name, const SyscheckSum *sum) {
-    int i;
-
-    os_strdup(f_name, lf->filename);
-    os_strdup(sum->size, lf->size_after);
-    lf->perm_after = sum->perm;
-    os_strdup(sum->uid, lf->owner_after);
-    os_strdup(sum->gid, lf->gowner_after);
-    os_strdup(sum->md5, lf->md5_after);
-    os_strdup(sum->sha1, lf->sha1_after);
-
-    if (sum->uname)
-        os_strdup(sum->uname, lf->uname_after);
-
-    if (sum->gname)
-        os_strdup(sum->gname, lf->gname_after);
-
-    lf->mtime_after = sum->mtime;
-    lf->inode_after = sum->inode;
-
-    /* Fields */
-
-    lf->nfields = SCK_NFIELDS;
-
-    for (i = 0; i < SCK_NFIELDS; i++)
-        lf->fields[i].key = sdb.syscheck_dec->fields[i];
-
-    os_strdup(f_name, lf->fields[SCK_FILE].value);
-    os_strdup(sum->size, lf->fields[SCK_SIZE].value);
-    os_calloc(7, sizeof(char), lf->fields[SCK_PERM].value);
-    snprintf(lf->fields[SCK_PERM].value, 7, "%06o", sum->perm);
-    os_strdup(sum->uid, lf->fields[SCK_UID].value);
-    os_strdup(sum->gid, lf->fields[SCK_GID].value);
-    os_strdup(sum->md5, lf->fields[SCK_MD5].value);
-    os_strdup(sum->sha1, lf->fields[SCK_SHA1].value);
-
-    if (sum->uname)
-        os_strdup(sum->uname, lf->fields[SCK_UNAME].value);
-
-    if (sum->gname)
-        os_strdup(sum->gname, lf->fields[SCK_GNAME].value);
-
-    if (sum->inode) {
-        os_calloc(20, sizeof(char), lf->fields[SCK_INODE].value);
-        snprintf(lf->fields[SCK_INODE].value, 20, "%ld", sum->inode);
-    }
 }
 
 /* Compare the first common fields between sum strings */
