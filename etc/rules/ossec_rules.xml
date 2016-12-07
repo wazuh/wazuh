@@ -13,6 +13,7 @@
   -  License details: http://www.ossec.net/en/licensing.html
   -
   -  PCI Tagging by Wazuh <ossec@wazuh.com>.
+  -  Updated by Wazuh
   -
   -->
 
@@ -317,49 +318,55 @@ Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh del
 
   <rule id="601" level="3">
     <if_sid>600</if_sid>
-    <action>firewall-drop.sh</action>
-    <status>add</status>
+    <field name="script">firewall-drop.sh</field>
+    <field name="type">add</field>
     <description>Host Blocked by firewall-drop.sh Active Response</description>
     <group>active_response,pci_dss_11.4,</group>
   </rule>
 
   <rule id="602" level="3">
     <if_sid>600</if_sid>
-    <action>firewall-drop.sh</action>
-    <status>delete</status>
+    <field name="script">firewall-drop.sh</field>
+    <field name="type">delete</field>
     <description>Host Unblocked by firewall-drop.sh Active Response</description>
     <group>active_response,pci_dss_11.4,</group>
   </rule>
 
   <rule id="603" level="3">
     <if_sid>600</if_sid>
-    <action>host-deny.sh</action>
-    <status>add</status>
+    <field name="script">host-deny.sh</field>
+    <field name="type">add</field>
     <description>Host Blocked by host-deny.sh Active Response</description>
     <group>active_response,pci_dss_11.4,</group>
   </rule>
 
   <rule id="604" level="3">
     <if_sid>600</if_sid>
-    <action>host-deny.sh</action>
-    <status>delete</status>
+    <field name="script">host-deny.sh</field>
+    <field name="type">delete</field>
     <description>Host Unblocked by host-deny.sh Active Response</description>
     <group>active_response,pci_dss_11.4,</group>
   </rule>
 
   <rule id="605" level="3">
     <if_sid>600</if_sid>
-    <action>route-null.sh</action>
-    <status>add</status>
-    <description>Host Blocked by route-null.sh Active Response</description>
+    <field name="script">route-null</field>
+    <field name="type">add</field>
+    <description>Host Blocked by $(script) Active Response</description>
     <group>active_response,pci_dss_11.4,</group>
   </rule>
 
   <rule id="606" level="3">
     <if_sid>600</if_sid>
-    <action>route-null.sh</action>
-    <status>delete</status>
-    <description>Host Unblocked by route-null.sh Active Response</description>
+    <field name="script">route-null</field>
+    <field name="type">delete</field>
+    <description>Host Unblocked by $(script) Active Response</description>
+    <group>active_response,pci_dss_11.4,</group>
+  </rule>
+
+  <rule id="607" level="3">
+    <if_sid>600</if_sid>
+    <description>Active response: $(script) - $(type)</description>
     <group>active_response,pci_dss_11.4,</group>
   </rule>
 
