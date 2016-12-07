@@ -37,6 +37,7 @@
   -  SU 07/23 01:24 + pts/4 lcid-root
   -  Apr 22 17:51:51 enigma su: dcid to root on /dev/ttyp1
   - 'su root' failed for chapman on /dev/pts/1
+  -  Dec  1 12:16:05 ip-10-0-0-220 su[2601]: FAILED su for god by root
   -->
 <decoder name="su">
   <program_name>^su$</program_name>
@@ -62,6 +63,13 @@
   <regex offset="after_prematch">^\S \S+ (\S+)-(\S+)$</regex>
   <order>srcuser, dstuser</order>
   <fts>name, srcuser, location</fts>
+</decoder>
+
+<decoder name="su-fail">
+  <parent>su</parent>
+  <prematch>^FAILED su for \S+ by</prematch>
+  <regex>for (\S+) by (\S+)</regex>
+  <order>dstuser, srcuser</order>
 </decoder>
 
 <decoder name="su-detail2">
