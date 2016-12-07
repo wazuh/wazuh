@@ -16,6 +16,10 @@
 
 typedef struct wm_database {
     int sync_agents;
+    int sync_syscheck;
+    int sync_rootcheck;
+    int full_sync;
+    int sleep;
 } wm_database;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)

@@ -16,9 +16,18 @@ static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key, dat
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os = ?, version = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(CURRENT_TIMESTAMP, 'localtime') WHERE id = ?;";
+static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
+static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ? AND fim_offset NOT NULL;";
+static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ? AND reg_offset NOT NULL;";
+static const char *SQL_SELECT_PM_OFFSET = "SELECT pm_offset FROM agent WHERE id = ? AND pm_offset NOT NULL;";
+static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHERE id = ?;";
+static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHERE id = ?;";
+static const char *SQL_UPDATE_PM_OFFSET = "UPDATE agent SET pm_offset = ? WHERE id = ?;";
 static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
+static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND ip = ?;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key) {
@@ -288,4 +297,163 @@ int* wdb_get_all_agents() {
     sqlite3_finalize(stmt);
     wdb_close_global();
     return array;
+}
+
+/* Find agent by name and address. Returns id if success or -1 on failure. */
+int wdb_find_agent(const char *name, const char *ip) {
+    sqlite3_stmt *stmt = NULL;
+    int result;
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, SQL_FIND_AGENT, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
+        wdb_close_global();
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+    sqlite3_bind_text(stmt, 2, ip, -1, NULL);
+
+    result = wdb_step(stmt) == SQLITE_ROW ? sqlite3_column_int(stmt, 0) : -1;
+    sqlite3_finalize(stmt);
+    return result;
+}
+
+/* Get the file offset. Returns -1 on error or NULL. */
+long wdb_get_agent_offset(int id_agent, int type) {
+    int result;
+    const char *sql;
+    sqlite3_stmt *stmt;
+
+    switch (type) {
+    case WDB_SYSCHECK:
+        sql = SQL_SELECT_FIM_OFFSET;
+        break;
+    case WDB_SYSCHECK_REGISTRY:
+        sql = SQL_SELECT_REG_OFFSET;
+        break;
+    case WDB_ROOTCHECK:
+        sql = SQL_SELECT_PM_OFFSET;
+        break;
+    default:
+        return -1;
+    }
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
+        return -1;
+    }
+
+    sqlite3_bind_int(stmt, 1, id_agent);
+    result = wdb_step(stmt) == SQLITE_ROW ? sqlite3_column_int64(stmt, 0) : -1;
+
+    sqlite3_finalize(stmt);
+    wdb_close_global();
+    return result;
+}
+
+/* Set the file offset. Returns number of affected rows, or -1 on failure. */
+int wdb_set_agent_offset(int id_agent, int type, long offset) {
+    int result;
+    const char *sql;
+    sqlite3_stmt *stmt;
+
+    switch (type) {
+    case WDB_SYSCHECK:
+        sql = SQL_UPDATE_FIM_OFFSET;
+        break;
+    case WDB_SYSCHECK_REGISTRY:
+        sql = SQL_UPDATE_REG_OFFSET;
+        break;
+    case WDB_ROOTCHECK:
+        sql = SQL_UPDATE_PM_OFFSET;
+        break;
+    default:
+        return -1;
+    }
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
+        return -1;
+    }
+
+    sqlite3_bind_int64(stmt, 1, offset);
+    sqlite3_bind_int(stmt, 2, id_agent);
+
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    sqlite3_finalize(stmt);
+    wdb_close_global();
+    return result;
+}
+
+/* Set agent updating status. Returns WDB_AGENT_*, or -1 on error. */
+int wdb_get_agent_status(int id_agent) {
+    int result;
+    const char *status;
+    sqlite3_stmt *stmt;
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, SQL_SELECT_AGENT_STATUS, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
+        return -1;
+    }
+
+    sqlite3_bind_int(stmt, 1, id_agent);
+
+    if (wdb_step(stmt) == SQLITE_ROW) {
+        status = (const char*)sqlite3_column_text(stmt, 0);
+        result = !strcmp(status, "empty") ? WDB_AGENT_EMPTY : !strcmp(status, "pending") ? WDB_AGENT_PENDING : WDB_AGENT_UPDATED;
+    } else
+        result = -1;
+
+    sqlite3_finalize(stmt);
+    wdb_close_global();
+    return result;
+}
+
+/* Set agent updating status. Returns number of affected rows, or -1 on error. */
+int wdb_set_agent_status(int id_agent, int status) {
+    int result;
+    const char *str_status;
+    sqlite3_stmt *stmt;
+
+    switch (status) {
+    case WDB_AGENT_EMPTY:
+        str_status = "empty";
+        break;
+    case WDB_AGENT_PENDING:
+        str_status = "pending";
+        break;
+    case WDB_AGENT_UPDATED:
+        str_status = "updated";
+        break;
+    default:
+        return -1;
+    }
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_STATUS, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, str_status, -1, NULL);
+    sqlite3_bind_int(stmt, 2, id_agent);
+
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    sqlite3_finalize(stmt);
+    wdb_close_global();
+    return result;
 }
