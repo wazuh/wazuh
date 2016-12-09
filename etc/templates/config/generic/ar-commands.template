@@ -31,3 +31,10 @@
     <expect>srcip</expect>
     <timeout_allowed>yes</timeout_allowed>
   </command>
+
+  <command>
+    <name>win_route-null</name>
+    <executable>route-null.cmd</executable>
+    <expect>srcip</expect>
+    <timeout_allowed>yes</timeout_allowed>
+  </command>
