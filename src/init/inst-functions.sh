@@ -109,10 +109,21 @@ WriteLogs()
 {
   LOCALFILES_TMP=`cat ${LOCALFILES_TEMPLATE}`
   for i in ${LOCALFILES_TMP}; do
-      LOG_FORMAT=$(echo $i | cut -d\: -f1)
-      FILE=$(echo $i | cut -d\: -f2)
-      # If log file present
-      if [ -f "$FILE" ]; then
+      field1=$(echo $i | cut -d\: -f1)
+      field2=$(echo $i | cut -d\: -f2)
+      field3=$(echo $i | cut -d\: -f3)
+      if [ "X$field1" = "Xskip_check_exist" ]; then
+          SKIP_CHECK_FILE="yes"
+          LOG_FORMAT="$field2"
+          FILE="$field3"
+      else
+          SKIP_CHECK_FILE="no"
+          LOG_FORMAT="$field1"
+          FILE="$field2"
+      fi
+
+      # If log file present or skip file
+      if [ -f "$FILE" ] || [ "X$SKIP_CHECK_FILE" = "Xyes" ]; then
         if [ "$1" = "echo" ]; then
           echo "    -- $FILE"
         elif [ "$1" = "add" ]; then

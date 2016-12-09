@@ -1,0 +1,1 @@
+skip_check_exist:syslog:/var/ossec/logs/active-responses.log
