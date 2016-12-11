@@ -20,22 +20,34 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* root;
     cJSON* rule;
     cJSON* file_diff;
+    cJSON* manager;
+	cJSON* agent;
+	char manager_name[512];
     char* out;
     int i;
 
     root = cJSON_CreateObject();
 
     cJSON_AddItemToObject(root, "rule", rule = cJSON_CreateObject());
+    cJSON_AddItemToObject(root, "agent", agent = cJSON_CreateObject());
+    cJSON_AddItemToObject(root, "manager", manager = cJSON_CreateObject());
 
+	/* Get manager hostname */
+    memset(manager_name, '\0', 512);
+    if (gethostname(manager_name, 512 - 1) != 0) {
+        strncpy(manager_name, "localhost", 32);
+    }
+	cJSON_AddStringToObject(manager, "name", manager_name);
+	
     if(lf->generated_rule){
         if(lf->generated_rule->level) {
             cJSON_AddNumberToObject(rule, "level", lf->generated_rule->level);
         }
         if(lf->comment) {
-            cJSON_AddStringToObject(rule, "comment", lf->comment);
+            cJSON_AddStringToObject(rule, "description", lf->comment);
         }
         if(lf->generated_rule->sigid) {
-            cJSON_AddNumberToObject(rule, "sidid", lf->generated_rule->sigid);
+            cJSON_AddNumberToObject(rule, "id", lf->generated_rule->sigid);
         }
         if(lf->generated_rule->cve) {
             cJSON_AddStringToObject(rule, "cve", lf->generated_rule->cve);
@@ -89,12 +101,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
     }
     if (lf->agent_id) {
-        cJSON_AddStringToObject(root, "AgentID", lf->agent_id);
+        cJSON_AddStringToObject(agent, "id", lf->agent_id);
     }
 
     if(lf->filename) {
         file_diff = cJSON_CreateObject();
-        cJSON_AddItemToObject(root, "SyscheckFile", file_diff);
+        cJSON_AddItemToObject(root, "syscheck", file_diff);
         cJSON_AddStringToObject(file_diff, "path", lf->filename);
 
         if (lf->size_before) {
@@ -114,16 +126,16 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddStringToObject(file_diff, "perm_after", perm);
         }
         if (lf->owner_before) {
-            cJSON_AddStringToObject(file_diff, "owner_before", lf->owner_before);
+            cJSON_AddStringToObject(file_diff, "uid_before", lf->owner_before);
         }
         if (lf->owner_after) {
-            cJSON_AddStringToObject(file_diff, "owner_after", lf->owner_after);
+            cJSON_AddStringToObject(file_diff, "uid_after", lf->owner_after);
         }
         if (lf->gowner_before) {
-            cJSON_AddStringToObject(file_diff, "gowner_before", lf->gowner_before);
+            cJSON_AddStringToObject(file_diff, "gid_before", lf->gowner_before);
         }
         if (lf->gowner_after) {
-            cJSON_AddStringToObject(file_diff, "gowner_after", lf->gowner_after);
+            cJSON_AddStringToObject(file_diff, "gid_after", lf->gowner_after);
         }
         if (lf->md5_before) {
             cJSON_AddStringToObject(file_diff, "md5_before", lf->md5_before);
@@ -205,7 +217,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddStringToObject(root, "data", lf->data);
 
     if(lf->systemname)
-        cJSON_AddStringToObject(root, "systemname", lf->systemname);
+        cJSON_AddStringToObject(root, "system_name", lf->systemname);
 
     // DecoderInfo
     if(lf->decoder_info) {
@@ -318,7 +330,7 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
 
     if(lf->filename) {
         cJSON *file_diff = cJSON_CreateObject();
-        cJSON_AddItemToObject(root, "SyscheckFile", file_diff);
+        cJSON_AddItemToObject(root, "syscheck", file_diff);
         cJSON_AddStringToObject(file_diff, "path", lf->filename);
 
         if (lf->size_before) {
@@ -487,7 +499,7 @@ char* Archiveinfo_to_jsonstr(const Eventinfo* lf)
         W_JSON_ParseTimestamp(root, lf);
 
     if(lf->hostname) {
-        W_JSON_ParseHostname(root, lf->hostname);
+        W_JSON_ParseHostname(root, lf);
         W_JSON_ParseAgentIP(root, lf);
     }
 
