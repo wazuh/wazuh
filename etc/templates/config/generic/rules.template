@@ -1,89 +1,13 @@
   <rules>
+    <!-- built-in: NOTE: DO NOT MODIFY -->
+    <decoder_dir>ruleset/decoders</decoder_dir>
+    <rule_dir>ruleset/rules</rule_dir>
+    <!-- <exclude>ruleset/rules/apache_rules.xml</exclude> -->
+    <!-- <exclude_decoder>ruleset/decoders/apache_decoders.xml</exclude_decoder> -->
+
+    <!-- user-defined -->
     <decoder_dir>etc/decoders</decoder_dir>
-    <decoder>etc/local_decoder.xml</decoder>
-    <include>rules_config.xml</include>
-    <include>pam_rules.xml</include>
-    <include>sshd_rules.xml</include>
-    <include>telnetd_rules.xml</include>
-    <include>syslog_rules.xml</include>
-    <include>arpwatch_rules.xml</include>
-    <include>symantec-av_rules.xml</include>
-    <include>symantec-ws_rules.xml</include>
-    <include>pix_rules.xml</include>
-    <include>named_rules.xml</include>
-    <include>smbd_rules.xml</include>
-    <include>vsftpd_rules.xml</include>
-    <include>pure-ftpd_rules.xml</include>
-    <include>proftpd_rules.xml</include>
-    <include>ms_ftpd_rules.xml</include>
-    <include>ftpd_rules.xml</include>
-    <include>hordeimp_rules.xml</include>
-    <include>roundcube_rules.xml</include>
-    <include>wordpress_rules.xml</include>
-    <include>cimserver_rules.xml</include>
-    <include>vpopmail_rules.xml</include>
-    <include>vmpop3d_rules.xml</include>
-    <include>courier_rules.xml</include>
-    <include>web_rules.xml</include>
-    <include>web_appsec_rules.xml</include>
-    <include>apache_rules.xml</include>
-    <include>nginx_rules.xml</include>
-    <include>php_rules.xml</include>
-    <include>mysql_rules.xml</include>
-    <include>postgresql_rules.xml</include>
-    <include>ids_rules.xml</include>
-    <include>squid_rules.xml</include>
-    <include>firewall_rules.xml</include>
-    <include>apparmor_rules.xml</include>
-    <include>cisco-ios_rules.xml</include>
-    <include>netscreenfw_rules.xml</include>
-    <include>sonicwall_rules.xml</include>
-    <include>postfix_rules.xml</include>
-    <include>sendmail_rules.xml</include>
-    <include>imapd_rules.xml</include>
-    <include>mailscanner_rules.xml</include>
-    <include>dovecot_rules.xml</include>
-    <include>ms-exchange_rules.xml</include>
-    <include>racoon_rules.xml</include>
-    <include>vpn_concentrator_rules.xml</include>
-    <include>spamd_rules.xml</include>
-    <include>msauth_rules.xml</include>
-    <include>mcafee_av_rules.xml</include>
-    <include>trend-osce_rules.xml</include>
-    <include>ms-se_rules.xml</include>
-    <!-- <include>policy_rules.xml</include> -->
-    <include>zeus_rules.xml</include>
-    <include>solaris_bsm_rules.xml</include>
-    <include>vmware_rules.xml</include>
-    <include>ms_dhcp_rules.xml</include>
-    <include>asterisk_rules.xml</include>
-    <include>ossec_rules.xml</include>
-    <include>attack_rules.xml</include>
-    <include>openbsd_rules.xml</include>
-    <include>clam_av_rules.xml</include>
-    <include>dropbear_rules.xml</include>
-    <include>sysmon_rules.xml</include>
-    <include>auditd_rules.xml</include>
-    <include>opensmtpd_rules.xml</include>
-    <include>firewalld_rules.xml</include>
-    <include>systemd_rules.xml</include>
-    <include>unbound_rules.xml</include>
-    <include>puppet_rules.xml</include>
-    <include>netscaler_rules.xml</include>
-    <include>serv-u_rules.xml</include>
-    <include>amazon_rules.xml</include>
-    <include>amazon-ec2_rules.xml</include>
-    <include>amazon-iam_rules.xml</include>
-    <include>usb_rules.xml</include>
-    <include>redis_rules.xml</include>
-    <include>oscap_rules.xml</include>
-    <include>fortigate_rules.xml</include>
-    <include>hp_rules.xml</include>
-    <include>openvpn_rules.xml</include>
-    <include>rsa-auth-manager_rules.xml</include>
-    <include>imperva_rules.xml</include>
-    <include>sophos_rules.xml</include>
-    <include>freeipa_rules.xml</include>
-    <include>cisco-estreamer_rules.xml</include>
-    <include>local_rules.xml</include>
+    <rule_dir>etc/rules</rule_dir>
+    <!-- <exclude>etc/decoders/mydecoders_decoders.xml</exclude> -->
+    <!-- <exclude>etc/rules/myrules_rules.xml</exclude> -->
   </rules>
