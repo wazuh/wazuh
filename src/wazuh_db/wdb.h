@@ -32,6 +32,7 @@
 #define WDB_SYSCHECK 0
 #define WDB_SYSCHECK_REGISTRY 1
 #define WDB_ROOTCHECK 2
+#define WDB_AGENTINFO 3
 
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
@@ -87,11 +88,11 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key);
 /* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_name(int id, const char *name);
 
-/* Update agent version info. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_update_agent_version(int id, const char *os, const char *version);
+/* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_version(int id, const char *os, const char *version, const char *shared_sum);
 
-/* Update agent keepalive timestamp. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_update_agent_keepalive(int id);
+/* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_keepalive(int id, long keepalive);
 
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_agent(int id);
