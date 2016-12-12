@@ -27,7 +27,7 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
         W_JSON_ParseLocation(root, lf, 0);
     }
     // Parse groups && Parse PCIDSS && Parse CIS
-    if(lf->generated_rule->group) {
+    if(lf->generated_rule && lf->generated_rule->group) {
         W_JSON_ParseGroups(root, lf, 1);
     }
     // Parse CIS and PCIDSS rules from rootcheck .txt benchmarks
@@ -51,7 +51,9 @@ int W_isRootcheck(cJSON* root, int nested)
     else
         rule = cJSON_GetObjectItem(root, "rule");
 
-    groups = cJSON_GetObjectItem(rule, "groups");
+    if (!(groups = cJSON_GetObjectItem(rule, "groups")))
+        return 0;
+
     totalGroups = cJSON_GetArraySize(groups);
     for(i = 0; i < totalGroups; i++) {
         group = cJSON_GetArrayItem(groups, i);
@@ -223,10 +225,10 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
         char* search;
         char string[MAX_STRING];
         int index;
-		
+
 		strncpy(string, lf->hostname, MAX_STRING);
         search = strchr(string, ')');
-		
+
         if(search) {
             index = (int)(search - string);
             str_cut(string, index, -1);
