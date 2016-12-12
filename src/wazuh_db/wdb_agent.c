@@ -14,8 +14,8 @@
 
 static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key, date_add) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'));";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os = ?, version = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(CURRENT_TIMESTAMP, 'localtime') WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os = ?, version = ?, shared_sum = ? WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
 static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ? AND fim_offset NOT NULL;";
@@ -82,8 +82,8 @@ int wdb_update_agent_name(int id, const char *name) {
     return result;
 }
 
-/* Update agent version info. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_update_agent_version(int id, const char *os, const char *version) {
+/* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_version(int id, const char *os, const char *version, const char *shared_sum) {
     int result = 0;
     sqlite3_stmt *stmt;
 
@@ -97,16 +97,17 @@ int wdb_update_agent_version(int id, const char *os, const char *version) {
 
     sqlite3_bind_text(stmt, 1, os, -1, NULL);
     sqlite3_bind_text(stmt, 2, version, -1, NULL);
-    sqlite3_bind_int(stmt, 3, id);
+    sqlite3_bind_text(stmt, 3, shared_sum, -1, NULL);
+    sqlite3_bind_int(stmt, 4, id);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
     wdb_close_global();
     return result;
 }
 
-/* Update agent keepalive timestamp. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_update_agent_keepalive(int id) {
+/* Update agent's last keepalive time. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_keepalive(int id, long keepalive) {
     int result = 0;
     sqlite3_stmt *stmt;
 
@@ -118,9 +119,10 @@ int wdb_update_agent_keepalive(int id) {
         return -1;
     }
 
-    sqlite3_bind_int(stmt, 1, id);
+    sqlite3_bind_int64(stmt, 1, keepalive);
+    sqlite3_bind_int(stmt, 2, id);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
     wdb_close_global();
     return result;

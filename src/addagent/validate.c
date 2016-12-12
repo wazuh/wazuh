@@ -10,7 +10,6 @@
 #include <time.h>
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
-#include "wazuh_db/wdb.h"
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
 #define str_endwith(x, y) (strlen(x) < strlen(y) || strcmp(x + strlen(x) - strlen(y), y))

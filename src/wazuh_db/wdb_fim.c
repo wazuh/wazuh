@@ -126,7 +126,7 @@ int wdb_insert_fim(sqlite3 *db, int type, const char *f_name, const char *event,
     sqlite3_bind_int(stmt, 1, id_file);
     sqlite3_bind_text(stmt, 2, event, -1, NULL);
 
-    if (sum) {
+    if (sum && strcmp(event, "deleted")) {
         char perm[7];
         snprintf(perm, 7, "%06o", sum->perm);
 
