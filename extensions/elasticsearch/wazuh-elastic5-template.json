@@ -420,6 +420,29 @@
           }
         }
       }
-    }
+    },
+	"agent": {
+	  "properties": {
+			"@timestamp": {
+			  "type": "date",
+			  "format": "dateOptionalTime"
+			},
+			"status": {
+			  "type": "keyword"
+			},
+			"ip": {
+			  "type": "keyword"
+			},
+			"host": {
+			  "type": "keyword"
+			},
+			"name": {
+			  "type": "keyword"
+			},
+			"id": {
+			  "type": "keyword"
+			}
+		}
+	}
   }
 }
