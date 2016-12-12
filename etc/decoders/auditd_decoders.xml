@@ -1,320 +1,299 @@
-<!-- Auditd
-  -  auditd decoder
-  -  v1.0 2015/12/30
-  -  Updated by Wazuh, Inc. <ossec@wazuh.com>.
+<!--
+  -  audit decoder
+  -  v2.0 2016/12/12
+  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  jesus@wazuh.com
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-    Originally created by:
-        Michael Starks, 2011
-        Daniel B. Cid.
-        @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
 -->
 
 <!--
-    - Allowed fields:
-    - location - where the log came from (only on FTS)
-    - srcuser  - extracts the source username
-    - dstuser  - extracts the destination (target) username
-    - user     - an alias to dstuser (only one of the two can be used)
-    - srcip    - source ip
-    - dstip    - dst ip
-    - srcport  - source port
-    - dstport  - destination port
-    - protocol - protocol
-    - id       - event id
-    - url      - url of the event
-    - action   - event action (deny, drop, accept, etc)
-    - status   - event status (success, failure, etc)
-    - extra_data     - Any extra data
+Audit decoders (logformat must be "audit")
 -->
-
 <decoder name="auditd">
   <prematch>^type=</prematch>
 </decoder>
 
 <!--
-AUDITD
-    type=CONFIG_CHANGE msg=audit(1368831799.081:466947): auid=4294967295 ses=4294967295 op="remove rule" path="/path/to/my/bin0" key=(null) list=4 res=1
-    type=DAEMON_ABORT msg=audit(1339336882.189:9206): auditd error halt, auid=4294967295 pid=3095 res=failed
-    type=DAEMON_CONFIG msg=audit(1264985324.554:4915): auditd error getting hup info - no change, sending auid=? pid=? subj=? res=failed
-    type=DAEMON_END msg=audit(1450876093.165:8729): auditd normal halt, sending auid=0 pid=1 subj= res=success
-    type=DAEMON_RESUME msg=audit(1300385209.456:8846): auditd resuming logging, sending auid=? pid=? subj=? res=success
-    type=DAEMON_START msg=audit(1450875964.131:8728): auditd start, ver=2.4 format=raw kernel=3.16.0-4-amd64 auid=4294967295 pid=1437 res=success
-
-    action       = Event Type
-    id             = ID Audit Event
-    extra_data = path
-    status       = Result of the operation that triggered the Audit event
-    url            = session ID
+type=SYSCALL msg=audit(1479982525.380:50): arch=c000003e syscall=2 success=yes exit=3 a0=7ffedc40d83b a1=941 a2=1b6 a3=7ffedc40cce0 items=2 ppid=432 pid=3333 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="touch" exe="/bin/touch" key="audit-wazuh-w" type=CWD msg=audit(1479982525.380:50):  cwd="/var/log/audit" type=PATH msg=audit(1479982525.380:50): item=0 name="/var/log/audit/tmp_directory1/" inode=399849 dev=ca:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT type=PATH msg=audit(1479982525.380:50): item=1 name="/var/log/audit/tmp_directory1/malware.py" inode=399852 dev=ca:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=CREATE type=PROCTITLE msg=audit(1479982525.380:50): proctitle=746F756368002F7661722F6C6F672F61756469742F746D705F6469726563746F7279312F6D616C776172652E7079
 -->
-<decoder name="auditd-config">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^CONFIG_CHANGE </prematch>
-    <regex offset="after_parent">^(CONFIG_CHANGE) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): auid=\d+ ses=(\d+) op="\.+" path="(\.+)" key=\S+ list=\d+ res=(\d+)$</regex>
-    <order>action,id,url,extra_data,status</order>
-</decoder>
-
-<decoder name="auditd-daemon">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^DAEMON_</prematch>
-    <regex offset="after_parent">^(DAEMON_\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): \.+ res=(\S+)$</regex>
-    <order>action,id,status</order>
-</decoder>
-
-<!--
-Devices
-    type=ANOM_PROMISCUOUS msg=audit(1390181243.575:738): dev=vethDvSeyL prom=0 old_prom=256 auid=4294967295 uid=0 gid=0 ses=4294967295
-
-    action       = Event Type
-    id             = ID Audit Event
-    extra_data = dev
-    url            = session ID
-    user          = uid
--->
-<decoder name="auditd-promiscuous">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^ANOM_PROMISCUOUS</prematch>
-    <regex offset="after_parent">^(ANOM_PROMISCUOUS) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): dev=(\S+) prom\.+uid=(\d+) gid\.+ses=(\d+)</regex>
-    <order>action,id,extra_data,user,url</order>
-</decoder>
-
-<!--
-SELinux
-    type=AVC msg=audit(1226270358.848:238): avc:  denied  { write } for  pid=13349 comm="certwatch" name="cache" dev=dm-0 ino=218171 scontext=system_u:system_r:certwatch_t:s0 tcontext=system_u:object_r:var_t:s0 tclass=dir
-    type=MAC_STATUS msg=audit(1336836093.835:406): enforcing=1 old_enforcing=0 auid=0 ses=2
-
-    action       = Event Type
-    id             = ID Audit Event
-    extra_data = comm | enforcing
-    status       = avc
--->
-<decoder name="auditd-selinux-avc">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^AVC </prematch>
-    <regex offset="after_parent">^(AVC) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): avc:  (\S+)  { \.+ } for  pid=\d+ comm="(\S+)" </regex>
-    <order>action,id,status,extra_data</order>
-</decoder>
-
-<decoder name="auditd-selinux-mac_status">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^MAC_STATUS </prematch>
-    <regex offset="after_parent">^(MAC_STATUS) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): enforcing=(\d+) old_enforcing\.+ses=(\d+)</regex>
-    <order>action,id,extra_data,url</order>
-</decoder>
-
-<!--
-SYSCALL
-    type=SYSCALL msg=audit(1450888625.635:645): arch=c000003e syscall=16 success=yes exit=0 a0=4 a1=8914 a2=7ffed81e8cc0 a3=11 items=0 ppid=5599 pid=13693 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="ifconfig" exe="/sbin/ifconfig" key=(null)
-    type=SYSCALL msg=audit(1307045440.943:148): arch=c000003e syscall=59 success=yes exit=0 a0=de1fa8 a1=de23a8 a2=dc3008 a3=7fff1db3cc60 items=2 ppid=11719 pid=12140 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts8 ses=4294967295 comm="wget" exe="/tmp/wget" key="webserver-watch-tmp"
-    type=SYSCALL msg=audit(1307045820.403:151): arch=c000003e syscall=59 success=no exit=-13 a0=de24c8 a1=de2408 a2=dc3008 a3=7fff1db3cc60 items=1 ppid=11719 pid=12347 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts8 ses=4294967295 comm="bash" exe="/bin/bash" key=(null)
-    type=SYSCALL msg=audit(1306939143.715:67933): arch=40000003 syscall=94 success=yes exit=0 a0=5 a1=180 a2=8ebd360 a3=8ec4978 items=1 ppid=4383 pid=4388 auid=500 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=8038 comm="less" exe="/usr/bin/less" subj=user_u:system_r:unconfined_t:s0 key="perm_mod"
-
-    action        = Event Type
-    id              = ID Audit Event
-    extra_data  = exe
-    protocol      = syscall
-    status        = success
-    user           = uid
-    url             = session
--->
+<!-- ID -->
 <decoder name="auditd-syscall">
     <parent>auditd</parent>
     <prematch offset="after_parent">^SYSCALL </prematch>
-    <regex offset="after_parent">^(SYSCALL) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): arch=\w+ syscall=(\d+) success=(\S+) exit=\S+ a0=\w+ a1=\w+ a2=\w+ a3=\w+ items=\d+ ppid=\d+ pid=\d+ auid=\d+ uid=(\d+) gid=\d+ euid=\d+ suid=\d+ fsuid=\d+ egid=\d+ sgid=\d+ fsgid=\d+ tty=\S+ ses=(\d+) comm="\S+" exe="(\.+)"</regex>
-    <order>action,id,protocol,status,user,url,extra_data</order>
+    <regex offset="after_parent">^(SYSCALL) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
+    <order>audit.type,audit.id</order>
 </decoder>
 
-<!--
-Path
-    type=PATH msg=audit(1147986115.721:257529): item=0 name=/proc/self/stat inode=21375 dev=00:03 mode=file,444 ouid=guido ogid=guido rdev=00:00 obj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 nametype=NORMAL
-    type=PATH msg=audit(1306967989.163:119): item=0 name="./ls" inode=261813 dev=fb:00 mode=0100755 ouid=0 ogid=0 rdev=00:00
-    type=PATH msg=audit(1273924468.947:179534): item=0 name=(null) inode=424783 dev=fd:07 mode=0100640 ouid=0 ogid=502 rdev=00:00 obj=user_u:object_r:file_t:s0
+<!-- SYSCALL -->
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">^arch=\S+ syscall=(\d+) success=(\S+) exit=(\S+) a0=\S+ a1=\S+ a2=\S+ a3=\S+ items=\S+ ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm=\p(\S+)\p exe=\p(\S+)\p </regex>
+    <order>audit.syscall,audit.success,audit.exit,audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.session,audit.command,audit.exe</order>
+</decoder>
 
-    action        = Event Type
-    id              = ID Audit Event
-    extra_data  = name
+<!-- SYSCALL - key -->
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">key=\p(\S+)\p </regex>
+    <order>audit.key</order>
+</decoder>
+
+<!-- CWD -->
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">type=CWD msg=audit\(\S+\):  cwd="(\.+)" </regex>
+    <order>audit.cwd</order>
+</decoder>
+
+<!-- PATH - DIRECTORY: mode=04* -->
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">type=PATH msg=audit\(\S+\): item=\S+ name="(\.+)" inode=(\S+) dev=\S+ mode=(04\S+) ouid=\S+ ogid=\S+ </regex>
+    <order>audit.directory.name, audit.directory.inode, audit.directory.mode</order>
+</decoder>
+
+<!-- PATH - FILE -->
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">type=PATH msg=audit\(\S+\): item=\S+ name="(\.+)" inode=(\S+) dev=\S+ mode=(\S+) ouid=\S+ ogid=\S+ |type=PATH msg=audit\(\S+\): item=\S+ name=\((null)\) inode=(\S+) dev=\S+ mode=(\S+) ouid=\S+ ogid=\S+ </regex>
+    <order>audit.file.name, audit.file.inode, audit.file.mode</order>
+</decoder>
+
+
+<!--
+type=CONFIG_CHANGE msg=audit(1480085540.632:5846): auid=0 ses=1 op="remove rule" key="audit-wazuh-w" list=4 res=1
 -->
-<decoder name="auditd-path">
-  <parent>auditd</parent>
-  <prematch offset="after_parent">^PATH </prematch>
-  <regex offset="after_parent">^(PATH) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): item=\d+ name=(/\S+) inode|^(PATH) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): item=\d+ name="(\.+)" inode|^(PATH) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-  <order>action,id,extra_data</order>
+<decoder name="auditd-config_change">
+    <parent>auditd</parent>
+    <prematch offset="after_parent">^CONFIG_CHANGE </prematch>
+    <regex offset="after_parent">^(CONFIG_CHANGE) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
+    <order>audit.type,audit.id</order>
 </decoder>
 
-<!--
-CRYPT
-    type=CRYPTO_SESSION msg=audit(1150750972.008:3281471): user pid=1111 uid=2 auid=1111 msg='op=start direction=from-server cipher=aes128-ctr ksize=128 rport=40791 laddr=192.168.22.22 lport=22 id=4294967295 exe="/usr/sbin/sshd" (hostname=?, addr=205.22.22.22, terminal=? res=success)'
+<decoder name="auditd-config_change">
+    <parent>auditd</parent>
+    <regex offset="after_regex">^auid=(\S+) ses=(\S+) op="(\.+)"</regex>
+    <order>audit.auid,audit.session,audit.op</order>
+</decoder>
 
-    action       = Event Type
-    id             = ID Audit Event
-    user          = uid
-    url            = session ID
-    status       = res
-    extra_data = exe
+<decoder name="auditd-config_change">
+    <parent>auditd</parent>
+    <regex offset="after_regex">key=\p(\S+)\p</regex>
+    <order>audit.key</order>
+</decoder>
+
+<decoder name="auditd-config_change">
+    <parent>auditd</parent>
+    <regex offset="after_regex">list=(\S+)</regex>
+    <order>audit.list</order>
+</decoder>
+
+<decoder name="auditd-config_change">
+    <parent>auditd</parent>
+    <regex offset="after_regex">res=(\S+)</regex>
+    <order>audit.res</order>
+</decoder>
+
+
+<!--
+type=ANOM_PROMISCUOUS msg=audit(1390181243.575:738): dev=vethDvSeyL prom=0 old_prom=256 auid=4294967295 uid=0 gid=0 ses=4294967295
 -->
-<decoder name="auditd-crypto_session">
-  <parent>auditd</parent>
-  <prematch offset="after_parent">^CRYPTO_SESSION </prematch>
-  <regex offset="after_parent">^(CRYPTO_SESSION) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): \.+uid=(\d+) \.+rport=(\d+) laddr=(\S+) lport=(\d+) id=\d+ exe="(\S+)" \(hostname=\S+, addr=(\S+), terminal=\S+ res=(\S+)\)'</regex>
-  <order>action,id,user,dstport,dstip,srcport, extra_data, srcip, status</order>
+<decoder name="auditd-promiscuous">
+    <parent>auditd</parent>
+    <prematch offset="after_parent">^ANOM_PROMISCUOUS </prematch>
+    <regex offset="after_parent">^(ANOM_PROMISCUOUS) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
+    <order>audit.type,audit.id</order>
+</decoder>
+
+<decoder name="auditd-promiscuous">
+    <parent>auditd</parent>
+    <regex offset="after_regex">^dev=(\S+) prom=(\S+) old_prom=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) ses=(\S+)</regex>
+    <order>audit.dev,audit.prom,audit.old_prom,audit.auid,audit.uid,audit.gid,audit.session</order>
 </decoder>
 
 <!--
-CWD
-    type=CWD msg=audit(1450767416.248:3295858):  cwd="/"
-
-    action       = Event Type
-    id             = ID Audit Event
-    extra_data = cwd
+SELinux: MAC_STATUS
+type=MAC_STATUS msg=audit(1480086668.032:1327): enforcing=0 old_enforcing=1 auid=0 ses=8 type=SYSCALL msg=audit(1480086668.032:1327): arch=c000003e syscall=1 success=yes exit=1 a0=3 a1=7fff9eff0d40 a2=1 a3=7fff9eff0ac0 items=0 ppid=4765 pid=4788 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=8 comm="setenforce" exe="/usr/sbin/setenforce" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key=(null)
 -->
-<decoder name="auditd-cwd">
-  <parent>auditd</parent>
-  <prematch offset="after_parent">^CWD </prematch>
-  <regex offset="after_parent">^(CWD) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\):\s+cwd="(\S+)"$</regex>
-  <order>action,id,extra_data</order>
+<decoder name="auditd-selinux_macstatus">
+    <parent>auditd</parent>
+    <prematch offset="after_parent">^MAC_STATUS </prematch>
+    <regex offset="after_parent">^(MAC_STATUS) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
+    <order>audit.type,audit.id</order>
 </decoder>
 
+<decoder name="auditd-selinux_macstatus">
+    <parent>auditd</parent>
+    <regex offset="after_regex">^enforcing=(\S+) old_enforcing=(\S+) auid=(\S+) ses=(\S+)</regex>
+    <order>audit.enforcing,audit.old_enforcing,audit.auid,audit.sesion</order>
+</decoder>
+
+<decoder name="auditd-selinux_macstatus">
+    <parent>auditd</parent>
+    <regex offset="after_regex">ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm="(\S+)" exe="(\S+)"</regex>
+    <order>audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.ses,audit.comm,audit.exe</order>
+</decoder>
+
+<decoder name="auditd-selinux_macstatus">
+    <parent>auditd</parent>
+    <regex offset="after_regex">subj=(\S+)</regex>
+    <order>audit.subj</order>
+</decoder>
+
+
 <!--
-USER_
-    type=USER_ACCT msg=audit(1310592861.936:1222): user pid=24675 uid=0 auid=501 ses=188 subj=system_u:system_r:unconfined_t:s0 msg='op=PAM:accounting acct="username" exe="/usr/bin/sudo" (hostname=www.example.com, addr=12.12.12.12, terminal=pts/5 res=success)'
+type=USER_ACCT msg=audit(1480087217.108:6042): pid=6013 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:accounting acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.100 addr=10.10.10.100 terminal=ssh res=success'
+type=USER_ACCT msg=audit(1480087533.041:1424): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:accounting grantors=pam_unix,pam_localuser acct="root" exe="/usr/sbin/sshd" hostname=hostname.net addr=10.10.10.100 terminal=ssh res=success'
 
-    type=USER_ACCT msg=audit(1450767661.820:3296328): user pid=15789 uid=0 auid=4294967295 msg='PAM: accounting acct="root" : exe="/usr/sbin/crond" (hostname=www.example.com, addr=12.12.12.12, terminal=cron res=success)'
-    type=USER_ACCT msg=audit(1306939201.750:6793): user pid=44012 uid=0 auid=501 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='PAM: accounting acct="root" : exe="/usr/sbin/crond" (hostname=www.example.com, addr=12.12.12.12, terminal=cron res=success)'
-    type=USER_ACCT msg=audit(1306939201.750:67934): user pid=4401 uid=0 auid=4294967295 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='PAM: accounting acct="root" : exe="/usr/sbin/crond" (hostname=www.example.com, addr=12.12.12.12, terminal=cron res=success)'
-    type=USER_AUTH msg=audit(1305666163.690:51871): user pid=21269 uid=0 auid=500 subj=user_u:system_r:unconfined_t:s0 msg='PAM: authentication acct="root" : exe="/bin/su" (hostname=www.example.com, addr=12.12.12.12, terminal=pts/0 res=success)'
-    type=USER_START msg=audit(1306939201.756:67937): user pid=4401 uid=0 auid=0 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='PAM: session open acct="root" : exe="/usr/sbin/crond" (hostname=www.example.com, addr=12.12.12.12, terminal=cron res=success)'
+type=CRED_ACQ msg=audit(1480087217.108:6043): pid=6013 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.100 addr=10.10.10.100 terminal=ssh res=success'
+type=CRED_ACQ msg=audit(1480087533.043:1427): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/sshd" hostname=hostname.net addr=10.10.10.100 terminal=ssh res=success'
 
-    type=USER_CHAUTHTOK msg=audit(1304523288.952:37394): user pid=7258 uid=0 auid=500 subj=user_u:system_r:unconfined_t:s0 msg='op=change password id=505 exe="/usr/bin/passwd" (hostname=www.example.com, addr=12.12.12.12, terminal=pts/1 res=success)'
-    type=USER_ROLE_CHANGE msg=audit(1280266360.845:51): user pid=1978 uid=0 auid=500 subj=system_u:system_r:local_login_t:s0-s0:c0.c1023 msg='pam: default-context=user_u:system_r:unconfined_t:s0 selected-context=user_u:system_r:unconfined_t:s0: exe="/bin/login" (hostname=www.example.com, addr=12.12.12.12, terminal=tty1 res=success)'
+type=USER_START msg=audit(1480087217.108:6045): pid=6013 uid=0 auid=0 ses=107 msg='op=PAM:session_open acct="root" exe="/usr/sbin/sshd" hostname=10.1.0.1 addr=10.1.0.1 terminal=ssh res=success'
+type=USER_START msg=audit(1480087533.127:1435): pid=4885 uid=0 auid=0 ses=14 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:session_open grantors=pam_selinux,pam_loginuid,pam_selinux,pam_namespace,pam_keyinit,pam_keyinit,pam_limits,pam_systemd,pam_unix,pam_lastlog acct="root" exe="/usr/sbin/sshd" hostname=HOST.NET addr=10.1.0.1 terminal=ssh res=success'
 
+type=CRED_REFR msg=audit(1480087217.656:6050): pid=6017 uid=0 auid=0 ses=108 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.10 addr=10.10.10.10 terminal=ssh res=success'
+type=CRED_REFR msg=audit(1480087533.572:1453): pid=4891 uid=0 auid=0 ses=15 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/sshd" hostname=HOST.NET addr=10.10.10.10 terminal=ssh res=success'
 
-CRED_
-    type=CRED_ACQ msg=audit(1450780201.778:3309947): user pid=19590 uid=0 auid=4294967295 msg='PAM: setcred acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=12.12.12.12, terminal=cron res=success)'
-    type=CRED_REFR msg=audit(1450785560.181:3316339): user pid=21600 uid=0 auid=526 msg='PAM: setcred acct="root" : exe="/usr/sbin/sshd" (hostname=www.example.com, addr=12.12.12.12, terminal=ssh res=success)'
-    type=CRED_DISP msg=audit(1450780201.797:3309953): user pid=19590 uid=0 auid=0 msg='PAM: setcred acct="root" : exe="/usr/sbin/crond" (hostname=www.example.com, addr=12.12.12.12, terminal=cron res=success)'
-    type=CRED_ACQ msg=audit(1305666154.831:51859): user pid=21250 uid=0 auid=4294967295 subj=system_u:system_r:unconfined_t:s0-s0:c0.c1023 msg='PAM: setcred acct="username" : exe="/usr/sbin/sshd" (hostname=lala.example.com, addr=172.16.0.1, terminal=ssh res=success)'
-    type=CRED_ACQ msg=audit(1306939201.751:67935): user pid=4401 uid=0 auid=4294967295 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='PAM: setcred acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=?, terminal=cron res=success)'
+type=CRYPTO_KEY_USER msg=audit(1480087530.909:1417): pid=4886 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=destroy kind=server fp=a3:61:6f:52:83:ca:1e:0f:1f:6d:78:68:0d:37:3c:01 direction=? spid=4886 suid=0  exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
 
-    action       = Event Type
-    id             = ID Audit Event
-    srcuser      = uid
-    *url            = session ID
-    *dstuser      = acct
-    extra_data = exe
-    srcip         = addr
-    status       = res
+type=CRYPTO_SESSION msg=audit(1480087530.910:1420): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=start direction=from-server cipher=chacha20-poly1305@openssh.com ksize=512 mac= pfs=diffie-hellman-group-exchange-sha256 spid=4886 suid=74 rport=57989 laddr=10.0.0.74 lport=22  exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
 
-    *url, dstuser just in events with "acct" or "ses"
+type=USER_AUTH msg=audit(1480087533.036:1422): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=pubkey_auth rport=57989 acct="root" exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
+
+type=USER_ROLE_CHANGE msg=audit(1480087533.108:1432): pid=4885 uid=0 auid=0 ses=14 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='pam: default-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 selected-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 exe="/usr/sbin/sshd" hostname=host.net addr=101.10.10.10 terminal=ssh res=success'
 -->
-
-<decoder name="auditd-user_ses_acct">
+<decoder name="auditd-user_and_cred">
     <parent>auditd</parent>
-    <prematch offset="after_parent">^USER_\.+ses=\.+acct=|^CRED_\.+ses=\.+acct=</prematch>
-    <regex offset="after_parent">^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): \.*uid=(\d+) auid=\d+ ses=(\d+) \.+acct="(\S+)" exe="(\.+)"\.+hostname=\S+ addr=(\d+.\d+.\d+.\d+)\p*\sterminal=\S+ res=(\w+)|^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-    <order>action,id,srcuser,url,dstuser,extra_data,srcip,status</order>
-</decoder>
-
-<decoder name="auditd-user_acct">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^USER_\.+acct=|^CRED_\.+acct=</prematch>
-    <regex offset="after_parent">^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): \.*uid=(\d+) auid\.+acct="(\S+)"\.+exe="(\.+)"\.+hostname=\S+ addr=(\d+.\d+.\d+.\d+)\p*\sterminal=\S+ res=(\w+)|^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-    <order>action,id,srcuser,dstuser,extra_data,srcip,status</order>
-</decoder>
-
-<decoder name="auditd-user">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^USER_|^CRED_</prematch>
-    <regex offset="after_parent">^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): \.*uid=(\d+) auid\.+exe="(\.+)"\.+hostname=\S+ addr=(\d+.\d+.\d+.\d+)\p*\sterminal=\S+ res=(\w+)|^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-    <order>action,id,srcuser,extra_data,srcip,status</order>
-</decoder>
-
-
-<!--
-ANOM
-type=ANOM_ABEND msg=audit(1222174623.498:608): auid=4294967295 uid=0 gid=7 ses=4294967295 subj=system_u:system_r:cupsd_t:s0-s0:c0.c1023 pid=7192 comm="ipp" sig=11
-
-    action        = Event Type
-    id              = ID Audit Event
-    user           = uid
-    url             = session
-    extra_data  = comm
--->
-<decoder name="auditd-anom">
-  <parent>auditd</parent>
-  <prematch offset="after_parent">^ANOM_ABEND</prematch>
-  <regex offset="after_parent">^(ANOM_ABEND) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\):\.+uid=(\d+) gid\.+ses=(\d+) \.+comm="(\S+)"</regex>
-  <order>action,id,user,url,extra_data</order>
-</decoder>
-
-<!--
-type=ANOM_EXEC msg=audit(1222174623.498:608): user pid=12965 uid=1 auid=2 ses=1 msg='op=PAM:unix_chkpwd acct="snap" exe="/sbin/unix_chkpwd" (hostname=?, addr=?, terminal=pts/0 res=failed)'
-
-    action       = Event Type
-    id             = ID Audit Event
-    srcuser      = uid
-    *url            = session ID
-    *dstuser      = acct
-    extra_data = exe
-    srcip         = addr
-    status       = res
-
-    *url, dstuser just in events with "acct" or "ses"
- -->
-
-<decoder name="auditd-anom_exec">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^ANOM_EXEC</prematch>
-    <regex offset="after_parent">^(ANOM_EXEC) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): \.*uid=(\d+) auid=\.+ ses=(\d+) \.+acct="(\S+)" exe="(\.+)"\.+hostname=\S+, addr=(\S+), terminal=\S+ res=(\w+)</regex>
-    <order>action,id,srcuser,url,dstuser,extra_data,srcip,status</order>
-</decoder>
-
-<!--
-    type=SERVICE_START msg=audit(1450876900.115:30): pid=1 uid=0 auid=4294967295 ses=4294967295 msg=' comm="Serv-U" exe="/lib/systemd/systemd" hostname=example.com addr=12.12.12.12, terminal=? res=success'
-    type=SERVICE_STOP msg=audit(1450876900.115:31): pid=1 uid=0 auid=4294967295 ses=4294967295 msg=' comm="Serv-U" exe="/lib/systemd/systemd" hostname=example.com addr=12.12.12.12 res=success'
-
-    action       = Event Type
-    id             = ID Audit Event
-    srcuser      = uid
-    url            = session ID
-    extra_data = comm
-    srcip         = addr
-    status       = res
--->
-<decoder name="auditd-service-start">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^SERVICE_START</prematch>
-    <regex offset="after_parent">^(SERVICE_\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\):\.+uid=(\d+) auid=\.+ses=(\d+) msg=' comm="(\S+)" exe="\S+"\.+hostname=\S+ addr=(\d+.\d+.\d+.\d+)\p*\sterminal=\S+ res=(\w+)|^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-    <order>action,id,srcuser,url,extra_data,srcip,status</order>
-</decoder>
-
-<decoder name="auditd-service-stop">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^SERVICE_STOP</prematch>
-    <regex offset="after_parent">^(SERVICE_\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\):\.+uid=(\d+) auid=\.+ses=(\d+) msg=' comm="(\S+)" exe="\S+"\.+hostname=\S+ addr=(\d+.\d+.\d+.\d+)\p* res=(\w+)|^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-    <order>action,id,srcuser,url,extra_data,srcip,status</order>
-</decoder>
-
-<!--
-GENERAL
-type=NEW_EVENT msg=audit(1234567890.123:1234): Text
-type=NEW_EVENT msg=audit(1234567890.123:1234): Text ses=4294967295 Text
-
-    action       = Event Type
-    id             = ID Audit Event
-    url            = session ID
--->
-
-<decoder name="auditd-general-session">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^\S+ msg=audit\.+ses=</prematch>
-    <regex offset="after_parent">^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): \.+ses=(\d+) </regex>
-    <order>action,id,url</order>
-</decoder>
-
-<decoder name="auditd-general">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^\S+ msg=audit</prematch>
+    <prematch offset="after_parent">^USER_ACCT |^CRED_ACQ |^USER_START |^CRED_REFR|^CRYPTO_KEY_USER|^CRYPTO_SESSION |^USER_AUTH |^USER_ROLE_CHANGE </prematch>
     <regex offset="after_parent">^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-    <order>action,id</order>
+    <order>audit.type,audit.id</order>
+</decoder>
+
+<decoder name="auditd-user_and_cred">
+    <parent>auditd</parent>
+    <regex offset="after_regex">^pid=(\S+) uid=(\S+) auid=(\S+) ses=(\S+)</regex>
+    <order>audit.pid,audit.uid,audit.auid,audit.session</order>
+</decoder>
+
+<decoder name="auditd-user_and_cred">
+    <parent>auditd</parent>
+    <regex offset="after_regex">subj=(\S+)</regex>
+    <order>audit.subj</order>
+</decoder>
+
+<decoder name="auditd-user_and_cred">
+    <parent>auditd</parent>
+    <regex offset="after_regex">acct="(\S+)"</regex>
+    <order>audit.acct</order>
+</decoder>
+
+<decoder name="auditd-user_and_cred">
+    <parent>auditd</parent>
+    <regex offset="after_regex">exe="(\S+)"</regex>
+    <order>audit.exe</order>
+</decoder>
+
+<decoder name="auditd-user_and_cred">
+    <parent>auditd</parent>
+    <regex offset="after_regex">addr=(\S+)</regex>
+    <order>audit.srcip</order>
+</decoder>
+
+<!--
+type=LOGIN msg=audit(1480087217.108:6044): pid=6013 uid=0 old-auid=4294967295 auid=0 old-ses=4294967295 ses=107 res=1
+type=LOGIN msg=audit(1480087533.043:1428): pid=4885 uid=0 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 old-auid=4294967295 auid=0 old-ses=4294967295 ses=14 res=1
+-->
+<decoder name="auditd-login">
+    <parent>auditd</parent>
+    <prematch offset="after_parent">^LOGIN </prematch>
+    <regex offset="after_parent">^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
+    <order>audit.type,audit.id</order>
+</decoder>
+
+<decoder name="auditd-login">
+    <parent>auditd</parent>
+    <regex offset="after_regex">^pid=(\S+) uid=(\S+)</regex>
+    <order>audit.pid,audit.uid</order>
+</decoder>
+
+<decoder name="auditd-login">
+    <parent>auditd</parent>
+    <regex offset="after_regex">subj=(\S+)</regex>
+    <order>audit.subj</order>
+</decoder>
+
+<decoder name="auditd-login">
+    <parent>auditd</parent>
+    <regex offset="after_regex">old-auid=(\S+) auid=(\S+) old-ses=(\S+) ses=(\S+) res=(\S+)</regex>
+    <order>audit.old-auid,audit.auid,audit.old-ses,audit.session,audit.res</order>
+</decoder>
+
+<!--
+Generic
+type=TEST_GENERIC msg=audit(1234567890.123:1234): addr=10.10.10.10 ses=20 exe="ls" comm="ls" ppid=432 pid=3333 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0
+-->
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex offset="after_parent">^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
+    <order>audit.type,audit.id</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>pid=(\S+)</regex>
+    <order>audit.pid</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>auid=(\S+)</regex>
+    <order>audit.auid</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>uid=(\S+)</regex>
+    <order>audit.uid</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>gid=(\S+)</regex>
+    <order>audit.gid</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>euid=(\S+)</regex>
+    <order>audit.euid</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>ses=(\S+)</regex>
+    <order>audit.session</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>comm=\p(\S+)\p</regex>
+    <order>audit.command</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>exe=\p(\S+)\p</regex>
+    <order>audit.exe</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>addr=(\S+)</regex>
+    <order>audit.srcip</order>
+</decoder>
+
+<decoder name="auditd-generic">
+    <parent>auditd</parent>
+    <regex>res=(\S+)</regex>
+    <order>audit.res</order>
 </decoder>
