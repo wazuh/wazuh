@@ -1,5 +1,7 @@
+#!groovy
+
 /**
- * Jenkinsfile for OSSEC Wazuh
+ * Jenkinsfile for Wazuh
  * Copyright (C) 2016 Wazuh Inc.
  * June 22, 2016.
  *
@@ -9,49 +11,45 @@
  * Foundation.
  */
 
-node {
-    
-    //Stage checkout source
-    stage name: 'Checkout source', concurrency: 1
-    
+def labels = ['centos-7-slave', 'debian-jessie-slave']
+
+//Stage checkout source
+def check_source(label){
     checkout scm
-    sh 'sudo apt-get update'
-    
-    //Stage unit tests
-    stage name: 'Unit tests', concurrency: 1
-    
-    dir ('src') { 
+}
+
+
+//Stage unit tests
+def unit_tests(label){
+    dir('src'){
         sh 'sudo make --warn-undefined-variables test_valgrind'
         sh 'sudo make clean'
     }
-    
-    //Stage code scanners
-    stage name: 'Code scanners', concurrency: 1
-    
-    dir ('src') {
-        
-    }
-    
-    //Stage standard ossec compilations
-    stage name: 'Standard OSSEC compilations', concurrency: 1 
-    
+}
+
+
+//Stage standard ossec compilations
+def  standard_compilations(label){  
     dir ('src') {
         sh 'sudo make --warn-undefined-variables V=1 TARGET=agent install'
         sh 'sudo make clean && sudo rm -rf /var/ossec/'
         sh 'sudo make --warn-undefined-variables V=1 TARGET=server install'
         sh 'sudo make clean'
-    }  
-    
-    //Stage rule tests
-    stage name: 'Rule tests', concurrency: 1 
-    
+    } 
+} 
+
+
+//Stage rule tests
+def rule_tests(label){ 
     dir ('src') {
-        sh 'sudo cat /var/ossec/etc/ossec.conf'
         sh 'sudo make V=1 TARGET=server test-rules'
+        sh 'sudo make clean && sudo rm -rf /var/ossec/'
     }
-    
-    //Stage advanced ossec compilation
-    stage name: 'Advanced OSSEC compilations', concurrency: 1 
+}
+
+
+//Stage advanced ossec compilation
+def advanced_compilations(label){
     
     dir ('src') {
         sh 'sudo make --warn-undefined-variables V=1 TARGET=local install'
@@ -62,7 +60,6 @@ node {
         def matrixOptionsX = ['DATABASE=none', 'DATABASE=pgsql', 'DATABASE=mysql']
         def matrixOptionsY = ['USE_GEOIP=1', '']    
         
-        sh 'sudo apt-get -y install geoip-bin geoip-database libgeoip-dev libgeoip1 libpq-dev libpq5 libmysqlclient-dev'        
         
         for (optionX in matrixOptionsX){
             for (optionY in matrixOptionsY) {
@@ -71,14 +68,45 @@ node {
             }
         }
     }
-    
-    //Stage windows compilation
-    stage name: 'Windows compilation', concurrency: 1
-    
+}
+
+
+//Stage windows compilation
+def windows_compilation(label){ 
+ 
     dir ('src') {
-        sh 'sudo apt-get -y install aptitude && sudo aptitude -y install mingw-w64 nsis'
         sh 'sudo make --warn-undefined-variables TARGET=winagent'
         sh 'sudo make clean && sudo rm -rf /var/ossec/'
     }
+}
+
+for (label in labels) {
     
+    stage (label){
+        node(label) {
+            stage ('Checkout SCM'){
+                check_source(label)
+            }
+            
+            stage ('Unit Tests'){
+                unit_tests(label)
+            }
+            
+            stage ('Standard Compilations'){
+                standard_compilations(label)
+            }
+            
+            stage ('Rule Tests'){
+                rule_tests(label)
+            }
+            
+            stage ('Advanced Compilations'){
+                advanced_compilations(label)
+            }
+            
+            stage ('Windows Compilation'){
+                windows_compilation(label)
+            }
+        }
+    }
 }

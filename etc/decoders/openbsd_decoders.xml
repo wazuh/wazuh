@@ -26,11 +26,12 @@
 
 <!-- OpenBSD deluser
   -  2014-02-21T10:22:55.134355-05:00 arrakis userdel[23023]: user removed: name=dac
+  -  Dec  1 12:43:16 ip-10-0-0-220 userdel[2793]: delete user 'marge'
 -->
 
 <decoder name="open-userdel">
   <program_name>userdel</program_name>
-  <regex>user removed: name=(\S+)$</regex>
+  <regex>user removed: name=(\S+)$|delete user '(\S+\w)'</regex>
   <order>srcuser</order>
 </decoder>
 

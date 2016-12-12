@@ -1,7 +1,7 @@
 #!groovy
 
 /**
- * Jenkinsfile for OSSEC Wazuh
+ * Jenkinsfile for Wazuh
  * Copyright (C) 2016 Wazuh Inc.
  * November 19, 2016.
  *
