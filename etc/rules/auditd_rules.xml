@@ -1,35 +1,37 @@
 <!--
-  -  auditd rules
-  -  v1.0 2015/12/30
+  -  audit rules
+  -  v2.0 2016/12/12
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  jesus@wazuh.com
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
 
-<!-- AUDITD -->
-<group name="auditd,">
+<group name="audit,">
 
     <rule id="80700" level="0">
         <decoded_as>auditd</decoded_as>
-        <description>auditd messages grouped.</description>
+        <description>Audit: messages grouped.</description>
     </rule>
 
+
+    <!-- Main audit rules -->
     <!--
     type=DAEMON_RESUME msg=audit(1300385209.456:8846): auditd resuming logging, sending auid=? pid=? subj=? res=success
     type=DAEMON_START msg=audit(1450875964.131:8728): auditd start, ver=2.4 format=raw kernel=3.16.0-4-amd64 auid=4294967295 pid=1437 res=failed
     -->
     <rule id="80701" level="1">
         <if_sid>80700</if_sid>
-        <regex>DAEMON_RESUME|DAEMON_START</regex>
-        <status>success</status>
+        <field name="audit.type">DAEMON_RESUME|DAEMON_START</field>
+        <field name="audit.res">success</field>
         <description>Auditd: Start / Resume</description>
     </rule>
 
-    <rule id="80702" level="8">
+    <rule id="80702" level="10">
         <if_sid>80700</if_sid>
-        <regex>DAEMON_RESUME|DAEMON_START</regex>
-        <status>failed</status>
+        <field name="audit.type">DAEMON_RESUME|DAEMON_START</field>
+        <field name="audit.res">failed</field>
         <description>Auditd: Start / Resume FAILED</description>
+        <group>audit_daemon,service_availability,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
@@ -37,9 +39,10 @@
     -->
     <rule id="80703" level="10">
         <if_sid>80700</if_sid>
-        <action>DAEMON_END</action>
-        <status>success</status>
+        <field name="audit.type">DAEMON_END</field>
+        <field name="audit.res">success</field>
         <description>Auditd: End</description>
+        <group>audit_daemon,service_availability,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
@@ -47,8 +50,9 @@
     -->
     <rule id="80704" level="10">
         <if_sid>80700</if_sid>
-        <action>DAEMON_ABORT</action>
+        <field name="audit.type">DAEMON_ABORT</field>
         <description>Auditd: Abort</description>
+        <group>audit_daemon,service_availability,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
@@ -57,56 +61,22 @@
     -->
     <rule id="80705" level="3">
         <if_sid>80700</if_sid>
-        <regex>CONFIG_CHANGE|DAEMON_CONFIG</regex>
+        <field name="audit.type">CONFIG_CHANGE|DAEMON_CONFIG</field>
         <description>Auditd: Configuration changed</description>
+        <group>audit_configuration,</group>
     </rule>
 
-    <!--
-    type=ANOM_CRYPTO_FAIL msg=audit(1234567890.123:1234): Text
-    -->
-    <rule id="80706" level="8">
-        <if_sid>80700</if_sid>
-        <action>ANOM_CRYPTO_FAIL</action>
-        <description>Auditd: failure in the cryptographic system detected</description>
-    </rule>
 
-    <!--
-    type=CRYPTO_FAILURE_USER msg=audit(1234567890.123:1234): Text
-    -->
-    <rule id="80707" level="5">
-        <if_sid>80700</if_sid>
-        <action>CRYPTO_FAILURE_USER</action>
-        <description>Auditd: decrypt, encrypt, or randomize cryptographic operation failed</description>
-    </rule>
-
-    <!--
-    type=CRYPTO_REPLAY_USER msg=audit(1234567890.123:1234): Text
-    -->
-    <rule id="80708" level="12">
-        <if_sid>80700</if_sid>
-        <action>CRYPTO_REPLAY_USER</action>
-        <description>Auditd: replay attack detected</description>
-        <group>pci_dss_11.4,</group>
-    </rule>
-
-    <!--
-    type=CRYPTO_SESSION msg=audit(1150750972.008:3281471): user pid=1111 uid=0 auid=1111 msg='op=start direction=from-server cipher=aes128-ctr ksize=128 rport=40791 laddr=192.168.22.22 lport=22 id=4294967295 exe="/usr/sbin/sshd" (hostname=?, addr=205.22.22.22, terminal=? res=success)'
-    -->
-    <rule id="80709" level="2">
-        <if_sid>80700</if_sid>
-        <action>CRYPTO_SESSION</action>
-        <description>Auditd: TLS session establishment.</description>
-    </rule>
-
+    <!-- ANOM* rules -->
     <!--
     type=ANOM_PROMISCUOUS msg=audit(1390181243.575:738): dev=vethDvSeyL prom=256 old_prom=256 auid=4294967295 uid=0 gid=0 ses=4294967295
     -->
     <rule id="80710" level="10">
         <if_sid>80700</if_sid>
-        <action>ANOM_PROMISCUOUS</action>
+        <field name="audit.type">ANOM_PROMISCUOUS</field>
         <match>prom=256</match>
         <description>Auditd: device enables promiscuous mode</description>
-        <group>pci_dss_11.4,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
@@ -114,8 +84,9 @@
     -->
     <rule id="80711" level="10">
         <if_sid>80700</if_sid>
-        <action>ANOM_ABEND</action>
+        <field name="audit.type">ANOM_ABEND</field>
         <description>Auditd: process ended abnormally</description>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
@@ -123,8 +94,9 @@
     -->
     <rule id="80712" level="10">
         <if_sid>80700</if_sid>
-        <action>ANOM_EXEC</action>
+        <field name="audit.type">ANOM_EXEC</field>
         <description>Auditd: execution of a file ended abnormally</description>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
@@ -132,431 +104,310 @@
     -->
     <rule id="80713" level="7">
         <if_sid>80700</if_sid>
-        <action>ANOM_MK_EXEC</action>
+        <field name="audit.type">ANOM_MK_EXEC</field>
         <description>Auditd: file is made executable</description>
-    </rule>
-
-    <!--
-        type=AVC msg=audit(1226270358.848:238): avc:  denied  { write } for  pid=13349 comm="certwatch" name="cache" dev=dm-0 ino=218171 scontext=system_u:system_r:certwatch_t:s0 tcontext=system_u:object_r:var_t:s0 tclass=dir
-    -->
-    <rule id="80714" level="2">
-        <if_sid>80700</if_sid>
-        <action>AVC</action>
-        <description>Auditd: SELinux permission check</description>
-        <group>pci_dss_10.6.1,</group>
-    </rule>
-
-    <!--
-        type=MAC_STATUS msg=audit(1336836093.835:406): enforcing=1 old_enforcing=0 auid=0 ses=2
-    -->
-    <rule id="80715" level="4">
-        <if_sid>80700</if_sid>
-        <action>MAC_STATUS</action>
-        <description>Auditd: SELinux mode (enforcing, permissive, off) is changed</description>
-        <group>pci_dss_10.6.1,</group>
-    </rule>
-
-    <!--
-        type=SELINUX_ERR msg=audit(1311948547.151:138): op=security_compute_av reason=bounds scontext=system_u:system_r:anon_webapp_t:s0-s0:c0,c100,c200 tcontext=system_u:object_r:security_t:s0 tclass=dir perms=ioctl,read,lock
-        type=USER_SELINUX_ERR msg=audit(1311948547.151:138):
-    -->
-    <rule id="80716" level="10">
-        <if_sid>80700</if_sid>
-        <regex>SELINUX_ERR|USER_SELINUX_ERR</regex>
-        <description>Auditd: SELinux error</description>
-        <group>pci_dss_10.6.1,</group>
-    </rule>
-
-    <!--
-    type=USER_ROLE_CHANGE msg=audit(1280266360.845:51): user pid=1978 uid=0 auid=500 subj=system_u:system_r:local_login_t:s0-s0:c0.c1023 msg='pam: default-context=user_u:system_r:unconfined_t:s0 selected-context=user_u:system_r:unconfined_t:s0: exe="/bin/login" (hostname=?, addr=?, terminal=tty1 res=success)'
-    -->
-    <rule id="80717" level="5">
-        <if_sid>80700</if_sid>
-        <action>USER_ROLE_CHANGE</action>
-        <description>Auditd: user SELinux role changed</description>
-    </rule>
-
-    <!--
-    type=SERVICE_START msg=audit(1450876900.115:30): pid=1 uid=0 auid=4294967295 ses=4294967295 msg=' comm="Serv-U" exe="/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
-    type=SERVICE_STOP msg=audit(1450876900.115:31): pid=1 uid=0 auid=4294967295 ses=4294967295 msg=' comm="Serv-U" exe="/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
-    -->
-
-    <rule id="80718" level="2">
-        <if_sid>80700</if_sid>
-        <action>SERVICE_START</action>
-        <description>Auditd: Service started</description>
-    </rule>
-
-    <rule id="80719" level="3">
-        <if_sid>80700</if_sid>
-        <action>SERVICE_STOP</action>
-        <description>Auditd: Service stopped</description>
-    </rule>
-
-    <!--
-    type=SYSCALL msg=audit(1450888625.635:645): arch=c000003e syscall=16 success=yes exit=0 a0=4 a1=8914 a2=7ffed81e8cc0 a3=11 items=0 ppid=5599 pid=13693 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="ifconfig" exe="/sbin/ifconfig" key=(null)
-    -->
-    <rule id="80720" level="0">
-        <if_sid>80700</if_sid>
-        <action>SYSCALL</action>
-        <description>Auditd: system call to the kernel</description>
-    </rule>
-
-    <!--
-    type=EXECVE msg=audit(1419386181.134:340876): argc=3 a0="sudo" a1="echo" a2="test"
-    -->
-    <rule id="80721" level="0">
-        <if_sid>80700</if_sid>
-        <action>EXECVE</action>
-        <description>Auditd: arguments of the execve(2) system call</description>
-    </rule>
-
-    <!--
-    type=CWD msg=audit(1450767416.248:3295858):  cwd="/"
-    -->
-    <rule id="80722" level="0">
-        <if_sid>80700</if_sid>
-        <action>CWD</action>
-        <description>Auditd: Current working directory</description>
-    </rule>
-
-    <!--
-    type=PATH msg=audit(1450767601.784:3296210): item=0 name="/bin/sh" inode=110821498 dev=fd:00 mode=0100755 ouid=0 ogid=0 rdev=00:00
-    -->
-    <rule id="80723" level="0">
-        <if_sid>80700</if_sid>
-        <action>PATH</action>
-        <description>Auditd: path information</description>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_ACCESS_FS msg=audit(1234567890.123:1234): Text
     -->
-    <rule id="80724" level="8">
+    <rule id="80714" level="8">
         <if_sid>80700</if_sid>
-        <action>ANOM_ACCESS_FS</action>
+        <field name="audit.type">ANOM_ACCESS_FS</field>
         <description>Auditd: file or a directory access ended abnormally</description>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_AMTU_FAIL msg=audit(1234567890.123:1234): Text
     -->
-    <rule id="80725" level="8">
+    <rule id="80715" level="8">
         <if_sid>80700</if_sid>
-        <action>ANOM_AMTU_FAIL</action>
+        <field name="audit.type">ANOM_AMTU_FAIL</field>
         <description>Auditd: failure of the Abstract Machine Test Utility (AMTU) detected</description>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_MAX_DAC msg=audit(1234567890.123:1234): Text
     type=ANOM_MAX_MAC msg=audit(1234567890.123:1234): Text
     -->
-    <rule id="80726" level="8">
+    <rule id="80716" level="8">
         <if_sid>80700</if_sid>
-        <regex>ANOM_MAX_DAC|ANOM_MAX_MAC</regex>
+        <field name="audit.type">ANOM_MAX_DAC|ANOM_MAX_MAC</field>
         <description>Auditd: maximum amount of Discretionary Access Control (DAC) or Mandatory Access Control (MAC) failures reached</description>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_RBAC_FAIL msg=audit(1234567890.123:1234): Text
     type=ANOM_RBAC_INTEGRITY_FAIL msg=audit(1234567890.123:1234): Text
     -->
-    <rule id="80727" level="8">
+    <rule id="80717" level="8">
         <if_sid>80700</if_sid>
-        <regex>ANOM_RBAC_FAIL|ANOM_RBAC_INTEGRITY_FAIL</regex>
+        <field name="audit.type">ANOM_RBAC_FAIL|ANOM_RBAC_INTEGRITY_FAIL</field>
         <description>Auditd: Role-Based Access Control (RBAC) failure detected.</description>
-    </rule>
-
-    <!--
-    type=USER_AUTH msg=audit(1451403184.143:1834): pid=3380 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:authentication acct="toor" exe="/usr/sbin/sshd" hostname=192.168.2.100 addr=192.168.2.100 terminal=ssh res=failed'
-    type=USER_AUTH msg=audit(1451403193.995:1835): pid=3380 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:authentication acct="toor" exe="/usr/sbin/sshd" hostname=192.168.2.100 addr=192.168.2.100 terminal=ssh res=success'
-    -->
-    <rule id="80728" level="2">
-        <if_sid>80700</if_sid>
-        <action>USER_AUTH</action>
-        <description>Auditd: authentication attempt detected</description>
-        <group>pci_dss_10.2.5,</group>
-    </rule>
-
-    <!--
-    type=USER_ACCT msg=audit(1450767661.820:3296328): user pid=15789 uid=0 auid=4294967295 msg='PAM: accounting acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=?, terminal=cron res=success)'
-    -->
-    <rule id="80729" level="3">
-        <if_sid>80700</if_sid>
-        <action>USER_ACCT</action>
-        <description>Auditd: user account modified</description>
-    </rule>
-
-    <!--
-    type=LOGIN msg=audit(1450767601.778:3296208): login pid=15763 uid=0 old auid=4294967295 new auid=0 old ses=4294967295 new ses=2260
-    -->
-    <rule id="80730" level="3">
-        <if_sid>80700</if_sid>
-        <action>LOGIN</action>
-        <description>Auditd: LOGIN information</description>
-    </rule>
-
-    <!--
-    type=USER_START msg=audit(1450771201.437:3301540): user pid=16878 uid=0 auid=0 msg='PAM: session open acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=?, terminal=cron res=success)'
-    -->
-    <rule id="80731" level="3">
-        <if_sid>80700</if_sid>
-        <action>USER_START</action>
-        <description>Auditd: session started</description>
-        <group>pci_dss_10.2.5,</group>
-    </rule>
-
-    <!--
-    type=USER_END msg=audit(1450767601.813:3296218): user pid=15764 uid=0 auid=0 msg='PAM: session close acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=?, terminal=cron res=success)'
-    -->
-    <rule id="80732" level="3">
-        <if_sid>80700</if_sid>
-        <action>USER_END</action>
-        <description>Auditd: session terminated</description>
-        <group>pci_dss_10.2.5,</group>
-    </rule>
-
-    <!--
-    type=USER_LOGIN msg=audit(1450770603.209:3300446): user pid=16649 uid=0 auid=4294967295 msg='acct="root": exe="/usr/sbin/sshd" (hostname=?, addr=11.111.53.58, terminal=sshd res=failed)'
-    -->
-    <rule id="80733" level="3">
-        <if_sid>80700</if_sid>
-        <action>USER_LOGIN</action>
-        <description>Auditd: user logged in</description>
-        <group>pci_dss_10.2.5,</group>
-    </rule>
-
-    <!--
-    type=USER_LOGOUT msg=audit(1450770603.209:3300446): Text
-    -->
-    <rule id="80734" level="3">
-        <if_sid>80700</if_sid>
-        <action>USER_LOGOUT</action>
-        <description>Auditd: user logged out</description>
-        <group>pci_dss_10.2.5,</group>
-    </rule>
-
-    <!--
-    type=CRED_ACQ msg=audit(1450894634.199:1276): pid=1956 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=192.168.2.100 addr=192.168.2.100 terminal=ssh res=success'
-    -->
-    <rule id="80735" level="2">
-        <if_sid>80700</if_sid>
-        <action>CRED_ACQ</action>
-        <description>Auditd: user acquires user-space credentials</description>
-    </rule>
-
-    <!--
-    type=CRED_REFR msg=audit(1450894634.211:1279): pid=1958 uid=0 auid=0 ses=213 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=192.168.2.100 addr=192.168.2.100 terminal=ssh res=success'
-    -->
-    <rule id="80736" level="2">
-        <if_sid>80700</if_sid>
-        <action>CRED_REFR</action>
-        <description>Auditd: user refreshes their user-space credentials</description>
-    </rule>
-
-    <!--
-    type=CRED_DISP msg=audit(1450894635.111:1281): pid=1956 uid=0 auid=0 ses=213 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=192.168.2.100 addr=192.168.2.100 terminal=ssh res=success'
-    -->
-    <rule id="80737" level="2">
-        <if_sid>80700</if_sid>
-        <action>CRED_DISP</action>
-        <description>Auditd: user disposes of user-space credentials</description>
-    </rule>
-
-    <!--
-    type=USER_CMD msg=audit(1450785575.705:3316357): user pid=21619 uid=0 auid=526 msg='cwd="/home/hi" cmd="/bin/bash" (terminal=pts/0 res=success)'
-    -->
-    <rule id="80738" level="0">
-        <if_sid>80700</if_sid>
-        <match>USER_CMD</match>
-        <description>Auditd: shell command executed</description>
-    </rule>
-
-    <!--
-    type=USER_ERR msg=audit(1450770602.157:3300444): user pid=16643 uid=0 auid=4294967295 msg='PAM: bad_ident acct="?" : exe="/usr/sbin/sshd" (hostname=111.111.211.38, addr=111.111.211.38, terminal=ssh res=failed)'
-    -->
-    <rule id="80739" level="5">
-        <if_sid>80700</if_sid>
-        <match>USER_ERR</match>
-        <description>Auditd: account state error detected</description>
-        <group>pci_dss_10.6.1,</group>
-    </rule>
-
-    <!--
-    type=CHGRP_ID msg=audit(1450770603.209:3300446): Text
-    -->
-    <rule id="80740" level="3">
-        <if_sid>80700</if_sid>
-        <action>CHGRP_ID</action>
-        <description>Auditd: group ID changed</description>
-    </rule>
-
-    <!--
-    type=CHUSER_ID msg=audit(1450770603.209:3300446): Text
-    -->
-    <rule id="80741" level="3">
-        <if_sid>80700</if_sid>
-        <action>CHUSER_ID</action>
-        <description>Auditd: user ID changed</description>
-    </rule>
-
-    <!--
-    type=USER_CHAUTHTOK msg=audit(1450770603.209:3300446): Text
-    -->
-    <rule id="80742" level="3">
-        <if_sid>80700</if_sid>
-        <action>USER_CHAUTHTOK</action>
-        <description>Auditd: account attribute modified</description>
-    </rule>
-
-    <!--
-    type=DEL_GROUP msg=audit(1450770603.209:3300446): Text
-    -->
-    <rule id="80743" level="3">
-        <if_sid>80700</if_sid>
-        <action>DEL_GROUP</action>
-        <description>Auditd: group deleted</description>
-        <group>pci_dss_10.2.5,</group>
-    </rule>
-
-    <!--
-    type=DEL_USER msg=audit(1450770603.209:3300446): Text
-    -->
-    <rule id="80744" level="3">
-        <if_sid>80700</if_sid>
-        <action>DEL_USER</action>
-        <description>Auditd: user deleted</description>
-        <group>pci_dss_10.2.5,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_ADD_ACCT msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80745" level="3">
+    <rule id="80718" level="3">
         <if_sid>80700</if_sid>
-        <action>ANOM_ADD_ACCT</action>
+        <field name="audit.type">ANOM_ADD_ACCT</field>
         <description>Auditd: user-space account addition ended abnormally.</description>
-        <group>pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_DEL_ACCT msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80746" level="3">
+    <rule id="80719" level="3">
         <if_sid>80700</if_sid>
-        <action>ANOM_DEL_ACCT</action>
+        <field name="audit.type">ANOM_DEL_ACCT</field>
         <description>Auditd: user-space account deletion ended abnormally.</description>
-        <group>pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_MOD_ACCT msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80747" level="3">
+    <rule id="80720" level="3">
         <if_sid>80700</if_sid>
-        <action>ANOM_MOD_ACCT</action>
+        <field name="audit.type">ANOM_MOD_ACCT</field>
         <description>Auditd: user-space account modification ended abnormally.</description>
-        <group>pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_ROOT_TRANS msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80748" level="10">
+    <rule id="80721" level="10">
         <if_sid>80700</if_sid>
-        <action>ANOM_ROOT_TRANS</action>
+        <field name="audit.type">ANOM_ROOT_TRANS</field>
         <description>Auditd: user becomes root</description>
-        <group>pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_LOGIN_ACCT msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80749" level="5">
+    <rule id="80722" level="5">
         <if_sid>80700</if_sid>
-        <action>ANOM_LOGIN_ACCT</action>
+        <field name="audit.type">ANOM_LOGIN_ACCT</field>
         <description>Auditd: account login attempt ended abnormally.</description>
-        <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_LOGIN_FAILURES msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80750" level="5">
+    <rule id="80723" level="5">
         <if_sid>80700</if_sid>
-        <action>ANOM_LOGIN_FAILURES</action>
+        <field name="audit.type">ANOM_LOGIN_FAILURES</field>
         <description>Auditd: limit of failed login attempts reached.</description>
-        <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,</group>
     </rule>
 
     <!--
     type=ANOM_LOGIN_LOCATION msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80751" level="5">
+    <rule id="80724" level="5">
         <if_sid>80700</if_sid>
-        <action>ANOM_LOGIN_LOCATION</action>
+        <field name="audit.type">ANOM_LOGIN_LOCATION</field>
         <description>Auditd: login attempt from a forbidden location.</description>
-        <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_LOGIN_SESSIONS msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80752" level="4">
+    <rule id="80725" level="4">
         <if_sid>80700</if_sid>
-        <action>ANOM_LOGIN_SESSIONS</action>
+        <field name="audit.type">ANOM_LOGIN_SESSIONS</field>
         <description>Auditd: login attempt reached the maximum amount of concurrent sessions.</description>
-        <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
     type=ANOM_LOGIN_TIME msg=audit(1450770603.209:3300446): Text
     -->
-    <rule id="80753" level="5">
+    <rule id="80726" level="5">
         <if_sid>80700</if_sid>
-        <action>ANOM_LOGIN_TIME</action>
-        <description>Auditd: login attempt is made at a time when it is prevented by, for example, pam_time.</description>
-        <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
+        <field name="audit.type">ANOM_LOGIN_TIME</field>
+        <description>Auditd: login attempt is made at a time when it is prevented by.</description>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
+    </rule>
+
+
+    <!-- SELinux rules -->
+    <!--
+    type=AVC msg=audit(1226270358.848:238): avc:  denied  { write } for  pid=13349 comm="certwatch" name="cache" dev=dm-0 ino=218171 scontext=system_u:system_r:certwatch_t:s0 tcontext=system_u:object_r:var_t:s0 tclass=dir
+    -->
+    <rule id="80730" level="3">
+        <if_sid>80700</if_sid>
+        <field name="audit.type">AVC</field>
+        <description>Auditd: SELinux permission check</description>
+        <group>audit_selinux,pci_dss_10.6.1,</group>
     </rule>
 
     <!--
-    SYSCALL with KEY
-    auditctl -w /var/log/audit/tmp_directory -p w -k monitor-tmp-w
-    auditctl -w /var/log/audit/tmp_directory -p a -k monitor-tmp-a
-    auditctl -w /var/log/audit/tmp_directory -p r -k monitor-tmp-r
-    auditctl -w /var/log/audit/tmp_directory -p x -k monitor-tmp-x
-
-    type=SYSCALL msg=audit(1451490775.722:538): arch=c000003e syscall=2 success=yes exit=3 a0=1944728 a1=241 a2=1b6 a3=0 items=2 ppid=964 pid=972 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="bash" exe="/bin/bash" key="monitor-tmp-w"
-    type=SYSCALL msg=audit(1451490797.466:539): arch=c000003e syscall=2 success=yes exit=3 a0=7837e0 a1=0 a2=8000 a3=7ffecf096050 items=1 ppid=972 pid=2335 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="nano" exe="/bin/nano" key="monitor-tmp-r"
-    type=SYSCALL msg=audit(1451490808.162:542): arch=c000003e syscall=268 success=yes exit=0 a0=ffffffffffffff9c a1=18f90f0 a2=1ff a3=7ffd06c1ae90 items=1 ppid=972 pid=2336 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="chmod" exe="/bin/chmod" key="monitor-tmp-a"
-    type=SYSCALL msg=audit(1451491421.598:557): arch=c000003e syscall=59 success=no exit=-8 a0=1929d28 a1=19b14c8 a2=1a0e008 a3=7ffc26692f10 items=1 ppid=972 pid=2369 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="bash" exe="/bin/bash" key="monitor-tmp-x"
+    type=MAC_STATUS msg=audit(1336836093.835:406): enforcing=1 old_enforcing=0 auid=0 ses=2
     -->
+    <rule id="80731" level="10">
+        <if_sid>80700</if_sid>
+        <field name="audit.type">MAC_STATUS</field>
+        <description>Auditd: SELinux mode (enforcing, permissive, off) is changed</description>
+        <group>audit_selinux,pci_dss_10.6.1,</group>
+    </rule>
 
     <!--
-    <rule id="80754" level="8">
-        <if_sid>80720</if_sid>
-        <match>key="monitor-tmp-w"</match>
-        <description>Auditd: Syscall W</description>
+    type=SELINUX_ERR msg=audit(1311948547.151:138): op=security_compute_av reason=bounds scontext=system_u:system_r:anon_webapp_t:s0-s0:c0,c100,c200 tcontext=system_u:object_r:security_t:s0 tclass=dir perms=ioctl,read,lock
+    type=USER_SELINUX_ERR msg=audit(1311948547.151:138):
+    -->
+    <rule id="80732" level="10">
+        <if_sid>80700</if_sid>
+        <field name="audit.type">SELINUX_ERR|USER_SELINUX_ERR</field>
+        <description>Auditd: SELinux error</description>
+        <group>audit_selinux,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80755" level="8">
-        <if_sid>80720</if_sid>
-        <match>key="monitor-tmp-r"</match>
-        <description>Auditd: Syscall R</description>
+
+    <!-- Miscellaneous rules -->
+    <!--
+    type=CRYPTO_REPLAY_USER msg=audit(1234567890.123:1234): Text
+    -->
+    <rule id="80740" level="12">
+        <if_sid>80700</if_sid>
+        <field name="audit.type">CRYPTO_REPLAY_USER</field>
+        <description>Auditd: replay attack detected</description>
+        <group>audit_anom,pci_dss_11.4,</group>
     </rule>
 
-    <rule id="80756" level="8">
-        <if_sid>80720</if_sid>
-        <match>key="monitor-tmp-a"</match>
-        <description>Auditd: Syscall A</description>
+    <!--
+    type=CHGRP_ID msg=audit(1450770603.209:3300446): Text
+    -->
+    <rule id="80741" level="5">
+        <if_sid>80700</if_sid>
+        <field name="audit.type">CHGRP_ID</field>
+        <description>Auditd: group ID changed</description>
+        <group>audit_anom,pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80757" level="8">
-        <if_sid>80720</if_sid>
-        <match>key="monitor-tmp-x"</match>
-        <description>Auditd: Syscall X</description>
+    <!--
+    type=CHUSER_ID msg=audit(1450770603.209:3300446): Text
+    -->
+    <rule id="80742" level="5">
+        <if_sid>80700</if_sid>
+        <field name="audit.type">CHUSER_ID</field>
+        <description>Auditd: user ID changed</description>
+        <group>audit_anom,pci_dss_10.6.1,</group>
+    </rule>
+
+
+    <!-- File system rules (watch rules) -->
+    <rule id="80780" level="3">
+        <if_sid>80700</if_sid>
+        <list field="audit.key" lookup="match_key_value" check_value="write">lists/audit-keys</list>
+        <description>Audit: Watch - Write access</description>
+        <group>audit_watch_write,</group>
+    </rule>
+
+    <rule id="80781" level="3">
+        <if_sid>80780</if_sid>
+        <field name="audit.file.name">\.+</field>
+        <description>Audit: Watch - Write access: $(audit.file.name)</description>
+        <group>audit_watch_write,</group>
+    </rule>
+
+    <rule id="80782" level="3">
+        <if_sid>80780</if_sid>
+        <field name="audit.directory.name">\.+</field>
+        <description>Audit: Watch - Write access: $(audit.directory.name)</description>
+        <group>audit_watch_write,</group>
+    </rule>
+
+    <rule id="80783" level="3">
+        <if_sid>80700</if_sid>
+        <list field="audit.key" lookup="match_key_value" check_value="read">lists/audit-keys</list>
+        <description>Audit: Watch - Read access</description>
+        <group>audit_watch_read,</group>
+    </rule>
+
+    <rule id="80784" level="3">
+        <if_sid>80783</if_sid>
+        <field name="audit.file.name">\.+</field>
+        <description>Audit: Watch - Read access: $(audit.file.name)</description>
+        <group>audit_watch_read,</group>
+    </rule>
+
+    <rule id="80785" level="3">
+        <if_sid>80783</if_sid>
+        <field name="audit.directory.name">\.+</field>
+        <description>Audit: Watch - Read access: $(audit.directory.name)</description>
+        <group>audit_watch_read,</group>
+    </rule>
+
+    <rule id="80786" level="3">
+        <if_sid>80700</if_sid>
+        <list field="audit.key" lookup="match_key_value" check_value="attribute">lists/audit-keys</list>
+        <description>Audit: Watch - Change attribute</description>
+        <group>audit_watch_attribute,</group>
+    </rule>
+
+    <rule id="80787" level="3">
+        <if_sid>80786</if_sid>
+        <field name="audit.file.name">\.+</field>
+        <description>Audit: Watch - Change attribute: $(audit.file.name)</description>
+        <group>audit_watch_attribute,</group>
+    </rule>
+
+    <rule id="80788" level="3">
+        <if_sid>80786</if_sid>
+        <field name="audit.directory.name">\.+</field>
+        <description>Audit: Watch - Change attribute: $(audit.directory.name)</description>
+        <group>audit_watch_attribute,</group>
+    </rule>
+
+    <rule id="80789" level="3">
+        <if_sid>80700</if_sid>
+        <list field="audit.key" lookup="match_key_value" check_value="execute">lists/audit-keys</list>
+        <description>Audit: Watch - Execute access: $(audit.file.name)</description>
+        <group>audit_watch_execute,</group>
+    </rule>
+
+    <rule id="80790" level="3">
+        <if_group>audit_watch_write</if_group>
+        <match>type=CREATE</match>
+        <description>Audit: Created: $(audit.file.name)</description>
+        <group>audit_watch_write, audit_watch_create,</group>
+    </rule>
+
+    <rule id="80791" level="3">
+        <if_group>audit_watch_write</if_group>
+        <match>type=DELETE</match>
+        <description>Audit: Deleted: $(audit.file.name)</description>
+        <group>audit_watch_write, audit_watch_delete,</group>
+    </rule>
+
+
+    <!-- System call rules -->
+    <rule id="80792" level="3">
+        <if_sid>80700</if_sid>
+        <list field="audit.key" lookup="match_key_value" check_value="command">lists/audit-keys</list>
+        <description>Audit: Command: $(audit.exe)</description>
+        <group>audit_command,</group>
+    </rule>
+
+    <!--
+    Generic rule with dynamic description
+    <rule id="80799" level="1">
+        <if_sid>80700</if_sid>
+        <description>Audit: $(audit.type).</description>
+        <group>audit_generic,</group>
     </rule>
     -->
-
 </group>
 <!-- AUDITD -->
