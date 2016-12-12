@@ -1,18 +1,15 @@
 {
   "order": 0,
-  "template": "ossec*",
+  "template": "wazuh*",
   "settings": {
-    "number_of_shards": 1,
-    "number_of_replicas": 0,
     "index.refresh_interval": "5s"
   },
   "mappings": {
-    "ossec": {
+    "wazuh": {
       "dynamic_templates": [
         {
           "notanalyzed": {
             "match": "*",
-            "match_mapping_type": "string",
             "mapping": {
               "type": "string",
               "index": "not_analyzed",
@@ -24,21 +21,38 @@
       "properties": {
         "@timestamp": {
           "type": "date",
-          "format": "dateOptionalTime",
-          "index": "not_analyzed"
+          "format": "dateOptionalTime"
         },
         "@version": {
           "type": "string"
         },
-        "AgentIP": {
-          "type": "string",
-          "index": "not_analyzed",
-          "doc_values": "true"
+        "agent": {
+          "properties": {
+            "ip": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "id": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "name": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            }
+          }
         },
-        "AgentID": {
-          "type": "string",
-          "index": "not_analyzed",
-          "doc_values": "true"
+        "manager": {
+          "properties": {
+            "name": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            }
+          }
         },
         "dstuser": {
           "type": "string",
@@ -123,12 +137,7 @@
           "index": "not_analyzed",
           "doc_values": "true"
         },
-        "AgentName": {
-          "type": "string",
-          "index": "not_analyzed",
-          "doc_values": "true"
-        },
-        "SyscheckFile": {
+        "syscheck": {
           "properties": {
             "path": {
               "type": "string",
@@ -145,22 +154,17 @@
               "index": "not_analyzed",
               "doc_values": "true"
             },
-            "owner_before": {
+            "uid_before": {
               "type": "string",
               "index": "not_analyzed",
               "doc_values": "true"
             },
-            "owner_after": {
+            "uid_after": {
               "type": "string",
               "index": "not_analyzed",
               "doc_values": "true"
             },
-            "gowner_before": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "gowner_after": {
+            "gid_before": {
               "type": "string",
               "index": "not_analyzed",
               "doc_values": "true"
@@ -237,27 +241,12 @@
               "index": "not_analyzed",
               "doc_values": "true"
             },
-            "perm_before": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "perm_after": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "owner_before": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "owner_after": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-          },
             "diff": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "event": {
               "type": "string",
               "index": "not_analyzed",
               "doc_values": "true"
@@ -287,14 +276,12 @@
               "index": "not_analyzed",
               "doc_values": "true"
             },
-            "AlertLevel": {
+            "level": {
               "type": "long",
-              "index": "not_analyzed",
               "doc_values": "true"
             },
-            "sidid": {
+            "id": {
               "type": "long",
-              "index": "not_analyzed",
               "doc_values": "true"
             },
             "cve": {
@@ -309,20 +296,18 @@
             },
             "frequency": {
               "type": "long",
-              "index": "not_analyzed",
               "doc_values": "true"
             },
             "firedtimes": {
               "type": "long",
-              "index": "not_analyzed",
               "doc_values": "true"
             },
-            "CIS": {
+            "cis": {
               "type": "string",
               "index": "not_analyzed",
               "doc_values": "true"
             },
-            "PCI_DSS": {
+            "pci_dss": {
               "type": "string",
               "index": "not_analyzed",
               "doc_values": "true"
@@ -348,12 +333,10 @@
             },
             "fts": {
               "type": "long",
-              "index": "not_analyzed",
               "doc_values": "true"
             },
             "accumulate": {
               "type": "long",
-              "index": "not_analyzed",
               "doc_values": "true"
             }
           }
@@ -379,11 +362,6 @@
           "doc_values": "true"
         },
         "dstport": {
-          "type": "string",
-          "index": "not_analyzed",
-          "doc_values": "true"
-        },
-        "dstuser": {
           "type": "string",
           "index": "not_analyzed",
           "doc_values": "true"
@@ -423,7 +401,7 @@
           "index": "not_analyzed",
           "doc_values": "true"
         },
-        "systemname": {
+        "system_name": {
           "type": "string",
           "index": "not_analyzed",
           "doc_values": "true"
@@ -431,15 +409,84 @@
         "type": {
           "type": "string"
         },
-        "score": {
-          "type": "double",
+        "title": {
+          "type": "string",
           "index": "not_analyzed",
           "doc_values": "true"
         },
-        "max_score": {
-          "type": "double",
-          "index": "not_analyzed",
-          "doc_values": "true"
+        "oscap": {
+          "properties": {
+            "check.title": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "check.id": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "check.result": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "check.severity": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "check.description": {
+              "type": "string"
+            },
+            "check.rationale": {
+              "type": "string"
+            },
+            "check.references": {
+              "type": "string"
+            },
+            "check.identifiers": {
+              "type": "string"
+            },
+            "check.oval.id": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "scan.id": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "scan.content": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "scan.benchmark.id": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "scan.profile.title": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "scan.profile.id": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": "true"
+            },
+            "scan.score": {
+              "type": "double",
+              "doc_values": "true"
+            },
+            "scan.return_code": {
+              "type": "long",
+              "doc_values": "true"
+            }
+          }
         }
       }
     }
