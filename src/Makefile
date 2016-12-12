@@ -454,6 +454,7 @@ endif
 
 install-server-generic: install-common
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/decoders
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rules
 	install -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db
 	install -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db/agents
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
@@ -483,20 +484,25 @@ install-server-generic: install-common
 	install -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
-ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
-	cp ${PREFIX}/rules/local_rules.xml ${PREFIX}/rules/local_rules.xml.installbackup
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/etc/decoders
-	install -m 0640 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules/local_rules.xml.installbackup ${PREFIX}/rules/local_rules.xml
-	rm ${PREFIX}/rules/local_rules.xml.installbackup
-else
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/etc/decoders
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/decoders
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/rules
+
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
+
+ifeq (,$(wildcard ${PREFIX}/etc/decoders/local_decoder.xml))
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
+endif
+ifeq (,$(wildcard ${PREFIX}/etc/rules/local_rules.xml))
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
 endif
 
-ifeq (,$(wildcard ${PREFIX}/etc/local_decoder.xml))
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/local_decoder.xml
+ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
+	cp ${PREFIX}/rules/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
+endif
+ifneq (,$(wildcard ${PREFIX}/etc/local_decoder.xml))
+	cp ${PREFIX}/etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
 endif
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
