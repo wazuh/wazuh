@@ -32,11 +32,42 @@
   -  Apr 19 14:52:02 enigma sudo:     dcid : TTY=ttyp3 ; PWD=/var/www/alex ; USER=root ; COMMAND=/sbin/chown dcid.dcid .
   -  Dec 30 19:36:11 rheltest sudo: cplummer : TTY=pts/2 ; PWD=/home/cplummer1 ; USER=root ; TSID=0000UM ; COMMAND=/bin/bash
   -  Oct 18 20:49:02 ip-10-0-0-10 sudo: santiago : TTY=pts/1 ; PWD=/root ; USER=root ; COMMAND=/bin/su
+  -  Dec  1 09:50:51 ip-10-0-0-20 sudo:    homer : user NOT in sudoers ; TTY=pts/2 ; PWD=/home/homer ; USER=root ; COMMAND=/bin/ls
   -->
+
 <decoder name="sudo">
-  <program_name>^sudo</program_name>
-  <regex>^\s*(\S+)\s:\sTTY=\S+\s;\sPWD=(\S+)\s;\sUSER=(\S+)\s;\sCOMMAND=(\.+)$</regex>
-  <order>srcuser,url,dstuser,status</order>
-  <fts>name,user,location</fts>
+    <program_name>^sudo</program_name>
+</decoder>
+
+<decoder name="sudo-fields">
+  <parent>sudo</parent>
+  <prematch>\s</prematch>
+  <regex>^\s*(\S+)\s*:</regex>
+  <order>srcuser</order>
+  <fts>name,srcuser,location</fts>
   <ftscomment>First time user executed the sudo command</ftscomment>
+</decoder>
+
+<decoder name="sudo-fields">
+  <parent>sudo</parent>
+  <regex offset="after_regex">TTY=(\S+)</regex>
+  <order>tty</order>
+</decoder>
+
+<decoder name="sudo-fields">
+  <parent>sudo</parent>
+  <regex offset="after_regex">PWD=(\S+)</regex>
+  <order>pwd</order>
+</decoder>
+
+<decoder name="sudo-fields">
+  <parent>sudo</parent>
+  <regex offset="after_regex">USER=(\S+)</regex>
+  <order>dstuser</order>
+</decoder>
+
+<decoder name="sudo-fields">
+  <parent>sudo</parent>
+  <regex offset="after_regex">COMMAND=(\S+)</regex>
+  <order>command</order>
 </decoder>

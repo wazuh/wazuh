@@ -176,6 +176,10 @@ Section "OSSEC Agent (required)" MainSec
     File /oname=libwinpthread-1.dll /usr/i686-w64-mingw32/lib/libwinpthread-1.dll
 	File agent-auth.exe
 
+    ; Create empty file active-responses.log
+    FileOpen $0 "$INSTDIR\active-response\active-responses.log" w
+    FileClose $0
+
     ; use appropriate version of "ossec-agent.exe"
     ${If} ${AtLeastWinVista}
         Delete "$INSTDIR\ossec-agent.exe"
@@ -186,7 +190,7 @@ Section "OSSEC Agent (required)" MainSec
 
     ; write registry keys
     WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayName" "${NAME} ${VERSION}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayName" "${NAME} Agent ${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayVersion" "${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayIcon" "${MUI_ICON}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "HelpLink" "http://www.ossec.net/main/support/"
