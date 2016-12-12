@@ -1,0 +1,14 @@
+filebeat:
+ prospectors:
+  - input_type: log
+    paths:
+     - "/var/ossec/logs/alerts/alerts.json"
+    document_type: json
+    json.message_key: log
+    json.keys_under_root: true
+    json.overwrite_keys: true
+
+output:
+ logstash:
+   # The Logstash hosts
+   hosts: ["YOUR_ELASTIC_SERVER_IP:5000"]
