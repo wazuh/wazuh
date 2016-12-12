@@ -1,13 +1,11 @@
 {
   "order": 0,
-  "template": "ossec*",
+  "template": "wazuh*",
   "settings": {
-    "number_of_shards": 1,
-    "number_of_replicas": 0,
     "index.refresh_interval": "5s"
   },
   "mappings": {
-    "ossec": {
+    "wazuh": {
       "dynamic_templates": [
         {
           "notanalyzed": {
@@ -27,13 +25,29 @@
         "@version": {
           "type": "text"
         },
-        "AgentIP": {
-          "type": "keyword",
-          "doc_values": "true"
+        "agent": {
+          "properties": {
+            "ip": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "id": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "name": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
         },
-        "AgentID": {
-          "type": "keyword",
-          "doc_values": "true"
+        "manager": {
+          "properties": {
+            "name": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
         },
         "dstuser": {
           "type": "keyword",
@@ -110,11 +124,7 @@
           "type": "keyword",
           "doc_values": "true"
         },
-        "AgentName": {
-          "type": "keyword",
-          "doc_values": "true"
-        },
-        "SyscheckFile": {
+        "syscheck": {
           "properties": {
             "path": {
               "type": "keyword",
@@ -128,19 +138,15 @@
               "type": "keyword",
               "doc_values": "true"
             },
-            "owner_before": {
+            "uid_before": {
               "type": "keyword",
               "doc_values": "true"
             },
-            "owner_after": {
+            "uid_after": {
               "type": "keyword",
               "doc_values": "true"
             },
-            "gowner_before": {
-              "type": "keyword",
-              "doc_values": "true"
-            },
-            "gowner_after": {
+            "gid_before": {
               "type": "keyword",
               "doc_values": "true"
             },
@@ -232,11 +238,11 @@
               "type": "keyword",
               "doc_values": "true"
             },
-            "AlertLevel": {
+            "level": {
               "type": "long",
               "doc_values": "true"
             },
-            "sidid": {
+            "id": {
               "type": "long",
               "doc_values": "true"
             },
@@ -256,11 +262,11 @@
               "type": "long",
               "doc_values": "true"
             },
-            "CIS": {
+            "cis": {
               "type": "keyword",
               "doc_values": "true"
             },
-            "PCI_DSS": {
+            "pci_dss": {
               "type": "keyword",
               "doc_values": "true"
             }
@@ -338,7 +344,7 @@
           "type": "keyword",
           "doc_values": "true"
         },
-        "systemname": {
+        "system_name": {
           "type": "keyword",
           "doc_values": "true"
         },
@@ -350,68 +356,68 @@
           "doc_values": "true"
         },
         "oscap": {
-            "properties": {
-                "check.title": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "check.id": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "check.result": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "check.severity": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "check.description": {
-                    "type": "text"
-                },
-                "check.rationale": {
-                    "type": "text"
-                },
-                "check.references": {
-                    "type": "text"
-                },
-                "check.identifiers": {
-                    "type": "text"
-                },
-                "check.oval.id": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "scan.id": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "scan.content": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "scan.benchmark.id": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "scan.profile.title": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "scan.profile.id": {
-                    "type": "keyword",
-                    "doc_values": "true"
-                },
-                "scan.score": {
-                    "type": "double",
-                    "doc_values": "true"
-                },
-                "scan.return_code": {
-                    "type": "long",
-                    "doc_values": "true"
-                }
+          "properties": {
+            "check.title": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "check.id": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "check.result": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "check.severity": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "check.description": {
+              "type": "text"
+            },
+            "check.rationale": {
+              "type": "text"
+            },
+            "check.references": {
+              "type": "text"
+            },
+            "check.identifiers": {
+              "type": "text"
+            },
+            "check.oval.id": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "scan.id": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "scan.content": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "scan.benchmark.id": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "scan.profile.title": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "scan.profile.id": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "scan.score": {
+              "type": "double",
+              "doc_values": "true"
+            },
+            "scan.return_code": {
+              "type": "long",
+              "doc_values": "true"
             }
+          }
         }
       }
     }
