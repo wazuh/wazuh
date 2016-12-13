@@ -661,10 +661,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initialize the logs */
     {
-        lf = (Eventinfo *)calloc(1, sizeof(Eventinfo));
-        if (!lf) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
-        }
+        os_calloc(1, sizeof(Eventinfo), lf);
         os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
         lf->year = prev_year;
         strncpy(lf->mon, prev_month, 3);
@@ -685,13 +682,8 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Daemon loop */
     while (1) {
-        lf = (Eventinfo *)calloc(1, sizeof(Eventinfo));
+        os_calloc(1, sizeof(Eventinfo), lf);
         os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
-
-        /* This shouldn't happen */
-        if (lf == NULL) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
-        }
 
         DEBUG_MSG("%s: DEBUG: Waiting for msgs - %d ", ARGV0, (int)time(0));
 
