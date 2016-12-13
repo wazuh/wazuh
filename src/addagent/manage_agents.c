@@ -12,7 +12,6 @@
  */
 
 #include "manage_agents.h"
-#include "wazuh_db/wdb.h"
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
 #include <stdlib.h>

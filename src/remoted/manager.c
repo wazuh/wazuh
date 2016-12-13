@@ -11,7 +11,6 @@
 #include "remoted.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
-#include "wazuh_db/wdb.h"
 #include <pthread.h>
 
 /* Internal structures */
@@ -62,7 +61,6 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             (strcmp(_msg[agentid], r_msg) == 0)) {
 
         utimes(_keep_alive[agentid], NULL);
-        wdb_update_agent_keepalive(atoi(keys.keyentries[agentid]->id));
     }
 
     else if (strcmp(r_msg, HC_STARTUP) == 0) {
@@ -133,11 +131,8 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         /* Store uname on database */
 
         if ((version = strstr(uname, " - "))) {
-            int id = atoi(keys.keyentries[agentid]->id);
             *version = '\0';
             version += 3;
-            wdb_update_agent_version(id, uname, version);
-            wdb_update_agent_keepalive(id);
         }
     }
 
