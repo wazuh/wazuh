@@ -1,9 +1,27 @@
 <!--
-  -  Amazon decoder
+  -  Unix decoder
   -  v1.0 2016/12/01
   -  Created by Wazuh, Inc. <ossec@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
+
+
+<!-- unix_chkpwd
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  - Jul 21 07:40:29 localhost unix_chkpwd[15804]: password check failed for user (username)
+-->
+<decoder name="unix_chkpwd">
+  <program_name>^unix_chkpwd</program_name>
+</decoder>
+
+<!--Jul 21 07:40:29 localhost unix_chkpwd[15804]: password check failed for user (username)-->
+<decoder name="chkpwd-user">
+  <parent>unix_chkpwd</parent>
+  <regex offset="after_parent">user \((\w+)\)$</regex>
+  <order>srcuser</order>
+</decoder>
 
 <!--
 Dec  1 12:25:52 ip-10-0-0-220 groupadd[2668]: new group: name=marge, GID=1004
