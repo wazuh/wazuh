@@ -415,102 +415,61 @@ void OS_CustomLog(const Eventinfo *lf, const char *format)
 
     snprintf(tmp_buffer, 1024, "%ld", (long int)lf->time);
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_TIMESTAMP], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
+
     snprintf(tmp_buffer, 1024, "%ld", __crt_ftell);
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_FTELL], tmp_buffer);
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
+    free(tmp_log);
 
     snprintf(tmp_buffer, 1024, "%s", (lf->generated_rule->alert_opts & DO_MAILALERT) ? "mail " : "");
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_ALERT_OPTIONS], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
 
     snprintf(tmp_buffer, 1024, "%s", lf->hostname ? lf->hostname : "None");
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_HOSTNAME], tmp_buffer);
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
+    free(tmp_log);
 
     snprintf(tmp_buffer, 1024, "%s", lf->location ? lf->location : "None");
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_LOCATION], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
 
     snprintf(tmp_buffer, 1024, "%d", lf->generated_rule->sigid);
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_ID], tmp_buffer);
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
+    free(tmp_log);
 
     snprintf(tmp_buffer, 1024, "%d", lf->generated_rule->level);
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_LEVEL], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
 
     snprintf(tmp_buffer, 1024, "%s", lf->srcip ? lf->srcip : "None");
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_SRC_IP], tmp_buffer);
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
+    free(tmp_log);
 
     snprintf(tmp_buffer, 1024, "%s", lf->dstuser ? lf->dstuser : "None");
 
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_DST_USER], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
+
     char *escaped_log;
     escaped_log = escape_newlines(lf->full_log);
 
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_FULL_LOG], escaped_log );
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
-
-    if (escaped_log) {
-        os_free(escaped_log);
-        escaped_log = NULL;
-    }
+    free(tmp_log);
+    free(escaped_log);
 
     snprintf(tmp_buffer, 1024, "%s", lf->comment ? lf->comment : "");
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_COMMENT], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
 
     snprintf(tmp_buffer, 1024, "%s", lf->generated_rule->group ? lf->generated_rule->group : "");
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_GROUP], tmp_buffer);
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
+    free(tmp_log);
 
     fprintf(_aflog, "%s", log);
     fprintf(_aflog, "\n");
     fflush(_aflog);
 
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
 
     return;
 }

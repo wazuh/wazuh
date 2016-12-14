@@ -126,7 +126,7 @@ void* wm_database_main(wm_database *data) {
                 break;
             }
 
-            for (i = 0; i < count; i += sizeof(struct inotify_event) + event->len) {
+            for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
                 event = (struct inotify_event*)&buffer[i];
 
                 if (event->wd == wd_agents) {
