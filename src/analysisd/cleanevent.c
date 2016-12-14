@@ -509,8 +509,11 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         os_strdup(lf->location + 2, lf->location);
         lf->hostname = lf->location;
         free(orig);
-    } else if (lf->hostname == NULL) {
-        lf->hostname = __shost;
+    } else {
+        if (lf->hostname == NULL) {
+            lf->hostname = __shost;
+        }
+
         lf->agent_id = strdup("000");
     }
 

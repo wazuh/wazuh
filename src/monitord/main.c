@@ -34,7 +34,6 @@ static void help_monitord()
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    --no-agents Disable agent monitoring.");
-    print_out("    --no-keys   Disable client keys monitoring and syncing.");
     print_out(" ");
     exit(1);
 }
@@ -43,7 +42,6 @@ int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
     int no_agents = 0;
-    int no_keys = 0;
     uid_t uid;
     gid_t gid;
     const char *dir  = DEFAULTDIR;
@@ -53,7 +51,6 @@ int main(int argc, char **argv)
 
     struct option options[] = {
         { "no-agents", no_argument, &no_agents, 1 },
-        { "no-keys", no_argument, &no_keys, 1 },
         { 0, 0, 0, 0 }
     };
 
@@ -128,7 +125,6 @@ int main(int argc, char **argv)
     mond.compress = (short) getDefine_Int("monitord", "compress", 0, 1);
     mond.sign = (short) getDefine_Int("monitord", "sign", 0, 1);
     mond.monitor_agents = no_agents ? 0 : (short) getDefine_Int("monitord", "monitor_agents", 0, 1);
-    mond.monitor_keys = no_keys ? 0 : (short) getDefine_Int("monitord", "monitor_keys", 0, 1);
 
     mond.agents = NULL;
     mond.smtpserver = NULL;
@@ -228,4 +224,3 @@ int main(int argc, char **argv)
     Monitord();
     exit(0);
 }
-

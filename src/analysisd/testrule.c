@@ -405,13 +405,8 @@ void OS_ReadMSG(char *ut_str)
 
     /* Daemon loop */
     while (1) {
-        lf = (Eventinfo *)calloc(1, sizeof(Eventinfo));
+        os_calloc(1, sizeof(Eventinfo), lf);
         os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
-
-        /* This shouldn't happen */
-        if (lf == NULL) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
-        }
 
         /* Fix the msg */
         snprintf(msg, 15, "1:stdin:");
