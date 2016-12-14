@@ -61,7 +61,7 @@ norootcheck="Not running rootcheck (rootkit detection)"
 yesrootcheck="Running rootcheck (rootkit detection)"
 
 # Part 3.4
-runopenscap="Do you want to run OpenSCAP?"
+runopenscap="Do you want to run policy monitoring checks? (OpenSCAP)"
 norunopenscap="Not running OpenSCAP"
 yesrunopenscap="Running OpenSCAP"
 
