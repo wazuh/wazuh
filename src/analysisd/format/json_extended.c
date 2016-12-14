@@ -81,7 +81,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
     int matches, i, j;
     const char delim[2] = ":";
     const char delim2[2] = ",";
-    char fullog[MAX_STRING];
+    char fullog[MAX_STRING] = "";
 
     // Allocate memory
     for(i = 0; i < MAX_MATCHES; i++)
@@ -94,7 +94,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
         rule = cJSON_GetObjectItem(root, "rule");
 
     // Getting full log string
-    strncpy(fullog, lf->full_log, MAX_STRING);
+    strncpy(fullog, lf->full_log, MAX_STRING - 1);
     // Searching regex
     regex_text = "\\{([A-Za-z0-9_]*: [A-Za-z0-9_., ]*)\\}";
     find_text = fullog;
@@ -104,6 +104,9 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
     if(matches > 0) {
         for(i = 0; i < matches; i++) {
             token = strtok(results[i], delim);
+
+            if (!token)
+                continue;
 
             trim(token);
             cJSON_AddItemToObject(rule, token, compliance = cJSON_CreateArray());
@@ -135,7 +138,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
     cJSON* rule;
     int firstPCI, firstCIS, foundCIS, foundPCI;
     char delim[2];
-    char buffer[MAX_STRING];
+    char buffer[MAX_STRING] = "";
     char* token;
 
     firstPCI = firstCIS = 1;
@@ -149,7 +152,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
         rule = cJSON_GetObjectItem(root, "rule");
 
     cJSON_AddItemToObject(rule, "groups", groups = cJSON_CreateArray());
-    strncpy(buffer, lf->generated_rule->group, sizeof(buffer));
+    strncpy(buffer, lf->generated_rule->group, MAX_STRING - 1);
 
     token = strtok(buffer, delim);
     while(token) {
@@ -223,10 +226,10 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 	manager = cJSON_GetObjectItem(root, "manager");
     if(lf->hostname[0] == '(') {
         char* search;
-        char string[MAX_STRING];
+        char string[MAX_STRING] = "";
         int index;
 
-		strncpy(string, lf->hostname, MAX_STRING);
+		strncpy(string, lf->hostname, MAX_STRING - 1);
         search = strchr(string, ')');
 
         if(search) {
@@ -282,8 +285,8 @@ void W_JSON_ParseLocation(cJSON* root, const Eventinfo* lf, int archives)
 {
     if(lf->location[0] == '(') {
         char* search;
-        char string[MAX_STRING];
-        strncpy(string, lf->location, MAX_STRING);
+        char string[MAX_STRING] = "";
+        strncpy(string, lf->location, MAX_STRING - 1);
         int index;
         search = strchr(string, '>');
         if(search) {

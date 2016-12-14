@@ -149,6 +149,9 @@ char *__generatetmppass()
     snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, muname, rand2, md3, md4);
     OS_MD5_Str(str1, md1);
     fstring = strdup(md1);
+    free(rand3);
+    free(rand4);
+    free(muname);
     return(fstring);
 }
 
@@ -635,21 +638,22 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             while (OS_IsAllowedName(&keys, fname) >= 0) {
                 snprintf(fname, 2048, "%s%d", agentname, acount);
-                acount++;
-                if (acount > MAX_TAG_COUNTER) {
-                    pthread_mutex_unlock(&mutex_keys);
-                    merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
-                    snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                    SSL_write(ssl, response, strlen(response));
-                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                    SSL_write(ssl, response, strlen(response));
-                    SSL_free(ssl);
-                    close(client.socket);
-                }
+
+                if (++acount > MAX_TAG_COUNTER)
+                    break;
             }
 
-            if (acount > MAX_TAG_COUNTER)
+            if (acount > MAX_TAG_COUNTER) {
+                pthread_mutex_unlock(&mutex_keys);
+                merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
+                snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
+                SSL_write(ssl, response, strlen(response));
+                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                SSL_write(ssl, response, strlen(response));
+                SSL_free(ssl);
+                close(client.socket);
                 continue;
+            }
 
             agentname = fname;
 
