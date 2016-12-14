@@ -15,7 +15,7 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
 
     // Parse hostname & Parse AGENTIP
     if(lf->hostname) {
-        W_JSON_ParseHostname(root, lf->hostname);
+        W_JSON_ParseHostname(root, lf);
         W_JSON_ParseAgentIP(root, lf);
     }
     // Parse timestamp
@@ -27,7 +27,7 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
         W_JSON_ParseLocation(root, lf, 0);
     }
     // Parse groups && Parse PCIDSS && Parse CIS
-    if(lf->generated_rule->group) {
+    if(lf->generated_rule && lf->generated_rule->group) {
         W_JSON_ParseGroups(root, lf, 1);
     }
     // Parse CIS and PCIDSS rules from rootcheck .txt benchmarks
@@ -51,7 +51,9 @@ int W_isRootcheck(cJSON* root, int nested)
     else
         rule = cJSON_GetObjectItem(root, "rule");
 
-    groups = cJSON_GetObjectItem(rule, "groups");
+    if (!(groups = cJSON_GetObjectItem(rule, "groups")))
+        return 0;
+
     totalGroups = cJSON_GetArraySize(groups);
     for(i = 0; i < totalGroups; i++) {
         group = cJSON_GetArrayItem(groups, i);
@@ -79,7 +81,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
     int matches, i, j;
     const char delim[2] = ":";
     const char delim2[2] = ",";
-    char fullog[MAX_STRING];
+    char fullog[MAX_STRING] = "";
 
     // Allocate memory
     for(i = 0; i < MAX_MATCHES; i++)
@@ -92,7 +94,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
         rule = cJSON_GetObjectItem(root, "rule");
 
     // Getting full log string
-    strncpy(fullog, lf->full_log, MAX_STRING);
+    strncpy(fullog, lf->full_log, MAX_STRING - 1);
     // Searching regex
     regex_text = "\\{([A-Za-z0-9_]*: [A-Za-z0-9_., ]*)\\}";
     find_text = fullog;
@@ -102,6 +104,9 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
     if(matches > 0) {
         for(i = 0; i < matches; i++) {
             token = strtok(results[i], delim);
+
+            if (!token)
+                continue;
 
             trim(token);
             cJSON_AddItemToObject(rule, token, compliance = cJSON_CreateArray());
@@ -133,7 +138,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
     cJSON* rule;
     int firstPCI, firstCIS, foundCIS, foundPCI;
     char delim[2];
-    char buffer[MAX_STRING];
+    char buffer[MAX_STRING] = "";
     char* token;
 
     firstPCI = firstCIS = 1;
@@ -147,7 +152,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
         rule = cJSON_GetObjectItem(root, "rule");
 
     cJSON_AddItemToObject(rule, "groups", groups = cJSON_CreateArray());
-    strncpy(buffer, lf->generated_rule->group, sizeof(buffer));
+    strncpy(buffer, lf->generated_rule->group, MAX_STRING - 1);
 
     token = strtok(buffer, delim);
     while(token) {
@@ -177,9 +182,9 @@ int add_groupPCI(cJSON* rule, char* group, int firstPCI)
         // Once we add pci_dss group and create array for PCI_DSS requirements
         if(firstPCI == 1) {
             pci = cJSON_CreateArray();
-            cJSON_AddItemToObject(rule, "PCI_DSS", pci);
+            cJSON_AddItemToObject(rule, "pci_dss", pci);
         } else {
-            pci = cJSON_GetObjectItem(rule, "PCI_DSS");
+            pci = cJSON_GetObjectItem(rule, "pci_dss");
         }
         // Prepare string and add it to PCI dss array
         aux = strdup(group);
@@ -198,9 +203,9 @@ int add_groupCIS(cJSON* rule, char* group, int firstCIS)
     if((startsWith("cis_", group)) == 1) {
         if(firstCIS == 1) {
             cis = cJSON_CreateArray();
-            cJSON_AddItemToObject(rule, "CIS", cis);
+            cJSON_AddItemToObject(rule, "cis", cis);
         } else {
-            cis = cJSON_GetObjectItem(rule, "CIS");
+            cis = cJSON_GetObjectItem(rule, "cis");
         }
         aux = strdup(group);
         str_cut(aux, 0, 4);
@@ -213,23 +218,31 @@ int add_groupCIS(cJSON* rule, char* group, int firstCIS)
 
 // If hostname being with "(" means that alerts came from an agent, so we will remove the brakets
 // ** TODO ** Regex instead str_cut
-void W_JSON_ParseHostname(cJSON* root, char* hostname)
+void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 {
-    if(hostname[0] == '(') {
+	cJSON* agent;
+	cJSON* manager;
+	agent = cJSON_GetObjectItem(root, "agent");
+	manager = cJSON_GetObjectItem(root, "manager");
+    if(lf->hostname[0] == '(') {
         char* search;
-        char string[MAX_STRING];
-        strncpy(string, hostname, MAX_STRING);
+        char string[MAX_STRING] = "";
         int index;
+
+		strncpy(string, lf->hostname, MAX_STRING - 1);
         search = strchr(string, ')');
+
         if(search) {
             index = (int)(search - string);
             str_cut(string, index, -1);
             str_cut(string, 0, 1);
-            cJSON_AddStringToObject(root, "hostname", string);
+			cJSON_AddStringToObject(agent, "name", string);
         }
-    } else {
-        cJSON_AddStringToObject(root, "hostname", hostname);
-    }
+    } else if(lf->agent_id && !strcmp(lf->agent_id, "000")){
+        cJSON_AddStringToObject(agent, "name", cJSON_GetObjectItem(manager,"name")->valuestring);
+    }else{
+		cJSON_AddStringToObject(root, "hostname", lf->hostname);
+	}
 }
 // Parse timestamp
 void W_JSON_ParseTimestamp(cJSON* root, const Eventinfo* lf)
@@ -247,6 +260,7 @@ void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
     char *string;
     char *ip;
     char *end;
+	cJSON* agent;
 
     if (lf->hostname[0] == '(') {
         string = strdup(lf->hostname);
@@ -255,8 +269,10 @@ void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
             if ((end = strchr(ip += 2, '-')))
                 *end = '\0';
 
-            if (strcmp(ip, "any"))
-                cJSON_AddStringToObject(root, "agentip", ip);
+            if (strcmp(ip, "any")){
+				agent = cJSON_GetObjectItem(root, "agent");
+				cJSON_AddStringToObject(agent, "ip", ip);
+			}
         }
 
         free(string);
@@ -269,8 +285,8 @@ void W_JSON_ParseLocation(cJSON* root, const Eventinfo* lf, int archives)
 {
     if(lf->location[0] == '(') {
         char* search;
-        char string[MAX_STRING];
-        strncpy(string, lf->location, MAX_STRING);
+        char string[MAX_STRING] = "";
+        strncpy(string, lf->location, MAX_STRING - 1);
         int index;
         search = strchr(string, '>');
         if(search) {

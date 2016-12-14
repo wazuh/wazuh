@@ -47,7 +47,8 @@ int receive_msg()
             /* Manager disconnected */
             if (recv_b <= 0) {
                 return -1;
-            }
+            } else if (length <= 0)
+                continue;
 
             recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
@@ -225,4 +226,3 @@ int receive_msg()
 
     return 0;
 }
-

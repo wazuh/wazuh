@@ -14,14 +14,9 @@
 #include "eventinfo.h"
 #include "alerts/alerts.h"
 #include "decoder.h"
-#include "wazuh_db/wdb.h"
+#include "rootcheck_op.h"
 
 #define ROOTCHECK_DIR    "/queue/rootcheck"
-
-/* Rootcheck fields */
-#define RCK_TITLE   0
-#define RCK_FILE    1
-#define RCK_NFIELDS 2
 
 /* Local variables */
 static char *rk_agent_ips[MAX_AGENTS];
@@ -30,12 +25,6 @@ static int rk_err;
 
 /* Rootcheck decoder */
 static OSDecoderInfo *rootcheck_dec = NULL;
-
-/* Get rootcheck title from log */
-static char* rk_get_title(const char *log);
-
-/* Get rootcheck file from log */
-static char* rk_get_file(const char *log);
 
 /* Initialize the necessary information to process the rootcheck information */
 void RootcheckInit()
@@ -59,8 +48,8 @@ void RootcheckInit()
     /* New fields as dynamic */
 
     os_calloc(Config.decoder_order_size, sizeof(char *), rootcheck_dec->fields);
-    rootcheck_dec->fields[RCK_TITLE] = "title";
-    rootcheck_dec->fields[RCK_FILE] = "file";
+    rootcheck_dec->fields[RK_TITLE] = "title";
+    rootcheck_dec->fields[RK_FILE] = "file";
 
     debug1("%s: RootcheckInit completed.", ARGV0);
 
@@ -182,12 +171,11 @@ int DecodeRootcheck(Eventinfo *lf)
             if (strcmp(lf->log, rk_buf) == 0) {
                 rootcheck_dec->fts = 0;
                 lf->decoder_info = rootcheck_dec;
-                lf->nfields = RCK_NFIELDS;
-                lf->fields[RCK_TITLE].key = rootcheck_dec->fields[RCK_TITLE];
-                lf->fields[RCK_TITLE].value = rk_get_title(lf->log);
-                lf->fields[RCK_FILE].key = rootcheck_dec->fields[RCK_FILE];
-                lf->fields[RCK_FILE].value = rk_get_file(lf->log);
-                wdb_update_pm(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, lf->log, (long int)lf->time);
+                lf->nfields = RK_NFIELDS;
+                lf->fields[RK_TITLE].key = rootcheck_dec->fields[RK_TITLE];
+                lf->fields[RK_TITLE].value = rk_get_title(lf->log);
+                lf->fields[RK_FILE].key = rootcheck_dec->fields[RK_FILE];
+                lf->fields[RK_FILE].value = rk_get_file(lf->log);
                 return (1);
             }
         }
@@ -206,12 +194,11 @@ int DecodeRootcheck(Eventinfo *lf)
                 fprintf(fp, "!%ld", (long int)lf->time);
                 rootcheck_dec->fts = 0;
                 lf->decoder_info = rootcheck_dec;
-                lf->nfields = RCK_NFIELDS;
-                lf->fields[RCK_TITLE].key = rootcheck_dec->fields[RCK_TITLE];
-                lf->fields[RCK_TITLE].value = rk_get_title(lf->log);
-                lf->fields[RCK_FILE].key = rootcheck_dec->fields[RCK_FILE];
-                lf->fields[RCK_FILE].value = rk_get_file(lf->log);
-                wdb_update_pm(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, lf->log, (long int)lf->time);
+                lf->nfields = RK_NFIELDS;
+                lf->fields[RK_TITLE].key = rootcheck_dec->fields[RK_TITLE];
+                lf->fields[RK_TITLE].value = rk_get_title(lf->log);
+                lf->fields[RK_FILE].key = rootcheck_dec->fields[RK_FILE];
+                lf->fields[RK_FILE].value = rk_get_file(lf->log);
                 return (1);
             }
         }
@@ -230,74 +217,10 @@ int DecodeRootcheck(Eventinfo *lf)
 
     rootcheck_dec->fts = FTS_DONE;
     lf->decoder_info = rootcheck_dec;
-    lf->nfields = RCK_NFIELDS;
-    lf->fields[RCK_TITLE].key = rootcheck_dec->fields[RCK_TITLE];
-    lf->fields[RCK_TITLE].value = rk_get_title(lf->log);
-    lf->fields[RCK_FILE].key = rootcheck_dec->fields[RCK_FILE];
-    lf->fields[RCK_FILE].value = rk_get_file(lf->log);
-    wdb_insert_pm(lf->agent_id ? atoi(lf->agent_id) : 0, lf->location, (long int)lf->time, lf->log);
+    lf->nfields = RK_NFIELDS;
+    lf->fields[RK_TITLE].key = rootcheck_dec->fields[RK_TITLE];
+    lf->fields[RK_TITLE].value = rk_get_title(lf->log);
+    lf->fields[RK_FILE].key = rootcheck_dec->fields[RK_FILE];
+    lf->fields[RK_FILE].value = rk_get_file(lf->log);
     return (1);
-}
-
-/* Get rootcheck title from log */
-
-char* rk_get_title(const char *log) {
-    char *title = strdup(log);
-    char *c;
-    char *d;
-    char *orig;
-
-    if ((c = strstr(title, " {"))) {
-        if (c == title) {
-            free(title);
-            return NULL;
-        } else
-            *c = '\0';
-    }
-
-    if ((c = strstr(title, "System Audit: ")) && (!(d = strstr(title, " - ")) || c < d )) {
-        orig = title;
-        title = strdup(c + 14);
-        free(orig);
-    }
-
-    // Remove "\. .*"
-
-    if ((c = strstr(title, ". "))) {
-        c[1] = '\0';
-    }
-
-    // Remove "File: ('.*') "
-
-    if (((c = strstr(title, "File '")) || (c = strstr(title, "file '"))) && (d = strstr(c + 6, "' "))) {
-        memmove(c + 5, d + 2, strlen(d + 2) + 1);
-    }
-
-    return title;
-}
-
-/* Get rootcheck file from log */
-
-char* rk_get_file(const char *log) {
-    char *c;
-    char *file;
-
-    if ((file = strstr(log, "File: "))) {
-        file += 6;
-
-        if ((c = strstr(file, ". "))) {
-            *c = '\0';
-            return strdup(file);
-        } else
-            return NULL;
-    } else if ((file = strstr(log, "File '")) || (file = strstr(log, "file '"))) {
-        file += 6;
-
-        if ((c = strstr(file, "' "))) {
-            *c = '\0';
-            return strdup(file);
-        } else
-            return NULL;
-    } else
-        return NULL;
 }

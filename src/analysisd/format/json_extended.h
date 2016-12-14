@@ -15,7 +15,7 @@
 // Main function, call the others parsers.
 void W_ParseJSON(cJSON *root, const Eventinfo *lf);
 // Parse hostname
-void W_JSON_ParseHostname(cJSON *root, char *hostname);
+void W_JSON_ParseHostname(cJSON *root, const Eventinfo *lf);
 // Parse Timestamp
 void W_JSON_ParseTimestamp(cJSON *root, const Eventinfo *lf);
 // Parse AgentIP

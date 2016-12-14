@@ -16,6 +16,8 @@
 
 static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
+static const char *SQL_BEGIN = "BEGIN;";
+static const char *SQL_COMMIT = "COMMIT;";
 
 sqlite3 *wdb_global = NULL;
 
@@ -152,6 +154,36 @@ int wdb_step(sqlite3_stmt *stmt) {
     return result;
 }
 
+/* Begin transaction */
+int wdb_begin(sqlite3 *db) {
+    sqlite3_stmt *stmt = NULL;
+    int result;
+
+    if (wdb_prepare(db, SQL_BEGIN, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        return -1;
+    }
+
+    result = wdb_step(stmt) != SQLITE_DONE;
+    sqlite3_finalize(stmt);
+    return result;
+}
+
+/* Commit transaction */
+int wdb_commit(sqlite3 *db) {
+    sqlite3_stmt *stmt = NULL;
+    int result;
+
+    if (wdb_prepare(db, SQL_COMMIT, -1, &stmt, NULL)) {
+        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        return -1;
+    }
+
+    result = wdb_step(stmt) != SQLITE_DONE;
+    sqlite3_finalize(stmt);
+    return result;
+}
+
 /* Create global database */
 int wdb_create_global(const char *path) {
     char max_agents[16];
@@ -195,7 +227,7 @@ int wdb_create_file(const char *path, const char *source) {
     for (sql = source; sql && *sql; sql = tail) {
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
             debug1("%s: ERROR: Preparing statement: %s", ARGV0, sqlite3_errmsg(db));
-            sqlite3_close(db);
+            sqlite3_close_v2(db);
             return -1;
         }
 
@@ -209,7 +241,7 @@ int wdb_create_file(const char *path, const char *source) {
         default:
             debug1("%s: ERROR: Stepping statement: %s", ARGV0, sqlite3_errmsg(db));
             sqlite3_finalize(stmt);
-            sqlite3_close(db);
+            sqlite3_close_v2(db);
             return -1;
 
         }
@@ -217,7 +249,7 @@ int wdb_create_file(const char *path, const char *source) {
         sqlite3_finalize(stmt);
     }
 
-    sqlite3_close(db);
+    sqlite3_close_v2(db);
     return chmod(path, 0660);
 }
 
