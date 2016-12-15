@@ -212,11 +212,14 @@ int wdb_create_profile(const char *path) {
 
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source) {
-    sqlite3 *db;
+    const char *ROOT = "root";
     const char *sql;
     const char *tail;
+    sqlite3 *db;
     sqlite3_stmt *stmt;
     int result;
+    uid_t uid;
+    gid_t gid;
 
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
         debug1("%s: ERROR: Couldn't create SQLite database '%s': %s", ARGV0, path, sqlite3_errmsg(db));
@@ -250,7 +253,26 @@ int wdb_create_file(const char *path, const char *source) {
     }
 
     sqlite3_close_v2(db);
-    return chmod(path, 0660);
+
+    uid = Privsep_GetUser(ROOT);
+    gid = Privsep_GetGroup(GROUPGLOBAL);
+
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        merror(USER_ERROR, ARGV0, ROOT, GROUPGLOBAL);
+        return -1;
+    }
+
+    if (chown(path, uid, gid) < 0) {
+        merror(CHOWN_ERROR, ARGV0, path, errno, strerror(errno));
+        return -1;
+    }
+
+    if (chmod(path, 0660) < 0) {
+        merror(CHMOD_ERROR, ARGV0, path, errno, strerror(errno));
+        return -1;
+    }
+
+    return 0;
 }
 
 /* Rebuild database. Returns 0 on success or -1 on error. */
