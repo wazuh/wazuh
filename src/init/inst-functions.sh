@@ -166,8 +166,6 @@ SetHeaders()
 ##########
 GenerateInitConf()
 {
-    VERSION_FILE="./src/VERSION"
-    VERSION=`cat ${VERSION_FILE}`
     chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
     echo "DIRECTORY=\"${INSTALLDIR}\"" > ${OSSEC_INIT}
     echo "NAME=\"${NAME}\"" >> ${OSSEC_INIT}
