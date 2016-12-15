@@ -18,9 +18,9 @@ static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os = ?, version 
 static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
-static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ? AND fim_offset NOT NULL;";
-static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ? AND reg_offset NOT NULL;";
-static const char *SQL_SELECT_PM_OFFSET = "SELECT pm_offset FROM agent WHERE id = ? AND pm_offset NOT NULL;";
+static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
+static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ?;";
+static const char *SQL_SELECT_PM_OFFSET = "SELECT pm_offset FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHERE id = ?;";
 static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHERE id = ?;";
 static const char *SQL_UPDATE_PM_OFFSET = "UPDATE agent SET pm_offset = ? WHERE id = ?;";

@@ -17,9 +17,9 @@ CREATE TABLE IF NOT EXISTS agent (
     date_add TEXT NOT NULL,
     last_keepalive TEXT,
     status TEXT NOT NULL CHECK (status IN ('empty', 'pending', 'updated')) DEFAULT 'empty',
-    fim_offset INTEGER,
-    reg_offset INTEGER,
-    pm_offset INTEGER
+    fim_offset INTEGER NOT NULL DEFAULT 0,
+    reg_offset INTEGER NOT NULL DEFAULT 0,
+    pm_offset INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
