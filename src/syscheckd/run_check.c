@@ -22,7 +22,7 @@
 
 /* Prototypes */
 static void send_sk_db(void);
-
+static void log_realtime_status(int);
 
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
@@ -61,6 +61,7 @@ static void send_sk_db()
 {
     /* Send scan start message */
     if (syscheck.dir[0]) {
+        log_realtime_status(2);
         merror("%s: INFO: Starting syscheck scan (forwarding database).", ARGV0);
         send_rootcheck_msg("Starting syscheck scan.");
     } else {
@@ -224,6 +225,7 @@ void start_daemon()
         /* If time elapsed is higher than the rootcheck_time, run it */
         if (syscheck.rootcheck) {
             if (((curr_time - prev_time_rk) > rootcheck.time) || run_now) {
+                log_realtime_status(2);
                 run_rk_check();
                 prev_time_rk = time(0);
             }
@@ -241,6 +243,7 @@ void start_daemon()
             } else {
                 /* Send scan start message */
                 if (syscheck.dir[0]) {
+                    log_realtime_status(2);
                     merror("%s: INFO: Starting syscheck scan.", ARGV0);
                     send_rootcheck_msg("Starting syscheck scan.");
                 }
@@ -274,6 +277,7 @@ void start_daemon()
             /* zero-out the fd_set */
             FD_ZERO (&rfds);
             FD_SET(syscheck.realtime->fd, &rfds);
+            log_realtime_status(1);
 
             run_now = select(syscheck.realtime->fd + 1, &rfds,
                              NULL, NULL, &selecttime);
@@ -290,6 +294,7 @@ void start_daemon()
         }
 #elif defined(WIN32)
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
+            log_realtime_status(1);
             if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
                 merror("%s: ERROR: WaitForSingleObjectEx failed (for realtime fim).", ARGV0);
                 sleep(SYSCHECK_WAIT);
@@ -421,4 +426,34 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
              inode ? (long)statbuf.st_ino : 0);
 
     return (0);
+}
+
+void log_realtime_status(int next) {
+    /*
+     * 0: stop (initial)
+     * 1: run
+     * 2: pause
+     */
+
+    static int status = 0;
+
+    switch (status) {
+    case 0:
+        if (next == 1) {
+            verbose("%s: INFO: Starting syscheck real-time monitoring.", ARGV0);
+            status = next;
+        }
+        break;
+    case 1:
+        if (next == 2) {
+            verbose("%s: INFO: Pausing syscheck real-time monitoring.", ARGV0);
+            status = next;
+        }
+        break;
+    case 2:
+        if (next == 1) {
+            verbose("%s: INFO: Resuming syscheck real-time monitoring.", ARGV0);
+            status = next;
+        }
+    }
 }

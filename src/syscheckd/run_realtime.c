@@ -91,7 +91,7 @@ int realtime_checksumfile(const char *file_name)
 /* Start real time monitoring using inotify */
 int realtime_start()
 {
-    verbose("%s: INFO: Initializing real time file monitoring (not started).", ARGV0);
+    verbose("%s: INFO: Initializing real time file monitoring engine.", ARGV0);
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if (syscheck.realtime == NULL) {
@@ -284,7 +284,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
 int realtime_start()
 {
-    verbose("%s: INFO: Initializing real time file monitoring (not started).", ARGV0);
+    verbose("%s: INFO: Initializing real time file monitoring engine.", ARGV0);
 
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
     syscheck.realtime->dirtb = (void *)OSHash_Create();
