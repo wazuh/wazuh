@@ -211,9 +211,11 @@ void wm_check_agents() {
 // Synchronize agents
 void wm_sync_agents() {
     unsigned int i;
+    char path[PATH_MAX] = "";
     keystore keys;
     keyentry *entry;
     int *agents;
+    struct stat buffer;
 
     debug1("%s: DEBUG: Synchronizing agents.", WM_DATABASE_LOGTAG);
     OS_ReadKeys(&keys, 0);
@@ -229,7 +231,33 @@ void wm_sync_agents() {
             continue;
         }
 
-        wdb_insert_agent(id, entry->name, entry->ip->ip, entry->key);
+        if (!(wdb_insert_agent(id, entry->name, entry->ip->ip, entry->key) || module->full_sync)) {
+            // Find files
+
+            snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
+
+            if (stat(path, &buffer) < 0) {
+                if (errno != ENOENT)
+                    merror(FSTAT_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
+            } else if (wdb_set_agent_offset(id, WDB_SYSCHECK, buffer.st_size) < 1)
+                merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s).", WM_DATABASE_LOGTAG, id, entry->name);
+
+            snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck-registry", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
+
+            if (stat(path, &buffer) < 0) {
+                if (errno != ENOENT)
+                    merror(FSTAT_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
+            } else if (wdb_set_agent_offset(id, WDB_SYSCHECK_REGISTRY, buffer.st_size) < 1)
+                merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s).", WM_DATABASE_LOGTAG, id, entry->name);
+
+            snprintf(path, PATH_MAX, "%s/(%s) %s->rootcheck", DEFAULTDIR ROOTCHECK_DIR, entry->name, entry->ip->ip);
+
+            if (stat(path, &buffer) < 0) {
+                if (errno != ENOENT)
+                    merror(FSTAT_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
+            } else if (wdb_set_agent_offset(id, WDB_ROOTCHECK, buffer.st_size) < 1)
+                merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s).", WM_DATABASE_LOGTAG, id, entry->name);
+        }
     }
 
     /* Delete old keys */
@@ -320,7 +348,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
     char path[PATH_MAX] = "";
     struct stat buffer;
     long offset;
-    long result = 0;
     int id_agent = -1;
     int is_registry = 0;
     int type;
@@ -384,16 +411,17 @@ int wm_sync_file(const char *dirname, const char *fname) {
         return wm_sync_agentinfo(id_agent, path) < 0 || wdb_update_agent_keepalive(id_agent, buffer.st_mtime) < 0 ? -1 : 0;
 
     switch (wdb_get_agent_status(id_agent)) {
-    case WDB_AGENT_EMPTY:
-        offset = module->full_sync ? 0 : buffer.st_size;
-        break;
     case WDB_AGENT_PENDING:
         merror("%s: WARN: Agent '%d' database status was 'pending'. Data could be lost.", WM_DATABASE_LOGTAG, id_agent);
         wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED);
         // Continue, don't break
+    case WDB_AGENT_EMPTY:
     case WDB_AGENT_UPDATED:
-        if ((offset = wdb_get_agent_offset(id_agent, type)) < 0)
-            offset = module->full_sync ? 0 : buffer.st_size;
+        if ((offset = wdb_get_agent_offset(id_agent, type)) < 0) {
+            merror("%s: ERROR: Couldn't file offset from database for agent '%d'.", WM_DATABASE_LOGTAG, id_agent);
+            return -1;
+        }
+
         break;
     default:
         merror("%s: ERROR: Couldn't get database status for agent '%d'.", WM_DATABASE_LOGTAG, id_agent);
@@ -423,7 +451,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
-        result = type == WDB_ROOTCHECK ? wm_fill_rootcheck(db, path, offset) : wm_fill_syscheck(db, path, offset, is_registry);
+        offset = type == WDB_ROOTCHECK ? wm_fill_rootcheck(db, path, offset) : wm_fill_syscheck(db, path, offset, is_registry);
         sqlite3_close_v2(db);
 
         if (wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED) < 1) {
@@ -431,10 +459,12 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
-        if (result < 0) {
+        if (offset < 0) {
             merror("%s: ERROR: Couldn't fill database for file '%s/%s'.", WM_DATABASE_LOGTAG, dirname, fname);
             return -1;
-        } else if (result != buffer.st_size && wdb_set_agent_offset(id_agent, type, result) < 1) {
+        }
+
+        if (offset != buffer.st_size && wdb_set_agent_offset(id_agent, type, offset) < 1) {
             merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s) (post-fill).", WM_DATABASE_LOGTAG, id_agent, name);
             return -1;
         }
