@@ -317,7 +317,7 @@ void wm_scan_directory(const char *dirname) {
 int wm_sync_file(const char *dirname, const char *fname) {
     char name[FILE_SIZE];
     char addr[FILE_SIZE];
-    char path[PATH_MAX];
+    char path[PATH_MAX] = "";
     struct stat buffer;
     long offset;
     long result = 0;
@@ -328,7 +328,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
 
     debug1("%s: DEBUG: Synchronizing file '%s/%s'", WM_DATABASE_LOGTAG, dirname, fname);
     snprintf(path, PATH_MAX, "%s/%s", dirname, fname);
-    path[PATH_MAX] = '\0';
 
     if (!strcmp(dirname, DEFAULTDIR AGENTINFO_DIR))
         type = WDB_AGENTINFO;
@@ -677,9 +676,9 @@ wmodule* wm_database_read() {
     data.sleep = getDefine_Int("wazuh_database", "sleep", 0, 86400);
 
     if (data.sync_agents || data.sync_syscheck || data.sync_rootcheck) {
-        module = calloc(1, sizeof(wmodule));
+        os_calloc(1, sizeof(wmodule), module);
+        os_calloc(1, sizeof(wm_database), module->data);
         module->context = &WM_DATABASE_CONTEXT;
-        module->data = calloc(1, sizeof(wm_database));
         memcpy(module->data, &data, sizeof(wm_database));
     }
 
