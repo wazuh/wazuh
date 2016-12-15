@@ -1,5 +1,5 @@
 /*
- * Shared functions for Syscheck events decoding
+ * Shared functions for Rootcheck events decoding
  * Copyright (C) 2016 Wazuh Inc.
  *
  * This program is a free software; you can redistribute it
