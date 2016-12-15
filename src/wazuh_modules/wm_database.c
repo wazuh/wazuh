@@ -53,6 +53,8 @@ const wm_context WM_DATABASE_CONTEXT = {
 void* wm_database_main(wm_database *data) {
     module = data;
 
+    verbose("%s: INFO: Module started.", WM_DATABASE_LOGTAG);
+
     // Manager name synchronization
 
     if (data->sync_agents)
@@ -696,6 +698,10 @@ void* wm_database_destroy(wm_database *data) {
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 wmodule* wm_database_read() {
+#ifdef CLIENT
+    // This module won't be available on agents
+    return NULL;
+#else
     wm_database data;
     wmodule *module = NULL;
 
@@ -713,4 +719,5 @@ wmodule* wm_database_read() {
     }
 
     return module;
+#endif
 }
