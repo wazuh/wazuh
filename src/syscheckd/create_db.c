@@ -410,7 +410,7 @@ int create_db()
 
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
     if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
-        verbose("%s: INFO: Real time file monitoring started.", ARGV0);
+        verbose("%s: INFO: Real time file monitoring engine started.", ARGV0);
     }
 #endif
     merror("%s: INFO: Finished creating syscheck database (pre-scan "
