@@ -62,7 +62,10 @@ if [ "$1" = "conf" ]; then
   elif [ "$INSTYPE" = "agent" ]; then
     WriteAgent "no_localfiles"
   else
-    error
+    echo " USE: ./gen_ossec.sh conf install_type distribution [version]"
+    echo "   - install_type: manager, agent"
+    echo "   - distribution: redhat, debian, ..."
+    exit 1
   fi
 
   cat "$NEWCONFIG"
