@@ -498,13 +498,6 @@ ifeq (,$(wildcard ${PREFIX}/etc/rules/local_rules.xml))
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
 endif
 
-ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
-	cp ${PREFIX}/rules/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
-endif
-ifneq (,$(wildcard ${PREFIX}/etc/local_decoder.xml))
-	cp ${PREFIX}/etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
-endif
-
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck

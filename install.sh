@@ -107,17 +107,11 @@ Install()
     # If update, stop ossec
     if [ "X${update_only}" = "Xyes" ]; then
         UpdateStopOSSEC
-        # Move old decoders (ossec_decodes and wazuh_decoders) to etc/decoders
-        if [ ! "X$INSTYPE" = "Xagent" ]; then
-          UpdateLegacyDecoders
-        fi
     fi
-
 
     ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install
 
     cd ../
-
 
     # Generate the /etc/ossec-init.conf
     GenerateInitConf
@@ -126,15 +120,12 @@ Install()
     if [ "X$INSTYPE" = "Xserver" ]; then
         WazuhSetup
     fi
-   # If update_rules is set, we need to tweak
-    # ossec.conf to read the new signatures.
-    if [ "X${update_rules}" = "Xyes" ]; then
-        UpdateOSSECRules
-    fi
 
     # If update, start OSSEC
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
+        # Update versions previous to Wazuh 1.2
+        UpdateOldVersions
         UpdateStartOSSEC
     fi
 
@@ -748,6 +739,7 @@ main()
                 USER_DIR=`getPreinstalledDir`
                 USER_DELETE_DIR="$nomatch"
                 USER_OLD_VERSION=`getPreinstalledVersion`
+                USER_OLD_NAME=`getPreinstalledName`
             fi
 
             ct="1"
@@ -757,28 +749,6 @@ main()
                 ct="0"
             fi
 
-            while [ $ct = "1" ]; do
-                ct="0"
-                $ECHO " - ${updaterules} ($yes/$no): "
-                if [ "X${USER_UPDATE_RULES}" = "X" ]; then
-                    read ANY
-                else
-                    ANY=$yes
-                fi
-
-                case $ANY in
-                    $yes)
-                        update_rules="yes"
-                        break;
-                        ;;
-                    $no)
-                        break;
-                        ;;
-                    *)
-                        ct="1"
-                        ;;
-                esac
-            done
         fi
         echo ""
     fi
@@ -964,8 +934,6 @@ if [ "x$HYBID" = "xgo" ]; then
     echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_UPDATE_RULES="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_CLEANINSTALL="y"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf

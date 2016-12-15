@@ -79,6 +79,13 @@ getPreinstalledVersion()
     echo $VERSION
 }
 
+getPreinstalledName()
+{
+    NAME=""
+    . ${OSSEC_INIT}
+    echo $NAME
+}
+
 UpdateStartOSSEC()
 {
    . ${OSSEC_INIT}
@@ -100,69 +107,68 @@ UpdateStopOSSEC()
    rm -f $DIRECTORY/queue/syscheck/.* > /dev/null 2>&1
 }
 
-UpdateOSSECRules()
+UpdateOldVersions()
 {
-    . ${OSSEC_INIT}
-
-    OSSEC_CONF_FILE="$DIRECTORY/etc/ossec.conf"
-
-    # Backing up the old config
-    cp -pr ${OSSEC_CONF_FILE} "${OSSEC_CONF_FILE}.$$.bak"
-
-    # Getting rid of old rules entries
-    grep -Ev "</*rules>|<include>|<list>|<decoder>|<decoder_dir|<rule_dir>|rules global entry" ${OSSEC_CONF_FILE} > "${OSSEC_CONF_FILE}.$$.tmp"
-
-    # Customer decoder, decoder_dir, rule_dir are carried over during upgrade
-    grep -E '<decoder>|<decoder_dir|<rule_dir>' ${OSSEC_CONF_FILE} | grep -v '<decoder>etc/decoder.xml' | grep -v '<decoder_dir>etc/decoders' | grep -v '<decoder>etc/local_decoder.xml' | grep -v '<decoder_dir>etc/ossec_decoders' | grep -v '<decoder_dir>etc/wazuh_decoders' | grep -v '<!--' >> "${OSSEC_CONF_FILE}.$$.tmp2"
-
-    # Check for custom files that may have been added in <rules> element
-    for i in `grep -E '<include>|<list>' ${OSSEC_CONF_FILE} | grep -v '<!--'`
-    do
-      grep "$i" ${RULES_TEMPLATE}>/dev/null || echo "    $i" >> "${OSSEC_CONF_FILE}.$$.tmp2"
-    done
-
-    # Putting everything back together
-    cat "${OSSEC_CONF_FILE}.$$.tmp" > ${OSSEC_CONF_FILE}
-    rm "${OSSEC_CONF_FILE}.$$.tmp"
-    echo "" >> ${OSSEC_CONF_FILE}
-    echo "<ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
-    grep -v '</rules>' ${RULES_TEMPLATE} >> ${OSSEC_CONF_FILE}
-    cat "${OSSEC_CONF_FILE}.$$.tmp2" >> ${OSSEC_CONF_FILE}
-    echo "</rules>" >> ${OSSEC_CONF_FILE}
-    echo "</ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
-    rm "${OSSEC_CONF_FILE}.$$.tmp2"
-
-}
-
-UpdateLegacyDecoders()
-{
-    . ${OSSEC_INIT}
-
-    if [ -d "$DIRECTORY/etc/decoders" ]; then
+    # If it is Wazuh 1.2 or newer, exit
+    if [ "X$USER_OLD_NAME" = "XWazuh" ]; then
         return
     fi
 
     OSSEC_CONF_FILE="$DIRECTORY/etc/ossec.conf"
+    OSSEC_CONF_FILE_ORIG="$DIRECTORY/etc/ossec.conf.orig"
 
-    # Backing up the old config
-    cp -pr ${OSSEC_CONF_FILE} "${OSSEC_CONF_FILE}.$$_i.bak"
+    # ossec.conf -> ossec.conf.orig
+    cp -pr $OSSEC_CONF_FILE $OSSEC_CONF_FILE_ORIG
 
-    # Replace old decoders
-    sed -i 's#\s*<decoder_dir>etc/ossec_decoders</decoder_dir>#    <decoder_dir>etc/decoders</decoder_dir>#' "$OSSEC_CONF_FILE"
-    sed -i 's#\s*<decoder_dir>etc/wazuh_decoders</decoder_dir>##' "$OSSEC_CONF_FILE"
+    if [ ! "$INSTYPE" = "agent" ]; then
+        ETC_DECODERS="$DIRECTORY/etc/decoders"
+        ETC_RULES="$DIRECTORY/etc/rules"
 
-    # Create directory
-    mkdir "$DIRECTORY/etc/decoders" > /dev/null 2>&1
-    chmod 750 "$DIRECTORY/etc/decoders" > /dev/null 2>&1
-    chown root:ossec "$DIRECTORY/etc/decoders" > /dev/null 2>&1
-
-    # Moving decoders
-    old_decoders="ossec_decoders wazuh_decoders"
-    for old_decoder in $old_decoders
-    do
-        if [ -d "$DIRECTORY/etc/$old_decoder" ]; then
-            mv $DIRECTORY/etc/$old_decoder/* $DIRECTORY/etc/decoders/
-            rmdir "$DIRECTORY/etc/$old_decoder"
+        # Moving local_decoder
+        if [ -f "$DIRECTORY/etc/local_decoder.xml" ]; then
+            if [ -s "$DIRECTORY/etc/local_decoder.xml" ]; then
+                mv "$DIRECTORY/etc/local_decoder.xml" $ETC_DECODERS
+            else
+                # it is empty
+                rm -f "$DIRECTORY/etc/local_decoder.xml"
+            fi
         fi
-    done
+
+        # Moving local_rules
+        if [ -f "$DIRECTORY/rules/local_rules.xml" ]; then
+            mv "$DIRECTORY/rules/local_rules.xml" $ETC_RULES
+        fi
+
+        # Creating backup directory
+        BACKUP_RULESET="$DIRECTORY/etc/backup_ruleset"
+        mkdir $BACKUP_RULESET > /dev/null 2>&1
+        chmod 750 $BACKUP_RULESET > /dev/null 2>&1
+        chown root:ossec $BACKUP_RULESET > /dev/null 2>&1
+
+        # Backup decoders: Wazuh v1.0.1 to v1.1.1
+        old_decoders="ossec_decoders wazuh_decoders"
+        for old_decoder in $old_decoders
+        do
+            if [ -d "$DIRECTORY/etc/$old_decoder" ]; then
+                mv "$DIRECTORY/etc/$old_decoder" $BACKUP_RULESET
+            fi
+        done
+
+        # Backup decoders: Wazuh v1.0 and OSSEC
+        if [ -f "$DIRECTORY/etc/decoder.xml" ]; then
+            mv "$DIRECTORY/etc/decoder.xml" $BACKUP_RULESET
+        fi
+
+        # Backup rules: All versions
+        mv "$DIRECTORY/rules" $BACKUP_RULESET
+
+        # New ossec.conf by default
+        ./gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
+    else
+        # New ossec.conf by default
+        ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
+        # Replace IP
+        ./src/init/replace_manager_ip.sh $OSSEC_CONF_FILE_ORIG > "$OSSEC_CONF_FILE.tmp"
+        mv "$OSSEC_CONF_FILE.tmp" $OSSEC_CONF_FILE
+    fi
 }
