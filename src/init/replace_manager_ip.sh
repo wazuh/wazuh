@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright (C) 2015-2016 Wazuh, Inc.All rights reserved.
 # Wazuh.com
