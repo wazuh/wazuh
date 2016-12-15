@@ -183,12 +183,15 @@ char* wdb_agent_name(int id) {
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_create_agent_db(int id, const char *name) {
+    const char *ROOT = "root";
     char path[OS_FLSIZE + 1];
     char buffer[4096];
     FILE *source;
     FILE *dest;
     size_t nbytes;
-    int retval = 0;
+    int result = 0;
+    uid_t uid;
+    gid_t gid;
 
     if (!name)
         return -1;
@@ -219,7 +222,7 @@ int wdb_create_agent_db(int id, const char *name) {
 
     while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
         if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
-            retval = -1;
+            result = -1;
             break;
         }
     }
@@ -227,7 +230,28 @@ int wdb_create_agent_db(int id, const char *name) {
     fclose(source);
     fclose(dest);
 
-    return retval == 0 ? chmod(path, 0660) : retval;
+    if (result < 0)
+        return -1;
+
+    uid = Privsep_GetUser(ROOT);
+    gid = Privsep_GetGroup(GROUPGLOBAL);
+
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        merror(USER_ERROR, ARGV0, ROOT, GROUPGLOBAL);
+        return -1;
+    }
+
+    if (chown(path, uid, gid) < 0) {
+        merror(CHOWN_ERROR, ARGV0, path, errno, strerror(errno));
+        return -1;
+    }
+
+    if (chmod(path, 0660) < 0) {
+        merror(CHMOD_ERROR, ARGV0, path, errno, strerror(errno));
+        return -1;
+    }
+
+    return 0;
 }
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */

@@ -1199,7 +1199,7 @@ ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} aler
 wmoduled_c := wazuh_modules/main.c
 wmoduled_o := $(wmoduled_c:.c=.o)
 
-wazuh-moduled: ${wmoduled_o} ${ossec_libs} ${sqlite_o} ${ZLIB_LIB}
+wazuh-moduled: ${wmoduled_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 ####################
