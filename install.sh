@@ -320,21 +320,16 @@ ConfigureServer()
 
     # Configuring e-mail notification
     echo ""
-    $ECHO "  3.1- ${mailnotify} ($yes/$no) [$yes]: "
+    $ECHO "  3.1- ${mailnotify} ($yes/$no) [$no]: "
 
     if [ "X${USER_ENABLE_EMAIL}" = "X" ]; then
-    read ANSWER
+        read ANSWER
     else
         ANSWER=${USER_ENABLE_EMAIL}
     fi
 
     case $ANSWER in
-        $nomatch)
-            echo ""
-            echo "   --- ${nomail}."
-            EMAILNOTIFY="no"
-            ;;
-        *)
+        $yesmatch)
             EMAILNOTIFY="yes"
             $ECHO "   - ${whatsemail} "
             if [ "X${USER_EMAIL_ADDRESS}" = "X" ]; then
@@ -396,6 +391,11 @@ ConfigureServer()
             else
                 SMTP=${USER_EMAIL_SMTP}
             fi
+        ;;
+        *)
+            echo ""
+            echo "   --- ${nomail}."
+            EMAILNOTIFY="no"
         ;;
     esac
 
