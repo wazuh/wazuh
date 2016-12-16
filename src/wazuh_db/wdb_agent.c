@@ -20,10 +20,8 @@ static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id 
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
 static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ?;";
-static const char *SQL_SELECT_PM_OFFSET = "SELECT pm_offset FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHERE id = ?;";
 static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHERE id = ?;";
-static const char *SQL_UPDATE_PM_OFFSET = "UPDATE agent SET pm_offset = ? WHERE id = ?;";
 static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
@@ -360,9 +358,6 @@ long wdb_get_agent_offset(int id_agent, int type) {
     case WDB_SYSCHECK_REGISTRY:
         sql = SQL_SELECT_REG_OFFSET;
         break;
-    case WDB_ROOTCHECK:
-        sql = SQL_SELECT_PM_OFFSET;
-        break;
     default:
         return -1;
     }
@@ -395,9 +390,6 @@ int wdb_set_agent_offset(int id_agent, int type, long offset) {
         break;
     case WDB_SYSCHECK_REGISTRY:
         sql = SQL_UPDATE_REG_OFFSET;
-        break;
-    case WDB_ROOTCHECK:
-        sql = SQL_UPDATE_PM_OFFSET;
         break;
     default:
         return -1;
