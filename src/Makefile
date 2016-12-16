@@ -491,6 +491,11 @@ install-server-generic: install-common
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
 
+ifeq (,$(wildcard ${PREFIX}/etc/lists))
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
+endif
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/* ${PREFIX}/etc/lists
+
 ifeq (,$(wildcard ${PREFIX}/etc/decoders/local_decoder.xml))
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
 endif
