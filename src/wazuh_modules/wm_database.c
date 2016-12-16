@@ -34,8 +34,10 @@ static void wm_sync_agents();
 static int wm_sync_agentinfo(int id_agent, const char *path);
 static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
+// Fill syscheck database from an offset. Returns offset at last successful read event, or -1 on error.
 static long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registry);
-static long wm_fill_rootcheck(sqlite3 *db, const char *path, long offset);
+// Fill complete rootcheck database.
+static int wm_fill_rootcheck(sqlite3 *db, const char *path);
 /*
  * Extract agent name, IP and whether it's a Windows registry database from the file name.
  * Returns 0 on success, 1 to ignore and -1 on error.
@@ -251,14 +253,6 @@ void wm_sync_agents() {
                     merror(FSTAT_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
             } else if (wdb_set_agent_offset(id, WDB_SYSCHECK_REGISTRY, buffer.st_size) < 1)
                 merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s).", WM_DATABASE_LOGTAG, id, entry->name);
-
-            snprintf(path, PATH_MAX, "%s/(%s) %s->rootcheck", DEFAULTDIR ROOTCHECK_DIR, entry->name, entry->ip->ip);
-
-            if (stat(path, &buffer) < 0) {
-                if (errno != ENOENT)
-                    merror(FSTAT_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
-            } else if (wdb_set_agent_offset(id, WDB_ROOTCHECK, buffer.st_size) < 1)
-                merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s).", WM_DATABASE_LOGTAG, id, entry->name);
         }
     }
 
@@ -350,6 +344,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     char path[PATH_MAX] = "";
     struct stat buffer;
     long offset;
+    int result = 0;
     int id_agent = -1;
     int is_registry = 0;
     int type;
@@ -409,33 +404,70 @@ int wm_sync_file(const char *dirname, const char *fname) {
         return -1;
     }
 
-    if (type == WDB_AGENTINFO)
-        return wm_sync_agentinfo(id_agent, path) < 0 || wdb_update_agent_keepalive(id_agent, buffer.st_mtime) < 0 ? -1 : 0;
-
     switch (wdb_get_agent_status(id_agent)) {
+    case -1:
+        merror("%s: ERROR: Couldn't get database status for agent '%d'.", WM_DATABASE_LOGTAG, id_agent);
+        return -1;
     case WDB_AGENT_PENDING:
         merror("%s: WARN: Agent '%d' database status was 'pending'. Data could be lost.", WM_DATABASE_LOGTAG, id_agent);
         wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED);
-        // Continue, don't break
-    case WDB_AGENT_EMPTY:
-    case WDB_AGENT_UPDATED:
+        break;
+    }
+
+    switch (type) {
+    case WDB_SYSCHECK:
+    case WDB_SYSCHECK_REGISTRY:
         if ((offset = wdb_get_agent_offset(id_agent, type)) < 0) {
             merror("%s: ERROR: Couldn't file offset from database for agent '%d'.", WM_DATABASE_LOGTAG, id_agent);
             return -1;
         }
 
+        if (buffer.st_size < offset) {
+            merror("%s: WARN: File '%s' was rotated.", WM_DATABASE_LOGTAG, path);
+            offset = 0;
+        }
+
+        if (buffer.st_size > offset) {
+            if (!(db = wdb_open_agent(id_agent, name))) {
+                merror("%s: ERROR: Couldn't open database for file '%s/%s'.", WM_DATABASE_LOGTAG, dirname, fname);
+                return -1;
+            }
+
+            if (wdb_set_agent_status(id_agent, WDB_AGENT_PENDING) < 1) {
+                merror("%s: ERROR: Couldn't write agent status on database for agent %d (%s).", WM_DATABASE_LOGTAG, id_agent, name);
+                sqlite3_close_v2(db);
+                return -1;
+            }
+
+            if (wdb_set_agent_offset(id_agent, type, buffer.st_size) < 1) {
+                merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s).", WM_DATABASE_LOGTAG, id_agent, name);
+                sqlite3_close_v2(db);
+                return -1;
+            }
+
+            offset = wm_fill_syscheck(db, path, offset, is_registry);
+            sqlite3_close_v2(db);
+
+            if (wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED) < 1) {
+                merror("%s: ERROR: Couldn't write agent status on database for agent %d (%s).", WM_DATABASE_LOGTAG, id_agent, name);
+                return -1;
+            }
+
+            if (offset < 0) {
+                merror("%s: ERROR: Couldn't fill syscheck database for file '%s/%s'.", WM_DATABASE_LOGTAG, dirname, fname);
+                return -1;
+            }
+
+            if (offset != buffer.st_size && wdb_set_agent_offset(id_agent, type, offset) < 1) {
+                merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s) (post-fill).", WM_DATABASE_LOGTAG, id_agent, name);
+                return -1;
+            }
+        } else
+            debug1("%s: DEBUG: Skipping file '%s/%s'", WM_DATABASE_LOGTAG, dirname, fname);
+
         break;
-    default:
-        merror("%s: ERROR: Couldn't get database status for agent '%d'.", WM_DATABASE_LOGTAG, id_agent);
-        return -1;
-    }
 
-    if (buffer.st_size < offset) {
-        merror("%s: WARN: File '%s' was rotated.", WM_DATABASE_LOGTAG, path);
-        offset = 0;
-    }
-
-    if (buffer.st_size > offset) {
+    case WDB_ROOTCHECK:
         if (!(db = wdb_open_agent(id_agent, name))) {
             merror("%s: ERROR: Couldn't open database for file '%s/%s'.", WM_DATABASE_LOGTAG, dirname, fname);
             return -1;
@@ -447,13 +479,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
-        if (wdb_set_agent_offset(id_agent, type, buffer.st_size) < 1) {
-            merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s).", WM_DATABASE_LOGTAG, id_agent, name);
-            sqlite3_close_v2(db);
-            return -1;
-        }
-
-        offset = type == WDB_ROOTCHECK ? wm_fill_rootcheck(db, path, offset) : wm_fill_syscheck(db, path, offset, is_registry);
+        result = wm_fill_rootcheck(db, path);
         sqlite3_close_v2(db);
 
         if (wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED) < 1) {
@@ -461,21 +487,21 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
-        if (offset < 0) {
-            merror("%s: ERROR: Couldn't fill database for file '%s/%s'.", WM_DATABASE_LOGTAG, dirname, fname);
+        if (result < 0) {
+            merror("%s: ERROR: Couldn't fill rootcheck database for file '%s/%s'.", WM_DATABASE_LOGTAG, dirname, fname);
             return -1;
         }
 
-        if (offset != buffer.st_size && wdb_set_agent_offset(id_agent, type, offset) < 1) {
-            merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s) (post-fill).", WM_DATABASE_LOGTAG, id_agent, name);
-            return -1;
-        }
-    } else
-        debug1("%s: DEBUG: Skipping file '%s/%s'", WM_DATABASE_LOGTAG, dirname, fname);
+        break;
 
-    return 0;
+    case WDB_AGENTINFO:
+        result = wm_sync_agentinfo(id_agent, path) < 0 || wdb_update_agent_keepalive(id_agent, buffer.st_mtime) < 0 ? -1 : 0;
+    }
+
+    return result;
 }
 
+// Fill syscheck database from an offset. Returns offset at last successful read event, or -1 on error.
 long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registry) {
     char buffer[OS_MAXSTR];
     char *end;
@@ -564,11 +590,11 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
     return last_offset;
 }
 
-long wm_fill_rootcheck(sqlite3 *db, const char *path, long offset) {
+// Fill complete rootcheck database. Returns 0 on success or -1 on error.
+int wm_fill_rootcheck(sqlite3 *db, const char *path) {
     char buffer[OS_MAXSTR];
     char *end;
     int count = 0;
-    long last_offset = offset;
     rk_event_t event;
     clock_t clock_ini;
     FILE *fp;
@@ -578,16 +604,10 @@ long wm_fill_rootcheck(sqlite3 *db, const char *path, long offset) {
         return -1;
     }
 
-    if (fseek(fp, offset, SEEK_SET) < 0) {
-        merror(FSEEK_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
-        fclose(fp);
-        return -1;
-    }
-
     clock_ini = clock();
     wdb_begin(db);
 
-    for (count = 0; fgets(buffer, OS_MAXSTR, fp); last_offset = ftell(fp)) {
+    while (fgets(buffer, OS_MAXSTR, fp)) {
         end = strchr(buffer, '\n');
 
         if (!end) {
@@ -621,10 +641,10 @@ long wm_fill_rootcheck(sqlite3 *db, const char *path, long offset) {
     }
 
     wdb_commit(db);
-    debug2("%s: DEBUG: Syscheck file sync finished. Count: %d. Time: %.3lf ms.", WM_DATABASE_LOGTAG, count, (double)(clock() - clock_ini) / CLOCKS_PER_SEC * 1000);
+    debug2("%s: DEBUG: Rootcheck file sync finished. Count: %d. Time: %.3lf ms.", WM_DATABASE_LOGTAG, count, (double)(clock() - clock_ini) / CLOCKS_PER_SEC * 1000);
 
     fclose(fp);
-    return last_offset;
+    return 0;
 }
 
 /*
