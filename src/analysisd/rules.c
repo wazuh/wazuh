@@ -18,7 +18,7 @@ RuleInfo *currently_rule;
 /* Change path for test rule */
 #ifdef TESTRULE
 #undef RULEPATH
-#define RULEPATH "ruleset/rules"
+#define RULEPATH "ruleset/rules/"
 #endif
 
 /* Prototypes */
