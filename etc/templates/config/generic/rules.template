@@ -1,9 +1,9 @@
   <ruleset>
-    <!-- Wazuh ruleset -->
+    <!-- Default ruleset -->
     <decoder_dir>ruleset/decoders</decoder_dir>
     <rule_dir>ruleset/rules</rule_dir>
     <rule_exclude>0215-policy_rules.xml</rule_exclude>
-    <!-- <decoder_exclude>ruleset/decoders/apache_decoders.xml</decoder_exclude> -->
+    <list>etc/lists/audit-keys</list>
 
     <!-- User-defined ruleset -->
     <decoder_dir>etc/decoders</decoder_dir>
