@@ -36,8 +36,8 @@ int Lists_OP_LoadList(char *listfile)
 
     snprintf(a_filename, OS_MAXSTR - 1, "%s", listfile);
     if ((strchr(a_filename, '/') == NULL)) {
-        /* default to rules/ if a path is not given */
-        snprintf(b_filename, OS_MAXSTR - 1, "rules/%s", a_filename);
+        /* default to ruleset/rules/ if a path is not given */
+        snprintf(b_filename, OS_MAXSTR - 1, "ruleset/rules/%s", a_filename);
         snprintf(a_filename, OS_MAXSTR - 1, "%s", b_filename);
     }
     if ((holder = strstr(a_filename, ".cdb"))) {
@@ -56,4 +56,3 @@ int Lists_OP_LoadList(char *listfile)
 
     return 0;
 }
-
