@@ -1,11 +1,11 @@
-  <rules>
-    <!-- Wazuh ruleset *DO NOT MODIFY* -->
+  <ruleset>
+    <!-- Wazuh ruleset -->
     <decoder_dir>ruleset/decoders</decoder_dir>
     <rule_dir>ruleset/rules</rule_dir>
-    <exclude>0215-policy_rules.xml</exclude>
-    <!-- <exclude_decoder>ruleset/decoders/apache_decoders.xml</exclude_decoder> -->
+    <rule_exclude>0215-policy_rules.xml</rule_exclude>
+    <!-- <decoder_exclude>ruleset/decoders/apache_decoders.xml</decoder_exclude> -->
 
     <!-- User-defined ruleset -->
     <decoder_dir>etc/decoders</decoder_dir>
     <rule_dir>etc/rules</rule_dir>
-  </rules>
+  </ruleset>

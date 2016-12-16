@@ -64,14 +64,13 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     OSRegex regex;
 
     /* XML definitions */
-    const char *xml_rules_include = "include";
-    const char *xml_rules_rule = "rule";
+    const char *xml_rules_rule = "rule_include";
     const char *xml_rules_rules_dir = "rule_dir";
     const char *xml_rules_lists = "list";
-    const char *xml_rules_decoders = "decoder";
+    const char *xml_rules_decoders = "decoder_include";
     const char *xml_rules_decoders_dir = "decoder_dir";
-    const char *xml_rules_exclude = "exclude";
-    const char *xml_rules_exclude_decoder = "exclude_decoder";
+    const char *xml_rules_exclude = "rule_exclude";
+    const char *xml_rules_exclude_decoder = "decoder_exclude";
 
     _Config *Config;
 
@@ -91,9 +90,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             merror(XML_VALUENULL, __local_name, node[i]->element);
             return (OS_INVALID);
         }
-        //<include> & <rule>
-        else if ((strcmp(node[i]->element, xml_rules_include) == 0) ||
-                 (strcmp(node[i]->element, xml_rules_rule) == 0)) {
+        // <rule_include>
+        else if (strcmp(node[i]->element, xml_rules_rule) == 0) {
             rules_size++;
             Config->includes = (char **) realloc(Config->includes,
                                                  sizeof(char *)*rules_size);
@@ -105,7 +103,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             os_strdup(node[i]->content, Config->includes[rules_size - 2]);
             Config->includes[rules_size - 1] = NULL;
             debug1("adding rule: %s", node[i]->content);
-        //<decoder>
+        // <decoder_include>
         } else if (strcmp(node[i]->element, xml_rules_decoders) == 0) {
             decoders_size++;
             Config->decoders = (char **) realloc(Config->decoders,
@@ -118,7 +116,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             os_strdup(node[i]->content, Config->decoders[decoders_size - 2]);
             Config->decoders[decoders_size - 1] = NULL;
             debug1("adding decoder: %s", node[i]->content);
-        //<list>
+        // <list>
         } else if (strcmp(node[i]->element, xml_rules_lists) == 0) {
             lists_size++;
             Config->lists = (char **) realloc(Config->lists,
@@ -130,7 +128,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
             os_strdup(node[i]->content, Config->lists[lists_size - 2]);
             Config->lists[lists_size - 1] = NULL;
-        //<exclude>
+        // <rule_exclude>
         } else if (strcmp(node[i]->element, xml_rules_exclude) == 0) {
             rules_exclude_size++;
             exclude_rules = (char **) realloc(exclude_rules, sizeof(char *)*rules_exclude_size);
@@ -143,7 +141,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             os_strdup(node[i]->content, exclude_rules[rules_exclude_size - 2]);
             exclude_rules[rules_exclude_size - 1] = NULL;
             debug1("excluding rule: %s", node[i]->content);
-        //<exclude_decoder>
+        // <decoder_exclude>
         } else if (strcmp(node[i]->element, xml_rules_exclude_decoder) == 0) {
             decoders_exclude_size++;
             exclude_decoders = (char **) realloc(exclude_decoders, sizeof(char *)*decoders_exclude_size);
@@ -156,7 +154,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             os_strdup(node[i]->content, exclude_decoders[decoders_exclude_size - 2]);
             exclude_decoders[decoders_exclude_size - 1] = NULL;
             debug1("excluding decoder: %s", node[i]->content);
-        //<decoder_dir>
+        // <decoder_dir>
         } else if (strcmp(node[i]->element, xml_rules_decoders_dir) == 0) {
             dec_dirs_size++;
             decoder_dirs = (char **) realloc(decoder_dirs, sizeof(char *)*dec_dirs_size);
@@ -185,7 +183,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             } else {
                 os_strdup(".xml$", decoder_dirs_pattern[dec_dirs_size - 2]);
             }
-        //<rule_dir>
+        // <rule_dir>
         } else if (strcmp(node[i]->element, xml_rules_rules_dir) == 0) {
             rul_dirs_size++;
             rules_dirs = (char **) realloc(rules_dirs, sizeof(char *)*rul_dirs_size);
