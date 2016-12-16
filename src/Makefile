@@ -491,17 +491,28 @@ install-server-generic: install-common
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
 
-ifeq (,$(wildcard ${PREFIX}/etc/lists))
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
-endif
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/* ${PREFIX}/etc/lists
-
 ifeq (,$(wildcard ${PREFIX}/etc/decoders/local_decoder.xml))
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
 endif
 ifeq (,$(wildcard ${PREFIX}/etc/rules/local_rules.xml))
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
 endif
+
+ifeq (,$(wildcard ${PREFIX}/etc/lists))
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
+endif
+
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/* ${PREFIX}/etc/lists
+
+ifeq (,$(wildcard ${PREFIX}/update))
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/update
+endif
+
+ifeq (,$(wildcard ${PREFIX}/update/ruleset))
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/update/ruleset
+endif
+
+	install -m 0740 -o root -g ${OSSEC_GROUP} -b ../contrib/wazuh_ruleset.py ${PREFIX}/update/ruleset
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
 
