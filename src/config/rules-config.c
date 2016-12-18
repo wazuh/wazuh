@@ -11,6 +11,9 @@
 #include "shared.h"
 #include "global-config.h"
 
+#define DEFAULT_RULE_DIR "ruleset/rules"
+#define DEFAULT_DECODER_DIR "ruleset/decoders"
+
 /* Prototypes */
 static int cmpr(const void *a, const void *b) __attribute__((nonnull));
 static int file_in_list(unsigned int list_size, char *f_name, char *d_name, char **alist) __attribute__((nonnull));
@@ -18,7 +21,25 @@ static int file_in_list(unsigned int list_size, char *f_name, char *d_name, char
 
 static int cmpr(const void *a, const void *b)
 {
-    return strcmp(*(const char *const *)a, *(const char *const *)b);
+    const char * file_a;
+    const char * file_b;
+    const char *_a = *(const char **)a;
+    const char *_b = *(const char **)b;
+
+    file_a = strrchr((const char *)_a, '/');
+    file_b = strrchr((const char *)_b, '/');
+
+    if ( file_a != NULL )
+      file_a++;
+    else
+      file_a = _a;
+
+    if ( file_b != NULL )
+      file_b++;
+    else
+      file_b = _b;
+
+    return strcmp(file_a, file_b);
 }
 
 static int file_in_list(unsigned int list_size, char *f_name, char *d_name, char **alist)
@@ -57,7 +78,6 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
     char path[PATH_MAX + 2];
     char f_name[PATH_MAX + 2];
-    unsigned int start_point = 0;
     int att_count = 0;
     struct dirent *entry;
     DIR *dfd;
@@ -93,6 +113,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         // <rule_include>
         else if (strcmp(node[i]->element, xml_rules_rule) == 0) {
             rules_size++;
+            f_name[PATH_MAX + 1] = '\0';
             Config->includes = (char **) realloc(Config->includes,
                                                  sizeof(char *)*rules_size);
             if (!Config->includes) {
@@ -100,12 +121,21 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 return (OS_INVALID);
             }
 
-            os_strdup(node[i]->content, Config->includes[rules_size - 2]);
+            /* If no directory in the rulefile, add the default */
+            if ((strchr(node[i]->content, '/')) == NULL) {
+                /* Build the rule file name + path */
+                snprintf(f_name, PATH_MAX + 1, "%s/%s", DEFAULT_RULE_DIR, node[i]->content);
+            } else {
+                snprintf(f_name, PATH_MAX + 1, "%s", node[i]->content);
+            }
+
+            os_strdup(f_name, Config->includes[rules_size - 2]);
             Config->includes[rules_size - 1] = NULL;
-            debug1("adding rule: %s", node[i]->content);
+            debug1("adding rule: %s", f_name);
         // <decoder_include>
         } else if (strcmp(node[i]->element, xml_rules_decoders) == 0) {
             decoders_size++;
+            f_name[PATH_MAX + 1] = '\0';
             Config->decoders = (char **) realloc(Config->decoders,
                                                  sizeof(char *)*decoders_size);
             if (!Config->decoders) {
@@ -113,9 +143,17 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 return (OS_INVALID);
             }
 
-            os_strdup(node[i]->content, Config->decoders[decoders_size - 2]);
+            /* If no directory in the decoder file, add the default */
+            if ((strchr(node[i]->content, '/')) == NULL) {
+                /* Build the decoder file name + path */
+                snprintf(f_name, PATH_MAX + 1, "%s/%s", DEFAULT_DECODER_DIR, node[i]->content);
+            } else {
+                snprintf(f_name, PATH_MAX + 1, "%s", node[i]->content);
+            }
+
+            os_strdup(f_name, Config->decoders[decoders_size - 2]);
             Config->decoders[decoders_size - 1] = NULL;
-            debug1("adding decoder: %s", node[i]->content);
+            debug1("adding decoder: %s", f_name);
         // <list>
         } else if (strcmp(node[i]->element, xml_rules_lists) == 0) {
             lists_size++;
@@ -225,11 +263,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
     for (i = 0; decoder_dirs[i]; i++) {
         debug1("reading decoders folder: %s", decoder_dirs[i]);
-        #ifdef TESTRULE
-          snprintf(path, PATH_MAX + 1, "%s", decoder_dirs[i]);
-        #else
-          snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR, decoder_dirs[i]);
-        #endif
+        snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR, decoder_dirs[i]);
 
         if (!OSRegex_Compile(decoder_dirs_pattern[i], &regex, 0)) {
             merror(CONFIG_ERROR, __local_name, "pattern in decoder_dir does not compile");
@@ -241,7 +275,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         dfd = opendir(path);
 
         if (dfd != NULL) {
-            start_point = decoders_size - 1;
+
             while ((entry = readdir(dfd)) != NULL) {
                 snprintf(f_name, PATH_MAX + 1, "%s/%s", decoder_dirs[i], entry->d_name);
 
@@ -280,8 +314,6 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             }
 
             closedir(dfd);
-            // Sort just then newly added items
-            qsort(Config->decoders + start_point , decoders_size - start_point - 1, sizeof(char *), cmpr);
         }
     }
 
@@ -289,11 +321,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
     for (i = 0; rules_dirs[i]; i++) {
         debug1("reading rules folder: %s", rules_dirs[i]);
-        #ifdef TESTRULE
-          snprintf(path, PATH_MAX + 1, "%s", rules_dirs[i]);
-        #else
-          snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR, rules_dirs[i]);
-        #endif
+        snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR, rules_dirs[i]);
 
         if (!OSRegex_Compile(rules_dirs_pattern[i], &regex, 0)) {
             merror(CONFIG_ERROR, __local_name, "pattern in rules_dir does not compile");
@@ -305,7 +333,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         dfd = opendir(path);
 
         if (dfd != NULL) {
-          start_point = rules_size - 1;
+
           while ((entry = readdir(dfd)) != NULL) {
               snprintf(f_name, PATH_MAX + 1, "%s/%s", rules_dirs[i], entry->d_name);
 
@@ -344,13 +372,15 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
           }
 
           closedir(dfd);
-          // Sort just then newly added items
-          qsort(Config->includes + start_point , rules_size - start_point - 1, sizeof(char *), cmpr);
         }
     }
 
-    debug1("decoders added: %d / excluded: %d", decoders_size, total_decoders_excluded);
-    debug1("rules added: %d / excluded: %d", rules_size, total_rules_excluded);
+    // Sort added items
+    qsort(Config->includes, rules_size - 1, sizeof(char *), cmpr);
+    qsort(Config->decoders, decoders_size - 1, sizeof(char *), cmpr);
+
+    debug1("decoders added: %d / excluded: %d", decoders_size - 1, total_decoders_excluded);
+    debug1("rules added: %d / excluded: %d", rules_size - 1, total_rules_excluded);
 
     OSRegex_FreePattern(&regex);
     free(exclude_decoders);
