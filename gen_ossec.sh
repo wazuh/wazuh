@@ -25,6 +25,9 @@ cd `dirname $0`
 # Read script values
 if [ "$1" = "conf" ]; then
 
+  . ./src/init/shared.sh
+  . ./src/init/inst-functions.sh
+
   if [ "$#" = "4" ]; then
     INSTYPE="$2"
     DIST_NAME=$(echo $3 | tr '[:upper:]' '[:lower:]')
@@ -43,15 +46,12 @@ if [ "$1" = "conf" ]; then
   # Default values definition
   SERVER_IP="MANAGER_IP"
   NEWCONFIG="./ossec.conf.temp"
-  INSTALLDIR="/var/ossec"
   SYSCHECK="yes"
   ROOTCHECK="yes"
   OPENSCAP="yes"
   ACTIVERESPONSE="yes"
   RLOG="no" # syslog
   SLOG="yes" # remote
-
-  . ./src/init/inst-functions.sh
 
   if [ -r "$NEWCONFIG" ]; then
       rm "$NEWCONFIG"
