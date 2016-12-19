@@ -859,6 +859,15 @@ main()
             AddPFTable
         fi
         echo ""
+        
+        # If version < wazuh 1.2
+        if [ "X$USER_OLD_NAME" != "XWazuh" ]; then
+            echo " ====================================================================================="
+            echo "  ${update_rev_newconf1}"
+            echo "  ${update_rev_newconf2}"
+            echo " ====================================================================================="
+            echo " "
+        fi
         echo " - ${updatecompleted}"
         echo ""
         exit 0;
