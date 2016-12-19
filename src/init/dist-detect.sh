@@ -81,10 +81,12 @@ elif [ "$(uname)" = "SunOS" ]; then
     DIST_SUBVER=$(uname -r | cut -d\. -f2)
 
 # BSD
-elif [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
-    DIST_NAME="BSD ${NUNAME}."
+elif [ "X$(uname)" = "XOpenBSD" -o "X$(uname)" = "XNetBSD" -o "X$(uname)" = "XFreeBSD" -o "X$(uname)" = "XDragonFly" ]; then
+    DIST_NAME=$(uname)
+    DIST_VER=$(uname -r | cut -d\. -f1)
+    DIST_SUBVER=$(uname -r | cut -d\. -f2)
 
-elif [ "X${NUNAME}" = "XLinux" ]; then
+elif [ "X$(uname)" = "XLinux" ]; then
     DIST_NAME="Linux"
 
 fi
