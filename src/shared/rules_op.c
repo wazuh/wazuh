@@ -12,7 +12,7 @@
 /* Change path for test rule */
 #ifdef TESTRULE
 #undef RULEPATH
-#define RULEPATH "rules/"
+#define RULEPATH "ruleset/rules/"
 #endif
 
 /* Prototypes */

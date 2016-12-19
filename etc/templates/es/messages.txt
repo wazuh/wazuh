@@ -104,6 +104,8 @@ updatefailed="La actualización ha fallado."
 updaterules="¿Desea actualizar las reglas?"
 updatingrules="Actualizando las reglas."
 notupdatingrules="No se actualizan las reglas."
+update_rev_newconf1="Se ha creado un backup de ossec.conf en /var/ossec/etc/ossec.conf.orig"
+update_rev_newconf2="Por favor, revisa tu configuración actual /var/ossec/etc/ossec.conf"
 
 # Pf support
 pfenable="Desea usar el PF firewall en la respuesta activa?"

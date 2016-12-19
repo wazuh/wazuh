@@ -14,7 +14,6 @@ cd `dirname $0`
 
 . ./src/init/inst-functions.sh
 
-INSTALLDIR="/var/ossec"
 NEWCONFIG="./localfiles.temp"
 
 if [ -r "$NEWCONFIG" ]; then
@@ -26,7 +25,7 @@ echo "<ossec_config>" >> $NEWCONFIG
 WriteLogs "add"
 echo "</ossec_config>" >> $NEWCONFIG
 
-cat "$NEWCONFIG" # >> "$INSTALLDIR/etc/ossec.conf"
+cat "$NEWCONFIG"
 
 rm "$NEWCONFIG"
 

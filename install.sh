@@ -107,17 +107,11 @@ Install()
     # If update, stop ossec
     if [ "X${update_only}" = "Xyes" ]; then
         UpdateStopOSSEC
-        # Move old decoders (ossec_decodes and wazuh_decoders) to etc/decoders
-        if [ ! "X$INSTYPE" = "Xagent" ]; then
-          UpdateLegacyDecoders
-        fi
     fi
-
 
     ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install
 
     cd ../
-
 
     # Generate the /etc/ossec-init.conf
     GenerateInitConf
@@ -126,15 +120,12 @@ Install()
     if [ "X$INSTYPE" = "Xserver" ]; then
         WazuhSetup
     fi
-   # If update_rules is set, we need to tweak
-    # ossec.conf to read the new signatures.
-    if [ "X${update_rules}" = "Xyes" ]; then
-        UpdateOSSECRules
-    fi
 
     # If update, start OSSEC
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
+        # Update versions previous to Wazuh 1.2
+        UpdateOldVersions
         UpdateStartOSSEC
     fi
 
@@ -329,21 +320,16 @@ ConfigureServer()
 
     # Configuring e-mail notification
     echo ""
-    $ECHO "  3.1- ${mailnotify} ($yes/$no) [$yes]: "
+    $ECHO "  3.1- ${mailnotify} ($yes/$no) [$no]: "
 
     if [ "X${USER_ENABLE_EMAIL}" = "X" ]; then
-    read ANSWER
+        read ANSWER
     else
         ANSWER=${USER_ENABLE_EMAIL}
     fi
 
     case $ANSWER in
-        $nomatch)
-            echo ""
-            echo "   --- ${nomail}."
-            EMAILNOTIFY="no"
-            ;;
-        *)
+        $yesmatch)
             EMAILNOTIFY="yes"
             $ECHO "   - ${whatsemail} "
             if [ "X${USER_EMAIL_ADDRESS}" = "X" ]; then
@@ -405,6 +391,11 @@ ConfigureServer()
             else
                 SMTP=${USER_EMAIL_SMTP}
             fi
+        ;;
+        *)
+            echo ""
+            echo "   --- ${nomail}."
+            EMAILNOTIFY="no"
         ;;
     esac
 
@@ -748,6 +739,7 @@ main()
                 USER_DIR=`getPreinstalledDir`
                 USER_DELETE_DIR="$nomatch"
                 USER_OLD_VERSION=`getPreinstalledVersion`
+                USER_OLD_NAME=`getPreinstalledName`
             fi
 
             ct="1"
@@ -757,28 +749,6 @@ main()
                 ct="0"
             fi
 
-            while [ $ct = "1" ]; do
-                ct="0"
-                $ECHO " - ${updaterules} ($yes/$no): "
-                if [ "X${USER_UPDATE_RULES}" = "X" ]; then
-                    read ANY
-                else
-                    ANY=$yes
-                fi
-
-                case $ANY in
-                    $yes)
-                        update_rules="yes"
-                        break;
-                        ;;
-                    $no)
-                        break;
-                        ;;
-                    *)
-                        ct="1"
-                        ;;
-                esac
-            done
         fi
         echo ""
     fi
@@ -889,6 +859,15 @@ main()
             AddPFTable
         fi
         echo ""
+        
+        # If version < wazuh 1.2
+        if [ "X$USER_OLD_NAME" != "XWazuh" ]; then
+            echo " ====================================================================================="
+            echo "  ${update_rev_newconf1}"
+            echo "  ${update_rev_newconf2}"
+            echo " ====================================================================================="
+            echo " "
+        fi
         echo " - ${updatecompleted}"
         echo ""
         exit 0;
@@ -964,8 +943,6 @@ if [ "x$HYBID" = "xgo" ]; then
     echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_UPDATE_RULES="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_CLEANINSTALL="y"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
