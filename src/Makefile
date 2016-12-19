@@ -512,7 +512,7 @@ ifeq (,$(wildcard ${PREFIX}/update/ruleset))
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/update/ruleset
 endif
 
-	install -m 0740 -o root -g ${OSSEC_GROUP} -b ../contrib/wazuh_ruleset.py ${PREFIX}/update/ruleset
+	install -m 0740 -o root -g ${OSSEC_GROUP} -b ../contrib/wazuh_ruleset.py ${PREFIX}/update/ruleset/wazuh_ruleset.py
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
 
