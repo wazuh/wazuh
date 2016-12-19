@@ -164,6 +164,7 @@ UpdateOldVersions()
 
         # New ossec.conf by default
         ./gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
+        ./add_localfiles.sh >> $OSSEC_CONF_FILE
     else
         # New ossec.conf by default
         ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
