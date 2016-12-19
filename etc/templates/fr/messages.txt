@@ -105,6 +105,8 @@ updatefailed="Echec de la mise à jour."
 updaterules="Voulez-vous mettre à jour les règles ?"
 updatingrules="Mise à jour des règles."
 notupdatingrules="Règles non mises à jour."
+update_rev_newconf1="Backup from your ossec.conf has been created at /var/ossec/etc/ossec.conf.orig"
+update_rev_newconf2="Please verify your ossec.conf configuration at /var/ossec/etc/ossec.conf"
 
 # Pf support
 pfenable="Voulez-vous utiliser le firewall PF dans la réponse active ?"

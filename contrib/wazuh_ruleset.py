@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # OSSEC Ruleset Update
 
-# v3.0.0 2016/09/14
+# v3.0.0 2016/12/15
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # jesus@wazuh.com
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -10,7 +10,7 @@
 #  Python 2.6 or newer
 #  Wazuh
 #  root privileges
-# http://wazuh-documentation.readthedocs.io/en/latest/ossec_ruleset.html
+# http://wazuh-documentation.readthedocs.io/en/latest/wazuh_ruleset.html
 
 import os
 import sys
@@ -213,84 +213,6 @@ def previous_checks():
             exit(2, "Wazuh {0} detected. This script only supports Wazuh v1.2 or newer.".format(ossec_version))
 
 
-def edit_ossec_conf():
-    rule_elements = []
-
-    # Ignore elements (legacy elements and default elements)
-    ignore_elements = ['<!--', '<decoder>etc/decoder.xml', '<decoder>etc/local_decoder.xml', '<decoder_dir>etc/decoders', '<decoder_dir>etc/ossec_decoders', '<decoder_dir>etc/wazuh_decoders', '<include>local_rules.xml']
-
-    # Template
-    template_file = open("{0}/rules.template".format(source_rules_path), 'r')
-    include_template = template_file.readlines()
-    include_template = include_template[3:-2]  # Remove 3 first lines and 2 last lines
-    template_file.close()
-
-    # Remove "<rules>*</rules>" and "...ossec_config>  <!-- rules global entry -->"
-    inside_rules = False
-    for line in fileinput.input(ossec_conf, inplace=True):
-        if '<rules>' in line.strip():
-            inside_rules = True
-            continue  # Remove line
-        elif '</rules>' in line.strip():
-            inside_rules = False
-            continue  # Remove line
-        elif 'rules global entry' in line.strip():
-            continue  # Remove line
-        else:
-            if inside_rules:
-                if any(ignore_element in line.strip() for ignore_element in ignore_elements):
-                    continue
-                else:
-                    rule_elements.append(line)  # Save rule element
-            else:
-                print(line.rstrip("\n"))  # Keep line
-    fileinput.close()
-
-    # Custom items in <rules>
-    custom_decoder = []
-    custom_include = []
-    custom_list = []
-    custom_rule_dir = []
-
-    for rule_element in rule_elements:
-        if '<decoder' in rule_element:
-            custom_decoder.append(rule_element)
-        elif '<list>' in rule_element:
-            custom_list.append(rule_element)
-        elif '<rule_dir>' in rule_element:
-            custom_rule_dir.append(rule_element)
-        elif '<include>' in rule_element:
-            m = search('<include>(.+_rules.xml)', rule_element)
-            if m:
-                rule = m.group(1)
-                if any(rule in include_r for include_r in include_template):
-                    continue
-                else:
-                    custom_include.append(rule_element)
-
-    # Write file
-    with open(ossec_conf, "a") as conf_file:
-        conf_file.write("<ossec_config>  <!-- rules global entry -->\n")
-        conf_file.write("  <rules>\n")
-        conf_file.write("    <decoder_dir>etc/decoders</decoder_dir>\n")
-        for c_d in custom_decoder:
-            conf_file.write(c_d)
-        conf_file.write("    <decoder>etc/local_decoder.xml</decoder>\n")
-        for c_l in custom_list:
-            conf_file.write(c_l)
-        for i_t in include_template:
-            conf_file.write(i_t)
-        for c_r in custom_rule_dir:
-            conf_file.write(c_r)
-        for c_i in custom_include:
-            conf_file.write(c_i)
-        conf_file.write("    <include>local_rules.xml</include>\n")
-        conf_file.write("  </rules>\n")
-        conf_file.write("</ossec_config>  <!-- rules global entry -->\n")
-
-    os.chown(ossec_conf, root_uid, ossec_gid)
-
-
 def get_ruleset_version():
     try:
         f_version = open(ruleset_version_path)
@@ -374,10 +296,10 @@ def do_backups():
 
         # Backups
         # decoders
-        backup_item("folder", "{0}/etc/decoders".format(ossec_path), "{0}/etc/decoders".format(bk_subdirectory))
+        backup_item("folder", "{0}".format(dst_decoders_path), "{0}/ruleset/decoders".format(bk_subdirectory))
 
         # rules
-        backup_item("folder", "{0}/rules".format(ossec_path), "{0}/rules".format(bk_subdirectory))
+        backup_item("folder", "{0}".format(dst_rules_path), "{0}/ruleset/rules".format(bk_subdirectory))
 
         # decoder.xml
         backup_item("file", "{0}/etc/decoder.xml".format(ossec_path), "{0}/etc/decoder.xml".format(bk_subdirectory))
@@ -406,7 +328,7 @@ def restore_backups(backup_id):
     logger.log("\tThe backup '{0}' will be restored.".format(backup_id))
 
     etc_restore = "{0}/{1}/etc".format(bk_directory, backup_id)
-    rules_restore = "{0}/{1}/rules".format(bk_directory, backup_id)
+    rules_restore = "{0}/{1}/ruleset".format(bk_directory, backup_id)
     if not os.path.exists(etc_restore) or not os.path.exists(rules_restore):
         exit(2, "\t\tFolder '{0}' or '{1}' not found.".format(etc_restore, rules_restore))
 
@@ -414,12 +336,9 @@ def restore_backups(backup_id):
     logger.log("\t\tRestoring files in '{0}' -> '{1}'".format(etc_restore, etc_dest))
     copy_files_folder(etc_restore, etc_dest)
 
-    rules_dest = "{0}/rules".format(ossec_path)
+    rules_dest = "{0}/ruleset".format(ossec_path)
     logger.log("\t\tRestoring folder: '{0}' -> '{1}'".format(rules_restore, rules_dest))
-    if os.path.exists(rules_dest):
-        shutil.rmtree(rules_dest)
-    shutil.copytree(rules_restore, rules_dest)
-    chown_r(rules_dest, root_uid, ossec_gid)
+    copy_files_folder(rules_restore, rules_dest)
 
 
 def download_ruleset():
@@ -452,7 +371,7 @@ def download_ruleset():
     # Update main directory
     shutil.copyfile("{0}/wazuh-ruleset/VERSION".format(downloads_directory), ruleset_version_path)
 
-    new_python_script = "{0}/wazuh-ruleset/ossec_ruleset.py".format(downloads_directory)
+    new_python_script = "{0}/wazuh-ruleset/wazuh_ruleset.py".format(downloads_directory)
     if os.path.isfile(new_python_script):
         shutil.copyfile(new_python_script, script_path)
 
@@ -484,7 +403,7 @@ def copy_ruleset(directory):
     # Update main directory
     shutil.copyfile("{0}/wazuh-ruleset/VERSION".format(downloads_directory), ruleset_version_path)
 
-    new_python_script = "{0}/wazuh-ruleset/ossec_ruleset.py".format(downloads_directory)
+    new_python_script = "{0}/wazuh-ruleset/wazuh_ruleset.py".format(downloads_directory)
     if os.path.isfile(new_python_script):
         shutil.copyfile(new_python_script, script_path)
 
@@ -513,20 +432,13 @@ def get_ruleset_to_update(no_checks=False):
             rules_update.append(filename)
             restart_ossec_needed = True
         else:  # Compare: New / Changed files
-            rules_file = "{0}/rules/{1}".format(ossec_path, filename)
+            rules_file = "{0}/{1}".format(dst_rules_path, filename)
             rules_equal = compare_files(new_rule, rules_file)
 
             if not rules_equal:
                 logger.debug("\tRule '{0}' == Rule '{1}'?\t{2}.".format(new_rule, rules_file, rules_equal))
                 rules_update.append(filename)
-
-                # Restart ossec:
-                #  if it is a new rule (because the script activate it later)
-                #  if it is in use in ossec.conf
-                if not os.path.isfile(rules_file):
-                    restart_ossec_needed = True
-                elif regex_in_file("\s*<include>{0}</include>".format(filename), ossec_conf):
-                    restart_ossec_needed = True
+                restart_ossec_needed = True
 
     # Decoders
     if not os.path.exists(source_decoders_path):
@@ -542,16 +454,12 @@ def get_ruleset_to_update(no_checks=False):
             decoders_update.append(filename)
             restart_ossec_needed = True
         else:  # Compare: New / Changed files
-            decoders_file = "{0}/etc/decoders/{1}".format(ossec_path, filename)
+            decoders_file = "{0}/{1}".format(dst_decoders_path, filename)
             decoders_equal = compare_files(new_decoder, decoders_file)
 
             if not decoders_equal:
                 logger.debug("\tDecoders '{0}' == Decoders '{1}'?\t{2}.".format(new_decoder, decoders_file, decoders_equal))
                 decoders_update.append(filename)
-
-                # Restart ossec always:
-                #  if it is a new decoder, the script will activate the rule later.
-                #  if it is an old decoder, we do not know if it is used by a rule in ossec.conf (actually, all decoders are in use)
                 restart_ossec_needed = True
 
     # Rootchecks
@@ -593,7 +501,7 @@ def update_rules(rules):
             logger.log("\t{0}".format(rule))
 
             src_rule = "{0}/{1}".format(source_rules_path, rule)
-            dst_rule = "{0}/rules/{1}".format(ossec_path, rule)
+            dst_rule = "{0}/{1}".format(dst_rules_path, rule)
 
             if "local_rules.xml" not in src_rule and os.path.isfile(src_rule):
                 shutil.copyfile(src_rule, dst_rule)
@@ -609,7 +517,7 @@ def update_decoders(decoders):
             logger.log("\t{0}".format(decoder))
 
             src_decoder = "{0}/{1}".format(source_decoders_path, decoder)
-            dst_decoder = "{0}/etc/decoders/{1}".format(ossec_path, decoder)
+            dst_decoder = "{0}/{1}".format(dst_decoders_path, decoder)
 
             if "local_decoder.xml" not in src_decoder and os.path.isfile(src_decoder):
                 shutil.copyfile(src_decoder, dst_decoder)
@@ -636,11 +544,11 @@ def usage():
     msg = """
     OSSEC Wazuh Ruleset Update v3.0.0
     Github repository: https://github.com/wazuh/wazuh-ruleset
-    Full documentation: http://documentation.wazuh.com/en/latest/ossec_ruleset.html
+    Full documentation: http://documentation.wazuh.com/en/latest/wazuh_ruleset.html
 
-    Usage: ./ossec_ruleset.py                  # Update Decoders, Rules and Rootchecks
-           ./ossec_ruleset.py -b list          # Show backup list
-           ./ossec_ruleset.py -b 20160901_001  # Restore specific backup
+    Usage: ./wazuh_ruleset.py                  # Update Decoders, Rules and Rootchecks
+           ./wazuh_ruleset.py -b list          # Show backup list
+           ./wazuh_ruleset.py -b 20160901_001  # Restore specific backup
 
     Restart:
     \t-s, --restart       Restart OSSEC when required.
@@ -726,9 +634,6 @@ def main():
             update_decoders(ruleset_to_update['decoders'])
             update_rootchecks(ruleset_to_update['rootchecks'])
 
-            # ossec.conf
-            edit_ossec_conf()
-
             success_msg = "\n**Ruleset {0} updated to {1} successfully**".format(ruleset_version_old, ruleset_version)
 
         # Clean directory
@@ -804,11 +709,13 @@ if __name__ == "__main__":
     ossec_conf = "{0}/etc/ossec.conf".format(ossec_path)
     ruleset_version_path = "{0}/VERSION".format(update_path)
     bk_directory = "{0}/backups".format(update_path)
-    script_path = "{0}/ossec_ruleset.py".format(update_path)
+    script_path = "{0}/wazuh_ruleset.py".format(update_path)
     downloads_directory = "{0}/downloads".format(update_path)
     source_rules_path = "{0}/wazuh-ruleset/rules".format(downloads_directory)
     source_decoders_path = "{0}/wazuh-ruleset/decoders".format(downloads_directory)
     source_rootchecks_path = "{0}/wazuh-ruleset/rootchecks".format(downloads_directory)
+    dst_rules_path = "{0}/ruleset/rules".format(ossec_path)
+    dst_decoders_path = "{0}/ruleset/decoders".format(ossec_path)
 
     # Vars
     today_date = date.today().strftime('%Y%m%d')
@@ -826,10 +733,10 @@ if __name__ == "__main__":
     try:
         opts, args = getopt(sys.argv[1:], "b:p:o:sSfdjh", ["backups=", "path=", "ossec-path=", "restart", "no-restart", "force-update", "debug", "json", "help"])
         if len(opts) > 6:
-            print("Incorrect number of arguments.\nTry './ossec_ruleset.py --help' for more information.")
+            print("Incorrect number of arguments.\nTry './wazuh_ruleset.py --help' for more information.")
             sys.exit(1)
     except GetoptError as err:
-        print("str(err)" + "\n" + "Try './ossec_ruleset.py --help' for more information.")
+        print("str(err)" + "\n" + "Try './wazuh_ruleset.py --help' for more information.")
         sys.exit(1)
 
     for o, a in opts:
@@ -862,7 +769,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
     if restart_args > 1:
-        print("Bad arguments combination.\nTry './ossec_ruleset.py --help' for more information.")
+        print("Bad arguments combination.\nTry './wazuh_ruleset.py --help' for more information.")
         sys.exit(1)
 
     # Logger

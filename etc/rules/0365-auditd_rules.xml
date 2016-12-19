@@ -310,7 +310,7 @@
     <!-- File system rules (watch rules) -->
     <rule id="80780" level="3">
         <if_sid>80700</if_sid>
-        <list field="audit.key" lookup="match_key_value" check_value="write">lists/audit-keys</list>
+        <list field="audit.key" lookup="match_key_value" check_value="write">etc/lists/audit-keys</list>
         <description>Audit: Watch - Write access</description>
         <group>audit_watch_write,</group>
     </rule>
@@ -331,7 +331,7 @@
 
     <rule id="80783" level="3">
         <if_sid>80700</if_sid>
-        <list field="audit.key" lookup="match_key_value" check_value="read">lists/audit-keys</list>
+        <list field="audit.key" lookup="match_key_value" check_value="read">etc/lists/audit-keys</list>
         <description>Audit: Watch - Read access</description>
         <group>audit_watch_read,</group>
     </rule>
@@ -352,7 +352,7 @@
 
     <rule id="80786" level="3">
         <if_sid>80700</if_sid>
-        <list field="audit.key" lookup="match_key_value" check_value="attribute">lists/audit-keys</list>
+        <list field="audit.key" lookup="match_key_value" check_value="attribute">etc/lists/audit-keys</list>
         <description>Audit: Watch - Change attribute</description>
         <group>audit_watch_attribute,</group>
     </rule>
@@ -373,7 +373,7 @@
 
     <rule id="80789" level="3">
         <if_sid>80700</if_sid>
-        <list field="audit.key" lookup="match_key_value" check_value="execute">lists/audit-keys</list>
+        <list field="audit.key" lookup="match_key_value" check_value="execute">etc/lists/audit-keys</list>
         <description>Audit: Watch - Execute access: $(audit.file.name)</description>
         <group>audit_watch_execute,</group>
     </rule>
@@ -396,7 +396,7 @@
     <!-- System call rules -->
     <rule id="80792" level="3">
         <if_sid>80700</if_sid>
-        <list field="audit.key" lookup="match_key_value" check_value="command">lists/audit-keys</list>
+        <list field="audit.key" lookup="match_key_value" check_value="command">etc/lists/audit-keys</list>
         <description>Audit: Command: $(audit.exe)</description>
         <group>audit_command,</group>
     </rule>
