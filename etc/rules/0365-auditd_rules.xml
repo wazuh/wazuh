@@ -382,14 +382,14 @@
         <if_group>audit_watch_write</if_group>
         <match>type=CREATE</match>
         <description>Audit: Created: $(audit.file.name)</description>
-        <group>audit_watch_write, audit_watch_create,</group>
+        <group>audit_watch_write,audit_watch_create,</group>
     </rule>
 
     <rule id="80791" level="3">
         <if_group>audit_watch_write</if_group>
         <match>type=DELETE</match>
         <description>Audit: Deleted: $(audit.file.name)</description>
-        <group>audit_watch_write, audit_watch_delete,</group>
+        <group>audit_watch_write,audit_watch_delete,</group>
     </rule>
 
 
