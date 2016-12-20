@@ -120,6 +120,11 @@ UpdateOldVersions()
     # ossec.conf -> ossec.conf.orig
     cp -pr $OSSEC_CONF_FILE $OSSEC_CONF_FILE_ORIG
 
+    # Delete old service
+    if [ -f /etc/init.d/ossec ]; then
+        rm /etc/init.d/ossec
+    fi
+
     if [ ! "$INSTYPE" = "agent" ]; then
         ETC_DECODERS="$DIRECTORY/etc/decoders"
         ETC_RULES="$DIRECTORY/etc/rules"
