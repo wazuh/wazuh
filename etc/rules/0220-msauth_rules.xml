@@ -815,12 +815,21 @@
   </rule>
 
 
-    <rule id="18257" level="3">
+  <rule id="18257" level="3">
     <if_sid>18101</if_sid>
     <id>^200$|^300$|^302$</id>
     <description>Windows: TS Gateway login success.</description>
     <group>authentication_success,pci_dss_10.2.5,</group>
     <info>https://technet.microsoft.com/en-us/library/cc775181(v=ws.10).aspx</info>
+  </rule>
+
+  <!--
+  2016 Nov 18 10:37:26 WinEvtLog: Application: INFORMATION(302): ESENT: (no user): no domain: BNC-O9020: Music.UI (25428) {87E550B7-AD4D-40F7-BE5E-263C3D44C124}: The database engine has successfully completed recovery steps.
+  -->
+  <rule id="18270" level="0">
+    <if_sid>18257</if_sid>
+    <match>The database engine has successfully completed recovery steps</match>
+    <description>Ignore rule 18257: TS Gateway login success</description>
   </rule>
 
   <rule id="18258" level="5">

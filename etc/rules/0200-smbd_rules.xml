@@ -91,7 +91,7 @@
   </rule>
 
   <rule id="13112" level="3">
-    <decoded_as>iptables</decoded_as>
+    <decoded_as>kernel</decoded_as>
     <match>gvfsd-smb</match>
     <regex>segfault at \S+ ip \S+ sp \S+ error \d+ in</regex>
     <description>Samba: Segfault in gvfs-smb.</description>
