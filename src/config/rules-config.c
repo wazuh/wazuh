@@ -83,6 +83,13 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     DIR *dfd;
     OSRegex regex;
 
+    os_calloc(1, sizeof(char*), exclude_rules);
+    os_calloc(1, sizeof(char*), exclude_decoders);
+    os_calloc(1, sizeof(char*), decoder_dirs);
+    os_calloc(1, sizeof(char*), rules_dirs);
+    os_calloc(1, sizeof(char*), decoder_dirs_pattern);
+    os_calloc(1, sizeof(char*), rules_dirs_pattern);
+
     /* XML definitions */
     const char *xml_rules_rule = "rule_include";
     const char *xml_rules_rules_dir = "rule_dir";
