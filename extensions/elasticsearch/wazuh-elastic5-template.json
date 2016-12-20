@@ -528,6 +528,62 @@
             "file.mode": {
               "type": "keyword",
               "doc_values": "true"
+            },
+            "acct": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "dev": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "enforcing": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "list": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "old-auid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "old-ses": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "old_enforcing": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "old_prom": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "op": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "prom": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "res": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "srcip": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "subj": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "success": {
+              "type": "keyword",
+              "doc_values": "true"
             }
           }
         }
