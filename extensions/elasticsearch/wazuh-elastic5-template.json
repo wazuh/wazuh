@@ -418,31 +418,143 @@
               "doc_values": "true"
             }
           }
+        },
+        "audit": {
+          "properties": {
+            "type": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "id": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "syscall": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "exit": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "ppid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "pid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "auid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "uid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "gid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "euid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "suid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "fsuid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "egid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "sgid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "fsgid": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "tty": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "session": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "command": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "exe": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "key": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "cwd": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "directory.name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "directory.inode": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "directory.mode": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "file.name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "file.inode": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "file.mode": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
         }
       }
     },
-	"agent": {
-	  "properties": {
-			"@timestamp": {
-			  "type": "date",
-			  "format": "dateOptionalTime"
-			},
-			"status": {
-			  "type": "keyword"
-			},
-			"ip": {
-			  "type": "keyword"
-			},
-			"host": {
-			  "type": "keyword"
-			},
-			"name": {
-			  "type": "keyword"
-			},
-			"id": {
-			  "type": "keyword"
-			}
-		}
-	}
+    "agent": {
+      "properties": {
+        "@timestamp": {
+          "type": "date",
+          "format": "dateOptionalTime"
+        },
+        "status": {
+          "type": "keyword"
+        },
+        "ip": {
+          "type": "keyword"
+        },
+        "host": {
+          "type": "keyword"
+        },
+        "name": {
+          "type": "keyword"
+        },
+        "id": {
+          "type": "keyword"
+        }
+      }
+    }
   }
 }
