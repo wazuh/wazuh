@@ -125,13 +125,13 @@ type=MAC_STATUS msg=audit(1480086668.032:1327): enforcing=0 old_enforcing=1 auid
 <decoder name="auditd-selinux_macstatus">
     <parent>auditd</parent>
     <regex offset="after_regex">^enforcing=(\S+) old_enforcing=(\S+) auid=(\S+) ses=(\S+)</regex>
-    <order>audit.enforcing,audit.old_enforcing,audit.auid,audit.sesion</order>
+    <order>audit.enforcing,audit.old_enforcing,audit.auid,audit.session</order>
 </decoder>
 
 <decoder name="auditd-selinux_macstatus">
     <parent>auditd</parent>
     <regex offset="after_regex">ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm="(\S+)" exe="(\S+)"</regex>
-    <order>audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.ses,audit.comm,audit.exe</order>
+    <order>audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.session,audit.command,audit.exe</order>
 </decoder>
 
 <decoder name="auditd-selinux_macstatus">
