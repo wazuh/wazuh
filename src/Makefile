@@ -502,7 +502,10 @@ ifeq (,$(wildcard ${PREFIX}/etc/lists))
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
 endif
 
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/* ${PREFIX}/etc/lists
+ifeq (,$(wildcard ${PREFIX}/etc/lists/audit-keys))
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys.cdb ${PREFIX}/etc/lists/audit-keys.cdb
+endif
 
 ifeq (,$(wildcard ${PREFIX}/update))
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/update
