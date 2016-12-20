@@ -9,7 +9,7 @@
 <group name="usb,">
 
     <rule id="81100" level="0">
-        <decoded_as>iptables</decoded_as>
+        <decoded_as>kernel</decoded_as>
         <id>usb</id>
         <description>USB messages grouped.</description>
     </rule>

@@ -17,7 +17,7 @@
 <group name="local,syslog,apparmor,">
 
   <rule id="52000" level="3">
-    <decoded_as>iptables</decoded_as>
+    <decoded_as>kernel</decoded_as>
     <match> apparmor=</match>
     <description>Apparmor messages grouped.</description>
   </rule>

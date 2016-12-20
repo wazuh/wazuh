@@ -39,12 +39,12 @@
     DPT=22 WINDOW=8192 RES=0x00 ACK URGP=0
   - Aug 17 10:03:37 myhostname kernel: SFW2-INext-DROP-DEFLT IN=eth0 OUT= MAC=00:08:02:da:c8:51:00:0f:f7:74:31:8a:08:00 SRC=1.2.3.36 DST=1.2.3.194 LEN=28 TOS=0x00 PREC=0x00 TTL=44 ID=60200 PROTO=ICMP TYPE=8 CODE=0 ID=10466 SEQ=21229
   -->
-<decoder name="iptables">
+<decoder name="kernel">
    <program_name>^kernel</program_name>
 </decoder>
 
 <decoder name="iptables-1">
-   <parent>iptables</parent>
+   <parent>kernel</parent>
    <type>firewall</type>
    <prematch>^[\d+.\d+] \S+ IN=</prematch>
 
@@ -54,14 +54,14 @@
 </decoder>
 
 <decoder name="iptables-1">
-   <parent>iptables</parent>
+   <parent>kernel</parent>
    <type>firewall</type>
    <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
    <order>srcport,dstport</order>
 </decoder>
 
 <decoder name="iptables-2">
-   <parent>iptables</parent>
+   <parent>kernel</parent>
    <type>firewall</type>
    <prematch>^\S+ IN=</prematch>
 
@@ -71,14 +71,14 @@
 </decoder>
 
 <decoder name="iptables-2">
-   <parent>iptables</parent>
+   <parent>kernel</parent>
    <type>firewall</type>
    <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
    <order>srcport,dstport</order>
 </decoder>
 
 <decoder name="iptables-shorewall">
-   <parent>iptables</parent>
+   <parent>kernel</parent>
    <type>firewall</type>
    <prematch>^Shorewall:\S+:</prematch>
 
@@ -88,14 +88,14 @@
 </decoder>
 
 <decoder name="iptables-shorewall">
-   <parent>iptables</parent>
+   <parent>kernel</parent>
    <type>firewall</type>
    <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
    <order>srcport,dstport</order>
 </decoder>
 
 <decoder name="iptables-shorewall2">
-  <parent>iptables</parent>
+  <parent>kernel</parent>
   <type>firewall</type>
   <prematch>^\p\S+\p Shorewall:\S+:</prematch>
   <regex offset="after_prematch">^(\S+):\.+ SRC=(\S+) DST=(\S+) \.+ </regex>
@@ -111,7 +111,7 @@ Example:
 -->
 
 <decoder name="iptables-OpenWRT">
-   <parent>iptables</parent>
+   <parent>kernel</parent>
    <type>firewall</type>
    <prematch>^[\d+.\d+] \S+\.*IN=</prematch>
    <regex>^[\d+.\d+] (\S*)\(</regex>
@@ -119,21 +119,21 @@ Example:
 </decoder>
 
 <decoder name="iptables-OpenWRT">
-   <parent>iptables</parent>
+   <parent>kernel</parent>
    <type>firewall</type>
    <regex offset="after_regex">SRC=(\S+) DST=(\S+)</regex>
    <order>srcip,dstip</order>
 </decoder>
 
 <decoder name="iptables-OpenWRT">
-   <parent>iptables</parent>
+   <parent>kernel</parent>
    <type>firewall</type>
    <regex offset="after_regex">PROTO=(\w+)</regex>
    <order>protocol</order>
 </decoder>
 
 <decoder name="iptables-OpenWRT">
-   <parent>iptables</parent>
+   <parent>kernel</parent>
    <type>firewall</type>
    <regex offset="after_regex">SPT=(\d+) DPT=(\d+) </regex>
    <order>srcport,dstport</order>
@@ -152,7 +152,7 @@ Example:
 -->
 
 <decoder name="apparmor">
-  <parent>iptables</parent>
+  <parent>kernel</parent>
   <prematch> apparmor=</prematch>
   <regex> apparmor="(\S+)" operation="(\S+)"</regex>
   <order>status, extra_data</order>
@@ -174,14 +174,14 @@ Examples:
 [ 6498.775788] mptbase: ioc0:   volume is now degraded, enabled
 -->
 <decoder name="mptscsih-1">
-  <parent>iptables</parent>
+  <parent>kernel</parent>
   <prematch>^[\s\d+.\d+] mptscsih: </prematch>
   <regex>^[\s\d+.\d+] (\w+): (\w+): task abort: (\w+)</regex>
   <order>id,data,status</order>
 </decoder>
 
 <decoder name="mptbase-1">
-  <parent>iptables</parent>
+  <parent>kernel</parent>
   <prematch>^[\s\d+.\d+] mptbase: </prematch>
   <regex>^[\s\d+.\d+] (\w+): (\w+):\s+\w+ is now (\w+)\p\s(\D+)$</regex>
   <order>id,data,action,status</order>
@@ -194,7 +194,7 @@ USB
 Feb  3 10:23:08 testsys kernel: usb 1-1.2: New USB device found, idVendor=0781, idProduct=5575
 -->
 <decoder name="usb-storage-attached">
-    <parent>iptables</parent>
+    <parent>kernel</parent>
     <prematch offset="after_parent">^usb</prematch>
     <regex offset="after_parent">^(usb) </regex>
     <order>id</order>
