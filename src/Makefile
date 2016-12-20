@@ -375,6 +375,7 @@ install-common: build
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
+	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 
 	install -d -m 0750 -o root -g 0 ${PREFIX}/bin
 	install -d -m 0750 -o root -g 0 ${PREFIX}/lua
@@ -457,7 +458,6 @@ install-server-generic: install-common
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rules
 	install -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db
 	install -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db/agents
-	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
