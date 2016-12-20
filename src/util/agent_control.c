@@ -591,7 +591,7 @@ int main(int argc, char **argv)
     }
 
     /* Run active response on the specified agent id */
-    if (ip_address && ar && agent_id) {
+    if (ip_address && ar && (agent_id || restart_all_agents)) {
         /* Connect to remoted */
         debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
         arq = connect_to_remoted();
@@ -603,9 +603,19 @@ int main(int argc, char **argv)
 
         if (send_msg_to_agent(arq, ar, agent_id, ip_address) == 0) {
             printf("\n%s %s: Running active response '%s' on: %s\n",
-                   __ossec_name, ARGV0, ar, agent_id);
+                   __ossec_name, ARGV0, ar, agent_id ? agent_id : "all");
         } else {
-            printf("\n** Unable to restart syscheck on agent: %s\n", agent_id);
+            if (json_output) {
+                cJSON_AddNumberToObject(root, "error", 47);
+                cJSON_AddStringToObject(root, "message", "Unable to run active response");
+                printf("%s",cJSON_PrintUnformatted(root));
+                cJSON_Delete(root);
+            } else if (agent_id) {
+                printf("\n** Unable to run active response on all agents.\n");
+            } else {
+                printf("\n** Unable to run active response on agent: %s\n", agent_id);
+            }
+
             exit(1);
         }
 
