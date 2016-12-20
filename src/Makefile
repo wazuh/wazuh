@@ -389,7 +389,7 @@ install-common: build
 	install -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-luac ${PREFIX}/bin/
 	install -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
 	install -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
-	install -m 0750 -o root -g 0 wazuh-moduled ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
 
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
@@ -630,7 +630,7 @@ BUILD_SERVER+=ossec-logtest
 BUILD_SERVER+=ossec-makelists
 BUILD_SERVER+=ossec-dbd
 BUILD_SERVER+=ossec-integratord
-BUILD_SERVER+=wazuh-moduled
+BUILD_SERVER+=wazuh-modulesd
 
 BUILD_AGENT+=external
 BUILD_AGENT+=ossec-agentd
@@ -641,7 +641,7 @@ BUILD_AGENT+=ossec-logcollector
 BUILD_AGENT+=ossec-syscheckd
 BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
-BUILD_AGENT+=wazuh-moduled
+BUILD_AGENT+=wazuh-modulesd
 
 .PHONY: server local hybrid agent
 ifeq (${MAKECMDGOALS},server)
@@ -1209,12 +1209,12 @@ ossec-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${fo
 ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
-### wazuh-moduled ##
+### wazuh-modulesd ##
 
-wmoduled_c := wazuh_modules/main.c
-wmoduled_o := $(wmoduled_c:.c=.o)
+wmodulesd_c := wazuh_modules/main.c
+wmodulesd_o := $(wmodulesd_c:.c=.o)
 
-wazuh-moduled: ${wmoduled_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB}
+wazuh-modulesd: ${wmodulesd_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 ####################
@@ -1391,7 +1391,7 @@ clean-internals:
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
 	rm -f ${integrator_o} ossec-integratord
-	rm -f ${wmoduled_o} ${wmodules_o} wazuh-moduled wmodules.a
+	rm -f ${wmodulesd_o} ${wmodules_o} wazuh-modulesd wmodules.a
 	rm -f ${sqlite_o} sqlite.a
 
 clean-windows:

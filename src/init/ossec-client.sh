@@ -12,7 +12,7 @@ DIR=`dirname $PWD`;
 NAME="Wazuh"
 VERSION="v1.2"
 AUTHOR="Wazuh Inc."
-DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd wazuh-moduled"
+DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd wazuh-modulesd"
 
 [ -f /etc/ossec-init.conf ] && . /etc/ossec-init.conf
 
@@ -117,7 +117,7 @@ testconfig()
 # Start function
 start()
 {
-    SDAEMONS="ossec-execd wazuh-moduled ossec-agentd ossec-logcollector ossec-syscheckd"
+    SDAEMONS="ossec-execd wazuh-modulesd ossec-agentd ossec-logcollector ossec-syscheckd"
 
     echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     lock;

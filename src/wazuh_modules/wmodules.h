@@ -13,7 +13,7 @@
 #define W_MODULES
 
 #ifndef ARGV0
-#define ARGV0 "wazuh-moduled"
+#define ARGV0 "wazuh-modulesd"
 #endif // ARGV0
 
 #include <pthread.h>
