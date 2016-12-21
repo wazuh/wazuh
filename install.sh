@@ -114,7 +114,12 @@ Install()
     cd ../
 
     # Generate the /etc/ossec-init.conf
-    GenerateInitConf
+    VERSION=`cat ${VERSION_FILE}`
+    chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
+    GenerateInitConf > ${OSSEC_INIT}
+    chmod 640 ${OSSEC_INIT}
+    chown root:ossec ${OSSEC_INIT}
+    ln -sf ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
 
     # Install Wazuh ruleset updater
     if [ "X$INSTYPE" = "Xserver" ]; then
@@ -859,7 +864,7 @@ main()
             AddPFTable
         fi
         echo ""
-        
+
         # If version < wazuh 1.2
         if [ "X$USER_OLD_NAME" != "XWazuh" ]; then
             echo " ====================================================================================="
