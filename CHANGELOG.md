@@ -31,7 +31,6 @@ All notable changes to this project will be documented in this file.
 - Title and file fields extracted at Rootcheck alerts.
 - Rule description formatting with dynamic field referencing.
 - Multithreaded design for Authd server for fast and reliable client dispatching, with key caching and write scheduling.
-- New Monitord feature for agent keys synchronization with SQLite database.
 - Auth registration client for Windows (by Gael Muller).
 - Auth password authentication for Windows client.
 - New local decoder file by default.
@@ -39,6 +38,14 @@ All notable changes to this project will be documented in this file.
 - New option for Authd to verify agent's address.
 - Added support for new format at predecoder (by Brad Lhotsky).
 - Agentless passlist encoding to Base64.
+- New Auditd-specific log format for Logcollector.
+- Option for Authd to auto-choose TLS/SSL method.
+- Compile option for Authd to make it compatible with legacy OSs.
+- Added new templates layout to auto-compose configuration file.
+- New wodle for SQLite database syncing (agent information and fim/pm data).
+- Added XML settings options to exclude some rules or decoders files.
+- Option for agent_control to broadcast AR on all agents.
+- Extended FIM event information forwarded by csyslogd (by Sivakumar Nellurandi).
 
 ### Changed
 
@@ -74,6 +81,18 @@ All notable changes to this project will be documented in this file.
 - Added option for Integrator to set the maximum log length.
 - JSON output nested objects modelling through dynamic fields.
 - Disable TCP for unsupported OSs.
+- Show previous log on JSON alert.
+- Removed confirmation prompt when importing an agent key successfully.
+- Made Syscheck not to ignore files that change more than 3 times by default.
+- Enabled JSON output by default.
+- Updated default syscheck configuration for Windows agents.
+- Limited agent' maximum connection time for notification time.
+- Improved client.keys changing detection method by remoted: use date and inode.
+- Changed boot service name to Wazuh.
+- Active response enabled on Windows agents by default.
+- New folder structure for rules and decoders.
+- More descriptive logs about syscheck real-time monitoring.
+- Renamed XML tags related to rules and decoders inclusion.
 
 ### Fixed
 
@@ -116,6 +135,20 @@ All notable changes to this project will be documented in this file.
 - Fixed memory leak at Logtest.
 - Fixed manager with TCP support on FreeBSD (by Dave Stoddard).
 - Fixed Integrator launching at local-mode installation.
+- Fixed issue on previous alerts counter (rules with if_matched_sid option).
+- Fixed compile and installing error on Solaris.
+- Fixed segmentation fault on syscheck when no configuration is defined.
+- Fixed bug that prevented manage_agents from removing syscheck/rootcheck database.
+- Fixed bug that made agents connected on TCP to hang if they are rejected by the manager.
+- Fixed segmentation fault on remoted due to race condition on managing keystore.
+- Fixed data lossing at remoted when reloading keystore.
+- Fixed compile issue on MacOS.
+- Fixed version reading at ruleset updater.
+- Fixed detection of BSD.
+- Fixed memory leak (by Byron Golden).
+- Fixed misinterpretation of octal permissions given by Agentless (by Stephan Leemburg).
+- Fixed mistake incorrect openssl flag at Makefile (by Stephan Leemburg).
+- Silence Slack integration transmission messages (by Dan Parriot).
 
 ### Removed
 
