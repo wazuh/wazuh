@@ -166,16 +166,14 @@ SetHeaders()
 ##########
 GenerateInitConf()
 {
-    VERSION=`cat ${VERSION_FILE}`
-    chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
-    echo "DIRECTORY=\"${INSTALLDIR}\"" > ${OSSEC_INIT}
-    echo "NAME=\"${NAME}\"" >> ${OSSEC_INIT}
-    echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}
-    echo "DATE=\"`date`\"" >> ${OSSEC_INIT}
-    echo "TYPE=\"${INSTYPE}\"" >> ${OSSEC_INIT}
-    chmod 640 ${OSSEC_INIT}
-    chown root:ossec ${OSSEC_INIT}
-    ln -sf ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
+    NEWINIT="./ossec-init.conf.temp"
+    echo "DIRECTORY=\"${INSTALLDIR}\"" > ${NEWINIT}
+    echo "NAME=\"${NAME}\"" >> ${NEWINIT}
+    echo "VERSION=\"${VERSION}\"" >> ${NEWINIT}
+    echo "DATE=\"`date`\"" >> ${NEWINIT}
+    echo "TYPE=\"${INSTYPE}\"" >> ${NEWINIT}
+    cat "$NEWINIT"
+    rm "$NEWINIT"
 }
 
 ##########
