@@ -150,6 +150,10 @@
               "type": "keyword",
               "doc_values": "true"
             },
+            "gid_after": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
             "perm_before": {
               "type": "keyword",
               "doc_values": "true"
