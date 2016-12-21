@@ -10,7 +10,6 @@ char *searchAndReplace(const char *orig, const char *search, const char *value)
 
     size_t inx_start;
     char *tmp = NULL;
-    char *tmp2 = NULL;
     size_t tmp_offset = 0;
     size_t total_bytes_allocated = 1;
     size_t from;
@@ -37,42 +36,36 @@ char *searchAndReplace(const char *orig, const char *search, const char *value)
     while (p != NULL) {
         /* Copy replacement */
         total_bytes_allocated += value_len;
-        tmp2 = (char *) realloc(tmp, total_bytes_allocated);
+        os_realloc(tmp, total_bytes_allocated, tmp);
 
-        if (tmp2 != NULL) {
-            tmp = tmp2;
-            strncpy(tmp + tmp_offset, value, value_len);
-            tmp_offset += value_len;
+        strncpy(tmp + tmp_offset, value, value_len);
+        tmp_offset += value_len;
 
-            /* Search for further occurrences */
-            p = strstr(orig + inx_start + search_len, search);
-            if (p != NULL) {
-                size_t inx_start2 = (size_t) (p - orig);
+        /* Search for further occurrences */
+        p = strstr(orig + inx_start + search_len, search);
+        if (p != NULL) {
+            size_t inx_start2 = (size_t) (p - orig);
 
-                /* Copy content between matches, if any */
-                if (inx_start2 > from) {
-                    size_t gap = inx_start2 - from;
-                    total_bytes_allocated += gap;
-                    tmp = (char *) realloc(tmp, total_bytes_allocated);
-                    strncpy(tmp + tmp_offset, orig + from, gap);
-                    tmp_offset += gap;
-                }
-
-                inx_start = inx_start2;
+            /* Copy content between matches, if any */
+            if (inx_start2 > from) {
+                size_t gap = inx_start2 - from;
+                total_bytes_allocated += gap;
+                os_realloc(tmp, total_bytes_allocated, tmp);
+                strncpy(tmp + tmp_offset, orig + from, gap);
+                tmp_offset += gap;
             }
 
-            /* Set position for copying content after last match */
-            from = inx_start + search_len;
-        } else {
-            free(tmp);
-            /* And handle error */
+            inx_start = inx_start2;
         }
+
+        /* Set position for copying content after last match */
+        from = inx_start + search_len;
     }
 
     /* Copy content after last match, if any */
     if ((from < orig_len) && from > 0) {
         total_bytes_allocated += orig_len - from;
-        tmp = (char *) realloc(tmp, total_bytes_allocated);
+        os_realloc(tmp, total_bytes_allocated, tmp);
         strncpy(tmp + tmp_offset, orig + from, orig_len - from);
     }
 
