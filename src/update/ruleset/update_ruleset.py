@@ -108,14 +108,17 @@ def rename(src, dst):
     chmod(dst, file_permissions)
 
 
-def copy(src, dst):
+def copy(src, dst, executable=False):
     if os.path.isfile(src):
         copyfile(src, dst)
     else:
         copytree(src, dst)
 
     chown(dst, root_uid, ossec_gid)
-    chmod(dst, file_permissions)
+    if executable:
+        chmod(dst, file_permissions_x)
+    else:
+        chmod(dst, file_permissions)
 
 
 def rm(path):
@@ -206,8 +209,8 @@ def get_ossec_version():
 
 def get_ruleset_version():
     try:
-        f_version = open(update_version_path)
-        rs_version = f_version.read().rstrip('\n')
+        f_version = open(ossec_ruleset_version_path)
+        rs_version = f_version.read().strip("\n").split("=")[1][2:-1]
         f_version.close()
     except:
         rs_version = "N/A"
@@ -217,7 +220,7 @@ def get_ruleset_version():
 
 def get_new_ruleset(source):
     mkdir(update_downloads)
-    rm("{0}/wazuh-ruleset/".format(update_downloads))
+    rm(update_ruleset)
 
     if source == 'download':
         ruleset_zip = "{0}/ruleset.zip".format(update_downloads)
@@ -245,7 +248,7 @@ def get_new_ruleset(source):
         invalid_download = True
         for branch in ['stable', 'development', 'master']:
             if branch in url_ruleset:
-                rename("{0}/wazuh-ruleset-{1}".format(update_downloads, branch), "{0}/wazuh-ruleset".format(update_downloads))
+                rename("{0}/wazuh-ruleset-{1}".format(update_downloads, branch), update_ruleset)
                 invalid_download = False
                 break
         if invalid_download:
@@ -256,17 +259,17 @@ def get_new_ruleset(source):
             exit(2, "Directory doest not exist: '{0}'.\nExit.".format(source))
 
         # Copy
-        copy(source, "{0}/wazuh-ruleset/".format(update_downloads))
+        copy(source, update_ruleset)
 
         # Check new ruleset
         check_files = ["rootchecks", "rules", "decoders", "VERSION"]
         for cf in check_files:
-            if not os.path.exists("{0}/wazuh-ruleset/{1}".format(update_downloads, cf)):
+            if not os.path.exists("{0}/{1}".format(update_ruleset, cf)):
                 exit(2, "'{0}' doest not exist at '{1}'.\nExit.".format(cf, source))
 
     # Update main directory
-    copy("{0}/wazuh-ruleset/VERSION".format(update_downloads), update_version_path)
-    copy("{0}/wazuh-ruleset/wazuh_ruleset.py".format(update_downloads), update_script)
+    copy("{0}/VERSION".format(update_ruleset), ossec_ruleset_version_path)
+    copy("{0}/update_ruleset.py".format(update_ruleset), ossec_update_script, executable=True)
 
     return get_ruleset_version()
 
@@ -317,7 +320,7 @@ def get_ruleset_to_update(no_checks=False):
     return ruleset_update, restart_ossec_needed
 
 
-def update_ruleset(ruleset):
+def upgrade_ruleset(ruleset):
 
     rm(update_backups)
     mkdir(update_backups)
@@ -407,7 +410,7 @@ def main():
         if not ruleset_to_update['rules'] and not ruleset_to_update['decoders'] and not ruleset_to_update['rootchecks']:
             status['msg'] = "\nYou already have the latest version of ruleset."
         else:
-            update_ruleset(ruleset_to_update)
+            upgrade_ruleset(ruleset_to_update)
             status['msg'] = "\nRuleset {0} updated to {1} successfully".format(status['old_version'], status['new_version'])
 
         rm(update_downloads)
@@ -445,19 +448,16 @@ def main():
 
 def usage():
     msg = """
-    Wazuh Ruleset Update v3.0.0
+    Update ruleset v3.0.0
     Github repository: https://github.com/wazuh/wazuh-ruleset
     Full documentation: http://documentation.wazuh.com/en/latest/wazuh_ruleset.html
 
-    Usage: ./wazuh_ruleset.py                  # Update Decoders, Rules and Rootchecks
-           ./wazuh_ruleset.py -b               # Restore last backup
+    Usage: ./update_ruleset.py                  # Update Decoders, Rules and Rootchecks
+           ./update_ruleset.py -b               # Restore last backup
 
     Restart:
     \t-s, --restart       Restart OSSEC when required.
     \t-S, --no-restart    Do not restart OSSEC when required.
-
-    Source:
-    \t-p, --path          Update ruleset from path (instead of download it).
 
     Backups:
     \t-b , --backups      Restore last backup.
@@ -465,6 +465,7 @@ def usage():
     Additional Params:
     \t-f, --force-update  Force to update the ruleset. By default, only it is updated the new/changed decoders/rules/rootchecks.
     \t-o, --ossec-path    Set OSSEC path. Default: '/var/ossec'
+    \t-p, --path          Update ruleset from path (instead of download it).
     \t-j, --json          JSON output. It should be used with '-s' or '-S' argument.
     \t-d, --debug         Debug mode.
     """
@@ -480,6 +481,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     file_permissions = 0o640
+    file_permissions_x = 0o740
     try:
         root_uid = getpwnam("root").pw_uid
         ossec_gid = getgrnam("ossec").gr_gid
@@ -493,10 +495,10 @@ if __name__ == "__main__":
     try:
         opts, args = getopt(sys.argv[1:], "p:o:bsSfdjh", ["backups", "path=", "ossec_path=", "restart", "no-restart", "force-update", "debug", "json", "help"])
         if len(opts) > 6:
-            print("Incorrect number of arguments.\nTry './wazuh_ruleset.py --help' for more information.")
+            print("Incorrect number of arguments.\nTry './update_ruleset.py --help' for more information.")
             sys.exit(1)
     except GetoptError as err:
-        print(str(err) + "\n" + "Try './wazuh_ruleset.py --help' for more information.")
+        print(str(err) + "\n" + "Try './update_ruleset.py --help' for more information.")
         sys.exit(1)
 
     for o, a in opts:
@@ -529,7 +531,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
     if restart_args > 1:
-        print("Bad arguments combination.\nTry './wazuh_ruleset.py --help' for more information.")
+        print("Bad arguments combination.\nTry './update_ruleset.py --help' for more information.")
         sys.exit(1)
 
     # Capture Cntrl + C
@@ -538,22 +540,22 @@ if __name__ == "__main__":
     ossec_path = arguments['ossec_path']
     ossec_ruleset_log = "{0}/logs/ruleset.log".format(ossec_path)
     ossec_conf = "{0}/etc/ossec.conf".format(ossec_path)
-    ossec_rules = "{0}/ruleset/rules".format(ossec_path)
-    ossec_decoders = "{0}/ruleset/decoders".format(ossec_path)
     ossec_rootchecks = "{0}/etc/shared".format(ossec_path)
-    ossec_rootchecks_pattern = "*.txt"
-    ossec_update = "{0}/update/ruleset".format(ossec_path)
+    ossec_update_script = "{0}/bin/update_ruleset.py".format(ossec_path)
+    ossec_ruleset = "{0}/ruleset".format(ossec_path)
+    ossec_rules = "{0}/rules".format(ossec_ruleset)
+    ossec_decoders = "{0}/decoders".format(ossec_ruleset)
+    ossec_ruleset_version_path = "{0}/VERSION".format(ossec_ruleset)
 
-    update_version_path = "{0}/VERSION".format(ossec_update)
-    update_backups = "{0}/backups".format(ossec_update)
+    update_downloads = "{0}/tmp/ruleset/downloads".format(ossec_path)
+    update_ruleset = "{0}/wazuh-ruleset".format(update_downloads)
+    update_rules = "{0}/rules".format(update_ruleset)
+    update_decoders = "{0}/decoders".format(update_ruleset)
+    update_rootchecks = "{0}/rootchecks".format(update_ruleset)
+    update_backups = "{0}/tmp/ruleset/backups".format(ossec_path)
     update_backups_decoders = "{0}/decoders".format(update_backups)
     update_backups_rules = "{0}/rules".format(update_backups)
     update_backups_rootchecks = "{0}/rootchecks".format(update_backups)
-    update_script= "{0}/wazuh_ruleset.py".format(ossec_update)
-    update_downloads = "{0}/downloads".format(ossec_update)
-    update_rules = "{0}/wazuh-ruleset/rules".format(update_downloads)
-    update_decoders = "{0}/wazuh-ruleset/decoders".format(update_downloads)
-    update_rootchecks = "{0}/wazuh-ruleset/rootchecks".format(update_downloads)
 
     if arguments['json']:
         logger = RulesetLogger(tag="Wazuh-Ruleset", filename=ossec_ruleset_log, flag=RulesetLogger.O_FILE, debug=arguments['debug'])
