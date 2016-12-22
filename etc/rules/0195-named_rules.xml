@@ -1,28 +1,17 @@
-<!-- @(#) $Id: ./etc/rules/named_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Example of Named rules for OSSEC.
-  -
+<!--
+  -  Named rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,named,">
   <rule id="12100" level="0">
     <decoded_as>named</decoded_as>
     <description>Grouping of the named rules</description>
   </rule>
-  
+
   <rule id="12101" level="12">
     <if_sid>12100</if_sid>
     <match>dropping source port zero packet from</match>
@@ -57,7 +46,7 @@
     <if_sid>12100</if_sid>
     <match>unexpected RCODE </match>
     <description>Unexpected error while resolving domain.</description>
-  </rule>  
+  </rule>
 
   <rule id="12106" level="4">
     <if_sid>12100</if_sid>
@@ -80,7 +69,7 @@
     <info type="link">http://www.reedmedia.net/misc/dns/errors.html</info>
 	<group>system_error,pci_dss_10.2.4,pci_dss_10.6.1,</group>
   </rule>
-  
+
   <rule id="12109" level="12">
     <if_sid>12100</if_sid>
     <match>exiting (due to fatal error)</match>
@@ -95,7 +84,7 @@
     <description>than stored.</description>
     <group>system_error,</group>
   </rule>
-  
+
   <rule id="12111" level="8">
     <regex>^transfer of \S+ from \S+ failed while receiving \S+ REFUSED</regex>
     <description>Unable to perform zone transfer.</description>
@@ -335,4 +324,4 @@
     <description>Parsing of a configuration file has failed.</description>
   </rule>
 
-</group> <!-- SYSLOG,NAMED -->
+</group>

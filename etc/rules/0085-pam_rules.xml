@@ -1,21 +1,10 @@
-<!-- @(#) $Id: ./etc/rules/pam_rules.xml, 2012/07/23 dcid Exp $
-
-  -  Official Unix Pam rules for OSSEC.
-  -
+<!--
+  -  Unix pam rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="pam,syslog,">
   <rule id="5500" level="0" noalert="1">
@@ -117,8 +106,4 @@
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
-
-</group> <!-- SYSLOG,pam -->
-
-
-<!-- EOF -->
+</group>

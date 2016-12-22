@@ -1,14 +1,11 @@
-
-<!-- @(#) $Id: ./etc/rules/ms_dhcp_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Microsoft Windows 2003 ipv4, Windows 2008 ipv4/ipv6 DHCP rules for OSSEC.
-  -  Author: phishphreek@gmail.com
-  -  License: http://www.ossec.net/en/licensing.html (http://gplv3.fsf.org)
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
+<!--
+  -  Microsoft Windows 2003 ipv4, Windows 2008 ipv4/ipv6 DHCP rules
+  -  Author: Daniel Cid.
+  -  Author: phishphreek@gmail.com.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <!--Server 2003 and 2008 IPv4 Event ID  Meaning
 00        The log was started.
@@ -36,7 +33,6 @@
 50+       Codes above 50 are used for Rogue Server Detection information.
 -->
 
-
 <!--Server 2003 IPv4 Log Sample
 ID,Date,Time,Description,IP Address,Host Name,MAC Address
 24,3/10/2009,0:00:46,Database Cleanup Begin,,,,
@@ -51,7 +47,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 18,3/10/2009,19:59:11,Expired,192.168.10.205,,,
 17,3/10/2009,23:59:16,DNS record not deleted,192.168.10.205,,,
 -->
-
 
 <group name="windows,dhcp,">
   <rule id="6300" level="0">
@@ -223,7 +218,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
   </rule>
 
 
-
 <!--
 Server 2008 IPv6 Event ID  Meaning
 11000	Solicit.
@@ -252,6 +246,7 @@ Server 2008 IPv6 Event ID  Meaning
 11024	Service authorized in AD.
 11025	Service has not determined if it authorized in AD.
 -->
+
 <!--Server 2008 IPv6 Log Sample (short on samples, not currently using)
 11020,05/05/09,00:00:38,DHCPV6 Database Cleanup Begin,,,,,,
 11019,05/05/09,00:00:38,DHCPV6 0 leases expired and 0 leases deleted,,,,,,

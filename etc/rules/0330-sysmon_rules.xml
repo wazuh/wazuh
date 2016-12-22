@@ -1,7 +1,12 @@
-<!--Maintained by Josh Brower, Josh@DefensiveDepth.com -->
-<!--Licensed under the MIT License: http://opensource.org/licenses/MIT-->
+<!--
+  -  Sysmon rules
+  -  Author: Josh Brower, Josh@DefensiveDepth.com.
+  -  Licensed under the MIT License: http://opensource.org/licenses/MIT
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+-->
 
-<!-- Ruleset to detect Windows Process Anomalies - 
+
+<!-- Ruleset to detect Windows Process Anomalies -
   -  Uses Sysmon Event ID 1 logs & associated decoder.
   -  Currently only looks at Parent Image Anomalies.
   -  Windows Process Attributes documentation here: http://defensivedepth.com/windows-processes
@@ -14,16 +19,16 @@
   -
   -  PCI Tagging by Wazuh <ossec@wazuh.com>.
   -
-  -->
-  
+-->
+
 <group name="sysmon_process-anomalies,">
-  
+
  <rule id="184665" level="0">
   <if_sid>18100</if_sid>
   <match>Microsoft-Windows-Sysmon/Operational: INFORMATION(1)</match>
   <description>Sysmon - Event 1</description>
  </rule>
-  
+
  <rule id="184666" level="12">
   <if_sid>184665</if_sid>
   <status>svchost.exe</status>
@@ -190,6 +195,4 @@
   <extra_data>userinit.exe</extra_data>
   <description>Sysmon - Legitimate Parent Image - explorer.exe</description>
 </rule>
-</group> <!-- sysmon_process-anomalies -->
-
-<!-- EOF -->
+</group>

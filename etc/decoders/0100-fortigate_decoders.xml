@@ -1,9 +1,8 @@
 <!--
   -  Fortigate decoders
-  -  v1.0 2016/10/27
-  -  Created by Tom Hancock <t.m.h.a.ncoc.k+wazuh@gmail.com>
-  -  Updated by jesus@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Author: Tom Hancock <t.m.h.a.ncoc.k+wazuh@gmail.com>
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!-- FortiOS 3.0 via syslog -->

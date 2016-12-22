@@ -1,15 +1,10 @@
-<!-- @(#) $Id: ./etc/rules/racoon_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Racoon VPN rules for OSSEC HIDS.
-  -  Author: Daniel B. Cid
-  -  License: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
-
-<!-- BETA -->
+<!--
+  -  Racoon VPN rules
+  -  Author: Daniel Cid.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,racoon,">
   <rule id="14100" level="0">
@@ -72,4 +67,4 @@
     <description>racoon: Multiple failed VPN logins.</description>
     <group>pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
-</group> <!-- SYSLOG,RACOON -->
+</group>

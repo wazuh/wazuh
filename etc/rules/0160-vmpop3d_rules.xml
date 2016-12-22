@@ -1,13 +1,10 @@
-<!-- @(#) $Id: ./etc/rules/vmpop3d_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official rules for vm-pop3d.
-  -
-  -  License: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
+<!--
+  -  vm-pop3d rules
+  -  Author: Daniel Cid.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,vm-pop3d,">
   <rule id="9800" level="0" noalert="1">
@@ -30,6 +27,3 @@
   </rule>
 
 </group>
-
-
-<!-- EOF -->

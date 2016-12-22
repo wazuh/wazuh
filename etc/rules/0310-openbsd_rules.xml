@@ -1,18 +1,10 @@
-  <!-- Copyright 2010 Dan Parriott (ddpbsd@gmail.com)
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
-
-
-  <!-- Modify it at your will. -->
+<!--
+  -  Openbsd rules
+  -  Author: Dan Parriott (ddpbsd@gmail.com).
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="local,syslog,openbsd,">
 
@@ -23,7 +15,7 @@
 
   <rule id="51501" level="1">
     <if_sid>51500</if_sid>
-    <match>ichiic0: abort failed, status 0x40</match> 
+    <match>ichiic0: abort failed, status 0x40</match>
     <description>A timeout occurred waiting for a transfer.</description>
   </rule>
 
@@ -33,9 +25,9 @@
     <description>Check media in optical drive.</description>
   </rule>
 
-  <rule id="51503" level="1"> 
+  <rule id="51503" level="1">
     <if_sid>51500</if_sid>
-    <match>BBB bulk-in clear stall failed</match> 
+    <match>BBB bulk-in clear stall failed</match>
     <description>A disk has timed out.</description>
   </rule>
 
@@ -110,7 +102,7 @@
     <match>Filesystem is not clean - run fsck</match>
     <description>Unclean filesystem, run fsck.</description>
   </rule>
-  
+
   <rule id="51515" level="0">
     <if_sid>51500</if_sid>
     <match>atascsi_passthru_done, timeout</match>
@@ -246,9 +238,4 @@
     <description>dhclient: device not configured.</description>
   </rule>
 
-
-
-</group> <!-- SYSLOG,LOCAL -->
-
-
-  <!-- EOF -->
+</group>

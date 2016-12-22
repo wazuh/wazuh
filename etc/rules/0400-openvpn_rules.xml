@@ -1,14 +1,12 @@
 <!--
   -  OpenVPN rules
-  -  v1.0 2016/07/28
-  -  Created by Julio Camargo <julio.camargo@trustux.com.br>
-  -  Updated by jesus@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Author: Julio Camargo <julio.camargo@trustux.com.br>
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!-- ID: 81800 - 81899 -->
 
-<!-- OpenVPN messages -->
 <group name="openvpn,">
     <rule id="81800" level="0">
         <decoded_as>openvpn</decoded_as>
@@ -52,4 +50,3 @@
     </rule>
 
 </group>
-<!-- OpenVPN -->

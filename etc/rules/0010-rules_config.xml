@@ -1,20 +1,10 @@
-<!-- @(#) $Id: ./etc/rules/rules_config.xml, 2011/09/08 dcid Exp $
-
-  -  Rules config.
-  -  Configuration options. This file must always be included, otherwise
-  -  most of the rules will not work properly.
-  -
+<!--
+  -  Rules config
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -->
-
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,">
   <rule id="01" level="0" noalert="1">
@@ -41,8 +31,8 @@
   <rule id="04" level="0" noalert="1">
     <category>web-log</category>
     <description>Generic template for all web rules.</description>
-  </rule>  
-</group>            
+  </rule>
+</group>
 
 <group name="squid,">
   <rule id="05" level="0" noalert="1">
@@ -56,7 +46,7 @@
     <category>windows</category>
     <description>Generic template for all windows rules.</description>
   </rule>
-</group>            
+</group>
 
 <group name="ossec,">
   <rule id="07" level="0" noalert="1">
@@ -64,6 +54,3 @@
     <description>Generic template for all ossec rules.</description>
   </rule>
 </group>
-
-
-<!-- EOF -->

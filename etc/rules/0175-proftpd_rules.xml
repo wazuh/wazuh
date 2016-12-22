@@ -1,22 +1,10 @@
-<!-- @(#) $Id: ./etc/rules/proftpd_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official Proftpd rules for OSSEC.
-  -
+<!--
+  -  Proftpd rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
-
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,proftpd,">
   <rule id="11200" level="0" noalert="1">
@@ -198,7 +186,4 @@
     <group>pci_dss_10.6.1,</group>
   </rule>
 
-</group> <!-- SYSLOG,PROFTPD -->
-
-
-<!-- EOF -->
+</group>

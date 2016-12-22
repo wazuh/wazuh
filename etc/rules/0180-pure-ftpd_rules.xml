@@ -1,14 +1,11 @@
-<!-- @(#) $Id: ./etc/rules/pure-ftpd_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official pure-ftpd rules for OSSEC.
-  -  Author: Peter Ahlert <peter@ifup.de>
-  -  Author: Daniel B. Cid
-  -  License: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
+<!--
+  -  Pure-ftpd rules
+  -  Author: Daniel Cid.
+  -  Author: Peter Ahlert <peter@ifup.de>.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,pure-ftpd,">
   <rule id="11300" level="0">
@@ -87,9 +84,4 @@
     <description>pure-ftpd: File retrieved from ftpd.</description>
   </rule>
 
-
-
-</group> <!-- SYSLOG,PURE-FTPD -->
-
-
-<!-- EOF -->
+</group>

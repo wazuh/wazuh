@@ -1,28 +1,17 @@
-<!-- @(#) $Id: ./etc/rules/hordeimp_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official Horde IMP rules for OSSEC.
-  -
+<!--
+  -  Horde IMP rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
-  
 <group name="syslog,hordeimp,">
   <rule id="9300" level="0">
     <decoded_as>horde_imp</decoded_as>
     <description>Grouping for the Horde imp rules.</description>
   </rule>
-  
+
   <rule id="9301" level="0">
     <if_sid>9300</if_sid>
     <match>^[info]</match>
@@ -40,27 +29,27 @@
     <match>^[error]</match>
     <description>Horde IMP error message.</description>
   </rule>
- 
+
   <rule id="9304" level="9" ignore="60">
     <if_sid>9300</if_sid>
     <match>^[emergency]</match>
     <description>Horde IMP emergency message.</description>
     <group>service_availability,</group>
-  </rule> 
- 
+  </rule>
+
   <rule id="9305" level="3">
     <if_sid>9302</if_sid>
     <match>Login success for </match>
     <description>Horde IMP successful login.</description>
     <group>authentication_success,pci_dss_10.2.5,</group>
-  </rule> 
- 
+  </rule>
+
   <rule id="9306" level="5">
     <if_sid>9303</if_sid>
     <match>FAILED LOGIN </match>
     <description>Horde IMP Failed login.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
-  </rule> 
+  </rule>
 
   <rule id="9351" level="10" frequency="6" timeframe="120">
     <if_matched_sid>9306</if_matched_sid>
@@ -74,8 +63,5 @@
     <description>Multiple Horde emergency messages.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
-            
-</group> <!-- SYSLOG,HORDE_IMP -->
 
-
-<!-- EOF -->
+</group>

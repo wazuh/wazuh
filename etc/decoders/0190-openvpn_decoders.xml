@@ -1,12 +1,10 @@
 <!--
   -  OpenVPN decoders
-  -  v1.0 2016/07/28
-  -  Created by Julio Camargo <julio.camargo@trustux.com.br>
-  -  Updated by jesus@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Author: Julio Camargo <julio.camargo@trustux.com.br>
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<!-- OpenVPN -->
 <decoder name="openvpn">
   <program_name>openvpn</program_name>
 </decoder>
@@ -43,5 +41,3 @@ Jul 21 18:32:24 fw01 openvpn: user 'chapolin' authenticated
   <regex offset="after_prematch">^(\S+)'</regex>
   <order>srcuser</order>
 </decoder>
-
-<!-- OpenVPN decoder END -->

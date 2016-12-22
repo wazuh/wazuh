@@ -1,10 +1,11 @@
-<!-- @(#) $Id: ./etc/rules/telnetd_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Telnetd rules for OSSEC.
-  -  Author: Ahmet Ozturk
-  -  License: http://www.ossec.net/en/licensing.html
-  -->
-
+<!--
+  -  Telnetd rules
+  -  Author: Daniel Cid.
+  -  Author: Ahmet Ozturk.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,telnetd,">
   <rule id="5600" level="0" noalert="1">
@@ -42,4 +43,4 @@
     <description>(possible scan).</description>
   </rule>
 
-</group> <!-- SYSLOG,TELNETD -->
+</group>

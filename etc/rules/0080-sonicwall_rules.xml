@@ -1,23 +1,11 @@
-<!-- @(#) $Id: ./etc/rules/sonicwall_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official SonicWall rules for OSSEC.
-  -
+<!--
+  -  Sonicwall rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
-
-<!-- SonicWall Log messages -->
 <group name="syslog,sonicwall,">
   <rule id="4800" level="0">
     <decoded_as>sonicwall</decoded_as>
@@ -91,6 +79,4 @@
     <description>SonicWall: Multiple firewall error messages.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
-</group> <!-- SonicWall -->
-
-<!-- EOF -->
+</group>

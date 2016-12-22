@@ -1,14 +1,10 @@
 <!--
-  -  redis decoder 
-  -  v1.0 2016/04/20
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  jesus@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Redis decoders
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!--
-REDIS
-
 1017:M 10 Apr 07:04:23.105 * 10 changes in 300 seconds. Saving
 8496:M 14 Apr 09:07:02.261 - Accepted 10.10.10.10:12345
 -->
@@ -22,6 +18,3 @@ REDIS
     <regex offset="after_prematch">^(\S+):(\d+)</regex>
     <order>srcip, dstport</order>
 </decoder>
-
-
-<!-- redis decoder END -->

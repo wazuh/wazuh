@@ -1,11 +1,10 @@
-  <!-- Copyright 2010 Dan Parriott (ddpbsd@gmail.com)
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-  -->
+<!--
+  -  Unbound rules
+  -  Author: Dan Parriott (ddpbsd@gmail.com).
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,unbound,">
 
@@ -43,6 +42,5 @@
     <match> AAAA IN$</match>
     <description>Unbound: DNS AAAA request.</description>
   </rule>
-
 
 </group>

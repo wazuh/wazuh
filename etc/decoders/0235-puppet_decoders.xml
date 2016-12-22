@@ -1,10 +1,8 @@
-<!-- puppet decoder -->
 <!--
-  -  v1.0 2015/10/13
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Puppet decoders
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
-
 
 <!-- PUPPET MASTER -->
 <!-- Oct  1 10:32:26 puppet puppet-master[1055]: Starting Puppet master version 3.8.3 -->
@@ -66,6 +64,3 @@
   <regex offset="after_prematch">^(\S+)'</regex>
   <order>extra_data</order>
 </decoder>
-
-<!-- puppet decoder END -->
-

@@ -1,17 +1,9 @@
 <!--
   -  FreeIPA decoders
-  -  v1.0 2016/08/14
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  jesus@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
--->
-
-<!--
-FreeIPA
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <decoder name="freeipa">
     <program_name>ipa</program_name>
 </decoder>
-
-<!-- FreeIPA decoders END -->

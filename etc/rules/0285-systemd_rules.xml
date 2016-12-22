@@ -1,3 +1,12 @@
+<!--
+  -  Systemd rules
+  -  Author: Dan Parriott <ddpbsd@gmail.com>.
+  -  Author: atomicturtle.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
 <group name="local,systemd,">
 
   <rule id="40700" level="0">

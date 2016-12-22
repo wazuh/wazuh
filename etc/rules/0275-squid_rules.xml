@@ -1,32 +1,13 @@
-<!-- @(#) $Id: ./etc/rules/squid_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official Squid rules for OSSEC.
-  -
-  -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
+<!--
+  -  Squid rules
+  -  Author: Daniel Cid.
   -  Contributed by: Ahmet Ozturk
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
-
-<!-- More information about squid codes below:
-   - http://www.uniar.ukrnet.net/tools/Squid-FAQ/FAQ-6.html
-  -->
-
-
-<!-- Squid frequency -->
 <var name="SQUID_FREQ">8</var>
-
 
 <group name="squid,">
   <rule id="35000" level="0">
@@ -221,6 +202,4 @@
     <description> (alert only once).</description>
   </rule>
 
-</group> <!-- ACCESSLOG,SQUID -->
-
-<!-- EOF -->
+</group>

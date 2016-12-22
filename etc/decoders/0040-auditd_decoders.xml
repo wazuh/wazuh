@@ -1,9 +1,7 @@
 <!--
-  -  audit decoder
-  -  v2.0 2016/12/12
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  jesus@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Audit decoders
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!--
