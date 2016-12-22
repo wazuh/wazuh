@@ -1,22 +1,11 @@
-<!-- @(#) $Id: ./etc/rules/asterisk_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official Asterisk rules for OSSEC.
-  -
+<!--
+  -  Asterisk rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -->
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
-
-<!-- Asterisk Log messages -->
 <group name="syslog,asterisk,">
   <rule id="6200" level="0">
     <decoded_as>asterisk</decoded_as>
@@ -124,7 +113,4 @@
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
-
-</group> <!-- ASTERISK -->
-
-<!-- EOF -->
+</group>

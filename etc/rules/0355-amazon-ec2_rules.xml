@@ -1,9 +1,7 @@
 <!--
   -  Amazon EC2 rules
-  -  v1.2 2016/05/11
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  jose@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!--
@@ -11,7 +9,6 @@ ec2: ID: 80300 - 80499
 vpc: ID: 81000 - 81099
 -->
 
-<!-- amazon-ec2 messages -->
 <group name="amazon-ec2,">
 
     <!-- It is necessary rules file: amazon_rules.xml -->
@@ -961,7 +958,8 @@ vpc: ID: 81000 - 81099
     </rule>
 
 </group>
-<!-- amazon-ec2 -->
+
+
 <group name="amazon-vpc,">
 
     <rule id="81000" level="3">

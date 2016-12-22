@@ -1,23 +1,12 @@
-<!-- @(#) $Id: ./etc/rules/apache_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official Apache rules for OSSEC.
-  -
-  -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
+<!--
+  -  Apache rules
+  -  Author: Daniel Cid.
   -  Contributed by: Ahmet Ozturk
   -                  Ben Chavet <ben.chavet@lullabot.com>
-  -->
-
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="apache,web,">
   <rule id="30100" level="0">
@@ -323,6 +312,4 @@
         <group>attack,pci_dss_11.4,</group>
     </rule>
 
-</group> <!-- ERROR_LOG,APACHE -->
-
-<!-- EOF -->
+</group>

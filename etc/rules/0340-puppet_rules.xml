@@ -1,21 +1,12 @@
-<!-- puppet_rules.xml, v1.0 2015/10/15
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -
-  -  Copyright (C) 2009-2011 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -->
+<!--
+  -  Puppet rules
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
-<!-- Puppet messages -->
 <!-- ID: 80000 - 80099 -->
-<group name="puppet,">
 
+<group name="puppet,">
     <!--
     Note:
         Logs with "core_dumped|failure|error|attack|bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted" will match with rule 1002.
@@ -360,4 +351,3 @@
     </rule>
 
 </group>
-<!-- Puppet -->

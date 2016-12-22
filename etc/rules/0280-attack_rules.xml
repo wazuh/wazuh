@@ -1,24 +1,13 @@
-<!-- @(#) $Id: ./etc/rules/attack_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official "attack" correlation rules for OSSEC.
-  -
+<!--
+  -  Attack rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -->
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
-  
 <!-- System users. They should never log in to the system -->
 <var name="SYS_USERS">^apache$|^mysql$|^www$|^nobody$|^nogroup$|^portmap$|^named$|^rpc$|^mail$|^ftp$|^shutdown$|^halt$|^daemon$|^bin$|^postfix$|^shell$|^info$|^guest$|^psql$|^user$|^users$|^console$|^uucp$|^lp$|^sync$|^sshd$|^cdrom$|^ossec$</var>
-
 
 <!-- Attack signatures -->
 <group name="syslog,attacks,">
@@ -94,10 +83,8 @@
     <description>Multiple viruses detected - Possible outbreak.</description>
     <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,</group>
   </rule>
-  
-</group> <!-- SYSLOG, ATTACKS, -->
 
-
+</group>
 
 <!-- Privilege escalation messages -->
 <group name="syslog,elevation_of_privilege,">
@@ -108,9 +95,7 @@
     <description>of an user.</description>
     <group>pci_dss_10.2.7,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
-</group> <!-- SYSLOG, ELEVATION_OF_PRIVILEGE, -->
-
-
+</group>
 
 <!-- Scan signatures -->
 <group name="syslog,recon,">
@@ -121,7 +106,4 @@
     <info type="link">http://project.honeynet.org/papers/enemy2/</info>
     <group>pci_dss_11.4,</group>
   </rule>
-</group> <!-- SYSLOG,SCANS -->
-
-
-<!-- EOF -->
+</group>

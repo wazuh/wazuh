@@ -1,14 +1,10 @@
 <!--
   -  Imperva decoders
-  -  v1.0 2016/08/11
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  jesus@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!--
-Imperva
-
 Aug  9 00:02:03 host1 Imperva: act=None dst=10.10.10.11 dpt=443 src=54.54.54.11 spt=34248 proto=TCP event#=4699905322851714444 eventType=http,eventSev=Medium,rt=Aug 08 2016 22:22:02 cat=Alert cs1=Suspicious Response Code cs1Label=Policy cs2=MQ-PAYMENT-API
 
 Mapping:

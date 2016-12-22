@@ -1,18 +1,10 @@
-  <!-- Copyright 2014 Dan Parriott (ddpbsd@gmail.com)
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -  License details: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-  -->
-
-
-
-  <!-- Modify it at your will. -->
+<!--
+  -  Apparmor rules
+  -  Author: Dan Parriott (ddpbsd@gmail.com).
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="local,syslog,apparmor,">
 
@@ -49,7 +41,4 @@
     <group>pci_dss_10.2.7,pci_dss_10.6.1,</group>
   </rule>
 
-</group> <!-- SYSLOG,LOCAL -->
-
-
-  <!-- EOF -->
+</group>

@@ -1,21 +1,10 @@
-<!-- @(#) $Id: ./etc/rules/imapd_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official imapd rules for OSSEC.
-  -
+<!--
+  -  Imapd rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <var name="IMAPD_FREQ">6</var>
 
@@ -53,4 +42,4 @@
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
-</group> <!-- SYSLOG,IMAPD -->
+</group>

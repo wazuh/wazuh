@@ -1,12 +1,9 @@
 <!--
-  -  netscaler rules
-  -  v1.1 2015/01/07
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  jesus@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Netscaler rules
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<!-- Netscaler messages -->
 <!--
 ID: 80100 - 80199
 id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, ACL, TRANSFORM, APPFW_RESP, AAATM, PITBOSS, CVPN
@@ -442,4 +439,3 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
     </rule>
 
 </group>
-<!-- netscaler -->

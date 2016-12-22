@@ -1,11 +1,8 @@
 <!--
   -  HP rules
-  -  v1.0 2016/06/09
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
-
-<!-- HP 5500 EI messages -->
 
 <!--
 Format: TIMESTAMP Sysname %%vendorMODULE/severity/MNEMONIC: location; CONTENT
@@ -109,6 +106,5 @@ Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.2550
       <description>HP 5500 EI: Multiple authentication failures.</description>
       <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
     </rule>
-
 
 </group>

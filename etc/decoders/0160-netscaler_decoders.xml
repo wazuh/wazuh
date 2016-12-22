@@ -1,13 +1,10 @@
 <!--
-  -  netscaler decoder 
-  -  v1.1 2015/01/07
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  jesus@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Netscaler decoders
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!--
-netscaler
 31/12/2015: 12:00:00 GMT name PPE : Text
 31/12/2015: 12:00:00 GMT name 0-PPE : Text
 31/12/2015: 12:00:00 GMT name 0-PPE-0 : Text
@@ -161,5 +158,3 @@ Generic
     <regex offset="after_parent">(\S+)</regex>
     <order>id</order>
 </decoder>
-
-<!-- netscaler decoder END -->

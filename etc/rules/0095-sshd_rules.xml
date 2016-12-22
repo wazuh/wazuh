@@ -1,22 +1,11 @@
-<!-- @(#) $Id: sshd_rules.xml,v 1.22 2010/12/19 14:50:14 ddp Exp $
-  -  Official SSHD rules for OSSEC.
-  -
-  -  Copyright (C) 2009-2011 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
+<!--
+  -  SSH rules
+  -  Author: Daniel Cid.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
-
-<!-- SSHD messages -->
 <group name="syslog,sshd,">
   <rule id="5700" level="0" noalert="1">
     <decoded_as>sshd</decoded_as>
@@ -402,6 +391,10 @@
     <description>sshd: subsystem request failed.</description>
   </rule>
 
-</group> <!-- SYSLOG, SSHD -->
+  <rule id="5757" level="0">
+    <decoded_as>sshd</decoded_as>
+    <match>but this does not map back to the address - POSSIBLE BREAK-IN ATTEMPT!$</match>
+    <description>Bad DNS mapping.</description>
+  </rule>
 
-<!-- EOF -->
+</group>

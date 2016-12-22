@@ -1,9 +1,7 @@
 <!--
-  -  serv-u rules
-  -  v1.0 2015/11/27
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  jesus@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Serv-u rules
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!-- ID: 80500 - 80599 -->
@@ -296,5 +294,3 @@ TypeMessage:
     </rule>
 
 </group>
-
-<!-- serv-u -->

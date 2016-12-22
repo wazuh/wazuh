@@ -1,15 +1,12 @@
 <!--
-  -  Unix decoder
-  -  v1.0 2016/12/01
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Unix decoders
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 
 <!-- unix_chkpwd
-  -  OSSEC log decoder.
   -  Author: Daniel B. Cid
-  -  License: http://www.ossec.net/en/licensing.html
   - Jul 21 07:40:29 localhost unix_chkpwd[15804]: password check failed for user (username)
 -->
 <decoder name="unix_chkpwd">

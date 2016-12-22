@@ -1,20 +1,10 @@
-<!-- @(#) $Id: ./etc/rules/cisco-ios_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official Cisco IOS rules for OSSEC.
-  -
+<!--
+  -  Cisco IOS rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -->
-
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,cisco_ios,">
   <rule id="4700" level="0">
@@ -92,7 +82,4 @@
     <group>authentication_failed,pci_dss_10.2.5,pci_dss_10.2.4,</group>
   </rule>
 
-</group> <!-- SYSLOG,CISCO IOS -->
-
-
-<!-- EOF -->
+</group>

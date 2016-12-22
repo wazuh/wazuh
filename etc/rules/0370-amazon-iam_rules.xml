@@ -1,12 +1,9 @@
 <!--
   -  Amazon IAM rules
-  -  v1.2 2016/05/11
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  jose@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<!-- amazon-iam messages -->
 <!-- ID: 80800 - 80999 -->
 
 <group name="amazon-iam,">
@@ -430,5 +427,3 @@
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
 </group>
-
-<!-- amazon-iam -->

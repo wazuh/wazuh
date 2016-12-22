@@ -1,21 +1,10 @@
-<!-- @(#) $Id: ./etc/rules/msauth_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Example of Microsoft Windows (2000, XP, 2003) rules for OSSEC.
-  -
+<!--
+  -  Microsoft Windows rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <var name="MS_FREQ">6</var>
 
@@ -990,5 +979,3 @@
   </rule>
 
 </group>
-
-<!-- EOF -->

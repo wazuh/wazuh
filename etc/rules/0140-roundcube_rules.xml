@@ -1,40 +1,29 @@
-<!-- @(#) $Id: ./etc/rules/roundcube_rules.xml, 2011/09/08 dcid Exp $
+<!--
+  -  Roundcube rules
+  -  Author: Daniel Cid.
+  -  Author: Michael Starks.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
-  -  Official Roundcube rules for OSSEC.
-  -
-  -  Author: Michael Starks
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 3) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
-<group name="syslog,roundcube,"> 
+<group name="syslog,roundcube,">
   <rule id="9400" level="0">
     <decoded_as>roundcube</decoded_as>
     <description>Roundcube messages groupe.d</description>
   </rule>
-   
+
   <rule id="9401" level="5">
     <if_sid>9400</if_sid>
     <match>failed (LOGIN)</match>
     <description>Roundcube authentication failed.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
-       
+
   <rule id="9402" level="3">
     <if_sid>9400</if_sid>
     <match>Successful login</match>
     <description>Roundcube authentication succeeded.</description>
     <group>authentication_success,pci_dss_10.2.5,</group>
-  </rule> 
+  </rule>
 </group>
-  
-
-<!-- EOF -->

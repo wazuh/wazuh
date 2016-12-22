@@ -1,14 +1,11 @@
-<!-- @(#) $Id: ./etc/rules/sendmail_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official sendmail rules for OSSEC.
+<!--
+  -  Sendmail rules
+  -  Author: Daniel Cid.
   -  Author: Ahmet Ozturk
-  -  Author: Daniel B. Cid
-  -  License: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,sendmail,">
   <rule id="3100" level="0">
@@ -150,4 +147,4 @@
      <group>smf-sav,spam,pci_dss_11.4,</group>
    </rule>
 
-</group> <!-- SYSLOG,SENDMAIL -->
+</group>

@@ -1,21 +1,10 @@
-<!-- @(#) $Id: ./etc/rules/courier_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official Courier rules for OSSEC.
-  -
+<!--
+  -  Courier rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -->
-
-<!-- Using logs from: http://www.ossec.net/wiki/index.php/Courier -->
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,courier,">
   <rule id="3900" level="0">
@@ -64,7 +53,4 @@
     <description>Courier: Multiple connection attempts from same source.</description>
     <group>recon,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
-</group> <!-- SYSLOG,COURIER -->
-
-
-<!-- EOF -->
+</group>

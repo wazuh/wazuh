@@ -1,26 +1,15 @@
-<!-- @(#) $Id: syslog_rules.xml,v 1.22 2010/11/25 17:06:17 ddp Exp $
-  -  Official Generic Syslog rules for OSSEC.
-  -
+<!--
+  -  Syslog rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 
 <!-- Default variables for the SYSLOG rules. -->
 
-<!-- Bad words matching. Any log containing these messages
-  -  will be triggered.
-  -->
+<!-- Bad words matching. Any log containing these messages will be triggered. -->
 <var name="BAD_WORDS">core_dumped|failure|error|attack|bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted</var>
 
 
@@ -743,6 +732,3 @@
   </rule>
 
 </group>
-
-
-<!-- EOF -->

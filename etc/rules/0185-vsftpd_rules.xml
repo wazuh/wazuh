@@ -1,15 +1,12 @@
-<!-- @(#) $Id: ./etc/rules/vsftpd_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official vsftpd rules for OSSEC.
-  -  Author: Joachim Vorrath <joachim.vorrath@vorrath-net.de>
-  -  Author: Jorge Augusto Senger <jorge@br10.com.br>
-  -  Author: Daniel B. Cid
-  -  License: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
+<!--
+  -  Vsftpd rules
+  -  Author: Daniel Cid.
+  -  Author: Joachim Vorrath <joachim.vorrath@vorrath-net.de>.
+  -  Author: Jorge Augusto Senger <jorge@br10.com.br>.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,vsftpd,">
   <rule id="11400" level="0" noalert="1">
@@ -59,7 +56,4 @@
     <group>recon,pci_dss_11.4,</group>
   </rule>
 
-</group> <!-- SYSLOG,VSFTPD -->
-
-
-<!-- EOF -->
+</group>

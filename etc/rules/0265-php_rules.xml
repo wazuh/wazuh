@@ -1,62 +1,51 @@
-<!-- @(#) $Id: ./etc/rules/php_rules.xml, 2012/05/09 dcid Exp $
-
-  -  Official PHP rules for OSSEC.
-  -
+<!--
+  -  PHP rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-                        
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="apache,">
   <rule id="31401" level="0">
     <if_sid>31301, 30101</if_sid>
     <match>PHP Warning: </match>
     <description>PHP Warning message.</description>
-  </rule>    
+  </rule>
 
   <rule id="31402" level="0">
     <if_sid>31301, 30101</if_sid>
     <match>PHP Fatal error: </match>
     <description>PHP Fatal error.</description>
     <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,</group>
-  </rule>    
+  </rule>
 
   <rule id="31403" level="0">
     <if_sid>31301, 30101</if_sid>
     <match>PHP Parse error:</match>
     <description>PHP Parse error.</description>
     <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,</group>
-  </rule>    
+  </rule>
 
   <rule id="31404" level="0">
     <match>^PHP Warning: </match>
     <description>PHP Warning message.</description>
-  </rule>    
+  </rule>
 
   <rule id="31405" level="0">
     <match>^PHP Fatal error: </match>
     <description>PHP Fatal error.</description>
     <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,</group>
-  </rule>    
+  </rule>
 
   <rule id="31406" level="0">
     <match>^PHP Parse error: </match>
     <description>PHP Parse error.</description>
     <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,</group>
-  </rule>    
+  </rule>
 
 
-  <!-- PHP Warnings 
+  <!-- PHP Warnings
     - PHP Warning:  urlencode() expects parameter 1 to be string, array given in
     -->
   <rule id="31410" level="3">
@@ -116,7 +105,4 @@ d 'includes/SkinTemplate.php'
     <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,</group>
   </rule>
 
-</group> <!-- ERROR_LOG, PHP -->
-
-<!-- EOF -->
-
+</group>

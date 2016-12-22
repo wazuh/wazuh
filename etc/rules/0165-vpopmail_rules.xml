@@ -1,14 +1,11 @@
-<!-- @(#) $Id: ./etc/rules/vpopmail_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official rules for vpopmail.
-  -
-  -  Author: Ceg Ryan <cegryan ( at ) gmail.com>
-  -  License: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
+<!--
+  -  vpopmail rules
+  -  Author: Daniel Cid.
+  -  Author: Ceg Ryan <cegryan ( at ) gmail.com>.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,vpopmail,">
   <rule id="9900" level="0">
@@ -44,7 +41,6 @@
     <description>vpopmail: successful login.</description>
   </rule>
 
-
   <rule id="9951" level="10" frequency="8" timeframe="240">
     <if_matched_sid>9901</if_matched_sid>
     <same_source_ip />
@@ -67,5 +63,3 @@
   </rule>
 
 </group>
-
-<!-- EOF -->

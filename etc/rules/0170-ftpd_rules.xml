@@ -1,13 +1,11 @@
-<!-- @(#) $Id: ./etc/rules/ftpd_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official ftpd rules for OSSEC.
-  -  Author: Ahmet Ozturk
-  -  License: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-
+<!--
+  -  Ftpd rules
+  -  Author: Daniel Cid.
+  -  Author: Ahmet Ozturk.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="syslog,ftpd,">
   <rule id="11100" level="0" noalert="1">
@@ -101,7 +99,4 @@
     <description>FTPD: authentication failure.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
-</group> <!-- SYSLOG,FTPD -->
-
-
-<!-- EOF -->
+</group>

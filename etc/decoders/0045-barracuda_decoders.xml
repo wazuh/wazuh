@@ -1,10 +1,13 @@
 <!--
   -  Barracuda decoders
-  -  Author: aquerubin
-  -  License: http://www.ossec.net/en/licensing.html
-  -->
+  -  Author: aquerubin.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
-  <!-- Barracuda S&VF Email Logs
+
+  <!--
   Examples:
   May 14 03:31:21 mx1.example.org inbound/pass1: mail-88-66.reachmail.net[216.55.88.66] 1400074281-06f4a338c037a90001-TkCAQV 1400074281 1400074283 RECV errors@mail-88-68.reachmail.net eteixeira@example.net 2 12 -
   May 15 14:09:17 mx1.example.org inbound/pass1: host.limitless-servers.com[192.208.186.41] 1400198954-06f4a338c062640001-BkZagu 1400198954 1400198958 SCAN - heartattackbreakthrough@ridchanceofhrtattk.us en@example.org - 2 74 ridchanceofhrtattk.us SZ:2557 SUBJ:THE #1 Trick to Prevent Heart-Attacks Revealed???

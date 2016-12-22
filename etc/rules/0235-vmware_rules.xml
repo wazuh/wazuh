@@ -1,23 +1,11 @@
-<!-- @(#) $Id: ./etc/rules/vmware_rules.xml, 2011/09/08 dcid Exp $
-
-  -  Official VMWare ESX rules for OSSEC.
-  -
+<!--
+  -  VMWare ESX rules
+  -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  All rights reserved.
-  -
-  -  This program is a free software; you can redistribute it
-  -  and/or modify it under the terms of the GNU General Public
-  -  License (version 2) as published by the FSF - Free Software
-  -  Foundation.
-  -
-  -  License details: http://www.ossec.net/en/licensing.html
-  -
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
-  -->
-  
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
-<!-- SonicWall Log messages -->
 <group name="vmware,">
   <rule id="19100" level="0">
     <decoded_as>vmware</decoded_as>
@@ -34,7 +22,7 @@
     <status>^crit|^fatal</status>
     <description>VMware ESX critical message.</description>
   </rule>
-  
+
  <rule id="19103" level="4">
     <if_sid>19100</if_sid>
     <status>^error</status>
@@ -52,13 +40,13 @@
     <status>^notice</status>
     <description>VMware ESX notice message.</description>
   </rule>
-  
+
   <rule id="19106" level="0">
     <if_sid>19100</if_sid>
     <status>^info</status>
     <description>VMware ESX informational message.</description>
   </rule>
-  
+
   <rule id="19107" level="0">
     <if_sid>19100</if_sid>
     <status>^verbose</status>
@@ -67,7 +55,7 @@
 
 
   <!-- Authentication messages. -->
-  
+
   <rule id="19110" level="3">
     <if_sid>19106</if_sid>
     <match>logged in$</match>
@@ -136,7 +124,7 @@
     <description>Multiple VMWare ESX warning messages.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
-  
+
   <rule id="19151" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>19103</if_matched_sid>
     <description>Multiple VMWare ESX error messages.</description>
@@ -155,6 +143,4 @@
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
-</group> <!-- VMware ESX -->
-
-<!-- EOF -->
+</group>

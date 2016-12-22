@@ -1,8 +1,11 @@
 <!--
-  -  Updated by Wazuh
-  -  PCI Tagging by Wazuh <ossec@wazuh.com>.
-  -
+  -  Clam AV rules
+  -  Author: Daniel Cid.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
+
 <group name="clamd,freshclam,">
 
   <rule id="52500" level="0" noalert="1">
@@ -85,4 +88,4 @@
     <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,</group>
   </rule>
 
-</group> <!-- clamd, freshclam -->
+</group>

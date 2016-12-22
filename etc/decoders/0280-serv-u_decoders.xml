@@ -1,13 +1,10 @@
 <!--
-  -  serv-u decoder 
-  -  v1.0 2015/11/27
-  -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-  -  jesus@wazuh.com
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+  -  SERV-U decoders
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!--
-SERV-U
 [TypeMessage] DayWeek DayMonthYear Time - (SessionID) Message
 
 Examples:
@@ -119,5 +116,3 @@ Examples:
     <regex>^[(\d\d)] \.+ - \((\d+)\) </regex>
     <order>action, id</order>
 </decoder>
-
-<!-- serv-u decoder END -->
