@@ -380,10 +380,6 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
         i++;
     }
 
-    if (fp_store) {
-        fclose(fp_store);
-    }
-
     return (0);
 }
 
@@ -457,4 +453,3 @@ void Agentlessd()
         sleep(60);
     }
 }
-
