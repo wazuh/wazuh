@@ -149,7 +149,13 @@ void HandleSecure()
                 } else {
                     sock_client = fd;
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
-                    getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size);
+
+                    if (getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size) < 0) {
+                        merror("%s: ERROR: Couldn't get the remote peer information: %s", ARGV0, strerror(errno));
+                        close(sock_client);
+                        continue;
+                    }
+
                     debug2("%s: DEBUG: recv(): length=%d [%zu]", ARGV0, length, recv_b);
 
                     /* Nothing received */
