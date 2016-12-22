@@ -482,12 +482,14 @@ install-server-generic: install-common
 	install -m 0750 -o root -g 0 syscheck_control ${PREFIX}/bin/
 	install -m 0750 -o root -g 0 rootcheck_control ${PREFIX}/bin/
 	install -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
+	install -m 0750 -o root -g 0 -b update/ruleset/update_ruleset.py ${PREFIX}/bin/update_ruleset.py
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/decoders
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/rules
 
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b update/ruleset/RULESET_VERSION ${PREFIX}/ruleset/VERSION
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
 
@@ -506,16 +508,6 @@ ifeq (,$(wildcard ${PREFIX}/etc/lists/audit-keys))
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys.cdb ${PREFIX}/etc/lists/audit-keys.cdb
 endif
-
-ifeq (,$(wildcard ${PREFIX}/update))
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/update
-endif
-
-ifeq (,$(wildcard ${PREFIX}/update/ruleset))
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/update/ruleset
-endif
-
-	install -m 0740 -o root -g ${OSSEC_GROUP} -b ../contrib/wazuh_ruleset.py ${PREFIX}/update/ruleset/wazuh_ruleset.py
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
 
