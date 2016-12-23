@@ -693,7 +693,7 @@ int wm_extract_agent(const char *fname, char *name, char *addr, int *registry) {
     default:
         // agent-info files
 
-        if (!(c = strchr(fname, '-')))
+        if (!(c = strrchr(fname, '-')))
             return -1;
 
         z_name = c - fname;
