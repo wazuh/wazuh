@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Wazuh Ruleset Update
 
-# v3.0.0 2016/12/21
+# v3.0.0 2016/12/23
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # jesus@wazuh.com
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -180,6 +180,27 @@ def exit(code, msg=None):
 
 
 # Functions
+def get_branch():
+    git_wazuh_ruleset = "./.git/HEAD"
+    git_wazuh = "../../../.git/HEAD"
+    branch_file = None
+
+    if os.path.isfile('VERSION') and os.path.isfile(git_wazuh_ruleset):  # wazuh-ruleset
+        branch_file = git_wazuh_ruleset
+    elif os.path.isfile('RULESET_VERSION') and os.path.isfile(git_wazuh):  # wazuh
+        branch_file = git_wazuh
+
+    try:
+        with open(branch_file, "r") as f:
+            lines = f.readlines()
+
+        current_branch = lines[0].split('/')[-1].strip()
+    except:
+        current_branch = 'stable'  # standalone script
+
+    return current_branch
+
+
 def get_ossec_version():
     init_file = "{0}/etc/ossec-init.conf".format(ossec_path)
 
@@ -223,6 +244,8 @@ def get_new_ruleset(source):
     rm(update_ruleset)
 
     if source == 'download':
+        branch = get_branch()  # 'stable' 'master' 'development'
+        url_ruleset = "https://github.com/wazuh/wazuh-ruleset/archive/{0}.zip".format(branch)
         ruleset_zip = "{0}/ruleset.zip".format(update_downloads)
 
         # Download
@@ -245,14 +268,8 @@ def get_new_ruleset(source):
             exit(2, "\tError extracting file '{0}': {1}.".format(ruleset_zip, e))
 
         # Rename
-        invalid_download = True
-        for branch in ['stable', 'development', 'master']:
-            if branch in url_ruleset:
-                rename("{0}/wazuh-ruleset-{1}".format(update_downloads, branch), update_ruleset)
-                invalid_download = False
-                break
-        if invalid_download:
-            exit(2, "Invalid downloaded file: {0}".format(url_ruleset))
+        rename("{0}/wazuh-ruleset-{1}".format(update_downloads, branch), update_ruleset)
+
     else:
         # New ruleset
         if not os.path.exists(source):
@@ -456,8 +473,8 @@ def usage():
            ./update_ruleset.py -b               # Restore last backup
 
     Restart:
-    \t-s, --restart       Restart OSSEC when required.
-    \t-S, --no-restart    Do not restart OSSEC when required.
+    \t-r, --restart       Restart OSSEC when required.
+    \t-R, --no-restart    Do not restart OSSEC when required.
 
     Backups:
     \t-b , --backups      Restore last backup.
@@ -465,7 +482,7 @@ def usage():
     Additional Params:
     \t-f, --force-update  Force to update the ruleset. By default, only it is updated the new/changed decoders/rules/rootchecks.
     \t-o, --ossec-path    Set OSSEC path. Default: '/var/ossec'
-    \t-p, --path          Update ruleset from path (instead of download it).
+    \t-s, --source        Select ruleset source path (instead of download it).
     \t-j, --json          JSON output. It should be used with '-s' or '-S' argument.
     \t-d, --debug         Debug mode.
     """
@@ -473,8 +490,6 @@ def usage():
 
 
 if __name__ == "__main__":
-
-    url_ruleset = "https://github.com/wazuh/wazuh-ruleset/archive/{0}.zip".format('master')  # 'stable' 'master' 'development'
 
     if os.geteuid() != 0:
         print("You need root privileges to run this script. Please try again, using 'sudo'. Exiting.")
@@ -493,7 +508,7 @@ if __name__ == "__main__":
     restart_args = 0
 
     try:
-        opts, args = getopt(sys.argv[1:], "p:o:bsSfdjh", ["backups", "path=", "ossec_path=", "restart", "no-restart", "force-update", "debug", "json", "help"])
+        opts, args = getopt(sys.argv[1:], "s:o:brRfdjh", ["backups", "source=", "ossec_path=", "restart", "no-restart", "force-update", "debug", "json", "help"])
         if len(opts) > 6:
             print("Incorrect number of arguments.\nTry './update_ruleset.py --help' for more information.")
             sys.exit(1)
@@ -504,17 +519,17 @@ if __name__ == "__main__":
     for o, a in opts:
         if o in ("-b", "--backups"):
             arguments['backups'] = True
-        elif o in ("-p", "--path"):
+        elif o in ("-s", "--source"):
             arguments['source'] = a
         elif o in ("-o", "--ossec-path"):
             arguments['ossec_path'] = a
             if not os.path.exists(arguments['ossec_path']):
                 print("ERROR: '{0}' does not exist.".format(arguments['ossec_path']))
                 sys.exit(1)
-        elif o in ("-s", "--restart"):
+        elif o in ("-r", "--restart"):
             arguments['restart'] = True
             restart_args += 1
-        elif o in ("-S", "--no-restart"):
+        elif o in ("-R", "--no-restart"):
             arguments['restart'] = False
             restart_args += 1
         elif o in ("-f", "--force-update"):
