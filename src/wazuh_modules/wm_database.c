@@ -176,6 +176,8 @@ void* wm_database_main(wm_database *data) {
 void wm_sync_manager() {
     char hostname[1024];
     char *uname;
+    const char *path;
+    struct stat buffer;
 
     if (gethostname(hostname, 1024) == 0)
         wdb_update_agent_name(0, hostname);
@@ -190,6 +192,29 @@ void wm_sync_manager() {
 
         wdb_update_agent_version(0, uname, __ossec_name " " __version, NULL);
         free(uname);
+    }
+
+    // Set starting offset if full_sync disabled
+
+    if (!module->full_sync) {
+        path = DEFAULTDIR SYSCHECK_DIR "/syscheck";
+
+        // Don't print error if stat fails bacause syscheck and rootcheck must not exist
+
+        if (!stat(path, &buffer) && buffer.st_size > 0) {
+            switch (wdb_get_agent_status(0)) {
+            case -1:
+                merror("%s: ERROR: Couldn't get database status for manager.", WM_DATABASE_LOGTAG);
+                break;
+            case WDB_AGENT_EMPTY:
+                if (wdb_set_agent_offset(0, WDB_SYSCHECK, buffer.st_size) < 1)
+                    merror("%s: ERROR: Couldn't write offset data on database for manager.", WM_DATABASE_LOGTAG);
+            }
+        }
+
+        if (wdb_set_agent_status(0, WDB_AGENT_UPDATED) < 1) {
+            merror("%s: ERROR: Couldn't write agent status on database for manager.", WM_DATABASE_LOGTAG);
+        }
     }
 }
 
@@ -424,7 +449,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
 
         if (buffer.st_size < offset) {
-            merror("%s: WARN: File '%s' was rotated.", WM_DATABASE_LOGTAG, path);
+            merror("%s: WARN: File '%s' was truncated.", WM_DATABASE_LOGTAG, path);
             offset = 0;
         }
 
