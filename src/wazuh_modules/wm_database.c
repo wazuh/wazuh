@@ -125,10 +125,14 @@ void* wm_database_main(wm_database *data) {
         debug1("%s: DEBUG: Waiting for event notification...", WM_DATABASE_LOGTAG);
 
         do {
-            if ((count = read(fd, buffer, IN_BUFFER_SIZE)) < 0 && errno != EAGAIN) {
-                merror("%s: ERROR: read(): %s.", WM_DATABASE_LOGTAG, strerror(errno));
+            if ((count = read(fd, buffer, IN_BUFFER_SIZE)) < 0) {
+                if (errno != EAGAIN)
+                    merror("%s: ERROR: read(): %s.", WM_DATABASE_LOGTAG, strerror(errno));
+
                 break;
             }
+
+            debug2("%s: DEBUG: inotify: name='%s', mask='%u'", ARGV0, event->name, event->mask);
 
             for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
                 event = (struct inotify_event*)&buffer[i];
@@ -406,7 +410,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         switch (wm_extract_agent(fname, name, addr, &is_registry)) {
         case 0:
             if ((id_agent = wdb_find_agent(name, addr)) < 0) {
-                merror("%s: WARN: No such agent at database for file %s/%s", WM_DATABASE_LOGTAG, dirname, fname);
+                debug2("%s: WARN: No such agent at database for file %s/%s", WM_DATABASE_LOGTAG, dirname, fname);
                 return -1;
             }
 
