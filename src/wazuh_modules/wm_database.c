@@ -271,6 +271,7 @@ void wm_sync_agents() {
         free(agents);
     }
 
+    OS_FreeKeys(&keys);
     debug1("%s: DEBUG: Agent sync completed.", WM_DATABASE_LOGTAG);
 }
 
