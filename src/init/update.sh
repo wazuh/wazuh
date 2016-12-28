@@ -126,6 +126,12 @@ UpdateOldVersions()
     fi
 
     if [ ! "$INSTYPE" = "agent" ]; then
+
+        # Delete old update ruleset
+        if [ -d "$DIRECTORY/update" ]; then
+            rm -rf "$DIRECTORY/update"
+        fi
+
         ETC_DECODERS="$DIRECTORY/etc/decoders"
         ETC_RULES="$DIRECTORY/etc/rules"
 
