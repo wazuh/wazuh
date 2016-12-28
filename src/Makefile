@@ -6,7 +6,7 @@ EXTERNAL_JSON=external/cJSON/
 EXTERNAL_LUA=external/lua-5.2.3/
 EXTERNAL_ZLIB=external/zlib-1.2.8/
 LUA_PLAT=posix
-MAXAGENTS?=2048
+MAXAGENTS?=8000
 REUSE_ID?=no
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
