@@ -258,7 +258,7 @@ start()
              if [ $? = 0 ]; then
                  continue
              fi
-        else
+        fi
 
         pstatus ${i};
         if [ $? = 0 ]; then
