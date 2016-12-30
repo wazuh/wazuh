@@ -11,10 +11,13 @@
 
 GetTemplate()
 {
-  #GetTemplate template(1) distrib(2) version(3)
-  if [ "$#" = "3" ]; then
+  #GetTemplate template(1) distrib(2) version(3) sub_version(4)
+  if [ "$#" = "4" ]; then
+    # /etc/templates/config/distrib/version/sub_version/template
+    if [ -r "./etc/templates/config/$2/$3/$4/$1" ]; then
+      echo "./etc/templates/config/$2/$3/$4/$1"
     # /etc/templates/config/distrib/version/template
-    if [ -r "./etc/templates/config/$2/$3/$1" ]; then
+    elif [ -r "./etc/templates/config/$2/$3/$1" ]; then
       echo "./etc/templates/config/$2/$3/$1"
     # /etc/templates/config/distrib/template
     elif [ -r "./etc/templates/config/$2/$1" ]; then
