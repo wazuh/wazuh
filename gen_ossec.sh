@@ -31,11 +31,18 @@ if [ "$1" = "conf" ]; then
   if [ "$#" = "4" ]; then
     INSTYPE="$2"
     DIST_NAME=$(echo $3 | tr '[:upper:]' '[:lower:]')
-    DIST_VER="$4"
+    if [ $(echo $4 | grep "\.") ]; then
+      DIST_VER=$(echo $4 | cut -d\. -f1)
+      DIST_SUBVER=$(echo $4 | cut -d\. -f2)
+    else
+      DIST_VER="$4"
+      DIST_SUBVER="0"
+    fi
   elif [ "$#" = "3" ]; then
     INSTYPE="$2"
     DIST_NAME=$(echo $3 | tr '[:upper:]' '[:lower:]')
     DIST_VER="0"
+    DIST_SUBVER="0"
   else
     echo " USE: ./gen_ossec.sh conf install_type distribution [version]"
     echo "   - install_type: manager, agent"

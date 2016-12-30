@@ -36,9 +36,9 @@ WriteSyscheck()
 {
     # Adding to the config file
     if [ "X$SYSCHECK" = "Xyes" ]; then
-      SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.$1.template" ${DIST_NAME} ${DIST_VER})
+      SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       if [ "$SYSCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.template" ${DIST_NAME} ${DIST_VER})
+        SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
       cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
@@ -71,9 +71,9 @@ WriteRootcheck()
 {
     # Adding to the config file
     if [ "X$ROOTCHECK" = "Xyes" ]; then
-      ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.$1.template" ${DIST_NAME} ${DIST_VER})
+      ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       if [ "$ROOTCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.template" ${DIST_NAME} ${DIST_VER})
+        ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
       sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${ROOTCHECK_TEMPLATE}" >> $NEWCONFIG
       echo "" >> $NEWCONFIG
@@ -92,9 +92,9 @@ WriteOpenSCAP()
 {
     # Adding to the config file
     if [ "X$OPENSCAP" = "Xyes" ]; then
-      OPENSCAP_TEMPLATE=$(GetTemplate "wodle-openscap.$1.template" ${DIST_NAME} ${DIST_VER})
+      OPENSCAP_TEMPLATE=$(GetTemplate "wodle-openscap.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       if [ "$OPENSCAP_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        OPENSCAP_TEMPLATE=$(GetTemplate "wodle-openscap.template" ${DIST_NAME} ${DIST_VER})
+        OPENSCAP_TEMPLATE=$(GetTemplate "wodle-openscap.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
       cat ${OPENSCAP_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
@@ -155,7 +155,11 @@ SetHeaders()
     if [ "$DIST_VER" = "0" ]; then
         sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION//g" "$HEADER_TEMPLATE" > $HEADERS_TMP
     else
+      if [ "$DIST_SUBVER" = "0" ]; then
         sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION/${DIST_VER}/g" "$HEADER_TEMPLATE" > $HEADERS_TMP
+      else
+        sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION/${DIST_VER}.${DIST_SUBVER}/g" "$HEADER_TEMPLATE" > $HEADERS_TMP
+      fi
     fi
     cat $HEADERS_TMP
     rm -f $HEADERS_TMP
@@ -197,7 +201,11 @@ WriteAgent()
     if [ "$DIST_VER" = "0" ]; then
       echo "    <config-profile>$DIST_NAME</config-profile>" >> $NEWCONFIG
     else
-      echo "    <config-profile>$DIST_NAME, $DIST_NAME$DIST_VER</config-profile>" >> $NEWCONFIG
+      if [ "$DIST_SUBVER" = "0" ]; then
+        echo "    <config-profile>$DIST_NAME, $DIST_NAME$DIST_VER</config-profile>" >> $NEWCONFIG
+      else
+        echo "    <config-profile>$DIST_NAME, $DIST_NAME$DIST_VER, $DIST_NAME$DIST_VER.$DIST_SUBVER</config-profile>" >> $NEWCONFIG
+      fi
     fi
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -220,9 +228,9 @@ WriteAgent()
     fi
 
     # Localfile commands
-    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.agent.template" ${DIST_NAME} ${DIST_VER})
+    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.agent.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER})
+      LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
     cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -334,9 +342,9 @@ WriteManager()
     fi
 
     # Localfile commands
-    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.manager.template" ${DIST_NAME} ${DIST_VER})
+    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER})
+      LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
     cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
