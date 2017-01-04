@@ -95,7 +95,7 @@ void* wm_database_main(wm_database *data) {
         if ((wd_agents = inotify_add_watch(fd, keysfile_dir, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)
             merror("%s: ERROR: Couldn't watch client.keys file: %s.", WM_DATABASE_LOGTAG, strerror(errno));
 
-        if ((wd_agentinfo = inotify_add_watch(fd, DEFAULTDIR AGENTINFO_DIR, IN_CLOSE_WRITE)) < 0)
+        if ((wd_agentinfo = inotify_add_watch(fd, DEFAULTDIR AGENTINFO_DIR, IN_CLOSE_WRITE | IN_ATTRIB)) < 0)
             merror("%s: ERROR: Couldn't watch the agent info directory: %s.", WM_DATABASE_LOGTAG, strerror(errno));
 
         wm_sync_agents();
