@@ -235,9 +235,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
         cJSON_AddItemToObject(root, "decoder", decoder = cJSON_CreateObject());
 
-        if(lf->decoder_info->fts)
-            cJSON_AddNumberToObject(decoder, "fts", lf->decoder_info->fts);
-
         if(lf->decoder_info->accumulate)
             cJSON_AddNumberToObject(decoder, "accumulate", lf->decoder_info->accumulate);
 
