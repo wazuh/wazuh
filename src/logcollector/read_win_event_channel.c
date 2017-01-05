@@ -14,7 +14,7 @@
 #define _WIN32_WINNT 0x0600
 
 /* Using Secure APIs */
-#define MINGW_HAS_SECURE_API
+#define MINGW_HAS_SECURE_API 1
 
 /* Bookmarks directory */
 #define BOOKMARKS_DIR "bookmarks"
