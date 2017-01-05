@@ -109,11 +109,12 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
                 continue;
 
             trim(token);
-            cJSON_AddItemToObject(rule, token, compliance = cJSON_CreateArray());
+
             for(j = 0; token[j]; j++) {
                 token[j] = tolower(token[j]);
             }
             if(token) {
+                cJSON_AddItemToObject(rule, token, compliance = cJSON_CreateArray());
                 token = strtok(0, delim);
                 trim(token);
                 token2 = strtok(token, delim2);
