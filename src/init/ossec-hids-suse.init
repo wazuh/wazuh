@@ -9,7 +9,7 @@
 # Required-Start: $syslog
 # Required-Stop:  $null
 # Default-Start:  2 3 5
-# Default-Stop:   0 1 2 6
+# Default-Stop:   0 1 6
 # Description:    Start the ossec HIDS daemon
 ### END INIT INFO
 
