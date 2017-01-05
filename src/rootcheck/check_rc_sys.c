@@ -256,8 +256,12 @@ static int read_sys_dir(const char *dir_name, int do_read)
             if (S_ISDIR(statbuf_local.st_mode))
 #else
             if (S_ISDIR(statbuf_local.st_mode) ||
-                    S_ISREG(statbuf_local.st_mode) ||
-                    S_ISLNK(statbuf_local.st_mode))
+                    S_ISREG(statbuf_local.st_mode)
+            /* No S_ISLNK on Windows */
+#ifndef WIN32
+		    || S_ISLNK(statbuf_local.st_mode)
+#endif
+		    )
 #endif
             {
                 entry_count++;
