@@ -19,7 +19,7 @@ if [ $? = 0 ]; then
 fi
 
 NAME="Wazuh"
-VERSION="v1.2"
+VERSION="v2.0"
 AUTHOR="Wazuh Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 USE_JSON=false
