@@ -10,7 +10,7 @@ DIR=`dirname $PWD`;
 
 ###  Do not modify bellow here ###
 NAME="Wazuh"
-VERSION="v1.2"
+VERSION="v2.0"
 AUTHOR="Wazuh Inc."
 DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd wazuh-modulesd"
 
