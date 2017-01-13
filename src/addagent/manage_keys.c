@@ -198,7 +198,7 @@ int k_extract(const char *cmdextract, int json_output)
         user_input = strdup(cmdextract);
         FormatID(user_input);
 
-        if (!IDExist(user_input)) {
+        if (!IDExist(user_input, 1)) {
             if (json_output) {
                 char buffer[1024];
                 snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", user_input);
@@ -230,7 +230,7 @@ int k_extract(const char *cmdextract, int json_output)
 
             FormatID(user_input);
 
-            if (IDExist(user_input)) {
+            if (IDExist(user_input, 1)) {
                 break;
             } else
                 printf(NO_ID, user_input);
@@ -401,7 +401,7 @@ int k_bulkload(const char *cmdbulk)
         /* Default ID */
         i = MAX_AGENTS + 32512;
         snprintf(id, 8, "%03d", i);
-        while (!IDExist(id)) {
+        while (!IDExist(id, 0)) {
             i--;
             snprintf(id, 8, "%03d", i);
 
@@ -419,7 +419,7 @@ int k_bulkload(const char *cmdbulk)
         }
 
         /* Search for ID KEY  -- no duplicates */
-        if (IDExist(id)) {
+        if (IDExist(id, 0)) {
             printf(NO_DEFAULT, i + 1);
             goto cleanup;
         }

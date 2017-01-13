@@ -65,7 +65,7 @@ int OS_RemoveAgent(const char *u_id) {
     char buf_curline[OS_BUFFER_SIZE];
     struct stat fp_stat;
 
-    id_exist = IDExist(u_id);
+    id_exist = IDExist(u_id, 1);
 
     if (!id_exist)
         return 0;
@@ -259,7 +259,7 @@ char *getFullnameById(const char *id)
 }
 
 /* ID Search (is valid ID) */
-int IDExist(const char *id)
+int IDExist(const char *id, int discard_removed)
 {
     FILE *fp;
     char line_read[FILE_SIZE + 1];
@@ -297,6 +297,11 @@ int IDExist(const char *id)
             name++;
 
             if (strcmp(line_read, id) == 0) {
+                if (discard_removed && (*name == '!' || *name == '#')) {
+                    fgetpos(fp, &fp_pos);
+                    continue;
+                }
+
                 fclose(fp);
                 return (1); /*(fp_pos);*/
             }

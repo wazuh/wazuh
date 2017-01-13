@@ -32,7 +32,7 @@ int k_bulkload(const char *cmdbulk);
 /* Validation functions */
 int OS_IsValidName(const char *u_name);
 int OS_IsValidID(const char *id);
-int IDExist(const char *id);
+int IDExist(const char *id, int discard_removed);
 int NameExist(const char *u_name);
 char *IPExist(const char *u_ip);
 char *getFullnameById(const char *id);
