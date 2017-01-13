@@ -1,5 +1,7 @@
   <!-- Policy monitoring -->
   <rootcheck>
+    <disabled>no</disabled>
+
     <!-- Frequency that rootcheck is executed - every 12 hours -->
     <frequency>43200</frequency>
 
