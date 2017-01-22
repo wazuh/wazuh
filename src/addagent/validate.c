@@ -641,7 +641,7 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
     }
 
     /* agent-info */
-    snprintf(path_src, OS_FLSIZE, "%s/%s", AGENTINFO_DIR, name);
+    snprintf(path_src, OS_FLSIZE, "%s/%s-%s", AGENTINFO_DIR, name, ip);
     snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
     status += link(path_src, path_dst);
 
@@ -722,7 +722,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
     char tag[10] = { 0 };
 
     while (1) {
-        snprintf(path, OS_FLSIZE, "%s/%s/%s %s-%s%s", AGNBACKUP_DIR, timestamp, id, name, ip, tag);
+        snprintf(path, OS_FLSIZE, "%s/%s/%s-%s-%s%s", AGNBACKUP_DIR, timestamp, id, name, ip, tag);
 
         if (IsDir(path) != 0) {
             if (mkdir(path, 0750) < 0) {
@@ -734,7 +734,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
             if (++acount > MAX_TAG_COUNTER) {
                 return NULL;
             } else {
-                snprintf(tag, 10, " %03d", acount);
+                snprintf(tag, 10, "-%03d", acount);
             }
         }
     }
