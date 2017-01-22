@@ -194,4 +194,13 @@
     <group>spam,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
 
+  <!--
+  Jan 21 00:00:01 host postfix/postdrop[12345]: warning: mail_queue_enter: create file maildrop/123456.12345: Read-only file system
+  -->
+  <rule id="3399" level="0">
+    <if_sid>3398</if_sid>
+    <match>Read-only file system</match>
+    <description>Postfix: Ignore permission warning</description>
+  </rule>
+
 </group>

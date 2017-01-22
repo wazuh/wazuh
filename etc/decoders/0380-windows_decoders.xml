@@ -460,7 +460,7 @@ Tabs:
 <decoder name="windows_fields">
   <type>windows</type>
   <parent>windows</parent>
-  <regex>Source Network Address:\t*\s*(\S+.\S+.\S+.\S+)|Source Network Address:\t*\s*(\S*:\S*:\S*:\S*:\S*:\S*:\S*:\S*)</regex>
+  <regex>Source Network Address:\t*\s*(\S+.\S+.\S+.\S+)|Source Network Address:\t*\s*(\S*:\S*:\S*:\S*:\S*:\S*:\S*:\S*)|[CLIENT: (\S+\d)]</regex>
   <order>srcip</order>
 </decoder>
 
