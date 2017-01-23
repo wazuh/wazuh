@@ -1,4 +1,4 @@
-** Wazuh Windows Agent v1.2 **
+** Wazuh Windows Agent v2.0 **
 ** Copyright (C) 2014 Trend Micro Inc. **
 
 

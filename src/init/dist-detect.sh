@@ -49,6 +49,9 @@ elif [ -r "/etc/SuSE-release" ]; then
     DIST_NAME="suse"
     DIST_VER=`sed -rn 's/.*VERSION = ([0-9]{1,2}).*/\1/p' /etc/SuSE-release`
     DIST_SUBVER=`sed -rn 's/.*PATCHLEVEL = ([0-9]{1,2}).*/\1/p' /etc/SuSE-release`
+    if ["$DIST_SUBVER" = ""]; then #openSuse
+      DIST_SUBVER=`sed -rn 's/.*VERSION = ([0-9]{1,2})\.([0-9]{1,2}).*/\1/p' /etc/SuSE-release`
+    fi
 
 # Arch
 elif [ -r "/etc/arch-release" ]; then
@@ -83,8 +86,8 @@ elif [ "$(uname)" = "SunOS" ]; then
 # BSD
 elif [ "X$(uname)" = "XOpenBSD" -o "X$(uname)" = "XNetBSD" -o "X$(uname)" = "XFreeBSD" -o "X$(uname)" = "XDragonFly" ]; then
     DIST_NAME=$(uname)
-    DIST_VER=$(uname -r | cut -d\. -f1)
-    DIST_SUBVER=$(uname -r | cut -d\. -f2)
+    DIST_VER=$(uname -r | sed -rn 's/([0-9]{1,2})\.[0-9].*/\1/p')
+    DIST_SUBVER=$(uname -r | sed -rn 's/.*[0-9]{1,2}\.([0-9]).*/\1/p')
 
 elif [ "X$(uname)" = "XLinux" ]; then
     DIST_NAME="Linux"

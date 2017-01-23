@@ -25,7 +25,7 @@
 ; general
 !define MUI_ICON favicon.ico
 !define MUI_UNICON ossec-uninstall.ico
-!define VERSION "1.2"
+!define VERSION "2.0"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 

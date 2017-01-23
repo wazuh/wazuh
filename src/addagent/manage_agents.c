@@ -263,7 +263,7 @@ int add_agent(int json_output)
             /* Default ID */
             i = MAX_AGENTS + 32512;
             snprintf(id, 8, "%03d", i);
-            while (!IDExist(id)) {
+            while (!IDExist(id, 0)) {
                 i--;
                 snprintf(id, 8, "%03d", i);
 
@@ -288,7 +288,7 @@ int add_agent(int json_output)
              * our program goes to infinite loop.
              */
             _id = getenv("OSSEC_AGENT_ID");
-            if (_id == NULL || IDExist(_id) || !OS_IsValidID(_id)) {
+            if (_id == NULL || IDExist(_id, 0) || !OS_IsValidID(_id)) {
                 _id = read_from_user();
             }
 
@@ -307,10 +307,10 @@ int add_agent(int json_output)
                 printf(INVALID_ID, id);
 
             /* Search for ID KEY  -- no duplicates */
-            if (IDExist(id)) {
+            if (IDExist(id, 0)) {
                 printf(ADD_ERROR_ID, id);
             }
-        } while (IDExist(id) || !OS_IsValidID(id));
+        } while (IDExist(id, 0) || !OS_IsValidID(id));
     }
 
     if (!json_output) {
@@ -459,7 +459,7 @@ int remove_agent(int json_output)
 
         FormatID(user_input);
         strncpy(u_id, user_input, FILE_SIZE);
-        id_exist = IDExist(user_input);
+        id_exist = IDExist(user_input, 0);
 
         if (!id_exist) {
             if (json_output) {

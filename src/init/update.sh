@@ -109,7 +109,7 @@ UpdateStopOSSEC()
 
 UpdateOldVersions()
 {
-    # If it is Wazuh 1.2 or newer, exit
+    # If it is Wazuh 2.0 or newer, exit
     if [ "X$USER_OLD_NAME" = "XWazuh" ]; then
         return
     fi

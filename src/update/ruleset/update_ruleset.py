@@ -404,10 +404,10 @@ def main():
     is_wazuh, ossec_version = get_ossec_version()
 
     if not is_wazuh:
-        exit(2, "OSSEC {0} detected. This script only supports Wazuh v1.2 or newer.".format(ossec_version))
+        exit(2, "OSSEC {0} detected. This script only supports Wazuh v2.0 or newer.".format(ossec_version))
     else:
-        if float(ossec_version[2:5]) < 1.2:
-            exit(2, "Wazuh {0} detected. This script only supports Wazuh v1.2 or newer.".format(ossec_version))
+        if float(ossec_version[2:5]) < 2.0:
+            exit(2, "Wazuh {0} detected. This script only supports Wazuh v2.0 or newer.".format(ossec_version))
 
     # Main
     logger.log("### Wazuh ruleset ###")
