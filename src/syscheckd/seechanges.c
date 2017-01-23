@@ -201,7 +201,11 @@ static int seechanges_dupfile(const char *old, const char *current)
 
     do {
         buf[n] = '\0';
-        fwrite(buf, n, 1, fpw);
+
+        if (fwrite(buf, n, 1, fpw) < 1) {
+            merror("%s: ERROR: Unable to write data on file '%s'", ARGV0, current);
+            break;
+        }
     } while ((n = fread(buf, 1, 2048, fpr)) > 0);
 
 #ifdef USE_MAGIC
@@ -344,7 +348,10 @@ char *seechanges_addfile(const char *filename)
             merror("%s: ERROR: Unable to open file for writing `%s`", ARGV0, diff_location);
             goto cleanup;
         }
-        fwrite(nodiff_message, strlen(nodiff_message) + 1, 1, fdiff);
+
+        if (fwrite(nodiff_message, strlen(nodiff_message) + 1, 1, fdiff) < 1) {
+            merror("%s: ERROR: Unable to write data on file '%s'", ARGV0, diff_location);
+        }
         fclose(fdiff);
         /* Success */
         status = 0;
