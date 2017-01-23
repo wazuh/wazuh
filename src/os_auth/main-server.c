@@ -59,6 +59,9 @@ static void add_backup(const keyentry *entry);
 /* Signal handler */
 static void handler(int signum);
 
+/* Exit handler */
+static void cleanup();
+
 /* Shared variables */
 char *authpass = NULL;
 const char *ca_cert = NULL;
@@ -420,6 +423,8 @@ int main(int argc, char **argv)
         ErrorExit(PID_ERROR, ARGV0);
     }
 
+    atexit(cleanup);
+
     /* Main loop */
 
     while (running) {
@@ -456,9 +461,7 @@ int main(int argc, char **argv)
     pthread_join(thread_dispatcher, NULL);
     pthread_join(thread_writer, NULL);
 
-    DeletePID(ARGV0);
     verbose("%s: Exiting...", ARGV0);
-
     return (0);
 }
 
@@ -797,6 +800,11 @@ static void handler(int signum) {
     default:
         merror("%s: ERROR: unknown signal (%d)", ARGV0, signum);
     }
+}
+
+/* Exit handler */
+static void cleanup() {
+    DeletePID(ARGV0);
 }
 
 #endif /* LIBOPENSSL_ENABLED */
