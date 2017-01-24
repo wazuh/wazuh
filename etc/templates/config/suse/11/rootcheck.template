@@ -18,7 +18,7 @@
 
     <system_audit>${INSTALLDIR}/etc/shared/system_audit_rcl.txt</system_audit>
     <system_audit>${INSTALLDIR}/etc/shared/system_audit_ssh.txt</system_audit>
-    <system_audit>${INSTALLDIR}/etc/shared/cis_rhel6_linux_rcl.txt</system_audit>
+    <system_audit>${INSTALLDIR}/etc/shared/cis_sles11_linux_rcl.txt</system_audit>
 
     <skip_nfs>yes</skip_nfs>
   </rootcheck>
