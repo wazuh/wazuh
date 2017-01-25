@@ -136,6 +136,15 @@ void start_daemon()
     if (syscheck.scan_on_start) {
         sleep(syscheck.tsleep * 15);
         send_sk_db();
+
+#ifdef WIN32
+        /* Check for registry changes on Windows */
+        os_winreg_check();
+#endif
+
+        /* Send database completed message */
+        send_syscheck_msg(HC_SK_DB_COMPLETED);
+        debug2("%s: DEBUG: Sending database completed message.", ARGV0);
     } else {
         prev_time_rk = time(0);
     }
