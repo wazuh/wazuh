@@ -36,6 +36,9 @@ int create_db(void);
 /* Check database for changes */
 int run_dbcheck(void);
 
+/* Scan directory */
+int read_dir(const char *dir_name, int opts, OSMatch *restriction);
+
 /* Check the registry for changes */
 void os_winreg_check(void);
 

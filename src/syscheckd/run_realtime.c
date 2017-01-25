@@ -77,7 +77,33 @@ int realtime_checksumfile(const char *file_name)
             return (1);
         }
         return (0);
+    } else {
+        /* New file */
+        char *c;
+        int i;
+        buf = strdup(file_name);
+
+        /* Find container directory */
+
+        while (c = strrchr(buf, '/'), c && c != buf) {
+            *c = '\0';
+
+            for (i = 0; syscheck.dir[i]; i++) {
+                if (strcmp(syscheck.dir[i], buf) == 0) {
+                    debug1("%s: DEBUG: Scanning new file '%s' with options for directory '%s'.", ARGV0, file_name, buf);
+                    read_dir(file_name, syscheck.opts[i], syscheck.filerestrict[i]);
+                    break;
+                }
+            }
+
+            if (syscheck.dir[i]) {
+                break;
+            }
+        }
+
+        free(buf);
     }
+
     return (0);
 }
 
