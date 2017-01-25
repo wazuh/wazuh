@@ -15,7 +15,6 @@
 
 /* Prototypes */
 static int read_file(const char *dir_name, int opts, OSMatch *restriction)  __attribute__((nonnull(1)));
-static int read_dir(const char *dir_name, int opts, OSMatch *restriction);
 
 /* Global variables */
 static int __counter = 0;
@@ -253,7 +252,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
     return (0);
 }
 
-static int read_dir(const char *dir_name, int opts, OSMatch *restriction)
+int read_dir(const char *dir_name, int opts, OSMatch *restriction)
 {
     size_t dir_size;
     char f_name[PATH_MAX + 2];
