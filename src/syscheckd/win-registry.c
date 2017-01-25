@@ -320,7 +320,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch)
 
     /* Sleep X every Y files */
     if (ig_count >= syscheck.sleep_after) {
-        sleep(syscheck.tsleep + 1);
+        sleep(syscheck.tsleep);
         ig_count = 1;
     }
     ig_count++;
