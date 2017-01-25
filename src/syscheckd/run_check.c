@@ -71,7 +71,7 @@ static void send_sk_db()
     create_db();
 
     /* Send scan ending message */
-    sleep(syscheck.tsleep + 10);
+    sleep(syscheck.tsleep * 5);
 
     if (syscheck.dir[0]) {
         merror("%s: INFO: Ending syscheck scan (forwarding database).", ARGV0);
@@ -265,7 +265,7 @@ void start_daemon()
             }
 
             /* Send scan ending message */
-            sleep(syscheck.tsleep + 20);
+            sleep(syscheck.tsleep * 15);
             if (syscheck.dir[0]) {
                 merror("%s: INFO: Ending syscheck scan.", ARGV0);
                 send_rootcheck_msg("Ending syscheck scan.");
@@ -308,7 +308,7 @@ void start_daemon()
                 merror("%s: ERROR: WaitForSingleObjectEx failed (for realtime fim).", ARGV0);
                 sleep(SYSCHECK_WAIT);
             } else {
-                sleep(1);
+                sleep(syscheck.tsleep);
             }
         } else {
             sleep(SYSCHECK_WAIT);
