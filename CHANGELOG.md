@@ -93,6 +93,8 @@ All notable changes to this project will be documented in this file.
 - New folder structure for rules and decoders.
 - More descriptive logs about syscheck real-time monitoring.
 - Renamed XML tags related to rules and decoders inclusion.
+- Set default maximum agents to 8000.
+- Removed FTS numeric bitfield from JSON output.
 
 ### Fixed
 
@@ -149,6 +151,10 @@ All notable changes to this project will be documented in this file.
 - Fixed misinterpretation of octal permissions given by Agentless (by Stephan Leemburg).
 - Fixed mistake incorrect openssl flag at Makefile (by Stephan Leemburg).
 - Silence Slack integration transmission messages (by Dan Parriot).
+- Fixed OpenSUSE Systemd misconfiguration (By Stephan Joerrens).
+- Fixed case issue on JSON output for Rootcheck alerts.
+- Fixed potential issue on duplicated agent ID detection.
+- Fixed issue when creating agent backups.
 
 ### Removed
 
