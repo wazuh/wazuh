@@ -99,7 +99,7 @@ help()
     echo ""
     echo "Usage: $0 [-j] {start|stop|restart|status|enable|disable}";
     echo ""
-    echo -e "\t-j\tUse JSON output."
+    echo "    -j    Use JSON output."
     exit 1;
 }
 
