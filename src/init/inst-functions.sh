@@ -205,18 +205,18 @@ WriteAgent()
       echo "    <server-hostname>$HNAME</server-hostname>" >> $NEWCONFIG
     fi
 
-    if [ "$X{USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
+    if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
          echo "    <config-profile>$PROFILE</config-profile>" >> $NEWCONFIG
-    fi
-
-    if [ "$DIST_VER" = "0" ]; then
-      echo "    <config-profile>$DIST_NAME</config-profile>" >> $NEWCONFIG
     else
-      if [ "$DIST_SUBVER" = "0" ]; then
-        echo "    <config-profile>$DIST_NAME, $DIST_NAME$DIST_VER</config-profile>" >> $NEWCONFIG
+      if [ "$DIST_VER" = "0" ]; then
+        echo "    <config-profile>$DIST_NAME</config-profile>" >> $NEWCONFIG
       else
-        echo "    <config-profile>$DIST_NAME, $DIST_NAME$DIST_VER, $DIST_NAME$DIST_VER.$DIST_SUBVER</config-profile>" >> $NEWCONFIG
+        if [ "$DIST_SUBVER" = "0" ]; then
+          echo "    <config-profile>$DIST_NAME, $DIST_NAME$DIST_VER</config-profile>" >> $NEWCONFIG
+        else
+          echo "    <config-profile>$DIST_NAME, $DIST_NAME$DIST_VER, $DIST_NAME$DIST_VER.$DIST_SUBVER</config-profile>" >> $NEWCONFIG
+        fi
       fi
     fi
     echo "  </client>" >> $NEWCONFIG
