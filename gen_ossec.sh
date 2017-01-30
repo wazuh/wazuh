@@ -22,14 +22,33 @@
 # Looking up for the execution directory
 cd `dirname $0`
 
+Conf_Use()
+{
+  echo " USE: ./gen_ossec.sh conf install_type distribution version [installation_path]"
+  echo "   - install_type: manager, agent"
+  echo "   - distribution: redhat, debian, ubuntu, ..."
+  echo "   - version: 6, 7, 16.04, ..."
+  echo "   - installation_path (optional): changes the default path '/var/ossec' "
+}
+
+Init_Use()
+{
+  echo " USE: ./gen_ossec.sh init install_type [installation_path]"
+  echo "   - install_type: manager, agent"
+  echo "   - installation_path (optional): changes the default path '/var/ossec' "
+}
+
 # Read script values
 if [ "$1" = "conf" ]; then
 
   . ./src/init/shared.sh
   . ./src/init/inst-functions.sh
 
-  if [ "$#" = "4" ]; then
-    INSTYPE="$2"
+  if [ "$#" -ge "4" ]; then
+    INSTYPE=$(echo $2 | tr '[:upper:]' '[:lower:]')
+    if [ "$INSTYPE" = "manager" ]; then
+        INSTYPE="server"
+    fi
     DIST_NAME=$(echo $3 | tr '[:upper:]' '[:lower:]')
     if [ $(echo $4 | grep "\.") ]; then
       DIST_VER=$(echo $4 | cut -d\. -f1)
@@ -38,15 +57,11 @@ if [ "$1" = "conf" ]; then
       DIST_VER="$4"
       DIST_SUBVER="0"
     fi
-  elif [ "$#" = "3" ]; then
-    INSTYPE="$2"
-    DIST_NAME=$(echo $3 | tr '[:upper:]' '[:lower:]')
-    DIST_VER="0"
-    DIST_SUBVER="0"
+    if [ "$#" = "5" ]; then
+      INSTALLDIR="$5"
+    fi
   else
-    echo " USE: ./gen_ossec.sh conf install_type distribution [version]"
-    echo "   - install_type: manager, agent"
-    echo "   - distribution: redhat, debian, ..."
+    Conf_Use
     exit 1
   fi
 
@@ -64,14 +79,12 @@ if [ "$1" = "conf" ]; then
       rm "$NEWCONFIG"
   fi
 
-  if [ "$INSTYPE" = "manager" ]; then
+  if [ "$INSTYPE" = "server" ]; then
     WriteManager "no_localfiles"
   elif [ "$INSTYPE" = "agent" ]; then
     WriteAgent "no_localfiles"
   else
-    echo " USE: ./gen_ossec.sh conf install_type distribution [version]"
-    echo "   - install_type: manager, agent"
-    echo "   - distribution: redhat, debian, ..."
+    Conf_Use
     exit 1
   fi
 
@@ -86,14 +99,16 @@ elif [ "$1" = "init" ]; then
   . ./src/init/shared.sh
 
   # Read script values
-  if [ "$#" = "2" ]; then
+  if [ "$#" -ge "2" ]; then
     INSTYPE=$(echo $2 | tr '[:upper:]' '[:lower:]')
     if [ "$INSTYPE" = "manager" ]; then
         INSTYPE="server"
     fi
+    if [ "$#" = "3" ]; then
+      INSTALLDIR="$3"
+    fi
   else
-    echo " USE: ./gen_ossec.sh install_type"
-    echo "   - install_type: manager, agent"
+    Init_Use
     exit 1
   fi
 
@@ -105,14 +120,11 @@ else
   echo ""
   echo "Wazuh Configuration & Init Files Generator"
   echo ""
-  echo "  Generate a default ossec.conf file."
-  echo "  USE: ./gen_ossec.sh conf install_type distribution [version]"
-  echo "   - install_type: manager, agent"
-  echo "   - distribution: redhat, debian, ..."
+  echo " Generate a default ossec.conf file."
+  Conf_Use
   echo ""
-  echo "  Generate a default ossec-init.conf file."
-  echo "  USE: ./gen_ossec.sh init install_type"
-  echo "   - install_type: manager, agent"
+  echo " Generate a default ossec-init.conf file."
+  Init_Use
   echo ""
   exit 1
 fi
