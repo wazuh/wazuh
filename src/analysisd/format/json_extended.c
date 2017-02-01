@@ -3,6 +3,7 @@
  *
  */
 
+#define _XOPEN_SOURCE 500
 #include "json_extended.h"
 #include <stddef.h>
 
@@ -221,37 +222,55 @@ int add_groupCIS(cJSON* rule, char* group, int firstCIS)
 // ** TODO ** Regex instead str_cut
 void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 {
-	cJSON* agent;
-	cJSON* manager;
-	agent = cJSON_GetObjectItem(root, "agent");
-	manager = cJSON_GetObjectItem(root, "manager");
+    cJSON* agent;
+    cJSON* manager;
+    agent = cJSON_GetObjectItem(root, "agent");
+    manager = cJSON_GetObjectItem(root, "manager");
     if(lf->hostname[0] == '(') {
         char* search;
         char string[MAX_STRING] = "";
         int index;
 
-		strncpy(string, lf->hostname, MAX_STRING - 1);
+        strncpy(string, lf->hostname, MAX_STRING - 1);
         search = strchr(string, ')');
 
         if(search) {
             index = (int)(search - string);
             str_cut(string, index, -1);
             str_cut(string, 0, 1);
-			cJSON_AddStringToObject(agent, "name", string);
+            cJSON_AddStringToObject(agent, "name", string);
         }
     } else if(lf->agent_id && !strcmp(lf->agent_id, "000")){
         cJSON_AddStringToObject(agent, "name", cJSON_GetObjectItem(manager,"name")->valuestring);
     }else{
-		cJSON_AddStringToObject(root, "hostname", lf->hostname);
-	}
+        cJSON_AddStringToObject(root, "hostname", lf->hostname);
+    }
 }
 // Parse timestamp
 void W_JSON_ParseTimestamp(cJSON* root, const Eventinfo* lf)
 {
-    char* dateTimestamp = malloc(21);
-    sprintf(dateTimestamp, "%d %s %02d %s", lf->year, lf->mon, lf->day, lf->hour);
-    cJSON_AddStringToObject(root, "timestamp", dateTimestamp);
-    free(dateTimestamp);
+    char buffer[25] = "";
+    struct tm tm;
+    time_t timestamp = time(NULL);
+    char *end;
+
+    memcpy(&tm, localtime(&timestamp), sizeof(struct tm));
+
+    if (!(end = strptime(lf->hour, "%T", &tm)) || *end) {
+        merror("%s: ERROR: Could not parse hour '%s'.", ARGV0, lf->hour);
+        return;
+    }
+
+    if (!(end = strptime(lf->mon, "%b", &tm)) || *end) {
+        merror("%s: ERROR: Could not parse month '%s'.", ARGV0, lf->mon);
+        return;
+    }
+
+    tm.tm_year = lf->year - 1900;
+    tm.tm_mday = lf->day;
+
+    strftime(buffer, 25, "%FT%T%z", &tm);
+    cJSON_AddStringToObject(root, "timestamp", buffer);
 }
 
 // The IP of an agent usually comes in "hostname" field, we will extract it.
@@ -261,7 +280,7 @@ void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
     char *string;
     char *ip;
     char *end;
-	cJSON* agent;
+    cJSON* agent;
 
     if (lf->hostname[0] == '(') {
         string = strdup(lf->hostname);
@@ -271,9 +290,9 @@ void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
                 *end = '\0';
 
             if (strcmp(ip, "any")){
-				agent = cJSON_GetObjectItem(root, "agent");
-				cJSON_AddStringToObject(agent, "ip", ip);
-			}
+                agent = cJSON_GetObjectItem(root, "agent");
+                cJSON_AddStringToObject(agent, "ip", ip);
+            }
         }
 
         free(string);
