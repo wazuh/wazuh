@@ -24,6 +24,7 @@ static const char *XML_XCCDF_ID = "xccdf-id";
 static const char *XML_DS_ID = "datastream-id";
 static const char *XML_CPE = "cpe";
 static const char *XML_OVAL_ID = "oval-id";
+static const char *XML_DISABLED = "disabled";
 
 // Parse XML
 
@@ -39,6 +40,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     // Create module
 
     os_calloc(1, sizeof(wm_oscap), oscap);
+    oscap->flags.enabled = 1;
     oscap->flags.scan_on_start = 1;
     module->context = &WM_OSCAP_CONTEXT;
     module->data = oscap;
@@ -239,6 +241,15 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 oscap->flags.scan_on_start = 0;
             else {
                 merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_SCAN_ON_START, WM_OSCAP_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
+            if (!strcmp(nodes[i]->content, "yes"))
+                oscap->flags.enabled = 0;
+            else if (!strcmp(nodes[i]->content, "no"))
+                oscap->flags.enabled = 1;
+            else {
+                merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_DISABLED, WM_OSCAP_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {
