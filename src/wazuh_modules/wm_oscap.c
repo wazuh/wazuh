@@ -223,6 +223,13 @@ void wm_oscap_run(wm_oscap_eval *eval) {
 void wm_oscap_check() {
     wm_oscap_eval *eval;
 
+    // Check if disabled
+
+    if (!oscap->flags.enabled) {
+        merror("%s: INFO: Module disabled. Exiting...", WM_OSCAP_LOGTAG);
+        pthread_exit(NULL);
+    }
+
     // Check if evals
 
     if (!oscap->evals) {
