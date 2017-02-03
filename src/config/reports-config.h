@@ -38,4 +38,3 @@ typedef struct _monitor_config {
 } monitor_config;
 
 #endif /* _REPORTSCONFIG_H */
-

@@ -36,6 +36,9 @@ int create_db(void);
 /* Check database for changes */
 int run_dbcheck(void);
 
+/* Scan directory */
+int read_dir(const char *dir_name, int opts, OSMatch *restriction);
+
 /* Check the registry for changes */
 void os_winreg_check(void);
 
@@ -57,5 +60,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum) __attri
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
-#endif
+const char* get_user(const char *path, int uid);
+const char* get_group(int gid);
 
+#endif

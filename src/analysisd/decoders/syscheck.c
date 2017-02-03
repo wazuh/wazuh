@@ -14,42 +14,10 @@
 #include "config.h"
 #include "alerts/alerts.h"
 #include "decoder.h"
+#include "syscheck_op.h"
 
-typedef struct __sdb {
-    char buf[OS_MAXSTR + 1];
-    char comment[OS_MAXSTR + 1];
-
-    char size[OS_FLSIZE + 1];
-    char perm[OS_FLSIZE + 1];
-    char owner[OS_FLSIZE + 1];
-    char gowner[OS_FLSIZE + 1];
-    char md5[OS_FLSIZE + 1];
-    char sha1[OS_FLSIZE + 1];
-
-    char agent_cp[MAX_AGENTS + 1][1];
-    char *agent_ips[MAX_AGENTS + 1];
-    FILE *agent_fps[MAX_AGENTS + 1];
-
-    int db_err;
-
-    /* Ids for decoder */
-    int id1;
-    int id2;
-    int id3;
-    int idn;
-    int idd;
-
-    /* Syscheck rule */
-    OSDecoderInfo  *syscheck_dec;
-
-    /* File search variables */
-    fpos_t init_pos;
-
-} _sdb; /* syscheck db information */
-
-/* Local variables */
-static _sdb sdb;
-
+/* Compare the first common fields between sum strings */
+static int SumCompare(const char *s1, const char *s2);
 
 /* Initialize the necessary information to process the syscheck information */
 void SyscheckInit()
@@ -74,6 +42,8 @@ void SyscheckInit()
     memset(sdb.gowner, '\0', OS_FLSIZE + 1);
     memset(sdb.md5, '\0', OS_FLSIZE + 1);
     memset(sdb.sha1, '\0', OS_FLSIZE + 1);
+    memset(sdb.mtime, '\0', OS_FLSIZE + 1);
+    memset(sdb.inode, '\0', OS_FLSIZE + 1);
 
     /* Create decoder */
     os_calloc(1, sizeof(OSDecoderInfo), sdb.syscheck_dec);
@@ -82,6 +52,18 @@ void SyscheckInit()
     sdb.syscheck_dec->type = OSSEC_RL;
     sdb.syscheck_dec->fts = 0;
 
+    os_calloc(Config.decoder_order_size, sizeof(char *), sdb.syscheck_dec->fields);
+    sdb.syscheck_dec->fields[SK_FILE] = "file";
+    sdb.syscheck_dec->fields[SK_SIZE] = "size";
+    sdb.syscheck_dec->fields[SK_PERM] = "perm";
+    sdb.syscheck_dec->fields[SK_UID] = "uid";
+    sdb.syscheck_dec->fields[SK_GID] = "gid";
+    sdb.syscheck_dec->fields[SK_MD5] = "md5";
+    sdb.syscheck_dec->fields[SK_SHA1] = "sha1";
+    sdb.syscheck_dec->fields[SK_UNAME] = "uname";
+    sdb.syscheck_dec->fields[SK_GNAME] = "gname";
+    sdb.syscheck_dec->fields[SK_INODE] = "inode";
+
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
     sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);
     sdb.id3 = getDecoderfromlist(SYSCHECK_MOD3);
@@ -89,7 +71,6 @@ void SyscheckInit()
     sdb.idd = getDecoderfromlist(SYSCHECK_DEL);
 
     debug1("%s: SyscheckInit completed.", ARGV0);
-    return;
 }
 
 /* Check if the db is completed for that specific agent */
@@ -210,7 +191,7 @@ static FILE *DB_File(const char *agent, int *agent_id)
 }
 
 /* Search the DB for any entry related to the file being received */
-static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
+static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 {
     int p = 0;
     size_t sn_size;
@@ -220,6 +201,9 @@ static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
     char *saved_name;
 
     FILE *fp;
+
+    sk_sum_t oldsum;
+    sk_sum_t newsum;
 
     /* Get db pointer */
     fp = DB_File(lf->location, &agent_id);
@@ -285,10 +269,12 @@ static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
         saved_sum += 3;
 
         /* Checksum match, we can just return and keep going */
-        if (strcmp(saved_sum, c_sum) == 0) {
+        if (SumCompare(saved_sum, c_sum) == 0) {
             lf->data = NULL;
             return (0);
         }
+
+        debug2("Agent: %d, location: <%s>, file: <%s>, sum: <%s>, saved: <%s>", agent_id, lf->location, f_name, c_sum, saved_sum);
 
         /* If we reached here, the checksum of the file has changed */
         if (saved_sum[-3] == '!') {
@@ -346,226 +332,168 @@ static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
                 f_name);
         fflush(fp);
 
-        /* File deleted */
-        if (c_sum[0] == '-' && c_sum[1] == '1') {
-            sdb.syscheck_dec->id = sdb.idd;
-            snprintf(sdb.comment, OS_MAXSTR,
-                     "File '%.756s' was deleted. Unable to retrieve "
-                     "checksum.", f_name);
-        }
+        switch (sk_decode_sum(&newsum, c_sum)) {
+        case -1:
+            merror("%s: ERROR: Couldn't decode syscheck sum from log.", ARGV0);
+            lf->data = NULL;
+            return 0;
 
-        /* If file was re-added, do not compare changes */
-        else if (saved_sum[0] == '-' && saved_sum[1] == '1') {
-            sdb.syscheck_dec->id = sdb.idn;
-            snprintf(sdb.comment, OS_MAXSTR,
-                     "File '%.756s' was re-added.", f_name);
-        }
+        case 0:
+            switch (sk_decode_sum(&oldsum, saved_sum)) {
+            case -1:
+                merror("%s: ERROR: Couldn't decode syscheck sum from database.", ARGV0);
+                lf->data = NULL;
+                return 0;
 
-        else {
-            int oldperm = 0, newperm = 0;
+            case 0:
+                sk_fill_event(lf, f_name, &newsum);
 
-            /* Provide more info about the file change */
-            const char *oldsize = NULL, *newsize = NULL;
-            char *olduid = NULL, *newuid = NULL;
-            char *c_oldperm = NULL, *c_newperm = NULL;
-            char *oldgid = NULL, *newgid = NULL;
-            char *oldmd5 = NULL, *newmd5 = NULL;
-            char *oldsha1 = NULL, *newsha1 = NULL;
+                /* Generate size message */
+                if (!oldsum.size || !newsum.size || strcmp(oldsum.size, newsum.size) == 0) {
+                    sdb.size[0] = '\0';
+                } else {
+                    snprintf(sdb.size, OS_FLSIZE,
+                             "Size changed from '%s' to '%s'\n",
+                             oldsum.size, newsum.size);
 
-            oldsize = saved_sum;
-            newsize = c_sum;
-
-            c_oldperm = strchr(saved_sum, ':');
-            c_newperm = strchr(c_sum, ':');
-
-            /* Get old/new permissions */
-            if (c_oldperm && c_newperm) {
-                *c_oldperm = '\0';
-                c_oldperm++;
-
-                *c_newperm = '\0';
-                c_newperm++;
-
-                /* Get old/new uid/gid */
-                olduid = strchr(c_oldperm, ':');
-                newuid = strchr(c_newperm, ':');
-
-                if (olduid && newuid) {
-                    *olduid = '\0';
-                    *newuid = '\0';
-                    olduid++;
-                    newuid++;
-
-                    oldgid = strchr(olduid, ':');
-                    newgid = strchr(newuid, ':');
-
-                    if (oldgid && newgid) {
-                        *oldgid = '\0';
-                        *newgid = '\0';
-                        oldgid++;
-                        newgid++;
-
-                        /* Get MD5 */
-                        oldmd5 = strchr(oldgid, ':');
-                        newmd5 = strchr(newgid, ':');
-
-                        if (oldmd5 && newmd5) {
-                            *oldmd5 = '\0';
-                            *newmd5 = '\0';
-                            oldmd5++;
-                            newmd5++;
-
-                            /* Get SHA-1 */
-                            oldsha1 = strchr(oldmd5, ':');
-                            newsha1 = strchr(newmd5, ':');
-
-                            if (oldsha1 && newsha1) {
-                                *oldsha1 = '\0';
-                                *newsha1 = '\0';
-                                oldsha1++;
-                                newsha1++;
-                            }
-                        }
-                    }
+                    os_strdup(oldsum.size, lf->size_before);
                 }
+
+                /* Permission message */
+                if (oldsum.perm == newsum.perm) {
+                    sdb.perm[0] = '\0';
+                } else if (oldsum.perm > 0 && newsum.perm > 0) {
+                    char opstr[10];
+                    char npstr[10];
+
+                    strncpy(opstr, agent_file_perm(oldsum.perm), sizeof(opstr) - 1);
+                    strncpy(npstr, agent_file_perm(newsum.perm), sizeof(npstr) - 1);
+                    opstr[9] = npstr[9] = '\0';
+
+                    snprintf(sdb.perm, OS_FLSIZE, "Permissions changed from "
+                             "'%9.9s' to '%9.9s'\n", opstr, npstr);
+
+                    lf->perm_before = oldsum.perm;
+                }
+
+                /* Ownership message */
+                if (!newsum.uid || !oldsum.uid || strcmp(newsum.uid, oldsum.uid) == 0) {
+                    sdb.owner[0] = '\0';
+                } else {
+                    if (oldsum.uname && newsum.uname) {
+                        snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.uname, oldsum.uid, newsum.uname, newsum.uid);
+                        os_strdup(oldsum.uname, lf->uname_before);
+                    } else
+                        snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', "
+                                 "now it is '%s'\n",
+                                 oldsum.uid, newsum.uid);
+
+                    os_strdup(oldsum.uid, lf->owner_before);
+                }
+
+                /* Group ownership message */
+                if (!newsum.gid || !oldsum.gid || strcmp(newsum.gid, oldsum.gid) == 0) {
+                    sdb.gowner[0] = '\0';
+                } else {
+                    if (oldsum.gname && newsum.gname) {
+                        snprintf(sdb.owner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.gname, oldsum.gid, newsum.gname, newsum.gid);
+                        os_strdup(oldsum.gname, lf->gname_before);
+                    } else
+                        snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s', "
+                                 "now it is '%s'\n",
+                                 oldsum.gid, newsum.gid);
+
+                    os_strdup(oldsum.gid, lf->gowner_before);
+                }
+
+                /* MD5 message */
+                if (!newsum.md5 || !oldsum.md5 || strcmp(newsum.md5, oldsum.md5) == 0) {
+                    sdb.md5[0] = '\0';
+                } else {
+                    snprintf(sdb.md5, OS_FLSIZE, "Old md5sum was: '%s'\n"
+                             "New md5sum is : '%s'\n",
+                             oldsum.md5, newsum.md5);
+                    os_strdup(oldsum.md5, lf->md5_before);
+                }
+
+                /* SHA-1 message */
+                if (!newsum.sha1 || !oldsum.sha1 || strcmp(newsum.sha1, oldsum.sha1) == 0) {
+                    sdb.sha1[0] = '\0';
+                } else {
+                    snprintf(sdb.sha1, OS_FLSIZE, "Old sha1sum was: '%s'\n"
+                             "New sha1sum is : '%s'\n",
+                             oldsum.sha1, newsum.sha1);
+                    os_strdup(oldsum.sha1, lf->sha1_before);
+                }
+
+                /* Modification time message */
+                if (oldsum.mtime && newsum.mtime && oldsum.mtime != newsum.mtime) {
+                    char *old_ctime = strdup(ctime(&oldsum.mtime));
+                    char *new_ctime = strdup(ctime(&newsum.mtime));
+                    old_ctime[strlen(old_ctime) - 1] = '\0';
+                    new_ctime[strlen(new_ctime) - 1] = '\0';
+
+                    snprintf(sdb.mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
+                    lf->mtime_before = oldsum.mtime;
+                    free(old_ctime);
+                    free(new_ctime);
+                } else {
+                    sdb.mtime[0] = '\0';
+                }
+
+                /* Inode message */
+                if (oldsum.inode && newsum.inode && oldsum.inode != newsum.inode) {
+                    snprintf(sdb.mtime, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum.inode, newsum.inode);
+                    lf->inode_before = oldsum.inode;
+                } else {
+                    sdb.inode[0] = '\0';
+                }
+
+                /* Provide information about the file */
+                snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
+                         "'%.756s'\n"
+                         "%s"
+                         "%s"
+                         "%s"
+                         "%s"
+                         "%s"
+                         "%s",
+                         f_name,
+                         sdb.size,
+                         sdb.perm,
+                         sdb.owner,
+                         sdb.gowner,
+                         sdb.md5,
+                         sdb.sha1
+                        );
+
+                if (lf->data)
+                    os_strdup(lf->data, lf->diff);
+
+                lf->event_type = FIM_MODIFIED;
+                break;
+
+            case 1:
+                /* If file was re-added, do not compare changes */
+                sdb.syscheck_dec->id = sdb.idn;
+                lf->event_type = FIM_READDED;
+                sk_fill_event(lf, f_name, &newsum);
+                snprintf(sdb.comment, OS_MAXSTR,
+                     "File '%.756s' was re-added.", f_name);
+
+                break;
             }
 
-            /* Get integer values */
-            if (c_newperm && c_oldperm) {
-                newperm = atoi(c_newperm);
-                oldperm = atoi(c_oldperm);
-            }
+            break;
 
-            /* Generate size message */
-            if (!oldsize || !newsize || strcmp(oldsize, newsize) == 0) {
-                sdb.size[0] = '\0';
-            } else {
-                snprintf(sdb.size, OS_FLSIZE,
-                         "Size changed from '%s' to '%s'\n",
-                         oldsize, newsize);
-
-                os_strdup(oldsize, lf->size_before);
-                os_strdup(newsize, lf->size_after);
-            }
-
-            /* Permission message */
-            if (oldperm == newperm) {
-                sdb.perm[0] = '\0';
-            } else if (oldperm > 0 && newperm > 0) {
-
-                snprintf(sdb.perm, OS_FLSIZE, "Permissions changed from "
-                         "'%c%c%c%c%c%c%c%c%c' "
-                         "to '%c%c%c%c%c%c%c%c%c'\n",
-                         (oldperm & S_IRUSR) ? 'r' : '-',
-                         (oldperm & S_IWUSR) ? 'w' : '-',
-
-                         (oldperm & S_ISUID) ? 's' :
-                         (oldperm & S_IXUSR) ? 'x' : '-',
-
-                         (oldperm & S_IRGRP) ? 'r' : '-',
-                         (oldperm & S_IWGRP) ? 'w' : '-',
-
-                         (oldperm & S_ISGID) ? 's' :
-                         (oldperm & S_IXGRP) ? 'x' : '-',
-
-                         (oldperm & S_IROTH) ? 'r' : '-',
-                         (oldperm & S_IWOTH) ? 'w' : '-',
-
-                         (oldperm & S_ISVTX) ? 't' :
-                         (oldperm & S_IXOTH) ? 'x' : '-',
-
-
-
-                         (newperm & S_IRUSR) ? 'r' : '-',
-                         (newperm & S_IWUSR) ? 'w' : '-',
-
-                         (newperm & S_ISUID) ? 's' :
-                         (newperm & S_IXUSR) ? 'x' : '-',
-
-
-                         (newperm & S_IRGRP) ? 'r' : '-',
-                         (newperm & S_IWGRP) ? 'w' : '-',
-
-                         (newperm & S_ISGID) ? 's' :
-                         (newperm & S_IXGRP) ? 'x' : '-',
-
-                         (newperm & S_IROTH) ? 'r' : '-',
-                         (newperm & S_IWOTH) ? 'w' : '-',
-
-                         (newperm & S_ISVTX) ? 't' :
-                         (newperm & S_IXOTH) ? 'x' : '-');
-
-                lf->perm_before = oldperm;
-                lf->perm_after = newperm;
-            }
-
-            /* Ownership message */
-            if (!newuid || !olduid || strcmp(newuid, olduid) == 0) {
-                sdb.owner[0] = '\0';
-            } else {
-                snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', "
-                         "now it is '%s'\n",
-                         olduid, newuid);
-
-
-                os_strdup(olduid, lf->owner_before);
-                os_strdup(newuid, lf->owner_after);
-            }
-
-            /* Group ownership message */
-            if (!newgid || !oldgid || strcmp(newgid, oldgid) == 0) {
-                sdb.gowner[0] = '\0';
-            } else {
-                snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s', "
-                         "now it is '%s'\n",
-                         oldgid, newgid);
-                os_strdup(oldgid, lf->gowner_before);
-                os_strdup(newgid, lf->gowner_after);
-            }
-
-            /* MD5 message */
-            if (!newmd5 || !oldmd5 || strcmp(newmd5, oldmd5) == 0) {
-                sdb.md5[0] = '\0';
-            } else {
-                snprintf(sdb.md5, OS_FLSIZE, "Old md5sum was: '%s'\n"
-                         "New md5sum is : '%s'\n",
-                         oldmd5, newmd5);
-                os_strdup(oldmd5, lf->md5_before);
-                os_strdup(newmd5, lf->md5_after);
-            }
-
-            /* SHA-1 message */
-            if (!newsha1 || !oldsha1 || strcmp(newsha1, oldsha1) == 0) {
-                sdb.sha1[0] = '\0';
-            } else {
-                snprintf(sdb.sha1, OS_FLSIZE, "Old sha1sum was: '%s'\n"
-                         "New sha1sum is : '%s'\n",
-                         oldsha1, newsha1);
-                os_strdup(oldsha1, lf->sha1_before);
-                os_strdup(newsha1, lf->sha1_after);
-            }
+        case 1:
+            /* File deleted */
+            sdb.syscheck_dec->id = sdb.idd;
             os_strdup(f_name, lf->filename);
-
-            /* Provide information about the file */
-            snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
-                     "'%.756s'\n"
-                     "%s"
-                     "%s"
-                     "%s"
-                     "%s"
-                     "%s"
-                     "%s"
-                     "%s%s",
-                     f_name,
-                     sdb.size,
-                     sdb.perm,
-                     sdb.owner,
-                     sdb.gowner,
-                     sdb.md5,
-                     sdb.sha1,
-                     lf->data == NULL ? "" : "What changed:\n",
-                     lf->data == NULL ? "" : lf->data
-                    );
+            lf->event_type = FIM_DELETED;
+            snprintf(sdb.comment, OS_MAXSTR,
+                 "File '%.756s' was deleted. Unable to retrieve "
+                 "checksum.", f_name);
         }
 
         /* Create a new log message */
@@ -586,25 +514,43 @@ static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
     fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time, f_name);
     fflush(fp);
 
-    /* Alert if configured to notify on new files */
-    if ((Config.syscheck_alert_new == 1) && (DB_IsCompleted(agent_id))) {
-        sdb.syscheck_dec->id = sdb.idn;
+    /* Insert row in SQLite DB*/
 
-        /* New file message */
-        snprintf(sdb.comment, OS_MAXSTR,
-                 "New file '%.756s' "
-                 "added to the file system.", f_name);
+    switch (sk_decode_sum(&newsum, c_sum)) {
+        case -1:
+            merror("%s: ERROR: Couldn't decode syscheck sum from log.", ARGV0);
+            break;
 
-        /* Create a new log message */
-        free(lf->full_log);
-        os_strdup(sdb.comment, lf->full_log);
-        lf->log = lf->full_log;
+        case 0:
+            lf->event_type = FIM_ADDED;
 
-        /* Set decoder */
-        lf->decoder_info = sdb.syscheck_dec;
-        lf->data = NULL;
+            /* Alert if configured to notify on new files */
+            if ((Config.syscheck_alert_new == 1) && DB_IsCompleted(agent_id)) {
+                sdb.syscheck_dec->id = sdb.idn;
+                sk_fill_event(lf, f_name, &newsum);
 
-        return (1);
+                /* New file message */
+                snprintf(sdb.comment, OS_MAXSTR,
+                         "New file '%.756s' "
+                         "added to the file system.", f_name);
+
+                /* Create a new log message */
+                free(lf->full_log);
+                os_strdup(sdb.comment, lf->full_log);
+                lf->log = lf->full_log;
+
+                /* Set decoder */
+                lf->decoder_info = sdb.syscheck_dec;
+                lf->data = NULL;
+
+                return (1);
+            }
+
+            break;
+
+        case 1:
+            merror("%s: WARN: Missing file entry.", ARGV0);
+            break;
     }
 
     lf->data = NULL;
@@ -617,7 +563,7 @@ static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
  */
 int DecodeSyscheck(Eventinfo *lf)
 {
-    const char *c_sum;
+    char *c_sum;
     char *f_name;
 
     /* Every syscheck message must be in the following format:
@@ -671,3 +617,20 @@ int DecodeSyscheck(Eventinfo *lf)
     return (DB_Search(f_name, c_sum, lf));
 }
 
+/* Compare the first common fields between sum strings */
+int SumCompare(const char *s1, const char *s2) {
+    const char *ptr1 = strchr(s1, ':');
+    const char *ptr2 = strchr(s2, ':');
+    size_t size1;
+    size_t size2;
+
+    while (ptr1 && ptr2) {
+        ptr1 = strchr(ptr1 + 1, ':');
+        ptr2 = strchr(ptr2 + 1, ':');
+    }
+
+    size1 = ptr1 ? (size_t)(ptr1 - s1) : strlen(s1);
+    size2 = ptr2 ? (size_t)(ptr2 - s2) : strlen(s2);
+
+    return size1 == size2 ? strncmp(s1, s2, size1) : 1;
+}

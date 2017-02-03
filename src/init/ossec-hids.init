@@ -1,5 +1,5 @@
 #!/bin/sh
-# OSSEC         Controls OSSEC HIDS
+# OSSEC         Controls Wazuh
 # Author:       Daniel B. Cid <dcid@ossec.net>
 # Modified for slackware by Jack S. Lai
 

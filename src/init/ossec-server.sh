@@ -18,10 +18,10 @@ if [ $? = 0 ]; then
 . ${PLIST};
 fi
 
-NAME="OSSEC HIDS"
-VERSION="v2.8"
-AUTHOR="Trend Micro Inc."
-DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
+NAME="Wazuh"
+VERSION="v2.0"
+AUTHOR="Wazuh Inc."
+DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 USE_JSON=false
 
 [ -f /etc/ossec-init.conf ] && . /etc/ossec-init.conf;
@@ -37,9 +37,11 @@ MAX_ITERATION="10"
 
 checkpid()
 {
-    for i in ${DAEMONS}; do
+    CDAEMONS="${DAEMONS} ossec-authd"
+
+    for i in ${CDAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps -p $j >/dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
                     echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
@@ -97,7 +99,7 @@ help()
     echo ""
     echo "Usage: $0 [-j] {start|stop|restart|status|enable|disable}";
     echo ""
-    echo -e "\t-j\tUse JSON output."
+    echo "    -j    Use JSON output."
     exit 1;
 }
 
@@ -165,6 +167,11 @@ status()
 {
     RETVAL=0
     first=true
+
+    lock;
+    checkpid;
+    unlock;
+
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
@@ -216,10 +223,10 @@ testconfig()
 # Start function
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
+    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
 
     if [ $USE_JSON = false ]; then
-        echo "Starting $NAME $VERSION (by $AUTHOR)..."
+        echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     fi
     ${DIR}/bin/ossec-logtest -t > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
@@ -298,7 +305,7 @@ pstatus()
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
                     echo "${pfile}: Process $j not used by ossec, removing .."

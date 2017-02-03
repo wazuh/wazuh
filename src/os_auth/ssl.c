@@ -35,11 +35,11 @@ BIO *bio_err;
  * then load the file containing the CA chain and verify the certifcate
  * sent by the peer.
  */
-SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const char *key, const char *ca_cert)
+SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const char *key, const char *ca_cert, int auto_method)
 {
     SSL_CTX *ctx = NULL;
 
-    if (!(ctx = get_ssl_context())) {
+    if (!(ctx = get_ssl_context(auto_method))) {
         goto SSL_ERROR;
     }
 
@@ -94,9 +94,12 @@ SSL_ERROR:
     return (SSL_CTX *)NULL;
 }
 
-SSL_CTX *get_ssl_context()
+#ifndef LEGACY_SSL
+SSL_CTX *get_ssl_context(int auto_method)
+#else
+SSL_CTX *get_ssl_context(__attribute__((unused)) int auto_method)
+#endif
 {
-    const SSL_METHOD *sslmeth = NULL;
     SSL_CTX *ctx = NULL;
 
     SSL_library_init();
@@ -104,10 +107,16 @@ SSL_CTX *get_ssl_context()
     OpenSSL_add_all_algorithms();
 
     /* Create our context */
-    sslmeth = TLSv1_2_method();
-    if (!(ctx = SSL_CTX_new(sslmeth))) {
+
+#ifndef LEGACY_SSL
+    if (!(ctx = auto_method ? SSL_CTX_new(SSLv23_method()) : SSL_CTX_new(TLSv1_2_method()))) {
         goto CONTEXT_ERR;
     }
+#else
+    if (!(ctx = SSL_CTX_new(SSLv23_method()))) {
+        goto CONTEXT_ERR;
+    }
+#endif
 
     /* Explicitly set options and cipher list */
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
@@ -200,4 +209,3 @@ int verify_callback(int ok, X509_STORE_CTX *store)
 }
 
 #endif /* LIBOPENSSL_ENABLED */
-

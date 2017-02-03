@@ -1,5 +1,5 @@
      - Aktywna ochrona włączona.
-   
+
    - Domyślnie, możemy włączyć ochronę host-deny oraz
      firewall-drop. Pierwsze doda hosta do listy
      /etc/hosts.deny, a drugie zablokuje hosta na

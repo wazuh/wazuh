@@ -18,6 +18,7 @@ int loop_timeout;
 int logr_queue;
 int open_file_attempts;
 logreader *logff;
+int vcheck_files;
 static int _cday = 0;
 
 
@@ -46,13 +47,13 @@ void LogCollectorStart()
     time_t curr_time = 0;
     char keepalive[1024];
 
-    /* To check for inode changes */
-    struct stat tmp_stat;
-
 #ifndef WIN32
     int int_error = 0;
     struct timeval fp_timeout;
+    /* To check for inode changes */
+    struct stat tmp_stat;
 #else
+    BY_HANDLE_FILE_INFORMATION lpFileInformation;
 
     /* Check if we are on Windows Vista */
     checkVista();
@@ -200,6 +201,8 @@ void LogCollectorStart()
                 logff[i].read = read_djbmultilog;
             } else if (logff[i].logformat[0] >= '0' && logff[i].logformat[0] <= '9') {
                 logff[i].read = read_multiline;
+            } else if (strcmp("audit", logff[i].logformat) == 0) {
+                logff[i].read = read_audit;
             } else {
                 logff[i].read = read_syslog;
             }
@@ -347,8 +350,8 @@ void LogCollectorStart()
             }
         }
 
-        /* Only check below if check > VCHECK_FILES */
-        if (f_check <= VCHECK_FILES) {
+        /* Only check below if check > vcheck_files */
+        if (f_check <= vcheck_files) {
             continue;
         }
 
@@ -391,27 +394,27 @@ void LogCollectorStart()
             if (logff[i].fp) {
 #ifndef WIN32
 
-		/* To help detect a file rollover, temporarily open the file a second time.
- 		 * Previously the fstat would work on "cached" file data, but this should 
- 		 * ensure it's fresh when hardlinks are used (like alerts.log).
- 		 */
-		FILE *tf;
-		tf = fopen(logff[i].file, "r");
-		if(tf == NULL) {
-			merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
-		}
+                /* To help detect a file rollover, temporarily open the file a second time.
+                 * Previously the fstat would work on "cached" file data, but this should
+                 * ensure it's fresh when hardlinks are used (like alerts.log).
+                 */
+                FILE *tf;
+                tf = fopen(logff[i].file, "r");
+                if(tf == NULL) {
+                    merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
+                }
 
-                if ((fstat(fileno(tf), &tmp_stat)) == -1) {
+                else if ((fstat(fileno(tf), &tmp_stat)) == -1) {
                     fclose(logff[i].fp);
+                    fclose(tf);
                     logff[i].fp = NULL;
 
                     merror(FSTAT_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
                 }
-		if(fclose(tf) == EOF) {
-			merror("Closing the temporary file %s did not work (%d): %s", logff[i].file, errno, strerror(errno));
-		}
+                else if (fclose(tf) == EOF) {
+                    merror("Closing the temporary file %s did not work (%d): %s", logff[i].file, errno, strerror(errno));
+                }
 #else
-                BY_HANDLE_FILE_INFORMATION lpFileInformation;
                 HANDLE h1;
 
                 h1 = CreateFile(logff[i].file, GENERIC_READ,
@@ -480,10 +483,6 @@ void LogCollectorStart()
                     debug1("%s: DEBUG: File size reduced. %s",
                            ARGV0, logff[i].file);
 
-
-                    /* Fix size so we don't alert more than once */
-                    logff[i].size = tmp_stat.st_size;
-
                     /* Get new file */
                     fclose(logff[i].fp);
 
@@ -543,6 +542,13 @@ void LogCollectorStart()
                     continue;
                 }
             }
+
+            /* Update file size */
+#ifdef WIN32
+            logff[i].size = lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow;
+#else
+            logff[i].size = tmp_stat.st_size;
+#endif
         }
     }
 }
@@ -707,4 +713,3 @@ void win_format_event_string(char *string)
 }
 
 #endif /* WIN32 */
-

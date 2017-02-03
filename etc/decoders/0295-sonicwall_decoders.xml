@@ -1,0 +1,21 @@
+<!--
+  -  SonicWall decoders
+  -  Author: Daniel Cid.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+  - Will extract action, srcip, dstip, protocol, srcport and dstport
+  - Examples:
+  - Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time="2007-01-03 14:48:06" fw=1.1.1.1 pri=6 c=262144 m=98 msg="Connection Opened" n=23419 src=2.2.2.2:36701:WAN dst=1.1.1.1:50000:WAN proto=tcp/50000
+  - Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time="2007-01-03 14:48:07" fw=1.1.1.1 pri=1 c=32 m=30 msg="Administrator login denied due to bad credentials" n=7 src=2.2.2.2:36701:WAN dst=1.1.1.1:50000:WAN
+  - id=firewall sn=00301E0526B1 time="2004-04-01 10:39:35"
+  fw=67.32.44.2 pri=5 c=64 m=36 msg="TCP connection dropped" n=2686 src=67.101.200.27:4507:WAN dst=67.32.44.2:445:LAN rule=0
+  -->
+<decoder name="sonicwall">
+  <type>firewall</type>
+  <prematch>^id=\w+ sn=\w+ time=\S+ \S+ fw=\S+ pri=\d </prematch>
+  <plugin_decoder>SonicWall_Decoder</plugin_decoder>
+</decoder>

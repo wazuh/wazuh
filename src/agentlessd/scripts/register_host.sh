@@ -37,9 +37,9 @@ fi
 if [ "x$1" = "xlist" ]; then
     echo "*Available hosts: "
     if [ "x$2" = "xpasswords" ]; then
-        cat $MYPASS | sort | uniq;
+        base64 --decode $MYPASS | sort | uniq;
     else
-        cat $MYPASS | cut -d "|" -f 1 | sort | uniq;
+        base64 --decode $MYPASS | cut -d "|" -f 1 | sort | uniq;
     fi
     exit 0;
 
@@ -50,7 +50,7 @@ elif [ "x$1" = "xadd" ]; then
         exit 1;
     fi
 
-    grep "$2|" $MYPASS > /dev/null 2>&1
+    base64 --decode $MYPASS 2> /dev/null | grep "$2|" > /dev/null 2>&1
     if [ $? = 0 ]; then
         echo "ERROR: Host '$2' already added.";
         exit 1;
@@ -74,12 +74,18 @@ elif [ "x$1" = "xadd" ]; then
         ADDPASS=$4
     fi
 
-    echo "$2|$INPASS|$ADDPASS" >> $MYPASS;
+    if [ -f $MYPASS ]; then
+        base64 --decode $MYPASS > $MYPASS.tmp && echo "$2|$INPASS|$ADDPASS" >> $MYPASS.tmp && base64 $MYPASS.tmp > $MYPASS
+        rm -f $MYPASS.tmp
+    else
+        echo "$2|$INPASS|$ADDPASS" | base64 - > $MYPASS
+    fi
+
     if [ ! $? = 0 ]; then
         echo "ERROR: Unable to creating entry (echo failed)."
         exit 1;
     fi
-    chmod 744 $MYPASS
+    chmod 644 $MYPASS
     echo "*Host $2 added."
 
 else

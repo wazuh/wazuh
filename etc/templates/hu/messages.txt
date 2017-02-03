@@ -10,9 +10,9 @@ help="segítség"
 
 # Global
 moreinfo="További információk: "
-starting="OSSEC HIDS Indítása"
+starting="Wazuh Indítása"
 systemis="A rendszer"
-modifiedinit="Init script módosítva, hogy bootoláskor automatikusan indítsa az OSSEC HIDS-et."
+modifiedinit="Init script módosítva, hogy bootoláskor automatikusan indítsa az Wazuh-et."
 noboot="Ismeretlen rendszer. Nincs init script hozzáadva."
 
 # Part 1
@@ -28,7 +28,7 @@ localchose="Lokális telepítés kiválasztva"
 
 # Part 2
 settingupenv="A telepítési környezet létrehozása"
-wheretoinstall="Válassza ki az OSSEC HIDS telepítési helyét"
+wheretoinstall="Válassza ki az Wazuh telepítési helyét"
 installat="A telepítés a következő helyre történik: "
 deletedir="A célkönyvtár már létezik. Törölhetem?"
 
@@ -43,8 +43,8 @@ usingsmtp="SMTP szerver használata: "
 whatsmtp="Mi az ön SMTP szerverének ip címe/hoszt neve?"
 
 # Part 3.1/agent
-serverip="Mi az IP címe az OSSEC HIDS szervernek?"
-serveraddr="Mi az IP címe/hoszt neve az OSSEC HIDS szervernek?"
+serverip="Mi az IP címe az Wazuh szervernek?"
+serveraddr="Mi az IP címe/hoszt neve az Wazuh szervernek?"
 addingip="Szerver IP hozzáadása"
 addingname="Szerver hoszt neve hozzáadása"
 
@@ -59,7 +59,12 @@ runrootcheck="Szeretné futtatni a rootkit detektáló motort?"
 norootcheck="Gyökérellenőrzés mellőzése (rootkit detektálás)"
 yesrootcheck="Gyökérellenőrzés futtatása (rootkit detektálás)"
 
-# Part 3.4/server/local
+# Part 3.4
+runopenscap="Szeretné futtatni OpenSCAP?"
+norunopenscap="Rendszerellenőrzés mellőzése OpenSCAP"
+yesrunopenscap="Gyökérellenőrzés futtatása OpenSCAP"
+
+# Part 3.5/server/local
 enable_ar="Szeretné bekapcsolni az active response funkciót?"
 noactive="Active response kikapcsolva"
 nohosts="host-deny kikapcsolva"
@@ -81,27 +86,29 @@ readlogs="A konfiguráció beállítása a következő naplók elemzéséhez:"
 
 # Part 5
 installing="A rendszer telepítése"
-runningmake="A Make fájl futtatása" 
+runningmake="A Make fájl futtatása"
 
 # Final
 configurationdone="A konfiguráció sikeresen befejeződött"
-tostart="Az OSSEC HIDS indítása"
-tostop="Az OSSEC HIDS leállítása"
+tostart="Az Wazuh indítása"
+tostop="Az Wazuh leállítása"
 configat="A konfigurációs fájl megtekinthető vagy módosítható itt: "
-addserveragent="A kliens és szerver összekapcsolásához, minden egyes klienst 
+addserveragent="A kliens és szerver összekapcsolásához, minden egyes klienst
    hozzá kell adnia a szerverhez."
-runma="Futtassa a 'manage_agents' parancsot a kliensek hozzáadásához 
+runma="Futtassa a 'manage_agents' parancsot a kliensek hozzáadásához
    vagy eltávolításához."
 presskey="A folytatáshoz nyomja meg az ENTER-t"
 
 # Update
-wanttoupdate="Az OSSEC már telepítve van. Szeretné frissíteni?"
+wanttoupdate="Az Wazuh már telepítve van. Szeretné frissíteni?"
 unabletoupdate="A frissítés nem lehetséges. Egy teljesen új installáció szükséges."
 updatecompleted="A frissítés sikeresen befejeződött."
 updatefailed="A frissítés meghiúsult."
 updaterules="Szeretné frissíteni a szabályokat?"
 updatingrules="A szabályok frissítése."
 notupdatingrules="Nincs szabály frissítés."
+update_rev_newconf1="Backup from your ossec.conf has been created at /var/ossec/etc/ossec.conf.orig"
+update_rev_newconf2="Please verify your ossec.conf configuration at /var/ossec/etc/ossec.conf"
 
 # Pf support
 pfenable="Szeretné alkalmazni a PF tűzfalat az active response során?"

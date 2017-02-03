@@ -11,6 +11,7 @@
 
 #include "fts.h"
 #include "eventinfo.h"
+#include "config.h"
 
 /* Local variables */
 static unsigned int fts_minsize_for_str = 0;
@@ -155,7 +156,7 @@ void AddtoIGnore(Eventinfo *lf)
 #endif
 
     /* Assign the values to the FTS */
-    fprintf(fp_ignore, "%s %s %s %s %s %s %s %s\n",
+    fprintf(fp_ignore, "%s %s %s %s %s %s %s %s",
             (lf->decoder_info->name && (lf->generated_rule->ignore & FTS_NAME)) ?
             lf->decoder_info->name : "",
             (lf->id && (lf->generated_rule->ignore & FTS_ID)) ? lf->id : "",
@@ -171,6 +172,18 @@ void AddtoIGnore(Eventinfo *lf)
             lf->systemname : "",
             (lf->generated_rule->ignore & FTS_LOCATION) ? lf->location : "");
 
+    if (lf->generated_rule->ignore & FTS_DYNAMIC) {
+        int i;
+
+        for (i = 0; i < Config.decoder_order_size && lf->generated_rule->ignore_fields[i]; i++) {
+            const char *field = FindField(lf, lf->generated_rule->ignore_fields[i]);
+
+            if (field)
+                fprintf(fp_ignore, " %s", field);
+        }
+    }
+
+    fprintf(fp_ignore, "\n");
     fflush(fp_ignore);
 
     return;
@@ -187,7 +200,7 @@ int IGnore(Eventinfo *lf)
     _line[OS_FLSIZE] = '\0';
 
     /* Assign the values to the FTS */
-    snprintf(_line, OS_FLSIZE, "%s %s %s %s %s %s %s %s\n",
+    snprintf(_line, OS_FLSIZE, "%s %s %s %s %s %s %s %s",
              (lf->decoder_info->name && (lf->generated_rule->ckignore & FTS_NAME)) ?
              lf->decoder_info->name : "",
              (lf->id && (lf->generated_rule->ckignore & FTS_ID)) ? lf->id : "",
@@ -203,6 +216,20 @@ int IGnore(Eventinfo *lf)
              lf->systemname : "",
              (lf->generated_rule->ckignore & FTS_LOCATION) ? lf->location : "");
 
+    if (lf->generated_rule->ckignore & FTS_DYNAMIC) {
+        int i;
+
+        for (i = 0; i < Config.decoder_order_size && lf->generated_rule->ckignore_fields[i]; i++) {
+            const char *field = FindField(lf, lf->generated_rule->ckignore_fields[i]);
+
+            if (field) {
+                strncat(_line, " ", OS_FLSIZE - strlen(_line));
+                strncat(_line, field, OS_FLSIZE - strlen(_line));
+            }
+        }
+    }
+
+    fprintf(fp_ignore, "\n");
     _fline[OS_FLSIZE] = '\0';
 
     /** Check if the ignore is present **/
@@ -225,10 +252,12 @@ int IGnore(Eventinfo *lf)
  */
 int FTS(Eventinfo *lf)
 {
+    int i;
     int number_of_matches = 0;
     char _line[OS_FLSIZE + 1];
     char *line_for_list = NULL;
     OSListNode *fts_node;
+    const char *field;
 
     _line[OS_FLSIZE] = '\0';
 
@@ -243,6 +272,13 @@ int FTS(Eventinfo *lf)
              (lf->data && (lf->decoder_info->fts & FTS_DATA)) ? lf->data : "",
              (lf->systemname && (lf->decoder_info->fts & FTS_SYSTEMNAME)) ? lf->systemname : "",
              (lf->decoder_info->fts & FTS_LOCATION) ? lf->location : "");
+
+    for (i = 0; i < Config.decoder_order_size; i++) {
+        if (lf->decoder_info->fts_fields[i] && (field = FindField(lf, lf->decoder_info->fields[i]))) {
+            strncat(_line, " ", OS_FLSIZE - strlen(_line));
+            strncat(_line, field, OS_FLSIZE - strlen(_line));
+        }
+    }
 
     /** Check if FTS is already present **/
     if (OSHash_Get(fts_store, _line)) {
@@ -294,4 +330,3 @@ int FTS(Eventinfo *lf)
 
     return (1);
 }
-

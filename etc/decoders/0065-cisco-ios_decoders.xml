@@ -1,0 +1,77 @@
+<!--
+  -  Cisco IOS decoders
+  -  Author: Daniel Cid.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+
+<!--
+  - Group for Cisco IOS messages.
+  - We would need to support multiple formats, but currently we require
+  - no service time stamp and no sequence-numbers.
+  -
+  - Aug 17 17:41:26 xyz.com 681: Aug 17 17:41:24.776 AEST: %SEC-6-IPACCESSLOGS: list 30 denied 124.254.75.141 1 packet
+  - Aug 20 11:33:41 RouterName 696: %SYS-5-CONFIG_I: Configured from
+  console by admin on vty0 (210.x.x.12)
+  - 681: Aug 17 17:41:24.776 AEST: %SEC-6-IPACCESSLOGS:
+  - 1348: .Jun 12 18:22:22 UTC: %SYS-5-CONFIG_I:
+  - 1348: *Jun 12 18:22:22 UTC: %SYS-5-CONFIG_I:
+  - 23: May  3 05:15:25.217 UTC: %SEC-6-IPACCESSLOGP:
+  - Possible regex:
+  "^%\w+-\d-\w+: |^\S\w\w+ \.\d \d\d:\S+ \w+: %\w+-\d-\w+:"
+  -->
+<decoder name="cisco-ios">
+  <prematch>^%\w+-\d-\w+: </prematch>
+</decoder>
+
+<decoder name="cisco-ios">
+  <program_name />
+  <prematch>^%\w+-\d-\w+: </prematch>
+</decoder>
+
+
+<!-- Cisco IOS
+  - Will extract the action, srcip, srcport, dstip and dstport
+  - Samples:
+  -
+  - %SEC-6-IPACCESSLOGP: list 102 denied tcp 10.0.6.56(3067) -> 172.36.4.7(139), 1 packet
+  - %SEC-6-IPACCESSLOGP: list 199 denied tcp 10.0.61.108(1477) -> 10.0.127.20(445), 1 packet
+  -->
+<decoder name="cisco-ios-acl">
+  <parent>cisco-ios</parent>
+  <type>firewall</type>
+  <prematch>^%SEC-6-IPACCESSLOGP: </prematch>
+  <regex offset="after_prematch">^list \S+ (\w+) (\w+) </regex>
+  <regex>(\S+)\((\d+)\) -> (\S+)\((\d+)\),</regex>
+  <order>action, protocol, srcip, srcport, dstip, dstport</order>
+</decoder>
+
+
+<!-- Cisco IOS IDS/IPS module
+  - Will extract the id, srcip, srcport, dstip and dstport
+  - Sep  1 10:25:29 10.10.10.1 %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.11:51654 -> 10.10.10.10:4444]
+  - Sep  1 10:25:29 10.10.10.1 %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.11:60797 -> 10.10.10.10:80]
+  - Sep  1 10:25:29 10.10.10.1 %IPS-4-SIGNATURE: Sig:5123 Subsig:2 Sev:5 WWW IIS Internet Printing Overflow [192.168.100.11:60797 -> 10.10.10.10:80]
+  -->
+<decoder name="cisco-ios-ids">
+  <parent>cisco-ios</parent>
+  <type>ids</type>
+  <prematch>^%IPS-4-SIGNATURE: </prematch>
+  <regex offset="after_prematch">^Sig:(\d+) \.+[(\S+):(\d+) -> </regex>
+  <regex>(\S+):(\d+)]</regex>
+  <order>id, srcip, srcport, dstip, dstport</order>
+  <fts>name, id, srcip, dstip</fts>
+  <ftscomment>First time Cisco IOS IDS/IPS module rule fired.</ftscomment>
+</decoder>
+
+
+<!-- Cisco IOS
+  - Extracts the ID of cisco ios messages.
+  -->
+<decoder name="cisco-ios-generic">
+  <parent>cisco-ios</parent>
+  <regex>^(%\w+-\d-\w+): </regex>
+  <order>id</order>
+</decoder>

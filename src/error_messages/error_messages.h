@@ -51,6 +51,8 @@
 #define CHOWN_ERROR   "%s(1135): ERROR: Could not chown object '%s' due to [(%d)-(%s)]."
 #define EPOLL_ERROR   "%s(1136): ERROR: Could not handle epoll descriptor."
 #define LOST_ERROR   "%s(1137): ERROR: Lost connection with manager."
+#define KQUEUE_ERROR   "%s(1138): ERROR: Could not handle kqueue descriptor."
+#define FTELL_ERROR     "%s(1139): ERROR: Could not get position from file '%s' due to [(%d)-(%s)]."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "%s(1201): ERROR: No remote connection configured."
@@ -93,6 +95,9 @@
 #define ACCEPT_ERROR    "%s(1242): ERROR: Couldn't accept TCP connections."
 #define RECV_ERROR      "%s(1243): ERROR: Couldn't receive message from peer."
 #define DUP_SECURE      "%s(1244): ERROR: Can't add more than one secure connection."
+#define SEND_DISCON     "%s(1245): ERROR: Sending message to disconnected agent '%s'."
+#define SHARED_ERROR    "%s(1246): ERROR: Unable to send file '%s' to agent '%s' (%s)."
+#define TCP_NOT_SUPPORT "%s(1247): ERROR: TCP not supported for this operating system."
 
 #define MAILQ_ERROR     "%s(1221): ERROR: No Mail queue at %s"
 #define IMSG_ERROR      "%s(1222): ERROR: Invalid msg: %s"
@@ -294,4 +299,3 @@
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
 
 #endif /* _ERROR_MESSAGES__H */
-

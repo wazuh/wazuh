@@ -43,6 +43,13 @@ typedef struct _keystore {
 
     /* Key file stat */
     time_t file_change;
+    ino_t inode;
+
+    /* ID counter */
+    int id_counter;
+
+    /* Flag: rehash keys on adding */
+    int rehash_keys;
 } keystore;
 
 /** Function prototypes -- key management **/
@@ -51,7 +58,7 @@ typedef struct _keystore {
 int OS_CheckKeys(void);
 
 /* Read the keys */
-void OS_ReadKeys(keystore *keys) __attribute((nonnull));
+void OS_ReadKeys(keystore *keys, int rehash_keys) __attribute((nonnull));
 
 /* Free the auth keys */
 void OS_FreeKeys(keystore *keys) __attribute((nonnull));
@@ -71,6 +78,17 @@ void OS_RemoveCounter(const char *id) __attribute((nonnull));
 /* Configure to pass if keys file is empty */
 void OS_PassEmptyKeyfile();
 
+/* Add new key */
+void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key) __attribute((nonnull));
+
+/* Delete a key */
+int OS_DeleteKey(keystore *keys, const char *id);
+
+/* Write keystore on client keys file */
+int OS_WriteKeys(const keystore *keys);
+
+/* Duplicate keystore except key hashes and file pointer */
+keystore* OS_DupKeys(const keystore *keys);
 
 /** Function prototypes -- agent authorization **/
 
@@ -108,4 +126,3 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
 #define KEYSIZE         128
 
 #endif /* __SEC_H */
-

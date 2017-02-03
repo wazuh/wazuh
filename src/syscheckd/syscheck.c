@@ -15,10 +15,6 @@
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
 
-/* Prototypes */
-static void read_internal(int debug_level);
-static void help_syscheckd(void) __attribute__((noreturn));
-
 syscheck_config syscheck;
 
 #ifdef USE_MAGIC
@@ -95,12 +91,19 @@ int Start_win32_Syscheck()
         } else if (!syscheck.dir[0]) {
             merror(SK_NO_DIR, ARGV0);
         }
+
         syscheck.dir[0] = NULL;
+
+        if (!syscheck.ignore) {
+            os_calloc(1, sizeof(char *), syscheck.ignore);
+        } else {
+            syscheck.ignore[0] = NULL;
+        }
 
         if (!syscheck.registry) {
             dump_syscheck_entry(&syscheck, "", 0, 1, NULL);
         }
-        syscheck.registry[0] = NULL;
+        syscheck.registry[0].entry = NULL;
 
         merror("%s: WARN: Syscheck disabled.", ARGV0);
     }
@@ -115,9 +118,9 @@ int Start_win32_Syscheck()
 
     /* Print options */
     r = 0;
-    while (syscheck.registry[r] != NULL) {
-        verbose("%s: INFO: Monitoring registry entry: '%s'.",
-                ARGV0, syscheck.registry[r]);
+    while (syscheck.registry[r].entry != NULL) {
+        verbose("%s: INFO: Monitoring registry entry: '%s%s'.",
+                ARGV0, syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
         r++;
     }
 
@@ -162,8 +165,10 @@ int Start_win32_Syscheck()
 }
 #endif /* WIN32 */
 
+#ifndef WIN32
+
 /* Print help statement */
-static void help_syscheckd()
+__attribute__((noreturn)) static void help_syscheckd()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
@@ -179,7 +184,6 @@ static void help_syscheckd()
     exit(1);
 }
 
-#ifndef WIN32
 /* Syscheck unix main */
 int main(int argc, char **argv)
 {
@@ -245,7 +249,15 @@ int main(int argc, char **argv)
                 merror(SK_NO_DIR, ARGV0);
             }
         }
+
         syscheck.dir[0] = NULL;
+
+        if (!syscheck.ignore) {
+            os_calloc(1, sizeof(char *), syscheck.ignore);
+        } else {
+            syscheck.ignore[0] = NULL;
+        }
+
         if (!test_config) {
             merror("%s: WARN: Syscheck disabled.", ARGV0);
         }
@@ -297,7 +309,7 @@ int main(int argc, char **argv)
 
     /* Create pid */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        merror(PID_ERROR, ARGV0);
+        ErrorExit(PID_ERROR, ARGV0);
     }
 
     /* Start up message */
@@ -359,4 +371,3 @@ int main(int argc, char **argv)
 }
 
 #endif /* !WIN32 */
-

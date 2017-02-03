@@ -15,90 +15,6 @@
 #include "eventinfo.h"
 #include "config.h"
 
-#ifdef LIBGEOIP_ENABLED
-#include "GeoIP.h"
-#include "GeoIPCity.h"
-
-#define RFC1918_10     (167772160u  & 4278190080u)       /* 10/8        */
-#define RFC1918_172    (2886729728u & 4293918720u)       /* 172.17/12   */
-#define RFC1918_192    (3232235520u & 4294901760u)       /* 192.168/16  */
-#define NETMASK_8      4278190080u                       /* 255.0.0.0   */
-#define NETMASK_12     4293918720u                       /* 255.240.0.0 */
-#define NETMASK_16     4294901760u                       /* 255.255.0.0 */
-
-static const char *_mk_NA( const char *p )
-{
-    return (p ? p : "N/A");
-}
-
-/* Convert a dot-quad IP address into long format */
-static unsigned long StrIP2Int(const char *ip)
-{
-    unsigned int c1, c2, c3, c4;
-    /* IP address is not coming from user input -> We can trust it */
-    /* Only minimal checking is performed */
-    size_t len = strlen(ip);
-    if ((len < 7) || (len > 15)) {
-        return (0);
-    }
-
-    sscanf(ip, "%u.%u.%u.%u", &c1, &c2, &c3, &c4);
-    return ((unsigned long)c4 + c3 * 256 + c2 * 256 * 256 + c1 * 256 * 256 * 256);
-}
-
-/* Use the GeoIP API to locate an IP address */
-static void GeoIP_Lookup(const char *ip, char *buffer, const size_t length)
-{
-    GeoIP   *gi;
-    GeoIPRecord *gir;
-
-    /* Dumb way to detect an IPv6 address */
-    if (strchr(ip, ':')) {
-        /* Use the IPv6 DB */
-        gi = GeoIP_open(Config.geoip_db_path, GEOIP_INDEX_CACHE);
-        if (gi == NULL) {
-            merror(INVALID_GEOIP_DB, ARGV0, Config.geoip6_db_path);
-            snprintf(buffer, length, "Unknown (1)");
-            return;
-        }
-        gir = GeoIP_record_by_name_v6(gi, ip);
-    } else {
-        /* Use the IPv4 DB */
-        /* If we have a RFC1918 IP, do not perform a DB lookup (performance) */
-        unsigned long longip = StrIP2Int(ip);
-        if (longip == 0 ) {
-            snprintf(buffer, length, "Unknown (2)");
-            return;
-        }
-        if ((longip & NETMASK_8)  == RFC1918_10 ||
-                (longip & NETMASK_12) == RFC1918_172 ||
-                (longip & NETMASK_16) == RFC1918_192) {
-            snprintf(buffer, length, "RFC1918 IP");
-            return;
-        }
-
-        gi = GeoIP_open(Config.geoip_db_path, GEOIP_INDEX_CACHE);
-        if (gi == NULL) {
-            merror(INVALID_GEOIP_DB, ARGV0, Config.geoip_db_path);
-            snprintf(buffer, length, "Unknown (3)");
-            return;
-        }
-        gir = GeoIP_record_by_name(gi, ip);
-    }
-    if (gir != NULL) {
-        snprintf(buffer, length, "%s,%s,%s",
-                 _mk_NA(gir->country_code),
-                 _mk_NA(GeoIP_region_name_by_code(gir->country_code, gir->region)),
-                 _mk_NA(gir->city)
-                );
-        GeoIP_delete(gi);
-        return;
-    }
-    GeoIP_delete(gi);
-    snprintf(buffer, length, "Unknown (4)");
-    return;
-}
-#endif /* LIBGEOIP_ENABLED */
 
 /* Drop/allow patterns */
 static OSMatch FWDROPpm;
@@ -166,20 +82,19 @@ void OS_Store(const Eventinfo *lf)
 
 void OS_LogOutput(Eventinfo *lf)
 {
+    int i;
+
 #ifdef LIBGEOIP_ENABLED
-    char geoip_msg_src[OS_SIZE_1024 + 1];
-    char geoip_msg_dst[OS_SIZE_1024 + 1];
-    geoip_msg_src[0] = '\0';
-    geoip_msg_dst[0] = '\0';
-    if (Config.loggeoip) {
-        if (lf->srcip) {
-            GeoIP_Lookup(lf->srcip, geoip_msg_src, OS_SIZE_1024);
+    if (Config.geoipdb_file) {
+        if (lf->srcip && !lf->srcgeoip) {
+            lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
         }
-        if (lf->dstip) {
-            GeoIP_Lookup(lf->dstip, geoip_msg_dst, OS_SIZE_1024);
+        if (lf->dstip && !lf->dstgeoip) {
+            lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
         }
     }
 #endif
+
     printf(
         "** Alert %ld.%ld:%s - %s\n"
         "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
@@ -197,18 +112,20 @@ void OS_LogOutput(Eventinfo *lf)
         lf->location,
         lf->generated_rule->sigid,
         lf->generated_rule->level,
-        lf->generated_rule->comment,
+        lf->comment,
 
         lf->srcip == NULL ? "" : "\nSrc IP: ",
         lf->srcip == NULL ? "" : lf->srcip,
 
 #ifdef LIBGEOIP_ENABLED
-        (strlen(geoip_msg_src) == 0) ? "" : "\nSrc Location: ",
-        (strlen(geoip_msg_src) == 0) ? "" : geoip_msg_src,
+        lf->srcgeoip == NULL ? "" : "\nSrc Location: ",
+        lf->srcgeoip == NULL ? "" : lf->srcgeoip,
 #else
         "",
         "",
 #endif
+
+
 
         lf->srcport == NULL ? "" : "\nSrc Port: ",
         lf->srcport == NULL ? "" : lf->srcport,
@@ -217,12 +134,14 @@ void OS_LogOutput(Eventinfo *lf)
         lf->dstip == NULL ? "" : lf->dstip,
 
 #ifdef LIBGEOIP_ENABLED
-        (strlen(geoip_msg_dst) == 0) ? "" : "\nDst Location: ",
-        (strlen(geoip_msg_dst) == 0) ? "" : geoip_msg_dst,
+        lf->dstgeoip == NULL ? "" : "\nDst Location: ",
+        lf->dstgeoip == NULL ? "" : lf->dstgeoip,
 #else
         "",
         "",
 #endif
+
+
 
         lf->dstport == NULL ? "" : "\nDst Port: ",
         lf->dstport == NULL ? "" : lf->dstport,
@@ -231,6 +150,81 @@ void OS_LogOutput(Eventinfo *lf)
         lf->dstuser == NULL ? "" : lf->dstuser,
 
         lf->full_log);
+
+    /* FIM events */
+
+    if (lf->filename) {
+        printf("File: %s\n", lf->filename);
+
+        if (lf->size_before)
+            printf("Old size: %s\n", lf->size_before);
+        if (lf->size_after)
+            printf("New size: %s\n", lf->size_after);
+
+        if (lf->perm_before)
+            printf("Old permissions: %6o\n", lf->perm_before);
+        if (lf->perm_after)
+            printf("New permissions: %6o\n", lf->perm_after);
+
+        if (lf->owner_before) {
+            if (lf->uname_before)
+                printf("Old user: %s (%s)\n", lf->uname_before, lf->owner_before);
+            else
+                printf("Old user: %s\n", lf->owner_before);
+        }
+        if (lf->owner_after) {
+            if (lf->uname_after)
+                printf("New user: %s (%s)\n", lf->uname_after, lf->owner_after);
+            else
+                printf("New user: %s\n", lf->owner_after);
+        }
+
+        if (lf->gowner_before) {
+            if (lf->gname_before)
+                printf("Old group: %s (%s)\n", lf->gname_before, lf->gowner_before);
+            else
+                printf("Old group: %s\n", lf->gowner_before);
+        }
+        if (lf->gowner_after) {
+            if (lf->gname_after)
+                printf("New group: %s (%s)\n", lf->gname_after, lf->gowner_after);
+            else
+                printf("New group: %s\n", lf->gowner_after);
+        }
+
+        if (lf->md5_before)
+            printf("Old MD5: %s\n", lf->md5_before);
+        if (lf->md5_after)
+            printf("New MD5: %s\n", lf->md5_after);
+
+
+        if (lf->sha1_before)
+            printf("Old SHA1: %s\n", lf->sha1_before);
+        if (lf->sha1_after)
+            printf("New SHA1: %s\n", lf->sha1_after);
+
+        if (lf->mtime_before)
+            printf("Old date: %s", ctime(&lf->mtime_before));
+        if (lf->mtime_after)
+            printf("New date: %s", ctime(&lf->mtime_after));
+
+        if (lf->inode_before)
+            printf("Old inode: %ld\n", lf->inode_before);
+        if (lf->inode_after)
+            printf("New inode: %ld\n", lf->inode_after);
+
+        if (lf->diff)
+            printf("What changed: %s\n", lf->diff);
+    }
+
+    // Dynamic fields, except for syscheck events
+    if (lf->fields && !lf->filename) {
+        for (i = 0; i < lf->nfields; i++) {
+            if (lf->fields[i].value) {
+                printf("%s: %s\n", lf->fields[i].key, lf->fields[i].value);
+            }
+        }
+    }
 
     /* Print the last events if present */
     if (lf->generated_rule->last_events) {
@@ -250,20 +244,19 @@ void OS_LogOutput(Eventinfo *lf)
 
 void OS_Log(Eventinfo *lf)
 {
+    int i;
+
 #ifdef LIBGEOIP_ENABLED
-    char geoip_msg_src[OS_SIZE_1024 + 1];
-    char geoip_msg_dst[OS_SIZE_1024 + 1];
-    geoip_msg_src[0] = '\0';
-    geoip_msg_dst[0] = '\0';
-    if (Config.loggeoip) {
-        if (lf->srcip) {
-            GeoIP_Lookup(lf->srcip, geoip_msg_src, OS_SIZE_1024 );
+    if (Config.geoipdb_file) {
+        if (lf->srcip && !lf->srcgeoip) {
+            lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
         }
-        if (lf->dstip) {
-            GeoIP_Lookup(lf->dstip, geoip_msg_dst, OS_SIZE_1024 );
+        if (lf->dstip && !lf->dstgeoip) {
+            lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
         }
     }
 #endif
+
     /* Writing to the alert log file */
     fprintf(_aflog,
             "** Alert %ld.%ld:%s - %s\n"
@@ -282,18 +275,19 @@ void OS_Log(Eventinfo *lf)
             lf->location,
             lf->generated_rule->sigid,
             lf->generated_rule->level,
-            lf->generated_rule->comment,
+            lf->comment,
 
             lf->srcip == NULL ? "" : "\nSrc IP: ",
             lf->srcip == NULL ? "" : lf->srcip,
 
 #ifdef LIBGEOIP_ENABLED
-            (strlen(geoip_msg_src) == 0) ? "" : "\nSrc Location: ",
-            (strlen(geoip_msg_src) == 0) ? "" : geoip_msg_src,
+            lf->srcgeoip == NULL ? "" : "\nSrc Location: ",
+            lf->srcgeoip == NULL ? "" : lf->srcgeoip,
 #else
             "",
             "",
 #endif
+
 
             lf->srcport == NULL ? "" : "\nSrc Port: ",
             lf->srcport == NULL ? "" : lf->srcport,
@@ -302,12 +296,14 @@ void OS_Log(Eventinfo *lf)
             lf->dstip == NULL ? "" : lf->dstip,
 
 #ifdef LIBGEOIP_ENABLED
-            (strlen(geoip_msg_dst) == 0) ? "" : "\nDst Location: ",
-            (strlen(geoip_msg_dst) == 0) ? "" : geoip_msg_dst,
+            lf->dstgeoip == NULL ? "" : "\nDst Location: ",
+            lf->dstgeoip == NULL ? "" : lf->dstgeoip,
 #else
             "",
             "",
 #endif
+
+
 
             lf->dstport == NULL ? "" : "\nDst Port: ",
             lf->dstport == NULL ? "" : lf->dstport,
@@ -316,6 +312,81 @@ void OS_Log(Eventinfo *lf)
             lf->dstuser == NULL ? "" : lf->dstuser,
 
             lf->full_log);
+
+    /* FIM events */
+
+    if (lf->filename) {
+        fprintf(_aflog, "File: %s\n", lf->filename);
+
+        if (lf->size_before)
+            fprintf(_aflog, "Old size: %s\n", lf->size_before);
+        if (lf->size_after)
+            fprintf(_aflog, "New size: %s\n", lf->size_after);
+
+        if (lf->perm_before)
+            fprintf(_aflog, "Old permissions: %6o\n", lf->perm_before);
+        if (lf->perm_after)
+            fprintf(_aflog, "New permissions: %6o\n", lf->perm_after);
+
+        if (lf->owner_before) {
+            if (lf->uname_before)
+                fprintf(_aflog, "Old user: %s (%s)\n", lf->uname_before, lf->owner_before);
+            else
+                fprintf(_aflog, "Old user: %s\n", lf->owner_before);
+        }
+        if (lf->owner_after) {
+            if (lf->uname_after)
+                fprintf(_aflog, "New user: %s (%s)\n", lf->uname_after, lf->owner_after);
+            else
+                fprintf(_aflog, "New user: %s\n", lf->owner_after);
+        }
+
+        if (lf->gowner_before) {
+            if (lf->gname_before)
+                fprintf(_aflog, "Old group: %s (%s)\n", lf->gname_before, lf->gowner_before);
+            else
+                fprintf(_aflog, "Old group: %s\n", lf->gowner_before);
+        }
+        if (lf->gowner_after) {
+            if (lf->gname_after)
+                fprintf(_aflog, "New group: %s (%s)\n", lf->gname_after, lf->gowner_after);
+            else
+                fprintf(_aflog, "New group: %s\n", lf->gowner_after);
+        }
+
+        if (lf->md5_before)
+            fprintf(_aflog, "Old MD5: %s\n", lf->md5_before);
+        if (lf->md5_after)
+            fprintf(_aflog, "New MD5: %s\n", lf->md5_after);
+
+
+        if (lf->sha1_before)
+            fprintf(_aflog, "Old SHA1: %s\n", lf->sha1_before);
+        if (lf->sha1_after)
+            fprintf(_aflog, "New SHA1: %s\n", lf->sha1_after);
+
+        if (lf->mtime_before)
+            fprintf(_aflog, "Old date: %s", ctime(&lf->mtime_before));
+        if (lf->mtime_after)
+            fprintf(_aflog, "New date: %s", ctime(&lf->mtime_after));
+
+        if (lf->inode_before)
+            fprintf(_aflog, "Old inode: %ld\n", lf->inode_before);
+        if (lf->inode_after)
+            fprintf(_aflog, "New inode: %ld\n", lf->inode_after);
+
+        if (lf->diff)
+            fprintf(_aflog, "What changed: %s\n", lf->diff);
+    }
+
+    // Dynamic fields, except for syscheck events
+    if (lf->fields && !lf->filename) {
+        for (i = 0; i < lf->nfields; i++) {
+            if (lf->fields[i].value) {
+                fprintf(_aflog, "%s: %s\n", lf->fields[i].key, lf->fields[i].value);
+            }
+        }
+    }
 
     /* Print the last events if present */
     if (lf->generated_rule->last_events) {
@@ -344,102 +415,61 @@ void OS_CustomLog(const Eventinfo *lf, const char *format)
 
     snprintf(tmp_buffer, 1024, "%ld", (long int)lf->time);
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_TIMESTAMP], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
+
     snprintf(tmp_buffer, 1024, "%ld", __crt_ftell);
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_FTELL], tmp_buffer);
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
+    free(tmp_log);
 
     snprintf(tmp_buffer, 1024, "%s", (lf->generated_rule->alert_opts & DO_MAILALERT) ? "mail " : "");
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_ALERT_OPTIONS], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
 
     snprintf(tmp_buffer, 1024, "%s", lf->hostname ? lf->hostname : "None");
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_HOSTNAME], tmp_buffer);
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
+    free(tmp_log);
 
     snprintf(tmp_buffer, 1024, "%s", lf->location ? lf->location : "None");
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_LOCATION], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
 
     snprintf(tmp_buffer, 1024, "%d", lf->generated_rule->sigid);
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_ID], tmp_buffer);
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
+    free(tmp_log);
 
     snprintf(tmp_buffer, 1024, "%d", lf->generated_rule->level);
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_LEVEL], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
 
     snprintf(tmp_buffer, 1024, "%s", lf->srcip ? lf->srcip : "None");
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_SRC_IP], tmp_buffer);
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
+    free(tmp_log);
 
     snprintf(tmp_buffer, 1024, "%s", lf->dstuser ? lf->dstuser : "None");
 
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_DST_USER], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
+
     char *escaped_log;
     escaped_log = escape_newlines(lf->full_log);
 
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_FULL_LOG], escaped_log );
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
+    free(tmp_log);
+    free(escaped_log);
 
-    if (escaped_log) {
-        os_free(escaped_log);
-        escaped_log = NULL;
-    }
-
-    snprintf(tmp_buffer, 1024, "%s", lf->generated_rule->comment ? lf->generated_rule->comment : "");
+    snprintf(tmp_buffer, 1024, "%s", lf->comment ? lf->comment : "");
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_COMMENT], tmp_buffer);
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
 
     snprintf(tmp_buffer, 1024, "%s", lf->generated_rule->group ? lf->generated_rule->group : "");
     log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_GROUP], tmp_buffer);
-    if (tmp_log) {
-        os_free(tmp_log);
-        tmp_log = NULL;
-    }
+    free(tmp_log);
 
     fprintf(_aflog, "%s", log);
     fprintf(_aflog, "\n");
     fflush(_aflog);
 
-    if (log) {
-        os_free(log);
-        log = NULL;
-    }
+    free(log);
 
     return;
 }
@@ -540,4 +570,3 @@ int FW_Log(Eventinfo *lf)
 
     return (1);
 }
-

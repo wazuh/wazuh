@@ -1,11 +1,14 @@
 
-    Dziękujemy za użycie OSSEC HIDS.
-    Jeśli masz jakieś pytania, propozycje lub znalazłeś jakiś błąd,
-    skontaktuj się z nami poprzez contact@ossec.net lub publiczną
-    listę mailingową ossec-list@ossec.net
-    ( http://www.ossec.net/main/support/ ).
+    Dziękujemy za korzystanie z Wazuh.
+    Proszę nie wątpić o kontakt z nami, jeśli potrzebujesz pomocy
+    lub znaleźć żadnego błędu.
 
-    Więcej informacji można znaleźć na http://www.ossec.net
+    Skorzystaj z naszej listy mailingowej publicznego pod adresem:
+               https://groups.google.com/forum/#!forum/wazuh
 
-    ---  Wciśnij ENTER aby zakończyć (więcej informacji poniżej?). ---
+    Więcej informacji można znaleźć na stronie:
+               - http://www.wazuh.com
+               - http://www.ossec.net
 
+         --- Naciśnij klawisz ENTER, aby zakończyć. ---
+           --- (Może więcej informacji poniżej). ---

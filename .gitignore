@@ -3,6 +3,7 @@
 *.a
 *.dSYM
 .DS_Store
+*.pyc
 
 # Auto generated build files
 src/LOCATION
@@ -14,6 +15,7 @@ src/isbigendian.c
 src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
 src/Config.OS
+src/external/zlib-1.2.8/ztest*
 
 # Compiled programs
 src/agent-auth
@@ -45,6 +47,7 @@ src/rootcheck_control
 src/syscheck_control
 src/syscheck_update
 src/verify-agent-conf
+src/wazuh-modulesd
 
 # Windows agent
 src/external/lua-5.2.3/src/lua52.dll

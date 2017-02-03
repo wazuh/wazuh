@@ -1,11 +1,13 @@
 
-    Danke das Sie OSSEC HIDS benutzen.
+    Vielen Dank fÃ¼r Wazuh benutzen.
     Bei Fragen, Anregungen oder wenn Sie einen Fehler gefunden
-    haben, können Sie die Entwickler per E-Mail contact@ossec.net 
-    oder über die Mailingliste unter ossec-list@ossec.net erreichen
-    ( http://www.ossec.net/en/mailing_lists.html ).
+    haben, kÃ¶nnen Sie mit uns kontaktieren.
 
-    Weitere Informtionen finden Sie unter http://www.ossec.net/hids/
+    Bitte, benutzen Sie unsere Mailingliste:
+            https://groups.google.com/forum/#!forum/wazuh
 
-    ---  Drücken Sie eine Taste um fortzufahren  ---
-    
+    Weitere Informtionen finden Sie unter:
+          - http://www.wazuh.com
+          - http://www.ossec.net
+
+    ---  DrÃ¼cken Sie eine Taste um fortzufahren  ---

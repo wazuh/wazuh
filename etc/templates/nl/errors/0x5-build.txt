@@ -2,4 +2,3 @@
  Fout 0x5.
  Tijdens het bouwen trad er een fout op. Kan de installatie niet
  voortzetten.
- 

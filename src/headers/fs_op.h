@@ -37,7 +37,7 @@ struct file_system_type {
 #ifdef WIN32
     const unsigned __int32 f_type;
 #else
-    const uint32_t f_type;
+    const int32_t f_type;
 #endif
     const int flag;
 };
@@ -45,6 +45,7 @@ struct file_system_type {
 extern const struct file_system_type network_file_systems[];
 
 short IsNFS(const char *file)  __attribute__((nonnull));
+short skipFS(const char *file)  __attribute__((nonnull));
 
 #endif
 

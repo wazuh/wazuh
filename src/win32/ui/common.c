@@ -40,7 +40,7 @@ int gen_server_info(HWND hwnd)
     SetDlgItemText(hwnd, UI_SERVER_TEXT, config_inst.server);
 
     /* Set status data */
-    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://www.ossec.net");
+    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://www.wazuh.com");
     if (config_inst.install_date) {
         SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)config_inst.install_date);
     }

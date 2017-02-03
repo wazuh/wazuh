@@ -62,6 +62,9 @@ void *read_djbmultilog(int pos, int *rc, int drop_it);
 void *read_command(int pos, int *rc, int drop_it);
 void *read_fullcommand(int pos, int *rc, int drop_it);
 
+/* Read auditd events */
+void *read_audit(int pos, int *rc, int drop_it);
+
 #ifdef WIN32
 void win_startel();
 void win_readel();
@@ -75,6 +78,6 @@ extern int loop_timeout;
 extern int logr_queue;
 extern int open_file_attempts;
 extern logreader *logff;
+extern int vcheck_files;
 
 #endif /* __LOGREADER_H */
-

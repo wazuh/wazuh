@@ -3,7 +3,6 @@
    de nom de fichier local.
    Pour toutes vos questions sur la configuration,
    consultez notre site web http://www.ossec.net .
-   
-   
+
+
    --- Appuyez sur Entrée pour continuer ---
-                            

@@ -18,8 +18,8 @@
 #endif
 
 static LPTSTR g_lpszServiceName        = "OssecSvc";
-static LPTSTR g_lpszServiceDisplayName = "OSSEC HIDS";
-static LPTSTR g_lpszServiceDescription = "OSSEC HIDS Windows Agent";
+static LPTSTR g_lpszServiceDisplayName = "Wazuh";
+static LPTSTR g_lpszServiceDescription = "Wazuh Windows Agent";
 
 static SERVICE_STATUS          ossecServiceStatus;
 static SERVICE_STATUS_HANDLE   ossecServiceStatusHandle;

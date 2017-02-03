@@ -66,12 +66,12 @@ static int _add2last(const char *str, size_t strsize, const char *file)
     return (1);
 }
 
-int doDiff(RuleInfo *rule, const Eventinfo *lf)
+int doDiff(RuleInfo *rule, Eventinfo *lf)
 {
     time_t date_of_change;
     char *htpt = NULL;
     char flastfile[OS_SIZE_2048 + 1];
-    char flastcontent[OS_SIZE_8192 + 1];
+    static char flastcontent[OS_SIZE_8192 + 1];
 
     /* Clean up global */
     flastcontent[0] = '\0';
@@ -83,21 +83,27 @@ int doDiff(RuleInfo *rule, const Eventinfo *lf)
         if (htpt) {
             *htpt = '\0';
         }
-        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname + 1,
-                 rule->sigid, DIFF_LAST_FILE);
+#ifndef TESTRULE
+        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname + 1, rule->sigid, DIFF_LAST_FILE);
+#else
+        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, DIFF_TEST_HOST, rule->sigid, DIFF_LAST_FILE);
+#endif
 
         if (htpt) {
             *htpt = ')';
         }
         htpt = NULL;
     } else {
-        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname,
-                 rule->sigid, DIFF_LAST_FILE);
+#ifndef TESTRULE
+        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname, rule->sigid, DIFF_LAST_FILE);
+#else
+        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, DIFF_TEST_HOST, rule->sigid, DIFF_LAST_FILE);
+#endif
     }
 
     /* lf->size can't be too long */
     if (lf->size >= OS_SIZE_8192) {
-        merror("%s: ERROR: event size (%ld) too long for diff.", ARGV0, lf->size);
+        merror("%s: ERROR: event size (%zd) too long for diff.", ARGV0, lf->size);
         return (0);
     }
 
@@ -140,6 +146,7 @@ int doDiff(RuleInfo *rule, const Eventinfo *lf)
 
     rule->last_events[0] = "Previous output:";
     rule->last_events[1] = flastcontent;
+    lf->previous = flastcontent;
+
     return (1);
 }
-

@@ -1,4 +1,4 @@
-OSSEC v2.8
+OSSEC
 Copyright (C) 2014 Trend Micro Inc.
 
 
@@ -18,7 +18,7 @@ other methods.
 
 Fast way steps:
 
-1- Run the script ./install.sh. It will guide you through the 
+1- Run the script ./install.sh. It will guide you through the
    installation process.
 
 2- The script will create everything in /var/ossec and try to

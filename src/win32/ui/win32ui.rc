@@ -35,10 +35,10 @@ END
 
 IDD_MAIN DIALOG DISCARDABLE  0, 0, 212, 156
 STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "OSSEC Agent Manager"
+CAPTION "Wazuh Agent Manager"
 FONT 8, "MS Sans Serif"
 BEGIN
-    GROUPBOX  " ~OSSEC Windows Agent Manager~ ", UI_SERVER_TOP, 7,7, 193, 57
+    GROUPBOX  " ~Wazuh Windows Agent Manager~ ", UI_SERVER_TOP, 7,7, 193, 57
     LTEXT     " No Information available.", UI_SERVER_INFO, 16, 22, 150, 40
 
     LTEXT     "OSSEC Server IP: ",IDC_STATIC,7,76,62,8

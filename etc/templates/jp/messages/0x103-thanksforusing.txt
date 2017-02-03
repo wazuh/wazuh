@@ -1,11 +1,12 @@
+		Wazuhを使用していただきありがとうございます。
+     何か助けや助けが必要な場合は、私たちに連絡することを躊躇しないでください
+     任意のバグ。
 
-	OSSEC HIDS の使用に感謝します．
-	あなたが何らかの質問，提案したいときや，バグを発見したときは，
-	contact@ossec.net まで連絡するか ossec-list@ossec.net にある
-	我々の公開メーリングリストを使ってください．
-    (http://www.ossec.net/main/support/)．
+     私たちの公開メーリングリストは、
+           https://groups.google.com/forum/#!forum/wazuh
 
-	詳細な情報は http://www.ossec.net にあります．
+     詳しい情報は次の場所にあります：
+           - http://www.wazuh.com
+           - http://www.ossec.net
 
-	---  ENTER を押すと終了します (以下，詳細な情報が続きます)．---
-    
+     --- ENTERを押して終了します（以下の情報が必要です）。 ---

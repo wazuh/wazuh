@@ -3,6 +3,7 @@
  *
  */
 
+#define _XOPEN_SOURCE 500
 #include "json_extended.h"
 #include <stddef.h>
 
@@ -15,11 +16,11 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
 
     // Parse hostname & Parse AGENTIP
     if(lf->hostname) {
-        W_JSON_ParseHostname(root, lf->hostname);
+        W_JSON_ParseHostname(root, lf);
         W_JSON_ParseAgentIP(root, lf);
     }
     // Parse timestamp
-    if(lf->year && lf->mon && lf->day && lf->hour) {
+    if(lf->year && lf->mon[0] && lf->day && lf->hour[0]) {
         W_JSON_ParseTimestamp(root, lf);
     }
     // Parse Location
@@ -27,7 +28,7 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
         W_JSON_ParseLocation(root, lf, 0);
     }
     // Parse groups && Parse PCIDSS && Parse CIS
-    if(lf->generated_rule->group) {
+    if(lf->generated_rule && lf->generated_rule->group) {
         W_JSON_ParseGroups(root, lf, 1);
     }
     // Parse CIS and PCIDSS rules from rootcheck .txt benchmarks
@@ -51,7 +52,9 @@ int W_isRootcheck(cJSON* root, int nested)
     else
         rule = cJSON_GetObjectItem(root, "rule");
 
-    groups = cJSON_GetObjectItem(rule, "groups");
+    if (!(groups = cJSON_GetObjectItem(rule, "groups")))
+        return 0;
+
     totalGroups = cJSON_GetArraySize(groups);
     for(i = 0; i < totalGroups; i++) {
         group = cJSON_GetArrayItem(groups, i);
@@ -79,7 +82,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
     int matches, i, j;
     const char delim[2] = ":";
     const char delim2[2] = ",";
-    char fullog[MAX_STRING];
+    char fullog[MAX_STRING] = "";
 
     // Allocate memory
     for(i = 0; i < MAX_MATCHES; i++)
@@ -92,7 +95,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
         rule = cJSON_GetObjectItem(root, "rule");
 
     // Getting full log string
-    strncpy(fullog, lf->full_log, MAX_STRING);
+    strncpy(fullog, lf->full_log, MAX_STRING - 1);
     // Searching regex
     regex_text = "\\{([A-Za-z0-9_]*: [A-Za-z0-9_., ]*)\\}";
     find_text = fullog;
@@ -103,12 +106,16 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
         for(i = 0; i < matches; i++) {
             token = strtok(results[i], delim);
 
+            if (!token)
+                continue;
+
             trim(token);
-            cJSON_AddItemToObject(rule, token, compliance = cJSON_CreateArray());
+
             for(j = 0; token[j]; j++) {
                 token[j] = tolower(token[j]);
             }
             if(token) {
+                cJSON_AddItemToObject(rule, token, compliance = cJSON_CreateArray());
                 token = strtok(0, delim);
                 trim(token);
                 token2 = strtok(token, delim2);
@@ -133,7 +140,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
     cJSON* rule;
     int firstPCI, firstCIS, foundCIS, foundPCI;
     char delim[2];
-    char buffer[MAX_STRING];
+    char buffer[MAX_STRING] = "";
     char* token;
 
     firstPCI = firstCIS = 1;
@@ -147,7 +154,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
         rule = cJSON_GetObjectItem(root, "rule");
 
     cJSON_AddItemToObject(rule, "groups", groups = cJSON_CreateArray());
-    strncpy(buffer, lf->generated_rule->group, sizeof(buffer));
+    strncpy(buffer, lf->generated_rule->group, MAX_STRING - 1);
 
     token = strtok(buffer, delim);
     while(token) {
@@ -171,20 +178,21 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
 int add_groupPCI(cJSON* rule, char* group, int firstPCI)
 {
     cJSON* pci;
-    char aux[strlen(group)];
+    char *aux;
     // If group begin with pci_dss_ we have a PCI group
     if((startsWith("pci_dss_", group)) == 1) {
         // Once we add pci_dss group and create array for PCI_DSS requirements
         if(firstPCI == 1) {
             pci = cJSON_CreateArray();
-            cJSON_AddItemToObject(rule, "PCI_DSS", pci);
+            cJSON_AddItemToObject(rule, "pci_dss", pci);
         } else {
-            pci = cJSON_GetObjectItem(rule, "PCI_DSS");
+            pci = cJSON_GetObjectItem(rule, "pci_dss");
         }
         // Prepare string and add it to PCI dss array
-        strncpy(aux, group, strlen(group));
+        aux = strdup(group);
         str_cut(aux, 0, 8);
         cJSON_AddItemToArray(pci, cJSON_CreateString(aux));
+        free(aux);
         return 1;
     }
     return 0;
@@ -193,17 +201,18 @@ int add_groupPCI(cJSON* rule, char* group, int firstPCI)
 int add_groupCIS(cJSON* rule, char* group, int firstCIS)
 {
     cJSON* cis;
-    char aux[strlen(group)];
+    char *aux;
     if((startsWith("cis_", group)) == 1) {
         if(firstCIS == 1) {
             cis = cJSON_CreateArray();
-            cJSON_AddItemToObject(rule, "CIS", cis);
+            cJSON_AddItemToObject(rule, "cis", cis);
         } else {
-            cis = cJSON_GetObjectItem(rule, "CIS");
+            cis = cJSON_GetObjectItem(rule, "cis");
         }
-        strncpy(aux, group, strlen(group));
+        aux = strdup(group);
         str_cut(aux, 0, 4);
         cJSON_AddItemToArray(cis, cJSON_CreateString(aux));
+        free(aux);
         return 1;
     }
     return 0;
@@ -211,62 +220,93 @@ int add_groupCIS(cJSON* rule, char* group, int firstCIS)
 
 // If hostname being with "(" means that alerts came from an agent, so we will remove the brakets
 // ** TODO ** Regex instead str_cut
-void W_JSON_ParseHostname(cJSON* root, char* hostname)
+void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 {
-    if(hostname[0] == '(') {
+    cJSON* agent;
+    cJSON* manager;
+    agent = cJSON_GetObjectItem(root, "agent");
+    manager = cJSON_GetObjectItem(root, "manager");
+    if(lf->hostname[0] == '(') {
         char* search;
-        char string[MAX_STRING];
-        strncpy(string, hostname, MAX_STRING);
+        char string[MAX_STRING] = "";
         int index;
+
+        strncpy(string, lf->hostname, MAX_STRING - 1);
         search = strchr(string, ')');
+
         if(search) {
             index = (int)(search - string);
             str_cut(string, index, -1);
             str_cut(string, 0, 1);
-            cJSON_AddStringToObject(root, "hostname", string);
+            cJSON_AddStringToObject(agent, "name", string);
         }
-    } else {
-        cJSON_AddStringToObject(root, "hostname", hostname);
+    } else if(lf->agent_id && !strcmp(lf->agent_id, "000")){
+        cJSON_AddStringToObject(agent, "name", cJSON_GetObjectItem(manager,"name")->valuestring);
+    }else{
+        cJSON_AddStringToObject(root, "hostname", lf->hostname);
     }
 }
 // Parse timestamp
 void W_JSON_ParseTimestamp(cJSON* root, const Eventinfo* lf)
 {
-    char* dateTimestamp = malloc(21);
-    sprintf(dateTimestamp, "%d %s %02d %s", lf->year, lf->mon, lf->day, lf->hour);
-    cJSON_AddStringToObject(root, "timestamp", dateTimestamp);
-    free(dateTimestamp);
+    char buffer[25] = "";
+    struct tm tm;
+    time_t timestamp = time(NULL);
+    char *end;
+
+    memcpy(&tm, localtime(&timestamp), sizeof(struct tm));
+
+    if (!(end = strptime(lf->hour, "%T", &tm)) || *end) {
+        merror("%s: ERROR: Could not parse hour '%s'.", ARGV0, lf->hour);
+        return;
+    }
+
+    if (!(end = strptime(lf->mon, "%b", &tm)) || *end) {
+        merror("%s: ERROR: Could not parse month '%s'.", ARGV0, lf->mon);
+        return;
+    }
+
+    tm.tm_year = lf->year - 1900;
+    tm.tm_mday = lf->day;
+
+    strftime(buffer, 25, "%FT%T%z", &tm);
+    cJSON_AddStringToObject(root, "timestamp", buffer);
 }
 
 // The IP of an agent usually comes in "hostname" field, we will extract it.
 // ** TODO ** Regex instead str_cut
 void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
 {
-    if(lf->hostname[0] == '(') {
-        char* search;
-        char string[MAX_STRING];
-        strncpy(string, lf->hostname, MAX_STRING);
-        int index;
-        search = strchr(string, ')');
-        if(search) {
-            index = (int)(search - string);
-            str_cut(string, 0, index);
-            str_cut(string, 0, 2);
-            search = strchr(string, '-');
-            index = (int)(search - string);
-            str_cut(string, index, -1);
-            cJSON_AddStringToObject(root, "agentip", string);
+    char *string;
+    char *ip;
+    char *end;
+    cJSON* agent;
+
+    if (lf->hostname[0] == '(') {
+        string = strdup(lf->hostname);
+
+        if ((ip = strchr(string, ')'))) {
+            if ((end = strchr(ip += 2, '-')))
+                *end = '\0';
+
+            if (strcmp(ip, "any")){
+                agent = cJSON_GetObjectItem(root, "agent");
+                cJSON_AddStringToObject(agent, "ip", ip);
+            }
         }
+
+        free(string);
     }
 }
+
 // The file location usually comes with more information about the alert (like hostname or ip) we will extract just the
 // "/var/folder/file.log".
 void W_JSON_ParseLocation(cJSON* root, const Eventinfo* lf, int archives)
 {
     if(lf->location[0] == '(') {
         char* search;
-        char string[MAX_STRING];
-        strncpy(string, lf->location, MAX_STRING);
+        char string[MAX_STRING] = "";
+        strncpy(string, lf->location, MAX_STRING - 1);
         int index;
         search = strchr(string, '>');
         if(search) {
@@ -340,7 +380,7 @@ int str_cut(char* str, int begin, int len)
         len = l - begin;
     if(begin + len > l)
         len = l - begin;
-    memmove(str + begin, str + begin + len, l - len + 1);
+    memmove(str + begin, str + begin + len, l - begin - len + 1);
 
     return len;
 }
@@ -362,4 +402,26 @@ int startsWith(const char *pre, const char *str)
     size_t lenpre = strlen(pre),
            lenstr = strlen(str);
     return lenstr < lenpre ? 0 : strncmp(pre, str, lenpre) == 0;
+}
+
+// Add a dynamic field with object nesting
+void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
+    cJSON *object;
+    char *current;
+    char *nest = strchr(key, '.');
+    size_t length;
+
+    if (nest) {
+        length = nest - key;
+        current = malloc(length + 1);
+        strncpy(current, key, length);
+        current[length] = '\0';
+
+        if (!(object = cJSON_GetObjectItem(root, current)))
+            cJSON_AddItemToObject(root, current, object = cJSON_CreateObject());
+
+        W_JSON_AddField(object, nest + 1, value);
+        free(current);
+    } else
+        cJSON_AddStringToObject(root, key, value);
 }

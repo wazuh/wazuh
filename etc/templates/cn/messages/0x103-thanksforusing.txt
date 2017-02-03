@@ -1,10 +1,13 @@
 
+    感謝您使用Wazuh。
+     請不要懷疑，如果您需要任何幫助或找到，與我們聯繫
+     任何錯誤。
 
-    感谢使用 OSSEC HIDS.
-    如果您有任何疑问,建议或您找到任何bug,
-    请通过　contact@ossec.net 或邮件列表 ossec-list@ossec.net 联系我们.    
-    ( http://www.ossec.net/en/mailing_lists.html ).
+     使用我們的公共郵件列表：
+          https://groups.google.com/forum/#!forum/wazuh
 
-    您可以在　http://www.ossec.net 获得更多信息
+     更多信息，請訪問：
+           - http://www.wazuh.com
+           - http://www.ossec.net
 
-    --- 请按　ENTER 结束安装 (下面可能有更多信息). ---
+     ---按ENTER鍵完成（也許更多信息如下）。 --- ---

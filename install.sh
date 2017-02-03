@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installation script for the OSSEC
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
-# Last modification: Aug 30, 2012
+# Last modification: Nov 25, 2016
 
 # Changelog 19/03/2006 - Rafael M. Capovilla <under@underlinux.com.br>
 # New function AddWhite to allow users to add more Ips in the white_list
@@ -12,7 +12,7 @@
 # New function AddTable to add support for OpenBSD pf rules in firewall-drop active response
 
 # Changelog 29 March 2012 - Adding hybrid mode (standalone + agent)
-
+# Changelog 25 November 2016 - Added OpenSCAP, new file generating functions using templates.
 
 
 ### Looking up for the execution directory
@@ -23,8 +23,7 @@ cd `dirname $0`
 ECHO="echo -n"
 hs=`echo -n "a"`
 if [ ! "X$hs" = "Xa" ]; then
-    ls "/usr/ucb/echo" > /dev/null 2>&1
-    if [ $? = 0 ]; then
+    if [ -x /usr/ucb/echo ]; then
         ECHO="/usr/ucb/echo -n"
     else
         ECHO=echo
@@ -34,8 +33,7 @@ fi
 # For solaris
 echo "xxxx" | grep -E "xxx" > /dev/null 2>&1
 if [ ! $? = 0 ]; then
-    ls "/usr/xpg4/bin/grep" > /dev/null 2>&1
-    if [ $? = 0 ]; then
+    if [ -x /usr/xpg4/bin/grep ]; then
         PATH=/usr/xpg4/bin:$PATH
     fi
 fi
@@ -56,15 +54,13 @@ for i in $*; do
     fi
 done
 
-
-
 ##########
 # install()
 ##########
 Install()
 {
     echo ""
-    echo "5- ${installing}"
+    echo "4- ${installing}"
 
     echo "DIR=\"${INSTALLDIR}\"" > ${LOCATION}
 
@@ -80,18 +76,16 @@ Install()
     ## Find make/gmake
     if [ "X$NUNAME" = "XOpenBSD" ]; then
         MAKEBIN=gmake
-    fi
-    if [ "X$NUNAME" = "XFreeBSD" ]; then
+    elif [ "X$NUNAME" = "XFreeBSD" ]; then
         MAKEBIN=gmake
-    fi
-    if [ "X$NUNAME" = "XNetBSD" ]; then
+    elif [ "X$NUNAME" = "XNetBSD" ]; then
         MAKEBIN=gmake
-    fi
-    if [ "X$NUNAME" = "XDragonflyBSD" ]; then
+    elif [ "X$NUNAME" = "XDragonflyBSD" ]; then
         MAKEBIN=gmake
-    fi
-    if [ "X%NUNAME" = "XBitrig" ]; then
-	MAKEBIN=gmake
+    elif [ "X$NUNAME" = "XBitrig" ]; then
+  	    MAKEBIN=gmake
+    elif [ "X$NUNAME" = "XSunOS" ]; then
+	      MAKEBIN=gmake
     fi
 
 
@@ -119,42 +113,30 @@ Install()
 
     cd ../
 
-
     # Generate the /etc/ossec-init.conf
-    VERSION_FILE="./src/VERSION"
-    WVERSION_FILE="./src/WAZUH_VERSION"
     VERSION=`cat ${VERSION_FILE}`
-    WVERSION=`cat ${WVERSION_FILE}`
     chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
-    echo "DIRECTORY=\"${INSTALLDIR}\"" > ${OSSEC_INIT}
-    echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}   
-    echo "WAZUH_VERSION=\"${WVERSION}\"" >> ${OSSEC_INIT}
-    echo "DATE=\"`date`\"" >> ${OSSEC_INIT}
-    echo "TYPE=\"${INSTYPE}\"" >> ${OSSEC_INIT}
-    chmod 600 ${OSSEC_INIT}
-    cp -pr ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
-    chmod 640 ${INSTALLDIR}${OSSEC_INIT}
+    GenerateInitConf > ${OSSEC_INIT}
+    chmod 640 ${OSSEC_INIT}
+    chown root:ossec ${OSSEC_INIT}
+    ln -sf ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
 
     # Install Wazuh ruleset updater
     if [ "X$INSTYPE" = "Xserver" ]; then
-        if [ "X${INSTALLDIR}" = "X/var/ossec" ]; then
-		WazuhSetup
-        fi
-    fi
-   # If update_rules is set, we need to tweak
-    # ossec.conf to read the new signatures.
-    if [ "X${update_rules}" = "Xyes" ]; then
-        UpdateOSSECRules
+        WazuhSetup
     fi
 
     # If update, start OSSEC
     if [ "X${update_only}" = "Xyes" ]; then
+        WazuhUpgrade
+        # Update versions previous to Wazuh 1.2
+        UpdateOldVersions
         UpdateStartOSSEC
     fi
 
     # Calling the init script  to start ossec hids during boot
     if [ "X${update_only}" = "X" ]; then
-        runInit
+        runInit $INSTYPE
         if [ $? = 1 ]; then
             notmodified="yes"
         fi
@@ -162,15 +144,11 @@ Install()
 
 }
 
-
-
-
 ##########
 # UseSyscheck()
 ##########
 UseSyscheck()
 {
-
     # Integrity check config
     echo ""
     $ECHO "  3.2- ${runsyscheck} ($yes/$no) [$yes]: "
@@ -189,14 +167,7 @@ UseSyscheck()
             echo "   - ${yessyscheck}."
             ;;
     esac
-
-    # Adding to the config file
-    if [ "X$SYSCHECK" = "Xyes" ]; then
-        cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG
-    fi
 }
-
-
 
 
 ##########
@@ -204,7 +175,6 @@ UseSyscheck()
 ##########
 UseRootcheck()
 {
-
     # Rootkit detection configuration
     echo ""
     $ECHO "  3.3- ${runrootcheck} ($yes/$no) [$yes]: "
@@ -225,32 +195,32 @@ UseRootcheck()
             echo "   - ${yesrootcheck}."
             ;;
     esac
-
-
-    # Adding to the config file
-    if [ "X$ROOTCHECK" = "Xyes" ]; then
-        echo "" >> $NEWCONFIG
-        echo "  <rootcheck>" >> $NEWCONFIG
-        echo "    <rootkit_files>$INSTALLDIR/etc/shared/rootkit_files.txt</rootkit_files>" >> $NEWCONFIG
-        echo "    <rootkit_trojans>$INSTALLDIR/etc/shared/rootkit_trojans.txt</rootkit_trojans>" >> $NEWCONFIG
-        echo "    <system_audit>$INSTALLDIR/etc/shared/system_audit_rcl.txt</system_audit>" >> $NEWCONFIG
-        echo "    <system_audit>$INSTALLDIR/etc/shared/cis_debian_linux_rcl.txt</system_audit>" >> $NEWCONFIG
-        echo "    <system_audit>$INSTALLDIR/etc/shared/cis_rhel_linux_rcl.txt</system_audit>" >> $NEWCONFIG
-        echo "    <system_audit>$INSTALLDIR/etc/shared/cis_rhel5_linux_rcl.txt</system_audit>" >> $NEWCONFIG
-        echo "  </rootcheck>" >> $NEWCONFIG
-        # Patch for systems that use s-nail instead of GNU Mailutils (such as Arch Linux).
-        if strings /usr/bin/mail | grep "x-shsh bash" 1> /dev/null; then
-          sed -i 's/mail        !bash|/mail        !/' ./src/rootcheck/db/rootkit_trojans.txt
-        fi       
-    else
-      echo "" >> $NEWCONFIG
-      echo "  <rootcheck>" >> $NEWCONFIG
-        echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-      echo "  </rootcheck>" >> $NEWCONFIG
-    fi
 }
 
-
+##########
+# UseOpenSCAP()
+##########
+UseOpenSCAP()
+{
+    # OpenSCAP config
+    echo ""
+    $ECHO "  3.4- ${runopenscap} ($yes/$no) [$yes]: "
+    if [ "X${USER_ENABLE_OPENSCAP}" = "X" ]; then
+        read AS
+    else
+        AS=${USER_ENABLE_OPENSCAP}
+    fi
+    echo ""
+    case $AS in
+        $nomatch)
+            echo "   - ${norunopenscap}."
+            ;;
+        *)
+            OPENSCAP="yes"
+            echo "   - ${yesrunopenscap}."
+            ;;
+    esac
+}
 
 
 ##########
@@ -258,112 +228,15 @@ UseRootcheck()
 ##########
 SetupLogs()
 {
-    if [ "x${USER_CLEANINSTALL}" = "xy" ]; then
-        OPENDIR=`dirname $INSTALLDIR`
-        echo "" >> $NEWCONFIG
-        echo "  <localfile>" >> $NEWCONFIG
-        echo "    <log_format>ossecalert</log_format>" >> $NEWCONFIG
-        echo "    <location>$OPENDIR/logs/alerts/alerts.log</location>" >>$NEWCONFIG
-        echo "  </localfile>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-        return;
-    fi
-
     NB=$1
     echo ""
     echo "  $NB- ${readlogs}"
+    echo ""
 
-    echo "  <!-- Files to monitor (localfiles) -->" >> $NEWCONFIG
-    LOG_FILES=`cat ${SYSLOG_TEMPLATE}`
-    for i in ${LOG_FILES}; do
-        # If log file present, add it
-        ls $i > /dev/null 2>&1
-        if [ $? = 0 ]; then
-            echo "    -- $i"
-            echo "" >> $NEWCONFIG
-            echo "  <localfile>" >> $NEWCONFIG
-            echo "    <log_format>syslog</log_format>" >> $NEWCONFIG
-            echo "    <location>$i</location>" >>$NEWCONFIG
-            echo "  </localfile>" >> $NEWCONFIG
-        fi
-    done
-
-
-    # Getting snort files
-    SNORT_FILES=`cat ${SNORT_TEMPLATE}`
-    for i in ${SNORT_FILES}; do
-        ls $i > /dev/null 2>&1
-        if [ $? = 0 ]; then
-            echo "" >> $NEWCONFIG
-            echo "  <localfile>" >> $NEWCONFIG
-
-            head -n 1 $i|grep "\[**\] "|grep -v "Classification:" > /dev/null
-            if [ $? = 0 ]; then
-                echo "    <log_format>snort-full</log_format>" >> $NEWCONFIG
-                echo "    -- $i (snort-full file)"
-            else
-                echo "    <log_format>snort-fast</log_format>" >> $NEWCONFIG
-                echo "    -- $i (snort-fast file)"
-            fi
-            echo "    <location>$i</location>" >>$NEWCONFIG
-            echo "  </localfile>" >> $NEWCONFIG
-        fi
-    done
-
-    # Getting apache logs
-    APACHE_FILES=`cat ${APACHE_TEMPLATE}`
-    for i in ${APACHE_FILES}; do
-        ls $i > /dev/null 2>&1
-        if [ $? = 0 ]; then
-          echo "" >> $NEWCONFIG
-          echo "  <localfile>" >> $NEWCONFIG
-          echo "    <log_format>apache</log_format>" >> $NEWCONFIG
-          echo "    <location>$i</location>" >>$NEWCONFIG
-          echo "  </localfile>" >> $NEWCONFIG
-
-          echo "    -- $i (apache log)"
-        fi
-    done
-
-    # Getting postgresql logs
-    PGSQL_FILES=`cat ${PGSQL_TEMPLATE}`
-    for i in ${PGSQL_FILES}; do
-        ls $i > /dev/null 2>&1
-        if [ $? = 0 ]; then
-          echo "" >> $NEWCONFIG
-          echo "  <localfile>" >> $NEWCONFIG
-          echo "    <log_format>postgresql_log</log_format>" >> $NEWCONFIG
-          echo "    <location>$i</location>" >>$NEWCONFIG
-          echo "  </localfile>" >> $NEWCONFIG
-
-          echo "    -- $i (postgresql log)"
-        fi
-    done
-
-   if [ "X$NUNAME" = "XLinux" ]; then
-      echo "" >> $NEWCONFIG
-      echo "  <localfile>" >> $NEWCONFIG
-      echo "    <log_format>command</log_format>" >> $NEWCONFIG
-      echo "    <command>df -h</command>" >> $NEWCONFIG
-      echo "  </localfile>" >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-      echo "  <localfile>" >> $NEWCONFIG
-      echo "    <log_format>full_command</log_format>" >> $NEWCONFIG
-      echo "    <command>netstat -tan |grep LISTEN |grep -v 127.0.0.1 | sort</command>" >> $NEWCONFIG
-      echo "  </localfile>" >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-      echo "  <localfile>" >> $NEWCONFIG
-      echo "    <log_format>full_command</log_format>" >> $NEWCONFIG
-      echo "    <command>last -n 5</command>" >> $NEWCONFIG
-      echo "  </localfile>" >> $NEWCONFIG
-   fi
-
-
-
+    WriteLogs "echo"
 
     echo ""
     catMsg "0x106-logs"
-
 
     if [ "X$USER_NO_STOP" = "X" ]; then
         read ANY
@@ -371,17 +244,14 @@ SetupLogs()
 }
 
 
-
-# install.sh
-
 ##########
 # ConfigureClient()
 ##########
 ConfigureClient()
 {
-        echo ""
-        echo "3- ${configuring} $NAME."
-        echo ""
+    echo ""
+    echo "3- ${configuring} $NAME."
+    echo ""
 
     if [ "X${USER_AGENT_SERVER_IP}" = "X" -a "X${USER_AGENT_SERVER_NAME}" = "X" ]; then
         # Looping and asking for server ip or hostname
@@ -392,7 +262,7 @@ ConfigureClient()
             echo $ADDRANSWER | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" > /dev/null 2>&1
             if [ $? = 0 ]; then
                     echo ""
-                IP=$ADDRANSWER
+                SERVER_IP=$ADDRANSWER
                     echo "   - ${addingip} $IP"
                 break;
             # Must be a name
@@ -404,19 +274,9 @@ ConfigureClient()
             fi
         done
     else
-        IP=${USER_AGENT_SERVER_IP}
+        SERVER_IP=${USER_AGENT_SERVER_IP}
         HNAME=${USER_AGENT_SERVER_NAME}
     fi
-
-    echo "<ossec_config>" > $NEWCONFIG
-    echo "  <client>" >> $NEWCONFIG
-    if [ "X${IP}" != "X" ]; then
-        echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
-    elif [ "X${HNAME}" != "X" ]; then
-        echo "    <server-hostname>$HNAME</server-hostname>" >> $NEWCONFIG
-    fi
-    echo "  </client>" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
 
     # Syscheck?
     UseSyscheck
@@ -424,8 +284,11 @@ ConfigureClient()
     # Rootcheck?
     UseRootcheck
 
+    # OpenSCAP?
+    UseOpenSCAP
+
     echo ""
-    $ECHO "  3.4 - ${enable_ar} ($yes/$no) [$yes]: "
+    $ECHO "  3.5 - ${enable_ar} ($yes/$no) [$yes]: "
 
     if [ "X${USER_ENABLE_ACTIVE_RESPONSE}" = "X" ]; then
         read ANY
@@ -437,11 +300,6 @@ ConfigureClient()
         $nomatch)
             echo ""
             echo "   - ${noactive}."
-            echo "" >> $NEWCONFIG
-            echo "  <active-response>" >> $NEWCONFIG
-            echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-            echo "  </active-response>" >> $NEWCONFIG
-            echo "" >> $NEWCONFIG
             ;;
         *)
             ACTIVERESPONSE="yes"
@@ -450,13 +308,11 @@ ConfigureClient()
     esac
 
     # Set up the log files
-    SetupLogs "3.5"
+    SetupLogs "3.6"
 
-    echo "</ossec_config>" >> $NEWCONFIG
+    # echo "</ossec_config>" >> $NEWCONFIG
+    WriteAgent
 }
-
-
-
 
 ##########
 # ConfigureServer()
@@ -469,21 +325,16 @@ ConfigureServer()
 
     # Configuring e-mail notification
     echo ""
-    $ECHO "  3.1- ${mailnotify} ($yes/$no) [$yes]: "
+    $ECHO "  3.1- ${mailnotify} ($yes/$no) [$no]: "
 
     if [ "X${USER_ENABLE_EMAIL}" = "X" ]; then
-    read ANSWER
+        read ANSWER
     else
         ANSWER=${USER_ENABLE_EMAIL}
     fi
 
     case $ANSWER in
-        $nomatch)
-            echo ""
-            echo "   --- ${nomail}."
-            EMAILNOTIFY="no"
-            ;;
-        *)
+        $yesmatch)
             EMAILNOTIFY="yes"
             $ECHO "   - ${whatsemail} "
             if [ "X${USER_EMAIL_ADDRESS}" = "X" ]; then
@@ -500,8 +351,7 @@ ConfigureServer()
                 EMAIL=${USER_EMAIL_ADDRESS}
             fi
 
-            ls ${HOST_CMD} > /dev/null 2>&1
-            if [ $? = 0 ]; then
+            if [ -x "$HOST_CMD" ]; then
               HOSTTMP=`${HOST_CMD} -W 5 -t mx ossec.net 2>/dev/null`
               if [ $? = 1 ]; then
                  # Trying without the -W
@@ -547,29 +397,12 @@ ConfigureServer()
                 SMTP=${USER_EMAIL_SMTP}
             fi
         ;;
+        *)
+            echo ""
+            echo "   --- ${nomail}."
+            EMAILNOTIFY="no"
+        ;;
     esac
-
-
-    # Writting global parameters
-    echo "<ossec_config>" > $NEWCONFIG
-    echo "  <global>" >> $NEWCONFIG
-    echo "    <jsonout_output>yes</jsonout_output>" >> $NEWCONFIG
-    if [ "$EMAILNOTIFY" = "yes" ]; then
-        echo "    <email_notification>yes</email_notification>" >> $NEWCONFIG
-        echo "    <email_to>$EMAIL</email_to>" >> $NEWCONFIG
-        echo "    <smtp_server>$SMTP</smtp_server>" >> $NEWCONFIG
-        echo "    <email_from>ossecm@${HOST}</email_from>" >> $NEWCONFIG
-    else
-        echo "    <email_notification>no</email_notification>" >> $NEWCONFIG
-    fi
-
-    echo "  </global>" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Writting rules configuration
-    cat ${RULES_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
 
     # Checking if syscheck should run
     UseSyscheck
@@ -577,99 +410,28 @@ ConfigureServer()
     # Checking if rootcheck should run
     UseRootcheck
 
+    # Checking if OpenSCAP should run
+    UseOpenSCAP
 
     # Active response
     catMsg "0x107-ar"
-    $ECHO "   - ${enable_ar} ($yes/$no) [$yes]: "
 
-    if [ "X${USER_ENABLE_ACTIVE_RESPONSE}" = "X" ]; then
-        read AR
-    else
-        AR=${USER_ENABLE_ACTIVE_RESPONSE}
+    echo ""
+    echo "   - ${defaultwhitelist}"
+
+    for ip in ${NAMESERVERS} ${NAMESERVERS2};
+    do
+    if [ ! "X${ip}" = "X" ]; then
+        echo "      - ${ip}"
     fi
+    done
 
-    case $AR in
-        $nomatch)
-            echo ""
-            echo "     - ${noactive}."
-            echo "" >> $NEWCONFIG
-            echo "  <active-response>" >> $NEWCONFIG
-            echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-            echo "  </active-response>" >> $NEWCONFIG
-            echo "" >> $NEWCONFIG
-            ;;
-        *)
-            ACTIVERESPONSE="yes"
-            echo ""
-            catMsg "0x108-ar-enabled"
-
-            echo ""
-            $ECHO "   - ${firewallar} ($yes/$no) [$yes]: "
-
-            if [ "X${USER_ENABLE_FIREWALL_RESPONSE}" = "X" ]; then
-                read HD2
-            else
-                HD2=${USER_ENABLE_FIREWALL_RESPONSE}
-            fi
-
-            echo ""
-            case $HD2 in
-                $nomatch)
-                    echo "     - ${nofirewall}"
-                    ;;
-                *)
-                    echo "     - ${yesfirewall}"
-                    FIREWALLDROP="yes"
-                    ;;
-            esac
-            echo "" >> $NEWCONFIG
-            echo "  <global>" >> $NEWCONFIG
-            echo "    <white_list>127.0.0.1</white_list>" >> $NEWCONFIG
-            echo "    <white_list>^localhost.localdomain$</white_list>">>$NEWCONFIG
-            echo ""
-            echo "   - ${defaultwhitelist}"
-            for ip in ${NAMESERVERS} ${NAMESERVERS2};
-            do
-            if [ ! "X${ip}" = "X" ]; then
-                echo "      - ${ip}"
-                echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
-            fi
-            done
-            AddWhite
-
-            # If Openbsd or Freebsd with pf enable, ask about
-            # automatically setting it up.
-            # Commenting it out in case I change my mind about it
-            # later.
-            #if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
-            #    echo ""
-            #    $ECHO "   - ${pfenable} ($yes/$no) [$yes]: "
-            #    if [ "X${USER_ENABLE_PF}" = "X" ]; then
-            #        read PFENABLE
-            #    else
-            #        PFENABLE=${USER_ENABLE_PF}
-            #    fi
-            #
-            #    echo ""
-            #    case $PFENABLE in
-            #        $nomatch)
-            #            echo "     - ${nopf}"
-            #            ;;
-            #        *)
-            #            AddPFTable
-            #            ;;
-            #    esac
-            #fi
-
-            echo "  </global>" >> $NEWCONFIG
-            ;;
-    esac
-
+    AddWhite
 
     if [ "X$INSTYPE" = "Xserver" ]; then
       # Configuring remote syslog
       echo ""
-      $ECHO "  3.5- ${syslog} ($yes/$no) [$yes]: "
+      $ECHO "  3.6- ${syslog} ($yes/$no) [$yes]: "
 
       if [ "X${USER_ENABLE_SYSLOG}" = "X" ]; then
         read ANSWER
@@ -692,59 +454,12 @@ ConfigureServer()
       SLOG="yes"
     fi
 
-
-
-    if [ "X$RLOG" = "Xyes" ]; then
-    echo "" >> $NEWCONFIG
-    echo "  <remote>" >> $NEWCONFIG
-    echo "    <connection>syslog</connection>" >> $NEWCONFIG
-    echo "  </remote>" >> $NEWCONFIG
-    fi
-
-    if [ "X$SLOG" = "Xyes" ]; then
-    echo "" >> $NEWCONFIG
-    echo "  <remote>" >> $NEWCONFIG
-    echo "    <connection>secure</connection>" >> $NEWCONFIG
-    echo "  </remote>" >> $NEWCONFIG
-    fi
-
-
-    # Email/log alerts
-    echo "" >> $NEWCONFIG
-    echo "  <alerts>" >> $NEWCONFIG
-    echo "    <log_alert_level>1</log_alert_level>" >> $NEWCONFIG
-    if [ "$EMAILNOTIFY" = "yes" ]; then
-        echo "    <email_alert_level>7</email_alert_level>">> $NEWCONFIG
-    fi
-    echo "  </alerts>" >> $NEWCONFIG
-
-
-    if [ "X$ACTIVERESPONSE" = "Xyes" ]; then
-        # Add commands in here
-        echo "" >> $NEWCONFIG
-        cat ${HOST_DENY_TEMPLATE} >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-        cat ${FIREWALL_DROP_TEMPLATE} >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-        cat ${DISABLE_ACCOUNT_TEMPLATE} >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-        cat ${ROUTENULL_TEMPLATE} >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-
-        if [ "X$FIREWALLDROP" = "Xyes" ]; then
-            echo "" >> $NEWCONFIG
-            cat ${ACTIVE_RESPONSE_TEMPLATE} >> $NEWCONFIG
-            echo "" >> $NEWCONFIG
-        fi
-    fi
-
     # Setting up the logs
-    SetupLogs "3.6"
-    echo "</ossec_config>" >> $NEWCONFIG
+    SetupLogs "3.7"
+
+    WriteManager
+
 }
-
-
-
 
 ##########
 # setEnv()
@@ -786,8 +501,7 @@ setEnv()
         CEXTRA="$CEXTRA -DLOCAL"
     fi
 
-    ls $INSTALLDIR >/dev/null 2>&1
-    if [ $? = 0 ]; then
+    if [ -d "$INSTALLDIR" ]; then
         if [ "X${USER_DELETE_DIR}" = "X" ]; then
             echo ""
             $ECHO "    - ${deletedir} ($yes/$no) [$yes]: "
@@ -806,9 +520,6 @@ setEnv()
         esac
     fi
 }
-
-
-
 
 ##########
 # checkDependencies()
@@ -856,22 +567,13 @@ AddWhite()
                 break;
                 ;;
             *)
+                SET_WHITE_LIST="true"
                 $ECHO "   - ${ipswhite}"
                 if [ "X${USER_WHITE_LIST}" = "X" ]; then
                     read IPS
                 else
                     IPS=${USER_WHITE_LIST}
                 fi
-
-                for ip in ${IPS};
-                do
-                    if [ ! "X${ip}" = "X" ]; then
-                        echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
-                        if [ $? = 0 ]; then
-                        echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
-                        fi
-                    fi
-                done
 
                 break;
                 ;;
@@ -941,8 +643,7 @@ main()
             USER_LG="en"
         fi
 
-        ls "${TEMPLATE}/${USER_LG}" > /dev/null 2>&1
-        if [ $? = 0 ]; then
+        if [ -d "${TEMPLATE}/${USER_LG}" ]; then
             break;
         fi
         done;
@@ -952,8 +653,7 @@ main()
     else
 
         # If provided language is not valid, default to english
-        ls "${TEMPLATE}/${USER_LANGUAGE}" > /dev/null 2>&1
-        if [ $? = 0 ]; then
+        if [ -d "${TEMPLATE}/${USER_LANGUAGE}" ]; then
             LANGUAGE=${USER_LANGUAGE}
         else
             LANGUAGE="en"
@@ -961,14 +661,13 @@ main()
 
     fi # for USER_LANGUAGE
 
-
-    . ./src/init/shared.sh
     . ./src/init/language.sh
-    . ./src/init/functions.sh
     . ./src/init/init.sh
-    . ./src/init/wazuh.sh
+    . ./src/init/wazuh/wazuh.sh
     . ${TEMPLATE}/${LANGUAGE}/messages.txt
-
+    . ./src/init/inst-functions.sh
+    . ./src/init/dist-detect.sh
+    . ./src/init/template-select.sh
 
     # Must be executed as ./install.sh
     if [ `isFile ${VERSION_FILE}` = "${FALSE}" ]; then
@@ -985,13 +684,11 @@ main()
 
     clear
 
-
     # Initial message
-    echo " $NAME $VERSION ${installscript} - http://www.ossec.net"
-    echo " OSSEC WAZUH $WVERSION ${installscript} - http://www.wazuh.com"
+    echo " $NAME $VERSION ${installscript} - http://www.wazuh.com"
     catMsg "0x101-initial"
-
-    echo "  - $system: $UNAME"
+    echo ""
+    echo "  - $system: $UNAME (${DIST_NAME} ${DIST_VER}.${DIST_SUBVER})"
     echo "  - $user: $ME"
     echo "  - $host: $HOST"
     echo ""
@@ -1046,6 +743,8 @@ main()
                 USER_INSTALL_TYPE=`getPreinstalled`
                 USER_DIR=`getPreinstalledDir`
                 USER_DELETE_DIR="$nomatch"
+                USER_OLD_VERSION=`getPreinstalledVersion`
+                USER_OLD_NAME=`getPreinstalledName`
             fi
 
             ct="1"
@@ -1055,28 +754,6 @@ main()
                 ct="0"
             fi
 
-            while [ $ct = "1" ]; do
-                ct="0"
-                $ECHO " - ${updaterules} ($yes/$no): "
-                if [ "X${USER_UPDATE_RULES}" = "X" ]; then
-                    read ANY
-                else
-                    ANY=$yes
-                fi
-
-                case $ANY in
-                    $yes)
-                        update_rules="yes"
-                        break;
-                        ;;
-                    $no)
-                        break;
-                        ;;
-                    *)
-                        ct="1"
-                        ;;
-                esac
-            done
         fi
         echo ""
     fi
@@ -1187,6 +864,15 @@ main()
             AddPFTable
         fi
         echo ""
+
+        # If version < wazuh 1.2
+        if [ "X$USER_OLD_NAME" != "XWazuh" ]; then
+            echo " ====================================================================================="
+            echo "  ${update_rev_newconf1}"
+            echo "  ${update_rev_newconf2}"
+            echo " ====================================================================================="
+            echo " "
+        fi
         echo " - ${updatecompleted}"
         echo ""
         exit 0;
@@ -1257,11 +943,11 @@ if [ "x$HYBID" = "xgo" ]; then
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_UPDATE_RULES="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_CLEANINSTALL="y"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
@@ -1271,9 +957,6 @@ if [ "x$HYBID" = "xgo" ]; then
    rm etc/preloaded-vars.conf
 fi
 
-
 exit 0
-
-
 
 #### exit ? ###

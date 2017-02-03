@@ -25,7 +25,7 @@ void jsonout_output_event(const Eventinfo *lf)
 }
 void jsonout_output_archive(const Eventinfo *lf)
 {
-    char *json_alert = Archiveinfo_to_jsonstr(lf);
+    char *json_alert = Eventinfo_to_jsonstr(lf);
 
     fprintf(_ejflog,
             "%s\n",

@@ -119,7 +119,9 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             if (ar_location & ALL_AGENTS) {
                 unsigned int i;
                 for (i = 0; i < keys.keysize; i++) {
-                    send_msg(i, msg_to_send);
+                    if (keys.keyentries[i]->rcvd >= (time(0) - (2 * NOTIFY_TIME))) {
+                        send_msg(i, msg_to_send);
+                    }
                 }
             }
 
@@ -155,4 +157,3 @@ void *AR_Forward(__attribute__((unused)) void *arg)
         }
     }
 }
-

@@ -10,12 +10,6 @@
 #include "manage_agents.h"
 #include <stdlib.h>
 
-/* Prototypes */
-static void helpmsg(void) __attribute__((noreturn));
-static void print_banner(void);
-static void manage_shutdown(int sig) __attribute__((noreturn));
-
-
 #if defined(__MINGW32__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
 {
@@ -27,7 +21,7 @@ static int setenv(const char *name, const char *val, __attribute__((unused)) int
 }
 #endif
 
-static void helpmsg()
+__attribute__((noreturn)) static void helpmsg()
 {
     print_header();
     print_out("  %s: -[Vhlj] [-a <ip> -n <name>] [-d sec] [-e id] [-r id] [-i id] [-f file]", ARGV0);
@@ -60,8 +54,9 @@ static void print_banner()
     return;
 }
 
+#ifndef WIN32
 /* Clean shutdown on kill */
-static void manage_shutdown(__attribute__((unused)) int sig)
+__attribute__((noreturn)) void manage_shutdown(__attribute__((unused)) int sig)
 {
     /* Checking if restart message is necessary */
     if (restart_necessary) {
@@ -73,6 +68,7 @@ static void manage_shutdown(__attribute__((unused)) int sig)
 
     exit(0);
 }
+#endif
 
 int main(int argc, char **argv)
 {
@@ -286,14 +282,26 @@ int main(int argc, char **argv)
         switch (user_msg[0]) {
             case 'A':
             case 'a':
+#ifdef CLIENT
+                printf("\n ** Agent adding only available on a master ** \n\n");
+                break;
+#endif
                 add_agent(json_output);
                 break;
             case 'e':
             case 'E':
+#ifdef CLIENT
+                printf("\n ** Key export only available on a master ** \n\n");
+                break;
+#endif
                 k_extract(NULL, json_output);
                 break;
             case 'i':
             case 'I':
+#ifndef CLIENT
+                printf("\n ** Key import only available on an agent ** \n\n");
+                break;
+#endif
                 k_import(NULL);
                 break;
             case 'l':
@@ -302,6 +310,10 @@ int main(int argc, char **argv)
                 break;
             case 'r':
             case 'R':
+#ifdef CLIENT
+                printf("\n ** Key removal only available on a master ** \n\n");
+                break;
+#endif
                 remove_agent(json_output);
                 break;
             case 'q':

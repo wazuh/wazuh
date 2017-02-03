@@ -1,11 +1,14 @@
-    Hvala što koristiš OSSEC HIDS.
-    Ako imaš bilo kakvo pitanje, predlog ili ako nađeš neki bag,
-    kontaktiraj nas na contact@ossec.net ili koristeći našu javnu maillistu na
-    ossec-list@ossec.net
-    ( http://www.ossec.net/main/support/ ).
 
-    Više informacija možeš naći na http://www.ossec.net
+    Hvala što koristite Wazuh.
+    Molimo vas da ne sumnjam da nam se obratite ako trebate
+    bilo kakvu pomoć ili pronaći bilo koji bug.
 
-    --- Pritisni ENTER da završiš (možda ima još informacije niže). ---
+    Koristite naš javni Mailing lista na:
+              https://groups.google.com/forum/#!forum/wazuh
 
-    
+    Više informacija može se pronaći na:
+               - http://www.wazuh.com
+               - http://www.ossec.net
+
+         --- Pritisnite ENTER za kraj. ---
+    --- (Možda i više informacija u nastavku). ---

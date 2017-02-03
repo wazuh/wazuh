@@ -124,3 +124,13 @@ char *os_shell_escape(const char *src)
     return escaped_string;
 }
 
+/* Count the number of repetitions of needle at haystack */
+size_t os_strcnt(const char *haystack, char needle) {
+    size_t count = 0;
+    char *ptr;
+
+    for (ptr = strchr(haystack, needle); ptr; ptr = strchr(ptr + 1, needle))
+        count++;
+
+    return count;
+}

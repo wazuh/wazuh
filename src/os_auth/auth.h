@@ -47,12 +47,27 @@ extern BIO *bio_err;
 #define CERTFILE "/etc/sslmanager.cert"
 #define DEFAULT_PORT 1515
 
-SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const char *key, const char *ca_cert);
-SSL_CTX *get_ssl_context(void);
+#define full(i, j) ((i + 1) % POOL_SIZE == j)
+#define empty(i, j) (i == j)
+#define forward(x) x = (x + 1) % POOL_SIZE
+
+struct client {
+    int socket;
+    struct in_addr addr;
+};
+
+struct keynode {
+    char *id;
+    char *name;
+    char *ip;
+    struct keynode *next;
+};
+
+SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const char *key, const char *ca_cert, int auto_method);
+SSL_CTX *get_ssl_context(int auto_method);
 int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key);
 int load_ca_cert(SSL_CTX *ctx, const char *ca_cert);
 int verify_callback(int ok, X509_STORE_CTX *store);
 
 #endif /* LIBOPENSSL_ENABLED */
 #endif /* _AUTHD_H */
-

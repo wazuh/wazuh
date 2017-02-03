@@ -9,10 +9,10 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 ###  Do not modify bellow here ###
-NAME="OSSEC HIDS"
-VERSION="v2.8"
-AUTHOR="Trend Micro Inc."
-DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
+NAME="Wazuh"
+VERSION="v2.0"
+AUTHOR="Wazuh Inc."
+DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd wazuh-modulesd"
 
 [ -f /etc/ossec-init.conf ] && . /etc/ossec-init.conf
 
@@ -29,7 +29,7 @@ checkpid()
 {
     for i in ${DAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
                 rm ${DIR}/var/run/${i}-${j}.pid
@@ -117,9 +117,9 @@ testconfig()
 # Start function
 start()
 {
-    SDAEMONS="ossec-execd ossec-agentd ossec-logcollector ossec-syscheckd"
+    SDAEMONS="ossec-execd wazuh-modulesd ossec-agentd ossec-logcollector ossec-syscheckd"
 
-    echo "Starting $NAME $VERSION (by $AUTHOR)..."
+    echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     lock;
     checkpid;
 
@@ -159,7 +159,7 @@ pstatus()
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "${pfile}: Process $j not used by ossec, removing .."
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
@@ -227,4 +227,3 @@ help)
 *)
     help
 esac
-

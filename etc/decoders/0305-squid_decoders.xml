@@ -1,0 +1,24 @@
+<!--
+  -  Squid decoders
+  -  Author: Daniel Cid.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+
+<!--
+  - Will extract the srcip.
+  - Author: Ahmet Ozturk
+  - Examples:
+  - 1140701044.525   1231 192.168.1.201 TCP_DENIED/400 1536
+    GET ahmet - NONE/- text/html
+  - 1140701230.827    781 192.168.1.210 TCP_DENIED/407 1785
+    GET http://www.ossec.net oahmet NONE/- text/html
+  -->
+<decoder name="squid-accesslog">
+  <type>squid</type>
+  <prematch>^\d+ \S+ </prematch>
+  <regex>^\d+ (\S+) (\w+)/(\d+) \d+ \w+ (\S+) </regex>
+  <order>srcip,action,id,url</order>
+</decoder>

@@ -13,7 +13,7 @@
 #include "rules.h"
 #include "eventinfo.h"
 
-int doDiff(RuleInfo *rule, const Eventinfo *lf);
+int doDiff(RuleInfo *rule, Eventinfo *lf);
 
 
 #endif /* _DODIFF_H_ */

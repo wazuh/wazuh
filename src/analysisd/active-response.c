@@ -10,6 +10,11 @@
 #include "shared.h"
 #include "active-response.h"
 
+#ifndef WIN32
+#include <sys/types.h>
+#include <grp.h>
+#endif
+
 /* Active response commands */
 static OSList *ar_commands;
 OSList *active_responses;
@@ -46,8 +51,21 @@ int AR_ReadConfig(const char *cfgfile)
     fprintf(fp, "restart-ossec0 - restart-ossec.cmd - 0\n");
     fclose(fp);
 
+#ifndef WIN32
+    struct group *os_group;
+    if ((os_group = getgrnam(USER)) == NULL) {
+        merror("Could not get ossec gid.");
+        return (OS_INVALID);
+    }
+
+    if ((chown(DEFAULTARPATH, (uid_t) - 1, os_group->gr_gid)) == -1) {
+        merror("Could not change the group to ossec: %d", errno);
+        return (OS_INVALID);
+    }
+#endif
+
     /* Set right permission */
-    if (chmod(DEFAULTARPATH, 0440) == -1) {
+    if (chmod(DEFAULTARPATH, 0640) == -1) {
         merror(CHMOD_ERROR, ARGV0, DEFAULTARPATH, errno, strerror(errno));
         return (OS_INVALID);
     }
@@ -59,4 +77,3 @@ int AR_ReadConfig(const char *cfgfile)
 
     return (0);
 }
-

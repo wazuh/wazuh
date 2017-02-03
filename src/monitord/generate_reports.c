@@ -48,7 +48,7 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
                 char aname[256];
                 fname[255] = '\0';
                 aname[255] = '\0';
-                snprintf(fname, 255, "/logs/.report-%d.log", getpid());
+                snprintf(fname, 255, "/logs/.report-%d.log", (int)getpid());
 
                 merror("%s: INFO: Starting daily reporting for '%s'", ARGV0, mond.reports[s]->title);
                 mond.reports[s]->r_filter.fp = fopen(fname, "w+");
@@ -73,6 +73,7 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
                                               mond.reports[s]->title,
                                               mond.smtpserver,
                                               mond.emailfrom,
+                                              NULL,
                                               mond.emailidsname,
                                               mond.reports[s]->r_filter.fp,
                                               p)

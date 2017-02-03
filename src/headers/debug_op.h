@@ -34,6 +34,8 @@ void ErrorExit(const char *msg, ...) __attribute__((format(printf, 1, 2))) __att
  * enter in debug, chroot or daemon mode
  */
 void nowDebug(void);
+int isDebug(void);
+
 void nowChroot(void);
 void nowDaemon(void);
 

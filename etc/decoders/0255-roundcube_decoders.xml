@@ -1,0 +1,36 @@
+<!--
+  -  Roundcube decoders
+  -  Author: Daniel Cid.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+
+<!--
+ - Will extract username and src IP from the logs, when available.
+   Examples:
+ - Apr 10 22:45:20 hostname roundcube: [10-Apr-2009 22:45:20 -0500] IMAP
+   Error: Authentication for username failed (LOGIN): "a001 NO Authentication
+   failed." (POST /roundcube/?_task=&_action=login)
+ - Apr 10 23:01:23 hostname roundcube: [10-Apr-2009 23:01:23 -0500]:
+   Successful login for username (id 1) from 127.0.0.1
+-->
+<decoder name="roundcube">
+  <program_name>^roundcube</program_name>
+  <prematch>^[\d\d-\w\w\w-\d\d\d\d \d\d:\d\d:\d\d \S+]</prematch>
+</decoder>
+
+<decoder name="roundcube-success">
+  <parent>roundcube</parent>
+  <prematch>^: Successful login for </prematch>
+  <regex offset="after_prematch">^(\S+) \(id \d+\) from (\S+)$</regex>
+  <order>user, srcip</order>
+</decoder>
+
+<decoder name="roundcube-denied">
+  <parent>roundcube</parent>
+  <prematch>^ \w+ Error: Authentication </prematch>
+  <regex offset="after_prematch">^for (\.+) failed</regex>
+  <order>user</order>
+</decoder>

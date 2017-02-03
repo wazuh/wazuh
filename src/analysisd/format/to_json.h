@@ -12,5 +12,4 @@
 
 #include "eventinfo.h"
 char *Eventinfo_to_jsonstr(const Eventinfo *lf);
-char *Archiveinfo_to_jsonstr(const Eventinfo *lf);
 #endif /* __TO_JSON_H__ */

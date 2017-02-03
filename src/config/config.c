@@ -28,7 +28,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 {
     int i = 0;
     const char *osglobal = "global";                    /* Server Config */
-    const char *osrules = "rules";                      /* Server Config */
+    const char *osrules = "ruleset";                      /* Server Config */
     const char *ossyscheck = "syscheck";                /* Agent Config  */
     const char *osrootcheck = "rootcheck";              /* Agent Config  */
     const char *osalerts = "alerts";                    /* Server Config */
@@ -43,6 +43,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osreports = "reports";                  /* Server Config */
     const char *osintegratord = "integration";          /* Server Config */
     const char *osactive_response = "active-response";  /* Agent Config  */
+    const char *oswmodule = "wodle";  /* Wodle - Wazuh Module  */
 
     while (node[i]) {
         XML_NODE chld_node = NULL;
@@ -121,6 +122,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
+        } else if (strcmp(node[i]->element, oswmodule) == 0) {
+            if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
+                goto fail;
+            }
         } else {
             merror(XML_INVELEM, __local_name, node[i]->element);
             goto fail;
@@ -179,6 +184,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
         if (!node[i]->element) {
             merror(XML_ELEMNULL, __local_name);
             OS_ClearNode(node);
+            OS_ClearXML(&xml);
             return (OS_INVALID);
         } else if (!(modules & CAGENT_CONFIG) &&
                    (strcmp(node[i]->element, xml_start_ossec) == 0)) {
@@ -191,6 +197,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                     merror(CONFIG_ERROR, __local_name, cfgfile);
                     OS_ClearNode(chld_node);
                     OS_ClearNode(node);
+                    OS_ClearXML(&xml);
                     return (OS_INVALID);
                 }
 
@@ -266,6 +273,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
             }
 #ifdef CLIENT
             else {
+                char *agentprofile = os_read_agent_profile();
                 debug2("agent_config element does not have any attributes.");
 
                 /* if node does not have any attributes, it is a generic config block.
@@ -274,9 +282,11 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                  * agent_config block
                  */
 
-                if (!os_read_agent_profile()) {
+                if (!agentprofile) {
                     debug2("but agent has a profile name.");
                     passed_agent_test = 0;
+                } else {
+                    free(agentprofile);
                 }
             }
 #endif
@@ -287,6 +297,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                     merror(CONFIG_ERROR, __local_name, cfgfile);
                     OS_ClearNode(chld_node);
                     OS_ClearNode(node);
+                    OS_ClearXML(&xml);
                     return (OS_INVALID);
                 }
 
@@ -295,6 +306,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
         } else {
             merror(XML_INVELEM, __local_name, node[i]->element);
             OS_ClearNode(node);
+            OS_ClearXML(&xml);
             return (OS_INVALID);
         }
         i++;
