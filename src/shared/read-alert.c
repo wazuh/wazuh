@@ -229,7 +229,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             if (p) {
                 p++;
                 /* Skip leading spaces */
-		while (*p == ' ') {
+                while (*p == ' ') {
                         p++;
                 }
                 free(group);
