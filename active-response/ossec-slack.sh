@@ -2,7 +2,7 @@
 
 # Change these values!
 # SLACKUSER user who posts notifications
-# CHANNEL witch channel it should be posted
+# CHANNEL which channel it should be posted
 # SITE is the URL provided by the Slack's WebHook, something like:
 # https://hooks.slack.com/services/TOKEN"
 SLACKUSER=""
