@@ -48,6 +48,7 @@ void *wait_for_msgs(void *none);
 void save_controlmsg(unsigned int agentid, char *msg);
 
 /* Send message to agent */
+/* Must call key_lock() before this */
 int send_msg(unsigned int agentid, const char *msg);
 
 /* Initializing send_msg */

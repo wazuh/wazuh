@@ -10,9 +10,9 @@ help="help"
 
 # Global
 moreinfo="Περισσότερες πληροφορίες στο: "
-starting="Εκκινώντας το OSSEC HIDS"
+starting="Εκκινώντας το Wazuh"
 systemis="Το σύστημα είναι"
-modifiedinit="To init script τροποποιήθηκε προκειμένου να ξεκινάει το OSSEC HIDS κατά την εκκίνηση του συστήματος."
+modifiedinit="To init script τροποποιήθηκε προκειμένου να ξεκινάει Wazuh κατά την εκκίνηση του συστήματος."
 noboot="Άγνωστο σύστημα. Το init script δεν προστέθηκε."
 
 # Part 1
@@ -28,7 +28,7 @@ localchose="Επιλέχθηκε η τοπική (local) εγκατάσταση"
 
 # Part 2
 settingupenv="Ρυθμίζεται το περιβάλλον εγκατάστασης"
-wheretoinstall="Επιλέξτε την τοποθεσία εγκατάστασης του OSSEC HIDS"
+wheretoinstall="Επιλέξτε την τοποθεσία εγκατάστασης του Wazuh"
 installat="Η εγκατάσταση θα γίνει στο "
 deletedir="Ο κατάλογος εγκατάστασης υπάρχει ήδη. Θέλετε να διαγραφεί;"
 
@@ -43,8 +43,8 @@ usingsmtp="Διακομιστής εξερχόμενης αλληλογραφί�
 whatsmtp="Ποιά είναι η διεύθυνση του διακομιστή της εξερχόμενης αλληλογραφίας σας ip/host?"
 
 # Part 3.1/agent
-serverip="Ποιά είναι η διεύθυνση IP του διακομιστή OSSEC HIDS;"
-serveraddr="Ποιά είναι η διεύθυνση IP/Host του διακομιστή OSSEC HIDS;"
+serverip="Ποιά είναι η διεύθυνση IP του διακομιστή Wazuh;"
+serveraddr="Ποιά είναι η διεύθυνση IP/Host του διακομιστή Wazuh;"
 addingip="Προστέθηκε η διεύθυνση διακομιστή"
 addingname="Προστέθηκε η διεύθυνση διακομιστή"
 
@@ -59,7 +59,12 @@ runrootcheck="Θέλετε να εκτελέσετε την μηχανή ανί�
 norootcheck="Η μηχανή ανίχνευσης rootkit δεν εκτελέστηκε"
 yesrootcheck="Η μηχανή ανίχνευσης rootkit ξεκίνησε"
 
-# Part 3.4/server/local
+# Part 3.4
+runopenscap="Do you want to run OpenSCAP?"
+norunopenscap="Not running OpenSCAP"
+yesrunopenscap="Running OpenSCAP"
+
+# Part 3.5/server/local
 enable_ar="Θέλετε να ενεργοποιήσετε την ενεργή αντίδραση (active response);"
 noactive="Η ενεργή αντίδραση (active response) απενεργοποιήθηκε"
 nohosts="Το host-deny απενεργοποιήθηκε"
@@ -85,21 +90,23 @@ runningmake="Το Makefile εκτελείται"
 
 # Final
 configurationdone="Οι ρυθμίσεις πραγματοποιήθηκαν με επιτυχία"
-tostart="Για να ξεκινήσετε το OSSEC HIDS"
-tostop="Για να σταματήσετε το OSSEC HIDS"
+tostart="Για να ξεκινήσετε το Wazuh"
+tostop="Για να σταματήσετε το Wazuh"
 configat="Το αρχείο ρυθμίσεων μπορεί να αναγνωστεί ή να τροποποιηθεί στην τοποθεσία"
 addserveragent="Προκειμένου να διασυνδέσετε τον agent με τον server, πρέπει να προσθέσετε κάθε agent στο server."
 runma="Εκτελέστε το αρχείο 'manage_agents' για να τους προσθέσετε ή να τους αφαιρέσετε"
 presskey="Πατήστε ENTER για να συνεχίσετε"
 
 # Update
-wanttoupdate="Βρέθηκε εγκατεστημένο OSSEC. Θέλετε να το ενημερώσετε;"
+wanttoupdate="Βρέθηκε εγκατεστημένο Wazuh. Θέλετε να το ενημερώσετε;"
 unabletoupdate="Η ενημέρωση απέτυχε. Απαιτείται νέα πλήρης εγκατάσταση."
 updatecompleted="Η ενημέρωση ολοκληρώθηκε."
 updatefailed="Η ενημέρωσε απέτυχε."
 updaterules="Θέλετε να ενημερώσετε τους κανόνες (rules);"
 updatingrules="Οι κανόνες (rules) ενημερώνονται."
 notupdatingrules="Οι κανόνες (rules) δεν ενημερώνονται."
+update_rev_newconf1="Backup from your ossec.conf has been created at /var/ossec/etc/ossec.conf.orig"
+update_rev_newconf2="Please verify your ossec.conf configuration at /var/ossec/etc/ossec.conf"
 
 # Pf support
 pfenable="Θέλετε να χρησιμοποιήσετε το PF firewall για ενεργή αντίδραση (active response);"

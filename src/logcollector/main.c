@@ -118,6 +118,8 @@ int main(int argc, char **argv)
     open_file_attempts = getDefine_Int("logcollector", "open_attempts",
                                        2, 998);
 
+    vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
+
     /* Exit if test config */
     if (test_config) {
         exit(0);
@@ -147,7 +149,7 @@ int main(int argc, char **argv)
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        merror(PID_ERROR, ARGV0);
+        ErrorExit(PID_ERROR, ARGV0);
     }
 
     /* Wait 6 seconds for the analysisd/agentd to settle */
@@ -162,4 +164,3 @@ int main(int argc, char **argv)
     /* Main loop */
     LogCollectorStart();
 }
-

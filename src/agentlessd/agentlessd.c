@@ -23,6 +23,8 @@ static int  run_periodic_cmd(agentlessd_entries *entry, int test_it);
 /* Global variables */
 agentlessd_config lessdc;
 
+static const char *STR_MORE_CHANGES = "More changes...";
+
 
 /* Save agentless entry for the control tools to gather */
 static int save_agentless_entry(const char *host, const char *script, const char *agttype)
@@ -92,7 +94,6 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
 {
     size_t n;
     FILE *fp;
-    char *tmp_str;
     char buf[2048 + 1];
     char diff_alert[4096 + 1];
 
@@ -109,47 +110,26 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
     }
 
     n = fread(buf, 1, 2048 - 1, fp);
-    if (n <= 0) {
+
+    switch (n) {
+    case 0:
         merror("%s: ERROR: Unable to generate diff alert (fread).", ARGV0);
         fclose(fp);
         return (0);
-    } else if (n >= 2040) {
-        /* We need to clear the last newline */
+    case 2047:
+        n -= strlen(STR_MORE_CHANGES);
+
+        while (n > 0 && buf[n - 1] != '\n')
+            n--;
+
+        strcpy(buf + n, STR_MORE_CHANGES);
+        break;
+    default:
         buf[n] = '\0';
-        tmp_str = strrchr(buf, '\n');
-        if (tmp_str) {
-            *tmp_str = '\0';
-        } else {
-            /* Weird diff with only one large line */
-            buf[256] = '\0';
-        }
-    } else {
-        buf[n] = '\0';
-    }
-
-    n = 0;
-
-    /* Get up to 8 line changes */
-    tmp_str = buf;
-
-    while (tmp_str && (*tmp_str != '\0')) {
-        tmp_str = strchr(tmp_str, '\n');
-        if (!tmp_str) {
-            break;
-        } else if (n >= 7) {
-            *tmp_str = '\0';
-            break;
-        }
-        n++;
-        tmp_str++;
     }
 
     /* Create alert */
-    snprintf(diff_alert, 4096 - 1, "ossec: agentless: Change detected:\n%s%s",
-             buf, n >= 7 ?
-             "\nMore changes.." :
-             "");
-
+    snprintf(diff_alert, 4096 - 1, "ossec: agentless: Change detected:\n%s", buf);
     snprintf(buf, 1024, "(%s) %s->agentless", script, host);
 
     if (SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ) < 0) {
@@ -400,10 +380,6 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
         i++;
     }
 
-    if (fp_store) {
-        fclose(fp_store);
-    }
-
     return (0);
 }
 
@@ -477,4 +453,3 @@ void Agentlessd()
         sleep(60);
     }
 }
-

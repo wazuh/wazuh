@@ -1,0 +1,24 @@
+<!--
+  -  Nginx decoders
+  -  Author: Daniel Cid.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+  - Will extract the srcip.
+  - Examples:
+  - 2009/09/15 20:55:40 [error] 63858#0: *3663 open() "/srv/www/ossec.net/robots.txt" failed (2: No such file or directory), client: 1.2.3.4, server: ossec.net, request: "GET /robots.txt HTTP/1.1", host: "www.ossec.net"
+  - 2009/09/15 19:51:07 [error] 37992#0: accept() failed (53: Software caused connection abort)
+  -->
+<decoder name="nginx-errorlog">
+  <prematch>^20\d\d/\d\d/\d\d \d\d:\d\d:\d\d [</prematch>
+</decoder>
+
+<decoder name="nginx-errorlog-ip">
+  <parent>nginx-errorlog</parent>
+  <prematch offset="after_parent">, client: \S+, server: \S+, request: "\S+ </prematch>
+  <regex offset="after_parent">, client: (\S+), </regex>
+  <order>srcip</order>
+</decoder>

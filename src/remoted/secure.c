@@ -7,7 +7,13 @@
  * Foundation
  */
 
+#if defined(__linux__)
 #include <sys/epoll.h>
+#elif defined(__MACH__) || defined(__FreeBSD__)
+#include <sys/types.h>
+#include <sys/event.h>
+#endif /* __linux__ */
+
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
@@ -20,12 +26,24 @@ void HandleSecure()
 {
     const int protocol = logr.proto[logr.position];
     int sock_client;
-    int n_events, epoll_fd = 0;
+    int n_events = 0;
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
     netsize_t length;
     struct sockaddr_in peer_info;
-    struct epoll_event request, *events;
+
+#if defined(__MACH__) || defined(__FreeBSD__)
+    const struct timespec TS_ZERO = { 0, 0 };
+    struct timespec ts_timeout = { EPOLL_MILLIS / 1000, (EPOLL_MILLIS % 1000) * 1000000 };
+    struct timespec *p_timeout = EPOLL_MILLIS < 0 ? NULL : &ts_timeout;
+    int kqueue_fd = 0;
+    struct kevent request;
+    struct kevent *events = NULL;
+#elif defined(__linux__)
+    int epoll_fd = 0;
+    struct epoll_event request = { 0 };
+    struct epoll_event *events = NULL;
+#endif /* __MACH__ || __FreeBSD__ */
 
     /* Send msg init */
     send_msg_init();
@@ -57,7 +75,7 @@ void HandleSecure()
 
     /* Read authentication keys */
     verbose(ENC_READ, ARGV0);
-    OS_ReadKeys(&keys);
+    OS_ReadKeys(&keys, 1);
     OS_StartCounter(&keys);
 
     /* Set up peer size */
@@ -67,6 +85,17 @@ void HandleSecure()
     memset(buffer, '\0', OS_MAXSTR + 1);
 
     if (protocol == TCP_PROTO) {
+#if defined(__MACH__) || defined(__FreeBSD__)
+        os_calloc(MAX_EVENTS, sizeof(struct kevent), events);
+        kqueue_fd = kqueue();
+
+        if (kqueue_fd < 0) {
+            ErrorExit(KQUEUE_ERROR, ARGV0);
+        }
+
+        EV_SET(&request, logr.sock, EVFILT_READ, EV_ADD, 0, 0, 0);
+        kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO);
+#elif defined(__linux__)
         os_calloc(MAX_EVENTS, sizeof(struct epoll_event), events);
         epoll_fd = epoll_create(MAX_EVENTS);
 
@@ -80,32 +109,53 @@ void HandleSecure()
         if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, logr.sock, &request) < 0) {
             ErrorExit(EPOLL_ERROR, ARGV0);
         }
-    } else {
-        events = NULL;
+#endif /* __MACH__ || __FreeBSD__ */
     }
 
     while (1) {
         /* Receive message  */
         if (protocol == TCP_PROTO) {
+#if defined(__MACH__) || defined(__FreeBSD__)
+            n_events = kevent(kqueue_fd, NULL, 0, events, MAX_EVENTS, p_timeout);
+#elif defined(__linux__)
             n_events = epoll_wait(epoll_fd, events, MAX_EVENTS, EPOLL_MILLIS);
+#endif /* __MACH__ || __FreeBSD__ */
 
             int i;
             for (i = 0; i < n_events; i++) {
-                if (events[i].data.fd == logr.sock) {
+#if defined(__MACH__) || defined(__FreeBSD__)
+                int fd = events[i].ident;
+#elif defined(__linux__)
+                int fd = events[i].data.fd;
+#else
+                int fd = 0;
+#endif /* __MACH__ || __FreeBSD__ */
+                if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
                         ErrorExit(ACCEPT_ERROR, ARGV0);
                     }
 
                     debug1("%s: DEBUG: New TCP connection at %s.", ARGV0, inet_ntoa(peer_info.sin_addr));
+#if defined(__MACH__) || defined(__FreeBSD__)
+                    EV_SET(&request, sock_client, EVFILT_READ, EV_ADD, 0, 0, 0);
+                    kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO);
+#elif defined(__linux__)
                     request.data.fd = sock_client;
                     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_client, &request) < 0) {
                         ErrorExit(EPOLL_ERROR, ARGV0);
                     }
+#endif /* __MACH__ || __FreeBSD__ */
                 } else {
-                    sock_client = events[i].data.fd;
+                    sock_client = fd;
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
-                    getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size);
+
+                    if (getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size) < 0) {
+                        merror("%s: ERROR: Couldn't get the remote peer information: %s", ARGV0, strerror(errno));
+                        close(sock_client);
+                        continue;
+                    }
+
                     debug2("%s: DEBUG: recv(): length=%d [%zu]", ARGV0, length, recv_b);
 
                     /* Nothing received */
@@ -115,11 +165,13 @@ void HandleSecure()
                         } else {
                             merror(RECV_ERROR, ARGV0);
                         }
-
+#ifdef __linux__
+                        /* Kernel event is automatically deleted when closed */
                         request.data.fd = sock_client;
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
                             ErrorExit(EPOLL_ERROR, ARGV0);
                         }
+#endif /* __linux__ */
 
                         close(sock_client);
                         continue;
@@ -129,12 +181,12 @@ void HandleSecure()
 
                     if (recv_b != length) {
                         merror(RECV_ERROR, ARGV0);
+#ifdef __linux__
                         request.data.fd = sock_client;
-
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
                             ErrorExit(EPOLL_ERROR, ARGV0);
                         }
-
+#endif /* __linux__ */
                         close(sock_client);
                         continue;
                     } else {
@@ -172,6 +224,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     memset(srcmsg, '\0', OS_FLSIZE + 1);
     tmp_msg = NULL;
 
+    check_keyupdate();
+
     /* Get a valid agent id */
     if (buffer[0] == '!') {
         tmp_msg = buffer;
@@ -187,6 +241,10 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         if (*tmp_msg != '!') {
             merror(ENCFORMAT_ERROR, __local_name, srcip);
+
+            if (sock_client >= 0)
+                close(sock_client);
+
             return;
         }
 
@@ -197,31 +255,23 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
 
         if (agentid == -1) {
-            if (check_keyupdate()) {
-                agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
-                if (agentid == -1) {
-                    merror(ENC_IP_ERROR, ARGV0, buffer + 1, srcip);
-                    return;
-                }
-            } else {
-                merror(ENC_IP_ERROR, ARGV0, buffer + 1, srcip);
-                return;
-            }
+            merror(ENC_IP_ERROR, ARGV0, buffer + 1, srcip);
+
+            if (sock_client >= 0)
+                close(sock_client);
+
+            return;
         }
     } else {
         agentid = OS_IsAllowedIP(&keys, srcip);
 
         if (agentid < 0) {
-            if (check_keyupdate()) {
-                agentid = OS_IsAllowedIP(&keys, srcip);
-                if (agentid == -1) {
-                    merror(DENYIP_WARN, ARGV0, srcip);
-                    return;
-                }
-            } else {
-                merror(DENYIP_WARN, ARGV0, srcip);
-                return;
-            }
+            merror(DENYIP_WARN, ARGV0, srcip);
+
+            if (sock_client >= 0)
+                close(sock_client);
+
+            return;
         }
         tmp_msg = buffer;
     }
@@ -253,8 +303,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     }
 
     /* Generate srcmsg */
-    snprintf(srcmsg, OS_FLSIZE, "(%s) %s", keys.keyentries[agentid]->name,
-             keys.keyentries[agentid]->ip->ip);
+    snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
+             keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
 
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.

@@ -1,5 +1,5 @@
      - アクティブレスポンスを有効にしました．
-   
+
    - デフォルトでは，host-deny と firewall-drop レスポンス
      が有効化することができます．一つ目は /etc/hosts.deny
      にホストを加えます．二つ目は iptable (linux) か

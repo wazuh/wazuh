@@ -14,6 +14,7 @@
 #include "eventinfo.h"
 #include "alerts/alerts.h"
 #include "decoder.h"
+#include "rootcheck_op.h"
 
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
@@ -24,7 +25,6 @@ static int rk_err;
 
 /* Rootcheck decoder */
 static OSDecoderInfo *rootcheck_dec = NULL;
-
 
 /* Initialize the necessary information to process the rootcheck information */
 void RootcheckInit()
@@ -44,6 +44,12 @@ void RootcheckInit()
     rootcheck_dec->type = OSSEC_RL;
     rootcheck_dec->name = ROOTCHECK_MOD;
     rootcheck_dec->fts = 0;
+
+    /* New fields as dynamic */
+
+    os_calloc(Config.decoder_order_size, sizeof(char *), rootcheck_dec->fields);
+    rootcheck_dec->fields[RK_TITLE] = "title";
+    rootcheck_dec->fields[RK_FILE] = "file";
 
     debug1("%s: RootcheckInit completed.", ARGV0);
 
@@ -165,6 +171,11 @@ int DecodeRootcheck(Eventinfo *lf)
             if (strcmp(lf->log, rk_buf) == 0) {
                 rootcheck_dec->fts = 0;
                 lf->decoder_info = rootcheck_dec;
+                lf->nfields = RK_NFIELDS;
+                lf->fields[RK_TITLE].key = rootcheck_dec->fields[RK_TITLE];
+                lf->fields[RK_TITLE].value = rk_get_title(lf->log);
+                lf->fields[RK_FILE].key = rootcheck_dec->fields[RK_FILE];
+                lf->fields[RK_FILE].value = rk_get_file(lf->log);
                 return (1);
             }
         }
@@ -183,6 +194,11 @@ int DecodeRootcheck(Eventinfo *lf)
                 fprintf(fp, "!%ld", (long int)lf->time);
                 rootcheck_dec->fts = 0;
                 lf->decoder_info = rootcheck_dec;
+                lf->nfields = RK_NFIELDS;
+                lf->fields[RK_TITLE].key = rootcheck_dec->fields[RK_TITLE];
+                lf->fields[RK_TITLE].value = rk_get_title(lf->log);
+                lf->fields[RK_FILE].key = rootcheck_dec->fields[RK_FILE];
+                lf->fields[RK_FILE].value = rk_get_file(lf->log);
                 return (1);
             }
         }
@@ -199,9 +215,12 @@ int DecodeRootcheck(Eventinfo *lf)
     fprintf(fp, "!%ld!%ld %s\n", (long int)lf->time, (long int)lf->time, lf->log);
     fflush(fp);
 
-    rootcheck_dec->fts = 0;
-    rootcheck_dec->fts |= FTS_DONE;
+    rootcheck_dec->fts = FTS_DONE;
     lf->decoder_info = rootcheck_dec;
+    lf->nfields = RK_NFIELDS;
+    lf->fields[RK_TITLE].key = rootcheck_dec->fields[RK_TITLE];
+    lf->fields[RK_TITLE].value = rk_get_title(lf->log);
+    lf->fields[RK_FILE].key = rootcheck_dec->fields[RK_FILE];
+    lf->fields[RK_FILE].value = rk_get_file(lf->log);
     return (1);
 }
-

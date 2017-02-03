@@ -1,14 +1,14 @@
 # OSSEC Wazuh fork
 
-OSSEC is a full platform to monitor and control your systems. It mixes together all the aspects of HIDS (host-based intrusion detection), log monitoring and SIM/SIEM together in a simple, powerful and open source solution. 
+OSSEC is a full platform to monitor and control your systems. It mixes together all the aspects of HIDS (host-based intrusion detection), log monitoring and SIM/SIEM together in a simple, powerful and open source solution.
 
-This fork provides compliance support, extended logging, and additional management features. These capabilities are required for the integration with ELK Stack and OSSEC Wazuh RESTful API (also included in this repository). 
+This fork provides compliance support, extended logging, and additional management features. These capabilities are required for the integration with ELK Stack and OSSEC Wazuh RESTful API (also included in this repository).
 
 ## Wazuh Open Source modules and contributions
 
 Wazuh team is currently supporting OSSEC enterprise users, and decided to develop and publish additional modules as a way to contribute back to the Open Source community. Find below a list and description of these modules:
 
-* [OSSEC Wazuh Ruleset](http://documentation.wazuh.com/en/latest/ossec_ruleset.html): Includes compliance mapping with PCI DSS v3.1, CIS and additional decoders and rules. Users can contribute to this rule set by submitting pull requests to our [Github repository](https://github.com/wazuh/ossec-rules). Our team will continue to maintain and update it periodically.
+* [OSSEC Wazuh Ruleset](http://documentation.wazuh.com/en/latest/ossec_ruleset.html): Includes compliance mapping with PCI DSS v3.1, CIS and additional decoders and rules. Users can contribute to this rule set by submitting pull requests to our [Github repository](https://github.com/wazuh/wazuh-ruleset). Our team will continue to maintain and update it periodically.
 
 * [OSSEC Wazuh fork](http://documentation.wazuh.com/en/latest/ossec_wazuh.html) with extended JSON logging capabilities, for easy [integration with ELK Stack](http://documentation.wazuh.com/en/latest/ossec_elk.html) and third party log management tools. The manager also include modifications in OSSEC binaries needed by the [OSSEC Wazuh RESTful API](http://documentation.wazuh.com/en/latest/ossec_api.html).
 
@@ -23,12 +23,13 @@ Wazuh team is currently supporting OSSEC enterprise users, and decided to develo
 ## Documentation
 
 * [Full documentation](http://documentation.wazuh.com)
-* [OSSEC Wazuh fork installation guide](http://documentation.wazuh.com/en/latest/ossec_wazuh.html)
+* [OSSEC Wazuh fork installation guide](http://documentation.wazuh.com/en/latest/wazuh_installation.html)
 
 ## Branches
 
-* `master` branch on correspond to the last OSSEC Wazuh stable version.
-* `development` branch contains the latest code, be aware of possible bugs on this branch.  
+* `stable` branch on correspond to the last OSSEC Wazuh stable version.
+* `master` branch contains the latest code, be aware of possible bugs on this branch.
+* `development` branch includes all the new features we're adding and testing.
 
 ## Contribute
 

@@ -46,12 +46,18 @@ else
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
     else
-        GROUPADD="/usr/sbin/groupadd"
-        USERADD="/usr/sbin/useradd"
+	# All current linux distributions should support system accounts for
+	# users/groups. If not, leave the GROUPADD/USERADD as it was before
+	# this change
+	sys_acct_chk () {
+	    $1 --help 2>&1 | grep -e " *-r.*system account" >/dev/null 2>&1 && echo "$1 -r" || echo "$1"
+	  }
+	GROUPADD=$(sys_acct_chk "/usr/sbin/groupadd")
+	USERADD=$(sys_acct_chk "/usr/sbin/useradd")
         OSMYSHELL="/sbin/nologin"
     fi
 
-    if ! grep "^${GROUP}" /etc/group > /dev/null 2>&1; then
+    if ! grep "^${GROUP}:" /etc/group > /dev/null 2>&1; then
         ${GROUPADD} "${GROUP}"
     fi
 
@@ -67,7 +73,7 @@ else
     fi
 
     for U in ${USER} ${USER_MAIL} ${USER_REM}; do
-        if ! grep "^${U}" /etc/passwd > /dev/null 2>&1; then
+        if ! grep "^${U}:" /etc/passwd > /dev/null 2>&1; then
 	    if [ "$UNAME" = "OpenBSD" ]; then
                ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
 	    else

@@ -22,7 +22,7 @@
 
 /* Prototypes */
 static void send_sk_db(void);
-
+static void log_realtime_status(int);
 
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
@@ -61,6 +61,7 @@ static void send_sk_db()
 {
     /* Send scan start message */
     if (syscheck.dir[0]) {
+        log_realtime_status(2);
         merror("%s: INFO: Starting syscheck scan (forwarding database).", ARGV0);
         send_rootcheck_msg("Starting syscheck scan.");
     } else {
@@ -70,7 +71,7 @@ static void send_sk_db()
     create_db();
 
     /* Send scan ending message */
-    sleep(syscheck.tsleep + 10);
+    sleep(syscheck.tsleep * 5);
 
     if (syscheck.dir[0]) {
         merror("%s: INFO: Ending syscheck scan (forwarding database).", ARGV0);
@@ -126,11 +127,24 @@ void start_daemon()
         syscheck.time = 604800;
         rootcheck.time = 604800;
     }
+    /* Printing syscheck propierties */
+
+    if (!syscheck.disabled)
+        merror("%s: INFO: Syscheck scan frequency: %d seconds", ARGV0, syscheck.time);
 
     /* Will create the db to store syscheck data */
     if (syscheck.scan_on_start) {
         sleep(syscheck.tsleep * 15);
         send_sk_db();
+
+#ifdef WIN32
+        /* Check for registry changes on Windows */
+        os_winreg_check();
+#endif
+
+        /* Send database completed message */
+        send_syscheck_msg(HC_SK_DB_COMPLETED);
+        debug2("%s: DEBUG: Sending database completed message.", ARGV0);
     } else {
         prev_time_rk = time(0);
     }
@@ -220,6 +234,7 @@ void start_daemon()
         /* If time elapsed is higher than the rootcheck_time, run it */
         if (syscheck.rootcheck) {
             if (((curr_time - prev_time_rk) > rootcheck.time) || run_now) {
+                log_realtime_status(2);
                 run_rk_check();
                 prev_time_rk = time(0);
             }
@@ -237,6 +252,7 @@ void start_daemon()
             } else {
                 /* Send scan start message */
                 if (syscheck.dir[0]) {
+                    log_realtime_status(2);
                     merror("%s: INFO: Starting syscheck scan.", ARGV0);
                     send_rootcheck_msg("Starting syscheck scan.");
                 }
@@ -249,7 +265,7 @@ void start_daemon()
             }
 
             /* Send scan ending message */
-            sleep(syscheck.tsleep + 20);
+            sleep(syscheck.tsleep * 15);
             if (syscheck.dir[0]) {
                 merror("%s: INFO: Ending syscheck scan.", ARGV0);
                 send_rootcheck_msg("Ending syscheck scan.");
@@ -270,6 +286,7 @@ void start_daemon()
             /* zero-out the fd_set */
             FD_ZERO (&rfds);
             FD_SET(syscheck.realtime->fd, &rfds);
+            log_realtime_status(1);
 
             run_now = select(syscheck.realtime->fd + 1, &rfds,
                              NULL, NULL, &selecttime);
@@ -286,11 +303,12 @@ void start_daemon()
         }
 #elif defined(WIN32)
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
+            log_realtime_status(1);
             if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
                 merror("%s: ERROR: WaitForSingleObjectEx failed (for realtime fim).", ARGV0);
                 sleep(SYSCHECK_WAIT);
             } else {
-                sleep(1);
+                sleep(syscheck.tsleep);
             }
         } else {
             sleep(SYSCHECK_WAIT);
@@ -304,7 +322,7 @@ void start_daemon()
 /* Read file information and return a pointer to the checksum */
 int c_read_file(const char *file_name, const char *oldsum, char *newsum)
 {
-    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0;
+    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
     os_md5 mf_sum;
     os_sha1 sf_sum;
@@ -365,6 +383,14 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
         sha1sum = 0;
     }
 
+    /* Modification time */
+    if (oldsum[6] == '+')
+        mtime = 1;
+
+    /* Inode */
+    if (oldsum[7] == '+')
+        inode = 1;
+
     /* Generate new checksum */
     if (S_ISREG(statbuf.st_mode))
     {
@@ -396,14 +422,47 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
 
     newsum[0] = '\0';
     newsum[255] = '\0';
-    snprintf(newsum, 255, "%ld:%d:%d:%d:%s:%s",
+    snprintf(newsum, 255, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld",
              size == 0 ? 0 : (long)statbuf.st_size,
              perm == 0 ? 0 : (int)statbuf.st_mode,
              owner == 0 ? 0 : (int)statbuf.st_uid,
              group == 0 ? 0 : (int)statbuf.st_gid,
              md5sum   == 0 ? "xxx" : mf_sum,
-             sha1sum  == 0 ? "xxx" : sf_sum);
+             sha1sum  == 0 ? "xxx" : sf_sum,
+             owner == 0 ? "" : get_user(file_name, statbuf.st_uid),
+             group == 0 ? "" : get_group(statbuf.st_gid),
+             mtime ? (long)statbuf.st_mtime : 0,
+             inode ? (long)statbuf.st_ino : 0);
 
     return (0);
 }
 
+void log_realtime_status(int next) {
+    /*
+     * 0: stop (initial)
+     * 1: run
+     * 2: pause
+     */
+
+    static int status = 0;
+
+    switch (status) {
+    case 0:
+        if (next == 1) {
+            verbose("%s: INFO: Starting syscheck real-time monitoring.", ARGV0);
+            status = next;
+        }
+        break;
+    case 1:
+        if (next == 2) {
+            verbose("%s: INFO: Pausing syscheck real-time monitoring.", ARGV0);
+            status = next;
+        }
+        break;
+    case 2:
+        if (next == 1) {
+            verbose("%s: INFO: Resuming syscheck real-time monitoring.", ARGV0);
+            status = next;
+        }
+    }
+}

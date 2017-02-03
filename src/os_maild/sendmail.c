@@ -24,9 +24,9 @@
 #define MAILFROM            "Mail From: <%s>\r\n"
 #define RCPTTO              "Rcpt To: <%s>\r\n"
 #define DATAMSG             "DATA\r\n"
-#define FROM                "From: OSSEC HIDS <%s>\r\n"
+#define FROM                "From: " __ossec_name " <%s>\r\n"
 #define TO                  "To: <%s>\r\n"
-#define REPLYTO             "Reply-To: OSSEC HIDS <%s>\r\n"
+#define REPLYTO             "Reply-To: " __ossec_name " <%s>\r\n"
 /*#define CC                "Cc: <%s>\r\n"*/
 #define SUBJECT             "Subject: %s\r\n"
 #define ENDHEADER           "\r\n"
@@ -57,8 +57,13 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
     /* Connect to the SMTP server */
     socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver, 0);
+
     if (socket < 0) {
         return (socket);
+    }
+
+    if (OS_SetRecvTimeout(socket, SOCK_RECV_TIME0) < 0) {
+        merror("%s: ERROR: Couldn't set receiving timeout for socket.", ARGV0);
     }
 
     /* Receive the banner */
@@ -271,6 +276,10 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver, 0);
     if (socket < 0) {
         return (socket);
+    }
+
+    if (OS_SetRecvTimeout(socket, SOCK_RECV_TIME0) < 0) {
+        merror("%s: ERROR: Couldn't set receiving timeout for socket.", ARGV0);
     }
 
     /* Receive the banner */
@@ -538,4 +547,3 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     return (0);
 }
-

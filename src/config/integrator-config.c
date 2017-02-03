@@ -22,6 +22,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     char *xml_integrator_id = "rule_id";
     char *xml_integrator_group = "group";
     char *xml_integrator_location = "event_location";
+    char *xml_integrator_max_log = "max_log";
 
     IntegratorConfig **integrator_config = *(IntegratorConfig ***)config;
 
@@ -47,6 +48,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     integrator_config[s]->path = NULL;
     integrator_config[s]->level = 0;
     integrator_config[s]->enabled = 0;
+    integrator_config[s]->max_log = 165;
 
     while(node[i])
     {
@@ -164,8 +166,19 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
                        integrator_config[s]->group->error);
                 return(-1);
             }
-        }
-        else
+        } else if (strcmp(node[i]->element, xml_integrator_max_log) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, ARGV0,node[i]->element, node[i]->content);
+                return(OS_INVALID);
+            }
+
+            integrator_config[s]->max_log = atoi(node[i]->content);
+
+            if (integrator_config[s]->max_log < 165 || integrator_config[s]->max_log > 1024) {
+                merror(XML_VALUEERR, ARGV0,node[i]->element, node[i]->content);
+                return(OS_INVALID);
+            }
+        } else
         {
             merror(XML_INVELEM, ARGV0, node[i]->element);
             return(OS_INVALID);

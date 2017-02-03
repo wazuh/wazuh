@@ -35,7 +35,7 @@ void send_win32_info(time_t curr_time);
 /* Help message */
 void agent_help()
 {
-    printf("\nOSSEC HIDS %s %s .\n", ARGV0, __version);
+    printf("\n%s %s %s .\n", __ossec_name, ARGV0, __version);
     printf("Available options:\n");
     printf("\t/?                This help message.\n");
     printf("\t-h                This help message.\n");
@@ -202,7 +202,7 @@ int local_start()
     /* Read keys */
     verbose(ENC_READ, ARGV0);
 
-    OS_ReadKeys(&keys);
+    OS_ReadKeys(&keys, 1);
     OS_StartCounter(&keys);
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id, agt->profile);
 
@@ -456,15 +456,10 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 }
 
 /* StartMQ for Windows */
-int StartMQ(const char *path, short int type)
+int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) short int type)
 {
     /* Connect to the server */
     connect_server(0);
-
-    if ((path == NULL) && (type == 0)) {
-        return (0);
-    }
-
     return (0);
 }
 

@@ -1,6 +1,6 @@
 [Unit]
-Description=OSSEC HIDS server
-After=network.target 
+Description=Wazuh server
+After=network.target
 Wants=ossec-dbd.service
 Wants=ossec-csyslog.service
 Wants=ossec-agentless.service

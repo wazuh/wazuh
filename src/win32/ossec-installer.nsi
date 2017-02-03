@@ -19,15 +19,14 @@
 
 ; output file
 !ifndef OutFile
-    !define OutFile "ossec-win32-agent.exe"
+    !define OutFile "wazuh-win32-agent.exe"
 !endif
 
 ; general
 !define MUI_ICON favicon.ico
 !define MUI_UNICON ossec-uninstall.ico
-!define VERSION "2.8"
-!define WAZUH_VERSION "1.1"
-!define NAME "OSSEC HIDS"
+!define VERSION "2.0"
+!define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
 Name "${NAME} Windows Agent v${VERSION}"
@@ -145,6 +144,8 @@ Section "OSSEC Agent (required)" MainSec
     CreateDirectory "$INSTDIR\active-response"
     CreateDirectory "$INSTDIR\active-response\bin"
     CreateDirectory "$INSTDIR\tmp"
+	CreateDirectory "$INSTDIR\queue"
+	CreateDirectory "$INSTDIR\queue\diff"
 
     ; install files
     File ossec-lua.exe
@@ -172,6 +173,12 @@ Section "OSSEC Agent (required)" MainSec
     File vista_sec.txt
     File /oname=active-response\bin\route-null.cmd route-null.cmd
     File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
+    File /oname=libwinpthread-1.dll /usr/i686-w64-mingw32/lib/libwinpthread-1.dll
+	File agent-auth.exe
+
+    ; Create empty file active-responses.log
+    FileOpen $0 "$INSTDIR\active-response\active-responses.log" w
+    FileClose $0
 
     ; use appropriate version of "ossec-agent.exe"
     ${If} ${AtLeastWinVista}
@@ -183,7 +190,7 @@ Section "OSSEC Agent (required)" MainSec
 
     ; write registry keys
     WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayName" "${NAME} ${VERSION}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayName" "${NAME} Agent ${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayVersion" "${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayIcon" "${MUI_ICON}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "HelpLink" "http://www.ossec.net/main/support/"
@@ -201,7 +208,7 @@ Section "OSSEC Agent (required)" MainSec
     ; write version and install information
     VersionInstall:
         FileOpen $0 "$INSTDIR\VERSION.txt" w
-        FileWrite $0 "${NAME} v${VERSION} - WAZUH v${WAZUH_VERSION} - Installed on $CURRENTTIME"
+        FileWrite $0 "${NAME} v${VERSION} - Installed on $CURRENTTIME"
         FileClose $0
         IfErrors VersionError VersionComplete
     VersionError:
@@ -408,6 +415,7 @@ Section "Uninstall"
 
     ; remove files and uninstaller
     Delete "$INSTDIR\ossec-agent.exe"
+	Delete "$INSTDIR\agent-auth.exe"
     Delete "$INSTDIR\ossec-lua.exe"
     Delete "$INSTDIR\ossec-luac.exe"
     Delete "$INSTDIR\manage_agents.exe"
@@ -421,7 +429,6 @@ Section "Uninstall"
     Delete "$INSTDIR\active-response\bin\*"
     Delete "$INSTDIR\active-response\*"
     Delete "$INSTDIR\tmp\*"
-    Delete "$INSTDIR"
 
     ; remove shortcuts
     SetShellVarContext all
@@ -437,5 +444,7 @@ Section "Uninstall"
     RMDir "$INSTDIR\active-response\bin"
     RMDir "$INSTDIR\active-response"
     RMDir "$INSTDIR\tmp"
+	RMDir /r "$INSTDIR\queue\diff"
+	RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR"
 SectionEnd

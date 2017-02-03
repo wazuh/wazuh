@@ -36,7 +36,8 @@ char *searchAndReplace(const char *orig, const char *search, const char *value)
     while (p != NULL) {
         /* Copy replacement */
         total_bytes_allocated += value_len;
-        tmp = (char *) realloc(tmp, total_bytes_allocated);
+        os_realloc(tmp, total_bytes_allocated, tmp);
+
         strncpy(tmp + tmp_offset, value, value_len);
         tmp_offset += value_len;
 
@@ -49,7 +50,7 @@ char *searchAndReplace(const char *orig, const char *search, const char *value)
             if (inx_start2 > from) {
                 size_t gap = inx_start2 - from;
                 total_bytes_allocated += gap;
-                tmp = (char *) realloc(tmp, total_bytes_allocated);
+                os_realloc(tmp, total_bytes_allocated, tmp);
                 strncpy(tmp + tmp_offset, orig + from, gap);
                 tmp_offset += gap;
             }
@@ -64,7 +65,7 @@ char *searchAndReplace(const char *orig, const char *search, const char *value)
     /* Copy content after last match, if any */
     if ((from < orig_len) && from > 0) {
         total_bytes_allocated += orig_len - from;
-        tmp = (char *) realloc(tmp, total_bytes_allocated);
+        os_realloc(tmp, total_bytes_allocated, tmp);
         strncpy(tmp + tmp_offset, orig + from, orig_len - from);
     }
 

@@ -76,6 +76,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
     /* Check for the syslog date format
      * ( ex: Dec 29 10:00:01
+     *   or  2015 Dec 29 10:00:01
      *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate
      *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog )
      *   or  2015-04-16 21:51:02,805 (proftpd 1.3.5)
@@ -91,7 +92,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         )
         ||
 	(
-	    (loglen > 24) && 
+	    (loglen > 24) &&
 	    (pieces[4] == '-') &&
 	    (pieces[7] == '-') &&
 	    (pieces[10] == ' ') &&
@@ -116,7 +117,19 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 ((pieces[19] == '.') &&
                  (pieces[29] == ':') && (lf->log += 32))
             )
-        ) 
+        )
+     ||
+        (
+            (loglen > 21) &&
+            (isdigit(pieces[0])) &&
+            (pieces[4] == ' ') &&
+            (pieces[8] == ' ') &&
+            (pieces[11] == ' ') &&
+            (pieces[14] == ':') &&
+            (pieces[17] == ':') &&
+            (pieces[20] == ' ') && (lf->log += 21)
+        )
+
     ) {
         /* Check for an extra space in here */
         if (*lf->log == ' ') {
@@ -475,15 +488,33 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
     /* Every message must be in the format
      * hostname->location or
-     * (agent) ip->location.
+     * [id] (agent) ip->location.
      */
 
     /* Set hostname for local messages */
-    if (lf->location[0] == '(') {
+    if (lf->location[0] == '[') {
         /* Messages from an agent */
+        char *orig = lf->location;
+
+        lf->agent_id = lf->location + 1;
+        lf->location = strchr(lf->agent_id, ']');
+
+        if (!lf->location) {
+            merror(FORMAT_ERROR, ARGV0);
+            return (-1);
+        }
+
+        *lf->location = '\0';
+        os_strdup(lf->agent_id, lf->agent_id);
+        os_strdup(lf->location + 2, lf->location);
         lf->hostname = lf->location;
-    } else if (lf->hostname == NULL) {
-        lf->hostname = __shost;
+        free(orig);
+    } else {
+        if (lf->hostname == NULL) {
+            lf->hostname = __shost;
+        }
+
+        lf->agent_id = strdup("000");
     }
 
     /* Set up the event data */
@@ -514,4 +545,3 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 #endif
     return (0);
 }
-

@@ -15,7 +15,7 @@
 /* Attempt to connect to all configured servers */
 int connect_server(int initial_id)
 {
-    unsigned int attempts = 2;
+    int attempts = 2;
     int rc = initial_id;
 
     /* Checking if the initial is zero, meaning we have to
@@ -103,7 +103,7 @@ int connect_server(int initial_id)
                     merror("%s: ERROR: Unable to connect to any server.", ARGV0);
                 }
 
-                sleep(attempts);
+                sleep(attempts < agt->notify_time ? attempts : agt->notify_time);
                 rc = 0;
             }
         } else {
@@ -134,7 +134,7 @@ void start_agent(int is_startup)
 {
     ssize_t recv_b = 0;
     netsize_t length;
-    unsigned int attempts = 0, g_attempts = 1;
+    int attempts = 0, g_attempts = 1;
 
     char *tmp_msg;
     char msg[OS_MAXSTR + 2];
@@ -236,14 +236,14 @@ void start_agent(int is_startup)
             connect_server(agt->rip_id + 1);
 
             if (agt->rip_id == curr_rip) {
-                sleep(g_attempts);
+                sleep(g_attempts < agt->notify_time ? g_attempts : agt->notify_time);
                 g_attempts += (attempts * 3);
             } else {
                 g_attempts += 5;
-                sleep(g_attempts);
+                sleep(g_attempts < agt->notify_time ? g_attempts : agt->notify_time);
             }
         } else {
-            sleep(g_attempts);
+            sleep(g_attempts < agt->notify_time ? g_attempts : agt->notify_time);
             g_attempts += (attempts * 3);
 
             connect_server(0);

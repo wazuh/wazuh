@@ -1,10 +1,10 @@
 #!/bin/sh
-# OSSEC         Controls OSSEC HIDS on Solaris systems
+# OSSEC         Controls Wazuh on Solaris systems
 # Author:       Kayvan A. Sylvan <kayvan@sylvan.com>
 # Author:       Daniel B. Cid <dcid@ossec.net>
 #
 # chkconfig: 2345 99 15
-# description: Starts and stops OSSEC HIDS (Host Intrusion Detection System)
+# description: Starts and stops Wazuh (Host Intrusion Detection System)
 #
 # This will work on Solaris systems (maybe others too)
 #

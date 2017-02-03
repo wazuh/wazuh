@@ -1,5 +1,5 @@
      - Réponse active activée.
-   
+
    - Par défaut, nous pouvons activer le contrôle d'hôte
      et le pare-feu (firewall-drop). Le premier ajoute
      un hôte dans /etc/hosts.deny et le second bloquera

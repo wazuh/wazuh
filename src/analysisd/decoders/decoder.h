@@ -18,6 +18,8 @@
 #define AFTER_PREVREGEX 0x004   /* 4   */
 #define AFTER_ERROR     0x010
 
+struct _Eventinfo;
+
 /* Decoder structure */
 typedef struct {
     u_int8_t  get_next;
@@ -33,13 +35,15 @@ typedef struct {
     char *parent;
     char *name;
     char *ftscomment;
+    char **fields;
+    char *fts_fields;
 
     OSRegex *regex;
     OSRegex *prematch;
     OSMatch *program_name;
 
     void (*plugindecoder)(void *lf);
-    void (**order)(void *lf, char *field);
+    void* (**order)(struct _Eventinfo *, char *, const char *);
 } OSDecoderInfo;
 
 /* List structure */
@@ -56,6 +60,7 @@ void OS_CreateOSDecoderList(void);
 int OS_AddOSDecoder(OSDecoderInfo *pi);
 OSDecoderNode *OS_GetFirstOSDecoder(const char *pname);
 int getDecoderfromlist(const char *name);
+char *GetGeoInfobyIP(char *ip_addr);
 int SetDecodeXML(void);
 void HostinfoInit(void);
 void SyscheckInit(void);
@@ -64,4 +69,3 @@ void RootcheckInit(void);
 int ReadDecodeXML(const char *file);
 
 #endif
-

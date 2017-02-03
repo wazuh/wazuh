@@ -31,7 +31,7 @@
 #endif
 
 #ifdef LIBGEOIP_ENABLED
-#define MAIL_BODY           "\r\nOSSEC HIDS Notification.\r\n" \
+#define MAIL_BODY           "\r\n" __ossec_name " Notification.\r\n" \
                             "%s\r\n\r\n" \
                             "Received From: %s\r\n" \
                             "Rule: %d fired (level %d) -> \"%s\"\r\n" \
@@ -41,7 +41,7 @@
                             "Portion of the log(s):\r\n\r\n%s\r\n" \
                             "\r\n\r\n --END OF NOTIFICATION\r\n\r\n\r\n"
 #else
-#define MAIL_BODY           "\r\nOSSEC HIDS Notification.\r\n" \
+#define MAIL_BODY           "\r\n" __ossec_name " Notification.\r\n" \
                             "%s\r\n\r\n" \
                             "Received From: %s\r\n" \
                             "Rule: %d fired (level %d) -> \"%s\"\r\n" \
@@ -69,7 +69,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *mail,
 /* Send an email */
 int OS_Sendmail(MailConfig *mail, struct tm *p) __attribute__((nonnull));
 int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg) __attribute__((nonnull));
-int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, const struct tm *p);
+int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *replyto, char *idsname, FILE *fp, const struct tm *p);
 
 /* Mail timeout used by the file-queue */
 extern unsigned int mail_timeout;
@@ -79,4 +79,3 @@ extern unsigned int   _g_subject_level;
 extern char _g_subject[SUBJECT_SIZE + 2];
 
 #endif
-

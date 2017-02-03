@@ -59,9 +59,8 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, _
     const char *p_size, *size;
     char *p_perm, *p_uid, *p_gid, *p_md5, *p_sha1;
     char *perm, *uid, *gid, *md5, *sha1;
-    int perm_int;
+    mode_t mode;
     char perm_str[36];
-
 
     /* A deleted file has no attributes */
     if (strcmp(attrs, "-1") == 0) {
@@ -138,29 +137,13 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, _
     }
 
     perm_str[35] = '\0';
-    perm_int = atoi(perm);
-    snprintf(perm_str, 35,
-             "%c%c%c%c%c%c%c%c%c",
-             (perm_int & S_IRUSR) ? 'r' : '-',
-             (perm_int & S_IWUSR) ? 'w' : '-',
-
-             (perm_int & S_ISUID) ? 's' :
-             (perm_int & S_IXUSR) ? 'x' : '-',
-
-             (perm_int & S_IRGRP) ? 'r' : '-',
-             (perm_int & S_IWGRP) ? 'w' : '-',
-
-             (perm_int & S_ISGID) ? 's' :
-             (perm_int & S_IXGRP) ? 'x' : '-',
-
-             (perm_int & S_IROTH) ? 'r' : '-',
-             (perm_int & S_IWOTH) ? 'w' : '-',
-             (perm_int & S_ISVTX) ? 't' :
-             (perm_int & S_IXOTH) ? 'x' : '-');
+    /* octal or decimal */
+    mode = (mode_t) strtoul(perm, 0, strlen(perm) == 3 ? 8 : 10);
+    snprintf(perm_str, 35, "%9.9s", agent_file_perm(mode));
 
     if (json_output) {
         cJSON_AddStringToObject(json_output, "size", size);
-        cJSON_AddNumberToObject(json_output, "mode", is_win ? 0 : perm_int);
+        cJSON_AddNumberToObject(json_output, "mode", is_win ? 0 : mode);
         cJSON_AddStringToObject(json_output, "perm", is_win ? "" : perm_str);
         cJSON_AddStringToObject(json_output, "uid", is_win ? "" : uid);
         cJSON_AddStringToObject(json_output, "gid", is_win ? "" : gid);
@@ -197,7 +180,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
     struct tm *tm_time;
     char read_day[24 + 1];
     char buf[OS_MAXSTR + 1];
-    OSMatch reg;
+    OSRegex reg;
     OSStore *files_list = NULL;
     fpos_t init_pos;
     cJSON *json_entry = NULL, *json_attrs = NULL;
@@ -206,7 +189,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
     read_day[24] = '\0';
 
     /* If the compilation failed, we don't need to free anything */
-    if (!OSMatch_Compile(fname, &reg, 0)) {
+    if (!OSRegex_Compile(fname, &reg, 0)) {
         if (!(csv_output || json_output))
             printf("\n** ERROR: Invalid file name: '%s'\n", fname);
         return (0);
@@ -215,7 +198,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
     /* Create list with files */
     files_list = OSStore_Create();
     if (!files_list) {
-        OSMatch_FreePattern(&reg);
+        OSRegex_FreePattern(&reg);
         goto cleanup;
     }
 
@@ -280,8 +263,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
             changed_file_name++;
 
             /* Check if the name should be printed */
-            if (!OSMatch_Execute(changed_file_name, strlen(changed_file_name),
-                                 &reg)) {
+            if (!OSRegex_Execute(changed_file_name, &reg)) {
                 fgetpos(fp, &init_pos);
                 continue;
             }
@@ -371,12 +353,12 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
         }
     }
 
-    if (!f_found) {
+    if (!(f_found || csv_output || json_output)) {
         printf("\n** No entries found.\n");
     }
 
 cleanup:
-    OSMatch_FreePattern(&reg);
+    OSRegex_FreePattern(&reg);
     if (files_list) {
         OSStore_Free(files_list);
     }
@@ -843,8 +825,24 @@ int delete_rootcheck(const char *sk_name, const char *sk_ip, int full_delete)
     return (1);
 }
 
+/* Delete agent SQLite db */
+void delete_sqlite(const char *id, const char *name)
+{
+    char path[512] = { '\0' };
+
+    /* Delete related files */
+    snprintf(path, 511, "%s%s/agents/%s-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+    unlink(path);
+
+    snprintf(path, 511, "%s%s/agents/%s-%s.db-wal", isChroot() ? "/" : "", WDB_DIR, id, name);
+    unlink(path);
+
+    snprintf(path, 511, "%s%s/agents/%s-%s.db-shm", isChroot() ? "/" : "", WDB_DIR, id, name);
+    unlink(path);
+}
+
 /* Delete agent */
-int delete_agentinfo(const char *name)
+int delete_agentinfo(const char *id, const char *name)
 {
     const char *sk_name;
     char *sk_ip;
@@ -871,6 +869,9 @@ int delete_agentinfo(const char *name)
 
     /* Delete rootcheck */
     delete_rootcheck(sk_name, sk_ip, 1);
+
+    /* Delete SQLite database */
+    delete_sqlite(id, sk_name);
 
     return (1);
 }
@@ -951,6 +952,25 @@ int connect_to_remoted()
     }
 
     return (arq);
+}
+
+const char *agent_file_perm(mode_t mode)
+{
+	/* rwxrwxrwx0 -> 10 */
+	static char permissions[10];
+
+	permissions[0] = (mode & S_IRUSR) ? 'r' : '-';
+	permissions[1] = (mode & S_IWUSR) ? 'w' : '-';
+	permissions[2] = (mode & S_ISUID) ? 's' : (mode & S_IXUSR) ? 'x' : '-';
+	permissions[3] = (mode & S_IRGRP) ? 'r' : '-';
+	permissions[4] = (mode & S_IWGRP) ? 'w' : '-';
+	permissions[5] = (mode & S_ISGID) ? 's' : (mode & S_IXGRP) ? 'x' : '-';
+	permissions[6] = (mode & S_IROTH) ? 'r' : '-';
+	permissions[7] = (mode & S_IWOTH) ? 'w' : '-';
+	permissions[8] = (mode & S_ISVTX) ? 't' : (mode & S_IXOTH) ? 'x' : '-';
+    permissions[9] = '\0';
+
+	return &permissions[0];
 }
 
 #endif /* !WIN32 */

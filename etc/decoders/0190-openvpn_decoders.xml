@@ -1,0 +1,43 @@
+<!--
+  -  OpenVPN decoders
+  -  Author: Julio Camargo <julio.camargo@trustux.com.br>
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<decoder name="openvpn">
+  <program_name>openvpn</program_name>
+</decoder>
+
+<!--
+Jul 22 13:10:29 fw01 openvpn[76395]: girafalez/202.202.202.202:1194 TLS Error: TLS key negotiation failed to occur within 60 seconds (check your network connectivity)
+Jul 22 13:10:29 fw01 openvpn[76395]: girafalez/202.202.202.202:1194 TLS Error: TLS handshake failed
+Jul 22 13:10:35 fw01 openvpn[76395]: girafalez/202.202.202.202:1194 Authenticate/Decrypt packet error: packet HMAC authentication failed
+Jul 21 18:31:21 fw01 openvpn[76395]: chapolin/200.200.200.200:17777 send_push_reply(): safe_cap=940
+-->
+<decoder name="openvpn-user-ip">
+  <parent>openvpn</parent>
+  <prematch>^\S+/\S+:\d+</prematch>
+  <regex>^(\S+)/(\S+):(\d+)</regex>
+  <order>srcuser,srcip,srcport</order>
+</decoder>
+
+<!--
+Jul 21 18:31:19 fw01 openvpn[76395]: 200.200.200.200:17777 [chapolin] Peer Connection Initiated with [AF_INET]200.200.200.200:17777
+-->
+<decoder name="openvpn-ip-user">
+  <parent>openvpn</parent>
+  <prematch>^\S+:\d+ [</prematch>
+  <regex>^(\S+):(\d+) [(\S+)]</regex>
+  <order>srcip,srcport,srcuser</order>
+</decoder>
+
+<!--
+Jul 21 18:32:24 fw01 openvpn: user 'chapolin' authenticated
+-->
+<decoder name="openvpn-user">
+  <parent>openvpn</parent>
+  <prematch>^user '</prematch>
+  <regex offset="after_prematch">^(\S+)'</regex>
+  <order>srcuser</order>
+</decoder>

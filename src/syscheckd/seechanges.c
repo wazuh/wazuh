@@ -16,6 +16,58 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time) __attr
 static int seechanges_dupfile(const char *old, const char *current) __attribute__((nonnull));
 static int seechanges_createpath(const char *filename) __attribute__((nonnull));
 
+static const char *STR_MORE_CHANGES = "More changes...";
+
+#ifndef WIN32
+#define PATH_OFFSET 1
+#else
+#define PATH_OFFSET 3
+#endif
+
+static char* filter(const char *string) {
+#ifndef WIN32
+    /* Unix version: we'll escape expansion symbols */
+    char *out;
+    const char *ptr;
+    size_t clen;
+    size_t len = strcspn(string, "\"\\$`");
+    out = malloc(len + 1);
+    ptr = string + len;
+    strncpy(out, string, len);
+
+    while (*ptr) {
+        clen = strcspn(ptr + 1, "\"\\$`");
+        out = realloc(out, len + clen + 3);
+        out[len] = '\\';
+        out[len + 1] = *ptr;
+        strncpy(out + len + 2, ptr + 1, clen);
+        len += clen + 2;
+        ptr += clen + 1;
+    }
+
+    out[len] = '\0';
+    return out;
+#else
+        /* Windows file names can't contain the following characters:
+           \ / : * ? " < > |
+           We'll ban strings that contain dangerous characters and convert / into \ */
+
+        char *s;
+        char *c;
+
+        if (strchr(string, '%'))
+            return NULL;
+
+        s = strdup(string);
+        c = s;
+
+        while (c = strchr(c, '/'), c)
+            *c = '\\';
+
+        return s;
+#endif
+}
+
 #ifdef USE_MAGIC
 #include <magic.h>
 
@@ -70,15 +122,13 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 {
     size_t n = 0;
     FILE *fp;
-    char *tmp_str;
+    char *diff_str;
     char buf[OS_MAXSTR + 1];
-    char diff_alert[OS_MAXSTR + 1];
 
     buf[OS_MAXSTR] = '\0';
-    diff_alert[OS_MAXSTR] = '\0';
 
     snprintf(buf, OS_MAXSTR, "%s/local/%s/diff.%d",
-             DIFF_DIR_PATH, filename,  (int)alert_diff_time);
+             DIFF_DIR_PATH, filename + PATH_OFFSET, (int)alert_diff_time);
 
     fp = fopen(buf, "r");
     if (!fp) {
@@ -87,49 +137,39 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     }
 
     n = fread(buf, 1, 4096 - 1, fp);
-    if (n <= 0) {
-        merror("%s: ERROR: Unable to generate diff alert (fread).", ARGV0);
-        fclose(fp);
-        return (NULL);
-    } else if (n >= 4000) {
-        /* Clear the last newline */
-        buf[n] = '\0';
-        tmp_str = strrchr(buf, '\n');
-        if (tmp_str) {
-            *tmp_str = '\0';
-        } else {
-            /* Weird diff with only one large line */
-            buf[256] = '\0';
-        }
-    } else {
-        buf[n] = '\0';
-    }
-
-    n = 0;
-
-    /* Get up to 20 line changes */
-    tmp_str = buf;
-
-    while (tmp_str && (*tmp_str != '\0')) {
-        tmp_str = strchr(tmp_str, '\n');
-        if (!tmp_str) {
-            break;
-        } else if (n >= 19) {
-            *tmp_str = '\0';
-            break;
-        }
-        n++;
-        tmp_str++;
-    }
-
-    /* Create alert */
-    snprintf(diff_alert, 4096 - 1, "%s%s",
-             buf, n >= 19 ?
-             "\nMore changes.." :
-             "");
-
     fclose(fp);
-    return (strdup(diff_alert));
+
+    switch (n) {
+    case 0:
+        merror("%s: ERROR: Unable to generate diff alert (fread).", ARGV0);
+        return (NULL);
+    case 4095:
+        n -= strlen(STR_MORE_CHANGES);
+
+        while (n > 0 && buf[n - 1] != '\n')
+            n--;
+
+        strcpy(buf + n, STR_MORE_CHANGES);
+        break;
+    default:
+        buf[n] = '\0';
+    }
+
+#ifdef WIN32
+    diff_str = strchr(buf, '\n');
+
+    if (!diff_str) {
+        merror("%s: ERROR: Unable to find second line of alert string.", ARGV0);
+        return NULL;
+    }
+
+    diff_str++;
+
+#else
+    diff_str = buf;
+#endif
+
+    return (strdup(diff_str));
 }
 
 static int seechanges_dupfile(const char *old, const char *current)
@@ -161,7 +201,11 @@ static int seechanges_dupfile(const char *old, const char *current)
 
     do {
         buf[n] = '\0';
-        fwrite(buf, n, 1, fpw);
+
+        if (fwrite(buf, n, 1, fpw) < 1) {
+            merror("%s: ERROR: Unable to write data on file '%s'", ARGV0, current);
+            break;
+        }
     } while ((n = fread(buf, 1, 2048, fpr)) > 0);
 
 #ifdef USE_MAGIC
@@ -177,19 +221,18 @@ static int seechanges_createpath(const char *filename)
     char *buffer = NULL;
     char *tmpstr = NULL;
     char *newdir = NULL;
+    char *next = NULL;
 
     os_strdup(filename, buffer);
     newdir = buffer;
-    tmpstr = strchr(buffer + 1, '/');
+    tmpstr = strtok(buffer + PATH_OFFSET, "/\\");
     if (!tmpstr) {
         merror("%s: ERROR: Invalid path name: '%s'", ARGV0, filename);
         free(buffer);
         return (0);
     }
-    *tmpstr = '\0';
-    tmpstr++;
 
-    while (1) {
+    while (next = strtok(NULL, "/\\"), next) {
         if (IsDir(newdir) != 0) {
 #ifndef WIN32
             if (mkdir(newdir, 0770) == -1)
@@ -203,17 +246,8 @@ static int seechanges_createpath(const char *filename)
             }
         }
 
-        if (*tmpstr == '\0') {
-            break;
-        }
-
+        tmpstr = next;
         tmpstr[-1] = '/';
-        tmpstr = strchr(tmpstr, '/');
-        if (!tmpstr) {
-            break;
-        }
-        *tmpstr = '\0';
-        tmpstr++;
     }
 
     free(buffer);
@@ -228,9 +262,6 @@ char *seechanges_addfile(const char *filename)
     char old_location[OS_MAXSTR + 1];
     char tmp_location[OS_MAXSTR + 1];
     char diff_location[OS_MAXSTR + 1];
-    char old_tmp[OS_MAXSTR + 1];
-    char new_tmp[OS_MAXSTR + 1];
-    char diff_tmp[OS_MAXSTR + 1];
     char diff_cmd[OS_MAXSTR + 1];
     os_md5 md5sum_old;
     os_md5 md5sum_new;
@@ -239,10 +270,10 @@ char *seechanges_addfile(const char *filename)
     old_location[OS_MAXSTR] = '\0';
     tmp_location[OS_MAXSTR] = '\0';
     diff_location[OS_MAXSTR] = '\0';
-    old_tmp[OS_MAXSTR] = '\0';
-    new_tmp[OS_MAXSTR] = '\0';
-    diff_tmp[OS_MAXSTR] = '\0';
     diff_cmd[OS_MAXSTR] = '\0';
+    char *tmp_location_filtered = NULL;
+    char *old_location_filtered = NULL;
+    char *diff_location_filtered = NULL;
     md5sum_new[0] = '\0';
     md5sum_old[0] = '\0';
 
@@ -251,7 +282,7 @@ char *seechanges_addfile(const char *filename)
         OS_MAXSTR,
         "%s/local/%s/%s",
         DIFF_DIR_PATH,
-        filename + 1,
+        filename + PATH_OFFSET,
         DIFF_LAST_FILE
     );
 
@@ -282,7 +313,7 @@ char *seechanges_addfile(const char *filename)
         OS_MAXSTR,
         "%s/local/%s/state.%d",
         DIFF_DIR_PATH,
-        filename + 1,
+        filename + PATH_OFFSET,
         (int)old_date_of_change
     );
 
@@ -298,64 +329,15 @@ char *seechanges_addfile(const char *filename)
 
     new_date_of_change = File_DateofChange(old_location);
 
-    /* Create file names */
-    snprintf(
-        old_tmp,
-        OS_MAXSTR,
-        "%s/%s/syscheck-changes-%s-%d",
-        DEFAULTDIR,
-        TMP_DIR,
-        md5sum_old,
-        (int)old_date_of_change
-    );
-
-    snprintf(
-        new_tmp,
-        OS_MAXSTR,
-        "%s/%s/syscheck-changes-%s-%d",
-        DEFAULTDIR,
-        TMP_DIR,
-        md5sum_new,
-        (int)new_date_of_change
-    );
-
-    snprintf(
-        diff_tmp,
-        OS_MAXSTR,
-        "%s/%s/syscheck-changes-%s-%d-%s-%d",
-        DEFAULTDIR,
-        TMP_DIR,
-        md5sum_old,
-        (int)old_date_of_change,
-        md5sum_new,
-        (int)new_date_of_change
-    );
-
     /* Create diff location */
     snprintf(
         diff_location,
         OS_MAXSTR,
         "%s/local/%s/diff.%d",
         DIFF_DIR_PATH,
-        filename + 1,
+        filename + PATH_OFFSET,
         (int)new_date_of_change
     );
-
-    /* Create symlinks */
-    if (symlink(old_location, old_tmp) == -1) {
-        merror(LINK_ERROR, ARGV0, old_location, old_tmp, errno, strerror(errno));
-        goto cleanup;
-    }
-
-    if (symlink(tmp_location, new_tmp) == -1) {
-        merror(LINK_ERROR, ARGV0, tmp_location, new_tmp, errno, strerror(errno));
-        goto cleanup;
-    }
-
-    if (symlink(diff_location, diff_tmp) == -1) {
-        merror(LINK_ERROR, ARGV0, diff_location, diff_tmp, errno, strerror(errno));
-        goto cleanup;
-    }
 
     if (is_nodiff((filename))) {
         /* Dont leak sensible data with a diff hanging around */
@@ -366,22 +348,44 @@ char *seechanges_addfile(const char *filename)
             merror("%s: ERROR: Unable to open file for writing `%s`", ARGV0, diff_location);
             goto cleanup;
         }
-        fwrite(nodiff_message, strlen(nodiff_message) + 1, 1, fdiff);
+
+        if (fwrite(nodiff_message, strlen(nodiff_message) + 1, 1, fdiff) < 1) {
+            merror("%s: ERROR: Unable to write data on file '%s'", ARGV0, diff_location);
+        }
         fclose(fdiff);
         /* Success */
         status = 0;
     } else {
         /* OK, run diff */
+
+        tmp_location_filtered = filter(tmp_location);
+        old_location_filtered = filter(old_location);
+        diff_location_filtered = filter(diff_location);
+
+        if (!(tmp_location_filtered && old_location_filtered && diff_location_filtered)) {
+            debug1("%s: DEBUG: Diff execution skipped for containing insecure characters.", ARGV0);
+            goto cleanup;
+        }
+
         snprintf(
             diff_cmd,
             2048,
+#ifndef WIN32
             "diff \"%s\" \"%s\" > \"%s\" 2> /dev/null",
-            new_tmp,
-            old_tmp,
-            diff_tmp
+#else
+            "fc \"%s\" \"%s\" > \"%s\" 2> nul",
+#endif
+            tmp_location_filtered,
+            old_location_filtered,
+            diff_location_filtered
         );
 
+#ifndef WIN32
         if (system(diff_cmd) != 256) {
+#else
+        int pstatus = system(diff_cmd);
+        if (pstatus < 0 || pstatus > 1) {
+#endif
             merror("%s: ERROR: Unable to run `%s`", ARGV0, diff_cmd);
             goto cleanup;
         }
@@ -391,9 +395,10 @@ char *seechanges_addfile(const char *filename)
     };
 
 cleanup:
-    unlink(old_tmp);
-    unlink(new_tmp);
-    unlink(diff_tmp);
+
+    free(tmp_location_filtered);
+    free(old_location_filtered);
+    free(diff_location_filtered);
 
     if (status == -1)
         return (NULL);

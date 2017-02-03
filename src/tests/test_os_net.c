@@ -274,7 +274,8 @@ START_TEST(test_gethost_success)
 {
     char *ret;
 
-    ck_assert_str_eq((ret = OS_GetHost("google-public-dns-a.google.com", 2)), "8.8.8.8");
+    ck_assert_ptr_ne((ret = OS_GetHost("google-public-dns-a.google.com", 2)), NULL);
+    ck_assert_str_eq(ret, "8.8.8.8");
 
     free(ret);
 }

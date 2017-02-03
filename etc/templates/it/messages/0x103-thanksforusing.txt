@@ -1,11 +1,13 @@
 
-    Grazie per aver scelto OSSEC HIDS.
-    Per qualsiasi domanda, suggerimento o se hai trovato qualche bug,
-    contattaci all'indirizzo contact@ossec.net o utlizza la nostra 
-    mailinglist pubblica:
-    ( http://www.ossec.net/en/mailing_lists.html ).
+    Grazie per aver utilizzato Wazuh.
+    Si prega di non dubitare a contattarci se avete bisogno di aiuto o di
+    trovare qualsiasi bug.
 
-    Puoi trovare ulteriori informazioni all'indirizzo http://www.ossec.net
+    Utilizza la nostra Mailing List pubblico presso:
+              https://groups.google.com/forum/#!forum/wazuh
 
-    ---  Premi ENTER per terminare ---
-    
+    Maggiori informazioni sono disponibili all'indirizzo:
+               - http://www.wazuh.com
+               - http://www.ossec.net
+
+      --- Premere ENTER per finire (forse di più informazioni qui di seguito). ---

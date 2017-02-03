@@ -17,21 +17,22 @@
 /* Prototypes */
 static void helpmsg(void) __attribute__((noreturn));
 
-
 static void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: Control remote agents.\n", ARGV0);
+    printf("\n%s %s: Control remote agents.\n", __ossec_name, ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
     printf("\t-l          List available (active or not) agents.\n");
     printf("\t-lc         List active agents.\n");
     printf("\t-i <id>     Extracts information from an agent.\n");
-    printf("\t-R <id>     Restarts agent.\n");
+    printf("\t-R -a       Restart all agents.\n");
+    printf("\t-R -u <id>  Restart the specified agent.\n");
     printf("\t-r -a       Runs the integrity/rootkit checking on all agents now.\n");
     printf("\t-r -u <id>  Runs the integrity/rootkit checking on one agent now.\n\n");
     printf("\t-b <ip>     Blocks the specified ip address.\n");
     printf("\t-f <ar>     Used with -b, specifies which response to run.\n");
     printf("\t-L          List available active responses.\n");
+    printf("\t-m          Show the limit of agents that can be added.\n");
     printf("\t-s          Changes the output to CSV (comma delimited).\n");
 	printf("\t-j          Changes the output to JSON .\n");
     exit(1);
@@ -51,9 +52,19 @@ int main(int argc, char **argv)
     int arq = 0;
     gid_t gid;
     uid_t uid;
-    int c = 0, restart_syscheck = 0, restart_all_agents = 0, list_agents = 0;
-    int info_agent = 0, agt_id = 0, active_only = 0, csv_output = 0, json_output = 0;
-    int list_responses = 0, end_time = 0, restart_agent = 0;
+    int c = 0;
+    int restart_syscheck = 0;
+    int restart_all_agents = 0;
+    int list_agents = 0;
+    int info_agent = 0;
+    int agt_id = 0;
+    int active_only = 0;
+    int csv_output = 0;
+    int json_output = 0;
+    int list_responses = 0;
+    int end_time = 0;
+    int restart_agent = 0;
+    int show_max_agents = 0;
 
     char shost[512];
 
@@ -67,7 +78,7 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    while ((c = getopt(argc, argv, "VehdlLcsjaru:i:b:f:R:")) != -1) {
+    while ((c = getopt(argc, argv, "VehdlLcsjarmu:i:b:f:R")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -90,13 +101,16 @@ int main(int argc, char **argv)
             case 'l':
                 list_agents++;
                 break;
+            case 'm':
+                show_max_agents++;
+                break;
             case 's':
                 csv_output = 1;
-				json_output = 0;
+                json_output = 0;
                 break;
-			case 'j':
+            case 'j':
                 json_output = 1;
-				csv_output = 0;
+                csv_output = 0;
                 break;
             case 'c':
                 active_only++;
@@ -126,11 +140,6 @@ int main(int argc, char **argv)
                 ar = optarg;
                 break;
             case 'R':
-                if (!optarg) {
-                    merror("%s: -R needs an argument", ARGV0);
-                    helpmsg();
-                }
-                agent_id = optarg;
                 restart_agent = 1;
                 break;
             case 'a':
@@ -183,7 +192,7 @@ int main(int argc, char **argv)
     if (list_responses) {
         FILE *fp;
         if (!csv_output && !json_output) {
-            printf("\nOSSEC HIDS %s. Available active responses:\n", ARGV0);
+            printf("\n%s %s. Available active responses:\n", __ossec_name, ARGV0);
         }
 
         fp = fopen(DEFAULTAR, "r");
@@ -233,17 +242,15 @@ int main(int argc, char **argv)
 
     /* List available agents */
     if (list_agents) {
-        cJSON *root = NULL;
         cJSON *agents = NULL;
 
         if (!csv_output && !json_output) {
-            printf("\nOSSEC HIDS %s. List of available agents:",
-                   ARGV0);
+            printf("\n%s %s. List of available agents:",
+                   __ossec_name, ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n",
                    shost);
-		} else if(json_output){
+        } else if(json_output){
                 cJSON *first = cJSON_CreateObject();
-                root = cJSON_CreateObject();
                 agents = cJSON_CreateArray();
 
                 if (!(first && root && agents))
@@ -262,21 +269,49 @@ int main(int argc, char **argv)
         }
 
         print_agents(1, active_only, csv_output, agents);
-		// Closing JSON Object array
-		if(json_output) {
-			 char *render = cJSON_PrintUnformatted(root);
-             printf("%s", render);
-             cJSON_Delete(root);
-             free(render);
+        // Closing JSON Object array
+        if(json_output) {
+            char *render = cJSON_PrintUnformatted(root);
+            printf("%s", render);
+            cJSON_Delete(root);
+            free(render);
         } else
-			printf("\n");
+            printf("\n");
+        exit(0);
+    }
+
+    /* Show limit of agents */
+
+    if (show_max_agents) {
+        if (json_output) {
+            cJSON *data = cJSON_CreateObject();
+
+            if (!(root && data)) {
+                exit(1);
+            }
+
+            cJSON_AddNumberToObject(data, "max_agents", MAX_AGENTS);
+            cJSON_AddNumberToObject(root, "error", 0);
+            cJSON_AddItemToObject(root, "data", data);
+
+            char *render = cJSON_PrintUnformatted(root);
+            printf("%s", render);
+            cJSON_Delete(root);
+            free(render);
+        } else if (csv_output) {
+            printf("%d\n", MAX_AGENTS);
+        } else {
+            printf("Limit of agents: %d\n", MAX_AGENTS);
+        }
+
         exit(0);
     }
 
     /* Check if the provided ID is valid */
     if (agent_id != NULL) {
         if (strcmp(agent_id, "000") != 0) {
-            OS_ReadKeys(&keys);
+            OS_PassEmptyKeyfile();
+            OS_ReadKeys(&keys, 1);
 
             agt_id = OS_IsAllowedID(&keys, agent_id);
             if (agt_id < 0) {
@@ -308,7 +343,7 @@ int main(int argc, char **argv)
         cJSON *json_data = cJSON_CreateObject();
 
         if (!csv_output && !json_output) {
-            printf("\nOSSEC HIDS %s. Agent information:", ARGV0);
+            printf("\n%s %s. Agent information:", __ossec_name, ARGV0);
         }
 
         if (agt_id != -1) {
@@ -402,6 +437,9 @@ int main(int argc, char **argv)
 
     /* Restart syscheck everywhere */
     if (restart_all_agents && restart_syscheck) {
+        /* Restart agent 000 */
+        os_set_restart_syscheck();
+
         /* Connect to remoted */
         debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
         arq = connect_to_remoted();
@@ -426,7 +464,7 @@ int main(int argc, char **argv)
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
-                printf("\nOSSEC HIDS %s: Restarting Syscheck/Rootcheck on all agents.",ARGV0);
+                printf("\n%s %s: Restarting Syscheck/Rootcheck on all agents.", __ossec_name, ARGV0);
             }
         } else {
             if(json_output){
@@ -453,7 +491,7 @@ int main(int argc, char **argv)
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
-                printf("\nOSSEC HIDS %s: Restarting Syscheck/Rootcheck ""locally.\n", ARGV0);
+                printf("\n%s %s: Restarting Syscheck/Rootcheck ""locally.\n", __ossec_name, ARGV0);
             }
             exit(0);
         }
@@ -481,7 +519,7 @@ int main(int argc, char **argv)
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             }else{
-                printf("\nOSSEC HIDS %s: Restarting Syscheck/Rootcheck on agent: %s\n",ARGV0, agent_id);
+                printf("\n%s %s: Restarting Syscheck/Rootcheck on agent: %s\n",__ossec_name, ARGV0, agent_id);
             }
         } else {
             if(json_output){
@@ -498,14 +536,26 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    if (restart_agent && agent_id) {
+    if (restart_agent) {
+        if (!(agent_id || restart_all_agents)) {
+            if (json_output) {
+                cJSON_AddNumberToObject(root, "error", 45);
+                cJSON_AddStringToObject(root, "message", "Agent not specified");
+                printf("%s",cJSON_PrintUnformatted(root));
+                cJSON_Delete(root);
+            } else {
+                printf("\n** Agent not specified.\n");
+            }
+
+            exit(1);
+        }
 
         /* Connect to remoted */
         debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
         arq = connect_to_remoted();
         if (arq < 0) {
             if(json_output){
-                cJSON_AddNumberToObject(root, "error", 45);
+                cJSON_AddNumberToObject(root, "error", 43);
                 cJSON_AddStringToObject(root, "message", "Unable to connect to remoted");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
@@ -516,14 +566,14 @@ int main(int argc, char **argv)
         }
         debug1("%s: DEBUG: Connected...", ARGV0);
 
-        if (send_msg_to_agent(arq, "restart-ossec0", agent_id, "null") == 0) {
+        if (send_msg_to_agent(arq, "restart-ossec0", restart_all_agents ? NULL : agent_id, "null") == 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 0);
-                cJSON_AddStringToObject(root, "data", "Restarting agent");
+                cJSON_AddStringToObject(root, "data", restart_all_agents ? "Restarting all agents" : "Restarting agent");
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
-            }else{
-                printf("\nOSSEC HIDS %s: Restarting agent: %s\n",ARGV0, agent_id);
+            } else {
+                printf("\n%s %s: Restarting agent: %s\n", __ossec_name, ARGV0, restart_all_agents ? "(all)" : agent_id);
             }
         } else {
             if(json_output){
@@ -541,7 +591,7 @@ int main(int argc, char **argv)
     }
 
     /* Run active response on the specified agent id */
-    if (ip_address && ar && agent_id) {
+    if (ip_address && ar && (agent_id || restart_all_agents)) {
         /* Connect to remoted */
         debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
         arq = connect_to_remoted();
@@ -552,10 +602,20 @@ int main(int argc, char **argv)
         debug1("%s: DEBUG: Connected...", ARGV0);
 
         if (send_msg_to_agent(arq, ar, agent_id, ip_address) == 0) {
-            printf("\nOSSEC HIDS %s: Running active response '%s' on: %s\n",
-                   ARGV0, ar, agent_id);
+            printf("\n%s %s: Running active response '%s' on: %s\n",
+                   __ossec_name, ARGV0, ar, agent_id ? agent_id : "all");
         } else {
-            printf("\n** Unable to restart syscheck on agent: %s\n", agent_id);
+            if (json_output) {
+                cJSON_AddNumberToObject(root, "error", 47);
+                cJSON_AddStringToObject(root, "message", "Unable to run active response");
+                printf("%s",cJSON_PrintUnformatted(root));
+                cJSON_Delete(root);
+            } else if (agent_id) {
+                printf("\n** Unable to run active response on all agents.\n");
+            } else {
+                printf("\n** Unable to run active response on agent: %s\n", agent_id);
+            }
+
             exit(1);
         }
 

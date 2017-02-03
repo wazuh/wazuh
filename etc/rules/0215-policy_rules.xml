@@ -1,0 +1,23 @@
+<!--
+  -  Policy rules
+  -  Author: Daniel Cid.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="policy_violation,">
+  <rule id="17101" level="9">
+    <if_group>authentication_success</if_group>
+    <time>6 pm - 8:30 am</time>
+    <description>Successful login during non-business hours.</description>
+    <group>login_time,pci_dss_10.2.5,pci_dss_10.6.1,</group>
+  </rule>
+
+  <rule id="17102" level="9">
+    <if_group>authentication_success</if_group>
+    <weekday>weekends</weekday>
+    <description>Successful login during weekend.</description>
+    <group>login_day,pci_dss_10.2.5,pci_dss_10.6.1,</group>
+  </rule>
+</group>

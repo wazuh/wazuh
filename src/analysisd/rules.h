@@ -17,18 +17,20 @@
 #include "lists.h"
 
 /* Event context  - stored on a uint8 */
-#define SAME_USER       0x001 /* 1   */
-#define SAME_SRCIP      0x002 /* 2   */
-#define SAME_ID         0x004 /* 4   */
-#define SAME_LOCATION   0x008 /* 8   */
-#define DIFFERENT_URL   0x010 /* */
-#define SAME_SRCPORT    0x020
-#define SAME_DSTPORT    0x040
-#define SAME_DODIFF     0x100
-#define NOT_SAME_USER   0xffe /* 0xfff - 0x001  */
-#define NOT_SAME_SRCIP  0xffd /* 0xfff - 0x002  */
-#define NOT_SAME_ID     0xffb /* 0xfff - 0x004  */
-#define NOT_SAME_AGENT  0xff7 /* 0xfff - 0x008 */
+#define SAME_USER           0x001 /* 1   */
+#define SAME_SRCIP          0x002 /* 2   */
+#define SAME_ID             0x004 /* 4   */
+#define SAME_LOCATION       0x008 /* 8   */
+#define DIFFERENT_URL       0x010 /* */
+#define DIFFERENT_SRCIP     0x200
+#define DIFFERENT_SRCGEOIP  0x400
+#define SAME_SRCPORT        0x020
+#define SAME_DSTPORT        0x040
+#define SAME_DODIFF         0x100
+#define NOT_SAME_USER       0xffe /* 0xfff - 0x001  */
+#define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002  */
+#define NOT_SAME_ID         0xffb /* 0xfff - 0x004  */
+#define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
 
 /* Alert options  - store on a uint8 */
 #define DO_FTS          0x001
@@ -53,6 +55,7 @@
 #define RULE_PROGRAM_NAME 512
 #define RULE_STATUS     1024
 #define RULE_ACTION     2048
+#define RULE_DYNAMIC    4096
 
 #define RULEINFODETAIL_TEXT     0
 #define RULEINFODETAIL_LINK     1
@@ -68,6 +71,11 @@ typedef struct _RuleInfoDetail {
     struct _RuleInfoDetail *next;
 } RuleInfoDetail;
 
+typedef struct _FieldInfo {
+    char *name;
+    OSRegex *regex;
+} FieldInfo;
+
 typedef struct _RuleInfo {
     int sigid;  /* id attribute -- required*/
     int level;  /* level attribute --required */
@@ -82,6 +90,8 @@ typedef struct _RuleInfo {
     int ignore_time;
     int ignore;
     int ckignore;
+    char **ignore_fields;
+    char **ckignore_fields;
     unsigned int group_prev_matched_sz;
 
     int __frequency;
@@ -128,6 +138,8 @@ typedef struct _RuleInfo {
 
     os_ip **srcip;
     os_ip **dstip;
+    OSMatch *srcgeoip;
+    OSMatch *dstgeoip;
     OSMatch *srcport;
     OSMatch *dstport;
     OSMatch *user;
@@ -137,6 +149,7 @@ typedef struct _RuleInfo {
     OSMatch *hostname;
     OSMatch *program_name;
     OSMatch *extra_data;
+    FieldInfo **fields;
     char *action;
 
     char *comment; /* description in the xml */
@@ -235,4 +248,3 @@ int _setlevels(RuleNode *node, int nnode);
 extern int _max_freq;
 
 #endif /* _OS_RULES */
-

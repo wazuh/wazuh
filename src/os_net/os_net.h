@@ -11,9 +11,15 @@
  * APIs for many network operations
  */
 
+
 #ifndef __OS_NET_H
 #define __OS_NET_H
-
+#if defined(_WIN32) || defined(__sun__)
+#include <stdint.h>
+typedef uint8_t u_int8_t;
+typedef uint16_t u_int16_t;
+typedef uint32_t u_int32_t;
+#endif
 /* OS_Bindport*
  * Bind a specific port (protocol and a ip).
  * If the IP is not set, it is going to use ADDR_ANY
@@ -73,6 +79,11 @@ char *OS_GetHost(const char *host, unsigned int attempts);
  * Returns 0 on success, else -1 or SOCKET_ERROR
  */
 int OS_CloseSocket(int socket);
+
+/* Set the receiving timeout for a socket
+ * Returns 0 on succes, else -1
+ */
+int OS_SetRecvTimeout(int socket, int seconds);
 
 #endif /* __OS_NET_H */
 

@@ -293,3 +293,29 @@ void *OSHash_Delete(OSHash *self, const char *key)
 
     return NULL;
 }
+
+OSHash *OSHash_Duplicate(const OSHash *hash) {
+    OSHash *self;
+    unsigned int i;
+    OSHashNode *curr_node;
+    OSHashNode **next_addr;
+
+    os_calloc(1, sizeof(OSHash), self);
+    self->rows = hash->rows;
+    self->initial_seed = hash->initial_seed;
+    self->constant = hash->constant;
+    os_calloc(self->rows + 1, sizeof(OSHashNode*), self->table);
+
+    for (i = 0; i <= self->rows; i++) {
+        next_addr = &self->table[i];
+
+        for (curr_node = hash->table[i]; curr_node; curr_node = curr_node->next) {
+            os_calloc(1, sizeof(OSHashNode), *next_addr);
+            (*next_addr)->key = strdup(curr_node->key);
+            (*next_addr)->data = curr_node->data;
+            next_addr = &(*next_addr)->next;
+        }
+    }
+
+    return self;
+}

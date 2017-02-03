@@ -18,6 +18,7 @@ int full_output;
 int alert_only;
 #endif
 
+#define OS_COMMENT_MAX 1024
 
 /* Search last times a signature fired
  * Will look for only that specific signature.
@@ -52,13 +53,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
             return (NULL);
         }
 
-        /* We avoid multiple triggers for the same rule
-         * or rules with a lower level.
-         */
-        else if (lf->matched >= rule->level) {
-            return (NULL);
-        }
-
         /* Check for same ID */
         if (rule->context_opts & SAME_ID) {
             if ((!lf->id) || (!my_lf->id)) {
@@ -133,7 +127,27 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
                     continue;
                 }
             }
+
+            /* Check for different from same srcgeoip */
+            if (rule->context_opts & DIFFERENT_SRCGEOIP) {
+
+                if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
+                    continue;
+                }
+
+                if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                    continue;
+                }
+            }
         }
+
+        /* We avoid multiple triggers for the same rule
+         * or rules with a lower level.
+         */
+        else if (lf->matched >= rule->level) {
+            return (NULL);
+        }
+
 
         /* Check if the number of matches worked */
         if (rule->__frequency <= 10) {
@@ -148,7 +162,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
             continue;
         }
         rule->__frequency++;
-
 
         /* If reached here, we matched */
         my_lf->matched = rule->level;
@@ -168,7 +181,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
 Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
 {
     Eventinfo *lf;
-    Eventinfo *first_lf;
     OSListNode *lf_node;
 
     /* Set frequency to 0 */
@@ -185,20 +197,12 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
     if (!lf_node) {
         return (NULL);
     }
-    first_lf = (Eventinfo *)lf_node->data;
 
     do {
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
         if ((c_time - lf->time) > rule->timeframe) {
-            return (NULL);
-        }
-
-        /* We avoid multiple triggers for the same rule
-         * or rules with a lower level.
-         */
-        else if (lf->matched >= rule->level) {
             return (NULL);
         }
 
@@ -266,7 +270,6 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
                 }
             }
 
-
             /* Check for different URLs */
             if (rule->context_opts & DIFFERENT_URL) {
                 if ((!lf->url) || (!my_lf->url)) {
@@ -278,6 +281,24 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
                 }
             }
 
+            /* Check for different from same srcgeoip */
+            if (rule->context_opts & DIFFERENT_SRCGEOIP) {
+
+                if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
+                    continue;
+                }
+
+                if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                    continue;
+                }
+            }
+        }
+
+        /* We avoid multiple triggers for the same rule
+         * or rules with a lower level.
+         */
+        else if (lf->matched >= rule->level) {
+            return (NULL);
         }
 
         /* Check if the number of matches worked */
@@ -293,14 +314,11 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
             continue;
         }
 
-
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
-        first_lf->matched = rule->level;
 
         return (lf);
-
 
     } while ((lf_node = lf_node->prev) != NULL);
 
@@ -315,9 +333,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
 {
     EventNode *eventnode_pt;
     Eventinfo *lf;
-    Eventinfo *first_lf;
-
-    merror("XXXX : remove me!");
 
     /* Last events */
     eventnode_pt = OS_GetLastEvent();
@@ -328,7 +343,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
 
     /* Set frequency to 0 */
     rule->__frequency = 0;
-    first_lf = (Eventinfo *)eventnode_pt->event;
 
     /* Search all previous events */
     do {
@@ -336,13 +350,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
 
         /* If time is outside the timeframe, return */
         if ((c_time - lf->time) > rule->timeframe) {
-            return (NULL);
-        }
-
-        /* We avoid multiple triggers for the same rule
-         * or rules with a lower level.
-         */
-        else if (lf->matched >= rule->level) {
             return (NULL);
         }
 
@@ -403,6 +410,24 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
             }
         }
 
+        /* Check for different from same srcgeoip */
+        if (rule->context_opts & DIFFERENT_SRCGEOIP) {
+
+            if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
+                continue;
+            }
+
+            if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
+                continue;
+            }
+        }
+
+        /* We avoid multiple triggers for the same rule
+         * or rules with a lower level.
+         */
+        else if (lf->matched >= rule->level) {
+            return (NULL);
+        }
 
         /* Check if the number of matches worked */
         if (rule->__frequency < rule->frequency) {
@@ -420,7 +445,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
-        first_lf->matched = rule->level;
 
         return (lf);
 
@@ -434,12 +458,16 @@ void Zero_Eventinfo(Eventinfo *lf)
 {
     lf->log = NULL;
     lf->full_log = NULL;
+    lf->agent_id = NULL;
     lf->hostname = NULL;
     lf->program_name = NULL;
     lf->location = NULL;
+    lf->comment = NULL;
 
     lf->srcip = NULL;
+    lf->srcgeoip = NULL;
     lf->dstip = NULL;
+    lf->dstgeoip = NULL;
     lf->srcport = NULL;
     lf->dstport = NULL;
     lf->protocol = NULL;
@@ -452,6 +480,16 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->url = NULL;
     lf->data = NULL;
     lf->systemname = NULL;
+
+    if (lf->fields) {
+        int i;
+        for (i = 0; i < lf->nfields; i++)
+            free(lf->fields[i].value);
+
+        memset(lf->fields, 0, sizeof(DynamicField) * Config.decoder_order_size);
+    }
+
+    lf->nfields = 0;
 
     lf->time = 0;
     lf->matched = 0;
@@ -478,6 +516,16 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->owner_after = NULL;
     lf->gowner_before = NULL;
     lf->gowner_after = NULL;
+    lf->uname_before = NULL;
+    lf->uname_after = NULL;
+    lf->gname_before = NULL;
+    lf->gname_after = NULL;
+    lf->mtime_before = 0;
+    lf->mtime_after = 0;
+    lf->inode_before = 0;
+    lf->inode_after = 0;
+    lf->diff = NULL;
+    lf->previous = NULL;
 
     return;
 }
@@ -490,9 +538,17 @@ void Free_Eventinfo(Eventinfo *lf)
         return;
     }
 
+    if (lf->comment)
+        free(lf->comment);
+
     if (lf->full_log) {
         free(lf->full_log);
     }
+
+    if (lf->agent_id) {
+        free(lf->agent_id);
+    }
+
     if (lf->location) {
         free(lf->location);
     }
@@ -500,9 +556,21 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->srcip) {
         free(lf->srcip);
     }
+
+    if(lf->srcgeoip) {
+        free(lf->srcgeoip);
+        lf->srcgeoip = NULL;
+    }
+
     if (lf->dstip) {
         free(lf->dstip);
     }
+
+    if(lf->dstgeoip) {
+        free(lf->dstgeoip);
+        lf->dstgeoip = NULL;
+    }
+
     if (lf->srcport) {
         free(lf->srcport);
     }
@@ -541,6 +609,14 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->systemname);
     }
 
+    if (lf->fields) {
+        int i;
+        for (i = 0; i < lf->nfields; i++)
+            free(lf->fields[i].value);
+
+        free(lf->fields);
+    }
+
     if (lf->filename) {
         free(lf->filename);
     }
@@ -574,6 +650,21 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->gowner_after) {
         free(lf->gowner_after);
     }
+    if (lf->uname_before) {
+        free(lf->uname_before);
+    }
+    if (lf->uname_after) {
+        free(lf->uname_after);
+    }
+    if (lf->gname_before) {
+        free(lf->gname_before);
+    }
+    if (lf->gname_after) {
+        free(lf->gname_after);
+    }
+    if (lf->diff) {
+        free(lf->diff);
+    }
 
     /* Free node to delete */
     if (lf->sid_node_to_delete) {
@@ -598,3 +689,60 @@ void Free_Eventinfo(Eventinfo *lf)
     return;
 }
 
+/* Parse rule comment with dynamic fields */
+char* ParseRuleComment(Eventinfo *lf) {
+    static char final[OS_COMMENT_MAX + 1] = { '\0' };
+    char orig[OS_COMMENT_MAX + 1] = { '\0' };
+    const char *field;
+    char *str;
+    char *var;
+    char *end;
+    char *tok;
+    size_t n = 0;
+    size_t z;
+
+    strncpy(orig, lf->generated_rule->comment, OS_COMMENT_MAX);
+
+    for (str = orig; (tok = strstr(str, "$(")); str = end) {
+        *tok = '\0';
+        var = tok + 2;
+
+        if (n + (z = strlen(str)) >= OS_COMMENT_MAX)
+            return strdup(lf->generated_rule->comment);
+
+        strncpy(&final[n], str, z);
+        n += z;
+
+        if (!(end = strchr(var, ')'))) {
+            *tok = '$';
+            str = tok;
+            break;
+        }
+
+        *(end++) = '\0';
+
+        if ((field = FindField(lf, var))) {
+            if (n + (z = strlen(field)) >= OS_COMMENT_MAX)
+                return strdup(lf->generated_rule->comment);
+
+            strncpy(&final[n], field, z);
+            n += z;
+        } else {
+            *tok = '$';
+
+            if (n + (z = strlen(tok)) + 1 >= OS_COMMENT_MAX)
+                return strdup(lf->generated_rule->comment);
+
+            strncpy(&final[n], tok, z);
+            n += z;
+            final[n++] = ')';
+        }
+    }
+
+    if (n + (z = strlen(str)) >= OS_COMMENT_MAX)
+        return strdup(lf->generated_rule->comment);
+
+    strncpy(&final[n], str, z);
+    final[n + z] = '\0';
+    return strdup(final);
+}

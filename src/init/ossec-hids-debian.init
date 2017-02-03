@@ -1,5 +1,5 @@
 #!/bin/sh
-# OSSEC         Controls OSSEC HIDS
+# OSSEC         Controls Wazuh
 # Author:       Daniel B. Cid <dcid@ossec.net>
 # Modified for Debian by Michael Starks (patch by Costas Drogos)
 
@@ -11,8 +11,8 @@
 # Should-Stop:       $network
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Start and stop OSSEC HIDS
-# Description:       Controls OSSEC HIDS daemons
+# Short-Description: Start and stop Wazuh
+# Description:       Controls Wazuh daemons
 #
 ### END INIT INFO
 

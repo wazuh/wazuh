@@ -18,10 +18,12 @@ if [ $? = 0 ]; then
 . ${PLIST};
 fi
 
-NAME="OSSEC HIDS"
-VERSION="v2.8"
-AUTHOR="Trend Micro Inc."
-DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
+NAME="Wazuh"
+VERSION="v2.0"
+AUTHOR="Wazuh Inc."
+DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
+
+[ -f /etc/ossec-init.conf ] && . /etc/ossec-init.conf;
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -35,7 +37,7 @@ MAX_ITERATION="10"
 checkpid() {
     for i in ${DAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
                 rm ${DIR}/var/run/${i}-${j}.pid
@@ -182,9 +184,9 @@ testconfig()
 
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
+    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
 
-    echo "Starting $NAME $VERSION (by $AUTHOR)..."
+    echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
         echo "ossec-analysisd: Configuration error. Exiting."
@@ -237,7 +239,7 @@ pstatus()
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
-            ps -p $j |grep ossec >/dev/null 2>&1
+            ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "${pfile}: Process $j not used by ossec, removing .."
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
@@ -311,4 +313,3 @@ disable)
 *)
     help
 esac
-

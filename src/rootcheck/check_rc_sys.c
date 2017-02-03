@@ -148,6 +148,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
     struct dirent *entry;
     struct stat statbuf;
     short is_nfs;
+    short skip_fs;
 
 #ifndef WIN32
     const char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
@@ -287,6 +288,15 @@ static int read_sys_dir(const char *dir_name, int do_read)
         }
 
         read_sys_file(f_name, do_read);
+    }
+
+    /* skip further test because the FS cant deliver the stats (btrfs link count always is 1) */
+    skip_fs = skipFS(dir_name);
+    if(skip_fs != 0)
+    {
+        // Error will be -1, and 1 means skipped
+        closedir(dp);
+        return(0);
     }
 
     /* Entry count for directory different than the actual

@@ -38,7 +38,10 @@ int delete_syscheck(const char *sk_name, const char *sk_ip, int full_delete) __a
 int delete_rootcheck(const char *sk_name, const char *sk_ip, int full_delete) __attribute__((nonnull));
 
 /* Delete agent information */
-int delete_agentinfo(const char *name) __attribute__((nonnull));
+int delete_agentinfo(const char *id, const char *name) __attribute__((nonnull));
+
+/* Delete agent SQLite db */
+void delete_sqlite(const char *id, const char *name);
 
 /* Get all available agents */
 char **get_agents(int flag);
@@ -59,6 +62,13 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip) __attri
  * Returns the socket on success or -1 on failure
  */
 int connect_to_remoted(void);
+
+#ifndef WIN32
+/* Return the unix permission string
+ * Returns a pointer to a local static array
+ */
+const char *agent_file_perm(mode_t mode);
+#endif
 
 /* Sends a message to an agent
  * Returns -1 on error

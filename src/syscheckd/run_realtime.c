@@ -58,10 +58,6 @@ int realtime_checksumfile(const char *file_name)
             char alert_msg[OS_MAXSTR + 1];
 
             alert_msg[OS_MAXSTR] = '\0';
-
-            #ifdef WIN32
-            snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
-            #else
             char *fullalert = NULL;
 
             if (buf[5] == 's' || buf[5] == 'n') {
@@ -76,13 +72,38 @@ int realtime_checksumfile(const char *file_name)
             } else {
                 snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
             }
-            #endif
             send_syscheck_msg(alert_msg);
 
             return (1);
         }
         return (0);
+    } else {
+        /* New file */
+        char *c;
+        int i;
+        buf = strdup(file_name);
+
+        /* Find container directory */
+
+        while (c = strrchr(buf, '/'), c && c != buf) {
+            *c = '\0';
+
+            for (i = 0; syscheck.dir[i]; i++) {
+                if (strcmp(syscheck.dir[i], buf) == 0) {
+                    debug1("%s: DEBUG: Scanning new file '%s' with options for directory '%s'.", ARGV0, file_name, buf);
+                    read_dir(file_name, syscheck.opts[i], syscheck.filerestrict[i]);
+                    break;
+                }
+            }
+
+            if (syscheck.dir[i]) {
+                break;
+            }
+        }
+
+        free(buf);
     }
+
     return (0);
 }
 
@@ -96,7 +117,7 @@ int realtime_checksumfile(const char *file_name)
 /* Start real time monitoring using inotify */
 int realtime_start()
 {
-    verbose("%s: INFO: Initializing real time file monitoring (not started).", ARGV0);
+    verbose("%s: INFO: Initializing real time file monitoring engine.", ARGV0);
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if (syscheck.realtime == NULL) {
@@ -289,7 +310,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
 int realtime_start()
 {
-    verbose("%s: INFO: Initializing real time file monitoring (not started).", ARGV0);
+    verbose("%s: INFO: Initializing real time file monitoring engine.", ARGV0);
 
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
     syscheck.realtime->dirtb = (void *)OSHash_Create();
@@ -401,4 +422,3 @@ int realtime_process()
 }
 
 #endif /* WIN32 */
-

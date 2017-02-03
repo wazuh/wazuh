@@ -154,7 +154,7 @@ int main(int argc, char **argv)
 
     /* Create the PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        merror(PID_ERROR, ARGV0);
+        ErrorExit(PID_ERROR, ARGV0);
     }
 
     /* Start exec queue */
@@ -533,4 +533,3 @@ static void ExecdStart(int q)
 }
 
 #endif /* !WIN32 */
-

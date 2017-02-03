@@ -9,6 +9,7 @@
 
 #include "addagent/manage_agents.h"
 #include "sec.h"
+#include "wazuh_db/wdb.h"
 
 #undef ARGV0
 #define ARGV0 "syscheck_update"
@@ -19,7 +20,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: Updates (clears) the integrity check database.\n", ARGV0);
+    printf("\n%s %s: Updates (clears) the integrity check database.\n", __ossec_name, ARGV0);
     printf("Available options:\n");
     printf("\t-h       This help message.\n");
     printf("\t-l       List available agents.\n");
@@ -74,8 +75,8 @@ int main(int argc, char **argv)
     if (strcmp(argv[1], "-h") == 0) {
         helpmsg();
     } else if (strcmp(argv[1], "-l") == 0) {
-        printf("\nOSSEC HIDS %s: Updates the integrity check database.",
-               ARGV0);
+        printf("\n%s %s: Updates the integrity check database.",
+               __ossec_name, ARGV0);
         print_agents(0, 0, 0, 0);
         printf("\n");
         exit(0);
@@ -115,6 +116,8 @@ int main(int argc, char **argv)
         }
 
         closedir(sys_dir);
+        wdb_delete_fim_all();
+
         printf("\n** Integrity check database updated.\n\n");
         exit(0);
     } else {
@@ -142,6 +145,8 @@ int main(int argc, char **argv)
             fclose(fp);
         }
         /* unlink(final_dir); */
+
+        wdb_delete_fim(0);
     }
 
     /* External agents */
@@ -149,7 +154,7 @@ int main(int argc, char **argv)
         int i;
         keystore keys;
 
-        OS_ReadKeys(&keys);
+        OS_ReadKeys(&keys, 1);
 
         i = OS_IsAllowedID(&keys, argv[2]);
         if (i < 0) {
@@ -159,9 +164,9 @@ int main(int argc, char **argv)
 
         /* Delete syscheck */
         delete_syscheck(keys.keyentries[i]->name, keys.keyentries[i]->ip->ip, 0);
+        wdb_delete_fim(atoi(keys.keyentries[i]->id));
     }
 
     printf("\n** Integrity check database updated.\n\n");
     return (0);
 }
-

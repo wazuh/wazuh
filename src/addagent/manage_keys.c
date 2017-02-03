@@ -58,10 +58,9 @@ int k_import(const char *cmdimport)
 
     char line_read[FILE_SIZE + 1];
 
-    char auth_file_tmp[] = AUTH_FILE;
-    char *keys_file = basename_ex(auth_file_tmp);
+    char *keys_file = basename_ex(AUTH_FILE);
 
-    char tmp_path[strlen(TMP_DIR) + 1 + strlen(keys_file) + 6 + 1];
+    char tmp_path[PATH_MAX];
 
     snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, keys_file);
 
@@ -128,7 +127,7 @@ int k_import(const char *cmdimport)
                     }
 
 #ifndef WIN32
-                    if (chmod(tmp_path, 0440) == -1) {
+                    if (chmod(tmp_path, 0640) == -1) {
                         if (unlink(tmp_path)) {
                             verbose(DELETE_ERROR, ARGV0, tmp_path, errno, strerror(errno));
                         }
@@ -160,8 +159,6 @@ int k_import(const char *cmdimport)
                     OS_RemoveCounter("sender");
 
                     printf(ADDED);
-                    printf(PRESS_ENTER);
-                    read_from_user();
                     restart_necessary = 1;
 
                     free(b64_dec);
@@ -188,7 +185,7 @@ int k_import(const char *cmdimport)
 int k_extract(const char *cmdextract, int json_output)
 {
     FILE *fp;
-    const char *user_input;
+    char *user_input;
     char *b64_enc;
     char line_read[FILE_SIZE + 1];
     char n_id[USER_SIZE + 1];
@@ -198,9 +195,10 @@ int k_extract(const char *cmdextract, int json_output)
         json_root = cJSON_CreateObject();
 
     if (cmdextract) {
-        user_input = cmdextract;
+        user_input = strdup(cmdextract);
+        FormatID(user_input);
 
-        if (!IDExist(user_input)) {
+        if (!IDExist(user_input, 1)) {
             if (json_output) {
                 char buffer[1024];
                 snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", user_input);
@@ -220,7 +218,7 @@ int k_extract(const char *cmdextract, int json_output)
             return (0);
         }
 
-        do {
+        while (1) {
             printf(EXTRACT_KEY);
             fflush(stdout);
             user_input = read_from_user();
@@ -230,11 +228,13 @@ int k_extract(const char *cmdextract, int json_output)
                 return (0);
             }
 
-            if (!IDExist(user_input)) {
-                printf(NO_ID, user_input);
-            }
+            FormatID(user_input);
 
-        } while (!IDExist(user_input));
+            if (IDExist(user_input, 1)) {
+                break;
+            } else
+                printf(NO_ID, user_input);
+        }
     }
 
     /* Try to open the auth file */
@@ -253,7 +253,7 @@ int k_extract(const char *cmdextract, int json_output)
 
     if (fsetpos(fp, &fp_pos)) {
         if (json_output) {
-            cJSON_AddNumberToObject(json_root, "error", 72);
+            cJSON_AddNumberToObject(json_root, "error", 71);
             cJSON_AddStringToObject(json_root, "message", "Can not set fileposition");
             printf("%s", cJSON_PrintUnformatted(json_root));
         } else
@@ -326,6 +326,10 @@ int k_bulkload(const char *cmdbulk)
     char delims[] = AGENT_FILE_DELIMS;
     char *token = NULL;
 
+    if (check_authd()) {
+        ErrorExit("%s: ERROR: ossec-authd is running", ARGV0);
+    }
+
     /* Check if we can open the input file */
     printf("Opening: [%s]\n", cmdbulk);
     infp = fopen(cmdbulk, "r");
@@ -362,7 +366,7 @@ int k_bulkload(const char *cmdbulk)
         strncpy(name, trimwhitespace(token), FILE_SIZE - 1);
 
 #ifndef WIN32
-        if (chmod(AUTH_FILE, 0440) == -1) {
+        if (chmod(AUTH_FILE, 0640) == -1) {
             ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
         }
 #endif
@@ -397,7 +401,7 @@ int k_bulkload(const char *cmdbulk)
         /* Default ID */
         i = MAX_AGENTS + 32512;
         snprintf(id, 8, "%03d", i);
-        while (!IDExist(id)) {
+        while (!IDExist(id, 0)) {
             i--;
             snprintf(id, 8, "%03d", i);
 
@@ -415,7 +419,7 @@ int k_bulkload(const char *cmdbulk)
         }
 
         /* Search for ID KEY  -- no duplicates */
-        if (IDExist(id)) {
+        if (IDExist(id, 0)) {
             printf(NO_DEFAULT, i + 1);
             goto cleanup;
         }
@@ -431,7 +435,7 @@ int k_bulkload(const char *cmdbulk)
             ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
         }
 #ifndef WIN32
-        if (chmod(AUTH_FILE, 0440) == -1) {
+        if (chmod(AUTH_FILE, 0640) == -1) {
             ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
         }
 #endif

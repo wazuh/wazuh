@@ -10,9 +10,9 @@ help="pomoć"
 
 # Global
 moreinfo="Vise informacija na: "
-starting="Zapocinje OSSEC HIDS"
+starting="Zapocinje Wazuh"
 systemis="Sistem je"
-modifiedinit="Init skript je modifikovan da započne OSSEC HIDS za vreme startovanja ."
+modifiedinit="Init skript je modifikovan da započne Wazuh za vreme startovanja ."
 noboot="Nepoznat sistem. Init skript nije dodat."
 
 # Part 1
@@ -28,7 +28,7 @@ localchose="Izabrana lokalna instalacija"
 
 # Part 2
 settingupenv="Postavljanje instalacionog okruženja"
-wheretoinstall="Izaberi gde želiš da instaliraš OSSEC HIDS"
+wheretoinstall="Izaberi gde želiš da instaliraš Wazuh"
 installat="Instalacija će biti izvršena na "
 deletedir="Instalacioni direktorij već postoji. Da li da ga obrišem?"
 
@@ -43,8 +43,8 @@ usingsmtp="Koristi SMTP server: "
 whatsmtp="Koji je tvoj SMTP server IP/host?"
 
 # Part 3.1/agent
-serverip="Koja je IP adresa OSSEC HIDS servera?"
-serveraddr="Koja je IP adresa/host OSSEC HIDS servera?"
+serverip="Koja je IP adresa Wazuh servera?"
+serveraddr="Koja je IP adresa/host Wazuh servera?"
 addingip="Dodaje serverov IP"
 addingname="Dodaje serverov hostname"
 
@@ -59,7 +59,12 @@ runrootcheck="Da li želiš da pustiš engine za otkrivanje rootkit-a?"
 norootcheck="Ne obavlja rootcheck (otkrivanje rootkit-a )"
 yesrootcheck="Obavlja rootcheck (otkrivanje rootkit-a)"
 
-# Part 3.4/server/local
+# Part 3.4
+runopenscap="Da li želiš da pustiš OpenSCAP?"
+norunopenscap="Ne obavlja OpenSCAP"
+yesrunopenscap="Obavlja OpenSCAP"
+
+# Part 3.5/server/local
 enable_ar="Da li želiš da osposobiš aktivnu reakciju?"
 noactive="Aktivna reakcija onesposobljena"
 nohosts="host-deny onesposobljen"
@@ -85,8 +90,8 @@ runningmake="Vrši Makefile"
 
 # Final
 configurationdone="Konfiguracija je dobro završena"
-tostart="Da se započne OSSEC HIDS"
-tostop="Da se zaustavi OSSEC HIDS"
+tostart="Da se započne Wazuh"
+tostop="Da se zaustavi Wazuh"
 configat="Konfiguracija se može videti ili modifikovati na"
 addserveragent="Da bi se agent povezao sa serverom, treba da dodaš svakog od tvojih agenata
 serveru."
@@ -94,13 +99,15 @@ runma="Pusti 'manage_agents' da ih dodaje ili otklanja"
 presskey="Pritisni ENTER da nastaviš"
 
 # Update
-wanttoupdate="Već imaš instaliran OSSEC. Da li želiš da ga ažuriraš?"
+wanttoupdate="Već imaš instaliran Wazuh. Da li želiš da ga ažuriraš?"
 unabletoupdate="U nemogućnosti da izvrši ažuriranje. Potrebna je potpuna nova instalacija."
 updatecompleted="Ažuriranje završeno."
 updatefailed="Ažuriranje nije uspelo."
 updaterules="Da li želiš da ažuriraš pravila?"
 updatingrules="Pravila ažuriranja."
 notupdatingrules="Ne ažurira pravila."
+update_rev_newconf1="Backup from your ossec.conf has been created at /var/ossec/etc/ossec.conf.orig"
+update_rev_newconf2="Please verify your ossec.conf configuration at /var/ossec/etc/ossec.conf"
 
 # Pf support
 pfenable="Da li želiš da koristiš PF firewall u aktivnoj reakciji?"

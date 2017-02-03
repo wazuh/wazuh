@@ -500,3 +500,9 @@ int OS_CloseSocket(int socket)
 #endif /* WIN32 */
 }
 
+int OS_SetRecvTimeout(int socket, int seconds)
+{
+    struct timeval tv = { seconds, 0 };
+    return setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
+}
+
