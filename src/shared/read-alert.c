@@ -272,6 +272,10 @@ alert_data *GetAlertData(int flag, FILE *fp)
             p = strchr(p, '-');
             if (p) {
                 p++;
+                /* Skip leading spaces */
+		while (*p == ' ') {
+                        p++;
+                }
                 free(group);
                 os_strdup(p, group);
 
