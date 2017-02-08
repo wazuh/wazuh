@@ -416,75 +416,95 @@
         },
         "oscap": {
           "properties": {
-            "check.title": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
+            "check": {
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                },
+                "id": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                },
+                "result": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                },
+                "severity": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "rationale": {
+                  "type": "string"
+                },
+                "references": {
+                  "type": "string"
+                },
+                "identifiers": {
+                  "type": "string"
+                },
+                "oval": {
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "index": "not_analyzed",
+                      "doc_values": "true"
+                    }
+                  }
+                }
+              }
             },
-            "check.id": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "check.result": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "check.severity": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "check.description": {
-              "type": "string"
-            },
-            "check.rationale": {
-              "type": "string"
-            },
-            "check.references": {
-              "type": "string"
-            },
-            "check.identifiers": {
-              "type": "string"
-            },
-            "check.oval.id": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "scan.id": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "scan.content": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "scan.benchmark.id": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "scan.profile.title": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "scan.profile.id": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "scan.score": {
-              "type": "double",
-              "doc_values": "true"
-            },
-            "scan.return_code": {
-              "type": "long",
-              "doc_values": "true"
+            "scan": {
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                },
+                "content": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                },
+                "benchmark": {
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "index": "not_analyzed",
+                      "doc_values": "true"
+                    }
+                  }
+                },
+                "profile": {
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "index": "not_analyzed",
+                      "doc_values": "true"
+                    },
+                    "id": {
+                      "type": "string",
+                      "index": "not_analyzed",
+                      "doc_values": "true"
+                    }
+                  }
+                },
+                "score": {
+                  "type": "double",
+                  "doc_values": "true"
+                },
+                "return_code": {
+                  "type": "long",
+                  "doc_values": "true"
+                }
+              }
             }
           }
         },
@@ -595,35 +615,43 @@
               "index": "not_analyzed",
               "doc_values": "true"
             },
-            "directory.name": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
+            "directory": {
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                },
+                "inode": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                },
+                "mode": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                }
+              }
             },
-            "directory.inode": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "directory.mode": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "file.name": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "file.inode": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
-            },
-            "file.mode": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": "true"
+            "file": {
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                },
+                "inode": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                },
+                "mode": {
+                  "type": "string",
+                  "index": "not_analyzed",
+                  "doc_values": "true"
+                }
+              }
             },
             "acct": {
               "type": "string",
