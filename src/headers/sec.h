@@ -12,6 +12,11 @@
 
 #include <time.h>
 
+typedef struct keystore_flags_t {
+    unsigned int rehash_keys:1;     // Flag: rehash keys on adding
+    unsigned int save_removed:1;    // Save removed keys into list
+} keystore_flags_t;
+
 /* Unique key for each agent */
 typedef struct _keyentry {
     time_t rcvd;
@@ -48,8 +53,11 @@ typedef struct _keystore {
     /* ID counter */
     int id_counter;
 
-    /* Flag: rehash keys on adding */
-    int rehash_keys;
+    keystore_flags_t flags;
+
+    /* Removed keys storage */
+    char **removed_keys;
+    size_t removed_keys_size;
 } keystore;
 
 /** Function prototypes -- key management **/
@@ -58,7 +66,7 @@ typedef struct _keystore {
 int OS_CheckKeys(void);
 
 /* Read the keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys) __attribute((nonnull));
+void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed) __attribute((nonnull));
 
 /* Free the auth keys */
 void OS_FreeKeys(keystore *keys) __attribute((nonnull));
