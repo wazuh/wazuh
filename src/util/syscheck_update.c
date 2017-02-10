@@ -154,7 +154,7 @@ int main(int argc, char **argv)
         int i;
         keystore keys;
 
-        OS_ReadKeys(&keys, 1);
+        OS_ReadKeys(&keys, 1, 0);
 
         i = OS_IsAllowedID(&keys, argv[2]);
         if (i < 0) {
