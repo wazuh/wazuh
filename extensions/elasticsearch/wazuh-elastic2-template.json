@@ -281,7 +281,7 @@
               "doc_values": "true"
             },
             "id": {
-              "type": "long",
+              "type": "string",
               "doc_values": "true"
             },
             "cve": {
