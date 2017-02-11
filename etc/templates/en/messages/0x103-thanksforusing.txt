@@ -1,7 +1,7 @@
 
    Thanks for using Wazuh.
-   Please don't doubt to contact us if you need any help or find
-   any bug.
+   Please don't hesitate to contact us if you need help or find
+   any bugs.
 
    Use our public Mailing List at:
           https://groups.google.com/forum/#!forum/wazuh
