@@ -28,6 +28,7 @@ const struct file_system_type network_file_systems[] = {
 /* List of filesystem to skip the link count test */
 const struct file_system_type skip_file_systems[] = {
     {.name="BTRFS", .f_type=0x9123683E, .flag=1},
+    {.name="AUFS", .f_type=0x61756673, .flag=1},
 
     /*  The last entry must be name=NULL */
     {.name=NULL, .f_type=0, .flag=0}

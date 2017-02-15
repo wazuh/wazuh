@@ -247,7 +247,7 @@
               "doc_values": "true"
             },
             "id": {
-              "type": "long",
+              "type": "keyword",
               "doc_values": "true"
             },
             "cve": {
