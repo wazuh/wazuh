@@ -251,7 +251,7 @@ void wm_sync_agents() {
     struct stat buffer;
 
     debug1("%s: DEBUG: Synchronizing agents.", WM_DATABASE_LOGTAG);
-    OS_ReadKeys(&keys, 0);
+    OS_ReadKeys(&keys, 0, 0);
 
     /* Insert new entries */
 

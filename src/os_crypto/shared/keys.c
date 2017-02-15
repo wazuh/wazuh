@@ -42,6 +42,11 @@ static void move_netdata(keystore *keys, const keystore *old_keys)
     }
 }
 
+static void save_removed_key(keystore *keys, const char *key) {
+    os_realloc(keys->removed_keys, (keys->removed_keys_size + 1) * sizeof(char*), keys->removed_keys);
+    keys->removed_keys[keys->removed_keys_size++] = strdup(key);
+}
+
 /* Create the final key */
 void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
 {
@@ -50,8 +55,6 @@ void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip,
 
     char *tmp_str;
     char _finalstr[KEYSIZE];
-    int id_number;
-    char *end;
 
     /* Allocate for the whole structure */
     keys->keyentries = (keyentry **)realloc(keys->keyentries,
@@ -93,7 +96,7 @@ void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip,
     keys->keyentries[keys->keysize]->global = 0;
     keys->keyentries[keys->keysize]->fp = NULL;
 
-    if (keys->rehash_keys) {
+    if (keys->flags.rehash_keys) {
         /** Generate final symmetric key **/
 
         /* MD5 from name, id and key */
@@ -125,12 +128,6 @@ void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip,
     /* Ready for next */
     keys->keysize++;
 
-    /* Update counter */
-
-    id_number = strtol(id, &end, 10);
-
-    if (!*end && id_number > keys->id_counter)
-        keys->id_counter = id_number;
 }
 
 /* Check if the authentication key file is present */
@@ -160,7 +157,7 @@ int OS_CheckKeys()
 }
 
 /* Read the authentication keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys)
+void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
 {
     FILE *fp;
 
@@ -170,6 +167,8 @@ void OS_ReadKeys(keystore *keys, int rehash_keys)
     char ip[KEYSIZE + 1];
     char id[KEYSIZE + 1];
     char key[KEYSIZE + 1];
+    char *end;
+    int id_number;
 
     /* Check if the keys file is present and we can read it */
     if ((keys->file_change = File_DateofChange(keys_file)) < 0) {
@@ -196,7 +195,8 @@ void OS_ReadKeys(keystore *keys, int rehash_keys)
     os_calloc(1, sizeof(keyentry*), keys->keyentries);
     keys->keysize = 0;
     keys->id_counter = 0;
-    keys->rehash_keys = rehash_keys;
+    keys->flags.rehash_keys = rehash_keys;
+    keys->flags.save_removed = save_removed;
 
     /* Zero the buffers */
     __memclear(id, name, ip, key, KEYSIZE + 1);
@@ -223,8 +223,26 @@ void OS_ReadKeys(keystore *keys, int rehash_keys)
         tmp_str++;
         strncpy(id, valid_str, KEYSIZE - 1);
 
+        /* Update counter */
+
+        id_number = strtol(id, &end, 10);
+
+        if (!*end && id_number > keys->id_counter)
+            keys->id_counter = id_number;
+
         /* Removed entry */
         if (*tmp_str == '#' || *tmp_str == '!') {
+            if (save_removed) {
+                tmp_str[-1] = ' ';
+                tmp_str = strchr(tmp_str, '\n');
+
+                if (tmp_str) {
+                    *tmp_str = '\0';
+                }
+
+                save_removed_key(keys, buffer);
+            }
+
             continue;
         }
 
@@ -355,6 +373,15 @@ void OS_FreeKeys(keystore *keys)
         }
     }
 
+    if (keys->removed_keys) {
+        for (i = 0; i < keys->removed_keys_size; i++)
+            free(keys->removed_keys[i]);
+
+        free(keys->removed_keys);
+        keys->removed_keys = NULL;
+        keys->removed_keys_size = 0;
+    }
+
     /* Free structure */
     free(keys->keyentries);
     keys->keyentries = NULL;
@@ -383,7 +410,7 @@ int OS_UpdateKeys(keystore *keys)
         /* Read keys */
         debug1("%s: DEBUG: OS_ReadKeys", __local_name);
         verbose(ENC_READ, __local_name);
-        OS_ReadKeys(keys, keys->rehash_keys);
+        OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed);
 
         debug1("%s: DEBUG: OS_StartCounter", __local_name);
         OS_StartCounter(keys);
@@ -478,6 +505,15 @@ int OS_DeleteKey(keystore *keys, const char *id) {
     if (i < 0)
         return -1;
 
+    /* Save removed key */
+
+    if (keys->flags.save_removed) {
+        char buffer[OS_BUFFER_SIZE + 1];
+        keyentry *entry = keys->keyentries[i];
+        snprintf(buffer, OS_BUFFER_SIZE, "%s !%s %s %s", entry->id, entry->name, entry->ip->ip, entry->key);
+        save_removed_key(keys, buffer);
+    }
+
     OSHash_Delete(keys->keyhash_id, id);
     OSHash_Delete(keys->keyhash_ip, keys->keyentries[i]->ip->ip);
     OS_FreeKey(keys->keyentries[i]);
@@ -504,6 +540,12 @@ int OS_WriteKeys(const keystore *keys) {
     for (i = 0; i < keys->keysize; i++) {
         keyentry *entry = keys->keyentries[i];
         fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, entry->ip->ip, entry->key);
+    }
+
+    /* Write saved removed keys */
+
+    for (i = 0; i < keys->removed_keys_size; i++) {
+        fprintf(file.fp, "%s\n", keys->removed_keys[i]);
     }
 
     fclose(file.fp);
@@ -555,6 +597,14 @@ keystore* OS_DupKeys(const keystore *keys) {
 
         copy->keyentries[i]->sock = keys->keyentries[i]->sock;
         copy->keyentries[i]->peer_info = keys->keyentries[i]->peer_info;
+    }
+
+    if (keys->removed_keys) {
+        copy->removed_keys_size = keys->removed_keys_size;
+        os_calloc(keys->removed_keys_size, sizeof(char*), copy->removed_keys);
+
+        for (i = 0; i < keys->removed_keys_size; i++)
+            copy->removed_keys[i] = strdup(keys->removed_keys[i]);
     }
 
     return copy;
