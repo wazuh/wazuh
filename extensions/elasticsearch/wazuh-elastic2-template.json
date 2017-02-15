@@ -278,6 +278,7 @@
             },
             "level": {
               "type": "long",
+              "index": "not_analyzed",
               "doc_values": "true"
             },
             "id": {
