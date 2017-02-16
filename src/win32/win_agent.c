@@ -202,7 +202,7 @@ int local_start()
     /* Read keys */
     verbose(ENC_READ, ARGV0);
 
-    OS_ReadKeys(&keys, 1);
+    OS_ReadKeys(&keys, 1, 0);
     OS_StartCounter(&keys);
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id, agt->profile);
 
