@@ -139,7 +139,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
         } else if (strcasecmp(node[i]->element, xml_remote_proto) == 0) {
             if (strcasecmp(node[i]->content, "tcp") == 0) {
-#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
                 logr->proto[pl] = TCP_PROTO;
 #else
                 merror(TCP_NOT_SUPPORT, __local_name);
