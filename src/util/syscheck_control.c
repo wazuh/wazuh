@@ -285,7 +285,7 @@ int main(int argc, char **argv)
         /* Database from remote agents */
         else {
             int i;
-            keystore keys;
+            keystore keys = { 0 };
 
             OS_ReadKeys(&keys, 1, 0);
 
@@ -326,7 +326,7 @@ int main(int argc, char **argv)
         int i;
         char final_ip[128 + 1];
         char final_mask[128 + 1];
-        keystore keys;
+        keystore keys = { 0 };
         cJSON *json_entries = NULL;
 
         if (json_output)
