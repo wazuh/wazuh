@@ -9,7 +9,7 @@
 
 #if defined(__linux__)
 #include <sys/epoll.h>
-#elif defined(__MACH__) || defined(__FreeBSD__)
+#elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #include <sys/types.h>
 #include <sys/event.h>
 #endif /* __linux__ */
@@ -32,7 +32,7 @@ void HandleSecure()
     netsize_t length;
     struct sockaddr_in peer_info;
 
-#if defined(__MACH__) || defined(__FreeBSD__)
+#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
     const struct timespec TS_ZERO = { 0, 0 };
     struct timespec ts_timeout = { EPOLL_MILLIS / 1000, (EPOLL_MILLIS % 1000) * 1000000 };
     struct timespec *p_timeout = EPOLL_MILLIS < 0 ? NULL : &ts_timeout;
@@ -43,7 +43,7 @@ void HandleSecure()
     int epoll_fd = 0;
     struct epoll_event request = { 0 };
     struct epoll_event *events = NULL;
-#endif /* __MACH__ || __FreeBSD__ */
+#endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
 
     /* Send msg init */
     send_msg_init();
@@ -85,7 +85,7 @@ void HandleSecure()
     memset(buffer, '\0', OS_MAXSTR + 1);
 
     if (protocol == TCP_PROTO) {
-#if defined(__MACH__) || defined(__FreeBSD__)
+#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
         os_calloc(MAX_EVENTS, sizeof(struct kevent), events);
         kqueue_fd = kqueue();
 
@@ -109,27 +109,27 @@ void HandleSecure()
         if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, logr.sock, &request) < 0) {
             ErrorExit(EPOLL_ERROR, ARGV0);
         }
-#endif /* __MACH__ || __FreeBSD__ */
+#endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
     }
 
     while (1) {
         /* Receive message  */
         if (protocol == TCP_PROTO) {
-#if defined(__MACH__) || defined(__FreeBSD__)
+#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
             n_events = kevent(kqueue_fd, NULL, 0, events, MAX_EVENTS, p_timeout);
 #elif defined(__linux__)
             n_events = epoll_wait(epoll_fd, events, MAX_EVENTS, EPOLL_MILLIS);
-#endif /* __MACH__ || __FreeBSD__ */
+#endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
 
             int i;
             for (i = 0; i < n_events; i++) {
-#if defined(__MACH__) || defined(__FreeBSD__)
+#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
                 int fd = events[i].ident;
 #elif defined(__linux__)
                 int fd = events[i].data.fd;
 #else
                 int fd = 0;
-#endif /* __MACH__ || __FreeBSD__ */
+#endif /* __MACH__ || __FreeBSD__ || __FreeBSD__ */
                 if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
@@ -137,7 +137,7 @@ void HandleSecure()
                     }
 
                     debug1("%s: DEBUG: New TCP connection at %s.", ARGV0, inet_ntoa(peer_info.sin_addr));
-#if defined(__MACH__) || defined(__FreeBSD__)
+#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
                     EV_SET(&request, sock_client, EVFILT_READ, EV_ADD, 0, 0, 0);
                     kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO);
 #elif defined(__linux__)
@@ -145,7 +145,7 @@ void HandleSecure()
                     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_client, &request) < 0) {
                         ErrorExit(EPOLL_ERROR, ARGV0);
                     }
-#endif /* __MACH__ || __FreeBSD__ */
+#endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
                 } else {
                     sock_client = fd;
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
