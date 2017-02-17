@@ -245,7 +245,7 @@ void wm_check_agents() {
 void wm_sync_agents() {
     unsigned int i;
     char path[PATH_MAX] = "";
-    keystore keys;
+    keystore keys = { 0 };
     keyentry *entry;
     int *agents;
     struct stat buffer;

@@ -152,7 +152,7 @@ int main(int argc, char **argv)
     /* External agents */
     else {
         int i;
-        keystore keys;
+        keystore keys = { 0 };
 
         OS_ReadKeys(&keys, 1, 0);
 
