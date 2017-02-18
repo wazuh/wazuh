@@ -242,6 +242,7 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
         }
     } else if(lf->agent_id && !strcmp(lf->agent_id, "000")){
         cJSON_AddStringToObject(agent, "name", cJSON_GetObjectItem(manager,"name")->valuestring);
+        cJSON_AddStringToObject(root, "hostname", lf->hostname);
     }else{
         cJSON_AddStringToObject(root, "hostname", lf->hostname);
     }
