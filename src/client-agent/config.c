@@ -34,7 +34,8 @@ int ClientConf(const char *cfgfile)
 
     modules |= CCLIENT;
 
-    if (ReadConfig(modules, cfgfile, agt, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
+        ReadConfig(CLABELS, cfgfile, &agt->labels, NULL) < 0) {
         return (OS_INVALID);
     }
 
