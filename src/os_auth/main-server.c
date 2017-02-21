@@ -491,6 +491,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     /* Initialize some variables */
     memset(srcip, '\0', IPSIZE + 1);
 
+    OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, 0, save_removed);
     debug1("%s: DEBUG: Dispatch thread ready", ARGV0);
 
