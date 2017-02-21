@@ -15,7 +15,7 @@
 /* Prototypes */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size) __attribute((nonnull));
 
-static int pass_empty_keyfile = 1;
+static int pass_empty_keyfile = 0;
 
 /* Clear keys entries */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
