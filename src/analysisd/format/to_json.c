@@ -28,6 +28,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     root = cJSON_CreateObject();
 
+    // Parse timestamp
+    W_JSON_AddTimestamp(root, lf);
+
     cJSON_AddItemToObject(root, "rule", rule = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "agent", agent = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "manager", manager = cJSON_CreateObject());
