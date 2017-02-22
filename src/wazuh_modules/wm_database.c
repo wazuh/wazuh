@@ -95,9 +95,12 @@ void* wm_database_main(wm_database *data) {
         if ((wd_agents = inotify_add_watch(fd, keysfile_dir, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)
             merror("%s: ERROR: Couldn't watch client.keys file: %s.", WM_DATABASE_LOGTAG, strerror(errno));
 
+        debug2("%s: DEBUG: wd_agents='%d'", ARGV0, wd_agents);
+
         if ((wd_agentinfo = inotify_add_watch(fd, DEFAULTDIR AGENTINFO_DIR, IN_CLOSE_WRITE | IN_ATTRIB)) < 0)
             merror("%s: ERROR: Couldn't watch the agent info directory: %s.", WM_DATABASE_LOGTAG, strerror(errno));
 
+        debug2("%s: DEBUG: wd_agentinfo='%d'", ARGV0, wd_agentinfo);
         wm_sync_agents();
         wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
     }
@@ -106,6 +109,7 @@ void* wm_database_main(wm_database *data) {
         if ((wd_syscheck = inotify_add_watch(fd, DEFAULTDIR SYSCHECK_DIR, IN_MODIFY)) < 0)
             merror("%s: ERROR: Couldn't watch Syscheck directory: %s.", WM_DATABASE_LOGTAG, strerror(errno));
 
+        debug2("%s: DEBUG: wd_syscheck='%d'", ARGV0, wd_syscheck);
         wm_scan_directory(DEFAULTDIR SYSCHECK_DIR);
     }
 
@@ -113,6 +117,7 @@ void* wm_database_main(wm_database *data) {
         if ((wd_rootcheck = inotify_add_watch(fd, DEFAULTDIR ROOTCHECK_DIR, IN_MODIFY)) < 0)
             merror("%s: ERROR: Couldn't watch Rootcheck directory: %s.", WM_DATABASE_LOGTAG, strerror(errno));
 
+        debug2("%s: DEBUG: wd_rootcheck='%d'", ARGV0, wd_rootcheck);
         wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
     }
 
@@ -132,10 +137,9 @@ void* wm_database_main(wm_database *data) {
                 break;
             }
 
-            debug2("%s: DEBUG: inotify: name='%s', mask='%u'", ARGV0, event->name, event->mask);
-
             for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
                 event = (struct inotify_event*)&buffer[i];
+                debug2("%s: DEBUG: inotify: i='%zd', name='%s', mask='%u', wd='%d'", ARGV0, i, event->name, event->mask, event->wd);
 
                 if (event->wd == wd_agents) {
                     if (!strcmp(event->name, keysfile))
@@ -251,6 +255,7 @@ void wm_sync_agents() {
     struct stat buffer;
 
     debug1("%s: DEBUG: Synchronizing agents.", WM_DATABASE_LOGTAG);
+    OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, 0, 0);
 
     /* Insert new entries */
@@ -258,6 +263,8 @@ void wm_sync_agents() {
     for (i = 0; i < keys.keysize; i++) {
         entry = keys.keyentries[i];
         int id;
+
+        debug2("%s: DEBUG: Synchronizing agent %s '%s'.", WM_DATABASE_LOGTAG, entry->id, entry->name);
 
         if (!(id = atoi(entry->id))) {
             merror("%s: ERROR: at wm_sync_agents(): invalid ID number.", WM_DATABASE_LOGTAG);
