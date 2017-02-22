@@ -101,6 +101,7 @@ All notable changes to this project will be documented in this file.
 - Set all Syscheck delay stages to a multiple of internal_options.conf/syscheck.sleep value.
 - Changed JSON timestamp format to ISO8601.
 - Overwrite @timestamp field from Logstash with the alert timestamp.
+- Moved timestamp JSON field to the beginning of the object.
 
 ### Fixed
 

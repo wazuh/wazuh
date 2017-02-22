@@ -16,8 +16,8 @@
 void W_ParseJSON(cJSON *root, const Eventinfo *lf);
 // Parse hostname
 void W_JSON_ParseHostname(cJSON *root, const Eventinfo *lf);
-// Parse Timestamp
-void W_JSON_ParseTimestamp(cJSON *root, const Eventinfo *lf);
+// Add Timestamp
+void W_JSON_AddTimestamp(cJSON *root, const Eventinfo *lf);
 // Parse AgentIP
 void W_JSON_ParseAgentIP(cJSON *root, const Eventinfo *lf);
 // Parse Location

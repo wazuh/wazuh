@@ -13,15 +13,10 @@
 
 void W_ParseJSON(cJSON* root, const Eventinfo* lf)
 {
-
     // Parse hostname & Parse AGENTIP
     if(lf->hostname) {
         W_JSON_ParseHostname(root, lf);
         W_JSON_ParseAgentIP(root, lf);
-    }
-    // Parse timestamp
-    if(lf->year && lf->mon[0] && lf->day && lf->hour[0]) {
-        W_JSON_ParseTimestamp(root, lf);
     }
     // Parse Location
     if(lf->location) {
@@ -248,30 +243,33 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
     }
 }
 // Parse timestamp
-void W_JSON_ParseTimestamp(cJSON* root, const Eventinfo* lf)
+void W_JSON_AddTimestamp(cJSON* root, const Eventinfo* lf)
 {
     char buffer[25] = "";
     struct tm tm;
-    time_t timestamp = time(NULL);
+    time_t timestamp;
     char *end;
 
-    memcpy(&tm, localtime(&timestamp), sizeof(struct tm));
+    if (lf->year && lf->mon[0] && lf->day && lf->hour[0]) {
+        timestamp = time(NULL);
+        memcpy(&tm, localtime(&timestamp), sizeof(struct tm));
 
-    if (!(end = strptime(lf->hour, "%T", &tm)) || *end) {
-        merror("%s: ERROR: Could not parse hour '%s'.", ARGV0, lf->hour);
-        return;
+        if (!(end = strptime(lf->hour, "%T", &tm)) || *end) {
+            merror("%s: ERROR: Could not parse hour '%s'.", ARGV0, lf->hour);
+            return;
+        }
+
+        if (!(end = strptime(lf->mon, "%b", &tm)) || *end) {
+            merror("%s: ERROR: Could not parse month '%s'.", ARGV0, lf->mon);
+            return;
+        }
+
+        tm.tm_year = lf->year - 1900;
+        tm.tm_mday = lf->day;
+
+        strftime(buffer, 25, "%FT%T%z", &tm);
+        cJSON_AddStringToObject(root, "timestamp", buffer);
     }
-
-    if (!(end = strptime(lf->mon, "%b", &tm)) || *end) {
-        merror("%s: ERROR: Could not parse month '%s'.", ARGV0, lf->mon);
-        return;
-    }
-
-    tm.tm_year = lf->year - 1900;
-    tm.tm_mday = lf->day;
-
-    strftime(buffer, 25, "%FT%T%z", &tm);
-    cJSON_AddStringToObject(root, "timestamp", buffer);
 }
 
 // The IP of an agent usually comes in "hostname" field, we will extract it.
