@@ -152,7 +152,7 @@ void* wm_database_main(wm_database *data) {
                 else if (event->wd == wd_rootcheck)
                     wm_sync_file(DEFAULTDIR ROOTCHECK_DIR, event->name);
                 else
-                    merror("%s: ERROR: Unknown watch descriptor.", WM_DATABASE_LOGTAG);
+                    merror("%s: ERROR: Unknown watch descriptor '%d'.", WM_DATABASE_LOGTAG, event->wd);
             }
         } while (count > 0);
     }
@@ -252,6 +252,7 @@ void wm_sync_agents() {
     keystore keys = { 0 };
     keyentry *entry;
     int *agents;
+    clock_t clock0 = clock();
     struct stat buffer;
 
     debug1("%s: DEBUG: Synchronizing agents.", WM_DATABASE_LOGTAG);
@@ -309,6 +310,7 @@ void wm_sync_agents() {
 
     OS_FreeKeys(&keys);
     debug1("%s: DEBUG: Agent sync completed.", WM_DATABASE_LOGTAG);
+    debug2("%s: DEBUG: wm_sync_agents(): %.3f ms.", WM_DATABASE_LOGTAG, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 }
 
 int wm_sync_agentinfo(int id_agent, const char *path) {
@@ -318,6 +320,8 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char *shared_sum;
     char *end;
     FILE *fp;
+    int result;
+    clock_t clock0 = clock();
 
     if (!(fp = fopen(path, "r"))) {
         merror(FOPEN_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
@@ -352,7 +356,10 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     }
 
     *end = '\0';
-    return wdb_update_agent_version(id_agent, os, version, shared_sum);
+
+    result = wdb_update_agent_version(id_agent, os, version, shared_sum);
+    debug2("%s: DEBUG: wm_sync_agentinfo(%d): %.3f ms.", WM_DATABASE_LOGTAG, id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+    return result;
 }
 
 void wm_scan_directory(const char *dirname) {
@@ -500,7 +507,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
                 return -1;
             }
         } else
-            debug1("%s: DEBUG: Skipping file '%s/%s'", WM_DATABASE_LOGTAG, dirname, fname);
+            debug1("%s: DEBUG: Skipping file '%s/%s' (no new data).", WM_DATABASE_LOGTAG, dirname, fname);
 
         break;
 
