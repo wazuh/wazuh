@@ -72,7 +72,10 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         /* Clean uname and shared files (remove random string) */
 
         if ((r_msg = strchr(r_msg, '\n'))) {
-            for (begin_shared = ++r_msg; (end = strchr(r_msg, '\n')); r_msg = end + 1);
+            /* Forward to shared files sums (pass labeled data) */
+            for (r_msg++; (*r_msg == '\"' || *r_msg == '!') && (end = strchr(r_msg, '\n')); r_msg = end + 1);
+            /* Forward to random string (pass shared files) */
+            for (begin_shared = r_msg; (end = strchr(r_msg, '\n')); r_msg = end + 1);
             *r_msg = '\0';
         } else {
             merror("%s: WARN: Invalid message from agent id: '%d'(uname)",
@@ -380,6 +383,12 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         *msg = '\0';
         msg++;
+
+        // Skip labeled data
+
+        if (*md5 == '\"' || *md5 == '!') {
+            continue;
+        }
 
         file = strchr(file, ' ');
         if (!file) {

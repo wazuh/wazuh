@@ -48,6 +48,9 @@ int connect_server(int initial_id);
 /* Notify server */
 void run_notify(void);
 
+/* Format labels from config into string. Return 0 on success or -1 on error. */
+int format_labels(char *str, size_t size);
+
 /*** Global variables ***/
 
 /* Global variables. Only modified during startup. */
@@ -61,4 +64,3 @@ extern keystore keys;
 extern agent *agt;
 
 #endif /* __AGENTD_H */
-
