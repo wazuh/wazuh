@@ -116,7 +116,7 @@ void run_notify()
         }
     }
 
-    rand_keepalive_str2(keep_alive_random, 700);
+    rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
 
     /* Create message */
     if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
@@ -137,4 +137,3 @@ void run_notify()
     return;
 }
 #endif /* !WIN32 */
-
