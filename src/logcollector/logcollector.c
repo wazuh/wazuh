@@ -356,7 +356,7 @@ void LogCollectorStart()
         }
 
         /* Send keep alive message */
-        rand_keepalive_str(keepalive, 700);
+        rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
         SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
 
         /* Zero f_check */

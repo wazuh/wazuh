@@ -43,6 +43,7 @@
 #define MAX_TAG_COUNTER 256             /* Max retrying counter         */
 #define SOCK_RECV_TIME0 300             /* Socket receiving timeout (s) */
 #define MIN_ORDER_SIZE  10              /* Minimum size of orders array */
+#define KEEPALIVE_SIZE  700             /* Random keepalive string size */
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
