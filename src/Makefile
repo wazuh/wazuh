@@ -122,8 +122,10 @@ OSSEC_CFLAGS=${CFLAGS}
 ifdef DEBUG
 	OSSEC_CFLAGS+=-g
 else
-	OSSEC_CFLAGS+=-O2
+	OFLAGS+=-O2
 endif #DEBUG
+
+OSSEC_CFLAGS+=${OFLAGS}
 
 ifneq (,$(filter ${CLEANFULL},yes y Y 1))
 	DEFINES+=-DCLEANFULL
@@ -546,6 +548,7 @@ help: failtarget
 	@echo "   make PREFIX=/path     Install OSSEC to '/path'. Defaults to /var/ossec"
 	@echo "   make MAXAGENTS=NUMBER Set the number of maximum agents to NUMBER. Defaults to 2048"
 	@echo "   make REUSE_ID=yes     Enables agent ID re-use"
+	@echo "   make OFLAGS=-Ox       Overrides optimization level"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql  Build with MYSQL Support"
