@@ -10,6 +10,8 @@
 #ifndef __AGENTD_H
 #define __AGENTD_H
 
+#include "shared.h"
+#include "sec.h"
 #include "config/config.h"
 #include "config/client-config.h"
 
@@ -54,9 +56,6 @@ int format_labels(char *str, size_t size);
 /*** Global variables ***/
 
 /* Global variables. Only modified during startup. */
-
-#include "shared.h"
-#include "sec.h"
 
 extern time_t available_server;
 extern int run_foreground;

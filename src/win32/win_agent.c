@@ -490,7 +490,7 @@ void send_win32_info(time_t curr_time)
 
     /* Format labeled data */
 
-    if (!tmp_labels[0] && format_labels(tmp_labels, OS_MAXSTR) < 0) {
+    if (!tmp_labels[0] && labels_format(agt->labels, tmp_labels, OS_MAXSTR) < 0) {
         merror("%s: ERROR: too large labeled data.", ARGV0);
         tmp_labels[0] = '\0';
     }

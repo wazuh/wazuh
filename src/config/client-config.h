@@ -10,8 +10,6 @@
 #ifndef __CAGENTD_H
 #define __CAGENTD_H
 
-#include "labels-config.h"
-
 /* Configuration structure */
 typedef struct _agent {
     int port;
@@ -25,7 +23,7 @@ typedef struct _agent {
     int max_time_reconnect_try;
     char *profile;
     int protocol;
-    label_t *labels; /* null-ended label set */
+    wlabel_t *labels; /* null-ended label set */
 } agent;
 
 #endif /* __CAGENTD_H */

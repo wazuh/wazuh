@@ -62,10 +62,10 @@
 #include <ctype.h>
 #include <signal.h>
 
-/* The mingw32 builder used by travis.ci can't find glob.h 
- * Yet glob must work on actual win32.  
+/* The mingw32 builder used by travis.ci can't find glob.h
+ * Yet glob must work on actual win32.
  */
-#ifndef __MINGW32__ 
+#ifndef __MINGW32__
 #include <glob.h>
 #endif
 
@@ -205,6 +205,7 @@ extern const char *__local_name;
 #include "report_op.h"
 #include "string_op.h"
 #include "randombytes.h"
+#include "labels_op.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
@@ -213,4 +214,3 @@ extern const char *__local_name;
 #include "custom_output_search.h"
 
 #endif /* __SHARED_H */
-
