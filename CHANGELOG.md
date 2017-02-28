@@ -162,6 +162,7 @@ All notable changes to this project will be documented in this file.
 - Fixed case issue on JSON output for Rootcheck alerts.
 - Fixed potential issue on duplicated agent ID detection.
 - Fixed issue when creating agent backups.
+- Fixed hanging problem on Windows Auth client when negotiation issues.
 
 ### Removed
 
