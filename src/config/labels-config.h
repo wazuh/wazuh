@@ -12,11 +12,18 @@
 #ifndef LABELS_H
 #define LABELS_H
 
+/* Label flags bitfield */
+
+typedef struct label_flags_t {
+    unsigned int hidden:1;
+} label_flags_t;
+
 /* Label data structure */
 
-typedef struct _label_t {
+typedef struct label_t {
     char *key;
     char *value;
+    label_flags_t flags;
 } label_t;
 
 #endif
