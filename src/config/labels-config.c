@@ -15,11 +15,15 @@
 
 const char *xml_label = "label";
 const char *xml_key = "key";
+const char *xml_hidden = "hidden";
 
-static void AddLabel(label_t **labels, size_t *size, const char *key, const char *value);
+static void AddLabel(label_t **labels, size_t *size, const char *key, const char *value, unsigned int hidden);
 
 int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     int i;
+    int j;
+    unsigned int hidden;
+    const char *key;
     size_t labels_z = 0;
     label_t *labels = *(label_t **)d1;
 
@@ -39,20 +43,39 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             merror(XML_VALUENULL, __local_name, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_label) == 0) {
-            if (node[i]->attributes[0] && strcmp(node[i]->attributes[0], xml_key) == 0) {
-                if (strlen(node[i]->values[0]) > 0) {
-                    if (strlen(node[i]->content) == 0) {
-                        merror("%s: WARN: label '%s' is empty.", __local_name, node[i]->values[0]);
+            key = NULL;
+            hidden = 0;
+
+            for (j = 0; node[i]->attributes[j]; j++) {
+                if (strcmp(node[i]->attributes[j], xml_key) == 0) {
+                    if (strlen(node[i]->values[j]) > 0) {
+                        key = node[i]->values[j];
+                    } else {
+                        merror("%s: ERROR: label with empty key.", __local_name);
+                        return OS_INVALID;
                     }
-                    AddLabel(&labels, &labels_z, node[i]->values[0], node[i]->content);
-                } else {
-                    merror("%s: ERROR: label with empty key.", __local_name);
-                    return OS_INVALID;
+                } else if (strcmp(node[i]->attributes[j], xml_hidden) == 0) {
+                    if (strcmp(node[i]->values[j], "yes") == 0)
+                        hidden = 1;
+                    else if (strcmp(node[i]->values[j], "no") == 0)
+                        hidden = 0;
+                    else {
+                        merror("%s: ERROR: Invalid content for attribute '%s'.", __local_name, node[i]->attributes[j]);
+                        return OS_INVALID;
+                    }
                 }
-            } else {
-                merror("%s: ERROR: expected 'key' attribute.", __local_name);
+            }
+
+            if (!key) {
+                merror("%s: ERROR: expected 'key' attribute for label.", __local_name);
                 return OS_INVALID;
             }
+
+            if (strlen(node[i]->content) == 0) {
+                merror("%s: WARN: label '%s' is empty.", __local_name, node[i]->values[0]);
+            }
+
+            AddLabel(&labels, &labels_z, key, node[i]->content, hidden);
         } else {
             merror(XML_INVELEM, __local_name, node[i]->element);
             return (OS_INVALID);
@@ -63,9 +86,10 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     return 0;
 }
 
-void AddLabel(label_t **labels, size_t *size, const char *key, const char *value) {
+void AddLabel(label_t **labels, size_t *size, const char *key, const char *value, unsigned int hidden) {
     os_realloc(*labels, (*size + 2) * sizeof(label_t), *labels);
     (*labels)[*size].key = strdup(key);
     (*labels)[*size].value = strdup(value);
+    (*labels)[*size].flags.hidden = hidden;
     memset((*labels) + ++(*size), 0, sizeof(label_t));
 }
