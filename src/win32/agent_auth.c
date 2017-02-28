@@ -104,11 +104,21 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
 
     while (status != SEC_E_OK)
     {
-        // See if we have a token to send to the server
-        if (status == SEC_I_CONTINUE_NEEDED)
-        {
+        switch (status) {
+        case SEC_I_CONTINUE_NEEDED:      // 0x00090312
             SendSecurityToken(*socket, OutBuffers);
             total_read = 0;
+            break;
+        case SEC_E_UNSUPPORTED_FUNCTION: // 0x80090302
+            ErrorExit("%s: ERROR: Couldn't negotiate encryption protocol. Try to run ossec-authd with \"-a\" option.", ARGV0);
+            break;
+        case SEC_E_INCOMPLETE_MESSAGE:   // 0x80090318
+            break;
+        case SEC_E_ILLEGAL_MESSAGE:      // 0x80090326
+            ErrorExit("%s: Illegal message: maybe the manager requested certificate verification (unsupported).", ARGV0);
+            break;
+        default:
+            merror("%s: WARN: unexpected status (0x%lx).", ARGV0, status);
         }
 
         // See if we have data to retrieve from server
