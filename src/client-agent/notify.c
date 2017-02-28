@@ -31,24 +31,6 @@ static char *rand_keepalive_str2(char *dst, int size)
 }
 #endif
 
-/* Format labels from config into string. Return 0 on success or -1 on error. */
-int format_labels(char *str, size_t size) {
-    int i;
-    size_t z = 0;
-
-    for (i = 0; agt->labels[i].key != NULL; i++) {
-        z += (size_t)snprintf(str + z, size - z, "%s\"%s\":%s\n",
-            agt->labels[i].flags.hidden ? "!" : "",
-            agt->labels[i].key,
-            agt->labels[i].value);
-
-        if (z >= size)
-            return -1;
-    }
-
-    return 0;
-}
-
 /* Return the names of the files in a directory */
 char *getsharedfiles()
 {
@@ -125,7 +107,7 @@ void run_notify()
 
     /* Format labeled data */
 
-    if (!tmp_labels[0] && format_labels(tmp_labels, OS_MAXSTR) < 0) {
+    if (!tmp_labels[0] && labels_format(agt->labels, tmp_labels, OS_MAXSTR) < 0) {
         merror("%s: ERROR: too large labeled data.", ARGV0);
         tmp_labels[0] = '\0';
     }

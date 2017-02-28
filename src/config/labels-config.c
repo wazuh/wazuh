@@ -10,14 +10,11 @@
  */
 
 #include "shared.h"
-#include "labels-config.h"
 #include "config.h"
 
 const char *xml_label = "label";
 const char *xml_key = "key";
 const char *xml_hidden = "hidden";
-
-static void AddLabel(label_t **labels, size_t *size, const char *key, const char *value, unsigned int hidden);
 
 int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     int i;
@@ -25,7 +22,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     unsigned int hidden;
     const char *key;
     size_t labels_z = 0;
-    label_t *labels = *(label_t **)d1;
+    wlabel_t *labels = *(wlabel_t **)d1;
 
     /* Get label size */
 
@@ -75,21 +72,13 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 merror("%s: WARN: label '%s' is empty.", __local_name, node[i]->values[0]);
             }
 
-            AddLabel(&labels, &labels_z, key, node[i]->content, hidden);
+            labels = labels_add(labels, labels_z++, key, node[i]->content, hidden);
         } else {
             merror(XML_INVELEM, __local_name, node[i]->element);
             return (OS_INVALID);
         }
     }
 
-    *(label_t **)d1 = labels;
+    *(wlabel_t **)d1 = labels;
     return 0;
-}
-
-void AddLabel(label_t **labels, size_t *size, const char *key, const char *value, unsigned int hidden) {
-    os_realloc(*labels, (*size + 2) * sizeof(label_t), *labels);
-    (*labels)[*size].key = strdup(key);
-    (*labels)[*size].value = strdup(value);
-    (*labels)[*size].flags.hidden = hidden;
-    memset((*labels) + ++(*size), 0, sizeof(label_t));
 }
