@@ -123,8 +123,8 @@ WriteLogs()
       fi
 
       # Check installation directory
-      if [ $(echo $FILE | grep "/var/ossec") ]; then
-        FILE=$(echo $FILE | sed -e "s|\/var\/ossec|${INSTALLDIR}|g")
+      if [ $(echo $FILE | grep "INSTALL_DIR") ]; then
+        FILE=$(echo $FILE | sed -e "s|INSTALL_DIR|${INSTALLDIR}|g")
       fi
 
       # If log file present or skip file
