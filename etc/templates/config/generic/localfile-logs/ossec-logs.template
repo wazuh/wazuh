@@ -1,1 +1,1 @@
-skip_check_exist:syslog:/var/ossec/logs/active-responses.log
+skip_check_exist:syslog:INSTALL_DIR/logs/active-responses.log
