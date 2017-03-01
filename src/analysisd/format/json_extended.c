@@ -442,7 +442,7 @@ void W_JSON_ParseLabels(cJSON *root, const Eventinfo *lf) {
 
     for (i = 0; lf->labels[i].key != NULL; i++) {
         if (!lf->labels[i].flags.hidden) {
-            cJSON_AddStringToObject(labels, lf->labels[i].key, lf->labels[i].value);
+            W_JSON_AddField(labels, lf->labels[i].key, lf->labels[i].value);
         }
     }
 }
