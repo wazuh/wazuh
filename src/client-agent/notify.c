@@ -62,7 +62,7 @@ void run_notify()
 {
     char keep_alive_random[KEEPALIVE_SIZE];
     char tmp_msg[OS_MAXSTR];
-    char tmp_labels[OS_MAXSTR] = { '\0' };
+    static char tmp_labels[OS_MAXSTR] = { '\0' };
     char *uname;
     char *shared_files;
     os_md5 md5sum;

@@ -98,6 +98,8 @@ typedef struct __Config {
     int geoip_jsonout;
 #endif
 
+    wlabel_t *labels; /* null-ended label set */
+
 } _Config;
 
 #endif /* _CCONFIG__H */

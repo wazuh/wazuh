@@ -32,6 +32,7 @@ int ClientConf(const char *cfgfile)
     agt->profile = NULL;
     agt->protocol = UDP_PROTO;
 
+    os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
 
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
