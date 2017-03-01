@@ -77,6 +77,9 @@ http://www.ossec.net/main/license/\n"
 /* Notify the manager */
 #define NOTIFY_TIME     600 /* ... every 600 seconds (10 minutes) */
 
+/* Maximum label cache age (seconds) */
+#define MAX_LABEL_CACHE_AGE 0
+
 /* User Configuration */
 #ifndef MAILUSER
 #define MAILUSER        "ossecm"

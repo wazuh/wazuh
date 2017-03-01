@@ -26,10 +26,21 @@
      label_flags_t flags;
  } wlabel_t;
 
-/* Append a new label into an array of (size) labels at the moment of inserting. Returns the first argument. */
+/* Append a new label into an array of (size) labels at the moment of inserting. Returns the new pointer. */
 wlabel_t* labels_add(wlabel_t *labels, size_t size, const char *key, const char *value, unsigned int hidden);
+
+/* Free label array */
+void labels_free(wlabel_t *labels);
 
 /* Format label array into string. Return 0 on success or -1 on error. */
 int labels_format(const wlabel_t *labels, char *str, size_t size);
+
+/*
+ * Parse labels from agent-info file.
+ * Returns pointer to new null-key terminated array.
+ * If no such file, returns NULL.
+ * Free resources with labels_free().
+ */
+wlabel_t* labels_parse(const char *path);
 
 #endif
