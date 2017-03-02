@@ -57,7 +57,7 @@ static void format_labels(char *buffer, size_t size, const Eventinfo *lf) {
     size_t z = 0;
 
     for (i = 0; lf->labels[i].key != NULL; i++) {
-        if (!lf->labels[i].flags.hidden) {
+        if (!lf->labels[i].flags.hidden || Config.show_hidden_labels) {
             z += (size_t)snprintf(buffer + z, size - z, "%s: %s\n",
                 lf->labels[i].key,
                 lf->labels[i].value);

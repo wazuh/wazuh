@@ -6,6 +6,7 @@
 #define _XOPEN_SOURCE 600
 #include "json_extended.h"
 #include <stddef.h>
+#include "config.h"
 
 #define MAX_MATCHES 10
 #define MAX_STRING 1024
@@ -441,7 +442,7 @@ void W_JSON_ParseLabels(cJSON *root, const Eventinfo *lf) {
     cJSON_AddItemToObject(agent, "labels", labels);
 
     for (i = 0; lf->labels[i].key != NULL; i++) {
-        if (!lf->labels[i].flags.hidden) {
+        if (!lf->labels[i].flags.hidden || Config.show_hidden_labels) {
             W_JSON_AddField(labels, lf->labels[i].key, lf->labels[i].value);
         }
     }

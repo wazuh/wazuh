@@ -59,6 +59,7 @@ int GlobalConf(const char *cfgfile)
     Config.lists = NULL;
     Config.decoders = NULL;
     Config.label_cache_maxage = 0;
+    Config.show_hidden_labels = 0;
 
     os_calloc(1, sizeof(wlabel_t), Config.labels);
 
