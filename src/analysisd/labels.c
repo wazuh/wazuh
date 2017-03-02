@@ -91,7 +91,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
 
         if (mtime == -1) {
             merror("%s: ERROR: getting stats for agent %s (%s). Getting old data.", __local_name, hostname, ip);
-        } else if (mtime > data->mtime + MAX_LABEL_CACHE_AGE) {
+        } else if (mtime > data->mtime + Config.label_cache_maxage) {
             // Update file, keep old to return in case of error
 
             os_calloc(1, sizeof(wlabel_data_t), new_data);

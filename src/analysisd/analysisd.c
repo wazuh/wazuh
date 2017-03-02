@@ -677,6 +677,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initialize label cache */
     labels_init();
+    Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 1);
 
     debug1("%s: DEBUG: Startup completed. Waiting for new messages..", ARGV0);
 
