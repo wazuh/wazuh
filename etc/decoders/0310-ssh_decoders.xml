@@ -211,3 +211,10 @@
   <order>user</order>
 </decoder>
 -->
+
+<decoder name="sshd-exceed">
+  <parent>sshd</parent>
+  <prematch> exceeded for </prematch>
+  <regex offset="after_prematch">^(\S+) from (\S+) port (\d+) </regex>
+  <order>user, srcip, srcport</order>
+</decoder>

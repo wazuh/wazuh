@@ -397,4 +397,11 @@
     <description>Bad DNS mapping.</description>
   </rule>
 
+  <rule id="5758" level="8">
+    <decoded_as>sshd</decoded_as>
+    <match>^error: maximum authentication attempts exceeded </match>
+    <description>Maximum authentication attempts exceeded.</description>
+    <group>authentication_failed,</group>
+  </rule>
+
 </group>

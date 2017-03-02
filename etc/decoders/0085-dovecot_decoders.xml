@@ -23,6 +23,10 @@
   - dovecot: Jun 23 15:04:06 Info: IMAP(username): Disconnected: Logged out bytes=59/566
   - dovecot: May 31 09:43:57 Info: pop3-login: Aborted login (1 authentication attempts): user=<username>, method=PLAIN, rip=::ffff:1.2.3.4, lip=::ffff:1.2.3.5, secured
   - Jan 30 09:37:55 hostname dovecot: pop3-login: Aborted login: user=<username>, method=PLAIN, rip=::ffff:1.2.3.4, lip=::ffff:1.2.3.5
+  - Dec 19 17:40:57 ny dovecot: pop3-login: Disconnected (auth failed, 3 attempts in 51 secs): user=<thousands>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203, session=<tlMSaQZE/JttycjJ>
+  - Dec 19 17:30:39 ny dovecot: imap-login: Disconnected: Inactivity (auth failed, 7 attempts in 176 secs): user=<32>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203,session=<7QTLPAZEXrhtycjJ>
+  - Dec 19 17:38:54 ny dovecot: pop3-login: Disconnected: Inactivity during authentication (auth failed, 13 attempts in 179 secs): user=<thousands>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203, session=<feETWgZEzJltycjJ>
+  - Dec 19 17:20:08 ny dovecot: imap-login: Aborted login (auth failed, 2 attempts in 18 secs): user=<test>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203, session=<i8uMIAZEDrdtycjJ>
 -->
 
 <decoder name="dovecot">
@@ -50,10 +54,17 @@
   <order>user, srcip</order>
 </decoder>
 
+ <decoder name="dovecot-disconnect-user">
+   <parent>dovecot</parent>
+   <prematch offset="after_parent">^\w\w\w\w-login: Disconnected\.+user=</prematch>
+   <regex offset="after_parent">user=(\S+), method=\S+, rip=(\S+), lip=(\S+),</regex>
+   <order>srcuser, srcip, dstip</order>
+ </decoder>
+
 <decoder name="dovecot-disconnect">
   <parent>dovecot</parent>
-  <prematch offset="after_parent">^\w\w\w\w-login: Disconnected: </prematch>
-  <regex offset="after_prematch">^rip=(\S+), lip=(\S+)</regex>
+  <prematch offset="after_parent">^\w\w\w\w-login: Disconnected</prematch>
+  <regex offset="after_prematch">rip=(\S+), lip=(\S+),|rip=(\S+), lip=(\S+)$</regex>
   <order>srcip, dstip</order>
 </decoder>
 

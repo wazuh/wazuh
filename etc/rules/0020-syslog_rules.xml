@@ -10,7 +10,7 @@
 <!-- Default variables for the SYSLOG rules. -->
 
 <!-- Bad words matching. Any log containing these messages will be triggered. -->
-<var name="BAD_WORDS">core_dumped|failure|error|attack|bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted</var>
+<var name="BAD_WORDS">core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted</var>
 
 
 <!-- Syslog errors. -->
