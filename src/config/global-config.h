@@ -100,6 +100,7 @@ typedef struct __Config {
 
     wlabel_t *labels; /* null-ended label set */
     int label_cache_maxage;
+    int show_hidden_labels;
 
 } _Config;
 
