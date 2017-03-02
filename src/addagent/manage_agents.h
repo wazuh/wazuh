@@ -47,6 +47,13 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
 void OS_RemoveAgentTimestamp(const char *id);
 void FormatID(char *id);
 
+/* Load gid and uid.
+ * Call before OS_BackupAgentInfo(), OS_BackupAgentInfo_ID() or OS_CreateBackupDir().
+ * Should be called before chroot().
+ * Returns 0 on success or -1 on failure.
+ */
+int OS_LoadUid();
+
 /* Print available agents */
 int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output);
 int list_agents(int cmdlist);

@@ -20,10 +20,15 @@
     #define link(x,y) 0
     #define difftime(x,y) 0
     #define mkstemp(x) 0
+    #define chown(x,y,z) 0
+    #define Privsep_GetUser(x) -1
+    #define Privsep_GetGroup(x) -1
 #endif
 
 /* Global variables */
 fpos_t fp_pos;
+static uid_t uid = -1;
+static uid_t gid = -1;
 
 char *OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
 {
@@ -683,13 +688,18 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
     char path[OS_FLSIZE + 1];
     char timestamp[40];
 
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        merror("%s: CRITICAL: Unspecified uid or gid.", ARGV0);
+        return NULL;
+    }
+
     /* Directory for year ^*/
 
     strftime(timestamp, 40, "%Y", localtime(&now));
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
-        if (mkdir(path, 0750) < 0) {
+        if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
             return NULL;
         }
     }
@@ -700,7 +710,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
-        if (mkdir(path, 0750) < 0) {
+        if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
             return NULL;
         }
     }
@@ -711,7 +721,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
-        if (mkdir(path, 0750) < 0) {
+        if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
             return NULL;
         }
     }
@@ -725,7 +735,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
         snprintf(path, OS_FLSIZE, "%s/%s/%s-%s-%s%s", AGNBACKUP_DIR, timestamp, id, name, ip, tag);
 
         if (IsDir(path) != 0) {
-            if (mkdir(path, 0750) < 0) {
+            if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
                 return NULL;
             } else {
                 break;
@@ -839,4 +849,21 @@ int check_authd() {
 
     closedir(dir);
     return found;
+}
+
+/* Load gid and uid.
+ * Call before OS_BackupAgentInfo(), OS_BackupAgentInfo_ID() or OS_CreateBackupDir().
+ * Should be called before chroot().
+ * Returns 0 on success or -1 on failure.
+ */
+int OS_LoadUid() {
+    uid = Privsep_GetUser(USER);
+    gid = Privsep_GetGroup(GROUPGLOBAL);
+
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        merror(USER_ERROR, ARGV0, USER, GROUPGLOBAL);
+        return -1;
+    } else {
+        return 0;
+    }
 }

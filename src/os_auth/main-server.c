@@ -391,6 +391,11 @@ int main(int argc, char **argv)
     /* Setup random */
     srandom_init();
 
+    /* Load ossec uid and gid for creating backups */
+    if (OS_LoadUid() < 0) {
+        ErrorExit("%s: ERROR: Couldn't get user and group id.", ARGV0);
+    }
+
     /* Chroot */
     if (Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
