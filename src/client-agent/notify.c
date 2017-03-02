@@ -61,8 +61,8 @@ char *getsharedfiles()
 void run_notify()
 {
     char keep_alive_random[KEEPALIVE_SIZE];
-    char tmp_msg[OS_MAXSTR];
-    static char tmp_labels[OS_MAXSTR] = { '\0' };
+    char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE];
+    static char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
     char *uname;
     char *shared_files;
     os_md5 md5sum;
@@ -107,7 +107,7 @@ void run_notify()
 
     /* Format labeled data */
 
-    if (!tmp_labels[0] && labels_format(agt->labels, tmp_labels, OS_MAXSTR) < 0) {
+    if (!tmp_labels[0] && labels_format(agt->labels, tmp_labels, OS_MAXSTR - OS_HEADER_SIZE) < 0) {
         merror("%s: ERROR: too large labeled data.", ARGV0);
         tmp_labels[0] = '\0';
     }
@@ -128,10 +128,10 @@ void run_notify()
     /* Create message */
     if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
             (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
-        snprintf(tmp_msg, OS_MAXSTR, "#!-%s / %s\n%s%s\n%s",
+        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
                  uname, md5sum, tmp_labels, shared_files, keep_alive_random);
     } else {
-        snprintf(tmp_msg, OS_MAXSTR, "#!-%s\n%s%s\n%s",
+        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
                  uname, tmp_labels, shared_files, keep_alive_random);
     }
 
