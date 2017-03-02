@@ -151,8 +151,11 @@ void* wm_database_main(wm_database *data) {
                     wm_sync_file(DEFAULTDIR SYSCHECK_DIR, event->name);
                 else if (event->wd == wd_rootcheck)
                     wm_sync_file(DEFAULTDIR ROOTCHECK_DIR, event->name);
-                else
-                    merror("%s: ERROR: Unknown watch descriptor '%d'.", WM_DATABASE_LOGTAG, event->wd);
+                else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
+                    merror("%s: ERROR: Inotify event queue overflowed.", WM_DATABASE_LOGTAG);
+                    continue;
+                } else
+                    merror("%s: ERROR: Unknown watch descriptor '%d', mask='%u'.", WM_DATABASE_LOGTAG, event->wd, event->mask);
             }
         } while (count > 0);
     }
