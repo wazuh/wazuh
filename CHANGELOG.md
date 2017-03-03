@@ -163,6 +163,7 @@ All notable changes to this project will be documented in this file.
 - Fixed potential issue on duplicated agent ID detection.
 - Fixed issue when creating agent backups.
 - Fixed hanging problem on Windows Auth client when negotiation issues.
+- Fixed bug at ossec-remoted that mismatched agent-info files.
 
 ### Removed
 

@@ -18,6 +18,20 @@
 #include "config/remote-config.h"
 #include "sec.h"
 
+/* Queue management macros */
+
+#define full(i, j) ((i + 1) % MAX_AGENTS == j)
+#define empty(i, j) (i == j)
+#define forward(x) x = (x + 1) % MAX_AGENTS
+
+/* Pending data structure */
+
+typedef struct pending_data_t {
+    char *message;
+    char *keep_alive;
+    int changed;
+} pending_data_t;
+
 /** Function prototypes **/
 
 /* Read remoted config */

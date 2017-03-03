@@ -21,8 +21,8 @@ typedef struct _file_sum {
 } file_sum;
 
 /* Internal functions prototypes */
-static void read_controlmsg(unsigned int agentid, char *msg);
-static int send_file_toagent(unsigned int agentid, const char *name, const char *sum);
+static void read_controlmsg(const char *agent_id, char *msg);
+static int send_file_toagent(const char *agent_id, const char *name, const char *sum);
 static void f_files(void);
 static void c_files(void);
 
@@ -32,10 +32,10 @@ static time_t _ctime;
 static time_t _stime;
 
 /* For the last message tracking */
-static char *_msg[MAX_AGENTS + 1];
-static char *_keep_alive[MAX_AGENTS + 1];
-static int _changed[MAX_AGENTS + 1];
-static int modified_agentid;
+static char pending_queue[MAX_AGENTS][9];
+static volatile int queue_i = 0;
+static volatile int queue_j = 0;
+OSHash *pending_data;
 
 /* pthread mutex variables */
 static pthread_mutex_t lastmsg_mutex;
@@ -49,7 +49,7 @@ static pthread_cond_t awake_mutex;
 void save_controlmsg(unsigned int agentid, char *r_msg)
 {
     char msg_ack[OS_FLSIZE + 1];
-    char *version;
+    pending_data_t *data;
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
@@ -57,34 +57,63 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     send_msg(agentid, msg_ack);
 
     /* Check if there is a keep alive already for this agent */
-    if (_keep_alive[agentid] && _msg[agentid] &&
-            (strcmp(_msg[agentid], r_msg) == 0)) {
-
-        utimes(_keep_alive[agentid], NULL);
-    }
-
-    else if (strcmp(r_msg, HC_STARTUP) == 0) {
+    if ((data = OSHash_Get(pending_data, keys.keyentries[agentid]->id)) &&
+        data->message && strcmp(data->message, r_msg) == 0) {
+        utimes(data->keep_alive, NULL);
+    } else if (strcmp(r_msg, HC_STARTUP) == 0) {
         debug1("%s: DEBUG: Agent %s sent HC_STARTUP from %s.", ARGV0, keys.keyentries[agentid]->name, inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr));
         return;
-    }
-
-    else {
+    } else {
         FILE *fp;
         char *uname = r_msg;
-        char *random_leftovers;
+
+        /* Clean uname (remove random string) */
+
+        if ((r_msg = strchr(r_msg, '\n'))) {
+            *r_msg = '\0';
+        } else {
+            merror("%s: WARN: Invalid message from agent id: '%d'(uname)",
+                   ARGV0,
+                   agentid);
+            return;
+        }
 
         /* Lock mutex */
         if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
             merror(MUTEX_ERROR, ARGV0);
-
             return;
         }
 
-        /* Update rmsg */
-        if (_msg[agentid]) {
-            free(_msg[agentid]);
+        if (data || (data = OSHash_Get(pending_data, keys.keyentries[agentid]->id))) {
+            free(data->message);
+        } else {
+            os_calloc(1, sizeof(pending_data_t), data);
+
+            if (OSHash_Add(pending_data, keys.keyentries[agentid]->id, data) != 2) {
+                merror("%s: ERROR: Couldn't add pending data into hash table.", ARGV0);
+                free(data);
+                return;
+            }
         }
-        os_strdup(r_msg, _msg[agentid]);
+
+        /* Update message */
+        os_strdup(r_msg, data->message);
+
+        /* Mark data as changed and insert into queue */
+
+        if (!data->changed) {
+            if (full(queue_i, queue_j)) {
+                merror("%s: ERROR: Pending message queue full.", ARGV0);
+            } else {
+                strncpy(pending_queue[queue_i], keys.keyentries[agentid]->id, 8);
+                forward(queue_i);
+
+                /* Signal that new data is available */
+                pthread_cond_signal(&awake_mutex);
+            }
+
+            data->changed = 1;
+        }
 
         /* Unlock mutex */
         if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
@@ -93,71 +122,29 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             return;
         }
 
-        r_msg = strchr(r_msg, '\n');
-        if (!r_msg) {
-            merror("%s: WARN: Invalid message from agent id: '%d'(uname)",
-                   ARGV0,
-                   agentid);
-            return;
-        }
+        /* This is not critical section since is not used by another thread */
 
-        *r_msg = '\0';
-        random_leftovers = strchr(r_msg, '\n');
-        if (random_leftovers) {
-            *random_leftovers = '\0';
-        }
-
-        /* Update the keep alive */
-        if (!_keep_alive[agentid]) {
-            char agent_file[OS_SIZE_1024 + 1];
-            agent_file[OS_SIZE_1024] = '\0';
+        if (!data->keep_alive) {
+            char agent_file[PATH_MAX];
 
             /* Write to the agent file */
-            snprintf(agent_file, OS_SIZE_1024, "%s/%s-%s",
+            snprintf(agent_file, PATH_MAX, "%s/%s-%s",
                      AGENTINFO_DIR,
                      keys.keyentries[agentid]->name,
                      keys.keyentries[agentid]->ip->ip);
 
-            os_strdup(agent_file, _keep_alive[agentid]);
+            os_strdup(agent_file, data->keep_alive);
         }
 
         /* Write to the file */
-        fp = fopen(_keep_alive[agentid], "w");
-        if (fp) {
+
+        if ((fp = fopen(data->keep_alive, "w"))) {
             fprintf(fp, "%s\n", uname);
             fclose(fp);
-        }
-
-        /* Store uname on database */
-
-        if ((version = strstr(uname, " - "))) {
-            *version = '\0';
-            version += 3;
+        } else {
+            merror(FOPEN_ERROR, ARGV0, data->keep_alive, errno, strerror(errno));
         }
     }
-
-    /* Lock now to notify of change */
-    if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
-
-        return;
-    }
-
-    /* Assign new values */
-    _changed[agentid] = 1;
-    modified_agentid = (int) agentid;
-
-    /* Signal that new data is available */
-    pthread_cond_signal(&awake_mutex);
-
-    /* Unlock mutex */
-    if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
-
-        return;
-    }
-
-    return;
 }
 
 /* Free the files memory */
@@ -273,13 +260,23 @@ static void c_files()
 /* Send a file to the agent
  * Returns -1 on error
  */
-static int send_file_toagent(unsigned int agentid, const char *name, const char *sum)
+static int send_file_toagent(const char *agent_id, const char *name, const char *sum)
 {
     int i = 0;
+    int key_id;
     size_t n = 0;
     char file[OS_SIZE_1024 + 1];
     char buf[OS_SIZE_1024 + 1];
     FILE *fp;
+
+    key_lock();
+    key_id = OS_IsAllowedID(&keys, agent_id);
+    key_unlock();
+
+    if (key_id < 0) {
+        merror("%s: ERROR: Couldn't get key for agent ID '%s'.", ARGV0, agent_id);
+        return -1;
+    }
 
     snprintf(file, OS_SIZE_1024, "%s/%s", SHAREDCFG_DIR, name);
     fp = fopen(file, "r");
@@ -293,7 +290,7 @@ static int send_file_toagent(unsigned int agentid, const char *name, const char 
              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
 
     key_lock();
-    if (send_msg(agentid, buf) == -1) {
+    if (send_msg(key_id, buf) == -1) {
         key_unlock();
         merror(SEC_ERROR, ARGV0);
         fclose(fp);
@@ -308,7 +305,7 @@ static int send_file_toagent(unsigned int agentid, const char *name, const char 
 
         key_lock();
 
-        if (send_msg(agentid, buf) == -1) {
+        if (send_msg(key_id, buf) == -1) {
             key_unlock();
             merror(SEC_ERROR, ARGV0);
             fclose(fp);
@@ -329,7 +326,7 @@ static int send_file_toagent(unsigned int agentid, const char *name, const char 
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
     key_lock();
 
-    if (send_msg(agentid, buf) == -1) {
+    if (send_msg(key_id, buf) == -1) {
         key_unlock();
         merror(SEC_ERROR, ARGV0);
         fclose(fp);
@@ -343,19 +340,9 @@ static int send_file_toagent(unsigned int agentid, const char *name, const char 
 }
 
 /* Read the available control message from the agent */
-static void read_controlmsg(unsigned int agentid, char *msg)
+static void read_controlmsg(const char *agent_id, char *msg)
 {
     int i;
-
-    /* Remove uname */
-    msg = strchr(msg, '\n');
-    if (!msg) {
-        merror("%s: Invalid message from '%d' (uname)", ARGV0, agentid);
-        return;
-    }
-
-    *msg = '\0';
-    msg++;
 
     if (!f_sum) {
         /* Nothing to share with agent */
@@ -372,11 +359,9 @@ static void read_controlmsg(unsigned int agentid, char *msg)
 
         msg = strchr(msg, '\n');
         if (!msg) {
-            key_lock();
-            merror("%s: Invalid message from '%s' (strchr \\n)",
+            merror("%s: Invalid message from agent ID '%s' (strchr \\n)",
                    ARGV0,
-                   keys.keyentries[agentid]->ip->ip);
-            key_unlock();
+                   agent_id);
             break;
         }
 
@@ -385,11 +370,9 @@ static void read_controlmsg(unsigned int agentid, char *msg)
 
         file = strchr(file, ' ');
         if (!file) {
-            key_lock();
-            merror("%s: Invalid message from '%s' (strchr ' ')",
+            merror("%s: Invalid message from agent ID '%s' (strchr ' ')",
                    ARGV0,
-                   keys.keyentries[agentid]->ip->ip);
-            key_unlock();
+                   agent_id);
             break;
         }
 
@@ -401,10 +384,8 @@ static void read_controlmsg(unsigned int agentid, char *msg)
             if (strcmp(f_sum[0]->sum, md5) != 0) {
                 debug1("%s: DEBUG Sending file '%s' to agent.", ARGV0,
                        f_sum[0]->name);
-                if (send_file_toagent(agentid, f_sum[0]->name, f_sum[0]->sum) < 0) {
-                    key_lock();
-                    merror(SHARED_ERROR, ARGV0, f_sum[0]->name, keys.keyentries[agentid]->id, keys.keyentries[agentid]->name);
-                    key_unlock();
+                if (send_file_toagent(agent_id, f_sum[0]->name, f_sum[0]->sum) < 0) {
+                    merror(SHARED_ERROR, ARGV0, f_sum[0]->name, agent_id);
                 }
             }
 
@@ -447,10 +428,8 @@ static void read_controlmsg(unsigned int agentid, char *msg)
                 (f_sum[i]->mark == 0)) {
 
             debug1("%s: Sending file '%s' to agent.", ARGV0, f_sum[i]->name);
-            if (send_file_toagent(agentid, f_sum[i]->name, f_sum[i]->sum) < 0) {
-                key_lock();
-                merror(SHARED_ERROR, ARGV0, f_sum[i]->name, keys.keyentries[agentid]->id, keys.keyentries[agentid]->name);
-                key_unlock();
+            if (send_file_toagent(agent_id, f_sum[i]->name, f_sum[i]->sum) < 0) {
+                merror(SHARED_ERROR, ARGV0, f_sum[i]->name, agent_id);
             }
         }
 
@@ -465,15 +444,15 @@ static void read_controlmsg(unsigned int agentid, char *msg)
  */
 void *wait_for_msgs(__attribute__((unused)) void *none)
 {
-    int id;
     char msg[OS_SIZE_1024 + 2];
+    char agent_id[9];
+    pending_data_t *data;
 
     /* Initialize the memory */
     memset(msg, '\0', OS_SIZE_1024 + 2);
 
     /* Should never leave this loop */
     while (1) {
-        unsigned int i;
         /* Every NOTIFY * 30 minutes, re-read the files
          * If something changed, notify all agents
          */
@@ -492,52 +471,31 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
         }
 
         /* If no agent changed, wait for signal */
-        if (modified_agentid == -1) {
+        while (empty(queue_i, queue_j)) {
             pthread_cond_wait(&awake_mutex, &lastmsg_mutex);
         }
+
+        /* Pop data from queue */
+        if ((data = OSHash_Get(pending_data, pending_queue[queue_j]))) {
+            strncpy(agent_id, pending_queue[queue_j], 9);
+            strncpy(msg, data->message, OS_SIZE_1024);
+            data->changed = 0;
+        } else {
+            merror("%s: CRITICAL: Couldn't get pending data from hash table for agent ID '%s'.", ARGV0, pending_queue[queue_j]);
+            *agent_id = '\0';
+            *msg = '\0';
+        }
+
+        forward(queue_j);
 
         /* Unlock mutex */
         if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
             merror(MUTEX_ERROR, ARGV0);
-            return (NULL);
+            break;
         }
 
-        /* Check if any agent is ready */
-        for (i = 0; i < keys.keysize; i++) {
-            /* If agent wasn't changed, try next */
-            if (_changed[i] != 1) {
-                continue;
-            }
-
-            id = 0;
-
-            /* Lock mutex */
-            if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
-                merror(MUTEX_ERROR, ARGV0);
-                break;
-            }
-
-            if (_msg[i]) {
-                /* Copy the message to be analyzed */
-                strncpy(msg, _msg[i], OS_SIZE_1024);
-                _changed[i] = 0;
-
-                if (modified_agentid >= (int) i) {
-                    modified_agentid = -1;
-                }
-
-                id = 1;
-            }
-
-            /* Unlock mutex */
-            if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
-                merror(MUTEX_ERROR, ARGV0);
-                break;
-            }
-
-            if (id) {
-                read_controlmsg(i, msg);
-            }
+        if (*agent_id) {
+            read_controlmsg(agent_id, msg);
         }
     }
 
@@ -547,28 +505,21 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 /* Should be called before anything here */
 void manager_init(int isUpdate)
 {
-    int i;
-
     _stime = time(0);
+    queue_i = 0;
+    queue_j = 0;
 
     f_files();
     c_files();
 
     debug1("%s: DEBUG: Running manager_init", ARGV0);
 
-    modified_agentid = -1;
-
-    for (i = 0; i < MAX_AGENTS + 1; i++) {
-        _keep_alive[i] = NULL;
-        _msg[i] = NULL;
-        _changed[i] = 0;
-    }
+    memset(pending_queue, 0, MAX_AGENTS * 9);
+    pending_data = OSHash_Create();
 
     /* Initialize mutexes */
     if (isUpdate == 0) {
         pthread_mutex_init(&lastmsg_mutex, NULL);
         pthread_cond_init(&awake_mutex, NULL);
     }
-
-    return;
 }
