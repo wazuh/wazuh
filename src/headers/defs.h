@@ -282,6 +282,8 @@ http://www.ossec.net/main/license/\n"
 
 #define WAIT_FILE_PATH  DEFAULTDIR WAIT_FILE
 
+#define MAX_QUEUED_EVENTS_PATH "/proc/sys/fs/inotify/max_queued_events"
+
 #define TMP_DIR "tmp"
 
 /* Windows COMSPEC */
