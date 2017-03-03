@@ -44,6 +44,12 @@ static int wm_fill_rootcheck(sqlite3 *db, const char *path);
  */
 static int wm_extract_agent(const char *fname, char *name, char *addr, int *registry);
 
+/* Get current inotify queued events limit */
+static int get_max_queued_events();
+
+/* Set current inotify queued events limit */
+static int set_max_queued_events(int size);
+
 // Database module context definition
 const wm_context WM_DATABASE_CONTEXT = {
     "database",
@@ -72,14 +78,37 @@ void* wm_database_main(wm_database *data) {
     int wd_agentinfo = -1;
     int wd_syscheck = -1;
     int wd_rootcheck = -1;
+    int old_max_queued_events = -1;
     ssize_t count;
     ssize_t i;
+
+    // Set inotify queued events limit
+
+    if (data->max_queued_events) {
+        old_max_queued_events = get_max_queued_events();
+
+        if (old_max_queued_events >= 0) {
+            debug1("%s: DEBUG: Setting inotify queued events limit to '%d'", WM_DATABASE_LOGTAG, data->max_queued_events);
+
+             if (set_max_queued_events(data->max_queued_events) < 0) {
+                 // Error: do not reset then
+                 old_max_queued_events = -1;
+             }
+        }
+    }
 
     // Start inotify
 
     if ((fd = inotify_init()) < 0) {
         merror("%s: ERROR: Couldn't init inotify: %s.", WM_DATABASE_LOGTAG, strerror(errno));
         return NULL;
+    }
+
+    // Reset inotify queued events limit
+
+    if (old_max_queued_events >= 0) {
+        debug2("%s: DEBUG: Restoring inotify queued events limit to '%d'", WM_DATABASE_LOGTAG, old_max_queued_events);
+        set_max_queued_events(old_max_queued_events);
     }
 
     if (!(keysfile = strrchr(keysfile_dir, '/'))) {
@@ -777,6 +806,7 @@ wmodule* wm_database_read() {
     data.sync_rootcheck = getDefine_Int("wazuh_database", "sync_rootcheck", 0, 1);
     data.full_sync = getDefine_Int("wazuh_database", "full_sync", 0, 1);
     data.sleep = getDefine_Int("wazuh_database", "sleep", 0, 86400);
+    data.max_queued_events = getDefine_Int("wazuh_database", "max_queued_events", 0, INT_MAX);
 
     if (data.sync_agents || data.sync_syscheck || data.sync_rootcheck) {
         os_calloc(1, sizeof(wmodule), module);
@@ -787,4 +817,39 @@ wmodule* wm_database_read() {
 
     return module;
 #endif
+}
+
+/* Get current inotify queued events limit */
+int get_max_queued_events() {
+    int size;
+    int n;
+    FILE *fp;
+
+    if (!(fp = fopen(MAX_QUEUED_EVENTS_PATH, "r"))) {
+        merror(FOPEN_ERROR, WM_DATABASE_LOGTAG, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
+        return -1;
+    }
+
+    n = fscanf(fp, "%d", &size);
+    fclose(fp);
+
+    if (n == 1) {
+        return size;
+    } else {
+        return -1;
+    }
+}
+
+/* Set current inotify queued events limit */
+int set_max_queued_events(int size) {
+    FILE *fp;
+
+    if (!(fp = fopen(MAX_QUEUED_EVENTS_PATH, "w"))) {
+        merror(FOPEN_ERROR, WM_DATABASE_LOGTAG, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
+        return -1;
+    }
+
+    fprintf(fp, "%d\n", size);
+    fclose(fp);
+    return 0;
 }
