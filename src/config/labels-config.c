@@ -69,10 +69,14 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             }
 
             if (strlen(node[i]->content) == 0) {
-                merror("%s: WARN: label '%s' is empty.", __local_name, node[i]->values[0]);
+                merror("%s: WARN: label '%s' is empty.", __local_name, key);
             }
 
-            labels = labels_add(labels, labels_z++, key, node[i]->content, hidden);
+            if (labels_get(labels, key)) {
+                merror("%s: WARN: label '%s' duplicated. Ignoring.", __local_name, key);
+            } else {
+                labels = labels_add(labels, labels_z++, key, node[i]->content, hidden);
+            }
         } else {
             merror(XML_INVELEM, __local_name, node[i]->element);
             return (OS_INVALID);

@@ -29,6 +29,9 @@
 /* Append a new label into an array of (size) labels at the moment of inserting. Returns the new pointer. */
 wlabel_t* labels_add(wlabel_t *labels, size_t size, const char *key, const char *value, unsigned int hidden);
 
+/* Search for a key at a label array and get the value, or NULL if no such key found. */
+const char* labels_get(const wlabel_t *labels, const char *key);
+
 /* Free label array */
 void labels_free(wlabel_t *labels);
 

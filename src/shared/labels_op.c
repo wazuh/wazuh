@@ -21,6 +21,20 @@ wlabel_t* labels_add(wlabel_t *labels, size_t size, const char *key, const char 
     return labels;
 }
 
+
+/* Search for a key at a label array and get the value, or NULL if no such key found. */
+const char* labels_get(const wlabel_t *labels, const char *key) {
+    int i;
+
+    for (i = 0; labels[i].key; i++) {
+        if (!strcmp(labels[i].key, key)) {
+            return labels[i].value;
+        }
+    }
+
+    return NULL;
+}
+
 /* Free label array */
 void labels_free(wlabel_t *labels) {
     int i;
