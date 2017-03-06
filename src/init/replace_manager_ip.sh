@@ -14,7 +14,7 @@
 
 # Aux functions
 check_tag_in_file() {  # tag file
-    match=`cat $2 2> /dev/null | grep -P "^\s*<$1>"`
+    match=$(grep "^ *<$1>.*</$1> *\$" $2 2> /dev/null)
 
     if [ "x$match" != "x" ]; then
         echo "1"
@@ -24,7 +24,7 @@ check_tag_in_file() {  # tag file
 }
 
 get_value_tag () {  # tag file
-    line=`cat $2 2> /dev/null | grep -P "^\s*<$1>"`
+    line=$(grep "^ *<$1>.*</$1> *\$" $2 2> /dev/null)
     regex="<$1>(.+)</$1>"
 
     if [[ $line =~ $regex ]]; then
@@ -61,7 +61,7 @@ replace(){  # tag olf_file new_file
 
 main() {
     old_config="$1"
-    new_config="/var/ossec/etc/ossec.conf"
+    new_config="$2"
     status="1"
     tag_serverip="server-ip"
     tag_serverhostname="server-hostname"
@@ -88,9 +88,9 @@ main() {
 }
 
 # Main
-if [ "$#" = "1" ]; then
-    main $1
+if [ "$#" = "2" ]; then
+    main $1 $2
 else
-      echo " USE: ./replace_manager_ip.sh previous_ossec.conf"
+      echo " USE: ./replace_manager_ip.sh previous_ossec.conf new_ossec.conf"
       exit 2
 fi
