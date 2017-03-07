@@ -49,6 +49,8 @@ static pthread_cond_t awake_mutex;
 void save_controlmsg(unsigned int agentid, char *r_msg)
 {
     char msg_ack[OS_FLSIZE + 1];
+    char *begin_shared;
+    char *end;
     pending_data_t *data;
 
     /* Reply to the agent */
@@ -67,9 +69,10 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         FILE *fp;
         char *uname = r_msg;
 
-        /* Clean uname (remove random string) */
+        /* Clean uname and shared files (remove random string) */
 
         if ((r_msg = strchr(r_msg, '\n'))) {
+            for (begin_shared = ++r_msg; (end = strchr(r_msg, '\n')); r_msg = end + 1);
             *r_msg = '\0';
         } else {
             merror("%s: WARN: Invalid message from agent id: '%d'(uname)",
@@ -97,7 +100,8 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         }
 
         /* Update message */
-        os_strdup(r_msg, data->message);
+        debug2("%s: DEBUG: save_controlmsg(): inserting '%s'", ARGV0, uname);
+        os_strdup(uname, data->message);
 
         /* Mark data as changed and insert into queue */
 
@@ -136,9 +140,10 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             os_strdup(agent_file, data->keep_alive);
         }
 
-        /* Write to the file */
+        /* Write uname to the file */
 
         if ((fp = fopen(data->keep_alive, "w"))) {
+            *begin_shared = '\0';
             fprintf(fp, "%s\n", uname);
             fclose(fp);
         } else {
@@ -348,6 +353,8 @@ static void read_controlmsg(const char *agent_id, char *msg)
         /* Nothing to share with agent */
         return;
     }
+
+    debug2("%s: DEBUG: read_controlmsg(): reading '%s'", ARGV0, msg);
 
     /* Parse message */
     while (*msg != '\0') {
