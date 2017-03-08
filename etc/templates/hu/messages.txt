@@ -107,8 +107,8 @@ updatefailed="A frissítés meghiúsult."
 updaterules="Szeretné frissíteni a szabályokat?"
 updatingrules="A szabályok frissítése."
 notupdatingrules="Nincs szabály frissítés."
-update_rev_newconf1="Backup from your ossec.conf has been created at /var/ossec/etc/ossec.conf.orig"
-update_rev_newconf2="Please verify your ossec.conf configuration at /var/ossec/etc/ossec.conf"
+update_rev_newconf1="Backup from your ossec.conf has been created at $INSTALLDIR/etc/ossec.conf.orig"
+update_rev_newconf2="Please verify your ossec.conf configuration at $INSTALLDIR/etc/ossec.conf"
 
 # Pf support
 pfenable="Szeretné alkalmazni a PF tűzfalat az active response során?"

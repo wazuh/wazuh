@@ -105,8 +105,8 @@ updatefailed="升级失败."
 updaterules="您希望升级规则(rules文件)吗?"
 updatingrules="升级规则(rules文件)."
 notupdatingrules="不升级规则(rules文件)."
-update_rev_newconf1="Backup from your ossec.conf has been created at /var/ossec/etc/ossec.conf.orig"
-update_rev_newconf2="Please verify your ossec.conf configuration at /var/ossec/etc/ossec.conf"
+update_rev_newconf1="Backup from your ossec.conf has been created at $INSTALLDIR/etc/ossec.conf.orig"
+update_rev_newconf2="Please verify your ossec.conf configuration at $INSTALLDIR/etc/ossec.conf"
 
 # Pf support
 pfenable="你希望在联动功能中使用 PF 防火墙吗?"
