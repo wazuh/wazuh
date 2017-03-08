@@ -7,7 +7,7 @@
 
 from re import compile
 from sys import argv, exit, version_info
-from os.path import isfile, exists
+from os.path import isfile, isdir
 from tempfile import mkstemp
 from xml.etree import ElementTree
 from os import remove, close as close
@@ -24,12 +24,11 @@ XSLT_BIN = "xsltproc"
 PATTERN_HEAD = "Profiles:\n"
 PATTERN_PROFILE = "(\t+)(\S+)\n"
 OSCAP_LOG_ERROR = "oscap: ERROR:"
-OSSEC_PATH = "/var/ossec"
-TEMPLATE_XCCDF = "{0}/wodles/oscap/template_xccdf.xsl".format(OSSEC_PATH)
-TEMPLATE_OVAL = "{0}/wodles/oscap/template_oval.xsl".format(OSSEC_PATH)
-CONTENT_PATH = "{0}/wodles/oscap/content".format(OSSEC_PATH)
+TEMPLATE_XCCDF = "wodles/oscap/template_xccdf.xsl"
+TEMPLATE_OVAL = "wodles/oscap/template_oval.xsl"
+CONTENT_PATH = "wodles/oscap/content"
 
-tempfile.tempdir = OSSEC_PATH + "/tmp"
+tempfile.tempdir = "tmp"
 
 if version_info[0] >= 3:
     import sys
@@ -140,10 +139,10 @@ def oscap(profile=None):
 
         # Generate scan ID: agent_id + epoch
         try:
-            if exists('{0}/rules'.format(OSSEC_PATH)):
+            if isdir('ruleset'):
                 agent_id = '000'
             else:
-                with open('{0}/etc/client.keys'.format(OSSEC_PATH), 'r') as f:
+                with open('etc/client.keys', 'r') as f:
                     first_line = f.readline()
                 agent_id = first_line.split(' ')[0]
         except:
