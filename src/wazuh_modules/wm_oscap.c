@@ -259,14 +259,14 @@ void wm_oscap_check() {
     // Check if interval
 
     if (!oscap->interval)
-        oscap->interval = WM_DEF_INTERVAL;
+        oscap->interval = WM_OSCAP_DEF_INTERVAL;
 
     // Check timeout and flags for evals
 
     for (eval = oscap->evals; eval; eval = eval->next) {
         if (!eval->timeout)
             if (!(eval->timeout = oscap->timeout))
-                eval->timeout = WM_DEF_TIMEOUT;
+                eval->timeout = WM_OSCAP_DEF_TIMEOUT;
     }
 }
 
