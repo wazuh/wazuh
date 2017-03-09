@@ -94,6 +94,12 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
 
             if (OSHash_Add(pending_data, keys.keyentries[agentid]->id, data) != 2) {
                 merror("%s: ERROR: Couldn't add pending data into hash table.", ARGV0);
+
+                /* Unlock mutex */
+                if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
+                    merror(MUTEX_ERROR, ARGV0);
+                }
+
                 free(data);
                 return;
             }
@@ -484,7 +490,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         /* Pop data from queue */
         if ((data = OSHash_Get(pending_data, pending_queue[queue_j]))) {
-            strncpy(agent_id, pending_queue[queue_j], 9);
+            strncpy(agent_id, pending_queue[queue_j], 8);
             strncpy(msg, data->message, OS_SIZE_1024);
             data->changed = 0;
         } else {
