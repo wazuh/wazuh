@@ -106,8 +106,8 @@ updatefailed="Ažuriranje nije uspelo."
 updaterules="Da li želiš da ažuriraš pravila?"
 updatingrules="Pravila ažuriranja."
 notupdatingrules="Ne ažurira pravila."
-update_rev_newconf1="Backup from your ossec.conf has been created at $INSTALLDIR/etc/ossec.conf.orig"
-update_rev_newconf2="Please verify your ossec.conf configuration at $INSTALLDIR/etc/ossec.conf"
+update_rev_newconf1="Backup iz svog ossec.conf je stvoren na $INSTALLDIR/etc/ossec.conf.orig."
+update_rev_newconf2="Molimo potvrdite svoju konfiguraciju ossec.conf na $INSTALLDIR/etc/ossec.conf."
 
 # Pf support
 pfenable="Da li želiš da koristiš PF firewall u aktivnoj reakciji?"
