@@ -18,17 +18,17 @@ UI_MANIFEST_ID RT_MANIFEST "os_win32ui.exe.manifest"
 
 IDD_ABOUT DIALOG DISCARDABLE  0, 0, 259, 106
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "About OSSEC"
+CAPTION "About Wazuh"
 FONT 8, "MS Sans Serif"
 BEGIN
     DEFPUSHBUTTON  "&Close",UI_ID_CLOSE,90,90,50,14
-    GROUPBOX       " Copyright (C) 2014 Trend Micro Inc.",
+    GROUPBOX       " Copyright (C) 2017 Wazuh Inc.",
                    IDC_STATIC,7,7,245,82
     CTEXT   "This program is a free software; you can redistribute it" \
             " and/or modify it under the terms of the GNU General" \
-            " Public License (GPL) version 2 as published by the FSF" \
+            " Public License (version 2) as published by the FSF" \
             " - Free Software Foundation\r\n\r\n" \
-            "For more information, visit us online at http://www.ossec.net",
+            "For more information, visit us online at https://wazuh.com/",
             IDC_STATIC,16,18,200,63
 END
 
@@ -41,7 +41,7 @@ BEGIN
     GROUPBOX  " ~Wazuh Windows Agent Manager~ ", UI_SERVER_TOP, 7,7, 193, 57
     LTEXT     " No Information available.", UI_SERVER_INFO, 16, 22, 150, 40
 
-    LTEXT     "OSSEC Server IP: ",IDC_STATIC,7,76,62,8
+    LTEXT     "Manager IP: ",IDC_STATIC,7,76,62,8
     EDITTEXT  UI_SERVER_TEXT,75,74,105,12,ES_AUTOHSCROLL
 
     LTEXT     "Authentication key: ",IDC_STATIC,7,92,62,8
