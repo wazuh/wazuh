@@ -504,7 +504,7 @@ setEnv()
     if [ -d "$INSTALLDIR" ]; then
         if [ "X${USER_DELETE_DIR}" = "X" ]; then
             echo ""
-            $ECHO "    - ${deletedir} ($yes/$no) [$yes]: "
+            $ECHO "    - ${deletedir} ($yes/$no) [$no]: "
             read ANSWER
         else
             ANSWER=${USER_DELETE_DIR}
