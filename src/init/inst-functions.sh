@@ -219,6 +219,7 @@ WriteAgent()
         fi
       fi
     fi
+    echo "    <protocol>udp</protocol>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
