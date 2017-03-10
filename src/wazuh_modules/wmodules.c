@@ -48,7 +48,9 @@ void wm_check() {
             next = j->next;
 
             if (i->context->name == j->context->name) {
-                j->context->destroy(j->data);
+                if (j->context->destroy)
+                    j->context->destroy(j->data);
+
                 free(j);
 
                 if (j == wmodules)

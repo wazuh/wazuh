@@ -548,7 +548,7 @@ libcJSON.a: ${cjson_o}
 #### OSSEC Libs ####
 ####################
 
-ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a ${OPENSSL_LIB} ${CRYPTO_LIB}
+ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a ${JSON_LIB} ${OPENSSL_LIB} ${CRYPTO_LIB}
 
 #### os_xml ########
 

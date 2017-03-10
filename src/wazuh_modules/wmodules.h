@@ -24,6 +24,7 @@
 #define WM_STATE_DIR    DEFAULTDIR "/var/wodles"    // Default directory for states.
 #define WM_STRING_MAX   67108864                    // Max. dynamic string size (64 MB).
 #define WM_BUFFER_MAX   1024                        // Max. static buffer size.
+#define WM_BUFFER_MIN   1024                        // Starting JSON buffer length.
 #define WM_MAX_ATTEMPTS 3                           // Max. number of attempts.
 #define WM_MAX_WAIT     1                           // Max. wait between attempts.
 #define WM_IO_WRITE     0
@@ -54,6 +55,7 @@ typedef struct wmodule {
 
 #include "wm_oscap.h"
 #include "wm_database.h"
+#include "wm_syscollector.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.

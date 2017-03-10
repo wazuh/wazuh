@@ -61,6 +61,11 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, __attribute__((unu
             OS_ClearNode(children);
             return OS_INVALID;
         }
+    } else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)){
+        if (wm_sys_read(children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
     } else
         merror("Unknown module '%s'", node->values[0]);
 
