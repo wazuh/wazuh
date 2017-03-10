@@ -114,7 +114,7 @@ endif # Linux
 endif # winagent
 
 ifdef DEBUGAD
-	DEFINES+=+DDEBUGAD
+	DEFINES+=-DDEBUGAD
 endif
 
 OSSEC_CFLAGS=${CFLAGS}
