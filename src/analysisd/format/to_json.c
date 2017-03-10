@@ -27,6 +27,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     char* out;
     int i;
 
+    extern long int __crt_ftell;
+
     root = cJSON_CreateObject();
 
     // Parse timestamp
@@ -36,6 +38,18 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON_AddItemToObject(root, "agent", agent = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "manager", manager = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "data", data = cJSON_CreateObject());
+
+    if ( lf->time ) {
+
+        char alert_id[19];
+        alert_id[18] = '\0';
+        if((snprintf(alert_id, 18, "%ld.%ld", (long int)lf->time, __crt_ftell)) < 0) {
+            merror("snprintf failed");
+        }
+
+        cJSON_AddStringToObject(root, "id", alert_id);
+    }
+
 
 	/* Get manager hostname */
     memset(manager_name, '\0', 512);
@@ -259,16 +273,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if (lf->previous)
         cJSON_AddStringToObject(root, "previous_log", lf->previous);
 
-    if ( lf->time ) {
-        char *alert_id;
-        if((snprintf(alert_id, 16, "%ld.%ld", (long int)lf->time, __crt_ftell)) < 0) {
-            merror("snprintf failed");
-        }
-        cJSON_AddStringToObject(root, "alert_id", alert_id);
-    }
-
     W_ParseJSON(root, lf);
-
     out = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return out;
