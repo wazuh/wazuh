@@ -13,7 +13,7 @@ env:
 - DB=pgsql OSSEC_TYPE=server GEOIP=no
 - DB=none OSSEC_TYPE=server GEOIP=yes
 - DB=none OSSEC_TYPE=server GEOIP=no
-- DB=none OSSEC_TYPE=server PRELUDE=yes ZEROMQ=yes PICVIZ=yes
+- DB=none OSSEC_TYPE=server PRELUDE=yes ZEROMQ=yes
 - DB=none OSSEC_TYPE=local GEOIP=no
 - DB=none OSSEC_TYPE=hybrid GEOIP=no
 - DB=none OSSEC_TYPE=agent GEOIP=no
@@ -55,7 +55,6 @@ script:
   && if ! [[ "${DB}" = "none" ]]; then COMMAND="${COMMAND} DATABASE=${DB}"; fi
   && if [[ "${GEOIP}" = "yes" ]]; then COMMAND="${COMMAND} USE_GEOIP=1"; fi
   && if [[ "${PRELUDE}" = "yes" ]]; then COMMAND="${COMMAND} USE_PRELUDE=1"; fi
-  && if [[ "${PICVIZ}" = "yes" ]]; then COMMAND="${COMMAND} USE_PICVIZ=1"; fi
   && if [[ "${ZEROMQ}" = "yes" ]]; then COMMAND="${COMMAND} USE_ZEROMQ=1"; fi
   && ( cd src/ && make --warn-undefined-variables ${COMMAND} settings && make --warn-undefined-variables ${COMMAND} -j )
   && if ! [[ "${OSSEC_TYPE}" = "test" || "${OSSEC_TYPE}" = "winagent" ]]; then ( cd src/ && sudo make --warn-undefined-variables ${COMMAND} install ) fi

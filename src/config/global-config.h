@@ -49,10 +49,6 @@ typedef struct __Config {
     /* Standard alerts output */
     u_int8_t alerts_log;
 
-    /* Picviz support */
-    u_int8_t picviz;
-    char *picviz_socket;
-
     /* Not currently used */
     u_int8_t keeplogdate;
 

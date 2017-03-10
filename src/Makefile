@@ -25,12 +25,6 @@ USE_ZEROMQ?=no
 USE_GEOIP?=no
 USE_INOTIFY=no
 
-ifneq (${TARGET},winagent)
-	USE_PICVIZ?=yes
-else
-	USE_PICVIZ?=no
-endif
-
 ONEWAY?=no
 CLEANFULL?=no
 
@@ -210,10 +204,6 @@ ifneq (,$(filter ${USE_ZEROMQ},auto yes y Y 1))
 	OSSEC_LDFLAGS+=-lzmq -lczmq -lm
 endif # USE_ZEROMQ
 
-ifneq (,$(filter ${USE_PICVIZ},auto yes y Y 1))
-	DEFINES+=-DPICVIZ_OUTPUT_ENABLED
-endif # USE_PICVIZ
-
 ifneq (,$(filter ${USE_GEOIP},auto yes y Y 1))
 	DEFINES+=-DLIBGEOIP_ENABLED
 	OSSEC_LDFLAGS+=-lGeoIP
@@ -383,8 +373,6 @@ settings:
 	@echo "    USE_ZEROMQ:       ${USE_ZEROMQ}"
 	@echo "    USE_GEOIP:        ${USE_GEOIP}"
 	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
-	@echo "    USE_LEGACY_SSL:   ${USE_LEGACY_SSL}"
-	@echo "    USE_PICVIZ:       ${USE_PICVIZ}"
 	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
 	@echo "Mysql settings:"
 	@echo "    includes:         ${MI}"

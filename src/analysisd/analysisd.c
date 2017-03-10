@@ -34,10 +34,6 @@
 #include "output/jsonout.h"
 #include "labels.h"
 
-#ifdef PICVIZ_OUTPUT_ENABLED
-#include "output/picviz.h"
-#endif
-
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
 #endif
@@ -293,17 +289,6 @@ int main_analysisd(int argc, char **argv)
     }
 #endif
 
-#ifdef PICVIZ_OUTPUT_ENABLED
-    /* Open the Picviz socket */
-    if (Config.picviz) {
-        OS_PicvizOpen(Config.picviz_socket);
-
-        if (chown(Config.picviz_socket, uid, gid) == -1) {
-            merror_exit(CHOWN_ERROR, Config.picviz_socket, errno, strerror(errno));
-        }
-    }
-#endif
-
     /* Set the group */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
@@ -535,12 +520,6 @@ int main_analysisd(int argc, char **argv)
 
     /* Going to main loop */
     OS_ReadMSG(m_queue);
-
-#ifdef PICVIZ_OUTPUT_ENABLED
-    if (Config.picviz) {
-        OS_PicvizClose();
-    }
-#endif
 
     exit(0);
 }
@@ -954,13 +933,6 @@ void OS_ReadMSG_analysisd(int m_queue)
                 }
 #endif
 
-
-#ifdef PICVIZ_OUTPUT_ENABLED
-                /* Log to Picviz */
-                if (Config.picviz) {
-                    OS_PicvizLog(lf);
-                }
-#endif
 
                 /* Execute an active response */
                 if (currently_rule->ar) {
