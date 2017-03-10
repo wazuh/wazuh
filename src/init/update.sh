@@ -181,6 +181,7 @@ UpdateOldVersions()
         ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
         # Replace IP
         ./src/init/replace_manager_ip.sh $OSSEC_CONF_FILE_ORIG $OSSEC_CONF_FILE > "$OSSEC_CONF_FILE.tmp"
+        ./src/init/replace_protocol.sh $OSSEC_CONF_FILE_ORIG $OSSEC_CONF_FILE.tmp
         mv "$OSSEC_CONF_FILE.tmp" $OSSEC_CONF_FILE
         ./add_localfiles.sh $DIRECTORY >> $OSSEC_CONF_FILE
     fi
