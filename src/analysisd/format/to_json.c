@@ -259,7 +259,16 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if (lf->previous)
         cJSON_AddStringToObject(root, "previous_log", lf->previous);
 
+    if ( lf->time ) {
+        char *alert_id;
+        if((snprintf(alert_id, 16, "%ld.%ld", (long int)lf->time, __crt_ftell)) < 0) {
+            merror("snprintf failed");
+        }
+        cJSON_AddStringToObject(root, "alert_id", alert_id);
+    }
+
     W_ParseJSON(root, lf);
+
     out = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return out;
