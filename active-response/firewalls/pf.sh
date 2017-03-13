@@ -15,6 +15,7 @@ fi
 # Checking if ossec table is configured
 PFCTL_TABLE=`cat ${PFCTL_RULES} | egrep -v "(^#|^$)" | grep ossec_fwtable | head -1 | awk '{print $2}' | sed "s/<//;s/>//"`
 ARG1=""
+ARG2=""
 ACTION=$1
 USER=$2
 IP=$3
@@ -67,6 +68,7 @@ if [ "X${UNAME}" = "XOpenBSD" -o "X${UNAME}" = "XFreeBSD" -o "X${UNAME}" = "XDar
 	else
   		if [ "x${ACTION}" = "xadd" ]; then
 	     		ARG1="-t $PFCTL_TABLE -T add ${IP}"
+			ARG2="-k ${IP}"
 		else
 	     		ARG1="-t $PFCTL_TABLE -T delete ${IP}"
 		fi
@@ -77,7 +79,7 @@ if [ "X${UNAME}" = "XOpenBSD" -o "X${UNAME}" = "XFreeBSD" -o "X${UNAME}" = "XDar
 
   #Executing it
   ${PFCTL} ${ARG1} > /dev/null 2>&1 
-
+  ${PFCTL} ${ARG2} > /dev/null 2>&1
   exit 0;
   
 else
