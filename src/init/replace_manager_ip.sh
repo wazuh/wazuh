@@ -36,7 +36,7 @@ get_value_tag () {  # tag file
 
 edit_value_tag() {  # tag file value overwrite=NO
     if [ "$#" == "4" ]; then  # overwrite
-        sed -ri "s#<$1>.+</$1>#<$1>$3</$1>#g" $2 2> /dev/null
+        sed -ri "s#<$1>.+</$1>#<$1>$3</$1>#g" $2 > /dev/null
     else
         sed -r "s#<$1>.+</$1>#<$1>$3</$1>#g" $2 2> /dev/null
     fi
@@ -56,7 +56,7 @@ replace(){  # tag olf_file new_file
         exit 1
     fi
 
-    edit_value_tag $1 $3 $manager_ip
+    edit_value_tag $1 $3 $manager_ip "overwrite"
 }
 
 main() {
