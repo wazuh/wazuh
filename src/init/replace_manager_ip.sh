@@ -34,11 +34,9 @@ get_value_tag () {  # tag file
     fi
 }
 
-edit_value_tag() {  # tag file value overwrite=NO
-    if [ "$#" == "4" ]; then  # overwrite
-        sed -ri "s#<$1>.+</$1>#<$1>$3</$1>#g" $2 2> /dev/null
-    else
-        sed -r "s#<$1>.+</$1>#<$1>$3</$1>#g" $2 2> /dev/null
+edit_value_tag() {  # tag file value
+    if [ "$#" == "3" ]; then
+        sed -ri "s#<server-ip>.+</server-ip>#<$1>$3</$1>#g" $2 > /dev/null
     fi
 
     if [ "$?" != "0" ]; then
