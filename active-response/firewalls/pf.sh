@@ -21,7 +21,7 @@ fi
 
 # Checking if ossec table is configured
 CHECKTABLE=`cat ${PFCTL_RULES} | grep $PFCTL_TABLE`
-if [ -z $CHECKTABLE ]; then
+if [ -z "$CHECKTABLE" ]; then
         echo "Table $PFCTL_TABLE does not exist"
         exit 1
 fi
