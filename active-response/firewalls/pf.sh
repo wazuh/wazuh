@@ -3,23 +3,28 @@
 # Last modified: Daniel B. Cid
 
 UNAME=`uname`
-GREP=`which grep`
+GREP="/usr/bin/grep"
 PFCTL="/sbin/pfctl"
-
-# Getting pf rules file.
-PFCTL_RULES=`${GREP} pf_rules /etc/rc.conf | awk -F"=" '{print $2}' | awk '{print $1}' | awk -F"\"" '{print $1 $2}'`
-if [ "X${PFCTL_RULES}" = "X" ]; then
-    PFCTL_RULES="/etc/pf.conf"
-fi    
-
-# Checking if ossec table is configured
-PFCTL_TABLE=`cat ${PFCTL_RULES} | egrep -v "(^#|^$)" | grep ossec_fwtable | head -1 | awk '{print $2}' | sed "s/<//;s/>//"`
+PFCTL_RULES="/etc/pf.conf"
+PFCTL_TABLE="ossec_fwtable"
 ARG1=""
 ARG2=""
 ACTION=$1
 USER=$2
 IP=$3
 
+# Getting pf rules file.
+if [ ! -f $PFCTL_RULES ]; then
+        echo "The pf rules file $PFCTL_RULES does not exist"
+        exit 1
+fi 
+
+# Checking if ossec table is configured
+CHECKTABLE=`cat ${PFCTL_RULES} | grep $PFCTL_TABLE`
+if [ -z $PFCTL_TABLE ]; then
+        echo "Table $PFCTL_TABLE does not exist"
+        exit 1
+fi
 
 # Finding path
 LOCAL=`dirname $0`;
@@ -28,14 +33,11 @@ cd ../
 PWD=`pwd`
 echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/../logs/active-responses.log
 
-
 # Checking for an IP
 if [ "x${IP}" = "x" ]; then
    echo "$0: <action> <username> <ip>" 
    exit 1;
 fi
-
-
 
 # Blocking IP
 if [ "x${ACTION}" != "xadd" -a "x${ACTION}" != "xdelete" ]; then
@@ -43,8 +45,6 @@ if [ "x${ACTION}" != "xadd" -a "x${ACTION}" != "xdelete" ]; then
    echo "$0: invalid action: ${ACTION}" >> ${PWD}/ossec-hids-responses.log
    exit 1;
 fi
-
-
 
 # OpenBSD and FreeBSD pf
 if [ "X${UNAME}" = "XOpenBSD" -o "X${UNAME}" = "XFreeBSD" -o "X${UNAME}" = "XDarwin" ]; then
