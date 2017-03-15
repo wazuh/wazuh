@@ -9,6 +9,7 @@ PFCTL_RULES="/etc/pf.conf"
 PFCTL_TABLE="ossec_fwtable"
 ARG1=""
 ARG2=""
+CHECKTABLE=""
 ACTION=$1
 USER=$2
 IP=$3
@@ -20,7 +21,7 @@ if [ ! -f $PFCTL_RULES ]; then
 fi 
 
 # Checking if ossec table is configured
-CHECKTABLE=`cat ${PFCTL_RULES} | grep $PFCTL_TABLE`
+CHECKTABLE=`cat ${PFCTL_RULES} | $GREP $PFCTL_TABLE`
 if [ -z "$CHECKTABLE" ]; then
         echo "Table $PFCTL_TABLE does not exist"
         exit 1
