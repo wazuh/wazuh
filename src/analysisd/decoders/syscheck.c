@@ -349,7 +349,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 sk_fill_event(lf, f_name, &newsum);
 
                 /* Generate size message */
-                if (!oldsum.size || !newsum.size || strcmp(oldsum.size, newsum.size) == 0) {
+                if (strcmp(oldsum.size, newsum.size) == 0) {
                     sdb.size[0] = '\0';
                 } else {
                     snprintf(sdb.size, OS_FLSIZE,
@@ -377,7 +377,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 }
 
                 /* Ownership message */
-                if (!newsum.uid || !oldsum.uid || strcmp(newsum.uid, oldsum.uid) == 0) {
+                if (strcmp(newsum.uid, oldsum.uid) == 0) {
                     sdb.owner[0] = '\0';
                 } else {
                     if (oldsum.uname && newsum.uname) {
@@ -392,7 +392,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 }
 
                 /* Group ownership message */
-                if (!newsum.gid || !oldsum.gid || strcmp(newsum.gid, oldsum.gid) == 0) {
+                if (strcmp(newsum.gid, oldsum.gid) == 0) {
                     sdb.gowner[0] = '\0';
                 } else {
                     if (oldsum.gname && newsum.gname) {
@@ -407,7 +407,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 }
 
                 /* MD5 message */
-                if (!newsum.md5 || !oldsum.md5 || strcmp(newsum.md5, oldsum.md5) == 0) {
+                if (strcmp(newsum.md5, oldsum.md5) == 0) {
                     sdb.md5[0] = '\0';
                 } else {
                     snprintf(sdb.md5, OS_FLSIZE, "Old md5sum was: '%s'\n"
@@ -417,7 +417,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 }
 
                 /* SHA-1 message */
-                if (!newsum.sha1 || !oldsum.sha1 || strcmp(newsum.sha1, oldsum.sha1) == 0) {
+                if (strcmp(newsum.sha1, oldsum.sha1) == 0) {
                     sdb.sha1[0] = '\0';
                 } else {
                     snprintf(sdb.sha1, OS_FLSIZE, "Old sha1sum was: '%s'\n"
