@@ -58,7 +58,7 @@ else
 ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
 		DEFINES+=-DHIGHFIRST
-		PATH=${PATH}:/usr/vac/bin
+		PATH:=${PATH}:/usr/vac/bin
 else
 ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
