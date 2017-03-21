@@ -893,6 +893,7 @@ cleanup:
     free(user);
 
     OS_ClearNode(rule_opt);
+    OS_ClearNode(rule);
 
     /* Clean global node */
     OS_ClearNode(node);
