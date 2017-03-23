@@ -821,14 +821,7 @@ void FreeDecoderInfo(OSDecoderInfo *pi) {
         free(pi->regex);
         free(pi->prematch);
         free(pi->program_name);
-
-        if (pi->order) {
-            for (i = 0; i < Config.decoder_order_size; i++) {
-                free(pi->order[i]);
-            }
-
-            free(pi->order);
-        }
+        free(pi->order);
 
         free(pi);
     }
