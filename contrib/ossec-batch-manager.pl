@@ -53,9 +53,9 @@
 
 #$Id$
 # TODO:
-# 	- Add check for ossec 1.4 and support longer agent names
-#	- Add in eval so that older version of perl without
-#	  Time::HiRes still can use this script.
+#   - Add check for ossec 1.4 and support longer agent names
+#   - Add in eval so that older version of perl without
+#     Time::HiRes still can use this script.
 
 use strict;
 use warnings;
@@ -98,8 +98,12 @@ elsif (@extracts) {
 }
 # Adding a new agent
 elsif ($add) {
-  if ($agentname && $ipaddress && $ipaddress =~
-      m/(1?\d\d?|2[0-4]\d|25[0-5])(\.(1?\d\d?|2[0-4]\d|25[0-5])){3}/ &&
+  if ($agentname && $ipaddress && 
+      (
+          $ipaddress =~ m/(1?\d\d?|2[0-4]\d|25[0-5])(\.(1?\d\d?|2[0-4]\d|25[0-5])){3}/ 
+              ||
+          $ipaddress eq 'any'
+      ) &&
       # ossec doesn't like agent names > 32 characters.
       length($agentname) <= 32) {
 
@@ -359,10 +363,11 @@ sub check_if_exists {
       if(defined($key)) {
         $rval = 1 if ($id == $newid && $rval == 0);
         $rval = 2 if ($name eq $newname && $rval == 0); 
-        $rval = 3 if ($ip eq $newip && $rval == 0);
+        $rval = 3 if ($ip ne 'any' && $ip eq $newip && $rval == 0);
       }
     }
     close(FH);
   }
   return $rval;
 }
+
