@@ -662,8 +662,10 @@ int rename_ex(const char *source, const char *destination)
 int mkstemp_ex(char *tmp_path)
 {
     int fd;
+    mode_t old_mask = umask(0177);
 
     fd = mkstemp(tmp_path);
+    umask(old_mask);
 
     if (fd == -1) {
         log2file(
@@ -1605,8 +1607,13 @@ int TempFile(File *file, const char *source, int copy) {
     FILE *fp_src;
     int fd;
     char template[OS_FLSIZE + 1];
+    mode_t old_mask;
+
     snprintf(template, OS_FLSIZE, "%s.XXXXXX", source);
+    old_mask = umask(0177);
+
     fd = mkstemp(template);
+    umask(old_mask);
 
     if (fd < 0) {
         return -1;
