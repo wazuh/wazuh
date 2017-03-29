@@ -17,6 +17,13 @@
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 #define IN_BUFFER_SIZE sizeof(struct inotify_event) + NAME_MAX + 1
+
+/* Get current inotify queued events limit */
+static int get_max_queued_events();
+
+/* Set current inotify queued events limit */
+static int set_max_queued_events(int size);
+
 #else
 static void wm_check_agents();
 #endif
@@ -43,12 +50,6 @@ static int wm_fill_rootcheck(sqlite3 *db, const char *path);
  * Returns 0 on success, 1 to ignore and -1 on error.
  */
 static int wm_extract_agent(const char *fname, char *name, char *addr, int *registry);
-
-/* Get current inotify queued events limit */
-static int get_max_queued_events();
-
-/* Set current inotify queued events limit */
-static int set_max_queued_events(int size);
 
 // Database module context definition
 const wm_context WM_DATABASE_CONTEXT = {
@@ -819,6 +820,8 @@ wmodule* wm_database_read() {
 #endif
 }
 
+#ifdef INOTIFY_ENABLED
+
 /* Get current inotify queued events limit */
 int get_max_queued_events() {
     int size;
@@ -853,3 +856,5 @@ int set_max_queued_events(int size) {
     fclose(fp);
     return 0;
 }
+
+#endif
