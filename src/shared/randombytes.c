@@ -54,3 +54,8 @@ void srandom_init(void)
 #endif /* !WIN32 */
 }
 
+int os_random(void) {
+	int myrandom;
+	randombytes(&myrandom, sizeof(myrandom));
+	return myrandom % RAND_MAX;
+}
