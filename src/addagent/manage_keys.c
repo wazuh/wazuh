@@ -312,50 +312,6 @@ int k_extract(const char *cmdextract, int json_output)
     return (0);
 }
 
-int os_random()
-{
-
-#ifdef WIN32
-
-  static HCRYPTPROV prov = 0;
-  BYTE myrand = 0;
-
-  if (prov == 0) {
-      if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, 0)) {
-        merror("%s: ERROR: Error during CryptAcquireContext.\n", ARGV0);
-        return -1;
-      }
-  }
-
-  if (!CryptGenRandom(prov, sizeof(int), &myrand))
-  {
-    merror("%s: ERROR: Error during CryptGenRandom'.\n", ARGV0);
-    return -1;
-  }
-
-  return (int)myrand % RAND_MAX;
-
-#else
-#define OS_RAND_DEVICE "/dev/urandom"
-
-  static int fd = -1;
-  int myrand = 0;
-
-  if (fd < 0 && (fd = open(OS_RAND_DEVICE, O_RDONLY)) < 0) {
-      merror("%s: ERROR: Error opening '%s'.\n", ARGV0, OS_RAND_DEVICE);
-      return -1;
-  }
-
-  if (read(fd, &myrand, sizeof(int)) != sizeof(int)) {
-      merror("%s: ERROR: Error reading from '%s'.\n", ARGV0, OS_RAND_DEVICE);
-      return -1;
-  }
-
-  return myrand % RAND_MAX;
-
-#endif
-} //os_random()
-
 /* Bulk generate client keys from file */
 int k_bulkload(const char *cmdbulk)
 {
@@ -500,8 +456,7 @@ int k_bulkload(const char *cmdbulk)
         OS_MD5_Str(str1, md1);
         OS_MD5_Str(str2, md2);
 
-        snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), os_random(),
-                 (int)time3);
+        snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), (int)random(), (int)time3);
         OS_MD5_Str(str1, md1);
 
         fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
