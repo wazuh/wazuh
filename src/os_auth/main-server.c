@@ -140,8 +140,8 @@ char *__generatetmppass()
         srandom(time(0) + getpid());
     #endif
 
-    rand1 = random();
-    rand2 = random();
+    rand1 = os_random();
+    rand2 = os_random();
 
     rand3 = GetRandomNoise();
     rand4 = GetRandomNoise();

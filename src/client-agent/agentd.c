@@ -71,7 +71,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
-    random();
+    os_random();
 
     /* Ignore SIGPIPE, it will be detected on recv */
     signal(SIGPIPE, SIG_IGN);

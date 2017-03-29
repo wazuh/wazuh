@@ -388,7 +388,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
     }
 
     /* Random number, take only 5 chars ~= 2^16=65536*/
-    rand1 = (u_int16_t) random();
+    rand1 = (u_int16_t) os_random();
 
     _tmpmsg[OS_MAXSTR + 1] = '\0';
     _finmsg[OS_MAXSTR + 1] = '\0';
@@ -479,4 +479,3 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
 
     return (cmp_size + msg_size);
 }
-

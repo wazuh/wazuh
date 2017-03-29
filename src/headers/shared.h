@@ -138,7 +138,6 @@ typedef int gid_t;
 typedef int socklen_t;
 #define sleep(x) Sleep(x * 1000)
 #define srandom(x) srand(x)
-#define random(x) os_random(x)
 #define lstat(x,y) stat(x,y)
 #define CloseSocket(x) closesocket(x)
 void WinSetError();

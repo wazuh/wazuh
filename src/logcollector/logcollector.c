@@ -29,11 +29,11 @@ static char *rand_keepalive_str(char *dst, int size)
                                "0123456789"
                                "!@#$%^&*()_+-=;'[],./?";
     srandom_init();
-    int i, len = random() % (size - 10);
+    int i, len = os_random() % (size - 10);
 
     strncpy(dst, "--MARK--: ", 12);
     for ( i = 10; i < len; ++i ) {
-        dst[i] = text[(unsigned int)random() % (sizeof text - 1)];
+        dst[i] = text[(unsigned int)os_random() % (sizeof text - 1)];
     }
     dst[i] = '\0';
     return dst;

@@ -24,9 +24,9 @@ static char *rand_keepalive_str2(char *dst, int size)
                                "0123456789"
                                "!@#$%^&*()_+-=;'[],./?";
     srandom_init();
-    int i, len = random() % (size - 1);
+    int i, len = os_random() % (size - 1);
     for ( i = 0; i < len; ++i ) {
-        dst[i] = text[(unsigned)random() % (sizeof text - 1)];
+        dst[i] = text[(unsigned)os_random() % (sizeof text - 1)];
     }
     dst[i] = '\0';
     return dst;
