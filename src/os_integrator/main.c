@@ -127,7 +127,7 @@ int main(int argc, char **argv)
     srandom( time(0) + getpid()+ i);
     #endif
 
-    random();
+    os_random();
 
     /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)

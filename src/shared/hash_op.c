@@ -49,8 +49,8 @@ OSHash *OSHash_Create()
 
     /* Get seed */
     srandom((unsigned int)time(0));
-    self->initial_seed = os_getprime((unsigned)random() % self->rows);
-    self->constant = os_getprime((unsigned)random() % self->rows);
+    self->initial_seed = os_getprime((unsigned)os_random() % self->rows);
+    self->constant = os_getprime((unsigned)os_random() % self->rows);
 
     return (self);
 }
@@ -129,8 +129,8 @@ int OSHash_setSize(OSHash *self, unsigned int new_size)
     }
 
     /* New seed */
-    self->initial_seed = os_getprime((unsigned)random() % self->rows);
-    self->constant = os_getprime((unsigned)random() % self->rows);
+    self->initial_seed = os_getprime((unsigned)os_random() % self->rows);
+    self->constant = os_getprime((unsigned)os_random() % self->rows);
 
     return (1);
 }

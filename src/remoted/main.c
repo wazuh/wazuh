@@ -126,7 +126,7 @@ int main(int argc, char **argv)
         /* Not configured */
         exit(0);
     }
-    
+
     /* Don't exit when client.keys empty (if set) */
     if (getDefine_Int("remoted", "pass_empty_keyfile", 0, 1)) {
         OS_PassEmptyKeyfile();
@@ -167,7 +167,7 @@ int main(int argc, char **argv)
     /* Ignore SIGPIPE, it will be detected on recv */
     signal(SIGPIPE, SIG_IGN);
 
-    random();
+    os_random();
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
