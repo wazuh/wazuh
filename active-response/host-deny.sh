@@ -83,7 +83,15 @@ if [ "x${IP}" = "x" ]; then
    echo "$0: Missing argument <action> <user> (ip)" 
    exit 1;
 fi
-
+#
+#       Looking for duplication
+#
+IPKEY=$(grep -w "${IP}" /etc/hosts.deny)
+if [ ! -z "$IPKEY" ]
+then
+        echo "`date` Duplicate ip/hostname entry: ${IP}" >> ${PWD}/../logs/active-responses.log
+        exit 1
+fi
 
 # Checking for invalid entries (lacking "." or ":", etc)
 echo "${IP}" | egrep "\.|\:" > /dev/null 2>&1
