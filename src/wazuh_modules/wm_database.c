@@ -282,7 +282,7 @@ void wm_check_agents() {
 void wm_sync_agents() {
     unsigned int i;
     char path[PATH_MAX] = "";
-    keystore keys = { 0 };
+    keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
     int *agents;
     clock_t clock0 = clock();
