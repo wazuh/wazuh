@@ -56,14 +56,14 @@ elif [ -r "/etc/SuSE-release" ]; then
 # Arch
 elif [ -r "/etc/arch-release" ]; then
     DIST_NAME="arch"
-    DIST_VER=$(uname -r | sed -rn 's/.*([0-9]{1,2})\.[0-9].*/\1/p')
-    DIST_SUBVER=$(uname -r | sed -rn 's/.*[0-9]{1,2}\.([0-9]).*/\1/p')
+    DIST_VER=$(uname -r | sed -rn 's/[^0-9]*([0-9]+).*/\1/p')
+    DIST_SUBVER=$(uname -r | sed -rn 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
 
 # Debian
 elif [ -r "/etc/debian_version" ]; then
     DIST_NAME="debian"
-    DIST_VER=`sed -rn 's/.*([0-9]{1,2})\.[0-9]{1,2}.*/\1/p' /etc/debian_version`
-    DIST_SUBVER=`sed -rn 's/.*[0-9]{1,2}\.([0-9]{1,2}).*/\1/p' /etc/debian_version`
+    DIST_VER=`sed -rn 's/[^0-9]*([0-9]+).*/\1/p' /etc/debian_version`
+    DIST_SUBVER=`sed -rn 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p' /etc/debian_version`
 
 # Slackware
 elif [ -r "/etc/slackware-version" ]; then
@@ -74,8 +74,8 @@ elif [ -r "/etc/slackware-version" ]; then
 # Darwin
 elif [ "$(uname)" = "Darwin" ]; then
     DIST_NAME="darwin"
-    DIST_VER=$(uname -r | sed -rn 's/.*([0-9]{1,2})\.[0-9].*/\1/p')
-    DIST_SUBVER=$(uname -r | sed -rn 's/.*[0-9]{1,2}\.([0-9]).*/\1/p')
+    DIST_VER=$(uname -r | sed -En 's/[^0-9]*([0-9]+).*/\1/p')
+    DIST_SUBVER=$(uname -r | sed -En 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
 
 # Solaris / SunOS
 elif [ "$(uname)" = "SunOS" ]; then
@@ -86,8 +86,8 @@ elif [ "$(uname)" = "SunOS" ]; then
 # BSD
 elif [ "X$(uname)" = "XOpenBSD" -o "X$(uname)" = "XNetBSD" -o "X$(uname)" = "XFreeBSD" -o "X$(uname)" = "XDragonFly" ]; then
     DIST_NAME=$(uname)
-    DIST_VER=$(uname -r | sed -rn 's/([0-9]{1,2})\.[0-9].*/\1/p')
-    DIST_SUBVER=$(uname -r | sed -rn 's/.*[0-9]{1,2}\.([0-9]).*/\1/p')
+    DIST_VER=$(uname -r | sed -rn 's/[^0-9]*([0-9]+).*/\1/p')
+    DIST_SUBVER=$(uname -r | sed -rn 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
 
 elif [ "X$(uname)" = "XLinux" ]; then
     DIST_NAME="Linux"
