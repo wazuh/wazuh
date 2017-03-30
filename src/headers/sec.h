@@ -60,6 +60,8 @@ typedef struct _keystore {
     size_t removed_keys_size;
 } keystore;
 
+#define KEYSTORE_INITIALIZER { NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0 }
+
 /** Function prototypes -- key management **/
 
 /* Check if the authentication keys are present */

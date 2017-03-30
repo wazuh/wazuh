@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 
     char shost[512];
 
-    keystore keys = { 0 };
+    keystore keys = KEYSTORE_INITIALIZER;
 
     /* Set the name */
     OS_SetName(ARGV0);
