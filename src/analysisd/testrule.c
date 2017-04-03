@@ -174,6 +174,8 @@ int main(int argc, char **argv)
         }
     }
 
+    srandom_init();
+
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
