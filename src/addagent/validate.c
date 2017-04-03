@@ -45,8 +45,8 @@ char *OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
     muname = getuname();
     snprintf(id, 9, "%03d", ++keys->id_counter);
 
-    snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, (int)random(), muname);
-    snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)random());
+    snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, os_random(), muname);
+    snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)os_random());
     OS_MD5_Str(str1, md1);
     OS_MD5_Str(str2, md2);
     free(muname);
