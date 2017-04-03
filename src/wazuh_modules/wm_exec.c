@@ -264,6 +264,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         case ETIMEDOUT:
             retval = WM_ERROR_TIMEOUT;
+            kill(-pid, SIGTERM);
+            pthread_cancel(thread);
+            break;
 
         default:
             kill(-pid, SIGTERM);

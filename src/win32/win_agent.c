@@ -208,7 +208,7 @@ int local_start()
 
     /* Initialize random numbers */
     srandom(time(0));
-    random();
+    os_random();
 
     /* Socket connection */
     agt->sock = -1;

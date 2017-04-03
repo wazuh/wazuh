@@ -62,10 +62,10 @@
 #include <ctype.h>
 #include <signal.h>
 
-/* The mingw32 builder used by travis.ci can't find glob.h 
- * Yet glob must work on actual win32.  
+/* The mingw32 builder used by travis.ci can't find glob.h
+ * Yet glob must work on actual win32.
  */
-#ifndef __MINGW32__ 
+#ifndef __MINGW32__
 #include <glob.h>
 #endif
 
@@ -138,7 +138,6 @@ typedef int gid_t;
 typedef int socklen_t;
 #define sleep(x) Sleep(x * 1000)
 #define srandom(x) srand(x)
-#define random(x) rand(x)
 #define lstat(x,y) stat(x,y)
 #define CloseSocket(x) closesocket(x)
 void WinSetError();
@@ -213,4 +212,3 @@ extern const char *__local_name;
 #include "custom_output_search.h"
 
 #endif /* __SHARED_H */
-

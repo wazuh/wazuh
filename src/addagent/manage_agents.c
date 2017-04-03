@@ -131,7 +131,7 @@ int add_agent(int json_output)
 
     /* Set time 2 */
     time2 = time(0);
-    rand1 = random();
+    rand1 = os_random();
 
     /* Zero strings */
     memset(str1, '\0', STR_SIZE + 1);
@@ -325,7 +325,7 @@ int add_agent(int json_output)
         /* If user accepts to add */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
             time3 = time(0);
-            rand2 = random();
+            rand2 = os_random();
 
             if (TempFile(&file, AUTH_FILE, 1) < 0 ) {
                 if (json_output) {
@@ -353,7 +353,7 @@ int add_agent(int json_output)
             OS_MD5_Str(str1, md1);
             OS_MD5_Str(str2, md2);
 
-            snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), (int)random(),
+            snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), os_random(),
                      (int)time3);
             OS_MD5_Str(str1, md1);
 

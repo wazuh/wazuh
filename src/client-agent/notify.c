@@ -23,9 +23,10 @@ static char *rand_keepalive_str2(char *dst, int size)
                                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                "0123456789"
                                "!@#$%^&*()_+-=;'[],./?";
-    int i, len = rand() % (size - 1);
+    srandom_init();
+    int i, len = os_random() % (size - 1);
     for ( i = 0; i < len; ++i ) {
-        dst[i] = text[(unsigned)rand() % (sizeof text - 1)];
+        dst[i] = text[(unsigned)os_random() % (sizeof text - 1)];
     }
     dst[i] = '\0';
     return dst;
@@ -137,4 +138,3 @@ void run_notify()
     return;
 }
 #endif /* !WIN32 */
-
