@@ -202,6 +202,8 @@ int main_analysisd(int argc, char **argv)
     debug1(STARTED_MSG, ARGV0);
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
 
+    srandom_init();
+
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
