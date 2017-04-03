@@ -102,6 +102,7 @@ All notable changes to this project will be documented in this file.
 - Changed JSON timestamp format to ISO8601.
 - Overwrite @timestamp field from Logstash with the alert timestamp.
 - Moved timestamp JSON field to the beginning of the object.
+- Changed random data generator for a secure OS-provided generator.
 
 ### Fixed
 
@@ -164,6 +165,11 @@ All notable changes to this project will be documented in this file.
 - Fixed issue when creating agent backups.
 - Fixed hanging problem on Windows Auth client when negotiation issues.
 - Fixed bug at ossec-remoted that mismatched agent-info files.
+- Fixed resource leaks at rules configuration parsing.
+- Fixed memory leaks at rules parser.
+- Fixed memory leaks at XML decoders parser.
+- Fixed TOCTOU condition when removing directories recursively.
+- Fixed insecure temporary file creation for old POSIX specifications.
 
 ### Removed
 
