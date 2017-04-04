@@ -25,9 +25,9 @@ hs=`echo -n "a"`
 if [ ! "X$hs" = "Xa" ]; then
     if [ -x /usr/ucb/echo ]; then
         ECHO="/usr/ucb/echo -n"
+    else
+        ECHO=echo
     fi
-else
-    ECHO=echo
 fi
 
 # For solaris
