@@ -682,7 +682,9 @@ main()
     # Checking dependencies
     checkDependencies
 
-    clear
+    if [ "X$USER_NO_STOP" = "X" ]; then
+        clear 2> /dev/null
+    fi
 
     # Initial message
     echo " $NAME $VERSION ${installscript} - http://www.wazuh.com"
