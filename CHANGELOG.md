@@ -170,6 +170,7 @@ All notable changes to this project will be documented in this file.
 - Fixed memory leaks at XML decoders parser.
 - Fixed TOCTOU condition when removing directories recursively.
 - Fixed insecure temporary file creation for old POSIX specifications.
+- Fixed missing agentless devices identification at JSON alerts.
 
 ### Removed
 
