@@ -156,6 +156,8 @@ int main(int argc, char **argv)
     if(json_output)
         root = cJSON_CreateObject();
 
+    srandom_init();
+
     /* Get the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);

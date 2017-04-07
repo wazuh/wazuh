@@ -46,6 +46,8 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
+    srandom_init();
+
     /* Get the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
