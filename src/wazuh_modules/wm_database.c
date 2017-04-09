@@ -584,6 +584,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
     char *end;
     char *event;
     char *c_sum;
+    char *timestamp;
     char *f_name;
     int count;
     long last_offset = offset;
@@ -619,7 +620,15 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
         *end = '\0';
         c_sum = buffer + 3;
 
-        if (!(f_name = strchr(c_sum, ' '))) {
+        if (!(timestamp = strstr(c_sum, " !"))) {
+            merror("%s: WARN: Corrupt line found parsing '%s' (no timestamp found).", WM_DATABASE_LOGTAG, path);
+            continue;
+        }
+
+        *timestamp = '\0';
+        timestamp += 2;
+
+        if (!(f_name = strchr(timestamp, ' '))) {
             merror("%s: WARN: Corrupt line found parsing '%s'.", WM_DATABASE_LOGTAG, path);
             continue;
         }
@@ -654,7 +663,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
             continue;
         }
 
-        if (wdb_insert_fim(db, type, f_name, event, &sum) < 0)
+        if (wdb_insert_fim(db, type, atol(timestamp), f_name, event, &sum) < 0)
             merror("%s: ERROR: Couldn't insert FIM event into database from file '%s'.", WM_DATABASE_LOGTAG, path);
 
         count++;

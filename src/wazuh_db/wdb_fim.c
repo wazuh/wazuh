@@ -11,7 +11,7 @@
 
 #include "wdb.h"
 
-static const char *SQL_INSERT_EVENT = "INSERT INTO fim_event (id_file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, datetime(?, 'unixepoch', 'localtime'), ?);";
+static const char *SQL_INSERT_EVENT = "INSERT INTO fim_event (id_file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, datetime(?, 'unixepoch', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, datetime(?, 'unixepoch', 'localtime'), ?);";
 static const char *SQL_INSERT_FILE = "INSERT INTO fim_file (path, type) VALUES (?, ?);";
 static const char *SQL_FIND_FILE = "SELECT id FROM fim_file WHERE type = ? AND path = ?;";
 static const char *SQL_SELECT_LAST_EVENT = "SELECT type FROM fim_event WHERE id = (SELECT MAX(fim_event.id) FROM fim_event, fim_file WHERE fim_file.type = ? AND path = ? AND fim_file.id = id_file);";
@@ -103,7 +103,7 @@ int wdb_get_last_fim(sqlite3 *db, const char *path, int type) {
 }
 
 /* Insert FIM entry. Returns ID, or -1 on error. */
-int wdb_insert_fim(sqlite3 *db, int type, const char *f_name, const char *event, const sk_sum_t *sum) {
+int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, const char *event, const sk_sum_t *sum) {
     sqlite3_stmt *stmt = NULL;
     int id_file;
     int result;
@@ -125,41 +125,41 @@ int wdb_insert_fim(sqlite3 *db, int type, const char *f_name, const char *event,
 
     sqlite3_bind_int(stmt, 1, id_file);
     sqlite3_bind_text(stmt, 2, event, -1, NULL);
+    sqlite3_bind_int64(stmt, 3, timestamp);
 
     if (sum && strcmp(event, "deleted")) {
         char perm[7];
         snprintf(perm, 7, "%06o", sum->perm);
 
-        sqlite3_bind_int64(stmt, 3, atol(sum->size));
-        sqlite3_bind_text(stmt, 4, perm, -1, NULL);
+        sqlite3_bind_int64(stmt, 4, atol(sum->size));
+        sqlite3_bind_text(stmt, 5, perm, -1, NULL);
 
         // UID and GID from Windows is 0. It should be NULL
-        sqlite3_bind_int(stmt, 5, atoi(sum->uid));
-        sqlite3_bind_int(stmt, 6, atoi(sum->gid));
+        sqlite3_bind_int(stmt, 6, atoi(sum->uid));
+        sqlite3_bind_int(stmt, 7, atoi(sum->gid));
 
-        sqlite3_bind_text(stmt, 7, sum->md5, -1, NULL);
-        sqlite3_bind_text(stmt, 8, sum->sha1, -1, NULL);
+        sqlite3_bind_text(stmt, 8, sum->md5, -1, NULL);
+        sqlite3_bind_text(stmt, 9, sum->sha1, -1, NULL);
 
         if (sum->uname){
-            sqlite3_bind_text(stmt, 9, sum->uname, -1, NULL);
-            sqlite3_bind_text(stmt, 10, sum->gname, -1, NULL);
+            sqlite3_bind_text(stmt, 10, sum->uname, -1, NULL);
+            sqlite3_bind_text(stmt, 11, sum->gname, -1, NULL);
         }
         else{ // Old agents
-            sqlite3_bind_null(stmt, 9); // uname
-            sqlite3_bind_null(stmt, 10); // gname
+            sqlite3_bind_null(stmt, 10); // uname
+            sqlite3_bind_null(stmt, 11); // gname
         }
 
         if (sum->mtime)
-            sqlite3_bind_int64(stmt, 11, sum->mtime);
+            sqlite3_bind_int64(stmt, 12, sum->mtime);
         else // Old agents
-            sqlite3_bind_null(stmt, 11); // mtime
+            sqlite3_bind_null(stmt, 12); // mtime
 
         if (sum->inode)
-            sqlite3_bind_int64(stmt, 12, sum->inode);
+            sqlite3_bind_int64(stmt, 13, sum->inode);
         else // Old agents
-            sqlite3_bind_null(stmt, 12); // inode
+            sqlite3_bind_null(stmt, 13); // inode
     } else {
-        sqlite3_bind_null(stmt, 3);
         sqlite3_bind_null(stmt, 4);
         sqlite3_bind_null(stmt, 5);
         sqlite3_bind_null(stmt, 6);
@@ -169,6 +169,7 @@ int wdb_insert_fim(sqlite3 *db, int type, const char *f_name, const char *event,
         sqlite3_bind_null(stmt, 10);
         sqlite3_bind_null(stmt, 11);
         sqlite3_bind_null(stmt, 12);
+        sqlite3_bind_null(stmt, 13);
     }
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
