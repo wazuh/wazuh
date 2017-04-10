@@ -1339,3 +1339,35 @@ char **get_agents(int flag)
     closedir(dp);
     return (f_files);
 }
+
+/* Read profile. If the function fails, it writes "default" on profile and returns -1. */
+int get_agent_profile(const char *id, char *profile, size_t size) {
+    char path[PATH_MAX];
+    FILE *fp;
+
+    if (snprintf(path, PATH_MAX, PROFILES_DIR "/%s", id) >= PATH_MAX) {
+        merror("%s: ERROR: At read_profile(): file path too large for agent '%s'.", __local_name, id);
+        strncpy(profile, DEFAULT_PROFILE, size - 1);
+        return -1;
+    }
+
+    if (!(fp = fopen(path, "r"))) {
+        debug1("%s: DEBUG: At read_profile(): file '%s' not found. Using default.", __local_name, path);
+        strncpy(profile, DEFAULT_PROFILE, size - 1);
+        return -1;
+    }
+
+    if (fgets(profile, size, fp)) {
+        char *endl = strchr(profile, '\n');
+
+        if (endl) {
+            *endl = '\0';
+        }
+    } else {
+        merror("%s: WARN: Empty profile for agent ID '%s'. Using default.", __local_name, id);
+        strncpy(profile, DEFAULT_PROFILE, size - 1);
+    }
+
+    fclose(fp);
+    return 0;
+}

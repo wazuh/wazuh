@@ -52,7 +52,7 @@ char *OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
     free(muname);
 
     snprintf(key, KEYSIZE, "%s%s", md1, md2);
-    OS_AddKey(keys, id, name, ip ? ip : "any", key);
+    OS_AddKey(keys, id, name, ip ? ip : "any", key, "");
 
     os_calloc(2048, sizeof(char), finals);
     snprintf(finals, 2048, "%s %s %s %s", id, name, ip ? ip : "any", key);
