@@ -12,7 +12,6 @@
 #include "os_net/os_net.h"
 #include "agentd.h"
 
-
 #ifndef WIN32
 static time_t g_saved_time = 0;
 static char *rand_keepalive_str2(char *dst, int size);
@@ -62,8 +61,9 @@ char *getsharedfiles()
 /* Periodically send notification to server */
 void run_notify()
 {
-    char keep_alive_random[1024];
-    char tmp_msg[OS_SIZE_1024 + 1];
+    char keep_alive_random[KEEPALIVE_SIZE];
+    char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE];
+    static char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
     char *uname;
     char *shared_files;
     os_md5 md5sum;
@@ -106,6 +106,13 @@ void run_notify()
         return;
     }
 
+    /* Format labeled data */
+
+    if (!tmp_labels[0] && labels_format(agt->labels, tmp_labels, OS_MAXSTR - OS_HEADER_SIZE) < 0) {
+        merror("%s: ERROR: too large labeled data.", ARGV0);
+        tmp_labels[0] = '\0';
+    }
+
     /* Get shared files */
     shared_files = getsharedfiles();
     if (!shared_files) {
@@ -117,19 +124,20 @@ void run_notify()
         }
     }
 
-    rand_keepalive_str2(keep_alive_random, 700);
+    rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
 
     /* Create message */
     if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
             (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
-        snprintf(tmp_msg, OS_SIZE_1024, "#!-%s / %s\n%s\n%s",
-                 uname, md5sum, shared_files, keep_alive_random);
+        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
+                 uname, md5sum, tmp_labels, shared_files, keep_alive_random);
     } else {
-        snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s\n%s",
-                 uname, shared_files, keep_alive_random);
+        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
+                 uname, tmp_labels, shared_files, keep_alive_random);
     }
 
     /* Send status message */
+    debug2("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
     send_msg(0, tmp_msg);
 
     free(uname);

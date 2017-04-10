@@ -10,6 +10,8 @@
 #ifndef __AGENTD_H
 #define __AGENTD_H
 
+#include "shared.h"
+#include "sec.h"
 #include "config/config.h"
 #include "config/client-config.h"
 
@@ -48,12 +50,12 @@ int connect_server(int initial_id);
 /* Notify server */
 void run_notify(void);
 
+/* Format labels from config into string. Return 0 on success or -1 on error. */
+int format_labels(char *str, size_t size);
+
 /*** Global variables ***/
 
 /* Global variables. Only modified during startup. */
-
-#include "shared.h"
-#include "sec.h"
 
 extern time_t available_server;
 extern int run_foreground;
@@ -61,4 +63,3 @@ extern keystore keys;
 extern agent *agt;
 
 #endif /* __AGENTD_H */
-

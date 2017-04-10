@@ -6,6 +6,7 @@
 #define _XOPEN_SOURCE 600
 #include "json_extended.h"
 #include <stddef.h>
+#include "config.h"
 
 #define MAX_MATCHES 10
 #define MAX_STRING 1024
@@ -30,6 +31,10 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
     // Parse CIS and PCIDSS rules from rootcheck .txt benchmarks
     if(lf->full_log && W_isRootcheck(root, 1)) {
         W_JSON_ParseRootcheck(root, lf, 1);
+    }
+    // Parse labels
+    if (lf->labels && lf->labels[0].key) {
+        W_JSON_ParseLabels(root, lf);
     }
 }
 
@@ -475,4 +480,22 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
         free(current);
     } else
         cJSON_AddStringToObject(root, key, value);
+}
+
+// Parse labels
+void W_JSON_ParseLabels(cJSON *root, const Eventinfo *lf) {
+    int i;
+    cJSON *agent;
+    cJSON *labels;
+
+    agent = cJSON_GetObjectItem(root, "agent");
+
+    labels = cJSON_CreateObject();
+    cJSON_AddItemToObject(agent, "labels", labels);
+
+    for (i = 0; lf->labels[i].key != NULL; i++) {
+        if (!lf->labels[i].flags.hidden || Config.show_hidden_labels) {
+            W_JSON_AddField(labels, lf->labels[i].key, lf->labels[i].value);
+        }
+    }
 }

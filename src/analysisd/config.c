@@ -58,13 +58,18 @@ int GlobalConf(const char *cfgfile)
     Config.includes = NULL;
     Config.lists = NULL;
     Config.decoders = NULL;
+    Config.label_cache_maxage = 0;
+    Config.show_hidden_labels = 0;
+
+    os_calloc(1, sizeof(wlabel_t), Config.labels);
 
     modules |= CGLOBAL;
     modules |= CRULES;
     modules |= CALERTS;
 
     /* Read config */
-    if (ReadConfig(modules, cfgfile, &Config, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, &Config, NULL) < 0 ||
+        ReadConfig(CLABELS, cfgfile, &Config.labels, NULL) < 0) {
         return (OS_INVALID);
     }
 

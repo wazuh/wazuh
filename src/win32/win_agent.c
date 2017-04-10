@@ -465,10 +465,11 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 void send_win32_info(time_t curr_time)
 {
     int msg_size;
-    char tmp_msg[OS_MAXSTR + 2];
+    char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
     char crypt_msg[OS_MAXSTR + 2];
+    char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
 
-    tmp_msg[OS_MAXSTR + 1] = '\0';
+    tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
     crypt_msg[OS_MAXSTR + 1] = '\0';
 
     debug1("%s: DEBUG: Sending keep alive message.", ARGV0);
@@ -483,6 +484,13 @@ void send_win32_info(time_t curr_time)
             merror("%s: Error generating system information.", ARGV0);
             os_strdup("Microsoft Windows - Unknown (unable to get system info)", __win32_uname);
         }
+    }
+
+    /* Format labeled data */
+
+    if (!tmp_labels[0] && labels_format(agt->labels, tmp_labels, OS_MAXSTR - OS_HEADER_SIZE) < 0) {
+        merror("%s: ERROR: too large labeled data.", ARGV0);
+        tmp_labels[0] = '\0';
     }
 
     /* Get shared files list -- every 30 seconds only */
@@ -511,16 +519,16 @@ void send_win32_info(time_t curr_time)
     if (File_DateofChange(AGENTCONFIGINT) > 0) {
         os_md5 md5sum;
         if (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) != 0) {
-            snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s", __win32_uname, __win32_shared);
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s", __win32_uname, tmp_labels, __win32_shared);
         } else {
-            snprintf(tmp_msg, OS_SIZE_1024, "#!-%s / %s\n%s", __win32_uname, md5sum, __win32_shared);
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s", __win32_uname, md5sum, tmp_labels, __win32_shared);
         }
     } else {
-        snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s", __win32_uname, __win32_shared);
+        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s", __win32_uname, tmp_labels, __win32_shared);
     }
 
     /* Create message */
-    debug1("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
+    debug2("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
 
     msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
 

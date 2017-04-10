@@ -52,6 +52,24 @@ static const char CustomAlertTokenName[CUSTOM_ALERT_TOKEN_LAST][15] = {
     { "$RULEGROUP" },
 };
 
+static void format_labels(char *buffer, size_t size, const Eventinfo *lf) {
+    int i;
+    size_t z = 0;
+
+    for (i = 0; lf->labels[i].key != NULL; i++) {
+        if (!lf->labels[i].flags.hidden || Config.show_hidden_labels) {
+            z += (size_t)snprintf(buffer + z, size - z, "%s: %s\n",
+                lf->labels[i].key,
+                lf->labels[i].value);
+
+            if (z >= size) {
+                buffer[0] = '\0';
+                return;
+            }
+        }
+    }
+}
+
 /* Store the events in a file
  * The string must be null terminated and contain
  * any necessary new lines, tabs, etc.
@@ -83,6 +101,7 @@ void OS_Store(const Eventinfo *lf)
 void OS_LogOutput(Eventinfo *lf)
 {
     int i;
+    char labels[OS_MAXSTR];
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -95,9 +114,15 @@ void OS_LogOutput(Eventinfo *lf)
     }
 #endif
 
+    if (lf->labels && lf->labels[0].key) {
+        format_labels(labels, OS_MAXSTR, lf);
+    } else {
+        labels[0] = '\0';
+    }
+
     printf(
         "** Alert %ld.%ld:%s - %s\n"
-        "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
+        "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
         "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
         (long int)lf->time,
         __crt_ftell,
@@ -110,6 +135,7 @@ void OS_LogOutput(Eventinfo *lf)
         lf->hostname != lf->location ? lf->hostname : "",
         lf->hostname != lf->location ? "->" : "",
         lf->location,
+        labels,
         lf->generated_rule->sigid,
         lf->generated_rule->level,
         lf->comment,
@@ -245,6 +271,7 @@ void OS_LogOutput(Eventinfo *lf)
 void OS_Log(Eventinfo *lf)
 {
     int i;
+    char labels[OS_MAXSTR];
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -257,10 +284,16 @@ void OS_Log(Eventinfo *lf)
     }
 #endif
 
+    if (lf->labels && lf->labels[0].key) {
+        format_labels(labels, OS_MAXSTR, lf);
+    } else {
+        labels[0] = '\0';
+    }
+
     /* Writing to the alert log file */
     fprintf(_aflog,
             "** Alert %ld.%ld:%s - %s\n"
-            "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
+            "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
             "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
             (long int)lf->time,
             __crt_ftell,
@@ -273,6 +306,7 @@ void OS_Log(Eventinfo *lf)
             lf->hostname != lf->location ? lf->hostname : "",
             lf->hostname != lf->location ? "->" : "",
             lf->location,
+            labels,
             lf->generated_rule->sigid,
             lf->generated_rule->level,
             lf->comment,
