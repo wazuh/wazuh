@@ -15,9 +15,20 @@ void randombytes(void *ptr, size_t length)
 
 #ifdef WIN32
     static HCRYPTPROV prov = 0;
+
     if (prov == 0) {
         if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, 0)) {
-            failed = 1;
+            if (GetLastError() == (DWORD)NTE_BAD_KEYSET) {
+                debug1("%s: DEBUG: No default container was found. Attempting to create default container.", __local_name);
+
+                if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET)) {
+                    merror("%s: ERROR: CryptAcquireContext: (%lx)", __local_name, GetLastError());
+                    failed = 1;
+                }
+            } else {
+                merror("%s: ERROR: CryptAcquireContext: (%lx)", __local_name, GetLastError());
+                failed = 1;
+            }
         }
     }
     if (!failed && !CryptGenRandom(prov, length, ptr)) {
