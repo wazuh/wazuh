@@ -37,7 +37,8 @@ struct file_system_type {
 #ifdef WIN32
     const unsigned __int32 f_type;
 #else
-    const int32_t f_type;
+    // Same type as statfs.f_type
+    const typeof(((struct statfs *)0)->f_type) f_type;
 #endif
     const int flag;
 };
