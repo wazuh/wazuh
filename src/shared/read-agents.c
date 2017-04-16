@@ -1345,7 +1345,7 @@ int get_agent_profile(const char *id, char *profile, size_t size) {
     char path[PATH_MAX];
     FILE *fp;
 
-    if (snprintf(path, PATH_MAX, PROFILES_DIR "/%s", id) >= PATH_MAX) {
+    if (snprintf(path, PATH_MAX, isChroot() ? PROFILES_DIR "/%s" : DEFAULTDIR PROFILES_DIR "/%s", id) >= PATH_MAX) {
         merror("%s: ERROR: At read_profile(): file path too large for agent '%s'.", __local_name, id);
         strncpy(profile, DEFAULT_PROFILE, size - 1);
         return -1;
