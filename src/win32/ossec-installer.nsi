@@ -19,7 +19,7 @@
 
 ; output file
 !ifndef OutFile
-    !define OutFile "wazuh-win32-agent.exe"
+    !define OutFile "wazuh-agent-2.0.exe"
 !endif
 
 ; general
