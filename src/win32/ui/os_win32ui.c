@@ -63,10 +63,10 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
 
             /* Creating management menu */
             hSubMenu = CreatePopupMenu();
-            AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_START, "&Start OSSEC");
-            AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_STOP, "&Stop OSSEC");
-            AppendMenu(hSubMenu, MF_SEPARATOR, UI_MENU_NONE, "");
+            AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_START, "&Start");
+            AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_STOP, "&Stop");
             AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_RESTART, "&Restart");
+            AppendMenu(hSubMenu, MF_SEPARATOR, UI_MENU_NONE, "");
             AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_STATUS, "&Status");
             AppendMenu(hSubMenu, MF_SEPARATOR, UI_MENU_NONE, "");
             AppendMenu(hSubMenu, MF_STRING, UI_MENU_MANAGE_EXIT, "&Exit");
@@ -97,7 +97,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
             SendMessage(hStatus, SB_SETPARTS,
                         sizeof(statwidths) / sizeof(int),
                         (LPARAM)statwidths);
-            SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://www.ossec.net");
+            SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://wazuh.com");
 
 
             /* Initializing config */
@@ -258,7 +258,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
 
                         if (chd == 1) {
                             SendMessage(hStatus, SB_SETTEXT, 0,
-                                        (LPARAM)"Server IP saved");
+                                        (LPARAM)"Manager IP saved");
                         } else if (chd == 2) {
                             SendMessage(hStatus, SB_SETTEXT, 0,
                                         (LPARAM)"Auth key imported");

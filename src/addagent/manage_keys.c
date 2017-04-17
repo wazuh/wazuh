@@ -11,6 +11,9 @@
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
 #include <stdlib.h>
+#ifdef WIN32
+  #include <wincrypt.h>
+#endif
 
 /* Prototypes */
 static char *trimwhitespace(char *str);
@@ -375,7 +378,7 @@ int k_bulkload(const char *cmdbulk)
         time2 = time(0);
 
         srandom_init();
-        rand1 = random();
+        rand1 = os_random();
 
         /* Zero strings */
         memset(str1, '\0', STR_SIZE + 1);
@@ -428,7 +431,7 @@ int k_bulkload(const char *cmdbulk)
         fflush(stdout);
 
         time3 = time(0);
-        rand2 = random();
+        rand2 = os_random();
 
         fp = fopen(AUTH_FILE, "a");
         if (!fp) {
@@ -453,8 +456,7 @@ int k_bulkload(const char *cmdbulk)
         OS_MD5_Str(str1, md1);
         OS_MD5_Str(str2, md2);
 
-        snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), (int)random(),
-                 (int)time3);
+        snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), os_random(), (int)time3);
         OS_MD5_Str(str1, md1);
 
         fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);

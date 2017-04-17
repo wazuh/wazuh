@@ -23,15 +23,25 @@
 !endif
 
 ; general
-!define MUI_ICON favicon.ico
-!define MUI_UNICON ossec-uninstall.ico
+!define MUI_ICON install.ico
+!define MUI_UNICON uninstall.ico
 !define VERSION "2.0"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2003 - 2014 Trend Micro Inc."
+BrandingText "Copyright (C) 2017 Wazuh Inc."
 OutFile "${OutFile}"
+
+VIProductVersion "2.0.0.0"
+VIAddVersionKey ProductName "${NAME}"
+VIAddVersionKey CompanyName "Wazuh Inc."
+VIAddVersionKey LegalCopyright "2017 - Wazuh Inc."
+VIAddVersionKey FileDescription "Wazuh Agent installer"
+VIAddVersionKey FileVersion "${VERSION}"
+VIAddVersionKey ProductVersion "${VERSION}"
+VIAddVersionKey InternalName "Wazuh Agent"
+VIAddVersionKey OriginalFilename "${OutFile}"
 
 InstallDir "$PROGRAMFILES\ossec-agent"
 InstallDirRegKey HKLM Software\OSSEC ""
@@ -52,7 +62,7 @@ ShowUninstDetails show
 !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the install of ${Name}.\r\n\r\nClick next to continue."
 !define MUI_FINISHPAGE_TITLE_3LINES
 !define MUI_FINISHPAGE_RUN "$INSTDIR\win32ui.exe"
-!define MUI_FINISHPAGE_RUN_TEXT "Run OSSEC Agent Manager"
+!define MUI_FINISHPAGE_RUN_TEXT "Run Agent manager"
 
 ; page for choosing components
 !define MUI_COMPONENTSPAGE_TEXT_TOP "Select the options you want to be executed. Click next to continue."
@@ -122,7 +132,7 @@ Function .onInit
 FunctionEnd
 
 ; main install section
-Section "OSSEC Agent (required)" MainSec
+Section "Wazuh Agent (required)" MainSec
     ; set install type and cwd
     SectionIn RO
     SetOutPath $INSTDIR
@@ -162,6 +172,7 @@ Section "OSSEC Agent (required)" MainSec
     File setup-syscheck.exe
     File setup-iis.exe
     File doc.html
+    File favicon.ico
     File /oname=shared\rootkit_trojans.txt ../rootcheck/db/rootkit_trojans.txt
     File /oname=shared\rootkit_files.txt ../rootcheck/db/rootkit_files.txt
     File add-localfile.exe
@@ -192,12 +203,16 @@ Section "OSSEC Agent (required)" MainSec
     WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayName" "${NAME} Agent ${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayVersion" "${VERSION}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayIcon" "${MUI_ICON}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "HelpLink" "http://www.ossec.net/main/support/"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "URLInfoAbout" "http://www.ossec.net"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "UninstallString" '"$INSTDIR\uninstall.exe"'
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "NoModify" 1
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "NoRepair" 1
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "Publisher" "Wazuh, Inc."
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayIcon" '"$INSTDIR\favicon.ico"'
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "HelpLink" "http://wazuh.com"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "URLInfoAbout" "http://wazuh.com"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "UninstallString" '"$INSTDIR\uninstall.exe"'
+    ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
+    IntFmt $0 "0x%08X" $0
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "EstimatedSize" "$0"
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "NoModify" 1
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "NoRepair" 1
     WriteUninstaller "uninstall.exe"
 
     ; get current local time

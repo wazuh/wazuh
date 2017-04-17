@@ -3,7 +3,11 @@
  *
  */
 
+// Support strptime() on Linux
+#ifdef __linux__
 #define _XOPEN_SOURCE 600
+#endif
+
 #include "json_extended.h"
 #include <stddef.h>
 
@@ -21,6 +25,7 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
     // Parse Location
     if(lf->location) {
         W_JSON_ParseLocation(root, lf, 0);
+        W_JSON_ParseAgentless(root,lf);
     }
     // Parse groups && Parse PCIDSS && Parse CIS
     if(lf->generated_rule && lf->generated_rule->group) {
@@ -323,6 +328,57 @@ void W_JSON_ParseLocation(cJSON* root, const Eventinfo* lf, int archives)
             cJSON_AddStringToObject(root, "location_desc", lf->location);
         else
             cJSON_AddStringToObject(root, "location", lf->location);
+    }
+}
+
+// Parse agentless devices (this may delete agent item)
+
+void W_JSON_ParseAgentless(cJSON* root, const Eventinfo* lf) {
+    char *location;
+    char *script;
+    char *user;
+    char *host;
+    char *end;
+    cJSON *agentless;
+
+    // Agentless devices have agentID = 000 and location matches:
+    // (script) user@host->location
+
+    if (lf->location[0] == '(' && lf->agent_id && !strcmp(lf->agent_id, "000")) {
+        location = strdup(lf->location);
+
+        script = location + 1;
+        user = strstr(script, ") ");
+
+        if (user) {
+            *user = '\0';
+            user += 2;
+            host = strchr(user, '@');
+
+            if (host) {
+                *host = '\0';
+                host++;
+
+                end = strstr(host, "->");
+
+                if (end) {
+                    *end = '\0';
+
+                    // Add item "agentless"
+
+                    agentless = cJSON_CreateObject();
+                    cJSON_AddItemToObject(root, "agentless", agentless);
+                    cJSON_AddStringToObject(agentless, "script", script);
+                    cJSON_AddStringToObject(agentless, "user", user);
+                    cJSON_AddStringToObject(agentless, "host", host);
+
+                    // Delete item "agent"
+                    cJSON_DeleteItemFromObject(root, "agent");
+                }
+            }
+        }
+
+        free(location);
     }
 }
 

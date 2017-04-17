@@ -662,8 +662,10 @@ int rename_ex(const char *source, const char *destination)
 int mkstemp_ex(char *tmp_path)
 {
     int fd;
+    mode_t old_mask = umask(0177);
 
     fd = mkstemp(tmp_path);
+    umask(old_mask);
 
     if (fd == -1) {
         log2file(
@@ -1550,62 +1552,68 @@ char *getuname()
 
 // Delete directory recorsively
 
-int rmdir_ex(const char *path) {
-    char filestr[PATH_MAX + 1];
+int rmdir_ex(const char *name) {
+    DIR *dir;
     struct dirent *dirent;
-    struct stat statbuf;
-    DIR *dir = opendir(path);
+    char path[PATH_MAX + 1];
 
-    if (!dir)
-        return -1;
+    if (rmdir(name) == 0) {
+        return 0;
+    }
 
-    while ((dirent = readdir(dir))) {
+    switch (errno) {
+    case ENOTDIR:   // Not a directory
+        return unlink(name);
 
-        // Skip "." and ".." (avoid strcmp)
+    case ENOTEMPTY: // Directory not empty
 
-        if (dirent->d_name[0] == '.') {
-            switch (dirent->d_name[1]) {
-            case '\0':
-                continue;
-            case '.':
-                if (dirent->d_name[2] == '\0')
-                    continue;
-                break;
-            default:
-                break;
-            }
-        }
+        // Erase content
 
-        snprintf(filestr, PATH_MAX + 1, "%s/%s", path, dirent->d_name);
+        dir = opendir(name);
 
-        if (stat(filestr, &statbuf) < 0) {
-            closedir(dir);
+        if (!dir) {
             return -1;
         }
 
-        if (S_ISREG(statbuf.st_mode)) {
-            if (unlink(filestr) < 0) {
+        while (dirent = readdir(dir), dirent) {
+            // Skip "." and ".."
+            if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+                continue;
+            }
+
+            if (snprintf(path, PATH_MAX + 1, "%s/%s", name, dirent->d_name) > PATH_MAX) {
                 closedir(dir);
                 return -1;
             }
-        } else if (S_ISDIR(statbuf.st_mode)) {
-            if (rmdir_ex(filestr) < 0) {
+
+            if (rmdir_ex(path) < 0) {
                 closedir(dir);
                 return -1;
             }
         }
-    }
 
-    closedir(dir);
-    return rmdir(path);
+        closedir(dir);
+
+        // Try to erase again
+
+        return rmdir(name);
+
+    default:
+        return -1;
+    }
 }
 
 int TempFile(File *file, const char *source, int copy) {
     FILE *fp_src;
     int fd;
     char template[OS_FLSIZE + 1];
+    mode_t old_mask;
+
     snprintf(template, OS_FLSIZE, "%s.XXXXXX", source);
+    old_mask = umask(0177);
+
     fd = mkstemp(template);
+    umask(old_mask);
 
     if (fd < 0) {
         return -1;

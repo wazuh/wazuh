@@ -303,11 +303,11 @@ int main(int argc, char **argv)
                 break;
             case 'i':
             case 'I':
-#ifndef CLIENT
-                printf("\n ** Key import only available on an agent ** \n\n");
-                break;
-#endif
+#ifdef CLIENT
                 k_import(NULL);
+#else
+                printf("\n ** Key import only available on an agent ** \n\n");
+#endif
                 break;
             case 'l':
             case 'L':

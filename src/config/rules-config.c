@@ -56,6 +56,7 @@ static int file_in_list(unsigned int list_size, char *f_name, char *d_name, char
 int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
+    int retval = 0;
 
     unsigned int rules_size = 1;
     unsigned int lists_size = 1;
@@ -112,21 +113,18 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL, __local_name);
-            return (OS_INVALID);
+            retval = OS_INVALID;
+            goto cleanup;
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, __local_name, node[i]->element);
-            return (OS_INVALID);
+            retval = OS_INVALID;
+            goto cleanup;
         }
         // <rule_include>
         else if (strcmp(node[i]->element, xml_rules_rule) == 0) {
             rules_size++;
             f_name[PATH_MAX + 1] = '\0';
-            Config->includes = (char **) realloc(Config->includes,
-                                                 sizeof(char *)*rules_size);
-            if (!Config->includes) {
-                merror(MEM_ERROR, __local_name, errno, strerror(errno));
-                return (OS_INVALID);
-            }
+            os_realloc(Config->includes, sizeof(char *)*rules_size, Config->includes);
 
             /* If no directory in the rulefile, add the default */
             if ((strchr(node[i]->content, '/')) == NULL) {
@@ -143,12 +141,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         } else if (strcmp(node[i]->element, xml_rules_decoders) == 0) {
             decoders_size++;
             f_name[PATH_MAX + 1] = '\0';
-            Config->decoders = (char **) realloc(Config->decoders,
-                                                 sizeof(char *)*decoders_size);
-            if (!Config->decoders) {
-                merror(MEM_ERROR, __local_name, errno, strerror(errno));
-                return (OS_INVALID);
-            }
+            os_realloc(Config->decoders, sizeof(char *)*decoders_size, Config->decoders);
 
             /* If no directory in the decoder file, add the default */
             if ((strchr(node[i]->content, '/')) == NULL) {
@@ -164,52 +157,28 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         // <list>
         } else if (strcmp(node[i]->element, xml_rules_lists) == 0) {
             lists_size++;
-            Config->lists = (char **) realloc(Config->lists,
-                                              sizeof(char *)*lists_size);
-            if (!Config->lists) {
-                merror(MEM_ERROR, __local_name, errno, strerror(errno));
-                return (OS_INVALID);
-            }
-
+            os_realloc(Config->lists, sizeof(char *)*lists_size, Config->lists);
             os_strdup(node[i]->content, Config->lists[lists_size - 2]);
             Config->lists[lists_size - 1] = NULL;
         // <rule_exclude>
         } else if (strcmp(node[i]->element, xml_rules_exclude) == 0) {
             rules_exclude_size++;
-            exclude_rules = (char **) realloc(exclude_rules, sizeof(char *)*rules_exclude_size);
-
-            if (!exclude_rules) {
-                merror(MEM_ERROR, __local_name, errno, strerror(errno));
-                return (OS_INVALID);
-            }
-
+            os_realloc(exclude_rules, sizeof(char *)*rules_exclude_size, exclude_rules);
             os_strdup(node[i]->content, exclude_rules[rules_exclude_size - 2]);
             exclude_rules[rules_exclude_size - 1] = NULL;
             debug1("excluding rule: %s", node[i]->content);
         // <decoder_exclude>
         } else if (strcmp(node[i]->element, xml_rules_exclude_decoder) == 0) {
             decoders_exclude_size++;
-            exclude_decoders = (char **) realloc(exclude_decoders, sizeof(char *)*decoders_exclude_size);
-
-            if (!exclude_decoders) {
-                merror(MEM_ERROR, __local_name, errno, strerror(errno));
-                return (OS_INVALID);
-            }
-
+            os_realloc(exclude_decoders, sizeof(char *)*decoders_exclude_size, exclude_decoders);
             os_strdup(node[i]->content, exclude_decoders[decoders_exclude_size - 2]);
             exclude_decoders[decoders_exclude_size - 1] = NULL;
             debug1("excluding decoder: %s", node[i]->content);
         // <decoder_dir>
         } else if (strcmp(node[i]->element, xml_rules_decoders_dir) == 0) {
             dec_dirs_size++;
-            decoder_dirs = (char **) realloc(decoder_dirs, sizeof(char *)*dec_dirs_size);
-            decoder_dirs_pattern = (char **) realloc(decoder_dirs_pattern, sizeof(char *)*dec_dirs_size);
-
-            if (!decoder_dirs || !decoder_dirs_pattern) {
-                merror(MEM_ERROR, __local_name, errno, strerror(errno));
-                return (OS_INVALID);
-            }
-
+            os_realloc(decoder_dirs, sizeof(char *)*dec_dirs_size, decoder_dirs);
+            os_realloc(decoder_dirs_pattern, sizeof(char *)*dec_dirs_size, decoder_dirs_pattern);
             os_strdup(node[i]->content, decoder_dirs[dec_dirs_size - 2]);
             decoder_dirs[dec_dirs_size - 1] = NULL;
             decoder_dirs_pattern[dec_dirs_size - 1] = NULL;
@@ -231,12 +200,13 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         // <rule_dir>
         } else if (strcmp(node[i]->element, xml_rules_rules_dir) == 0) {
             rul_dirs_size++;
-            rules_dirs = (char **) realloc(rules_dirs, sizeof(char *)*rul_dirs_size);
-            rules_dirs_pattern = (char **) realloc(rules_dirs_pattern, sizeof(char *)*rul_dirs_size);
+            os_realloc(rules_dirs, sizeof(char *)*rul_dirs_size, rules_dirs);
+            os_realloc(rules_dirs_pattern, sizeof(char *)*rul_dirs_size, rules_dirs_pattern);
 
             if (!rules_dirs) {
                 merror(MEM_ERROR, __local_name, errno, strerror(errno));
-                return (OS_INVALID);
+                retval = OS_INVALID;
+                goto cleanup;
             }
 
             os_strdup(node[i]->content, rules_dirs[rul_dirs_size - 2]);
@@ -260,7 +230,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         } else {
             merror(XML_INVELEM, __local_name, node[i]->element);
             OSRegex_FreePattern(&regex);
-            return (OS_INVALID);
+            retval = OS_INVALID;
+            goto cleanup;
         }
 
         i++;
@@ -275,7 +246,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         if (!OSRegex_Compile(decoder_dirs_pattern[i], &regex, 0)) {
             merror(CONFIG_ERROR, __local_name, "pattern in decoder_dir does not compile");
             merror("%s: ERROR: Regex would not compile", __local_name);
-            return (-1);
+            retval = OS_INVALID;
+            goto cleanup;
         }
 
         f_name[PATH_MAX + 1] = '\0';
@@ -304,14 +276,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
                 if (OSRegex_Execute(f_name, &regex)) {
                     decoders_size++;
-                    Config->decoders = (char **) realloc(Config->decoders, sizeof(char *)*decoders_size);
-                    if (!Config->decoders) {
-                        merror(MEM_ERROR, __local_name, errno, strerror(errno));
-                        OSRegex_FreePattern(&regex);
-                        closedir(dfd);
-                        return (-1);
-                    }
-
+                    os_realloc(Config->decoders, sizeof(char *)*decoders_size, Config->decoders);
                     os_strdup(f_name, Config->decoders[decoders_size - 2]);
                     Config->decoders[decoders_size - 1] = NULL;
                     debug1("adding decoder: %s", f_name);
@@ -333,7 +298,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         if (!OSRegex_Compile(rules_dirs_pattern[i], &regex, 0)) {
             merror(CONFIG_ERROR, __local_name, "pattern in rules_dir does not compile");
             merror("%s: ERROR: Regex would not compile", __local_name);
-            return (-1);
+            retval = OS_INVALID;
+            goto cleanup;
         }
 
         f_name[PATH_MAX + 1] = '\0';
@@ -362,14 +328,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
               if (OSRegex_Execute(f_name, &regex)) {
                   rules_size++;
-                  Config->includes = (char **) realloc(Config->includes, sizeof(char *)*rules_size);
-                  if (!Config->includes) {
-                      merror(MEM_ERROR, __local_name, errno, strerror(errno));
-                      OSRegex_FreePattern(&regex);
-                      closedir(dfd);
-                      return (-1);
-                  }
-
+                  os_realloc(Config->includes, sizeof(char *)*rules_size, Config->includes);
                   os_strdup(f_name, Config->includes[rules_size - 2]);
                   Config->includes[rules_size - 1] = NULL;
                   debug1("adding rule: %s", f_name);
@@ -390,6 +349,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     debug1("rules added: %d / excluded: %d", rules_size - 1, total_rules_excluded);
 
     OSRegex_FreePattern(&regex);
+
+cleanup:
     free(exclude_decoders);
     free(exclude_rules);
     free(decoder_dirs);
@@ -397,5 +358,5 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     free(decoder_dirs_pattern);
     free(rules_dirs_pattern);
 
-    return (0);
+    return retval;
 }

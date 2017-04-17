@@ -504,7 +504,7 @@ setEnv()
     if [ -d "$INSTALLDIR" ]; then
         if [ "X${USER_DELETE_DIR}" = "X" ]; then
             echo ""
-            $ECHO "    - ${deletedir} ($yes/$no) [$yes]: "
+            $ECHO "    - ${deletedir} ($yes/$no) [$no]: "
             read ANSWER
         else
             ANSWER=${USER_DELETE_DIR}
@@ -682,7 +682,9 @@ main()
     # Checking dependencies
     checkDependencies
 
-    clear
+    if [ "X$USER_NO_STOP" = "X" ]; then
+        clear 2> /dev/null
+    fi
 
     # Initial message
     echo " $NAME $VERSION ${installscript} - http://www.wazuh.com"

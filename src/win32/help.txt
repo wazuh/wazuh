@@ -1,13 +1,13 @@
 ** Wazuh Windows Agent v2.0 **
-** Copyright (C) 2014 Trend Micro Inc. **
+** Copyright (C) 2017 Wazuh Inc. **
 
 
-Thanks for installing the 'OSSEC Windows Agent'. Before you continue,
-make sure that you have an instance of the OSSEC server running and configured
+Thanks for installing the 'Wazuh Windows Agent'. Before you continue,
+make sure that you have an instance of the Wazuh manager running and configured
 to accept this system as an agent.
 
-For more information on how to install the server version of OSSEC, look at:
-http://www.ossec.net/doc/manual/installation/index.html
+For more information on how to install the server version of Wazuh, look at:
+http://documentation.wazuh.com
 
 
 
@@ -24,8 +24,7 @@ http://www.ossec.net/doc/manual/installation/index.html
 1- How to obtain more information
 
 You can obtain more information about OSSEC on the following links:
-http://www.ossec.net/doc/manual/index.html
-http://www.ossec.net/doc/faq/index.html (FAQ)
+http://documentation.wazuh.com
 http://www.ossec.net (OSSEC site)
 
 
@@ -47,4 +46,4 @@ The Windows agent does the following tasks:
 Visit the following link for information on how to get help or
 support for OSSEC:
 
-http://www.ossec.net/main/support/
+http://wazuh.com/

@@ -121,6 +121,8 @@ int main(int argc, char **argv)
     if (json_output)
         json_root = cJSON_CreateObject();
 
+    srandom_init();
+
     /* Get the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
@@ -251,7 +253,7 @@ int main(int argc, char **argv)
         /* Database from remote agents */
         else {
             int i;
-            keystore keys = { 0 };
+            keystore keys = KEYSTORE_INITIALIZER;
 
             OS_ReadKeys(&keys, 1, 0);
 
@@ -291,7 +293,7 @@ int main(int argc, char **argv)
         int i;
         char final_ip[128 + 1];
         char final_mask[128 + 1];
-        keystore keys = { 0 };
+        keystore keys = KEYSTORE_INITIALIZER;
         cJSON *json_events = NULL;
 
         if (json_output)

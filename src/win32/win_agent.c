@@ -208,7 +208,7 @@ int local_start()
 
     /* Initialize random numbers */
     srandom(time(0));
-    random();
+    os_random();
 
     /* Socket connection */
     agt->sock = -1;
@@ -303,8 +303,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 #ifndef ONEWAY_ENABLED
     /* Check if the server has responded */
     if ((cu_time - available_server) > agt->notify_time) {
-        debug1("%s: DEBUG: Sending info to server (c1)...", ARGV0);
-        verbose("%s: More than %d seconds without server response...sending win32info", ARGV0, agt->notify_time);
+        verbose("%s: INFO: Sending agent information to server.", ARGV0);
         send_win32_info(cu_time);
 
         /* Attempt to send message again */
@@ -322,10 +321,9 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
         /* If we reached here, the server is unavailable for a while */
         if ((cu_time - available_server) > agt->max_time_reconnect_try) {
             int wi = 1;
-            verbose("%s: More than %d seconds without server response...is server alive? and Is there connection?", ARGV0, agt->max_time_reconnect_try);
+            debug1("%s: DEBUG: More than %d seconds without server response...is server alive? and Is there connection?", ARGV0, agt->max_time_reconnect_try);
 
             /* Last attempt before going into reconnect mode */
-            debug1("%s: DEBUG: Sending info to server (c3)...", ARGV0);
             sleep(1);
             send_win32_info(cu_time);
             if ((cu_time - available_server) > agt->max_time_reconnect_try) {

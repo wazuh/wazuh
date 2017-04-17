@@ -107,8 +107,8 @@ updatefailed="Update fehlgeschlagen."
 updaterules="Möchten Sie die Regeln updaten?"
 updatingrules="Regeln werden upgedated."
 notupdatingrules="Regeln werden nicht verändert."
-update_rev_newconf1="Backup from your ossec.conf has been created at /var/ossec/etc/ossec.conf.orig"
-update_rev_newconf2="Please verify your ossec.conf configuration at /var/ossec/etc/ossec.conf"
+update_rev_newconf1="Die Sicherung von deiner ossec.conf wurde bei $INSTALLDIR/etc/ossec.conf.orig erstellt."
+update_rev_newconf2="Bitte überprüfen Sie Ihre ossec.conf Konfiguration bei $INSTALLDIR/etc/ossec.conf."
 
 # Pf support
 pfenable="Möchten Sie die PF Firewall für active response benutzen?"

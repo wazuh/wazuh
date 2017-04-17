@@ -22,6 +22,8 @@ void W_JSON_AddTimestamp(cJSON *root, const Eventinfo *lf);
 void W_JSON_ParseAgentIP(cJSON *root, const Eventinfo *lf);
 // Parse Location
 void W_JSON_ParseLocation(cJSON *root, const Eventinfo *lf, int archives);
+// Parse agentless devices (this may delete agent item)
+void W_JSON_ParseAgentless(cJSON* root, const Eventinfo* lf);
 // Parse Groups
 void W_JSON_ParseGroups(cJSON *root, const Eventinfo *lf, int nested);
 // Parse Groups Compliance

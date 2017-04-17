@@ -46,6 +46,8 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
+    srandom_init();
+
     /* Get the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
@@ -152,7 +154,7 @@ int main(int argc, char **argv)
     /* External agents */
     else {
         int i;
-        keystore keys = { 0 };
+        keystore keys = KEYSTORE_INITIALIZER;
 
         OS_ReadKeys(&keys, 1, 0);
 

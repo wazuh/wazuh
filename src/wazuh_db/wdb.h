@@ -74,7 +74,7 @@ int wdb_insert_file(sqlite3 *db, const char *path, int type);
 int wdb_get_last_fim(sqlite3 *db, const char *path, int type);
 
 /* Insert FIM entry. Returns ID, or -1 on error. */
-int wdb_insert_fim(sqlite3 *db, int type, const char *f_name, const char *event, const sk_sum_t *sum);
+int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, const char *event, const sk_sum_t *sum);
 
 /* Insert policy monitoring entry. Returns ID on success or -1 on error. */
 int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);

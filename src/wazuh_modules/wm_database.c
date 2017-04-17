@@ -17,6 +17,13 @@
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 #define IN_BUFFER_SIZE sizeof(struct inotify_event) + NAME_MAX + 1
+
+/* Get current inotify queued events limit */
+static int get_max_queued_events();
+
+/* Set current inotify queued events limit */
+static int set_max_queued_events(int size);
+
 #else
 static void wm_check_agents();
 #endif
@@ -43,12 +50,6 @@ static int wm_fill_rootcheck(sqlite3 *db, const char *path);
  * Returns 0 on success, 1 to ignore and -1 on error.
  */
 static int wm_extract_agent(const char *fname, char *name, char *addr, int *registry);
-
-/* Get current inotify queued events limit */
-static int get_max_queued_events();
-
-/* Set current inotify queued events limit */
-static int set_max_queued_events(int size);
 
 // Database module context definition
 const wm_context WM_DATABASE_CONTEXT = {
@@ -281,7 +282,7 @@ void wm_check_agents() {
 void wm_sync_agents() {
     unsigned int i;
     char path[PATH_MAX] = "";
-    keystore keys = { 0 };
+    keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
     int *agents;
     clock_t clock0 = clock();
@@ -583,6 +584,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
     char *end;
     char *event;
     char *c_sum;
+    char *timestamp;
     char *f_name;
     int count;
     long last_offset = offset;
@@ -618,7 +620,15 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
         *end = '\0';
         c_sum = buffer + 3;
 
-        if (!(f_name = strchr(c_sum, ' '))) {
+        if (!(timestamp = strstr(c_sum, " !"))) {
+            merror("%s: WARN: Corrupt line found parsing '%s' (no timestamp found).", WM_DATABASE_LOGTAG, path);
+            continue;
+        }
+
+        *timestamp = '\0';
+        timestamp += 2;
+
+        if (!(f_name = strchr(timestamp, ' '))) {
             merror("%s: WARN: Corrupt line found parsing '%s'.", WM_DATABASE_LOGTAG, path);
             continue;
         }
@@ -653,7 +663,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
             continue;
         }
 
-        if (wdb_insert_fim(db, type, f_name, event, &sum) < 0)
+        if (wdb_insert_fim(db, type, atol(timestamp), f_name, event, &sum) < 0)
             merror("%s: ERROR: Couldn't insert FIM event into database from file '%s'.", WM_DATABASE_LOGTAG, path);
 
         count++;
@@ -819,6 +829,8 @@ wmodule* wm_database_read() {
 #endif
 }
 
+#ifdef INOTIFY_ENABLED
+
 /* Get current inotify queued events limit */
 int get_max_queued_events() {
     int size;
@@ -853,3 +865,5 @@ int set_max_queued_events(int size) {
     fclose(fp);
     return 0;
 }
+
+#endif

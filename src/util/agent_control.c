@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 
     char shost[512];
 
-    keystore keys = { 0 };
+    keystore keys = KEYSTORE_INITIALIZER;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -155,6 +155,8 @@ int main(int argc, char **argv)
     /* Prepare JSON Structure */
     if(json_output)
         root = cJSON_CreateObject();
+
+    srandom_init();
 
     /* Get the group name */
     gid = Privsep_GetGroup(group);

@@ -3,6 +3,6 @@
 
 void randombytes(void *ptr, size_t length);
 void srandom_init(void);
+int os_random(void);
 
 #endif
-

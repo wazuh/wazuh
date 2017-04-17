@@ -49,6 +49,8 @@ static pthread_cond_t awake_mutex;
 void save_controlmsg(unsigned int agentid, char *r_msg)
 {
     char msg_ack[OS_FLSIZE + 1];
+    char *begin_shared;
+    char *end;
     pending_data_t *data;
 
     /* Reply to the agent */
@@ -67,9 +69,10 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         FILE *fp;
         char *uname = r_msg;
 
-        /* Clean uname (remove random string) */
+        /* Clean uname and shared files (remove random string) */
 
         if ((r_msg = strchr(r_msg, '\n'))) {
+            for (begin_shared = ++r_msg; (end = strchr(r_msg, '\n')); r_msg = end + 1);
             *r_msg = '\0';
         } else {
             merror("%s: WARN: Invalid message from agent id: '%d'(uname)",
@@ -91,13 +94,20 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
 
             if (OSHash_Add(pending_data, keys.keyentries[agentid]->id, data) != 2) {
                 merror("%s: ERROR: Couldn't add pending data into hash table.", ARGV0);
+
+                /* Unlock mutex */
+                if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
+                    merror(MUTEX_ERROR, ARGV0);
+                }
+
                 free(data);
                 return;
             }
         }
 
         /* Update message */
-        os_strdup(r_msg, data->message);
+        debug2("%s: DEBUG: save_controlmsg(): inserting '%s'", ARGV0, uname);
+        os_strdup(uname, data->message);
 
         /* Mark data as changed and insert into queue */
 
@@ -136,9 +146,10 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             os_strdup(agent_file, data->keep_alive);
         }
 
-        /* Write to the file */
+        /* Write uname to the file */
 
         if ((fp = fopen(data->keep_alive, "w"))) {
+            *begin_shared = '\0';
             fprintf(fp, "%s\n", uname);
             fclose(fp);
         } else {
@@ -349,6 +360,8 @@ static void read_controlmsg(const char *agent_id, char *msg)
         return;
     }
 
+    debug2("%s: DEBUG: read_controlmsg(): reading '%s'", ARGV0, msg);
+
     /* Parse message */
     while (*msg != '\0') {
         char *md5;
@@ -477,7 +490,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         /* Pop data from queue */
         if ((data = OSHash_Get(pending_data, pending_queue[queue_j]))) {
-            strncpy(agent_id, pending_queue[queue_j], 9);
+            strncpy(agent_id, pending_queue[queue_j], 8);
             strncpy(msg, data->message, OS_SIZE_1024);
             data->changed = 0;
         } else {
