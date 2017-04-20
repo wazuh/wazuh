@@ -129,11 +129,11 @@ http://www.ossec.net/main/license/\n"
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"
 
-/* Agent profiles location */
-#define PROFILES_DIR    "/queue/agent-profiles"
+/* Agent groups location */
+#define GROUPS_DIR    "/queue/agent-groups"
 
-/* Default profile name */
-#define DEFAULT_PROFILE "default"
+/* Default group name */
+#define DEFAULT_GROUP "default"
 
 /* Syscheck directory */
 #define SYSCHECK_DIR    "/queue/syscheck"

@@ -55,8 +55,8 @@ const char *print_agent_status(int status);
 /* Gets the status of an agent, based on the name/IP address */
 int get_agent_status(const char *agent_name, const char *agent_ip);
 
-/* Read profile. If the function fails, it writes "default" on profile. */
-int get_agent_profile(const char *id, char *profile, size_t size);
+/* Read agent group. If the function fails, it writes "default" on group. */
+int get_agent_group(const char *id, char *group, size_t size);
 
 /* Get information from an agent */
 agent_info *get_agent_info(const char *agent_name, const char *agent_ip) __attribute__((nonnull(2)));

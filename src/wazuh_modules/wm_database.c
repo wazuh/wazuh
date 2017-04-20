@@ -36,10 +36,10 @@ static void* wm_database_main(wm_database *data);
 static void* wm_database_destroy(wm_database *data);
 // Update manager information
 static void wm_sync_manager();
-// Synchronize agents and profiles
+// Synchronize agents and groups
 static void wm_sync_agents();
 static int wm_sync_agentinfo(int id_agent, const char *path);
-static int wm_sync_agentprofile(int id_agent, const char *fname);
+static int wm_sync_agent_group(int id_agent, const char *fname);
 static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
 // Fill syscheck database from an offset. Returns offset at last successful read event, or -1 on error.
@@ -80,7 +80,7 @@ void* wm_database_main(wm_database *data) {
     int wd_agentinfo = -1;
     int wd_syscheck = -1;
     int wd_rootcheck = -1;
-    int wd_profiles = -1;
+    int wd_groups = -1;
     int old_max_queued_events = -1;
     ssize_t count;
     ssize_t i;
@@ -134,10 +134,10 @@ void* wm_database_main(wm_database *data) {
 
         debug2("%s: DEBUG: wd_agentinfo='%d'", ARGV0, wd_agentinfo);
 
-        if ((wd_profiles = inotify_add_watch(fd, DEFAULTDIR PROFILES_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
-            merror("%s: ERROR: Couldn't watch the agent profiles directory: %s.", WM_DATABASE_LOGTAG, strerror(errno));
+        if ((wd_groups = inotify_add_watch(fd, DEFAULTDIR GROUPS_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
+            merror("%s: ERROR: Couldn't watch the agent groups directory: %s.", WM_DATABASE_LOGTAG, strerror(errno));
 
-        debug2("%s: DEBUG: wd_profiles='%d'", ARGV0, wd_profiles);
+        debug2("%s: DEBUG: wd_groups='%d'", ARGV0, wd_groups);
 
         wm_sync_agents();
         wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
@@ -189,8 +189,8 @@ void* wm_database_main(wm_database *data) {
                     wm_sync_file(DEFAULTDIR SYSCHECK_DIR, event->name);
                 else if (event->wd == wd_rootcheck)
                     wm_sync_file(DEFAULTDIR ROOTCHECK_DIR, event->name);
-                else if (event->wd == wd_profiles)
-                    wm_sync_file(DEFAULTDIR PROFILES_DIR, event->name);
+                else if (event->wd == wd_groups)
+                    wm_sync_file(DEFAULTDIR GROUPS_DIR, event->name);
                 else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
                     merror("%s: ERROR: Inotify event queue overflowed.", WM_DATABASE_LOGTAG);
                     continue;
@@ -292,7 +292,7 @@ void wm_check_agents() {
 void wm_sync_agents() {
     unsigned int i;
     char path[PATH_MAX] = "";
-    char profile[KEYSIZE];
+    char group[KEYSIZE];
     keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
     int *agents;
@@ -316,9 +316,9 @@ void wm_sync_agents() {
             continue;
         }
 
-        get_agent_profile(entry->id, profile, KEYSIZE);
+        get_agent_group(entry->id, group, KEYSIZE);
 
-        if (!(wdb_insert_agent(id, entry->name, entry->ip->ip, entry->key, profile) || module->full_sync)) {
+        if (!(wdb_insert_agent(id, entry->name, entry->ip->ip, entry->key, group) || module->full_sync)) {
             // Find files
 
             snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
@@ -337,8 +337,8 @@ void wm_sync_agents() {
             } else if (wdb_set_agent_offset(id, WDB_SYSCHECK_REGISTRY, buffer.st_size) < 1)
                 merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s).", WM_DATABASE_LOGTAG, id, entry->name);
         } else {
-            // The agent already exists, update profile only.
-            wm_sync_agentprofile(id, entry->id);
+            // The agent already exists, update group only.
+            wm_sync_agent_group(id, entry->id);
         }
     }
 
@@ -411,26 +411,26 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     return result;
 }
 
-int wm_sync_agentprofile(int id_agent, const char *fname) {
+int wm_sync_agent_group(int id_agent, const char *fname) {
     int result = 0;
-    char profile[KEYSIZE] = "";
+    char group[KEYSIZE] = "";
     clock_t clock0 = clock();
 
-    get_agent_profile(fname, profile, KEYSIZE);
+    get_agent_group(fname, group, KEYSIZE);
 
-    switch (wdb_update_agent_profile(id_agent, profile)) {
+    switch (wdb_update_agent_group(id_agent, group)) {
     case -1:
-        merror("%s: ERROR: Couldn't sync agent '%s' profile.", WM_DATABASE_LOGTAG, fname);
+        merror("%s: ERROR: Couldn't sync agent '%s' group.", WM_DATABASE_LOGTAG, fname);
         result = -1;
         break;
     case 0:
-        debug1("%s: WARN: No such agent '%s' on DB when updating profile.", WM_DATABASE_LOGTAG, fname);
+        debug1("%s: WARN: No such agent '%s' on DB when updating group.", WM_DATABASE_LOGTAG, fname);
         break;
     default:
         break;
     }
 
-    debug2("%s: DEBUG: wm_sync_agentprofile(%d): %.3f ms.", WM_DATABASE_LOGTAG, id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+    debug2("%s: DEBUG: wm_sync_agent_group(%d): %.3f ms.", WM_DATABASE_LOGTAG, id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
     return result;
 }
 
@@ -489,14 +489,14 @@ int wm_sync_file(const char *dirname, const char *fname) {
             id_agent = 0;
             strcpy(name, "localhost");
         }
-    } else if (!strcmp(dirname, DEFAULTDIR PROFILES_DIR)) {
-        type = WDB_PROFILES;
+    } else if (!strcmp(dirname, DEFAULTDIR GROUPS_DIR)) {
+        type = WDB_GROUPS;
     }else {
         merror("%s: ERROR: Directory name '%s' not recognized.", WM_DATABASE_LOGTAG, dirname);
         return -1;
     }
 
-    if (type != WDB_PROFILES) {
+    if (type != WDB_GROUPS) {
 
         // If id_agent != 0, then the file corresponds to an agent
 
@@ -629,8 +629,8 @@ int wm_sync_file(const char *dirname, const char *fname) {
     case WDB_AGENTINFO:
         result = wm_sync_agentinfo(id_agent, path) < 0 || wdb_update_agent_keepalive(id_agent, buffer.st_mtime) < 0 ? -1 : 0;
         break;
-    case WDB_PROFILES:
-        result = wm_sync_agentprofile(id_agent, fname);
+    case WDB_GROUPS:
+        result = wm_sync_agent_group(id_agent, fname);
     }
 
     return result;

@@ -20,21 +20,21 @@ typedef struct _file_sum {
     os_md5 sum;
 } file_sum;
 
-typedef struct profile_t {
-    char *profile;
+typedef struct group_t {
+    char *group;
     file_sum **f_sum;
-} profile_t;
+} group_t;
 
 /* Internal functions prototypes */
 static void read_controlmsg(const char *agent_id, char *msg);
-static int send_file_toagent(const char *agent_id, const char *profile, const char *name, const char *sum);
+static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum);
 static void f_files(void);
-static void c_profile(const char *profile, DIR *dp, file_sum ***_f_sum);
+static void c_group(const char *group, DIR *dp, file_sum ***_f_sum);
 static void c_files(void);
-static file_sum** find_sum(const char *profile);
+static file_sum** find_sum(const char *group);
 
 /* Global vars */
-static profile_t **profiles;
+static group_t **groups;
 static time_t _ctime;
 static time_t _stime;
 
@@ -175,9 +175,9 @@ static void f_files()
     int j;
     file_sum **f_sum;
 
-    if (profiles) {
-        for (i = 0; profiles[i]; i++) {
-            f_sum = profiles[i]->f_sum;
+    if (groups) {
+        for (i = 0; groups[i]; i++) {
+            f_sum = groups[i]->f_sum;
 
             for (j = 0; f_sum[j]; j++) {
                 free(f_sum[j]->name);
@@ -185,15 +185,15 @@ static void f_files()
             }
 
             free(f_sum);
-            free(profiles[i]->profile);
+            free(groups[i]->group);
         }
 
-        free(profiles);
-        profiles = NULL;
+        free(groups);
+        groups = NULL;
     }
 }
 
-void c_profile(const char *profile, DIR *dp, file_sum ***_f_sum) {
+void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     struct dirent *entry;
     os_md5 md5sum;
     unsigned int f_size = 0;
@@ -210,7 +210,7 @@ void c_profile(const char *profile, DIR *dp, file_sum ***_f_sum) {
     f_sum[f_size]->name = NULL;
     f_sum[f_size]->sum[0] = '\0';
 
-    snprintf(tmp_merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, profile, SHAREDCFG_FILENAME);
+    snprintf(tmp_merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
 
     MergeAppendFile(tmp_merged, NULL);
     f_size++;
@@ -235,7 +235,7 @@ void c_profile(const char *profile, DIR *dp, file_sum ***_f_sum) {
             continue;
         }
 
-        snprintf(tmp_file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, profile, entry->d_name);
+        snprintf(tmp_file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, entry->d_name);
 
         if (OS_MD5_File(tmp_file, md5sum, OS_TEXT) != 0) {
             merror("%s: Error accessing file '%s'", ARGV0, tmp_file);
@@ -271,13 +271,13 @@ static void c_files()
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
 
-    // Free profile set, and set to NULL
+    // Free groups set, and set to NULL
     f_files();
 
-    // Initialize main profiles structure
-    os_calloc(1, sizeof(profile_t *), profiles);
+    // Initialize main groups structure
+    os_calloc(1, sizeof(group_t *), groups);
 
-    // Scan directory, look for profiles (subdirectories)
+    // Scan directory, look for groups (subdirectories)
 
     dp = opendir(SHAREDCFG_DIR);
 
@@ -313,10 +313,10 @@ static void c_files()
             continue;
         }
 
-        os_realloc(profiles, (p_size + 2) * sizeof(profile_t *), profiles);
-        os_calloc(1, sizeof(profile_t), profiles[p_size]);
-        profiles[p_size]->profile = strdup(entry->d_name);
-        c_profile(entry->d_name, subdir, &profiles[p_size]->f_sum);
+        os_realloc(groups, (p_size + 2) * sizeof(group_t *), groups);
+        os_calloc(1, sizeof(group_t), groups[p_size]);
+        groups[p_size]->group = strdup(entry->d_name);
+        c_group(entry->d_name, subdir, &groups[p_size]->f_sum);
         closedir(subdir);
         p_size++;
     }
@@ -324,23 +324,23 @@ static void c_files()
     closedir(dp);
 }
 
-file_sum** find_sum(const char *profile) {
+file_sum** find_sum(const char *group) {
     int i;
 
-    for (i = 0; profiles[i]; i++) {
-        if (!strcmp(profiles[i]->profile, profile)) {
-            return profiles[i]->f_sum;
+    for (i = 0; groups[i]; i++) {
+        if (!strcmp(groups[i]->group, group)) {
+            return groups[i]->f_sum;
         }
     }
 
-    // Profile not found
+    // Group not found
     return NULL;
 }
 
 /* Send a file to the agent
  * Returns -1 on error
  */
-int send_file_toagent(const char *agent_id, const char *profile, const char *name, const char *sum)
+int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum)
 {
     int i = 0;
     int key_id;
@@ -358,7 +358,7 @@ int send_file_toagent(const char *agent_id, const char *profile, const char *nam
         return -1;
     }
 
-    snprintf(file, OS_SIZE_1024, "%s/%s/%s", SHAREDCFG_DIR, profile, name);
+    snprintf(file, OS_SIZE_1024, "%s/%s/%s", SHAREDCFG_DIR, group, name);
     fp = fopen(file, "r");
     if (!fp) {
         merror(FOPEN_ERROR, ARGV0, file, errno, strerror(errno));
@@ -423,10 +423,10 @@ int send_file_toagent(const char *agent_id, const char *profile, const char *nam
 static void read_controlmsg(const char *agent_id, char *msg)
 {
     int i;
-    char profile[KEYSIZE];
+    char group[KEYSIZE];
     file_sum **f_sum;
 
-    if (!profiles) {
+    if (!groups) {
         /* Nothing to share with agent */
         return;
     }
@@ -469,12 +469,12 @@ static void read_controlmsg(const char *agent_id, char *msg)
         *file = '\0';
         file++;
 
-        get_agent_profile(agent_id, profile, KEYSIZE);
-        f_sum = find_sum(profile);
+        get_agent_group(agent_id, group, KEYSIZE);
+        f_sum = find_sum(group);
 
         if (!f_sum) {
-            merror(ARGV0 ": No such profile '%s' for agent '%s'",
-                   profile,
+            merror(ARGV0 ": No such group '%s' for agent '%s'",
+                   group,
                    agent_id);
             break;
         }
@@ -484,7 +484,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             if (strcmp(f_sum[0]->sum, md5) != 0) {
                 debug1("%s: DEBUG Sending file '%s' to agent.", ARGV0,
                        f_sum[0]->name);
-                if (send_file_toagent(agent_id, profile, f_sum[0]->name, f_sum[0]->sum) < 0) {
+                if (send_file_toagent(agent_id, group, f_sum[0]->name, f_sum[0]->sum) < 0) {
                     merror(SHARED_ERROR, ARGV0, f_sum[0]->name, agent_id);
                 }
             }
@@ -528,7 +528,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 (f_sum[i]->mark == 0)) {
 
             debug1("%s: Sending file '%s' to agent.", ARGV0, f_sum[i]->name);
-            if (send_file_toagent(agent_id, profile, f_sum[i]->name, f_sum[i]->sum) < 0) {
+            if (send_file_toagent(agent_id, group, f_sum[i]->name, f_sum[i]->sum) < 0) {
                 merror(SHARED_ERROR, ARGV0, f_sum[i]->name, agent_id);
             }
         }

@@ -12,13 +12,13 @@
 #include "wdb.h"
 #include "defs.h"
 
-static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key, date_add, profile) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?);";
+static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key, date_add, `group`) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?);";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os = ?, version = ?, shared_sum = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_PROFILE = "UPDATE agent SET profile = ? WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
 static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHERE id = ?;";
@@ -29,7 +29,7 @@ static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
 static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND ip = ?;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *profile) {
+int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group) {
     int result = 0;
     sqlite3_stmt *stmt;
 
@@ -53,7 +53,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, 
     else
         sqlite3_bind_null(stmt, 4);
 
-    sqlite3_bind_text(stmt, 5, profile ? profile : DEFAULT_PROFILE, -1, NULL);
+    sqlite3_bind_text(stmt, 5, group ? group : DEFAULT_GROUP, -1, NULL);
 
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
     sqlite3_finalize(stmt);
@@ -479,20 +479,20 @@ int wdb_set_agent_status(int id_agent, int status) {
     return result;
 }
 
-/* Update agent profile. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_profile(int id, const char *profile) {
+/* Update agent group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_group(int id, const char *group) {
     int result = 0;
     sqlite3_stmt *stmt;
 
     if (wdb_open_global() < 0)
         return -1;
 
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_PROFILE, -1, &stmt, NULL)) {
+    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_GROUP, -1, &stmt, NULL)) {
         debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
         return -1;
     }
 
-    sqlite3_bind_text(stmt, 1, profile, -1, NULL);
+    sqlite3_bind_text(stmt, 1, group, -1, NULL);
     sqlite3_bind_int(stmt, 2, id);
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
