@@ -31,7 +31,7 @@ static int send_file_toagent(const char *agent_id, const char *profile, const ch
 static void f_files(void);
 static void c_profile(const char *profile, DIR *dp, file_sum ***_f_sum);
 static void c_files(void);
-static file_sum** find_profile(const char *agent_id, char *profile, size_t size);
+static file_sum** find_sum(const char *profile);
 
 /* Global vars */
 static profile_t **profiles;
@@ -324,22 +324,8 @@ static void c_files()
     closedir(dp);
 }
 
-file_sum** find_profile(const char *agent_id, char *profile, size_t size) {
+file_sum** find_sum(const char *profile) {
     int i;
-    int key_id;
-
-    key_lock();
-    key_id = OS_IsAllowedID(&keys, agent_id);
-
-    if (key_id < 0) {
-        key_unlock();
-        merror("%s: ERROR: Couldn't get key for agent ID '%s'.", ARGV0, agent_id);
-        return NULL;
-    }
-
-    strncpy(profile, keys.keyentries[key_id]->profile, KEYSIZE - 1);
-    profile[size - 1] = '\0';
-    key_unlock();
 
     for (i = 0; profiles[i]; i++) {
         if (!strcmp(profiles[i]->profile, profile)) {
@@ -483,7 +469,8 @@ static void read_controlmsg(const char *agent_id, char *msg)
         *file = '\0';
         file++;
 
-        f_sum = find_profile(agent_id, profile, KEYSIZE);
+        get_agent_profile(agent_id, profile, KEYSIZE);
+        f_sum = find_sum(profile);
 
         if (!f_sum) {
             merror(ARGV0 ": No such profile '%s' for agent '%s'",

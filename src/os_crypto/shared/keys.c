@@ -13,18 +13,17 @@
 #include "os_crypto/blowfish/bf_op.h"
 
 /* Prototypes */
-static void __memclear(char *id, char *name, char *ip, char *key, char *profile, size_t size) __attribute((nonnull));
+static void __memclear(char *id, char *name, char *ip, char *key, size_t size) __attribute((nonnull));
 
 static int pass_empty_keyfile = 0;
 
 /* Clear keys entries */
-static void __memclear(char *id, char *name, char *ip, char *key, char *profile, size_t size)
+static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
 {
     memset(id, '\0', size);
     memset(name, '\0', size);
     memset(key, '\0', size);
     memset(ip, '\0', size);
-    memset(profile, '\0', size);
 }
 
 static void move_netdata(keystore *keys, const keystore *old_keys)
@@ -49,7 +48,7 @@ static void save_removed_key(keystore *keys, const char *key) {
 }
 
 /* Create the final key */
-void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key, const char *profile)
+void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
 {
     os_md5 filesum1;
     os_md5 filesum2;
@@ -126,9 +125,6 @@ void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip,
     } else
         os_strdup(key, keys->keyentries[keys->keysize]->key);
 
-    /* Agent profile */
-    os_strdup(profile, keys->keyentries[keys->keysize]->profile);
-
     /* Ready for next */
     keys->keysize++;
 
@@ -171,7 +167,6 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
     char ip[KEYSIZE + 1];
     char id[KEYSIZE + 1];
     char key[KEYSIZE + 1];
-    char profile[KEYSIZE + 1];
     char *end;
     int id_number;
 
@@ -204,7 +199,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
     keys->flags.save_removed = save_removed;
 
     /* Zero the buffers */
-    __memclear(id, name, ip, key, profile, KEYSIZE + 1);
+    __memclear(id, name, ip, key, KEYSIZE + 1);
     memset(buffer, '\0', OS_BUFFER_SIZE + 1);
 
     /* Read each line. Lines are divided as "id name ip key" */
@@ -284,14 +279,11 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
 
         strncpy(key, valid_str, KEYSIZE - 1);
 
-        /* Get profile name */
-        get_agent_profile(id, profile, KEYSIZE);
-
         /* Generate the key hash */
-        OS_AddKey(keys, id, name, ip, key, profile);
+        OS_AddKey(keys, id, name, ip, key);
 
         /* Clear the memory */
-        __memclear(id, name, ip, key, profile, KEYSIZE + 1);
+        __memclear(id, name, ip, key, KEYSIZE + 1);
 
         /* Check for maximum agent size */
         if (keys->keysize >= (MAX_AGENTS - 2)) {
@@ -306,7 +298,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
     fclose(fp);
 
     /* Clear one last time before leaving */
-    __memclear(id, name, ip, key, profile, KEYSIZE + 1);
+    __memclear(id, name, ip, key, KEYSIZE + 1);
 
     /* Check if there are any agents available */
     if (keys->keysize == 0) {
@@ -339,10 +331,6 @@ void OS_FreeKey(keyentry *key) {
 
     if (key->name) {
         free(key->name);
-    }
-
-    if (key->profile) {
-        free(key->profile);
     }
 
     /* Close counter */

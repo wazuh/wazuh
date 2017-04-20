@@ -27,7 +27,6 @@ typedef struct _keyentry {
     char *id;
     char *key;
     char *name;
-    char *profile;
 
     os_ip *ip;
     int sock;
@@ -90,7 +89,7 @@ void OS_RemoveCounter(const char *id) __attribute((nonnull));
 void OS_PassEmptyKeyfile();
 
 /* Add new key */
-void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key, const char *profile) __attribute((nonnull));
+void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key) __attribute((nonnull));
 
 /* Delete a key */
 int OS_DeleteKey(keystore *keys, const char *id);
