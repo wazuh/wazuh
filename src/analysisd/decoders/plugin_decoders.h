@@ -28,10 +28,13 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf);
 void *OSSECAlert_Decoder_Init(void);
 void *OSSECAlert_Decoder_Exec(Eventinfo *lf);
 
+/* Plugin for JSON */
+void *JSON_Decoder_Init(void);
+void *JSON_Decoder_Exec(Eventinfo *lf);
+
 /* List of plugins. All three lists must be in the same order */
 extern const char *(plugin_decoders[]);
 extern void *(plugin_decoders_init[]);
 extern void *(plugin_decoders_exec[]);
 
 #endif /* __PLUGINDECODER_H */
-
