@@ -115,6 +115,7 @@ Install()
 
     # Generate the /etc/ossec-init.conf
     VERSION=`cat ${VERSION_FILE}`
+    REVISION=`cat ${REVISION_FILE}`
     chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
     GenerateInitConf > ${OSSEC_INIT}
     chmod 640 ${OSSEC_INIT}
