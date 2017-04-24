@@ -614,6 +614,7 @@ main()
 {
     LG="en"
     LANGUAGE="en"
+    . ./src/init/dist-detect.sh
     . ./src/init/shared.sh
     . ./src/init/functions.sh
 
@@ -667,7 +668,6 @@ main()
     . ./src/init/wazuh/wazuh.sh
     . ${TEMPLATE}/${LANGUAGE}/messages.txt
     . ./src/init/inst-functions.sh
-    . ./src/init/dist-detect.sh
     . ./src/init/template-select.sh
 
     # Must be executed as ./install.sh
