@@ -4,7 +4,9 @@
 
 ### Setting up variables
 VERSION_FILE="./src/VERSION"
+REVISION_FILE="./src/REVISION"
 VERSION=`cat ${VERSION_FILE}`
+REVISION=`cat ${REVISION_FILE}`
 LOCATION="./src/LOCATION"
 UNAME=`uname -snr`
 NUNAME=`uname`
