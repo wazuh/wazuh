@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     /* Setting the name */
     OS_SetName(ARGV0);
 
-    while((c = getopt(argc, argv, "vdhtfu:g:")) != -1){
+    while((c = getopt(argc, argv, "Vdhtfu:g:")) != -1){
         switch(c){
             case 'V':
                 print_version();
