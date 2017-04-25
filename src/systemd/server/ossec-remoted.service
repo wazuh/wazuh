@@ -3,6 +3,7 @@ Description=OSSEC remoted
 PartOf=ossec-server.target
 
 [Service]
+Type=forking
 EnvironmentFile=/etc/ossec-init.conf
 Environment=DIRECTORY=/var/ossec
 
