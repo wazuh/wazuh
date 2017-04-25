@@ -10,7 +10,7 @@
  * Foundation.
  *
  * License details at the LICENSE file included with OSSEC or
- * online at: http://www.ossec.net/en/licensing.html
+ * online at: https://www.gnu.org/licenses/gpl.html
  */
 
 /* Common API for dealing with file system information */

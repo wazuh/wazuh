@@ -1,7 +1,7 @@
  - Jeśli chcesz monitorować inne pliki, poprostu
    zmień ossec.conf oraz dodaj nowy wpis localfile.
    Wszystkie wyjaśnienia odnośnie konfiguracji
-   znajdziesz na http://www.ossec.net .
+   znajdziesz na https://documentation.wazuh.com/capabilities/log-data-collection/log-data-configuration.html.
 
 
    --- Wciśnij ENTER aby kontynuować ---

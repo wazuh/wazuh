@@ -23,7 +23,7 @@ case, you should ensure that you new agent has an unique name/id. You can
 simply know that by using `manage_agents -l` to list all known agents.
 
 For more details, please refer to OSSEC document
-    http://www.ossec.net/doc/manual/agent/agent-management.html
+    https://documentation.wazuh.com/agents/registering-agents
 
 PS: you may use some tools (`expect`) to send strings to `manage_agents`,
 insead of using the above environment variables. It's your choice.

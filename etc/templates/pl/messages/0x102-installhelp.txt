@@ -25,4 +25,4 @@
   - Wybierz 'lokalna' jeśli masz tylko jeden system do monitorowania.
 
   - Więcej informacji na:
-    http://www.ossec.net/en/manual.html#starting
+    https://documentation.wazuh.com

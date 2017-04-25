@@ -1,10 +1,13 @@
-OSSEC
+WAZUH
+Copyright (C) 2017 Wazuh Inc.
+
+Based on OSSEC
 Copyright (C) 2014 Trend Micro Inc.
 
 
-= Information about OSSEC =
+= Information about Wazuh =
 
-Visit http://www.ossec.net
+Visit https://www.wazuh.com
 
 
 = Recommended Installation =
@@ -12,8 +15,8 @@ Visit http://www.ossec.net
 See INSTALL
 
 
-== Configuring OSSEC ==
+== Configuring Wazuh ==
 
 Just follow the steps from the install.sh script.
 More information at
-http://www.ossec.net/doc/manual/index.html
+https://documentation.wazuh.com

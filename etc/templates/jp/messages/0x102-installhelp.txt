@@ -23,4 +23,4 @@
   - 単一システムを監視するためならば 'local' を選択してください．
 
   - 詳細な情報は以下のサイトから得られます：
-    http://www.ossec.net/en/manual.html#starting
+    https://documentation.wazuh.com

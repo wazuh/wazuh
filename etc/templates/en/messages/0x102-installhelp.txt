@@ -30,4 +30,4 @@
     local logs before forwarding alerts to another server.
 
   - More information at:
-    http://www.ossec.net/en/manual.html#starting
+    https://documentation.wazuh.com
