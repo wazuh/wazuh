@@ -26,4 +26,4 @@
   - Válassza a 'lokális' telepítést, ha csak egy rendszere van,
     amit monitoroznia kell.
 
-  - További információk: http://www.ossec.net/en/manual.html#starting
+  - További információk: https://documentation.wazuh.com

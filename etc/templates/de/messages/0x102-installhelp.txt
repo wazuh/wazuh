@@ -23,4 +23,4 @@
 
   - Wöhlen Sie 'Local' wenn nur ein System analysiert werden soll.
 
-  - weitere Informationen unter: http://www.ossec.net/en/manual.html#starting
+  - weitere Informationen unter: https://documentation.wazuh.com

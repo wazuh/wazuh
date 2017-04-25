@@ -21,4 +21,4 @@
 
   - Utilize 'local' se você apenas tem um sistema para monitorar.
 
-  - Maiores informações: http://www.ossec.net/en/manual.html#starting
+  - Maiores informações: https://documentation.wazuh.com
