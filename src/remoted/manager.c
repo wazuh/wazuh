@@ -394,12 +394,14 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
 
         key_unlock();
 
-        /* Sleep 1 every 30 messages -- no flood */
-        if (i > 30) {
-            sleep(1);
-            i = 0;
+        if (logr.proto[logr.position] == UDP_PROTO) {
+            /* Sleep 1 every 30 messages -- no flood */
+            if (i > 30) {
+                sleep(1);
+                i = 0;
+            }
+            i++;
         }
-        i++;
     }
 
     /* Send the message to close the file */
