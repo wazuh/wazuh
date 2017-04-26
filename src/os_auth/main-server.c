@@ -74,7 +74,7 @@ int sock = 0;
 int save_removed = 1;
 
 keystore keys;
-struct client pool[POOL_SIZE];
+struct client pool[AUTH_POOL];
 volatile int pool_i = 0;
 volatile int pool_j = 0;
 volatile int write_pending = 0;

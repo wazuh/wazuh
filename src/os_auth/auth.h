@@ -47,9 +47,9 @@ extern BIO *bio_err;
 #define CERTFILE "/etc/sslmanager.cert"
 #define DEFAULT_PORT 1515
 
-#define full(i, j) ((i + 1) % POOL_SIZE == j)
+#define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
-#define forward(x) x = (x + 1) % POOL_SIZE
+#define forward(x) x = (x + 1) % AUTH_POOL
 
 struct client {
     int socket;
