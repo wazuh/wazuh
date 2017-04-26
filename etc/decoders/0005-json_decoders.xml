@@ -10,6 +10,6 @@
 -->
 
 <decoder name="json">
-  <prematch>^{"</prematch>
+  <prematch>^{\s*"</prematch>
   <plugin_decoder>JSON_Decoder</plugin_decoder>
 </decoder>
