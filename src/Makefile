@@ -463,6 +463,7 @@ install-server-generic: install-common
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
+	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
 
 	install -m 0750 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
 	install -m 0750 -o root -g 0 ossec-analysisd ${PREFIX}/bin
@@ -494,6 +495,7 @@ install-server-generic: install-common
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b update/ruleset/RULESET_VERSION ${PREFIX}/ruleset/VERSION
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
+	install -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
 
 ifeq (,$(wildcard ${PREFIX}/etc/decoders/local_decoder.xml))
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
