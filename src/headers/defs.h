@@ -37,7 +37,7 @@
 #define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
 #define IPSIZE          16              /* IP Address size              */
 #define AUTH_POOL       1000            /* Max number of connections    */
-#define BACKLOG         32              /* Socket input queue length    */
+#define BACKLOG         128             /* Socket input queue length    */
 #define MAX_EVENTS      1024            /* Max number of epoll events   */
 #define EPOLL_MILLIS    -1              /* Epoll wait time              */
 #define MAX_TAG_COUNTER 256             /* Max retrying counter         */
