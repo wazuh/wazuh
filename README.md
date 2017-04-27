@@ -1,22 +1,29 @@
 # Wazuh
 
-Wazuh is a full platform to monitor and control your systems. It was born as a fork of [OSSEC](https://github.com/ossec/ossec-hids) and it mixes together all the aspects of HIDS (host-based intrusion detection), log monitoring and SIM/SIEM together in a simple, powerful and open source solution.
+Wazuh helps you to gain deeper security visibility into your infrastructure by monitoring hosts at an operating system and application level. This solution, based on lightweight multi-platform agents, provides the following capabilities:
 
-This fork provides compliance support, extended logging, and additional management features. These capabilities are required for the integration with ELK Stack and Wazuh RESTful API (also included in this repository).
+- **Log management and analysis:** Wazuh agents read operating system and application logs, and securely forward them to a central manager for rule-based analysis and storage.
+- **File integrity monitoring:** Wazuh monitors the file system, identifying changes in content, permissions, ownership, and attributes of files that you need to keep an eye on.
+- **Intrusion and anomaly detection:** Agents scan the system looking for malware, rootkits or suspicious anomalies. They can detect hidden files, cloaked processes or unregistered network listeners, as well as inconsistencies in system call responses.
+- **Policy and compliance monitoring:** Wazuh monitors configuration files to ensure they are compliant with your security policies, standards or hardening guides. Agents perform periodic scans to detect applications that are known to be vulnerable, unpatched, or insecurely configured.
 
-## Wazuh Open Source modules and contributions
+This diverse set of capabilities is provided by integrating OSSEC, OpenSCAP and Elastic Stack, making them work together as a unified solution, and simplifying their configuration and management.
 
-Wazuh team is currently supporting OSSEC enterprise users, and decided to develop and publish additional modules as a way to contribute back to the Open Source community. Find below a list and description of these modules:
+Wazuh provides an updated log analysis ruleset, and a RESTful API that allows you to monitor the status and configuration of all Wazuh agents.
 
-* [Wazuh](https://documentation.wazuh.com/current/index.html) is the main module with extended JSON logging capabilities, for easy integration with ELK Stack and third party log management tools.
+Wazuh also includes a rich web application (fully integrated as a Kibana app), for mining log analysis alerts and for monitoring and managing your Wazuh infrastructure.
 
-* [Wazuh App](https://documentation.wazuh.com/current/index.html#example-screenshots): is a rich web application (fully integrated as a Kibana app), for mining log analysis alerts and for monitoring and managing your Wazuh infrastructure.
+## Wazuh Open Source components and contributions
 
-* [Wazuh Ruleset](https://documentation.wazuh.com/current/user-manual/ruleset/index.html): Includes compliance mapping with PCI DSS v3.1, CIS and additional decoders and rules. Users can contribute to this rule set by submitting pull requests to our [Github repository](https://github.com/wazuh/wazuh-ruleset). Our team will continue to maintain and update it periodically.
+* [Wazuh](https://documentation.wazuh.com/current/index.html) was born as a fork of [OSSEC HIDS](https://github.com/ossec/ossec-hids). It contains many new features, improvements and bug fixes.
 
-* [Wazuh RESTful API](https://documentation.wazuh.com/current/user-manual/api/index.html): Used to monitor and control your Wazuh installation, providing an interface to interact with the manager from anything that can send an HTTP request.
+* [Wazuh App](https://documentation.wazuh.com/current/index.html#example-screenshots) is a rich web application (fully integrated as a Kibana app), for mining log analysis alerts and for monitoring and managing your Wazuh infrastructure.
 
-* [Pre-compiled installation packages](https://documentation.wazuh.com/current/installation-guide/packages-list/index.html): Include repositories for RedHat, CentOS, Fedora, Debian, Ubuntu and Windows.
+* [Wazuh Ruleset](https://documentation.wazuh.com/current/user-manual/ruleset/index.html) is our repository to centralice decoders, rules, rootchecks and SCAP content. The ruleset is used by the manager to detect attacks, intrusions, software misuse, configuration problems, application errors, malware, rootkits, system anomalies or security policy violations. Also, it includes the compliance mapping with PCI DSS v3.1 and CIS. Users can contribute to this rule set by submitting pull requests to our [Github repository](https://github.com/wazuh/wazuh-ruleset).
+
+* [Wazuh RESTful API](https://documentation.wazuh.com/current/user-manual/api/index.html) is used to monitor and control your Wazuh installation, providing an interface to interact with the manager from anything that can send an HTTP request.
+
+* [Pre-compiled installation packages](https://documentation.wazuh.com/current/installation-guide/packages-list/index.html) include repositories for RedHat, CentOS, Fedora, Debian, Ubuntu and Windows.
 
 * [Puppet scripts](https://documentation.wazuh.com/current/deploying-with-puppet/index.html) for automatic Wazuh deployment and configuration.
 
@@ -55,7 +62,11 @@ If you want to contribute to our project please don't hesitate to send a pull re
 
 ## License and copyright
 
-OSSEC Copyright (C) 2015 Trend Micro Inc. (License GPLv2)
+WAZUH
+Copyright (C) 2017 Wazuh Inc.  (License GPLv2)
+
+Based on OSSEC
+Copyright (C) 2015 Trend Micro Inc.
 
 ## References
 
