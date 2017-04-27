@@ -13,8 +13,6 @@
 #include "remoted.h"
 #include "os_net/os_net.h"
 
-/* pthread send_msg mutex */
-static pthread_mutex_t sendmsg_mutex;
 
 /* pthread key update mutex */
 static pthread_mutex_t keyupdate_mutex;
@@ -44,6 +42,8 @@ void key_unlock()
 /* Check for key updates */
 int check_keyupdate()
 {
+    int retval = 0;
+
     /* Check key for updates */
     if (!OS_CheckUpdateKeys(&keys)) {
         return (0);
@@ -51,83 +51,71 @@ int check_keyupdate()
 
     key_lock();
 
-    /* Lock before using */
-    if (pthread_mutex_lock(&sendmsg_mutex) != 0) {
-        key_unlock();
-        merror(MUTEX_ERROR, ARGV0);
-        return (0);
-    }
-
     if (OS_UpdateKeys(&keys)) {
-        if (pthread_mutex_unlock(&sendmsg_mutex) != 0) {
-            merror(MUTEX_ERROR, ARGV0);
-        }
-        key_unlock();
-        return (1);
+        retval = 1;
     }
 
-    if (pthread_mutex_unlock(&sendmsg_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
-    }
     key_unlock();
-
-    return (0);
-}
-
-/* Initialize send_msg */
-void send_msg_init()
-{
-    /* Initialize mutex */
-    pthread_mutex_init(&sendmsg_mutex, NULL);
+    return retval;
 }
 
 /* Send message to an agent
  * Returns -1 on error
- * Must call key_lock() before this
+ * Must not call key_lock() before this
  */
-int send_msg(unsigned int agentid, const char *msg)
+int send_msg(const char *agent_id, const char *msg)
 {
+    int key_id;
+    int sock = -1;
     ssize_t msg_size, send_b;
     netsize_t length;
     char crypt_msg[OS_MAXSTR + 1];
+    struct sockaddr_in peer_info;
+
+    key_lock();
+    key_id = OS_IsAllowedID(&keys, agent_id);
+
+    if (key_id < 0) {
+        key_unlock();
+        merror(AR_NOAGENT_ERROR, ARGV0, agent_id);
+        return (-1);
+    }
 
     /* If we don't have the agent id, ignore it */
-    if (keys.keyentries[agentid]->rcvd < (time(0) - (2 * NOTIFY_TIME))) {
-        merror(SEND_DISCON, ARGV0, keys.keyentries[agentid]->id);
+    if (keys.keyentries[key_id]->rcvd < (time(0) - (3 * NOTIFY_TIME))) {
+        key_unlock();
+        merror(SEND_DISCON, ARGV0, keys.keyentries[key_id]->id);
         return (-1);
     }
 
-    msg_size = CreateSecMSG(&keys, msg, crypt_msg, agentid);
+    msg_size = CreateSecMSG(&keys, msg, crypt_msg, key_id);
+
+    if (logr.proto[logr.position] == UDP_PROTO) {
+        memcpy(&peer_info, &keys.keyentries[key_id]->peer_info, sizeof(peer_info));
+    } else {
+        sock = keys.keyentries[key_id]->sock;
+    }
+
+    key_unlock();
+
     if (msg_size == 0) {
         merror(SEC_ERROR, ARGV0);
-        return (-1);
-    }
-
-    /* Lock before using */
-    if (pthread_mutex_lock(&sendmsg_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
         return (-1);
     }
 
     /* Send initial message */
     if (logr.proto[logr.position] == UDP_PROTO) {
         send_b = sendto(logr.sock, crypt_msg, msg_size, 0,
-               (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
+               (struct sockaddr *)&peer_info,
                logr.peer_size);
     } else {
         length = msg_size;
-        send(keys.keyentries[agentid]->sock, (char*)&length, sizeof(length), 0);
-        send_b = send(keys.keyentries[agentid]->sock, crypt_msg, msg_size, 0);
+        send(sock, (char*)&length, sizeof(length), 0);
+        send_b = send(sock, crypt_msg, msg_size, 0);
     }
 
     if (send_b < 0) {
-        merror(SEND_ERROR, ARGV0, keys.keyentries[agentid]->id);
-    }
-
-    /* Unlock mutex */
-    if (pthread_mutex_unlock(&sendmsg_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
-        return (-1);
+        merror(SEND_ERROR, ARGV0, agent_id);
     }
 
     return (0);

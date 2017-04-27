@@ -53,20 +53,20 @@ void HandleSecure() __attribute__((noreturn));
 void *AR_Forward(void *arg) __attribute__((noreturn));
 
 /* Initialize the manager */
-void manager_init(int isUpdate);
+void manager_init();
 
 /* Wait for messages from the agent to analyze */
 void *wait_for_msgs(void *none);
+
+/* Update shared files */
+void *update_shared_files(void *none);
 
 /* Save control messages */
 void save_controlmsg(unsigned int agentid, char *msg);
 
 /* Send message to agent */
-/* Must call key_lock() before this */
-int send_msg(unsigned int agentid, const char *msg);
-
-/* Initializing send_msg */
-void send_msg_init(void);
+/* Must not call key_lock() before this */
+int send_msg(const char *agent_id, const char *msg);
 
 int check_keyupdate(void);
 

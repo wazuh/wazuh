@@ -45,23 +45,35 @@ void HandleSecure()
     struct epoll_event *events = NULL;
 #endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
 
-    /* Send msg init */
-    send_msg_init();
-
     /* Initialize key mutex */
     keyupdate_init();
 
     /* Initialize manager */
-    manager_init(0);
+    manager_init();
+
+    /* Create Active Response forwarder thread */
+    if (CreateThread(update_shared_files, (void *)NULL) != 0) {
+        ErrorExit(THREAD_ERROR, ARGV0);
+    }
 
     /* Create Active Response forwarder thread */
     if (CreateThread(AR_Forward, (void *)NULL) != 0) {
         ErrorExit(THREAD_ERROR, ARGV0);
     }
 
-    /* Create wait_for_msgs thread */
-    if (CreateThread(wait_for_msgs, (void *)NULL) != 0) {
-        ErrorExit(THREAD_ERROR, ARGV0);
+    /* Create wait_for_msgs threads */
+
+    {
+        int i;
+        int thread_pool = getDefine_Int("remoted", "thread_pool", 0, 64);
+
+        debug2(ARGV0 ": DEBUG: Creating %d sender threads.", thread_pool);
+
+        for (i = 0; i < thread_pool; i++) {
+            if (CreateThread(wait_for_msgs, (void *)NULL) != 0) {
+                ErrorExit(THREAD_ERROR, ARGV0);
+            }
+        }
     }
 
     /* Connect to the message queue

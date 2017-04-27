@@ -35,7 +35,6 @@ static file_sum** find_sum(const char *group);
 
 /* Global vars */
 static group_t **groups;
-static time_t _ctime;
 static time_t _stime;
 
 /* For the last message tracking */
@@ -45,9 +44,9 @@ static volatile int queue_j = 0;
 OSHash *pending_data;
 
 /* pthread mutex variables */
-static pthread_mutex_t lastmsg_mutex;
-static pthread_cond_t awake_mutex;
-
+static pthread_mutex_t lastmsg_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t files_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t awake_mutex = PTHREAD_COND_INITIALIZER;
 
 /* Save a control message received from an agent
  * read_contromsg (other thread) is going to deal with it
@@ -63,7 +62,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
 
-    send_msg(agentid, msg_ack);
+    send_msg(keys.keyentries[agentid]->id, msg_ack);
 
     /* Check if there is a keep alive already for this agent */
     if ((data = OSHash_Get(pending_data, keys.keyentries[agentid]->id)) &&
@@ -198,8 +197,9 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     os_md5 md5sum;
     unsigned int f_size = 0;
     file_sum **f_sum;
-    char tmp_merged[PATH_MAX + 1];
-    char tmp_file[PATH_MAX + 1];
+    char merged_tmp[PATH_MAX + 1];
+    char merged[PATH_MAX + 1];
+    char file[PATH_MAX + 1];
 
     /* Create merged file */
     os_calloc(2, sizeof(file_sum *), f_sum);
@@ -210,9 +210,10 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     f_sum[f_size]->name = NULL;
     f_sum[f_size]->sum[0] = '\0';
 
-    snprintf(tmp_merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
+    snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
+    snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
 
-    MergeAppendFile(tmp_merged, NULL);
+    MergeAppendFile(merged_tmp, NULL);
     f_size++;
 
     // Merge ar.conf always
@@ -223,7 +224,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         os_calloc(1, sizeof(file_sum), f_sum[f_size]);
         strncpy(f_sum[f_size]->sum, md5sum, 32);
         os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
-        MergeAppendFile(tmp_merged, DEFAULTAR);
+        MergeAppendFile(merged_tmp, DEFAULTAR);
         f_size++;
     }
 
@@ -231,14 +232,15 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     while ((entry = readdir(dp)) != NULL) {
         /* Ignore . and ..  */
         /* Leave the shared config file for later */
-        if ((entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) || !strcmp(entry->d_name, SHAREDCFG_FILENAME)) {
+        /* Also discard merged.mg.tmp */
+        if ((entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) || !strncmp(entry->d_name, SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
             continue;
         }
 
-        snprintf(tmp_file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, entry->d_name);
+        snprintf(file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, entry->d_name);
 
-        if (OS_MD5_File(tmp_file, md5sum, OS_TEXT) != 0) {
-            merror("%s: Error accessing file '%s'", ARGV0, tmp_file);
+        if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
+            merror("%s: Error accessing file '%s'", ARGV0, file);
             continue;
         }
 
@@ -247,14 +249,15 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         os_calloc(1, sizeof(file_sum), f_sum[f_size]);
         strncpy(f_sum[f_size]->sum, md5sum, 32);
         os_strdup(entry->d_name, f_sum[f_size]->name);
-        MergeAppendFile(tmp_merged, tmp_file);
+        MergeAppendFile(merged_tmp, file);
         f_size++;
     }
 
     f_sum[f_size] = NULL;
+    OS_MoveFile(merged_tmp, merged);
 
-    if (OS_MD5_File(tmp_merged, md5sum, OS_TEXT) != 0) {
-        merror("%s: Error accessing file '%s'", ARGV0, tmp_merged);
+    if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
+        merror("%s: Error accessing file '%s'", ARGV0, merged);
         f_sum[0]->sum[0] = '\0';
     }
 
@@ -271,6 +274,14 @@ static void c_files()
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
 
+    debug1(ARGV0 ": DEBUG: Updating shared files sums.");
+
+    /* Lock mutex */
+    if (pthread_mutex_lock(&files_mutex) != 0) {
+        merror(MUTEX_ERROR, ARGV0);
+        return;
+    }
+
     // Free groups set, and set to NULL
     f_files();
 
@@ -282,6 +293,11 @@ static void c_files()
     dp = opendir(SHAREDCFG_DIR);
 
     if (!dp) {
+        /* Unlock mutex */
+        if (pthread_mutex_unlock(&files_mutex) != 0) {
+            merror(MUTEX_ERROR, ARGV0);
+        }
+
         merror("%s: Error opening directory: '%s': %s",
                ARGV0,
                SHAREDCFG_DIR,
@@ -297,8 +313,7 @@ static void c_files()
 
         if (snprintf(path, PATH_MAX + 1, SHAREDCFG_DIR "/%s", entry->d_name) > PATH_MAX) {
             merror(ARGV0 ": ERROR: at c_files(): path too long.");
-            closedir(dp);
-            return;
+            break;
         }
 
         // Try to open directory, avoid TOCTOU hazard
@@ -321,7 +336,13 @@ static void c_files()
         p_size++;
     }
 
+    /* Unlock mutex */
+    if (pthread_mutex_unlock(&files_mutex) != 0) {
+        merror(MUTEX_ERROR, ARGV0);
+    }
+
     closedir(dp);
+    debug2(ARGV0 ": DEBUG: End updating shared files sums.");
 }
 
 file_sum** find_sum(const char *group) {
@@ -343,20 +364,10 @@ file_sum** find_sum(const char *group) {
 int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum)
 {
     int i = 0;
-    int key_id;
     size_t n = 0;
     char file[OS_SIZE_1024 + 1];
     char buf[OS_SIZE_1024 + 1];
     FILE *fp;
-
-    key_lock();
-    key_id = OS_IsAllowedID(&keys, agent_id);
-    key_unlock();
-
-    if (key_id < 0) {
-        merror("%s: ERROR: Couldn't get key for agent ID '%s'.", ARGV0, agent_id);
-        return -1;
-    }
 
     snprintf(file, OS_SIZE_1024, "%s/%s/%s", SHAREDCFG_DIR, group, name);
     fp = fopen(file, "r");
@@ -369,30 +380,21 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     snprintf(buf, OS_SIZE_1024, "%s%s%s %s\n",
              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
 
-    key_lock();
-    if (send_msg(key_id, buf) == -1) {
-        key_unlock();
+    if (send_msg(agent_id, buf) == -1) {
         merror(SEC_ERROR, ARGV0);
         fclose(fp);
         return (-1);
     }
 
-    key_unlock();
-
     /* Send the file contents */
     while ((n = fread(buf, 1, 900, fp)) > 0) {
         buf[n] = '\0';
 
-        key_lock();
-
-        if (send_msg(key_id, buf) == -1) {
-            key_unlock();
+        if (send_msg(agent_id, buf) == -1) {
             merror(SEC_ERROR, ARGV0);
             fclose(fp);
             return (-1);
         }
-
-        key_unlock();
 
         if (logr.proto[logr.position] == UDP_PROTO) {
             /* Sleep 1 every 30 messages -- no flood */
@@ -406,16 +408,13 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
 
     /* Send the message to close the file */
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
-    key_lock();
 
-    if (send_msg(key_id, buf) == -1) {
-        key_unlock();
+    if (send_msg(agent_id, buf) == -1) {
         merror(SEC_ERROR, ARGV0);
         fclose(fp);
         return (-1);
     }
 
-    key_unlock();
     fclose(fp);
 
     return (0);
@@ -427,6 +426,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     int i;
     char group[KEYSIZE];
     file_sum **f_sum;
+    os_md5 tmp_sum;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -434,6 +434,28 @@ static void read_controlmsg(const char *agent_id, char *msg)
     }
 
     debug2("%s: DEBUG: read_controlmsg(): reading '%s'", ARGV0, msg);
+
+    get_agent_group(agent_id, group, KEYSIZE);
+
+    /* Lock mutex */
+    if (pthread_mutex_lock(&files_mutex) != 0) {
+        merror(MUTEX_ERROR, ARGV0);
+        return;
+    }
+
+    f_sum = find_sum(group);
+
+    if (!f_sum) {
+        /* Unlock mutex */
+        if (pthread_mutex_unlock(&files_mutex) != 0) {
+            merror(MUTEX_ERROR, ARGV0);
+        }
+
+        merror(ARGV0 ": No such group '%s' for agent '%s'",
+               group,
+               agent_id);
+        return;
+    }
 
     /* Parse message */
     while (*msg != '\0') {
@@ -471,30 +493,28 @@ static void read_controlmsg(const char *agent_id, char *msg)
         *file = '\0';
         file++;
 
-        get_agent_group(agent_id, group, KEYSIZE);
-        f_sum = find_sum(group);
-
-        if (!f_sum) {
-            merror(ARGV0 ": No such group '%s' for agent '%s'",
-                   group,
-                   agent_id);
-            break;
-        }
-
         /* New agents only have merged.mg */
         if (strcmp(file, SHAREDCFG_FILENAME) == 0) {
-            if (strcmp(f_sum[0]->sum, md5) != 0) {
-                debug1("%s: DEBUG Sending file '%s' to agent.", ARGV0,
-                       f_sum[0]->name);
-                if (send_file_toagent(agent_id, group, f_sum[0]->name, f_sum[0]->sum) < 0) {
-                    merror(SHARED_ERROR, ARGV0, f_sum[0]->name, agent_id);
-                }
+            for (i = 0; f_sum[i]; i++) {
+                f_sum[i]->mark = 0;
             }
 
-            i = 0;
-            while (f_sum[i]) {
-                f_sum[i]->mark = 0;
-                i++;
+            // Copy sum before unlock mutex
+            memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
+
+            /* Unlock mutex */
+            if (pthread_mutex_unlock(&files_mutex) != 0) {
+                merror(MUTEX_ERROR, ARGV0);
+            }
+
+            if (strcmp(tmp_sum, md5) != 0) {
+                debug1("%s: DEBUG: Sending file '%s' to agent '%s'.", ARGV0, SHAREDCFG_FILENAME, agent_id);
+
+                if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum) < 0) {
+                    merror(SHARED_ERROR, ARGV0, SHAREDCFG_FILENAME, agent_id);
+                }
+
+                debug2("%s: DEBUG: End sending file '%s' to agent '%s'.", ARGV0, SHAREDCFG_FILENAME, agent_id);
             }
 
             return;
@@ -538,6 +558,11 @@ static void read_controlmsg(const char *agent_id, char *msg)
         f_sum[i]->mark = 0;
     }
 
+    /* Unlock mutex */
+    if (pthread_mutex_unlock(&files_mutex) != 0) {
+        merror(MUTEX_ERROR, ARGV0);
+    }
+
     return;
 }
 
@@ -555,15 +580,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
     /* Should never leave this loop */
     while (1) {
-        /* Every NOTIFY * 30 minutes, re-read the files
-         * If something changed, notify all agents
-         */
-        _ctime = time(0);
-        if ((_ctime - _stime) > (NOTIFY_TIME * 30)) {
-            c_files();
 
-            _stime = _ctime;
-        }
 
         /* Lock mutex */
         if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
@@ -602,24 +619,32 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
     return (NULL);
 }
+/* Update shared files */
+void *update_shared_files(__attribute__((unused)) void *none) {
+    while (1) {
+        time_t _ctime = time(0);
+
+        /* Every NOTIFY * 30 minutes, re-read the files
+         * If something changed, notify all agents
+         */
+
+        if ((_ctime - _stime) > (NOTIFY_TIME * 30)) {
+            c_files();
+            _stime = _ctime;
+        }
+
+        sleep(60);
+    }
+
+    return NULL;
+}
 
 /* Should be called before anything here */
-void manager_init(int isUpdate)
+void manager_init()
 {
-    debug1("%s: DEBUG: Running manager_init", ARGV0);
-
     _stime = time(0);
-    queue_i = 0;
-    queue_j = 0;
-
+    debug1("%s: DEBUG: Running manager_init", ARGV0);
     c_files();
-
     memset(pending_queue, 0, MAX_AGENTS * 9);
     pending_data = OSHash_Create();
-
-    /* Initialize mutexes */
-    if (isUpdate == 0) {
-        pthread_mutex_init(&lastmsg_mutex, NULL);
-        pthread_cond_init(&awake_mutex, NULL);
-    }
 }
