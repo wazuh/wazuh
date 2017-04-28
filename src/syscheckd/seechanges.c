@@ -93,6 +93,21 @@ int is_text(magic_t cookie, const void *buf, size_t len)
 }
 #endif
 
+#ifndef WIN32
+/* Retrun TRUE if the filename is symlink to an directory */
+int symlink_to_dir (const char *filename) {
+    struct stat buf;
+    int x;
+    x = lstat (filename, &buf);
+    if (S_ISLNK(buf.st_mode)) {
+       x = stat (filename, &buf);
+       if (S_ISDIR(buf.st_mode)){ return (TRUE);}else {return (FALSE);}
+    } else {
+       return (FALSE);
+    }
+}
+#endif
+
 /* Return TRUE if the file name match one of the ``nodiff`` entries.
    Return FALSE otherwise */
 int is_nodiff(const char *filename){
@@ -339,7 +354,11 @@ char *seechanges_addfile(const char *filename)
         (int)new_date_of_change
     );
 
+#ifndef WIN32
+    if (is_nodiff((filename)) && !(symlink_to_dir(filename)) ) {
+#else
     if (is_nodiff((filename))) {
+#endif
         /* Dont leak sensible data with a diff hanging around */
         FILE *fdiff;
         char* nodiff_message = "<Diff truncated because nodiff option>";
