@@ -114,7 +114,7 @@ endif # Linux
 endif # winagent
 
 ifdef DEBUGAD
-	DEFINES+=+DDEBUGAD
+	DEFINES+=-DDEBUGAD
 endif
 
 OSSEC_CFLAGS=${CFLAGS}
@@ -1412,4 +1412,4 @@ clean-windows:
 	rm -f ${EXTERNAL_LUA}src/ossec-luac.exe
 	rm -f win32/ossec-lua.exe
 	rm -f win32/ossec-luac.exe
-	rm -f win32/wazuh-win32-agent.exe
+	rm -f win32/wazuh-agent-*.exe

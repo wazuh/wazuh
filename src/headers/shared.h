@@ -43,6 +43,7 @@
 
 #ifndef WIN32
 #include <sys/wait.h>
+#include <sys/mount.h>
 
 /* HPUX does not have select.h */
 #ifndef HPUX

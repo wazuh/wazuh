@@ -1,33 +1,42 @@
-# OSSEC Wazuh fork
+# Wazuh
 
-OSSEC is a full platform to monitor and control your systems. It mixes together all the aspects of HIDS (host-based intrusion detection), log monitoring and SIM/SIEM together in a simple, powerful and open source solution.
+Wazuh helps you to gain deeper security visibility into your infrastructure by monitoring hosts at an operating system and application level. This solution, based on lightweight multi-platform agents, provides the following capabilities:
 
-This fork provides compliance support, extended logging, and additional management features. These capabilities are required for the integration with ELK Stack and OSSEC Wazuh RESTful API (also included in this repository).
+- **Log management and analysis:** Wazuh agents read operating system and application logs, and securely forward them to a central manager for rule-based analysis and storage.
+- **File integrity monitoring:** Wazuh monitors the file system, identifying changes in content, permissions, ownership, and attributes of files that you need to keep an eye on.
+- **Intrusion and anomaly detection:** Agents scan the system looking for malware, rootkits or suspicious anomalies. They can detect hidden files, cloaked processes or unregistered network listeners, as well as inconsistencies in system call responses.
+- **Policy and compliance monitoring:** Wazuh monitors configuration files to ensure they are compliant with your security policies, standards or hardening guides. Agents perform periodic scans to detect applications that are known to be vulnerable, unpatched, or insecurely configured.
 
-## Wazuh Open Source modules and contributions
+This diverse set of capabilities is provided by integrating OSSEC, OpenSCAP and Elastic Stack, making them work together as a unified solution, and simplifying their configuration and management.
 
-Wazuh team is currently supporting OSSEC enterprise users, and decided to develop and publish additional modules as a way to contribute back to the Open Source community. Find below a list and description of these modules:
+Wazuh provides an updated log analysis ruleset, and a RESTful API that allows you to monitor the status and configuration of all Wazuh agents.
 
-* [OSSEC Wazuh Ruleset](http://documentation.wazuh.com/en/latest/ossec_ruleset.html): Includes compliance mapping with PCI DSS v3.1, CIS and additional decoders and rules. Users can contribute to this rule set by submitting pull requests to our [Github repository](https://github.com/wazuh/wazuh-ruleset). Our team will continue to maintain and update it periodically.
+Wazuh also includes a rich web application (fully integrated as a Kibana app), for mining log analysis alerts and for monitoring and managing your Wazuh infrastructure.
 
-* [OSSEC Wazuh fork](http://documentation.wazuh.com/en/latest/ossec_wazuh.html) with extended JSON logging capabilities, for easy [integration with ELK Stack](http://documentation.wazuh.com/en/latest/ossec_elk.html) and third party log management tools. The manager also include modifications in OSSEC binaries needed by the [OSSEC Wazuh RESTful API](http://documentation.wazuh.com/en/latest/ossec_api.html).
+## Wazuh Open Source components and contributions
 
-* [OSSEC Wazuh RESTful API](http://documentation.wazuh.com/en/latest/ossec_api.html): Used to monitor and control your OSSEC installation, providing an interface to interact with the manager from anything that can send an HTTP request.
+* [Wazuh](https://documentation.wazuh.com/current/index.html) was born as a fork of [OSSEC HIDS](https://github.com/ossec/ossec-hids). It contains many new features, improvements and bug fixes.
 
-* [Pre-compiled installation packages](http://documentation.wazuh.com/en/latest/ossec_installation.html), both for OSSEC agent and manager: Include repositories for RedHat, CentOS, Fedora, Debian, Ubuntu and Windows.
+* [Wazuh App](https://documentation.wazuh.com/current/index.html#example-screenshots) is a rich web application (fully integrated as a Kibana app), for mining log analysis alerts and for monitoring and managing your Wazuh infrastructure.
 
-* [Puppet scripts](http://documentation.wazuh.com/en/latest/ossec_puppet.html) for automatic OSSEC deployment and configuration.
+* [Wazuh Ruleset](https://documentation.wazuh.com/current/user-manual/ruleset/index.html) is our repository to centralice decoders, rules, rootchecks and SCAP content. The ruleset is used by the manager to detect attacks, intrusions, software misuse, configuration problems, application errors, malware, rootkits, system anomalies or security policy violations. Also, it includes the compliance mapping with PCI DSS v3.1 and CIS. Users can contribute to this rule set by submitting pull requests to our [Github repository](https://github.com/wazuh/wazuh-ruleset).
 
-* [Docker containers](http://documentation.wazuh.com/en/latest/ossec_docker.html) to virtualize and run your OSSEC manager and an all-in-one integration with ELK Stack.
+* [Wazuh RESTful API](https://documentation.wazuh.com/current/user-manual/api/index.html) is used to monitor and control your Wazuh installation, providing an interface to interact with the manager from anything that can send an HTTP request.
+
+* [Pre-compiled installation packages](https://documentation.wazuh.com/current/installation-guide/packages-list/index.html) include repositories for RedHat, CentOS, Fedora, Debian, Ubuntu and Windows.
+
+* [Puppet scripts](https://documentation.wazuh.com/current/deploying-with-puppet/index.html) for automatic Wazuh deployment and configuration.
+
+* [Docker containers](https://documentation.wazuh.com/current/docker/index.html) to virtualize and run your Wazuh manager and an all-in-one integration with ELK Stack.
 
 ## Documentation
 
 * [Full documentation](http://documentation.wazuh.com)
-* [OSSEC Wazuh fork installation guide](http://documentation.wazuh.com/en/latest/wazuh_installation.html)
+* [Wazuh installation guide](https://documentation.wazuh.com/current/installation-guide/index.html)
 
 ## Branches
 
-* `stable` branch on correspond to the last OSSEC Wazuh stable version.
+* `stable` branch on correspond to the last Wazuh stable version.
 * `master` branch contains the latest code, be aware of possible bugs on this branch.
 * `development` branch includes all the new features we're adding and testing.
 
@@ -53,7 +62,11 @@ If you want to contribute to our project please don't hesitate to send a pull re
 
 ## License and copyright
 
-OSSEC Copyright (C) 2015 Trend Micro Inc. (License GPLv2)
+WAZUH
+Copyright (C) 2017 Wazuh Inc.  (License GPLv2)
+
+Based on OSSEC
+Copyright (C) 2015 Trend Micro Inc.
 
 ## References
 

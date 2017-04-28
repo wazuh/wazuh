@@ -22,4 +22,4 @@
    - Scegli 'local' se hai un solo sistema da monitorare.
 
    - Ulteriori informazioni su:
-     http://www.ossec.net/en/manual.html#starting
+     https://documentation.wazuh.com

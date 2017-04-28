@@ -23,4 +23,4 @@
   - Izaberi 'lokalnu' ako pratiš samo jedan sistem.
 
   - Više obaveštenja na:
-    http://www.ossec.net/en/manual.html#starting
+    https://documentation.wazuh.com

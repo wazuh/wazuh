@@ -25,4 +25,4 @@
   - Επιλέξτε 'local' αν έχετε μόνο ένα υπολογιστή για να παρακολουθείτε.
 
   - Περισσότερες πληροφορίες στη διεύθυνση:
-    http://www.ossec.net/el/manual.html#starting
+    https://documentation.wazuh.com

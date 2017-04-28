@@ -1,11 +1,14 @@
-OSSEC HIDS 0.8
+WAZUH
+Copyright (C) 2017 Wazuh Inc.
+
+Based on OSSEC HIDS 0.8
 Copyright (c) 2004-2006 Daniel B. Cid  	<daniel.cid@gmail.com>
 		                        <dcid@ossec.net>
 
 
 = Informacje o OSSEC HIDS =
 
-Zobacz http://www.ossec.net
+Zobacz https://www.wazuh.com
 
 
 = Zalecana instalacja =
@@ -52,7 +55,7 @@ Kroki ręcznej instalacji:
 
 Powyższe 5 (bez 5) kroków jest wykonywane w Makefile (zobasz make server).
 
-Makefile czyta opcje z pliku LOCATION. Możesz w nim zmienić 
+Makefile czyta opcje z pliku LOCATION. Możesz w nim zmienić
 wszystko co potrzebujesz.
 
 Aby skompilować wszystko samemu:

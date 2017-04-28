@@ -179,6 +179,7 @@ GenerateInitConf()
     echo "DIRECTORY=\"${INSTALLDIR}\"" > ${NEWINIT}
     echo "NAME=\"${NAME}\"" >> ${NEWINIT}
     echo "VERSION=\"${VERSION}\"" >> ${NEWINIT}
+    echo "REVISION=\"${REVISION}\"" >> ${NEWINIT}
     echo "DATE=\"`date`\"" >> ${NEWINIT}
     echo "TYPE=\"${INSTYPE}\"" >> ${NEWINIT}
     cat "$NEWINIT"

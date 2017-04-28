@@ -17,23 +17,24 @@
 !include "FileFunc.nsh"
 !insertmacro GetTime
 
-; output file
-!ifndef OutFile
-    !define OutFile "wazuh-win32-agent.exe"
-!endif
-
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "2.0"
+!define VERSION "2.0.1"
+!define REVISION "3455"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
+
+; output file
+!ifndef OutFile
+    !define OutFile "wazuh-agent-${VERSION}.exe"
+!endif
 
 Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2017 Wazuh Inc."
 OutFile "${OutFile}"
 
-VIProductVersion "2.0.0.0"
+VIProductVersion "2.0.1.0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
 VIAddVersionKey LegalCopyright "2017 - Wazuh Inc."
@@ -223,7 +224,7 @@ Section "Wazuh Agent (required)" MainSec
     ; write version and install information
     VersionInstall:
         FileOpen $0 "$INSTDIR\VERSION.txt" w
-        FileWrite $0 "${NAME} v${VERSION} - Installed on $CURRENTTIME"
+        FileWrite $0 "${NAME} v${VERSION} - Revision ${REVISION} - Installed on $CURRENTTIME"
         FileClose $0
         IfErrors VersionError VersionComplete
     VersionError:

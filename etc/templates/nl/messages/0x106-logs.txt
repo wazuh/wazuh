@@ -3,7 +3,7 @@
    nieuwe localfile in te brengen.
    Vragen over het configuratie bestand kunnen worden
    beantwoord door ons online te bezoeken op
-   http://www.ossec.net .
+   https://documentation.wazuh.com/capabilities/log-data-collection/log-data-configuration.html.
 
 
    --- Druk op ENTER om door te gaan ---

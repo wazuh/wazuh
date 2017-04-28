@@ -47,7 +47,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __version       "v2.0"
+#define __version       "v2.0.1"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -55,7 +55,7 @@
 This program is free software; you can redistribute it and/or modify\n\
 it under the terms of the GNU General Public License (version 2) as \n\
 published by the Free Software Foundation. For more details, go to \n\
-http://www.ossec.net/main/license/\n"
+https://www.gnu.org/licenses/gpl.html\n"
 
 /* Maximum allowed PID */
 #ifdef SOLARIS
