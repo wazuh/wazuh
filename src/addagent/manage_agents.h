@@ -45,6 +45,7 @@ void OS_BackupAgentInfo_ID(const char *id);
 char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now);
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
 void OS_RemoveAgentTimestamp(const char *id);
+void OS_RemoveAgentGroup(const char *id);
 void FormatID(char *id);
 
 /* Load gid and uid.

@@ -163,6 +163,7 @@ int OS_RemoveAgent(const char *u_id) {
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
     OS_RemoveAgentTimestamp(u_id);
+    OS_RemoveAgentGroup(u_id);
     return 1;
 }
 
@@ -672,10 +673,15 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
     snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
     status += link(path_src, path_dst);
 
+    /* agent-group */
+    snprintf(path_src, OS_FLSIZE, "%s/%s", GROUPS_DIR, id);
+    snprintf(path_dst, OS_FLSIZE, "%s/agent-group", path_backup);
+    status += link(path_src, path_dst);
+
     if (status < 0) {
         debug1("%s: Couldn't create some backup files.", ARGV0);
 
-        if (status == -6) {
+        if (status == -7) {
             debug1("%s: Backup directory empty. Removing %s", ARGV0, path_backup);
             rmdir(path_backup);
         }
@@ -814,6 +820,13 @@ void OS_RemoveAgentTimestamp(const char *id)
     free(buffer);
     OS_MoveFile(file.name, TIMESTAMP_FILE);
     free(file.name);
+}
+
+void OS_RemoveAgentGroup(const char *id)
+{
+    char group_file[OS_FLSIZE + 1];
+    snprintf(group_file, OS_FLSIZE, "%s/%s", GROUPS_DIR, id);
+    unlink(group_file);
 }
 
 void FormatID(char *id) {
