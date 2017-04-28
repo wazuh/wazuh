@@ -1,4 +1,4 @@
-** Wazuh Windows Agent v2.0.1 **
+** Wazuh Windows Agent v3.0 **
 ** Copyright (C) 2017 Wazuh Inc. **
 
 
