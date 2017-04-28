@@ -99,11 +99,12 @@ int symlink_to_dir (const char *filename) {
     struct stat buf;
     int x;
     x = lstat (filename, &buf);
-    if (S_ISLNK(buf.st_mode)) {
-       x = stat (filename, &buf);
-       if (S_ISDIR(buf.st_mode)){ return (TRUE);}else {return (FALSE);}
+
+    if (x == 0 && S_ISLNK(buf.st_mode)) {
+        x = stat (filename, &buf);
+        return (x == 0 && S_ISDIR(buf.st_mode));
     } else {
-       return (FALSE);
+        return (FALSE);
     }
 }
 #endif
@@ -355,7 +356,7 @@ char *seechanges_addfile(const char *filename)
     );
 
 #ifndef WIN32
-    if (is_nodiff((filename)) && !(symlink_to_dir(filename)) ) {
+    if (is_nodiff(filename) || symlink_to_dir(filename)) {
 #else
     if (is_nodiff((filename))) {
 #endif
