@@ -20,13 +20,6 @@ static const char *STR_MORE_CHANGES = "More changes...";
 
 #ifndef WIN32
 #define PATH_OFFSET 1
-
-/* For symlink_to_dir checks */
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
 #else
 #define PATH_OFFSET 3
 #endif
