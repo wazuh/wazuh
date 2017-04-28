@@ -213,7 +213,7 @@ restart)
     start
     ;;
 reload)
-    DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd"
+    DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd wazuh-modulesd"
     stopa
     start
     ;;
