@@ -41,8 +41,8 @@ int gen_server_info(HWND hwnd)
 
     /* Set status data */
     SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://wazuh.com");
-    if (config_inst.install_date) {
-        SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)config_inst.install_date);
+    if (config_inst.revision) {
+        SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)config_inst.revision);
     }
 
     return (0);
@@ -118,8 +118,8 @@ void config_clear()
         free(config_inst.server);
     }
 
-    if (config_inst.install_date) {
-        free(config_inst.install_date);
+    if (config_inst.revision) {
+        free(config_inst.revision);
     }
 
     /* Initialize config instance */
@@ -133,7 +133,7 @@ void config_clear()
     config_inst.agentip = NULL;
 
     config_inst.version = NULL;
-    config_inst.install_date = NULL;
+    config_inst.revision = NULL;
     config_inst.status = ST_UNKNOWN;
     config_inst.msg_sent = 0;
 }
@@ -152,7 +152,7 @@ void init_config()
     config_inst.agentip = NULL;
 
     config_inst.version = NULL;
-    config_inst.install_date = NULL;
+    config_inst.revision = NULL;
     config_inst.status = ST_UNKNOWN;
     config_inst.msg_sent = 0;
     config_inst.admin_access = 1;
@@ -185,13 +185,19 @@ int config_read(__attribute__((unused)) HWND hwnd)
         config_inst.status = ST_STOPPED;
     }
 
-    /* Get version/install date */
+    /* Get version/revision */
     config_inst.version = cat_file(VERSION_FILE, NULL);
     if (config_inst.version) {
-        config_inst.install_date = strstr(config_inst.version, delim);
-        if (config_inst.install_date) {
-            *config_inst.install_date = '\0';
-            config_inst.install_date += strlen(delim);
+        config_inst.revision = strstr(config_inst.version, delim);
+        if (config_inst.revision) {
+            *config_inst.revision = '\0';
+            config_inst.revision += strlen(delim);
+
+            // Remove " - Installed on ..."
+
+            if (tmp_str = strstr(config_inst.revision, delim), tmp_str) {
+                *tmp_str = '\0';
+            }
         }
     }
 

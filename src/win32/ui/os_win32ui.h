@@ -64,7 +64,7 @@ typedef struct _ossec_config {
     char *agentip;
 
     char *version;
-    char *install_date;
+    char *revision;
     char *status;
 } ossec_config;
 
