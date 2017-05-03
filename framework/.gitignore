@@ -1,0 +1,14 @@
+
+# Python
+*.pyc
+*.egg-info
+*.egg
+
+# Framework
+docs/build/
+dist/
+build/
+
+# Objects
+database/*.so*
+
