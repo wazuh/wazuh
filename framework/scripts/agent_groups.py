@@ -4,25 +4,12 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from sys import exit, path, argv
-from os import getcwd
+from os.path import dirname
 from getopt import GetoptError, getopt
 from signal import signal, SIGINT
 
 # Set framework path
-try:
-    cwd = getcwd()
-    last_dir = cwd.split('/')[-1]
-
-    if last_dir == 'bin':
-        framework_path = '{0}/api/framework'.format(cwd[:-4])
-    elif last_dir == 'scripts':
-        framework_path = cwd[:-8]
-    else:
-        exit("Error: Framework path not found.")
-
-    path.append(framework_path)  # It is necessary to import Wazuh package
-except Exception as e:
-    exit("Error: Framework path not found: {0}".format(e))
+path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
 
 # Import framework
 try:

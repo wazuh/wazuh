@@ -1,17 +1,46 @@
+# Makefile for Wazuh Framework
+# Copyright 2017 Wazuh Inc.
+# May 3, 2017
+#
+# Syntax: make [ all | build | install | examples | clean ]
 
-OSSEC_GROUP?=ossec
-PREFIX?=/var/ossec
+OSSEC_GROUP  = ossec
+PREFIX       = /var/ossec
 
-hellomake: database/sqlite3.c
-	gcc -pipe -O2 -shared -fPIC -o database/libsqlite3.so.0 database/sqlite3.c
+CC           = gcc
+CFLAGS       = -pipe -O2 -fPIC
+LFLAGS       = -shared
+RM_FILE      = rm -f
+INSTALL_DIR  = install -o root -g ${OSSEC_GROUP} -m 0750  -d
+INSTALL_EXEC = install -o root -g ${OSSEC_GROUP} -m 0750
+INSTALL_FILE = install -o root -g ${OSSEC_GROUP} -m 0640
 
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/framework
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/framework/examples
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/framework/wazuh
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/framework/lib
+DATABASE     = database
+LIBS         = $(DATABASE)/libsqlite3.so.0
 
-	install -m 750 -o root -g ${OSSEC_GROUP} examples/*.py ${PREFIX}/framework/examples
-	install -m 750 -o root -g ${OSSEC_GROUP} wazuh/*.py ${PREFIX}/framework/wazuh
-	install -m 640 -o root -g ${OSSEC_GROUP} database/libsqlite3.so.0 ${PREFIX}/framework/lib
+.PHONY: all build install examples clean
 
-	install -m 750 -o root -g root scripts/*.py ${PREFIX}/bin
+all: build
+
+install: build
+	$(INSTALL_DIR) $(PREFIX)/framework
+	$(INSTALL_DIR) $(PREFIX)/framework/wazuh
+	$(INSTALL_DIR) $(PREFIX)/framework/lib
+
+	$(INSTALL_EXEC) wazuh/*.py ${PREFIX}/framework/wazuh
+	$(INSTALL_FILE) database/libsqlite3.so.0 ${PREFIX}/framework/lib
+
+#	Install scripts/%.py on $(PREFIX)/bin/%
+	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) $(script) $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script)))
+
+examples: install
+	$(INSTALL_DIR) $(PREFIX)/framework/examples
+	$(INSTALL_EXEC) examples/*.py ${PREFIX}/framework/examples
+
+build: $(LIBS)
+
+$(DATABASE)/libsqlite3.so.0: $(DATABASE)/sqlite3.c
+	$(CC) $(CFLAGS) $(LFLAGS) -o $@ $^
+
+clean:
+	$(RM_FILE) $(DATABASE)/libsqlite3.so.0
