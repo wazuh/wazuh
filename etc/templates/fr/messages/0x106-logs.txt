@@ -2,7 +2,7 @@
    le fichier ossec.conf en ajoutant une nouvelle valeur
    de nom de fichier local.
    Pour toutes vos questions sur la configuration,
-   consultez notre site web http://www.ossec.net .
+   consultez notre site web https://documentation.wazuh.com/capabilities/log-data-collection/log-data-configuration.html.
 
 
    --- Appuyez sur Entrée pour continuer ---

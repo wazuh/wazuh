@@ -1,4 +1,7 @@
-OSSEC HIDS v0.9
+WAZUH
+Copyright (C) 2017 Wazuh Inc.
+
+Based on OSSEC HIDS v0.9
 Copyright (C) 2009 Trend Micro Inc.
 
 
@@ -10,7 +13,7 @@ Copyright (C) 2009 Trend Micro Inc.
 
 The rules are classified in multiple levels. From the lowest (00) to the maximum
 level 16. Some levels are not used right now. Other levels can be added between
-them or after them. 
+them or after them.
 
 **The rules will be read from the highest to the lowest level. **
 
@@ -18,7 +21,7 @@ them or after them.
      are scanned before all the others. They include events with no
      security relevance.
 01 - None -
-02 - System low priority notification - System notification or 
+02 - System low priority notification - System notification or
      status messages. They have no security relevance.
 03 - Successful/Authorized events - They include successful login attempts,
      firewall allow events, etc.
@@ -28,7 +31,7 @@ them or after them.
 05 - User generated error - They include missed passwords, denied
      actions, etc. By itself they have no security relevance.
 06 - Low relevance attack - They indicate a worm or a virus that have
-     no affect to the system (like code red for apache servers, etc).      
+     no affect to the system (like code red for apache servers, etc).
      They also include frequently IDS events and frequently errors.
 07 - "Bad word" matching. They include words like "bad", "error", etc.
      These events are most of the time unclassified and may have
@@ -40,7 +43,7 @@ them or after them.
      It also includes security relevant actions (like the starting
      of a sniffer or something like that).
 09 - Error from invalid source - Include attempts to login as
-     an unknown user or from an invalid source. May have security 
+     an unknown user or from an invalid source. May have security
      relevance (specially if repeated). They also include errors
      regarding the "admin" (root) account.
 10 - Multiple user generated errors - They include multiple bad
@@ -53,11 +56,11 @@ them or after them.
      may indicate a successful attack. Also included IDS events
      that will be ignored (high number of repetitions).
 12 - High importancy event - They include error or warning messages
-     from the system, kernel, etc. They may indicate an attack against 
+     from the system, kernel, etc. They may indicate an attack against
      a specific application.
 13 - Unusual error (high importance) -  Most of the times it matches a
      common attack pattern.
-14 - High importance security event. Most of the times done with 
+14 - High importance security event. Most of the times done with
      correlation and it indicates an attack.
 15 - Severe attack - No chances of false positives. Immediate
      attention is necessary.
@@ -83,8 +86,7 @@ response reasons and for correlation.
 - syslog
 
 
-     
+
 == Rules Config ==
 
-http://www.ossec.net/en/manual.html#rules
-
+https://documentation.wazuh.com/ruleset/ruleset-xml-syntax/rules.html

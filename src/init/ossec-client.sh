@@ -9,12 +9,11 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 ###  Do not modify bellow here ###
-NAME="Wazuh"
-VERSION="v2.0"
 AUTHOR="Wazuh Inc."
 DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd wazuh-modulesd"
+INITCONF="/etc/ossec-init.conf"
 
-[ -f /etc/ossec-init.conf ] && . /etc/ossec-init.conf
+[ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -214,7 +213,7 @@ restart)
     start
     ;;
 reload)
-    DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd"
+    DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd wazuh-modulesd"
     stopa
     start
     ;;

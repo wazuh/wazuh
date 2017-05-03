@@ -18,12 +18,11 @@ if [ $? = 0 ]; then
 . ${PLIST};
 fi
 
-NAME="Wazuh"
-VERSION="v2.0"
 AUTHOR="Wazuh Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
+INITCONF="/etc/ossec-init.conf"
 
-[ -f /etc/ossec-init.conf ] && . /etc/ossec-init.conf;
+[ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"

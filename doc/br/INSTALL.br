@@ -1,4 +1,7 @@
-OSSEC HIDS 0.7
+WAZUH
+Copyright (C) 2017 Wazuh Inc.
+
+Based on OSSEC HIDS 0.7
 Copyright (c) 2004-2006 Daniel B. Cid  	<daniel.cid@gmail.com>
 		                        <dcid@ossec.net>
 
@@ -6,53 +9,53 @@ Copyright (c) 2004-2006 Daniel B. Cid  	<daniel.cid@gmail.com>
 ** Traduzido por Willian Itiho Amano <itihoitiho ( at ) gmail.com>
 
 
-= Informações dobre o OSSEC HIDS =
+= Informaï¿½ï¿½es dobre o OSSEC HIDS =
 
-Visite http://www.ossec.net
+Visite https://www.wazuh.com
 
 
-= Instalação recomendada =
+= Instalaï¿½ï¿½o recomendada =
 
-A instalação do OSSEC HIDS é muito simples. Você pode executa-la pela
-maneira rápida (usando o script 'install.sh' com os valores padroes)
-ou customizada (mudando na mão os valores do script install.sh).
-Eu REALMENTE recomento SEMPRE o uso da maneira rápida.
+A instalaï¿½ï¿½o do OSSEC HIDS ï¿½ muito simples. Vocï¿½ pode executa-la pela
+maneira rï¿½pida (usando o script 'install.sh' com os valores padroes)
+ou customizada (mudando na mï¿½o os valores do script install.sh).
+Eu REALMENTE recomento SEMPRE o uso da maneira rï¿½pida.
 
-**Apenas desenvolvedores ou pessoas experientes devem usar outro método.
+**Apenas desenvolvedores ou pessoas experientes devem usar outro mï¿½todo.
 
-Passos do processo rápido:
+Passos do processo rï¿½pido:
 
-1- Rode o script ./install.sh. Ele irá guia-lo pelo processo de instalação.
+1- Rode o script ./install.sh. Ele irï¿½ guia-lo pelo processo de instalaï¿½ï¿½o.
 
-2- O script criará tudo em /var/ossec e tentará criar um script de 
-   inicialização em seu sistema (/etc/rc.local ou /etc/rc.d/init.d/ossec). 
-   Se o script de inicialização não for criado, siga as instruções do
-   para iniciar o OSSEC HIDS durante o boot. Para iniciar na mão, digite
+2- O script criarï¿½ tudo em /var/ossec e tentarï¿½ criar um script de
+   inicializaï¿½ï¿½o em seu sistema (/etc/rc.local ou /etc/rc.d/init.d/ossec).
+   Se o script de inicializaï¿½ï¿½o nï¿½o for criado, siga as instruï¿½ï¿½es do
+   para iniciar o OSSEC HIDS durante o boot. Para iniciar na mï¿½o, digite
    /var/ossec/bin/ossec-control start
 
-3- Se você for rodar em vários clientes, Instale o servidor primeiro. 
-   Use o manage_agents para criar as chaves de encriptação.
+3- Se vocï¿½ for rodar em vï¿½rios clientes, Instale o servidor primeiro.
+   Use o manage_agents para criar as chaves de encriptaï¿½ï¿½o.
 
 4- Aproveite.
 
 
-= Instalação e execução (99,99% da vezes, leia acima) =
+= Instalaï¿½ï¿½o e execuï¿½ï¿½o (99,99% da vezes, leia acima) =
 
 
-Passos para instalação na mão:
+Passos para instalaï¿½ï¿½o na mï¿½o:
 
-1- Crie os diretórios necessários (por default /var/ossec).
-2- Mova os arquivos necessários para o diretório ossec.
+1- Crie os diretï¿½rios necessï¿½rios (por default /var/ossec).
+2- Mova os arquivos necessï¿½rios para o diretï¿½rio ossec.
 3- Compile tudo.
-4- Mova os binários para o diretório default.
-5- Crie os usuários necessários.
-6- Sete todas as permições dos arquivos.
+4- Mova os binï¿½rios para o diretï¿½rio default.
+5- Crie os usuï¿½rios necessï¿½rios.
+6- Sete todas as permiï¿½ï¿½es dos arquivos.
 
 
 As 5 etapas do Makefile (veja como criar o servidor).
 
-O Makefile lê as opções do arquivo LOCATION. Mude
-o que necessitar de lá.
+O Makefile lï¿½ as opï¿½ï¿½es do arquivo LOCATION. Mude
+o que necessitar de lï¿½.
 
 Para compilar tudo use:
 
@@ -61,5 +64,5 @@ Para compilar tudo use:
 	% su
 	# make server (will do steps 1,2,4 and 6 above)
 
-*Antes de rodas make server, make sure Deverá ter os usuários criados.
-O Makefile não fará isso.
+*Antes de rodas make server, make sure Deverï¿½ ter os usuï¿½rios criados.
+O Makefile nï¿½o farï¿½ isso.

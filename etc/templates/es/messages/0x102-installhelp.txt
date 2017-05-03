@@ -26,4 +26,4 @@
     -Elija 'local' si va a monitear un único sistema .
 
   - Para más información dirijase a:
-    http://www.ossec.net/en/manual.html#starting
+    https://documentation.wazuh.com

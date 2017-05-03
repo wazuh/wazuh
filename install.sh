@@ -115,6 +115,7 @@ Install()
 
     # Generate the /etc/ossec-init.conf
     VERSION=`cat ${VERSION_FILE}`
+    REVISION=`cat ${REVISION_FILE}`
     chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
     GenerateInitConf > ${OSSEC_INIT}
     chmod 640 ${OSSEC_INIT}
@@ -352,12 +353,12 @@ ConfigureServer()
             fi
 
             if [ -x "$HOST_CMD" ]; then
-              HOSTTMP=`${HOST_CMD} -W 5 -t mx ossec.net 2>/dev/null`
+              HOSTTMP=`${HOST_CMD} -W 5 -t mx wazuh.com 2>/dev/null`
               if [ $? = 1 ]; then
                  # Trying without the -W
-                 HOSTTMP=`${HOST_CMD} -t mx ossec.net 2>/dev/null`
+                 HOSTTMP=`${HOST_CMD} -t mx wazuh.com 2>/dev/null`
               fi
-              echo "x$HOSTTMP" | grep "ossec.net mail is handled" > /dev/null 2>&1
+              echo "x$HOSTTMP" | grep "wazuh.com mail is handled" > /dev/null 2>&1
               if [ $? = 0 ]; then
                  # Breaking down the user e-mail
                  EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`
@@ -594,7 +595,7 @@ AddPFTable()
     echo ""
     echo "   - ${pfmessage}:"
     echo "     ${moreinfo}"
-    echo "     http://www.ossec.net/en/manual.html#active-response-tools"
+    echo "     https://documentation.wazuh.com"
 
     echo ""
     echo ""
@@ -613,6 +614,7 @@ main()
 {
     LG="en"
     LANGUAGE="en"
+    . ./src/init/dist-detect.sh
     . ./src/init/shared.sh
     . ./src/init/functions.sh
 
@@ -666,7 +668,6 @@ main()
     . ./src/init/wazuh/wazuh.sh
     . ${TEMPLATE}/${LANGUAGE}/messages.txt
     . ./src/init/inst-functions.sh
-    . ./src/init/dist-detect.sh
     . ./src/init/template-select.sh
 
     # Must be executed as ./install.sh
@@ -900,7 +901,7 @@ main()
         echo "   $INSTALLDIR/bin/manage_agents"
         echo ""
         echo "   ${moreinfo}"
-        echo "   http://www.ossec.net/en/manual.html#ma"
+        echo "   https://documentation.wazuh.com/agents/registering-agents"
         echo ""
 
     elif [ "X$INSTYPE" = "Xagent" ]; then
@@ -908,7 +909,7 @@ main()
         echo "   $INSTALLDIR/bin/manage_agents"
         echo ""
         echo "   ${moreinfo}"
-        echo "   http://www.ossec.net/en/manual.html#ma"
+        echo "   https://documentation.wazuh.com/agents/registering-agents"
         echo ""
     fi
 

@@ -25,4 +25,4 @@
   - Eğer inceleme yapacağınız tek sisteminiz varsa 'yerel' kullanın.
 
   - Daha fazla bilgi:
-    http://www.ossec.net/en/manual.html#starting
+    https://documentation.wazuh.com

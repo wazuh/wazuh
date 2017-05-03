@@ -26,4 +26,4 @@
     wilt houden.
 
   - Meer informatie vindt u op:
-    http://www.ossec.net/en/manual.html#starting
+    https://documentation.wazuh.com

@@ -24,4 +24,4 @@
   - choisissez 'local' si vous n'avez qu'une machine à surveiller.
 
   - Plus d'information sur :
-    http://www.ossec.net/en/manual.html#starting
+    https://documentation.wazuh.com
