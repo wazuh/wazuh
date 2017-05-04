@@ -15,7 +15,7 @@
 #include "../../config.h"
 #include "../../external/cJSON/cJSON.h"
 
-static void fillData(Eventinfo *lf, char *key, char *value)
+static void fillData(Eventinfo *lf, const char *key, const char *value)
 {
 
     if (strcmp(key, "srcip") == 0){
@@ -175,6 +175,11 @@ static void fillData(Eventinfo *lf, char *key, char *value)
 
 static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
 {
+    static const char * VALUE_NULL = "null";
+    static const char * VALUE_TRUE = "true";
+    static const char * VALUE_FALSE = "false";
+    static const char * VALUE_COMMA = ",";
+
     cJSON *next, *array;
     char *key = NULL;
     char *value = NULL;
@@ -203,63 +208,108 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
 
             case cJSON_Number:
                 if ((double)logJSON->valueint == logJSON->valuedouble){
-                    char value_char[16];
-                    snprintf(value_char, 16, "%i", logJSON->valueint);
+                    char value_char[64];
+                    snprintf(value_char, 64, "%i", logJSON->valueint);
                     fillData(lf, key, value_char);
                 }
                 else{
-                    char value_char[16];
-                    snprintf(value_char, 16, "%f", logJSON->valuedouble);
+                    char value_char[64];
+                    snprintf(value_char, 64, "%f", logJSON->valuedouble);
                     fillData(lf, key, value_char);
                 }
                 break;
 
             case cJSON_Array:
                 array = logJSON->child;
-                value = calloc(256,sizeof(char));
+                os_malloc(OS_MAXSTR, value);
+                *value = '\0';
+                size_t n = 0;
+                size_t z;
                 while (array){
                     if (array->type == cJSON_String) {
-                        strcat(value, array->valuestring);
+                        z = strlen(array->valuestring);
+                        if (n + z < OS_MAXSTR) {
+                            strcpy(value + n, array->valuestring);
+                            n += z;
+                        } else {
+                            *value = '\0';
+                            break;
+                        }
                     }
                     else if (array->type == cJSON_Number) {
-                        if ((double)array->valueint == array->valuedouble){
-                            char value_char[16];
-                            snprintf(value_char, 16, "%i", array->valueint);
-                            strcat(value, value_char);
-                        }
-                        else {
-                            char value_char[16];
-                            snprintf(value_char, 16, "%f", array->valuedouble);
-                            strcat(value, value_char);
+                        char value_char[64];
+                        z = (double)array->valueint == array->valuedouble ? snprintf(value_char, 64, "%i", array->valueint) : snprintf(value_char, 64, "%f", array->valuedouble);
+
+                        if (n + z < OS_MAXSTR) {
+                            strcpy(value + n, value_char);
+                            n += z;
+                        } else {
+                            *value = '\0';
+                            break;
                         }
                     }
                     else if (array->type == cJSON_NULL) {
-                        strcat(value, "null");
+                        z = strlen(VALUE_NULL);
+
+                        if (n + z < OS_MAXSTR) {
+                            strcpy(value + n, VALUE_NULL);
+                            n += z;
+                        } else {
+                            *value = '\0';
+                            break;
+                        }
                     }
                     else if (array->type == cJSON_True) {
-                        strcat(value, "true");
+                        z = strlen(VALUE_TRUE);
+
+                        if (n + z < OS_MAXSTR) {
+                            strcpy(value + n, VALUE_TRUE);
+                            n += z;
+                        } else {
+                            *value = '\0';
+                            break;
+                        }
                     }
                     else if (array->type == cJSON_False) {
-                        strcat(value, "false");
+                        z = strlen(VALUE_FALSE);
+
+                        if (n + z < OS_MAXSTR) {
+                            strcpy(value + n, VALUE_FALSE);
+                            n += z;
+                        } else {
+                            *value = '\0';
+                            break;
+                        }
                     }
-                    strcat(value, ",");
+
+                    z = strlen(VALUE_COMMA);
+
+                    if (n + z < OS_MAXSTR) {
+                        strcpy(value + n, VALUE_COMMA);
+                        n += z;
+                    } else {
+                        *value = '\0';
+                        break;
+                    }
+
                     array = array->next;
                 }
+
                 fillData(lf, key, value);
                 cJSON_Delete(array);
                 free(value);
                 break;
 
             case cJSON_NULL:
-                fillData(lf, key, "null");
+                fillData(lf, key, VALUE_NULL);
                 break;
 
             case cJSON_True:
-                fillData(lf, key, "true");
+                fillData(lf, key, VALUE_TRUE);
                 break;
 
             case cJSON_False:
-                fillData(lf, key, "false");
+                fillData(lf, key, VALUE_FALSE);
                 break;
 
             case cJSON_Object:
