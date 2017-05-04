@@ -2,7 +2,7 @@
    το ossec.conf και προσθέστε μια νέα εγγραφή για τοπικό
    αρχείο (localfile).
    Για να λάβετε απαντήσεις σχετικά με τις ρυθμίσεις,
-   επισκευθείτε μας στη διεύθυνση https://documentation.wazuh.com/capabilities/log-data-collection/log-data-configuration.html.
+   επισκευθείτε μας στη διεύθυνση https://documentation.wazuh.com/.
 
 
    --- Πατήστε ENTER για να συνεχίσετε ---

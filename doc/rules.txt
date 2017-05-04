@@ -89,4 +89,4 @@ response reasons and for correlation.
 
 == Rules Config ==
 
-https://documentation.wazuh.com/ruleset/ruleset-xml-syntax/rules.html
+https://documentation.wazuh.com/
