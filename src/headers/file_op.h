@@ -32,6 +32,8 @@ ino_t File_Inode(const char *file) __attribute__((nonnull));
 
 int IsDir(const char *file) __attribute__((nonnull));
 
+int IsFile(const char *file) __attribute__((nonnull));
+
 int CreatePID(const char *name, int pid) __attribute__((nonnull));
 
 char *GetRandomNoise();
