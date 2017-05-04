@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r
+from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.database import Connection
@@ -870,6 +870,8 @@ class Agent:
             Agent(agent_id).get_basic_information()
 
         if group_id.lower() != "default":
+            ossec_uid = getpwnam("ossec").pw_uid
+            ossec_gid = getgrnam("ossec").gr_gid
 
             # Create group in /queue/agent-groups
             agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
@@ -881,8 +883,6 @@ class Agent:
                 f_group.close()
 
                 if new_file:
-                    ossec_uid = getpwnam("ossec").pw_uid
-                    ossec_gid = getgrnam("ossec").gr_gid
                     chown(agent_group_path, ossec_uid, ossec_gid)
                     chmod(agent_group_path, 0o640)
             except Exception as e:
@@ -894,6 +894,7 @@ class Agent:
             try:
                 if not path.exists(group_path):
                     copytree(group_def_path, group_path)
+                    chown_r(group_path, ossec_uid, ossec_gid)
                     chmod_r(group_path, 0o660)
                     chmod(group_path, 0o770)
 

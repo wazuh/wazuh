@@ -7,7 +7,7 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
-from os import remove, chmod, path, listdir, close as close
+from os import remove, chmod, chown, path, listdir, close as close
 from datetime import datetime, timedelta
 import json
 import stat
@@ -306,3 +306,21 @@ def chmod_r(filepath, mode):
                 chmod(itempath, mode)
             elif path.isdir(itempath):
                 chmod_r(itempath, mode)
+
+def chown_r(filepath, uid, gid):
+    """
+    Recursive chmod.
+    :param filepath: Path to the file.
+    :param uid: user ID.
+    :param gid: group ID.
+    """
+
+    chown(filepath, uid, gid)
+
+    if path.isdir(filepath):
+        for item in listdir(filepath):
+            itempath = path.join(filepath, item)
+            if path.isfile(itempath):
+                chown(itempath, uid, gid)
+            elif path.isdir(itempath):
+                chown_r(itempath, uid, gid)
