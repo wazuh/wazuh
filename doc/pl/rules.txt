@@ -85,4 +85,4 @@ Inne mogą być dodane pomiędzy nimi lub za.
 
 == Konfiguracja reguł ==
 
-https://documentation.wazuh.com/ruleset/ruleset-xml-syntax/rules.html
+https://documentation.wazuh.com/
