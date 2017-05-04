@@ -128,7 +128,7 @@ int main(int argc, char **argv)
             printf("\n%s: Verifying [%s]\n", ARGV0, path_f);
 
             if (IsFile(path_f) < 0){
-                merror(ARGV0 ": ERROR: [%s] is not a valid file.\n", path_f);
+                printf("%s: File not found\n", ARGV0);
                 error = 1;
                 continue;
             }
