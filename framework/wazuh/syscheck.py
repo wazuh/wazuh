@@ -121,13 +121,13 @@ def last_scan(agent_id):
 
     data = {}
     # end time
-    query = "SELECT max(date_first) FROM pm_event WHERE log = 'Ending syscheck scan.'"
+    query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending syscheck scan.'"
     conn.execute(query)
     for tuple in conn:
         data['syscheckEndTime'] = tuple[0]
 
     # start time
-    query = "SELECT max(date_first) FROM pm_event WHERE log = 'Starting syscheck scan.'"
+    query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting syscheck scan.'"
     conn.execute(query)
     for tuple in conn:
         data['syscheckTime'] = tuple[0]
