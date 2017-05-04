@@ -10,35 +10,46 @@
   -  Will extract the srcip, url and id.
   -  Every web access log must use "web-log" as their
   -  type if they want to be matched against the web rules.
+
   - Examples:
-  -  63.91.167.39 - - [03/Aug/2001:21:56:18 -0700] "GET /default.ida?NNNN
-  -  206.78.62.16 - - [06/Aug/2001:08:57:08 -0700] "GET /default.ida?XX
-  -  5.211.112.6 - - [04/Feb/2003:16:17:30 -0500] "GET /mod_ssl:error:
-  -  192.168.2.190 - - [18/Jan/2006:13:10:06 -0500] "GET /xxx.html HTTP/1.1"
-     200 1732
-  -  1.1.1.1 - username [18/Jan/2006:13:10:06 -0500] "GET /xxx.html HTTP/1.1"
-  -  123.4.5.6 aa.xx.com - [05/Nov/2006:00:46:56 -0500] "GET / HTTP/1.1" 302 -
+  With IP:
+  -  10.11.12.13 - - [03/Aug/2001:21:56:18 -0500] "GET /url.html HTTP/1.1" 200 1732
+  -  10.11.12.13 - username [18/Jan/2006:13:10:06 -0500] "GET /url.html HTTP/1.1" 200 1732
+  -  10.11.12.13 domain.com - [05/Nov/2006:00:46:56 -0500] "GET / HTTP/1.1" 302 -
   - ::ffff:202.194.15.192 190.7.138.180 - [18/Oct/2010:10:48:55 -0500] "GET //php-my-admin/config/config.inc.php?p=phpinfo(); HTTP/1.1" 404 345 "-"  "Mozilla/4.0 (compatible; MSIE 6.0; Windows 98)"
+  - 10.11.12.13 - - - [27/Mar/2017:13:40:40 -0700] "GET /modules.php?name=Search&type=stories&query=qualys&category=-1%20&categ=%20and%201=2%20UNION%20SELECT%200,0,aid,pwd,0,0,0,0,0,0%20from%20nuke_authors/* HTTP/1.0" 404 982 "-" "-"
+
+  With domain:
+  - domain.com 10.11.12.13 - - [12/Sep/2016:15:24:41 +0000] "GET /url/errors.php?mode=js HTTP/1.1" 200 0 "https://domain.com/tt-rss/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.101 Safari/537.36"
+
+  2 IPs:
+  10.10.10.11 10.10.10.12 - - [10/Apr/2017:13:18:05 -0700] "GET /injection/%0d%0aSet-Cookie HTTP/1.1" 404 271 "-" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:22.0) Gecko/20100101 Firefox/22.0"
   -->
+
 <decoder name="web-accesslog">
-  <type>web-log</type>
-  <prematch>^\S+ \S+ \S+ [\S+ \S\d+] "\w+ \S+ HTTP\S+" </prematch>
-  <regex>^(\S+) \S+ \S+ [\S+ \S\d+] </regex>
-  <regex>"\w+ (\S+) HTTP\S+" (\d+) </regex>
-  <order>srcip, url, id</order>
+    <type>web-log</type>
+    <prematch>^\S+ \S+ \S+ \.*[\S+ \S\d+] "\w+ \S+ HTTP\S+" </prematch>
 </decoder>
 
-<!--
-Created by C.L. Martinez
-Updated by Wazuh
+<decoder name="web-accesslog-domain">
+    <type>web-log</type>
+    <parent>web-accesslog</parent>
+    <prematch>^\S+.\D+</prematch>
+    <regex>^\S+ (\S+) \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
+    <order>srcip, protocol, url, id</order>
+</decoder>
 
-OpenBSD http daemon
-lapdev01.mydom.com 172.22.55.1 - - [12/Sep/2016:15:24:41 +0000] "GET /tt-rss/errors.php?1472571229%26mode=js HTTP/1.1" 200 0 "https://lapdev01.mydom.com/tt-rss/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.101 Safari/537.36"
--->
-<decoder name="openbsd-httpd-accesslog">
-  <type>web-log</type>
-  <prematch>^\S+ \S+ \S+ \S+ [\S+ \S\d+] "\w+ \S+ HTTP\S+" </prematch>
-  <regex>^\S+ (\S+) \S+ \S+ [\S+ \S\d+] </regex>
-  <regex>"\w+ (\S+) HTTP\S+" (\d+) </regex>
-  <order>srcip, url, id</order>
+<decoder name="web-accesslog-ip-ip">
+    <type>web-log</type>
+    <parent>web-accesslog</parent>
+    <prematch>^\S+ \S+.\S+ |^\S+ \S+:\S+ </prematch>
+    <regex>^(\S+) (\S+) \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
+    <order>srcip2, srcip, protocol, url, id</order>
+</decoder>
+
+<decoder name="web-accesslog-ip">
+    <type>web-log</type>
+    <parent>web-accesslog</parent>
+    <regex>^(\S+) \S+ \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
+    <order>srcip, protocol, url, id</order>
 </decoder>

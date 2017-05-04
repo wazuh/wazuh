@@ -1,0 +1,36 @@
+<!--
+  -  Amazon rules
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!-- * S3 objects : Alert when 20 S3 objects deleted in last 10 mins (Level 10 alert)
+     http://docs.aws.amazon.com/AmazonS3/latest/dev/cloudtrail-logging.html
+-->
+
+<!-- ID: 86501 - 86600 -->
+
+<group name="amazon-s3,">
+
+   <rule id="86501" level="1">
+     <if_sid>80203</if_sid>
+     <match>"eventName":"DeleteObject"</match>
+     <description>Object Deleted.</description>
+     <group>amazon-s3,pci_dss_10.6,</group>
+   </rule>
+
+   <rule id="86502" level="10">
+     <if_sid>80203</if_sid>
+     <match>"eventName":"DeleteObjects"</match>
+     <description>Object Deleted.</description>
+     <group>amazon-s3,pci_dss_10.6,</group>
+   </rule>
+
+  <rule id="86503" level="10" frequency="20" timeframe="600">
+    <if_matched_sid>86501</if_matched_sid>
+    <description>S3 deleted object </description>
+    <description>(high number of deleted object).</description>
+    <group>amazon-s3,pci_dss_10.2.5,</group>
+   </rule>
+
+</group>
