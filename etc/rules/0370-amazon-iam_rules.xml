@@ -426,4 +426,40 @@
         <description>Amazon-iam: List users error</description>
         <group>amazon,pci_dss_10.2.5,</group>
     </rule>
+
+      <rule id="80918" level="2">
+        <if_sid>80202</if_sid>
+        <action>DeleteUser</action>
+        <description>Amazon-iam: Delete user</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="80919" level="5">
+        <if_sid>80918</if_sid>
+        <match>"errorCode":"NoSuchEntityException"</match>
+        <description>Amazon-iam: The users can't be deleted</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="80920" level="5">
+        <if_sid>80918</if_sid>
+        <match>"errorCode":"</match>
+        <description>Amazon-iam: Delete user error</description>
+        <group>amazon,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="80921" level="5">
+        <if_sid>80202</if_sid>
+        <match>"eventName":"DisableKey"</match>
+        <description>Attempts to delete the KMS keys/users.</description>
+        <group>amazon-kms,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="80922" level="5">
+       <if_sid>80202</if_sid>
+       <match>"eventName":"ListAliases"</match>
+       <description>Access to KMS keys/users.</description>
+       <group>amazon-kms,pci_dss_10.2.5,</group>
+   </rule>
+
 </group>

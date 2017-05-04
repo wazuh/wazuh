@@ -17,16 +17,27 @@
     <prematch>^"AmazonAWS":</prematch>
 </decoder>
 
-<decoder name="AmazonAWS-consolelogin-fields">
-    <parent>AmazonAWS</parent>
-    <prematch>"eventName":"ConsoleLogin"</prematch>
-    <regex>"eventName":"(\S+)"\.+"userIdentity":"{u'\.+': u'(\S+)'</regex>
-    <order>action,user</order>
-</decoder>
-
-<decoder name="AmazonAWS-generic-fields">
+<decoder name="AmazonAWS-fields">
     <parent>AmazonAWS</parent>
     <prematch>"eventName":</prematch>
-    <regex>"eventName":"(\S+)"\.+"userIdentity":"{u'\.+': u'(\S+)'\.+'accessKeyId': u'(\S+)'</regex>
-    <order>action,user,id</order>
+    <regex>"eventName":"(\S+)"</regex>
+    <order>action</order>
+</decoder>
+
+<decoder name="AmazonAWS-fields">
+    <parent>AmazonAWS</parent>
+    <regex offset="after_regex">"userIdentity":"{u'\.+': u'(\S+)'</regex>
+    <order>user</order>
+</decoder>
+
+<decoder name="AmazonAWS-fields">
+    <parent>AmazonAWS</parent>
+    <regex offset="after_regex">'accessKeyId': u'(\S+)'</regex>
+    <order>id</order>
+</decoder>
+
+<decoder name="AmazonAWS-fields">
+    <parent>AmazonAWS</parent>
+    <regex offset="after_regex">"sourceIPAddress":"(\S+)"</regex>
+    <order>srcip</order>
 </decoder>

@@ -2,7 +2,7 @@
 #
 # Released under the same license as OSSEC.
 # More details at the LICENSE file included with OSSEC or online
-# at: http://www.ossec.net/en/licensing.html
+# at: https://www.gnu.org/licenses/gpl.html
 #
 # [Application name] [any or all] [reference]
 # type:<entry name>;

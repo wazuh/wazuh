@@ -58,7 +58,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
         selecttime.tv_usec = 0;
 
         /* Wait with a timeout for any descriptor */
-        recv_b = select(0, &fdset, NULL, NULL, &selecttime);
+        recv_b = select(agt->sock + 1, &fdset, NULL, NULL, &selecttime);
         if (recv_b == -1) {
             merror(SELECT_ERROR, ARGV0, errno, strerror(errno));
             sleep(30);
@@ -259,4 +259,3 @@ void *receiver_thread(__attribute__((unused)) void *none)
 }
 
 #endif /* WIN32 */
-

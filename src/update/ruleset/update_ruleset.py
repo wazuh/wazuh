@@ -369,7 +369,8 @@ def upgrade_ruleset(ruleset):
             src_file = "{0}/{1}".format(src, filename)
             dst_file = "{0}/{1}".format(dst, filename)
             dst_backup = "{0}/{1}".format(backup, filename)
-            copy(dst_file, dst_backup)
+            if os.path.exists(dst_file):
+                copy(dst_file, dst_backup)
             copy(src_file, dst_file)
 
 
