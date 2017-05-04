@@ -178,32 +178,15 @@
   <program_name>^WinEvtLog</program_name>
 </decoder>
 
-<!-- WinEvtLog: sysmon decoder -->
-<!--
-    -  v1.1 2015/11/24
+<!-- WinEvtLog: sysmon decoder
 
-    - Event 1
-    -  Originally created by Josh Brower, Josh@DefensiveDepth.com
-    -  Updated by Wazuh for support  new logs:
-        - OLD version:  "[...] HashType: SHA1  Hash: 9FEF303BEDF8430403915951564E0D9888F6F365 [...] "
-        - NEW version: "[...] Hashes: SHA1=9FEF303BEDF8430403915951564E0D9888F6F365 [...] "
-
-    - Event 2-8
-    -  Created by Wazuh <ossec@wazuh.com>.
-
+    - Created by Wazuh, Inc. <ossec@wazuh.com>.
+        - Sysmon-EventID#1 Originally created by Josh Brower, Josh@DefensiveDepth.com
     -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 -->
 
-
 <!--
 Event ID 1: Process Created
-
-    -  OSSEC to Sysmon Fields Mapping:
-
-    -  user = User
-    -  status = Image
-    -  url = Hash
-    -  extra_data = ParentImage
 
   - Examples Old version:
   - 2014 Dec 20 09:29:47 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(1): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-U93G48C7BOP: Process Create:  UtcTime: 12/20/2014 2:29 PM  ProcessGuid: {00000000-87DB-5495-0000-001045F25A00}  ProcessId: 3048  Image: C:\Windows\system32\svchost.exe  CommandLine: "C:\Windows\system32\NOTEPAD.EXE" C:\Users\Administrator\Desktop\ossec.log  User: WIN-U93G48C7BOP\Administrator  LogonGuid: {00000000-84B8-5494-0000-0020CB330200}  LogonId: 0x233CB  TerminalSessionId: 1  IntegrityLevel: High  HashType: SHA1  Hash: 9FEF303BEDF8430403915951564E0D9888F6F365  ParentProcessGuid: {00000000-84B9-5494-0000-0010BE4A0200}  ParentProcessId: 848  ParentImage: C:\Windows\Explorer.EXE  ParentCommandLine: C:\Windows\Explorer.EXE
@@ -211,9 +194,7 @@ Event ID 1: Process Created
   - Examples New version*:
   - 2015 Nov 19 18:32:31 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(1): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: Process Create:  UtcTime: 2015-11-19 17:32:31.562  ProcessGuid: {0B364D7C-07AF-564E-0000-001098C90800}  ProcessId: 2188  Image: C:\Windows\System32\rundll32.exe  CommandLine: C:\Windows\system32\rundll32.exe C:\Windows\system32\inetcpl.cpl,ClearMyTracksByProcess Flags:65800 WinX:0 WinY:0 IEFrame:0000000000000000  CurrentDirectory: C:\Users\Administrator.WIN-K3UD9R5LCEL\Desktop\  User: WIN-K3UD9R5LCEL\Administrator  LogonGuid: {0B364D7C-FDDB-564D-0000-00209CA10100}  LogonId: 0x1a19c  TerminalSessionId: 1  IntegrityLevel: High  Hashes: SHA1=963B55ACC8C566876364716D5AAFA353995812A8  ParentProcessGuid: {0B364D7C-FE43-564D-0000-0010F1720200}  ParentProcessId: 576  ParentImage: C:\Program Files\Internet Explorer\iexplore.exe  ParentCommandLine: "C:\Program Files\Internet Explorer\iexplore.exe"
 
-  - With option <HashAlgorithms>*</HashAlgorithms> the log would be:
-    ...Hashes: SHA1=8F86B5A06E440A9B60AC591F814F6A8FCA58DC1D,MD5=E3BD0CF8CD561F4D33255B2E6EB0C987,SHA256=B8BC88623FD2DCDB81A31777B4B82F7A24BA6086A8A58A00B4AF198DE8CB307D,IMPHASH=8F2AF1C4B2891D7DD75333449A5C4131  ParentProcessGuid...
-    The new decoder captures everything between "=" and "ParentProcessGuid".
+  2017 Mar 29 13:36:36 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(1): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-P57C9KN929H: Process Create:  UtcTime: 2017-03-29 11:36:36.964  ProcessGuid: {DB577E3B-9C44-58DB-0000-0010B0983A00}  ProcessId: 3784  Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe  CommandLine: "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" "-file" "C:\Users\Alberto\Desktop\test.ps1"  CurrentDirectory: C:\Users\Alberto\Desktop\  User: WIN-P57C9KN929H\Alberto  LogonGuid: {DB577E3B-89E5-58DB-0000-0020CB290500}  LogonId: 0x529cb  TerminalSessionId: 1  IntegrityLevel: Medium  Hashes: MD5=92F44E405DB16AC55D97E3BFE3B132FA,SHA256=6C05E11399B7E3C8ED31BAE72014CF249C144A8F4A2C54A758EB2E6FAD47AEC7  ParentProcessGuid: {DB577E3B-89E6-58DB-0000-0010FA3B0500}  ParentProcessId: 2308  ParentImage: C:\Windows\explorer.exe  ParentCommandLine: C:\Windows\Explorer.EXE
 -->
 
 <decoder name="Sysmon-EventID#1">
@@ -221,173 +202,322 @@ Event ID 1: Process Created
     <type>windows</type>
     <prematch>INFORMATION\(1\)\.+HashType</prematch>
     <regex>Image: (\.*) \s*CommandLine: \.* \s*User: (\.*) \s*LogonGuid: \S* \s*LogonId: \S* \s*TerminalSessionId: \S* \s*IntegrityLevel: \.*HashType: \S* \s*Hash: (\S*) \s*ParentProcessGuid: \S* \s*ParentProcessID: \S* \s*ParentImage: (\.*) \s*ParentCommandLine:</regex>
-    <order>status,user,url,data</order>
+    <order>sysmon.image,srcuser,sysmon.hash,sysmon.parentImage</order>
 </decoder>
 
 <decoder name="Sysmon-EventID#1_new">
     <parent>windows</parent>
     <type>windows</type>
     <prematch>INFORMATION\(1\)\.+Hashes</prematch>
-    <regex>Image: (\.*) \s*CommandLine: \.* \s*User: (\.*) \s*LogonGuid: \S* \s*LogonId: \S* \s*TerminalSessionId: \S* \s*IntegrityLevel: \.*Hashes: \S+=(\S*)\s*ParentProcessGuid: \S* \s*ParentProcessID: \S* \s*ParentImage: (\.*.\S+) \s*ParentCommandLine:</regex>
-    <order>status,user,url,data</order>
+    <regex>Microsoft-Windows-Sysmon/Operational: \S+\((\d+)\)</regex>
+    <order>id</order>
 </decoder>
 
+<decoder name="Sysmon-EventID#1_new">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">ProcessGuid: (\.*) \s*ProcessId: (\.*) \s*Image: (\.*) \s*CommandLine: (\.*)\s+CurrentD</regex>
+    <order>sysmon.processGuid, sysmon.processId, sysmon.image, sysmon.commandLine</order>
+</decoder>
 
-<!--
-    - Event 2-8
-    -  v1.0 2015/11/20
-    -  Created by Wazuh, Inc. <ossec@wazuh.com>.
-    -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
--->
+<decoder name="Sysmon-EventID#1_new">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">irectory: (\.*) \s*User: (\.*) \s*LogonGuid: (\S*) \s*LogonId: (\S*)\s*TerminalSessionId: (\S*) \s*IntegrityLevel: (\.*) \s*Hashes: \S+=(\S*)\s*ParentProcessGuid: (\S*) \s*ParentProcessId: (\S*) \s*ParentImage: (\.*.\S+) \s*Parent</regex>
+    <order>sysmon.currentDirectory,srcuser,sysmon.logonGuid, sysmon.logonId, sysmon.terminalSessionId, sysmon.integrityLevel, sysmon.hashes, sysmon.parentProcessGuid, sysmon.parentProcessId, sysmon.parentImage</order>
+</decoder>
+
+<decoder name="Sysmon-EventID#1_new">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">CommandLine: "(\.*)"$</regex>
+    <order>sysmon.parentCommandLine</order>
+</decoder>
 
 <!--
 Event ID 2: A process changed a file creation time
 
-    -  OSSEC to Sysmon Fields Mapping:
-
-    -  status = Image
-    -  url = TargetFilename
-    -  srcport = PreviousCreationUtcTime
-    -  dstport = CreationUtcTime
-
-Example:
 2015 Nov 19 18:32:16 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(2): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: File creation time changed:  UtcTime: 2015-11-19 17:32:16.578  ProcessGuid: {0B364D7C-FE43-564D-0000-0010F1720200}  ProcessId: 576  Image: C:\Program Files\Internet Explorer\iexplore.exe  TargetFilename: C:\Users\Administrator.WIN-K3UD9R5LCEL\AppData\Roaming\Microsoft\Windows\Recent\CustomDestinations\QK9FKZ7I2DSU0MTCD160.temp  CreationUtcTime: 2015-11-19 03:28:08.281  PreviousCreationUtcTime: 2015-11-19 17:32:16.578
 -->
 <decoder name="Sysmon-EventID#2">
     <parent>windows</parent>
     <type>windows</type>
     <prematch>Microsoft-Windows-Sysmon/Operational: INFORMATION\(2\)</prematch>
-    <regex offset="after_prematch">Image: (\.*)\s+TargetFilename: (\.*)\s+CreationUtcTime: (\.*)\s+PreviousCreationUtcTime: (\.*)</regex>
-    <order>status, url, dstport, srcport</order>
+    <regex>Microsoft-Windows-Sysmon/Operational: \S+\((\d+)\)</regex>
+    <order>id</order>
+</decoder>
+
+<decoder name="Sysmon-EventID#2">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">Image: (\.*)\s+TargetFilename: (\.*)\s+CreationUtcTime: (\.*)\s+PreviousCreationUtcTime: (\.*)</regex>
+    <order>sysmon.image, sysmon.targetfilename, sysmon.creationUtcTime, sysmon.previousCreationUtcTime</order>
 </decoder>
 
 <!--
 Event ID 3: Network connection
 
-    -  OSSEC to Sysmon Fields Mapping:
-
-    -  status = Image
-    -  user = user
-    -  extra_data= Protocol
-    -  srcip = SourceIp
-    -  srcport = SourcePort
-    -  dstip = DestinationIp
-    -  dstport = DestinationPort
-
-Example:
 2015 Nov 19 20:33:25 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(3): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: Network connection detected:  UtcTime: 2015-11-19 19:33:23.824  ProcessGuid: {0B364D7C-23F6-564E-0000-00100D5A1100}  ProcessId: 2028  Image: C:\Program Files (x86)\Internet Explorer\iexplore.exe  User: WIN-K3UD9R5LCEL\Administrator  Protocol: tcp  Initiated: true  SourceIsIpv6: false  SourceIp: 192.168.2.201  SourceHostname: WIN-K3UD9R5LCEL.LinDomain  SourcePort: 49192  SourcePortName:   DestinationIsIpv6: false  DestinationIp: XXX.58.XXX.206  DestinationHostname: webdest  DestinationPort: 443  DestinationPortName: https
 -->
+
 <decoder name="Sysmon-EventID#3">
     <parent>windows</parent>
     <type>windows</type>
     <prematch>Microsoft-Windows-Sysmon/Operational: INFORMATION\(3\)</prematch>
-    <regex offset="after_prematch">Image: (\.*)\s+User: (\.*)\s+Protocol: (\S*)\s+Initiated\.+SourceIp: (\S*)\s+SourceHostname\.+SourcePort: (\S*)\s+SourcePortName:\.+DestinationIsIpv6\.+DestinationIp: (\S*)\s+DestinationHostname:\.+\s+DestinationPort: (\S*)</regex>
-    <order>status, user, extra_data, srcip, srcport, dstip, dstport</order>
+    <regex>Microsoft-Windows-Sysmon/Operational: \S+\((\d+)\)</regex>
+    <order>id</order>
+</decoder>
+
+<decoder name="Sysmon-EventID#3">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">ProcessGuid: (\.*) \s*ProcessId: (\.*) \s*Image: (\.*)\s+User: (\.*)\s+Protocol: (\S*)\s+Initiated: (\.*) \s*SourceIsIpv6: (\.*) \s*SourceIp: (\S*)\s+SourceHostname: (\.*) \s*SourcePort: (\S*)\s+SourcePortName:\.+DestinationIsIpv6: (\.*) \s*DestinationIp: (\S*)\s+DestinationHostname: (\.*) \s*DestinationPort: (\S*)</regex>
+    <order>sysmon.processGuid, sysmon.processId, sysmon.image, srcuser, protocol, sysmon.initiated, sysmon.sourceIsIpv6, srcip, sysmon.sourceHostname, srcport, sysmon.destinationIsIpv6, dstip, sysmon.destinationHostname, dstport</order>
 </decoder>
 
 <!--
 Event ID 4: Sysmon service state changed
 
-    -  OSSEC to Sysmon Fields Mapping:
-
-    -  status = State
-
-
-Example:
 2015 Nov 19 20:27:42 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(4): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: Sysmon service state changed:  UtcTime: 2015-11-19 19:27:42.796  State: Started
 -->
+
 <decoder name="Sysmon-EventID#4">
     <parent>windows</parent>
     <type>windows</type>
     <prematch>Microsoft-Windows-Sysmon/Operational: INFORMATION\(4\)</prematch>
-    <regex offset="after_prematch">State: (\S*)</regex>
-    <order>status</order>
+    <regex>Microsoft-Windows-Sysmon/Operational: \S+\((\d+)\)</regex>
+    <order>id</order>
+</decoder>
+
+<decoder name="Sysmon-EventID#4">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">State: (\S*)</regex>
+    <order>sysmon.state</order>
 </decoder>
 
 <!--
 Event ID 5: Process terminated
 
-    -  OSSEC to Sysmon Fields Mapping:
-
-    -  status = Image
-
-
-Example:
 2015 Nov 19 20:41:57 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(5): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: Process terminated:  UtcTime: 2015-11-19 19:41:57.648  ProcessGuid: {0B364D7C-2353-564E-0000-001025511000}  ProcessId: 2196  Image: C:\Windows\System32\wbem\WmiPrvSE.exe
 -->
 <decoder name="Sysmon-EventID#5">
     <parent>windows</parent>
     <type>windows</type>
     <prematch>Microsoft-Windows-Sysmon/Operational: INFORMATION\(5\)</prematch>
-    <regex offset="after_prematch">Image: (\S*)</regex>
-    <order>status</order>
+    <regex>Microsoft-Windows-Sysmon/Operational: \S+\((\d+)\)</regex>
+    <order>id</order>
+</decoder>
+
+<decoder name="Sysmon-EventID#5">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">Image: (\S*)</regex>
+    <order>sysmon.image</order>
 </decoder>
 
 <!--
 Event ID 6: Driver loaded
 
-    -  OSSEC to Sysmon Fields Mapping:
-
-    -  status = ImageLoaded
-    -  url = Hash
-    -  action = Signed
-    -  extra_data = Signature
-
-Example:
 2015 Nov 20 11:01:41 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(6): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: Driver loaded:  UtcTime: 2015-11-20 10:01:41.765  ImageLoaded: C:\Windows\System32\drivers\cdrom.sys  Hashes: SHA1=89204964B695862C31B10AB7129EC96B66C78F89  Signed: true  Signature: Microsoft Windows
 -->
 <decoder name="Sysmon-EventID#6">
     <parent>windows</parent>
     <type>windows</type>
     <prematch>Microsoft-Windows-Sysmon/Operational: INFORMATION\(6\)</prematch>
-    <regex offset="after_prematch">ImageLoaded: (\S*)\s+Hashes: \S+=(\S*)\s+Signed: (\S*)\s+Signature: (\.*)</regex>
-    <order>status, url, action, extra_data</order>
+    <regex>Microsoft-Windows-Sysmon/Operational: \S+\((\d+)\)</regex>
+    <order>id</order>
+</decoder>
+
+<decoder name="Sysmon-EventID#6">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">ImageLoaded: (\S*)\s+Hashes: \S+=(\S*)\s+Signed: (\S*)\s+Signature: (\.*)</regex>
+    <order>sysmon.imageLoaded, sysmon.hashes, sysmon.signed, sysmon.signature</order>
 </decoder>
 
 <!--
 Event ID 7: Image loaded
 
-    -  OSSEC to Sysmon Fields Mapping:
-
-    -  status = Image
-    -  id = ImageLoaded
-    -  url = Hash
-    -  action = Signed
-    -  extra_data = Signature
-
-Example:
 2015 Nov 20 11:26:13 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(7): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: Image loaded:  UtcTime: 2015-11-20 10:26:13.672  ProcessGuid: {0B364D7C-F545-564E-0000-001085D69400}  ProcessId: 2216  Image: C:\Windows\System32\cmd.exe  ImageLoaded: C:\Windows\System32\msctf.dll  Hashes: SHA1=E425577CCFC9B92EFBBCB760D21FCAA478D3E51A  Signed: true  Signature: Microsoft Windows
 -->
 <decoder name="Sysmon-EventID#7">
     <parent>windows</parent>
     <type>windows</type>
     <prematch>Microsoft-Windows-Sysmon/Operational: INFORMATION\(7\)</prematch>
-    <regex offset="after_prematch">Image: (\S*)\s+ImageLoaded: (\S*)\s+Hashes: \S+=(\S*)\s+Signed: (\S*)\s+Signature: (\.*)</regex>
-    <order>status, id, url, action, extra_data</order>
+    <regex>Microsoft-Windows-Sysmon/Operational: \S+\((\d+)\)</regex>
+    <order>id</order>
+</decoder>
+
+<decoder name="Sysmon-EventID#7">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">Image: (\S*)\s+ImageLoaded: (\S*)\s+Hashes: \S+=(\S*)\s+Signed: (\S*)\s+Signature: (\.*)</regex>
+    <order>sysmon.image, sysmon.imageLoaded, sysmon.hashes, sysmon.signed, sysmon.signature</order>
 </decoder>
 
 
 <!--
 Event ID 8: CreateRemoteThread
 
-    -  OSSEC to Sysmon Fields Mapping:
-
-    -  status = SourceImage
-    -  id = TargetImage
-    -  action = StartModule
-    -  extra_data = StartFunction
-
-Example:
 2015 Nov 20 11:25:44 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(8): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: CreateRemoteThread detected:  UtcTime: 2015-11-20 10:25:44.562  SourceProcessGuid: {0B364D7C-E952-564E-0000-00104C3B0000}  SourceProcessId: 388  SourceImage: C:\Windows\System32\csrss.exe  TargetProcessGuid: {0B364D7C-EF10-564E-0000-001010EA0700}  TargetProcessId: 1152  TargetImage: C:\Windows\System32\cmd.exe  NewThreadId: 2128  StartAddress: 0x00000000777F4910  StartModule: C:\Windows\system32\kernel32.dll  StartFunction: CtrlRoutine
 -->
 <decoder name="Sysmon-EventID#8">
     <parent>windows</parent>
     <type>windows</type>
     <prematch>Microsoft-Windows-Sysmon/Operational: INFORMATION\(8\)</prematch>
-    <regex offset="after_prematch">SourceImage: (\S*)\s+\.+TargetImage: (\S*)\s+\.+StartModule: (\S*)\s+StartFunction: (\.*)</regex>
-    <order>status, id, url, extra_data</order>
+    <regex>Microsoft-Windows-Sysmon/Operational: \S+\((\d+)\)</regex>
+    <order>id</order>
 </decoder>
+
+<decoder name="Sysmon-EventID#8">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">SourceImage: (\S*)\s+\.+TargetImage: (\S*)\s+\.+StartModule: (\S*)\s+StartFunction: (\.*)</regex>
+    <order>sysmon.sourceImage, sysmon.targetImage, sysmon.startModule, sysmon.startFunction</order>
+</decoder>
+
+
+<!--
+Event ID 9
+-->
+
+
+<!--
+Event ID 10: ProcessAccess
+
+2017 Mar 29 13:26:05 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(10): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-P57C9KN929H: Process accessed:  UtcTime: 2017-03-29 11:26:05.493  SourceProcessGUID: {DB577E3B-99C4-58DB-0000-0010E0A83700}  SourceProcessId: 3048  SourceThreadId: 980  SourceImage: C:\Windows\System32\cmd.exe  TargetProcessGUID: {DB577E3B-99CD-58DB-0000-001006AF3700}  TargetProcessId: 3044  TargetImage: C:\Windows\System32\PING.EXE  GrantedAccess: 0x1fffff  CallTrace: C:\Windows\SYSTEM32\ntdll.dll+44bcc|C:\Windows\system32\kernel32.dll+54a0b|C:\Windows\system32\kernel32.dll+2059|C:\Windows\System32\cmd.exe+4090|C:\Windows\System32\cmd.exe+3e5c|C:\Windows\System32\cmd.exe+3ef0|C:\Windows\System32\cmd.exe+15ae|C:\Windows\System32\cmd.exe+23c0|C:\Windows\System32\cmd.exe+178d3|C:\Windows\System32\cmd.exe+61a0|C:\Windows\system32\kernel32.dll+51174|C:\Windows\SYSTEM32\ntdll.dll+5b3f5|C:\Windows\SYSTEM32\ntdll.dll+5b3c8
+-->
+
+
+<!--
+Event ID 11:
+
+2017 Mar 30 15:09:02 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(11): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-KND6QGDH48O: File created:  UtcTime: 2017-03-30 15:09:02.934  ProcessGuid: {FE5A418C-1C6B-58DD-0000-001023A40B00}  ProcessId: 3064  Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe  TargetFilename: C:\Windows\System32\drivers\malware.txt  CreationUtcTime: 2017-03-30 15:09:02.934
+-->
+<decoder name="Sysmon-EventID#11">
+    <parent>windows</parent>
+    <type>windows</type>
+    <prematch>Microsoft-Windows-Sysmon/Operational: INFORMATION\(11\)</prematch>
+    <regex>Microsoft-Windows-Sysmon/Operational: \S+\((\d+)\)</regex>
+    <order>id</order>
+</decoder>
+
+<decoder name="Sysmon-EventID#11">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">File created: (\.*)\s+UtcTime: (\.*)\s+ProcessGuid: (\.*)\s+ProcessId: (\.*)\s+Image: (\.*)\s+TargetFilename: (\.*)\s+CreationUtcTime: (\.*)</regex>
+    <order>sysmon.filecreated, sysmon.utctime, sysmon.processguid, sysmon.processid, sysmon.image, sysmon.targetfilename, sysmon.creationutctime </order>
+</decoder>
+
+<!--
+
+Event ID 12: RegistryEvent (Object create and delete)
+
+2017 Mar 27 10:38:48 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(12): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-P57C9KN929H: Registry object added or deleted:  EventType: CreateKey  UtcTime: 2017-03-27 08:38:48.108  ProcessGuid: {DB577E3B-C979-58D8-0000-001049540100}  ProcessId: 1288  Image: C:\Windows\Explorer.EXE  TargetObject: HKU\S-1-5-21-2895701376-138392475-4243184240-1000\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.com
+-->
+
+
+<!--
+Event ID 13: RegistryEvent (Value Set)
+
+2017 Mar 27 10:57:57 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(13): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-P57C9KN929H: Registry value set:  EventType: SetValue  UtcTime: 2017-03-27 08:57:57.885  ProcessGuid: {DB577E3B-D415-58D8-0000-00108ED53500}  ProcessId: 2040  Image: C:\Windows\system32\winsat.exe  TargetObject: HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce\WinSATRestorePower  Details: powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+-->
+
+
+<!--
+Event ID 14: RegistryEvent (Key and Value Rename)
+
+2017 Mar 29 13:20:37 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(14): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-P57C9KN929H: Registry object renamed:  EventType: RenameKey  UtcTime: 2017-03-29 11:20:37.159  ProcessGuid: {DB577E3B-97E1-58DB-0000-0010272E3300}  ProcessId: 2684  Image: C:\Windows\regedit.exe  TargetObject: HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Sysmon/Operational  NewName: \REGISTRY\MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Sysmon/Operational2
+-->
+
+
+<!--
+Event ID 15: FileCreateStreamHash
+
+2017 Mar 22 20:58:52 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(15): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-M0OTMBFUNGN: File stream created:  UtcTime: 2017-03-22 19:58:52.021  ProcessGuid: {514DFA4C-D745-58D2-0000-00107ECE2501}  ProcessId: 2476  Image: C:\Program Files\Internet Explorer\iexplore.exe  TargetFilename: C:\Users\Alberto\Desktop\setupssh381-20040709.zip  CreationUtcTime: 2017-03-22 19:58:42.380  Hash: MD5=9F82020D0494ED2E38B201C1948DD146
+-->
+<decoder name="Sysmon-EventID#15">
+    <parent>windows</parent>
+    <type>windows</type>
+    <prematch>Microsoft-Windows-Sysmon/Operational: INFORMATION\(15\)</prematch>
+    <regex>Microsoft-Windows-Sysmon/Operational: \S+\((\d+)\)</regex>
+    <order>id</order>
+</decoder>
+
+<decoder name="Sysmon-EventID#15">
+    <parent>windows</parent>
+    <type>windows</type>
+	<regex offset="after_regex">ProcessId: (\.*)\s+Image: (\.*)\s+TargetFilename: (\.*)\s+CreationUtcTime: (\.*)\s+Hash: \S+=(\S*)</regex>
+    <order>sysmon.processId, sysmon.image, sysmon.targetfilename, sysmon.creationUtcTime, sysmon.hash</order>
+</decoder>
+
 <!-- sysmon decoder END -->
+
+<!-- Windows Defender -->
+
+<!--
+Event ID 1116:
+
+2017 Apr 06 06:25:54 WinEvtLog: Microsoft-Windows-Windows Defender/Operational: WARNING(1116): Microsoft-Windows-Windows Defender: SYSTEM: NT AUTHORITY: DESKTOP-6UOEPO5: Windows Defender has detected malware or other potentially unwanted software.   For more information please see the following:  http://go.microsoft.com/fwlink/?linkid=37020&name=Virus:DOS/EICAR_Test_File&threatid=2147519003&enterprise=0     Name: Virus:DOS/EICAR_Test_File          ID: 2147519003          Severity: Severe        Category: Virus         Path: file:_C:\Users\spiderman\Downloads\eicar.com.txt          Detection Origin: Local machine         Detection Type: Concrete     Detection Source: Real-Time Protection          User: NT AUTHORITY\SYSTEM       Process Name: C:\Windows\System32\SearchProtocolHost.exe        Signature Version: AV: 1.239.892.0, AS: 1.239.892.0, NIS: 116.88.0.0    Engine Version: AM: 1.1.13601.0, NIS: 2.1.12706.0
+-->
+<decoder name="Windows-defender#1116">
+    <parent>windows</parent>
+    <type>windows</type>
+    <prematch>Microsoft-Windows-Windows Defender/Operational: \S+\(1116\)</prematch>
+	<regex>Microsoft-Windows-Windows Defender/Operational: \S+\((\d+)\)</regex>
+	<order>id</order>
+</decoder>
+
+<decoder name="Windows-defender#1116">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">Name: (\.*)\s+ID: (\.*)\s+Severity: (\.*)\s+Category: (\.*)\s+Path: \S+:(\.*)\s+Detection </regex>
+	<order>defender.name, defender.id, defender.severity, defender.category, defender.pathfound</order>
+</decoder>
+
+<decoder name="Windows-defender#1116">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">Type: (\.*)\s+Detection Source: (\.*)\s+User: (\.*)\s+Process Name: (\.*.\S+)\s+Signature</regex>
+	<order>defender.detectiontype, defender.detectionsource, srcuser, defender.processname</order>
+</decoder>
+
+<!--
+Event ID 1117:
+
+2017 Apr 06 06:26:01 WinEvtLog: Microsoft-Windows-Windows Defender/Operational: INFORMATION(1117): Microsoft-Windows-Windows Defender: SYSTEM: NT AUTHORITY: DESKTOP-6UOEPO5: Windows Defender has taken action to protect this machine from malware or other potentially unwanted software.   For more information please see the following:  http://go.microsoft.com/fwlink/?linkid=37020&name=Virus:DOS/EICAR_Test_File&threatid=2147519003&enterprise=0         Name: Virus:DOS/EICAR_Test_File         ID: 2147519003          Severity: Severe        Category: Virus         Path: file:_C:\Users\spiderman\Downloads\eicar.com.txt;webfile:_C:\Users\spiderman\Downloads\eicar.com.txt|http://www.eicar.org/download/eicar.com.txt|chrome.exe    Detection Origin: Internet      Detection Type: Concrete        Detection Source: Real-Time Protection          User: NT AUTHORITY\SYSTEM       Process Name: C:\Windows\System32\SearchProtocolHost.exe     Action: Quarantine      Action Status:  No additional actions required          Error Code: 0x80508023          Error description: The program could not find the malware and other potentially unwanted software on this computer.          Signature Version: AV: 1.239.892.0, AS: 1.239.892.0, NIS: 116.88.0.0    Engine Version: AM: 1.1.13601.0, NIS: 2.1.12706.0
+-->
+<decoder name="Windows-defender#1117">
+    <parent>windows</parent>
+    <type>windows</type>
+    <prematch>Microsoft-Windows-Windows Defender/Operational: \S+\(1117\)</prematch>
+	<regex>Microsoft-Windows-Windows Defender/Operational: \S+\((\d+)\)</regex>
+	<order>id</order>
+</decoder>
+
+<decoder name="Windows-defender#1117">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">Name: (\.*)\s+ID: (\.*)\s+Severity: (\.*)\s+Category: (\.*)\s+Path:\s+\S+:(\.*);</regex>
+    <order>defender.name, defender.id, defender.severity, defender.category, defender.path</order>
+</decoder>
+
+<decoder name="Windows-defender#1117">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">User: (\S+ \S+) | User: (\S+) </regex>
+	<order>srcuser</order>
+</decoder>
+
+<decoder name="Windows-defender#1117">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">Process Name: (\.*.\S+)\s+Action: (\S+)</regex>
+	<order>defender.processname, defender.action</order>
+</decoder>
+
+<!-- Windows Defender END -->
 
 <!-- Windows generic -->
 

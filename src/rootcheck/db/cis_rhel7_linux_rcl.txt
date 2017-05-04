@@ -2,7 +2,7 @@
 #
 # Released under the same license as OSSEC.
 # More details at the LICENSE file included with OSSEC or online
-# at: http://www.ossec.net/en/licensing.html
+# at: https://www.gnu.org/licenses/gpl.html
 #
 # [Application name] [any or all] [reference]
 # type:<entry name>;
@@ -212,7 +212,7 @@ f:/etc/security/limits.conf -> !r:^# && !r:hard\.+core\.+0;
 # 1.6.1 Enable Randomized Virtual Memory Region Placement (Scored)
 # Note this is also labeled 1.6.1 in the CIS benchmark.
 [CIS - RHEL7 - 1.6.1 - Randomized Virtua Memory Region Placement not enabled  {CIS: 1.6.3 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/proc/sys/kernel/randomize_va_space -> 2;
+f:/proc/sys/kernel/randomize_va_space -> !r:^2$;
 
 
 ###############################################
