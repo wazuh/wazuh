@@ -65,4 +65,4 @@ raz�es de resposta ativa ou para corela��o.
 
 == Configura��o das regras ==
 
-https://documentation.wazuh.com/ruleset/ruleset-xml-syntax/rules.html
+https://documentation.wazuh.com/

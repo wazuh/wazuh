@@ -901,7 +901,7 @@ main()
         echo "   $INSTALLDIR/bin/manage_agents"
         echo ""
         echo "   ${moreinfo}"
-        echo "   https://documentation.wazuh.com/current/user-manual/agents/registering-agents/index.html"
+        echo "   https://documentation.wazuh.com/"
         echo ""
 
     elif [ "X$INSTYPE" = "Xagent" ]; then
@@ -909,7 +909,7 @@ main()
         echo "   $INSTALLDIR/bin/manage_agents"
         echo ""
         echo "   ${moreinfo}"
-        echo "   https://documentation.wazuh.com/current/user-manual/agents/registering-agents/index.html"
+        echo "   https://documentation.wazuh.com/"
         echo ""
     fi
 

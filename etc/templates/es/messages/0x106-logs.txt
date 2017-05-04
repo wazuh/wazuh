@@ -3,6 +3,6 @@
    tendrá que editar el archivo ossec.conf y agregar una
    nueva entrada de tipo localfile.
    Cualquier otra pregunta de configuración podra ser
-   respondida en https://documentation.wazuh.com/capabilities/log-data-collection/log-data-configuration.html.
+   respondida en https://documentation.wazuh.com/.
 
    --- Presione ENTER para continuar ---
