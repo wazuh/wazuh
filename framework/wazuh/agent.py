@@ -297,10 +297,7 @@ class Agent:
             agent_files.append('{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(common.ossec_path, self.name, self.ip))
             agent_files.append('{0}/queue/syscheck/.({1}) {2}->syscheck-registry.cpt'.format(common.ossec_path, self.name, self.ip))
             agent_files.append('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip))
-            agent_files.append('{0}/queue/rids/{1}'.format(common.ossec_path, self.id))
-            agent_files.append('{0}/var/db/agents/{1}-{2}.db'.format(common.ossec_path, self.id, self.name))
-            agent_files.append('{0}/var/db/agents/{1}-{2}.db-wal'.format(common.ossec_path, self.id, self.name))
-            agent_files.append('{0}/var/db/agents/{1}-{2}.db-shm'.format(common.ossec_path, self.id, self.name))
+            agent_files.append('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id))
 
             for agent_file in agent_files:
                 if path.exists(agent_file):
@@ -331,6 +328,7 @@ class Agent:
             agent_files.append(['{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck-registry'.format(agent_backup_dir)])
             agent_files.append(['{0}/queue/syscheck/.({1}) {2}->syscheck-registry.cpt'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck-registry.cpt'.format(agent_backup_dir)])
             agent_files.append(['{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip), '{0}/rootcheck'.format(agent_backup_dir)])
+            agent_files.append(['{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir)])
 
             for agent_file in agent_files:
                 if path.exists(agent_file[0]) and not path.exists(agent_file[1]):
