@@ -61,6 +61,8 @@ REVISION_FILE="../src/REVISION"
 DEFS_FILE="../src/headers/defs.h"
 HELP_FILE="../src/win32/help.txt"
 NSIS_FILE="../src/win32/ossec-installer.nsi"
+FW_SETUP="../framework/setup.py"
+FW_INIT="../framework/wazuh/__init__.py"
 
 if [ -n "$version" ]
 then
@@ -104,6 +106,12 @@ then
     fi
 
     sed -E -i "s/^(\!define VERSION \").+\"/\1${version:1}\"/g" $NSIS_FILE
+
+    # Framework
+
+    sed -E -i "s/version='.+',/version='${version:1}',/g" $FW_SETUP
+    sed -E -i "s/__version__ = '.+'/__version__ = '${version:1}'/g" $FW_INIT
+
 fi
 
 if [ -n "$revision" ]
