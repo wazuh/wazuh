@@ -107,7 +107,7 @@ def last_scan(agent_id):
     Gets the last scan of the agent.
 
     :param agent_id: Agent ID.
-    :return: Dictionary: syscheckEndTime, syscheckTime.
+    :return: Dictionary: end, start.
     """
 
     # Connection
@@ -124,13 +124,13 @@ def last_scan(agent_id):
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending syscheck scan.'"
     conn.execute(query)
     for tuple in conn:
-        data['syscheckEndTime'] = tuple[0]
+        data['end'] = tuple[0]
 
     # start time
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting syscheck scan.'"
     conn.execute(query)
     for tuple in conn:
-        data['syscheckTime'] = tuple[0]
+        data['start'] = tuple[0]
 
     return data
 
