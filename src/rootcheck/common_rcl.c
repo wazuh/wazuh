@@ -27,9 +27,8 @@ static char *_rkcl_get_value(char *buf, int *type);
 #define RKCL_COND_ALL       0x001
 #define RKCL_COND_ANY       0x002
 #define RKCL_COND_REQ       0x004
-#define RKCL_COND_INV       0x010
-
-
+#define RKCL_COND_NON       0x008
+#define RKCL_COND_INV       0x016
 #ifdef WIN32
 char *_rkcl_getrootdir(char *root_dir, int dir_size)
 {
@@ -172,6 +171,8 @@ static char *_rkcl_get_name(char *buf, char *ref, int *condition)
         *condition |= RKCL_COND_ALL;
     } else if (strcmp(tmp_location, "any") == 0) {
         *condition |= RKCL_COND_ANY;
+    } else if (strcmp(tmp_location, "none") == 0) {
+        *condition |= RKCL_COND_NON;
     } else if (strcmp(tmp_location, "any required") == 0) {
         *condition |= RKCL_COND_ANY;
         *condition |= RKCL_COND_REQ;
@@ -502,6 +503,11 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
                 if (found) {
                     g_found = 1;
                 }
+            } else if (condition & RKCL_COND_NON) {
+                debug2("%s: DEBUG: Condition NON.", ARGV0);
+                if (!found) {
+                    g_found = 1;
+                }
             } else {
                 /* Condition for ALL */
                 debug2("%s: DEBUG: Condition ALL.", ARGV0);
@@ -589,4 +595,3 @@ clean_return:
 
     return (1);
 }
-
