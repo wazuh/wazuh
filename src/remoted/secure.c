@@ -65,7 +65,7 @@ void HandleSecure()
 
     {
         int i;
-        int thread_pool = getDefine_Int("remoted", "thread_pool", 0, 64);
+        int thread_pool = getDefine_Int("remoted", "thread_pool", 1, 64);
 
         debug2(ARGV0 ": DEBUG: Creating %d sender threads.", thread_pool);
 
