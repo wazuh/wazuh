@@ -7,7 +7,7 @@
 # Syntax:
 # bump_version [ <version> ] [ -r <revision> ] [ -p <product_version> ]
 # Example:
-# ./bump_version.sh v3.0-alpha1 -r 3457 -p 3.0.0.1
+# ./bump_version.sh v3.0.0-alpha1 -r 3457 -p 3.0.0.1
 
 while [ -n "$1" ]
 do
@@ -35,11 +35,11 @@ do
         shift 2
         ;;
     *)
-        if [[ $1 =~ ^v.+ ]]
+        if [[ $1 =~ ^v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(-[[:alnum:]]+)?$ ]]
         then
             version=$1
         else
-            echo "Error: incorrect version (must start with 'v')."
+            echo "Error: incorrect version (must have form 'vX.X.X' or 'vX.X.X-...')."
             exit 1
         fi
 
