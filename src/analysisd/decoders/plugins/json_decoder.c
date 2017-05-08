@@ -18,6 +18,9 @@
 static void fillData(Eventinfo *lf, const char *key, const char *value)
 {
 
+    if (!key)
+        return;
+
     if (strcmp(key, "srcip") == 0){
         lf->srcip = strdup(value);
 #ifdef TESTRULE
@@ -318,9 +321,11 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
 
         } // switch
         logJSON = next;
-        free(key);
+        free (key);
+        key = NULL;
     } // while
     cJSON_Delete(next);
+
 }
 
 void *JSON_Decoder_Init()
