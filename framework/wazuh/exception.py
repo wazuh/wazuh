@@ -69,7 +69,7 @@ class WazuhException(Exception):
         1707: 'Impossible to restart agent due to it is not active',
         1708: 'There is an agent with the same ID',
         1709: 'Too short key size (<64)',
-        1710: 'The group doest not exist',
+        1710: 'The group does not exist',
         # Manager:
 
         # Database:
