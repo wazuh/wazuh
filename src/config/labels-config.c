@@ -22,12 +22,12 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     unsigned int hidden;
     const char *key;
     size_t labels_z = 0;
-    wlabel_t *labels = *(wlabel_t **)d1;
+    wlabel_t **labels = (wlabel_t **)d1;
 
     /* Get label size */
 
-    if (labels) {
-        while (labels[labels_z].key) {
+    if (*labels) {
+        while ((*labels)[labels_z].key) {
             labels_z++;
         }
     }
@@ -72,10 +72,10 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 mwarn("Label '%s' is empty.", key);
             }
 
-            if (labels_get(labels, key)) {
+            if (labels_get(*labels, key)) {
                 mwarn("Label '%s' duplicated. Ignoring.", key);
             } else {
-                labels = labels_add(labels, labels_z++, key, node[i]->content, hidden);
+                *labels = labels_add(*labels, labels_z++, key, node[i]->content, hidden);
             }
         } else {
             merror(XML_INVELEM, node[i]->element);
@@ -83,10 +83,9 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         }
     }
 
-    *(wlabel_t **)d1 = labels;
     return 0;
 
 error:
-    labels_free(labels);
+    labels_free(*labels);
     return OS_INVALID;
 }
