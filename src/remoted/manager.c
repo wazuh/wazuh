@@ -28,7 +28,6 @@ typedef struct group_t {
 /* Internal functions prototypes */
 static void read_controlmsg(const char *agent_id, char *msg);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum);
-static void f_files(void);
 static void c_group(const char *group, DIR *dp, file_sum ***_f_sum);
 static void c_files(void);
 static file_sum** find_sum(const char *group);
@@ -167,31 +166,6 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     }
 }
 
-/* Free the files memory */
-static void f_files()
-{
-    int i;
-    int j;
-    file_sum **f_sum;
-
-    if (groups) {
-        for (i = 0; groups[i]; i++) {
-            f_sum = groups[i]->f_sum;
-
-            for (j = 0; f_sum[j]; j++) {
-                free(f_sum[j]->name);
-                free(f_sum[j]);
-            }
-
-            free(f_sum);
-            free(groups[i]->group);
-        }
-
-        free(groups);
-        groups = NULL;
-    }
-}
-
 void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     struct dirent *entry;
     os_md5 md5sum;
@@ -283,7 +257,28 @@ static void c_files()
     }
 
     // Free groups set, and set to NULL
-    f_files();
+    {
+        int i;
+        int j;
+        file_sum **f_sum;
+
+        if (groups) {
+            for (i = 0; groups[i]; i++) {
+                f_sum = groups[i]->f_sum;
+
+                for (j = 0; f_sum[j]; j++) {
+                    free(f_sum[j]->name);
+                    free(f_sum[j]);
+                }
+
+                free(f_sum);
+                free(groups[i]->group);
+            }
+
+            free(groups);
+            groups = NULL;
+        }
+    }
 
     // Initialize main groups structure
     os_calloc(1, sizeof(group_t *), groups);
