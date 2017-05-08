@@ -26,6 +26,10 @@ wlabel_t* labels_add(wlabel_t *labels, size_t size, const char *key, const char 
 const char* labels_get(const wlabel_t *labels, const char *key) {
     int i;
 
+    if (!labels) {
+        return NULL;
+    }
+
     for (i = 0; labels[i].key; i++) {
         if (!strcmp(labels[i].key, key)) {
             return labels[i].value;
