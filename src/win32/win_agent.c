@@ -465,10 +465,10 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 void send_win32_info(time_t curr_time)
 {
     int msg_size;
-    char tmp_msg[OS_MAXSTR + 2];
+    char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
     char crypt_msg[OS_MAXSTR + 2];
 
-    tmp_msg[OS_MAXSTR + 1] = '\0';
+    tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
     crypt_msg[OS_MAXSTR + 1] = '\0';
 
     debug1("%s: DEBUG: Sending keep alive message.", ARGV0);
@@ -520,7 +520,7 @@ void send_win32_info(time_t curr_time)
     }
 
     /* Create message */
-    debug1("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
+    debug2("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
 
     msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
 

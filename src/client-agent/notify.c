@@ -62,7 +62,7 @@ char *getsharedfiles()
 /* Periodically send notification to server */
 void run_notify()
 {
-    char keep_alive_random[1024];
+    char keep_alive_random[KEEPALIVE_SIZE];
     char tmp_msg[OS_SIZE_1024 + 1];
     char *uname;
     char *shared_files;
@@ -117,7 +117,7 @@ void run_notify()
         }
     }
 
-    rand_keepalive_str2(keep_alive_random, 700);
+    rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
 
     /* Create message */
     if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
@@ -130,6 +130,7 @@ void run_notify()
     }
 
     /* Send status message */
+    debug2("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
     send_msg(0, tmp_msg);
 
     free(uname);
