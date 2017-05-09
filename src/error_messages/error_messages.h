@@ -184,7 +184,7 @@
 /* Encryption/auth errors */
 #define INVALID_KEY     "%s(1401): ERROR: Error reading authentication key: '%s'."
 #define NO_AUTHFILE     "%s(1402): ERROR: Authentication key file '%s' not found."
-#define ENCFORMAT_ERROR "%s(1403): ERROR: Incorrectly formated message from '%s'."
+#define ENCFORMAT_ERROR "%s(1403): ERROR: Incorrectly formatted message from agent '%s' (IP '%s')."
 #define ENCKEY_ERROR    "%s(1404): ERROR: Authentication error. Wrong key from '%s'."
 #define ENCSIZE_ERROR   "%s(1405): ERROR: Message size not valid: '%s'."
 #define ENCSUM_ERROR    "%s(1406): ERROR: Checksum mismatch on message from '%s'."
