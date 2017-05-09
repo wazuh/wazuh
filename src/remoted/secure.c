@@ -240,7 +240,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         }
 
         if (*tmp_msg != '!') {
-            merror(ENCFORMAT_ERROR, __local_name, srcip);
+            merror(ENCFORMAT_ERROR, __local_name, "(unknown)", srcip);
 
             if (sock_client >= 0)
                 close(sock_client);
