@@ -119,7 +119,7 @@ int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip) __a
 
 /* Decrypt and decompress a remote message */
 char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
-                 int id, unsigned int buffer_size) __attribute((nonnull));
+                 int id, unsigned int buffer_size, const char *ip) __attribute((nonnull));
 
 /* Create an OSSEC message (encrypt and compress) */
 size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, unsigned int id) __attribute((nonnull));
