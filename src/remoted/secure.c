@@ -278,7 +278,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     /* Decrypt the message */
     tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg,
-                         agentid, recv_b - 1);
+                         agentid, recv_b - 1, srcip);
 
     if (tmp_msg == NULL) {
 
