@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # Wazuh Ruleset Update
 
-# v3.0.0 2016/12/23
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# jesus@wazuh.com
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 # Requirements:
@@ -374,6 +372,27 @@ def upgrade_ruleset(ruleset):
             copy(src_file, dst_file)
 
 
+    msg = ""
+    for type_r in deprecated.keys():
+        if type_r == 'rules':
+            path_file = ossec_rules
+            path_file_bk = update_backups_rules
+        elif type_r == 'decoders':
+            path_file = ossec_decoders
+            path_file_bk = update_backups_decoders
+
+        for item in deprecated[type_r]:
+            deprecated_file = "{0}/{1}".format(path_file, item)
+            deprecated_file_bk = "{0}/{1}".format(path_file_bk, item)
+            if os.path.exists(deprecated_file):
+                msg += "\t{0}\n".format(deprecated_file)
+                copy(deprecated_file, deprecated_file_bk)
+                os.remove(deprecated_file)
+
+    if msg:
+        logger.log("\nThe following deprecated files will be removed:\n{0}".format(msg))
+
+
 def restore_backups():
     for src in [update_backups_rules, update_backups_decoders, update_backups_rootchecks]:
         type_item = src.split('/')[-1]
@@ -572,6 +591,8 @@ if __name__ == "__main__":
     update_backups_decoders = "{0}/decoders".format(update_backups)
     update_backups_rules = "{0}/rules".format(update_backups)
     update_backups_rootchecks = "{0}/rootchecks".format(update_backups)
+
+    deprecated = {'rules': ['0355-amazon-ec2_rules.xml', '0370-amazon-iam_rules.xml', '0465-amazon-s3_rules.xml'], 'decoders': ['0020-amazon_decoders.xml'] }
 
     if arguments['json']:
         logger = RulesetLogger(tag="Wazuh-Ruleset", filename=ossec_ruleset_log, flag=RulesetLogger.O_FILE, debug=arguments['debug'])

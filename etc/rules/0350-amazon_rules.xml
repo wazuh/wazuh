@@ -4,35 +4,86 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<!-- ID: 80200 - 80299 -->
+<!--
+ID: 80200 - 80499
+-->
+
 <group name="amazon,">
+
+    <!-- Filter 1: Only AWS events -->
     <rule id="80200" level="0">
-        <decoded_as>AmazonAWS</decoded_as>
+        <decoded_as>json</decoded_as>
+        <field name="aws.eventSource">\.+</field>
         <description>Amazon alerts.</description>
     </rule>
 
+    <!-- Filter 2: Only eventSource in etc/lists/amazon/aws-sources -->
     <rule id="80201" level="0">
         <if_sid>80200</if_sid>
-        <match>"eventSource":"ec2.amazonaws.com"|"eventSource":"elasticloadbalancing.amazonaws.com"</match>
-        <description>Amazon EC2 alerts.</description>
-        <group>amazon-ec2,</group>
+        <list field="aws.eventSource" lookup="match_key">etc/lists/amazon/aws-sources</list>
+        <description>Amazon: $(aws.eventSource).</description>
     </rule>
 
-    <rule id="80202" level="0">
-        <if_sid>80200</if_sid>
-        <match>"eventSource":"iam.amazonaws.com"|"eventSource":"signin.amazonaws.com"|"eventSource":"kms.amazonaws.com"</match>
-        <description>Amazon IAM alerts.</description>
-        <group>amazon-iam,</group>
+    <!-- Filter 3: Only eventName in etc/lists/amazon/aws-eventnames -->
+    <rule id="80202" level="3">
+        <if_sid>80201</if_sid>
+        <list field="aws.eventName" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
+        <description>Amazon: $(aws.eventSource) - $(aws.eventName).</description>
+        <group>pci_dss_10.6.1,</group>
     </rule>
 
-    <rule id="80203" level="0">
-        <if_sid>80200</if_sid>
-        <match>"eventSource":"s3.amazonaws.com"</match>
-        <description>Amazon s3 alerts.</description>
-        <group>amazon-s3,</group>
+    <!-- If there is an error code: increase the level and change description -->
+    <rule id="80203" level="4">
+        <if_sid>80202</if_sid>
+        <field name="aws.errorCode">\.+</field>
+        <description>Amazon: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
+        <group>pci_dss_10.6.1,amazon-error,</group>
     </rule>
-  
 
-    <!-- ID for amazon events 80200-80300 -->
+
+    <!-- Specific rules -->
+
+    <!-- Events with errors -->
+    <rule id="80250" level="5">
+        <if_sid>80203</if_sid>
+        <field name="aws.errorCode">AccessDenied</field>
+        <description>Amazon: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
+        <group>pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    </rule>
+
+    <!-- Events with no errors -->
+    <rule id="80251" level="3">
+        <if_sid>80201</if_sid>
+        <field name="aws.eventName">DeleteObjects</field>
+        <description>Amazon: $(aws.eventSource) - $(aws.eventName).</description>
+        <group>pci_dss_10.6.1,</group>
+    </rule>
+
+    <rule id="80252" level="10" frequency="20" timeframe="600">
+        <if_matched_sid>80251</if_matched_sid>
+        <description>Amazon: $(aws.eventSource) - $(aws.eventName) - high number of deleted object.</description>
+        <group>pci_dss_10.6.1,</group>
+    </rule>
+
+    <!-- Logins -->
+    <rule id="80253" level="3">
+        <if_sid>80202</if_sid>
+        <field name="aws.eventName">ConsoleLogin</field>
+        <description>Amazon: $(aws.eventSource) - $(aws.eventName) - User Login Success.</description>
+        <group>authentication_success,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="80254" level="5">
+        <if_sid>80253</if_sid>
+        <field name="aws.ConsoleLogin">Failure</field>
+        <description>Amazon: $(aws.eventSource) - $(aws.eventName) - User Login failed.</description>
+        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    </rule>
+
+    <rule id="80255" level="10" frequency="4" timeframe="360">
+        <if_matched_sid>80254</if_matched_sid>
+        <description>Amazon: $(aws.eventSource) - $(aws.eventName) - Possible breaking attempt (high number of login attempts).</description>
+        <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    </rule>
 
 </group>
