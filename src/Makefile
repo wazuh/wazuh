@@ -511,6 +511,12 @@ ifeq (,$(wildcard ${PREFIX}/etc/lists))
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
 endif
 
+ifeq (,$(wildcard ${PREFIX}/etc/lists/amazon))
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
+
+endif
+
 ifeq (,$(wildcard ${PREFIX}/etc/lists/audit-keys))
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys.cdb ${PREFIX}/etc/lists/audit-keys.cdb
