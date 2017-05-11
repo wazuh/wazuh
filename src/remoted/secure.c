@@ -252,7 +252,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         }
 
         if (*tmp_msg != '!') {
-            merror(ENCFORMAT_ERROR, __local_name, srcip);
+            merror(ENCFORMAT_ERROR, __local_name, "(unknown)", srcip);
 
             if (sock_client >= 0)
                 close(sock_client);
@@ -290,7 +290,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     /* Decrypt the message */
     tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg,
-                         agentid, recv_b - 1);
+                         agentid, recv_b - 1, srcip);
 
     if (tmp_msg == NULL) {
 

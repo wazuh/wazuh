@@ -37,7 +37,7 @@ r:HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableRegis
 r:HKEY_LOCAL_MACHINE\Software\Microsoft\OLE -> EnableDCOM -> N;
 
 # http://web.mit.edu/is/topics/windows/server/winmitedu/security.html
-[LM authentication allowed (weak passwords) {PCI_DSS: 10.6.1} {PCI_DSS: 11.4}] [any] []
+[LM authentication allowed (weak passwords) {PCI_DSS: 10.6.1, 11.4}] [any] []
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\LSA -> LMCompatibilityLevel -> 0;
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\LSA -> LMCompatibilityLevel -> 1;
 
@@ -51,7 +51,7 @@ r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Security Center -> firewalldisablenotify
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Security Center -> firewalldisableoverride -> !0;
 
 # Checking for the microsoft firewall.
-[Microsoft Firewall disabled {PCI_DSS: 10.6.1} {PCI_DSS: 1.4}] [all] []
+[Microsoft Firewall disabled {PCI_DSS: 10.6.1, 1.4}] [all] []
 r:HKEY_LOCAL_MACHINE\software\policies\microsoft\windowsfirewall\domainprofile -> enablefirewall -> 0;
 r:HKEY_LOCAL_MACHINE\software\policies\microsoft\windowsfirewall\standardprofile -> enablefirewall -> 0;
 

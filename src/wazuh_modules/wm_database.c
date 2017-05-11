@@ -90,7 +90,7 @@ void* wm_database_main(wm_database *data) {
     if (data->max_queued_events) {
         old_max_queued_events = get_max_queued_events();
 
-        if (old_max_queued_events >= 0) {
+        if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
             debug1("%s: DEBUG: Setting inotify queued events limit to '%d'", WM_DATABASE_LOGTAG, data->max_queued_events);
 
              if (set_max_queued_events(data->max_queued_events) < 0) {
@@ -109,7 +109,7 @@ void* wm_database_main(wm_database *data) {
 
     // Reset inotify queued events limit
 
-    if (old_max_queued_events >= 0) {
+    if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
         debug2("%s: DEBUG: Restoring inotify queued events limit to '%d'", WM_DATABASE_LOGTAG, old_max_queued_events);
         set_max_queued_events(old_max_queued_events);
     }

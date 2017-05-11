@@ -196,7 +196,7 @@ void start_agent(int is_startup)
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1);
+            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, agt->rip[agt->rip_id]);
             if (tmp_msg == NULL) {
                 merror(MSG_ERROR, ARGV0, agt->rip[agt->rip_id]);
                 continue;

@@ -176,7 +176,7 @@ static char *CheckSum(char *msg)
 }
 
 char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
-                 int id, unsigned int buffer_size)
+                 int id, unsigned int buffer_size, const char *srcip)
 {
     unsigned int msg_global = 0;
     unsigned int msg_local = 0;
@@ -185,7 +185,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
     if (*buffer == ':') {
         buffer++;
     } else {
-        merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->ip->ip);
+        merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->id, srcip);
         return (NULL);
     }
 
@@ -230,7 +230,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 
         /* Check for the right message format */
         if (*f_msg != ':') {
-            merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->ip->ip);
+            merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->id, srcip);
             return (NULL);
         }
         f_msg++;
@@ -320,7 +320,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
                 f_msg++;
                 return (f_msg);
             } else {
-                merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->ip->ip);
+                merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->id, srcip);
                 return (NULL);
             }
         }
@@ -338,7 +338,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
                 f_msg++;
                 return (f_msg);
             } else {
-                merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->ip->ip);
+                merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->id, srcip);
                 return (NULL);
             }
         }
@@ -362,7 +362,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
         return (NULL);
     }
 
-    merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->ip->ip);
+    merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->id, srcip);
     return (NULL);
 }
 

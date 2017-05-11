@@ -30,11 +30,11 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
     }
     // Parse groups && Parse PCIDSS && Parse CIS
     if(lf->generated_rule && lf->generated_rule->group) {
-        W_JSON_ParseGroups(root, lf, 1);
+        W_JSON_ParseGroups(root, lf);
     }
     // Parse CIS and PCIDSS rules from rootcheck .txt benchmarks
-    if(lf->full_log && W_isRootcheck(root, 1)) {
-        W_JSON_ParseRootcheck(root, lf, 1);
+    if(lf->full_log && W_isRootcheck(root)) {
+        W_JSON_ParseRootcheck(root, lf);
     }
     // Parse labels
     if (lf->labels && lf->labels[0].key) {
@@ -43,7 +43,7 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
 }
 
 // Detect if the alert is coming from rootcheck controls.
-int W_isRootcheck(cJSON* root, int nested)
+int W_isRootcheck(cJSON* root)
 {
     cJSON* groups;
     cJSON* group;
@@ -52,10 +52,12 @@ int W_isRootcheck(cJSON* root, int nested)
 
     int totalGroups, i;
 
-    if(!nested)
-        rule = root;
-    else
-        rule = cJSON_GetObjectItem(root, "rule");
+    rule = cJSON_GetObjectItem(root, "rule");
+
+    if (!rule) {
+        merror(ARGV0 ": ERROR: at W_JSON_ParseGroups(): No rule object found.");
+        return 0;
+    }
 
     if (!(groups = cJSON_GetObjectItem(rule, "groups")))
         return 0;
@@ -74,9 +76,9 @@ int W_isRootcheck(cJSON* root, int nested)
 }
 
 // Getting security compliance field from rootcheck rules benchmarks .txt
-void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
+void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf)
 {
-    regex_t r;
+    static regex_t* r = NULL;
     cJSON* rule;
     cJSON* compliance;
     const char* regex_text;
@@ -94,18 +96,25 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
         results[i] = malloc((MAX_STRING_LESS) * sizeof(char));
 
     // Getting groups object JSON
-    if(!nested)
-        rule = root;
-    else
-        rule = cJSON_GetObjectItem(root, "rule");
+    rule = cJSON_GetObjectItem(root, "rule");
+
+    if (!rule) {
+        merror(ARGV0 ": ERROR: at W_JSON_ParseGroups(): No rule object found.");
+        return;
+    }
 
     // Getting full log string
     strncpy(fullog, lf->full_log, MAX_STRING - 1);
     // Searching regex
     regex_text = "\\{([A-Za-z0-9_]*: [A-Za-z0-9_., ]*)\\}";
     find_text = fullog;
-    compile_regex(&r, regex_text);
-    matches = match_regex(&r, find_text, results);
+
+    if (!(r || (r = compile_regex(regex_text)))) {
+        // Internal error
+        return;
+    }
+
+    matches = match_regex(r, find_text, results);
 
     if(matches > 0) {
         for(i = 0; i < matches; i++) {
@@ -133,13 +142,13 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
             }
         }
     }
-    regfree(&r);
+
     for(i = 0; i < MAX_MATCHES; i++)
         free(results[i]);
 }
 
 // STRTOK every "-" delimiter to get differents groups to our json array.
-void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
+void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
 {
     cJSON* groups;
     cJSON* rule;
@@ -153,10 +162,12 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
     delim[0] = ',';
     delim[1] = 0;
 
-    if(!nested)
-        rule = root;
-    else
-        rule = cJSON_GetObjectItem(root, "rule");
+    rule = cJSON_GetObjectItem(root, "rule");
+
+    if (!rule) {
+        merror(ARGV0 ": ERROR: at W_JSON_ParseGroups(): No rule object found.");
+        return;
+    }
 
     cJSON_AddItemToObject(rule, "groups", groups = cJSON_CreateArray());
     strncpy(buffer, lf->generated_rule->group, MAX_STRING - 1);
@@ -389,16 +400,23 @@ void W_JSON_ParseAgentless(cJSON* root, const Eventinfo* lf) {
 
 #define MAX_ERROR_MSG 0x1000
 // Regex compilator
-int compile_regex(regex_t* r, const char* regex_text)
+regex_t* compile_regex(const char* regex_text)
 {
-    int status = regcomp(r, regex_text, REG_EXTENDED | REG_NEWLINE);
-    if(status != 0) {
+    regex_t* regex;
+    int status;
+
+    os_malloc(sizeof(regex_t), regex);
+    status = regcomp(regex, regex_text, REG_EXTENDED | REG_NEWLINE);
+
+    if (status != 0) {
         char error_message[MAX_ERROR_MSG];
-        regerror(status, r, error_message, MAX_ERROR_MSG);
-        debug1("Regex error compiling '%s': %s\n", regex_text, error_message);
-        return 1;
+        regerror(status, regex, error_message, MAX_ERROR_MSG);
+        merror(ARGV0 ": ERROR: Regex error compiling '%s': %s", regex_text, error_message);
+        free(regex);
+        return NULL;
     }
-    return 0;
+
+    return regex;
 }
 
 int match_regex(regex_t* r, const char* to_match, char* results[MAX_MATCHES])
