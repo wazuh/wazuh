@@ -43,18 +43,26 @@ type=SYSCALL msg=audit(1479982525.380:50): arch=c000003e syscall=2 success=yes e
     <order>audit.cwd</order>
 </decoder>
 
-<!-- PATH - DIRECTORY: mode=04* -->
-<decoder name="auditd-syscall">
+<!-- type=PATH - ID -->
+<decoder name="auditd-path">
     <parent>auditd</parent>
-    <regex offset="after_regex">type=PATH msg=audit\(\S+\): item=\S+ name="(\.+)" inode=(\S+) dev=\S+ mode=(04\S+) ouid=\S+ ogid=\S+ </regex>
-    <order>audit.directory.name, audit.directory.inode, audit.directory.mode</order>
+    <prematch offset="after_parent">^PATH </prematch>
+    <regex offset="after_parent">^(PATH) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
+    <order>audit.type,audit.id</order>
+</decoder>
+
+<!-- PATH - DIRECTORY: mode=04* -->
+<decoder name="auditd-path">
+    <parent>auditd</parent>
+    <regex offset="after_regex">^item=\S+ name="(\.+)" inode=(\S+) dev=\S+ mode=(04\S+) ouid=(\S+) ogid=(\S+)</regex>
+    <order>audit.directory.name, audit.directory.inode, audit.directory.mode, audit.uid, audit.gid</order>
 </decoder>
 
 <!-- PATH - FILE -->
-<decoder name="auditd-syscall">
+<decoder name="auditd-path">
     <parent>auditd</parent>
-    <regex offset="after_regex">type=PATH msg=audit\(\S+\): item=\S+ name="(\.+)" inode=(\S+) dev=\S+ mode=(\S+) ouid=\S+ ogid=\S+ |type=PATH msg=audit\(\S+\): item=\S+ name=\((null)\) inode=(\S+) dev=\S+ mode=(\S+) ouid=\S+ ogid=\S+ </regex>
-    <order>audit.file.name, audit.file.inode, audit.file.mode</order>
+    <regex offset="after_regex">^item=\S+ name="(\.+)" inode=(\S+) dev=\S+ mode=(\S+) ouid=(\S+) ogid=(\S+)|type=PATH msg=audit\(\S+\): item=\S+ name=\((null)\) inode=(\S+) dev=\S+ mode=(\S+) ouid=(\S+) ogid=(\S+)</regex>
+    <order>audit.file.name, audit.file.inode, audit.file.mode, audit.uid, audit.gid</order>
 </decoder>
 
 
