@@ -63,7 +63,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         data->labels = labels_parse(path);
 
         if (!data->labels) {
-            merror("%s: ERROR: couldn't parse labels for agent %s (%s).", __local_name, hostname, ip);
+            debug1("%s: INFO: labels for agent %s (%s) not yet available.", __local_name, hostname, ip);
             free(data);
             return NULL;
         }
