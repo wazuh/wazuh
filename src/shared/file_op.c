@@ -20,6 +20,7 @@
 
 /* Vista product information */
 #ifdef WIN32
+
 #ifndef PRODUCT_UNLICENSED
 #define PRODUCT_UNLICENSED 0xABCDABCD
 #endif
@@ -46,6 +47,13 @@
 #endif
 #ifndef PRODUCT_CLUSTER_SERVER_C
 #define PRODUCT_CLUSTER_SERVER_C "Cluster Server Edition "
+#endif
+
+#ifndef PRODUCT_CLUSTER_SERVER_V
+#define PRODUCT_CLUSTER_SERVER_V 0x00000040
+#endif
+#ifndef PRODUCT_CLUSTER_SERVER_V_C
+#define PRODUCT_CLUSTER_SERVER_V_C "Server Hyper Core V "
 #endif
 
 #ifndef PRODUCT_DATACENTER_SERVER
@@ -292,6 +300,77 @@
 #ifndef PRODUCT_WEB_SERVER_CORE_C
 #define PRODUCT_WEB_SERVER_CORE_C "Web Server Edition "
 #endif
+
+#ifndef PRODUCT_ESSENTIALBUSINESS_SERVER_ADDL
+#define PRODUCT_ESSENTIALBUSINESS_SERVER_ADDL 0x0000003C
+#endif
+#ifndef PRODUCT_ESSENTIALBUSINESS_SERVER_ADDL_C
+#define PRODUCT_ESSENTIALBUSINESS_SERVER_ADDL_C "Essential Server Solution Additional "
+#endif
+
+#ifndef PRODUCT_ESSENTIALBUSINESS_SERVER_ADDLSVC
+#define PRODUCT_ESSENTIALBUSINESS_SERVER_ADDLSVC 0x0000003E
+#endif
+#ifndef PRODUCT_ESSENTIALBUSINESS_SERVER_ADDLSVC_C
+#define PRODUCT_ESSENTIALBUSINESS_SERVER_ADDLSVC_C "Essential Server Solution Additional SVC "
+#endif
+
+#ifndef PRODUCT_ESSENTIALBUSINESS_SERVER_MGMT
+#define PRODUCT_ESSENTIALBUSINESS_SERVER_MGMT 0x0000003B
+#endif
+#ifndef PRODUCT_ESSENTIALBUSINESS_SERVER_MGMT_C
+#define PRODUCT_ESSENTIALBUSINESS_SERVER_MGMT_C "Essential Server Solution Management "
+#endif
+
+#ifndef PRODUCT_ESSENTIALBUSINESS_SERVER_MGMTSVC
+#define PRODUCT_ESSENTIALBUSINESS_SERVER_MGMTSVC 0x0000003D
+#endif
+#ifndef PRODUCT_ESSENTIALBUSINESS_SERVER_MGMTSVC_C
+#define PRODUCT_ESSENTIALBUSINESS_SERVER_MGMTSVC_C "Essential Server Solution Management SVC "
+#endif
+
+#ifndef PRODUCT_HOME_PREMIUM_SERVER
+#define PRODUCT_HOME_PREMIUM_SERVER 0x00000022
+#endif
+#ifndef PRODUCT_HOME_PREMIUM_SERVER_C
+#define PRODUCT_HOME_PREMIUM_SERVER_C "Home Server 2011 "
+#endif
+
+#ifndef PRODUCT_HYPERV
+#define PRODUCT_HYPERV 0x0000002A
+#endif
+#ifndef PRODUCT_HYPERV_C
+#define PRODUCT_HYPERV_C "Hyper-V Server "
+#endif
+
+#ifndef PRODUCT_MULTIPOINT_PREMIUM_SERVER
+#define PRODUCT_MULTIPOINT_PREMIUM_SERVER 0x0000004D
+#endif
+#ifndef PRODUCT_MULTIPOINT_PREMIUM_SERVER_C
+#define PRODUCT_MULTIPOINT_PREMIUM_SERVER_C "MultiPoint Server Premium (full installation) "
+#endif
+
+#ifndef PRODUCT_MULTIPOINT_STANDARD_SERVER
+#define PRODUCT_MULTIPOINT_STANDARD_SERVER 0x0000004C
+#endif
+#ifndef PRODUCT_MULTIPOINT_STANDARD_SERVER_C
+#define PRODUCT_MULTIPOINT_STANDARD_SERVER_C "MultiPoint Server Standard (full installation) "
+#endif
+
+#ifndef PRODUCT_STANDARD_SERVER_SOLUTIONS
+#define PRODUCT_STANDARD_SERVER_SOLUTIONS 0x00000034
+#endif
+#ifndef PRODUCT_STANDARD_SERVER_SOLUTIONS_C
+#define PRODUCT_STANDARD_SERVER_SOLUTIONS_C "Server Solutions Premium "
+#endif
+
+#ifndef PRODUCT_STORAGE_WORKGROUP_SERVER_CORE
+#define PRODUCT_STORAGE_WORKGROUP_SERVER_CORE 0x0000002D
+#endif
+#ifndef PRODUCT_STORAGE_WORKGROUP_SERVER_CORE_C
+#define PRODUCT_STORAGE_WORKGROUP_SERVER_CORE_C "Storage Server Workgroup (core installation) "
+#endif
+
 #endif /* WIN32 */
 
 #ifdef WIN32
@@ -856,7 +935,9 @@ int checkVista()
             strstr(m_uname, "Vista") ||
             strstr(m_uname, "Windows 7") ||
             strstr(m_uname, "Windows 8") ||
-            strstr(m_uname, "Windows Server 2012")) {
+            strstr(m_uname, "Windows 10") ||
+            strstr(m_uname, "Windows Server 2012") ||
+            strstr(m_uname, "Windows Server 2016")) {
         isVista = 1;
         verbose("%s: INFO: System is Vista or newer (%s).",
                 __local_name, m_uname);
@@ -1134,6 +1215,11 @@ char *getuname()
     int ret_size = OS_SIZE_1024 - 2;
     char *ret = NULL;
     char os_v[128 + 1];
+    FILE *cmd_output;
+    char *command;
+    size_t buf_tam = 100;
+    char read_buff[buf_tam];
+    int add_infoEx = 1;
 
     typedef void (WINAPI * PGNSI)(LPSYSTEM_INFO);
     typedef BOOL (WINAPI * PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
@@ -1163,7 +1249,7 @@ char *getuname()
     switch (osvi.dwPlatformId) {
         /* Test for the Windows NT product family */
         case VER_PLATFORM_WIN32_NT:
-            if (osvi.dwMajorVersion == 6) {
+            if (osvi.dwMajorVersion == 6 && (osvi.dwMinorVersion == 0 || osvi.dwMinorVersion == 1) ) {
                 if (osvi.dwMinorVersion == 0) {
                     if (osvi.wProductType == VER_NT_WORKSTATION ) {
                         strncat(ret, "Microsoft Windows Vista ", ret_size - 1);
@@ -1176,18 +1262,6 @@ char *getuname()
                     } else {
                         strncat(ret, "Microsoft Windows Server 2008 R2 ", ret_size - 1);
                     }
-                } else if (osvi.dwMinorVersion == 2) {
-                    if (osvi.wProductType == VER_NT_WORKSTATION ) {
-                        strncat(ret, "Microsoft Windows 8 ", ret_size - 1);
-                    } else {
-                        strncat(ret, "Microsoft Windows Server 2012 ", ret_size - 1);
-                    }
-                } else if (osvi.dwMinorVersion == 3) {
-                    if (osvi.wProductType == VER_NT_WORKSTATION ) {
-                        strncat(ret, "Microsoft Windows 8.1 ", ret_size - 1);
-                    } else {
-                        strncat(ret, "Microsoft Windows Server 2012 R2 ", ret_size - 1);
-                    }
                 }
 
                 ret_size -= strlen(ret) + 1;
@@ -1195,10 +1269,13 @@ char *getuname()
 
                 /* Get product version */
                 pGPI = (PGPI) GetProcAddress(
-                           GetModuleHandle(TEXT("kernel32.dll")),
-                           "GetProductInfo");
+                              GetModuleHandle(TEXT("kernel32.dll")),
+                              "GetProductInfo");
 
-                pGPI( 6, 0, 0, 0, &dwType);
+                if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 0)
+                    pGPI( 6, 0, 0, 0, &dwType);
+                else
+                    pGPI( 6, 1, 0, 0, &dwType);
 
                 switch (dwType) {
                     case PRODUCT_UNLICENSED:
@@ -1318,9 +1395,33 @@ char *getuname()
                     case PRODUCT_WEB_SERVER_CORE:
                         strncat(ret, PRODUCT_WEB_SERVER_CORE_C, ret_size - 1);
                         break;
+
+                }
+                ret_size -= strlen(ret) + 1;
+
+            } else if (osvi.dwMajorVersion == 6 && (osvi.dwMinorVersion == 2 || osvi.dwMinorVersion == 3)) {
+                command = "wmic os get caption";
+                char *end;
+                cmd_output = popen(command, "r");
+                if (!cmd_output) {
+                    verbose("%s: ERROR: Unable to execute command: '%s'.", ARGV0, command);
+                }
+                if (strncmp(fgets(read_buff, buf_tam, cmd_output),"Caption",7) == 0) {
+                    if (!fgets(read_buff, buf_tam, cmd_output)){
+                        verbose("%s: ERROR: Can't get Version.", ARGV0);
+                        strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
+                    }
+                    else if (end = strpbrk(read_buff,"\r\n"), end) {
+                        *end = '\0';
+                        strncat(ret, read_buff, ret_size - 1);
+                    }else
+                        strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
                 }
 
+                pclose(cmd_output);
+                add_infoEx = 0;
                 ret_size -= strlen(ret) + 1;
+
             } else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2) {
                 pGNSI = (PGNSI) GetProcAddress(
                             GetModuleHandle("kernel32.dll"),
@@ -1361,127 +1462,128 @@ char *getuname()
             }
 
             /* Test for specific product on Windows NT 4.0 SP6 and later */
-            if (bOsVersionInfoEx) {
-                /* Test for the workstation type */
-                if (osvi.wProductType == VER_NT_WORKSTATION &&
-                        si.wProcessorArchitecture != PROCESSOR_ARCHITECTURE_AMD64) {
-                    if ( osvi.dwMajorVersion == 4 ) {
-                        strncat(ret, "Workstation 4.0 ", ret_size - 1);
-                    } else if ( osvi.wSuiteMask & VER_SUITE_PERSONAL ) {
-                        strncat(ret, "Home Edition ", ret_size - 1);
-                    } else {
-                        strncat(ret, "Professional ", ret_size - 1);
+            if (add_infoEx){
+                if (bOsVersionInfoEx) {
+                    /* Test for the workstation type */
+                    if (osvi.wProductType == VER_NT_WORKSTATION &&
+                            si.wProcessorArchitecture != PROCESSOR_ARCHITECTURE_AMD64) {
+                        if ( osvi.dwMajorVersion == 4 ) {
+                            strncat(ret, "Workstation 4.0 ", ret_size - 1);
+                        } else if ( osvi.wSuiteMask & VER_SUITE_PERSONAL ) {
+                            strncat(ret, "Home Edition ", ret_size - 1);
+                        } else {
+                            strncat(ret, "Professional ", ret_size - 1);
+                        }
+
+                        /* Fix size */
+                        ret_size -= strlen(ret) + 1;
                     }
 
-                    /* Fix size */
-                    ret_size -= strlen(ret) + 1;
-                }
+                    /* Test for the server type */
+                    else if ( osvi.wProductType == VER_NT_SERVER ||
+                              osvi.wProductType == VER_NT_DOMAIN_CONTROLLER ) {
+                        if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2) {
+                            if (si.wProcessorArchitecture ==
+                                    PROCESSOR_ARCHITECTURE_IA64 ) {
+                                if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
+                                    strncat(ret,
+                                            "Datacenter Edition for Itanium-based Systems ",
+                                            ret_size - 1);
+                                else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
+                                    strncat(ret,
+                                            "Enterprise Edition for Itanium-based Systems ",
+                                            ret_size - 1);
 
-                /* Test for the server type */
-                else if ( osvi.wProductType == VER_NT_SERVER ||
-                          osvi.wProductType == VER_NT_DOMAIN_CONTROLLER ) {
-                    if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2) {
-                        if (si.wProcessorArchitecture ==
-                                PROCESSOR_ARCHITECTURE_IA64 ) {
-                            if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
-                                strncat(ret,
-                                        "Datacenter Edition for Itanium-based Systems ",
-                                        ret_size - 1);
-                            else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
-                                strncat(ret,
-                                        "Enterprise Edition for Itanium-based Systems ",
-                                        ret_size - 1);
+                                ret_size -= strlen(ret) + 1;
+                            } else if ( si.wProcessorArchitecture ==
+                                        PROCESSOR_ARCHITECTURE_AMD64 ) {
+                                if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
+                                    strncat(ret, "Datacenter x64 Edition ",
+                                            ret_size - 1 );
+                                else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
+                                    strncat(ret, "Enterprise x64 Edition ",
+                                            ret_size - 1 );
+                                else
+                                    strncat(ret, "Standard x64 Edition ",
+                                            ret_size - 1 );
 
-                            ret_size -= strlen(ret) + 1;
-                        } else if ( si.wProcessorArchitecture ==
-                                    PROCESSOR_ARCHITECTURE_AMD64 ) {
-                            if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
-                                strncat(ret, "Datacenter x64 Edition ",
-                                        ret_size - 1 );
-                            else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
-                                strncat(ret, "Enterprise x64 Edition ",
-                                        ret_size - 1 );
-                            else
-                                strncat(ret, "Standard x64 Edition ",
-                                        ret_size - 1 );
-
-                            ret_size -= strlen(ret) + 1;
-                        } else {
-                            if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
-                                strncat(ret, "Datacenter Edition ",
-                                        ret_size - 1 );
-                            else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE ) {
-                                strncat(ret, "Enterprise Edition ", ret_size - 1);
-                            } else if ( osvi.wSuiteMask == VER_SUITE_BLADE ) {
-                                strncat(ret, "Web Edition ", ret_size - 1 );
+                                ret_size -= strlen(ret) + 1;
                             } else {
-                                strncat(ret, "Standard Edition ", ret_size - 1);
+                                if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
+                                    strncat(ret, "Datacenter Edition ",
+                                            ret_size - 1 );
+                                else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE ) {
+                                    strncat(ret, "Enterprise Edition ", ret_size - 1);
+                                } else if ( osvi.wSuiteMask == VER_SUITE_BLADE ) {
+                                    strncat(ret, "Web Edition ", ret_size - 1 );
+                                } else {
+                                    strncat(ret, "Standard Edition ", ret_size - 1);
+                                }
+
+                                ret_size -= strlen(ret) + 1;
+                            }
+                        } else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 0) {
+                            if ( osvi.wSuiteMask & VER_SUITE_DATACENTER ) {
+                                strncat(ret, "Datacenter Server ", ret_size - 1);
+                            } else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE ) {
+                                strncat(ret, "Advanced Server ", ret_size - 1 );
+                            } else {
+                                strncat(ret, "Server ", ret_size - 1);
+                            }
+
+                            ret_size -= strlen(ret) + 1;
+                        } else if (osvi.dwMajorVersion <= 4) { /* Windows NT 4.0 */
+                            if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
+                                strncat(ret, "Server 4.0, Enterprise Edition ",
+                                        ret_size - 1 );
+                            else {
+                                strncat(ret, "Server 4.0 ", ret_size - 1);
                             }
 
                             ret_size -= strlen(ret) + 1;
                         }
-                    } else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 0) {
-                        if ( osvi.wSuiteMask & VER_SUITE_DATACENTER ) {
-                            strncat(ret, "Datacenter Server ", ret_size - 1);
-                        } else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE ) {
-                            strncat(ret, "Advanced Server ", ret_size - 1 );
-                        } else {
-                            strncat(ret, "Server ", ret_size - 1);
-                        }
+                    }
+                }
+                /* Test for specific product on Windows NT 4.0 SP5 and earlier */
+                else {
+                    HKEY hKey;
+                    char szProductType[81];
+                    DWORD dwBufLen = 80;
+                    LONG lRet;
 
-                        ret_size -= strlen(ret) + 1;
-                    } else if (osvi.dwMajorVersion <= 4) { /* Windows NT 4.0 */
-                        if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
-                            strncat(ret, "Server 4.0, Enterprise Edition ",
-                                    ret_size - 1 );
-                        else {
-                            strncat(ret, "Server 4.0 ", ret_size - 1);
-                        }
+                    lRet = RegOpenKeyEx( HKEY_LOCAL_MACHINE,
+                                         "SYSTEM\\CurrentControlSet\\Control\\ProductOptions",
+                                         0, KEY_QUERY_VALUE, &hKey );
+                    if (lRet == ERROR_SUCCESS) {
+                        char __wv[32];
 
-                        ret_size -= strlen(ret) + 1;
+                        lRet = RegQueryValueEx( hKey, "ProductType", NULL, NULL,
+                                                (LPBYTE) szProductType, &dwBufLen);
+                        RegCloseKey( hKey );
+
+                        if ((lRet == ERROR_SUCCESS) && (dwBufLen < 80) ) {
+                            if (lstrcmpi( "WINNT", szProductType) == 0 ) {
+                                strncat(ret, "Workstation ", ret_size - 1);
+                            } else if (lstrcmpi( "LANMANNT", szProductType) == 0 ) {
+                                strncat(ret, "Server ", ret_size - 1);
+                            } else if (lstrcmpi( "SERVERNT", szProductType) == 0 ) {
+                                strncat(ret, "Advanced Server " , ret_size - 1);
+                            }
+
+                            ret_size -= strlen(ret) + 1;
+
+                            memset(__wv, '\0', 32);
+                            snprintf(__wv, 31,
+                                     "%d.%d ",
+                                     (int)osvi.dwMajorVersion,
+                                     (int)osvi.dwMinorVersion);
+
+                            strncat(ret, __wv, ret_size - 1);
+                            ret_size -= strlen(__wv) + 1;
+                        }
                     }
                 }
             }
-            /* Test for specific product on Windows NT 4.0 SP5 and earlier */
-            else {
-                HKEY hKey;
-                char szProductType[81];
-                DWORD dwBufLen = 80;
-                LONG lRet;
-
-                lRet = RegOpenKeyEx( HKEY_LOCAL_MACHINE,
-                                     "SYSTEM\\CurrentControlSet\\Control\\ProductOptions",
-                                     0, KEY_QUERY_VALUE, &hKey );
-                if (lRet == ERROR_SUCCESS) {
-                    char __wv[32];
-
-                    lRet = RegQueryValueEx( hKey, "ProductType", NULL, NULL,
-                                            (LPBYTE) szProductType, &dwBufLen);
-                    RegCloseKey( hKey );
-
-                    if ((lRet == ERROR_SUCCESS) && (dwBufLen < 80) ) {
-                        if (lstrcmpi( "WINNT", szProductType) == 0 ) {
-                            strncat(ret, "Workstation ", ret_size - 1);
-                        } else if (lstrcmpi( "LANMANNT", szProductType) == 0 ) {
-                            strncat(ret, "Server ", ret_size - 1);
-                        } else if (lstrcmpi( "SERVERNT", szProductType) == 0 ) {
-                            strncat(ret, "Advanced Server " , ret_size - 1);
-                        }
-
-                        ret_size -= strlen(ret) + 1;
-
-                        memset(__wv, '\0', 32);
-                        snprintf(__wv, 31,
-                                 "%d.%d ",
-                                 (int)osvi.dwMajorVersion,
-                                 (int)osvi.dwMinorVersion);
-
-                        strncat(ret, __wv, ret_size - 1);
-                        ret_size -= strlen(__wv) + 1;
-                    }
-                }
-            }
-
             /* Display service pack (if any) and build number */
             if ( osvi.dwMajorVersion == 4 &&
                     lstrcmpi( osvi.szCSDVersion, "Service Pack 6" ) == 0 ) {
@@ -1506,6 +1608,30 @@ char *getuname()
                 strncat(ret, __wp, ret_size - 1);
                 ret_size -= strlen(__wp) + 1;
                 RegCloseKey( hKey );
+            } else if (osvi.dwMajorVersion == 6 && (osvi.dwMinorVersion == 2 || osvi.dwMinorVersion == 3)) {
+                char __wp[64];
+                memset(__wp, '\0', 64);
+                command = "wmic os get BuildNumber";
+                cmd_output = popen(command, "r");
+                if (!cmd_output) {
+                    verbose("%s: ERROR: Unable to execute command: '%s'.", ARGV0, command);
+                    snprintf(__wp, 63, "(Build %s)", "desc");
+                }
+                if (strncmp(fgets(read_buff, buf_tam, cmd_output),"BuildNumber",11) == 0) {
+                    if (!fgets(read_buff, buf_tam, cmd_output)){
+                        verbose("%s: ERROR: Can't get BuildNumber.", ARGV0);
+                        snprintf(__wp, 63, "(Build %s)", "desc");
+                    }
+                    else {
+                        snprintf(__wp, 63, "(Build %i)", atoi(strtok(read_buff, " ")));
+                    }
+                }
+
+                pclose(cmd_output);
+
+                strncat(ret, __wp, ret_size - 1);
+                ret_size -= strlen(__wp) + 1;
+
             } else {
                 char __wp[64];
 
