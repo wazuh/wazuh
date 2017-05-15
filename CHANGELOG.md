@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fixed wrong queries to get last Syscheck and Rootcheck date.
+- Prevent Logcollector keep-alives from being stored on archives.json.
 
 ## [v2.0.1]
 
