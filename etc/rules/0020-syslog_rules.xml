@@ -27,7 +27,7 @@
     <description>Unknown problem somewhere in the system.</description>
   </rule>
 
-  <rule id="1003" level="13" maxsize="1025">
+  <rule id="1003" level="13" maxsize="1025" noalert="1">
     <description>Non standard syslog message (size too large).</description>
   </rule>
 
