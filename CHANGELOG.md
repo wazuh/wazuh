@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed wrong queries to get last Syscheck and Rootcheck date.
 - Prevent Logcollector keep-alives from being stored on archives.json.
+- Fixed length of random message within keep-alives.
 
 ## [v2.0.1]
 

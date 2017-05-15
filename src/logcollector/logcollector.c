@@ -28,8 +28,11 @@ static char *rand_keepalive_str(char *dst, int size)
                                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                "0123456789"
                                "!@#$%^&*()_+-=;'[],./?";
+    int i;
+    int len;
     srandom_init();
-    int i, len = os_random() % (size - 10);
+    len = os_random() % (size - 10);
+    len = len >= 0 ? len : -len;
 
     strncpy(dst, "--MARK--: ", 12);
     for ( i = 10; i < len; ++i ) {
