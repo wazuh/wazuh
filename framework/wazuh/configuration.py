@@ -476,17 +476,3 @@ def get_file_conf(filename, group_id=None, type_conf=None):
             data = _rcl2json(file_path)
 
     return data
-
-
-def get_group_files(group_id=None):
-
-    group_path = common.shared_path
-    if group_id:
-        if not Agent.group_exists(group_id):
-            raise WazuhException(1710, group_id)
-        group_path = "{0}/{1}".format(common.shared_path, group_id)
-
-    if not os_path.exists(group_path):
-        raise WazuhException(1013, group_path)
-
-    return listdir(group_path)

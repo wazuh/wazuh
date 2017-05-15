@@ -899,6 +899,52 @@ class Agent:
         return data
 
     @staticmethod
+    def get_group_files(group_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
+        """
+        Gets the group files.
+
+        :param group_id: Group ID.
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+
+        group_path = common.shared_path
+        if group_id:
+            if not Agent.group_exists(group_id):
+                raise WazuhException(1710, group_id)
+            group_path = "{0}/{1}".format(common.shared_path, group_id)
+
+        if not path.exists(group_path):
+            raise WazuhException(1013, group_path)
+
+        data = []
+        for entry in listdir(group_path):
+            item = {}
+            item['filename'] = entry
+            with open("{0}/{1}".format(group_path, entry), 'rb') as f:
+                item['hash'] = md5(f.read()).hexdigest()
+            data.append(item)
+
+        # ar.conf
+        ar_path = "{0}/ar.conf".format(common.shared_path, entry)
+        with open(ar_path, 'rb') as f:
+            hash_ar = md5(f.read()).hexdigest()
+        data.append({'filename': "../ar.conf", 'hash': hash_ar})
+
+        if search:
+            data = search_array(data, search['value'], search['negation'])
+
+        if sort:
+            data = sort_array(data, sort['fields'], sort['order'])
+        else:
+            data = sort_array(data, ["filename"])
+
+        return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+
+    @staticmethod
     def set_group(agent_id, group_id, force=False):
         """
         Assings a group to an agent.

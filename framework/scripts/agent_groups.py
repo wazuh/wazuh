@@ -16,7 +16,6 @@ try:
     from wazuh import Wazuh
     from wazuh.agent import Agent
     from wazuh.exception import WazuhException
-    from wazuh.configuration import get_group_files
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
@@ -66,9 +65,17 @@ def show_agents_with_group(group_id):
 
 
 def show_group_files(group_id):
-    print("Files for group '{0}':".format(group_id))
-    for f in get_group_files(group_id):
-        print("  {0}".format(f))
+    data = Agent.get_group_files(group_id)
+    print("{0} files for '{1}' group:".format(data['totalItems'], group_id))
+
+    longest_name = 0
+    for item in data['items']:
+        if len(item['filename']) > longest_name:
+            longest_name = len(item['filename'])
+
+    for item in data['items']:
+        spaces = longest_name - len(item['filename']) + 2
+        print("  {0}{1}[{2}]".format(item['filename'], spaces*' ', item['hash']))
 
 
 def remove_group(agent_id, quiet=False):
