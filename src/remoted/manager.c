@@ -575,8 +575,6 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
     /* Should never leave this loop */
     while (1) {
-
-
         /* Lock mutex */
         if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
             merror(MUTEX_ERROR, ARGV0);
@@ -619,16 +617,16 @@ void *update_shared_files(__attribute__((unused)) void *none) {
     while (1) {
         time_t _ctime = time(0);
 
-        /* Every NOTIFY * 30 minutes, re-read the files
+        /* Every NOTIFY seconds, re-read the files
          * If something changed, notify all agents
          */
 
-        if ((_ctime - _stime) > (NOTIFY_TIME * 30)) {
+        if ((_ctime - _stime) > (NOTIFY_TIME)) {
             c_files();
             _stime = _ctime;
         }
 
-        sleep(60);
+        sleep(1);
     }
 
     return NULL;

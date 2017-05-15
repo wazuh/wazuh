@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Increased TCP listening socket backlog.
 - Changed Windows agent UI panel to show revision number instead of installation date.
 - Group every decoded field (static and dynamic fields) into a data object for JSON alerts.
+- Reload shared files by Remoted every 10 minutes.
 
 ### Fixed
 
