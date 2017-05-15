@@ -976,6 +976,10 @@ class Agent:
         :return: Confirmation message.
         """
 
+        agent_id = agent_id.zfill(3)
+        if agent_id == "000":
+            raise WazuhException(1703)
+
         # Check if agent exists
         if not force:
             Agent(agent_id).get_basic_information()
