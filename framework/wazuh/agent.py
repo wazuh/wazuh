@@ -767,11 +767,32 @@ class Agent:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
 
+        # Connect DB
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+        query = "SELECT {0} FROM agent WHERE `group` = :group_id"
+
+        # Group names
         data = []
         for entry in listdir(common.shared_path):
+            item = {}
+
             full_entry = path.join(common.shared_path, entry)
-            if path.isdir(full_entry):
-                data.append(entry)
+            if not path.isdir(full_entry):
+                continue
+
+            item['name'] = entry
+
+            # Group count
+            request = {'group_id': item['name']}
+            conn.execute(query.format('COUNT(*)'), request)
+            item['count'] = conn.fetch()[0]
+
+            data.append(item)
+
 
         if search:
             data = search_array(data, search['value'], search['negation'])
@@ -779,7 +800,7 @@ class Agent:
         if sort:
             data = sort_array(data, sort['fields'], sort['order'])
         else:
-            data = sort_array(data)
+            data = sort_array(data, ['name'])
 
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 

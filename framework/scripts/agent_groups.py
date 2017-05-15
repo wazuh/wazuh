@@ -43,7 +43,7 @@ def show_groups():
 
     print("Groups ({0}):".format(groups_data['totalItems']))
     for g in groups_data['items']:
-        print("  {0}".format(g))
+        print("  {0} ({1})".format(g['name'], g['count']))
 
 
 def show_group(agent_id):
