@@ -688,7 +688,7 @@ main()
     fi
 
     # Initial message
-    echo " $NAME $VERSION ${installscript} - http://www.wazuh.com"
+    echo " $NAME $VERSION (Rev. $REVISION) ${installscript} - http://www.wazuh.com"
     catMsg "0x101-initial"
     echo ""
     echo "  - $system: $UNAME (${DIST_NAME} ${DIST_VER}.${DIST_SUBVER})"
