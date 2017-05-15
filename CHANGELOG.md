@@ -1,6 +1,41 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v2.0.1]
+
+### Changed
+
+- Changed random data generator for a secure OS-provided generator.
+- Changed Windows installer file name (depending on version).
+- Linux distro detection using standard os-release file.
+- Changed some URLs to documentation.
+- Disable synchronization with SQLite databases for Syscheck by default.
+- Minor changes at Rootcheck formatter for JSON alerts.
+- Added debugging messages to Integrator logs.
+- Show agent ID when possible on logs about incorrectly formatted messages.
+- Use default maximum inotify event queue size.
+- Show remote IP on encoding format errors when unencrypting messages.
+
+### Fixed
+
+- Fixed resource leaks at rules configuration parsing.
+- Fixed memory leaks at rules parser.
+- Fixed memory leaks at XML decoders parser.
+- Fixed TOCTOU condition when removing directories recursively.
+- Fixed insecure temporary file creation for old POSIX specifications.
+- Fixed missing agentless devices identification at JSON alerts.
+- Fixed FIM timestamp and file name issue at SQLite database.
+- Fixed cryptographic context acquirement on Windows agents.
+- Fixed debug mode for Analysisd.
+- Fixed bad exclusion of BTRFS filesystem by Rootcheck.
+- Fixed compile errors on macOS.
+- Fixed option -V for Integrator.
+- Exclude symbolic links to directories when sending FIM diffs (by Stephan Joerrens).
+- Fixed daemon list for service reloading at ossec-control.
+- Fixed socket waiting issue on Windows agents.
+- Fixed PCI_DSS definitions grouping issue at Rootcheck controls.
+
+
 ## [v2.0]
 
 ### Added
