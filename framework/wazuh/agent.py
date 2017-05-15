@@ -355,6 +355,8 @@ class Agent:
         if id:
             id = id.zfill(3)
 
+        ip = ip.lower()
+
         if key and len(key) < 64:
             raise WazuhException(1709)
 
@@ -385,7 +387,7 @@ class Agent:
                     raise WazuhException(1708, id)
                 if name == line_data[1]:
                     raise WazuhException(1705, name)
-                if ip.lower() != 'any' and ip == line_data[2]:
+                if ip != 'any' and ip == line_data[2]:
                     if force < 0:
                         raise WazuhException(1706, ip)
                     else:
