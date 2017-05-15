@@ -966,6 +966,36 @@ class Agent:
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
     @staticmethod
+    def create_group(group_id):
+        """
+        Creates a group.
+
+        :param group_id: Group ID.
+        :return: Confirmation message.
+        """
+
+        msg = "Group '{0}' already exists.".format(group_id)
+
+        if group_id.lower() != "default":
+            ossec_uid = getpwnam("ossec").pw_uid
+            ossec_gid = getgrnam("ossec").gr_gid
+
+            # Create group in /etc/shared
+            group_path = "{0}/{1}".format(common.shared_path, group_id)
+            group_def_path = "{0}/default".format(common.shared_path)
+            try:
+                if not path.exists(group_path):
+                    copytree(group_def_path, group_path)
+                    chown_r(group_path, ossec_uid, ossec_gid)
+                    chmod_r(group_path, 0o660)
+                    chmod(group_path, 0o770)
+                    msg = "Group '{0}' created.".format(group_id)
+            except Exception as e:
+                raise WazuhException(1005, str(e))
+
+        return msg
+
+    @staticmethod
     def set_group(agent_id, group_id, force=False):
         """
         Assings a group to an agent.
@@ -988,7 +1018,7 @@ class Agent:
             ossec_uid = getpwnam("ossec").pw_uid
             ossec_gid = getgrnam("ossec").gr_gid
 
-            # Create group in /queue/agent-groups
+            # Assign group in /queue/agent-groups
             agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
             try:
                 new_file = False if path.exists(agent_group_path) else True
@@ -1004,18 +1034,7 @@ class Agent:
                 raise WazuhException(1005, str(e))
 
             # Create group in /etc/shared
-            group_path = "{0}/{1}".format(common.shared_path, group_id)
-            group_def_path = "{0}/default".format(common.shared_path)
-            try:
-                if not path.exists(group_path):
-                    copytree(group_def_path, group_path)
-                    chown_r(group_path, ossec_uid, ossec_gid)
-                    chmod_r(group_path, 0o660)
-                    chmod(group_path, 0o770)
-
-            except Exception as e:
-                raise WazuhException(1005, str(e))
-
+            Agent.create_group(group_id)
 
         else:
             Agent.remove_group(agent_id)
