@@ -23,9 +23,9 @@ system="システム"
 user="ユーザ"
 host="ホスト"
 hitanyorabort="続けるには ENTER を押してください．また，Ctrl-C で中止します．"
-whattoinstall="どの種類のインストールを選択しますか (server，agent，local または help)?"
-serverchose="Server インストールを選択しました"
-clientchose="Agent(client) インストールを選択しました"
+whattoinstall="どの種類のインストールを選択しますか (manager，agent，local または help)?"
+serverchose="Manager (server) インストールを選択しました"
+clientchose="Agent (client) インストールを選択しました"
 localchose="Local インストールを選択しました"
 
 # Part 2

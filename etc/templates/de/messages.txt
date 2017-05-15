@@ -22,9 +22,9 @@ system="System"
 user="User"
 host="Host"
 hitanyorabort="Drücken Sie eine Taste zum fortfahren oder Ctrl-C zum abbrechen"
-whattoinstall="Welche Art der Installation möchten Sie starten (server,agent,lokal oder hilfe)?"
-serverchose="Server installation ausgewählt"
-clientchose="Agent(client) installation ausgewählt"
+whattoinstall="Welche Art der Installation möchten Sie starten (manager, agent, lokal oder hilfe)?"
+serverchose="Manager (server) installation ausgewählt"
+clientchose="Agent (client) installation ausgewählt"
 localchose="Lokale installation ausgewählt"
 
 # Part 2

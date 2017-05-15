@@ -21,9 +21,9 @@ system="系统类型"
 user="用户"
 host="主机"
 hitanyorabort="按 ENTER 继续或 Ctrl-C 退出."
-whattoinstall="您希望哪一种安装 (server, agent, local or help)?"
-serverchose="选择了 Server 类型的安装"
-clientchose="选择了 Agent(client) 类型的安装"
+whattoinstall="您希望哪一种安装 (manager, agent, local or help)?"
+serverchose="选择了 Manager (server) 类型的安装"
+clientchose="选择了 Agent (client) 类型的安装"
 localchose="选择了 Local 类型的安装"
 
 # Part 2

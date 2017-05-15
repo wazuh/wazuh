@@ -21,9 +21,9 @@ system="System"
 user="Użytkownik"
 host="Host"
 hitanyorabort="Wciśnij ENTER aby kontynuować lub Ctrl-C aby przerwać."
-whattoinstall="Wybierz rodzaj instalacji (serwer, agent, lokalnie or pomoc)?"
-serverchose="Wybrana instalacja: serwer"
-clientchose="Wybrana instalacja: agent(klient)"
+whattoinstall="Wybierz rodzaj instalacji (manager, agent, lokalnie or pomoc)?"
+serverchose="Wybrana instalacja: manager (serwer)"
+clientchose="Wybrana instalacja: agent (klient)"
 localchose="Wybrana instalacja: lokalnie"
 
 # Część 2

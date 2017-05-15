@@ -785,14 +785,14 @@ main()
                     catMsg "0x102-installhelp"
                 ;;
 
-                ${server}|${serverm})
+                ${server}|${serverm}|"manager"|"m")
                     echo ""
                     echo "  - ${serverchose}."
                     INSTYPE="server"
                     break;
                 ;;
 
-                ${agent}|${agentm})
+                ${agent}|${agentm}|"a")
                     echo ""
                     echo "  - ${clientchose}."
                     INSTYPE="agent"
