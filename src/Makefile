@@ -365,6 +365,8 @@ install-agent: install-common
 	install -m 0750 -o root -g 0 agent-auth ${PREFIX}/bin
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
+	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
+	install -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
 
 install-local: install-server-generic
 
@@ -436,8 +438,6 @@ else
 endif
 endif
 
-	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
-	install -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
@@ -463,6 +463,7 @@ install-server-generic: install-common
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
+	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rootcheck
 	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
 
 	install -m 0750 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
@@ -496,6 +497,7 @@ install-server-generic: install-common
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
 	install -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
+	install -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/rootcheck
 	install -m 0660 -o root -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
 
 	$(MAKE) -C ../framework install
