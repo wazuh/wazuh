@@ -16,7 +16,7 @@ from base64 import b64encode
 from shutil import copyfile, move, copytree
 from time import time
 from platform import platform
-from os import remove, chown, chmod, path, makedirs, rename, urandom
+from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir
 from pwd import getpwnam
 from grp import getgrnam
 
@@ -689,7 +689,7 @@ class Agent:
         return remove_agent
 
     @staticmethod
-    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_all_groups_sql(offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Gets the existing groups.
 
@@ -756,7 +756,35 @@ class Agent:
         return data
 
     @staticmethod
-    def group_exists(group_id):
+    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None):
+        """
+        Gets the existing groups.
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+
+        data = []
+        for entry in listdir(common.shared_path):
+            full_entry = path.join(common.shared_path, entry)
+            if path.isdir(full_entry):
+                data.append(entry)
+
+        if search:
+            data = search_array(data, search['value'], search['negation'])
+
+        if sort:
+            data = sort_array(data, sort['fields'], sort['order'])
+        else:
+            data = sort_array(data)
+
+        return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+
+    @staticmethod
+    def group_exists_sql(group_id):
         """
         Checks if the group exists
 
@@ -781,6 +809,20 @@ class Agent:
                 return True
             else:
                 return False
+
+    @staticmethod
+    def group_exists(group_id):
+        """
+        Checks if the group exists
+
+        :param group_id: Group ID.
+        :return: True if group exists, False otherwise
+        """
+
+        if path.exists("{0}/{1}".format(common.shared_path, group_id)):
+            return True
+        else:
+            return False
 
     @staticmethod
     def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None):

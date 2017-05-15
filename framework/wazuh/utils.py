@@ -88,14 +88,11 @@ def cut_array(array, offset, limit):
     :return: cut array.
     """
 
-    if not array:
+    if not array or limit == 0 or limit == None:
         return array
 
     offset = int(offset)
     limit = int(limit)
-
-    if limit == 0:
-        return array
 
     if offset < 0 or offset >= len(array):
         raise WazuhException(1400)
