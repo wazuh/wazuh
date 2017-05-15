@@ -1,6 +1,27 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.0.0]
+
+### Added
+
+- Labels configuration for agents to show data on alerts.
+- Added group property for agents to customize shared files set.
+- Send shared files to multiple agents in parallel.
+- New decoder plugin for logs in JSON format with dynamic fields definition.
+- Brought framework from API to Wazuh project.
+
+### Changed
+
+- Increased shared file delivery speed when using TCP.
+- Increased TCP listening socket backlog.
+- Changed Windows agent UI panel to show revision number instead of installation date.
+- Group every decoded field (static and dynamic fields) into a data object for JSON alerts.
+
+### Fixed
+
+- Fixed wrong queries to get last Syscheck and Rootcheck date.
+
 ## [v2.0.1]
 
 ### Changed
