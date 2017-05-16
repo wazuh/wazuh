@@ -499,13 +499,13 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             if (strcmp(tmp_sum, md5) != 0) {
-                debug1("%s: DEBUG: Sending file '%s' to agent '%s'.", ARGV0, SHAREDCFG_FILENAME, agent_id);
+                debug1("%s: DEBUG: Sending file '%s/%s' to agent '%s'.", ARGV0, group, SHAREDCFG_FILENAME, agent_id);
 
                 if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum) < 0) {
                     merror(SHARED_ERROR, ARGV0, SHAREDCFG_FILENAME, agent_id);
                 }
 
-                debug2("%s: DEBUG: End sending file '%s' to agent '%s'.", ARGV0, SHAREDCFG_FILENAME, agent_id);
+                debug2("%s: DEBUG: End sending file '%s/%s' to agent '%s'.", ARGV0, group, SHAREDCFG_FILENAME, agent_id);
             }
 
             return;
@@ -540,7 +540,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
         if ((f_sum[i]->mark == 1) ||
                 (f_sum[i]->mark == 0)) {
 
-            debug1("%s: Sending file '%s' to agent.", ARGV0, f_sum[i]->name);
+            debug1("%s: Sending file '%s/%s' to agent '%s'.", ARGV0, group, f_sum[i]->name, agent_id);
             if (send_file_toagent(agent_id, group, f_sum[i]->name, f_sum[i]->sum) < 0) {
                 merror(SHARED_ERROR, ARGV0, f_sum[i]->name, agent_id);
             }
