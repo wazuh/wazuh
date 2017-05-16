@@ -365,7 +365,6 @@ install-agent: install-common
 	install -m 0750 -o root -g 0 agent-auth ${PREFIX}/bin
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
-	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
 	install -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
 
 install-local: install-server-generic
@@ -438,6 +437,7 @@ else
 endif
 endif
 
+	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
