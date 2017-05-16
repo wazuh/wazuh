@@ -1013,6 +1013,9 @@ class Agent:
         if group_id.lower() == "default":
             raise WazuhException(1712)
 
+        if not Agent.group_exists(group_id):
+            raise WazuhException(1710, group_id)
+
         ids = []
 
         # Remove agent group
