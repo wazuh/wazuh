@@ -980,24 +980,24 @@ class Agent:
         :return: Confirmation message.
         """
 
-        msg = "Group '{0}' already exists.".format(group_id)
+        group_path = "{0}/{1}".format(common.shared_path, group_id)
 
-        if group_id.lower() != "default":
-            ossec_uid = getpwnam("ossec").pw_uid
-            ossec_gid = getgrnam("ossec").gr_gid
+        if group_id.lower() == "default" or path.exists(group_path):
+            raise WazuhException(1711, group_id)
 
-            # Create group in /etc/shared
-            group_path = "{0}/{1}".format(common.shared_path, group_id)
-            group_def_path = "{0}/default".format(common.shared_path)
-            try:
-                if not path.exists(group_path):
-                    copytree(group_def_path, group_path)
-                    chown_r(group_path, ossec_uid, ossec_gid)
-                    chmod_r(group_path, 0o660)
-                    chmod(group_path, 0o770)
-                    msg = "Group '{0}' created.".format(group_id)
-            except Exception as e:
-                raise WazuhException(1005, str(e))
+        ossec_uid = getpwnam("ossec").pw_uid
+        ossec_gid = getgrnam("ossec").gr_gid
+
+        # Create group in /etc/shared
+        group_def_path = "{0}/default".format(common.shared_path)
+        try:
+            copytree(group_def_path, group_path)
+            chown_r(group_path, ossec_uid, ossec_gid)
+            chmod_r(group_path, 0o660)
+            chmod(group_path, 0o770)
+            msg = "Group '{0}' created.".format(group_id)
+        except Exception as e:
+            raise WazuhException(1005, str(e))
 
         return msg
 
@@ -1009,6 +1009,9 @@ class Agent:
         :param group_id: Group ID.
         :return: Confirmation message.
         """
+
+        if group_id.lower() == "default":
+            raise WazuhException(1712)
 
         ids = []
 
@@ -1070,7 +1073,7 @@ class Agent:
             Agent.create_group(group_id)
 
         else:
-            Agent.remove_group(agent_id)
+            Agent.unset_group(agent_id)
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 

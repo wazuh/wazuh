@@ -70,6 +70,8 @@ class WazuhException(Exception):
         1708: 'There is an agent with the same ID',
         1709: 'Too short key size (<64)',
         1710: 'The group does not exist',
+        1711: 'The group already exists',
+        1712: 'Default group is not removable',
         # Manager:
 
         # Database:
