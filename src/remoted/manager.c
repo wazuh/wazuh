@@ -210,7 +210,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         snprintf(file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, entry->d_name);
 
         if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
-            merror("%s: Error accessing file '%s'", ARGV0, file);
+            merror("%s: ERROR: Accessing file '%s'", ARGV0, file);
             continue;
         }
 
@@ -227,7 +227,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     OS_MoveFile(merged_tmp, merged);
 
     if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-        merror("%s: Error accessing file '%s'", ARGV0, merged);
+        merror("%s: ERROR: Accessing file '%s'", ARGV0, merged);
         f_sum[0]->sum[0] = '\0';
     }
 
@@ -289,7 +289,7 @@ static void c_files()
             merror(MUTEX_ERROR, ARGV0);
         }
 
-        merror("%s: Error opening directory: '%s': %s",
+        merror("%s: ERROR: Opening directory: '%s': %s",
                ARGV0,
                SHAREDCFG_DIR,
                strerror(errno));
@@ -442,7 +442,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             merror(MUTEX_ERROR, ARGV0);
         }
 
-        merror(ARGV0 ": No such group '%s' for agent '%s'",
+        merror(ARGV0 ": ERROR: No such group '%s' for agent '%s'",
                group,
                agent_id);
         return;
@@ -458,7 +458,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         msg = strchr(msg, '\n');
         if (!msg) {
-            merror("%s: Invalid message from agent ID '%s' (strchr \\n)",
+            merror("%s: ERROR: Invalid message from agent ID '%s' (strchr \\n)",
                    ARGV0,
                    agent_id);
             break;
@@ -475,7 +475,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         file = strchr(file, ' ');
         if (!file) {
-            merror("%s: Invalid message from agent ID '%s' (strchr ' ')",
+            merror("%s: ERROR: Invalid message from agent ID '%s' (strchr ' ')",
                    ARGV0,
                    agent_id);
             break;
@@ -540,7 +540,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
         if ((f_sum[i]->mark == 1) ||
                 (f_sum[i]->mark == 0)) {
 
-            debug1("%s: Sending file '%s/%s' to agent '%s'.", ARGV0, group, f_sum[i]->name, agent_id);
+            debug1("%s: DEBUG: Sending file '%s/%s' to agent '%s'.", ARGV0, group, f_sum[i]->name, agent_id);
             if (send_file_toagent(agent_id, group, f_sum[i]->name, f_sum[i]->sum) < 0) {
                 merror(SHARED_ERROR, ARGV0, f_sum[i]->name, agent_id);
             }
