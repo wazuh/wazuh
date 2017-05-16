@@ -34,6 +34,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global shared_path
     shared_path = "{0}/etc/shared".format(ossec_path)
 
+    global backup_path
+    backup_path = "{0}/backup".format(ossec_path)
+
     global ruleset_rules_path
     ruleset_rules_path = '{0}/rules'.format(ruleset_path)
 

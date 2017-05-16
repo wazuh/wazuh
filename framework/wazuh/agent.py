@@ -19,6 +19,7 @@ from platform import platform
 from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir
 from pwd import getpwnam
 from grp import getgrnam
+from time import time
 
 class Agent:
     """
@@ -311,7 +312,7 @@ class Agent:
             # Create backup directory
             # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
             date_part = date.today().strftime('%Y/%b/%d')
-            main_agent_backup_dir = '{0}/backup/agents/{1}/{2}-{3}-{4}'.format(common.ossec_path, date_part, self.id, self.name, self.ip)
+            main_agent_backup_dir = '{0}/agents/{1}/{2}-{3}-{4}'.format(common.backup_path, date_part, self.id, self.name, self.ip)
             agent_backup_dir = main_agent_backup_dir
 
             not_agent_dir = True
@@ -1001,9 +1002,36 @@ class Agent:
         return msg
 
     @staticmethod
+    def remove_group(group_id):
+        """
+        Remove the group in every agent.
+
+        :param group_id: Group ID.
+        :return: Confirmation message.
+        """
+
+        ids = []
+
+        # Remove agent group
+        agents = Agent.get_agent_group(group_id=group_id, limit=None)
+        for agent in agents['items']:
+            Agent.unset_group(agent['id'])
+            ids.append(agent['id'])
+
+        # Remove group directory
+        group_path = "{0}/{1}".format(common.shared_path, group_id)
+        group_backup = "{0}/groups/{1}_{2}".format(common.backup_path, group_id, int(time()))
+        if path.exists(group_path):
+            move(group_path, group_backup)
+
+        msg = "Group '{0}' removed.".format(group_id)
+
+        return {'msg': msg, 'affected_agents': ids}
+
+    @staticmethod
     def set_group(agent_id, group_id, force=False):
         """
-        Assings a group to an agent.
+        Set a group to an agent.
 
         :param agent_id: Agent ID.
         :param group_id: Group ID.
@@ -1044,12 +1072,12 @@ class Agent:
         else:
             Agent.remove_group(agent_id)
 
-        return "Group '{0}' assigned to agent '{1}'.".format(group_id, agent_id)
+        return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
     @staticmethod
-    def remove_group(agent_id, force=False):
+    def unset_group(agent_id, force=False):
         """
-        Remove the agent group. The group will be 'default'.
+        Unset the agent group. The group will be 'default'.
 
         :param agent_id: Agent ID.
         :param force: No check if agent exists
@@ -1064,25 +1092,4 @@ class Agent:
         if path.exists(agent_group_path):
             remove(agent_group_path)
 
-        return "Group removed. Current group for agent '{0}': 'default'.".format(agent_id)
-
-    @staticmethod
-    def remove_group_in_every_agent(group_id):
-        """
-        Remove the group in every agent.
-
-        :param group_id: Group ID.
-        :return: Confirmation message.
-        """
-
-        ids = []
-
-        # Get agents with group
-        agents = Agent.get_agent_group(group_id=group_id, limit=None)
-        for agent in agents['items']:
-            Agent.remove_group(agent['id'])
-            ids.append(agent['id'])
-
-        msg = "Group '{0}' removed.".format(group_id)
-
-        return {'msg': msg, 'affected_agents': ids}
+        return "Group unset. Current group for agent '{0}': 'default'.".format(agent_id)

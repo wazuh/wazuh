@@ -78,30 +78,30 @@ def show_group_files(group_id):
         print("  {0}{1}[{2}]".format(item['filename'], spaces*' ', item['hash']))
 
 
-def remove_group(agent_id, quiet=False):
+def unset_group(agent_id, quiet=False):
     ans = 'n'
     if not quiet:
-         ans = get_stdin("Do you want to remove the current group of agent '{0}'? [y/N]: ".format(agent_id))
+         ans = get_stdin("Do you want to unset the current group of agent '{0}'? [y/N]: ".format(agent_id))
     else:
         ans = 'y'
 
     if ans.lower() == 'y':
-        msg = Agent.remove_group(agent_id)
+        msg = Agent.unset_group(agent_id)
     else:
         msg = "Cancelled."
 
     print(msg)
 
 
-def remove_group_all_agents(group_id, quiet=False):
+def remove_group(group_id, quiet=False):
     ans = 'n'
     if not quiet:
-         ans = get_stdin("Do you want to remove the '{0}' group of every agent? [y/N]: ".format(group_id))
+         ans = get_stdin("Do you want to remove the '{0}' group? [y/N]: ".format(group_id))
     else:
         ans = 'y'
 
     if ans.lower() == 'y':
-        data = Agent.remove_group_in_every_agent(group_id)
+        data = Agent.remove_group(group_id)
         msg = data['msg']
         msg += "\nAffected agents: {0}.".format(', '.join(data['affected_agents']))
     else:
@@ -134,11 +134,12 @@ def usage():
     ./agent_groups.py -l -g group_id                        # List agents in group
     ./agent_groups.py -c -g group_id                        # List configuration files in group
 
-    ./agent_groups.py -a -i agent_id -g group_id [-q]       # Assign group to agent
+    ./agent_groups.py -a -i agent_id -g group_id [-q]       # Set agent group
+    ./agent_groups.py -r -i agent_id [-q]                   # Unset agent group
     ./agent_groups.py -s -i agent_id                        # Show group of agent
 
-    ./agent_groups.py -r -g group_id [-q]                   # Remove the group in every agent
-    ./agent_groups.py -r -i agent_id [-q]                   # Remove the current group of the agent
+    ./agent_groups.py -r -g group_id [-q]                   # Remove the group
+
 
     Params:
     \t-l, --list
@@ -238,9 +239,9 @@ def main():
     # -r (-g group_id | -i agent_id) [-q]
     elif arguments['remove-group']:
         if arguments['agent-id']:
-            remove_group(arguments['agent-id'], arguments['quiet'])
+            unset_group(arguments['agent-id'], arguments['quiet'])
         elif arguments['group']:
-            remove_group_all_agents(arguments['group'], arguments['quiet'])
+            remove_group(arguments['group'], arguments['quiet'])
         else:
             invalid_option("Missing agent ID or group.")
     else:
