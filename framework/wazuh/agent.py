@@ -47,7 +47,8 @@ class Agent:
         self.lastKeepAlive = None
         self.status = None
         self.key = None
-        self.sharedSum = None
+        self.configSum = None
+        self.mergedSum = None
         self.os_family = None
         self.group = None
 
@@ -82,7 +83,7 @@ class Agent:
         return str(self.to_dict())
 
     def to_dict(self):
-        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os, 'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive, 'status': self.status, 'key': self.key, 'sharedSum': self.sharedSum, 'os_family': self.os_family, 'group': self.group }
+        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os, 'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive, 'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum, 'os_family': self.os_family, 'group': self.group }
         return dictionary
 
     @staticmethod
@@ -117,7 +118,7 @@ class Agent:
         query = "SELECT {0} FROM agent WHERE id = :id"
         request = {'id': self.id}
 
-        select = ["id", "name", "ip", "key", "os", "version", "date_add", "last_keepalive", "shared_sum", "`group`"]
+        select = ["id", "name", "ip", "key", "os", "version", "date_add", "last_keepalive", "config_sum", "merged_sum", "`group`"]
 
         conn.execute(query.format(','.join(select)), request)
 
@@ -153,9 +154,11 @@ class Agent:
             else:
                 self.lastKeepAlive = 0
             if tuple[8] != None:
-                self.sharedSum = tuple[8]
+                self.configSum = tuple[8]
             if tuple[9] != None:
-                self.group = tuple[9]
+                self.mergedSum = tuple[9]
+            if tuple[10] != None:
+                self.group = tuple[10]
 
             if self.id != "000":
                 self.status = Agent.calculate_status(self.lastKeepAlive)
@@ -194,8 +197,10 @@ class Agent:
             info['lastKeepAlive'] = self.lastKeepAlive
         if self.status:
             info['status'] = self.status
-        if self.sharedSum:
-            info['sharedSum'] = self.sharedSum
+        if self.configSum:
+            info['configSum'] = self.configSum
+        if self.mergedSum:
+            info['mergedSum'] = self.mergedSum
         #if self.key:
         #    info['key'] = self.key
         if self.group:

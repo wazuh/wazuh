@@ -14,7 +14,7 @@
 
 static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key, date_add, `group`) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?);";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os = ?, version = ?, shared_sum = ? WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os = ?, version = ?, config_sum = ?, merged_sum = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
@@ -84,7 +84,7 @@ int wdb_update_agent_name(int id, const char *name) {
 }
 
 /* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_version(int id, const char *os, const char *version, const char *shared_sum) {
+int wdb_update_agent_version(int id, const char *os, const char *version, const char *config_sum, const char *merged_sum) {
     int result = 0;
     sqlite3_stmt *stmt;
 
@@ -98,8 +98,9 @@ int wdb_update_agent_version(int id, const char *os, const char *version, const 
 
     sqlite3_bind_text(stmt, 1, os, -1, NULL);
     sqlite3_bind_text(stmt, 2, version, -1, NULL);
-    sqlite3_bind_text(stmt, 3, shared_sum, -1, NULL);
-    sqlite3_bind_int(stmt, 4, id);
+    sqlite3_bind_text(stmt, 3, config_sum, -1, NULL);
+    sqlite3_bind_text(stmt, 4, merged_sum, -1, NULL);
+    sqlite3_bind_int(stmt, 5, id);
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);

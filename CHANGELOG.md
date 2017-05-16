@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Send shared files to multiple agents in parallel.
 - New decoder plugin for logs in JSON format with dynamic fields definition.
 - Brought framework from API to Wazuh project.
+- Show merged files MD5 checksum by agent_control and framework.
 
 ### Changed
 

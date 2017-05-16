@@ -54,7 +54,6 @@ static pthread_cond_t awake_mutex = PTHREAD_COND_INITIALIZER;
 void save_controlmsg(unsigned int agentid, char *r_msg)
 {
     char msg_ack[OS_FLSIZE + 1];
-    char *begin_shared;
     char *end;
     pending_data_t *data;
 
@@ -77,10 +76,8 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         /* Clean uname and shared files (remove random string) */
 
         if ((r_msg = strchr(r_msg, '\n'))) {
-            /* Forward to shared files sums (pass labeled data) */
-            for (r_msg++; (*r_msg == '\"' || *r_msg == '!') && (end = strchr(r_msg, '\n')); r_msg = end + 1);
             /* Forward to random string (pass shared files) */
-            for (begin_shared = r_msg; (end = strchr(r_msg, '\n')); r_msg = end + 1);
+            for (r_msg++; (end = strchr(r_msg, '\n')); r_msg = end + 1);
             *r_msg = '\0';
         } else {
             merror("%s: WARN: Invalid message from agent id: '%d'(uname)",
@@ -157,8 +154,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         /* Write uname to the file */
 
         if ((fp = fopen(data->keep_alive, "w"))) {
-            *begin_shared = '\0';
-            fprintf(fp, "%s\n", uname);
+            fprintf(fp, "%s", uname);
             fclose(fp);
         } else {
             merror(FOPEN_ERROR, ARGV0, data->keep_alive, errno, strerror(errno));

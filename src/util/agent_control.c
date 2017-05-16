@@ -401,13 +401,14 @@ int main(int argc, char **argv)
         if (!csv_output && !json_output) {
             printf("   Operating system:    %s\n", agt_info->os);
             printf("   Client version:      %s\n", agt_info->version);
+            printf("   Shared file hash:    %s\n", agt_info->merged_sum);
             printf("   Last keep alive:     %s\n\n", agt_info->last_keepalive);
 
             if (end_time) {
                 printf("   Syscheck last started at:  %s\n", agt_info->syscheck_time);
-                printf("   Syscheck last ended   at:  %s\n", agt_info->syscheck_endtime);
+                printf("   Syscheck last ended at:    %s\n", agt_info->syscheck_endtime);
                 printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
-                printf("   Rootcheck last ended   at: %s\n\n", agt_info->rootcheck_endtime);
+                printf("   Rootcheck last ended at:   %s\n\n", agt_info->rootcheck_endtime);
             } else {
                 printf("   Syscheck last started  at: %s\n", agt_info->syscheck_time);
                 printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
@@ -415,11 +416,15 @@ int main(int argc, char **argv)
         }else if(json_output){
                 cJSON_AddStringToObject(json_data, "os", agt_info->os);
                 cJSON_AddStringToObject(json_data, "version", agt_info->version);
+                cJSON_AddStringToObject(json_data, "mergedSum", agt_info->merged_sum);
                 cJSON_AddStringToObject(json_data, "lastKeepAlive", agt_info->last_keepalive);
                 cJSON_AddStringToObject(json_data, "syscheckTime", agt_info->syscheck_time);
-                cJSON_AddStringToObject(json_data, "syscheckEndTime", end_time ? agt_info->syscheck_endtime : "");
                 cJSON_AddStringToObject(json_data, "rootcheckTime", agt_info->rootcheck_time);
-                cJSON_AddStringToObject(json_data, "rootcheckEndTime", end_time ? agt_info->rootcheck_endtime : "");
+
+                if (end_time) {
+                    cJSON_AddStringToObject(json_data, "syscheckEndTime", agt_info->syscheck_endtime);
+                    cJSON_AddStringToObject(json_data, "rootcheckEndTime", agt_info->rootcheck_endtime);
+                }
         } else {
             printf("%s,%s,%s,%s,%s,\n",
                    agt_info->os,

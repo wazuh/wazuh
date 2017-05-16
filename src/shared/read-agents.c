@@ -1121,6 +1121,8 @@ static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_inf
 {
     FILE *fp;
     char buf[1024 + 1];
+    char *merged_sum;
+    char *end;
 
     /* Get server info */
     if (!agent_name) {
@@ -1147,6 +1149,7 @@ static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_inf
     if (!fp) {
         os_strdup("Unknown", agt_info->os);
         os_strdup("Unknown", agt_info->version);
+        os_strdup("Unknown", agt_info->merged_sum);
         return (0);
     }
 
@@ -1169,6 +1172,20 @@ static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_inf
         }
 
         os_strdup(buf, agt_info->os);
+
+        // Search for merged.mg sum
+
+        while (end = NULL, merged_sum = fgets(buf, 1024, fp), merged_sum) {
+            if (*merged_sum != '\"' && *merged_sum != '!' && (end = strchr(merged_sum, ' '), end)) {
+                *end = '\0';
+
+                if (strcmp(end + 1, SHAREDCFG_FILENAME "\n") == 0) {
+                    break;
+                }
+            }
+        }
+
+        os_strdup(end ? merged_sum : "Unknown", agt_info->merged_sum);
         fclose(fp);
 
         return (1);
@@ -1178,6 +1195,7 @@ static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_inf
 
     os_strdup("Unknown", agt_info->os);
     os_strdup("Unknown", agt_info->version);
+    os_strdup("Unknown", agt_info->merged_sum);
 
     return (0);
 }
@@ -1197,15 +1215,6 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip)
 
     /* Allocate memory for the info structure */
     os_calloc(1, sizeof(agent_info), agt_info);
-
-    /* Zero the values */
-    agt_info->rootcheck_time = NULL;
-    agt_info->rootcheck_endtime = NULL;
-    agt_info->syscheck_time = NULL;
-    agt_info->syscheck_endtime = NULL;
-    agt_info->os = NULL;
-    agt_info->version = NULL;
-    agt_info->last_keepalive = NULL;
 
     /* Get information about the OS */
     _get_agent_os(agent_name, agent_ip, agt_info);

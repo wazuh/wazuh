@@ -241,7 +241,7 @@ void wm_sync_manager() {
         if ((ptr = strstr(uname, " - ")))
             *ptr = '\0';
 
-        wdb_update_agent_version(0, uname, __ossec_name " " __version, NULL);
+        wdb_update_agent_version(0, uname, __ossec_name " " __version, NULL, NULL);
         free(uname);
     }
 
@@ -363,10 +363,12 @@ void wm_sync_agents() {
 }
 
 int wm_sync_agentinfo(int id_agent, const char *path) {
-    char buffer[OS_MAXSTR];
+    char header[OS_MAXSTR];
+    char files[OS_MAXSTR];
     char *os;
     char *version;
-    char *shared_sum;
+    char *config_sum;
+    char *merged_sum;
     char *end;
     FILE *fp;
     int result;
@@ -377,37 +379,52 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         return -1;
     }
 
-    os = fgets(buffer, OS_MAXSTR, fp);
-    fclose(fp);
+    os = fgets(header, OS_MAXSTR, fp);
 
     if (!os) {
         merror("%s: ERROR: Couldn't read file '%s'.", WM_DATABASE_LOGTAG, path);
+        fclose(fp);
         return -1;
     }
 
     if (!(version = strstr(os, " - "))) {
         merror("%s: ERROR: Corrupt file '%s'.", WM_DATABASE_LOGTAG, path);
+        fclose(fp);
         return -1;
     }
 
     *version = '\0';
 
-    if ((shared_sum = strstr(version += 3, " / "))) {
-        *shared_sum = '\0';
-        shared_sum += 3;
-        end = strchr(shared_sum, '\n');
+    if ((config_sum = strstr(version += 3, " / "))) {
+        *config_sum = '\0';
+        config_sum += 3;
+        end = strchr(config_sum, '\n');
     } else
         end = strchr(version, '\n');
 
     if (!end) {
         merror("%s: WARN: Corrupt line found parsing '%s' (incomplete). Returning.", WM_DATABASE_LOGTAG, path);
+        fclose(fp);
         return -1;
     }
 
     *end = '\0';
 
-    result = wdb_update_agent_version(id_agent, os, version, shared_sum);
+    // Search for merged.mg sum
+
+    while (end = NULL, merged_sum = fgets(files, OS_MAXSTR, fp), merged_sum) {
+        if (*merged_sum != '\"' && *merged_sum != '!' && (end = strchr(merged_sum, ' '), end)) {
+            *end = '\0';
+
+            if (strcmp(end + 1, SHAREDCFG_FILENAME "\n") == 0) {
+                break;
+            }
+        }
+    }
+
+    result = wdb_update_agent_version(id_agent, os, version, config_sum, end ? merged_sum : NULL);
     debug2("%s: DEBUG: wm_sync_agentinfo(%d): %.3f ms.", WM_DATABASE_LOGTAG, id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+    fclose(fp);
     return result;
 }
 
