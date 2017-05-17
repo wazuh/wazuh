@@ -47,7 +47,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __version       "v3.0.0-alpha2"
+#define __version       "v3.0.0-beta2"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
