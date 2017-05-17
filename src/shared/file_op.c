@@ -1413,6 +1413,11 @@ char *getuname()
                     }
                     else if (end = strpbrk(read_buff,"\r\n"), end) {
                         *end = '\0';
+                        int i = strlen(read_buff) - 1;
+                        while(read_buff[i] == 32){
+                            read_buff[i] = '\0';
+                            i--;
+                        }
                         strncat(ret, read_buff, ret_size - 1);
                     }else
                         strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
@@ -1615,15 +1620,15 @@ char *getuname()
                 cmd_output = popen(command, "r");
                 if (!cmd_output) {
                     verbose("%s: ERROR: Unable to execute command: '%s'.", ARGV0, command);
-                    snprintf(__wp, 63, "(Build %s)", "desc");
+                    snprintf(__wp, 63, " (Build %s)", "desc");
                 }
                 if (strncmp(fgets(read_buff, buf_tam, cmd_output),"BuildNumber",11) == 0) {
                     if (!fgets(read_buff, buf_tam, cmd_output)){
                         verbose("%s: ERROR: Can't get BuildNumber.", ARGV0);
-                        snprintf(__wp, 63, "(Build %s)", "desc");
+                        snprintf(__wp, 63, " (Build %s)", "desc");
                     }
                     else {
-                        snprintf(__wp, 63, "(Build %i)", atoi(strtok(read_buff, " ")));
+                        snprintf(__wp, 63, " (Build %i)", atoi(strtok(read_buff, " ")));
                     }
                 }
 
