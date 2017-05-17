@@ -1073,7 +1073,8 @@ class Agent:
                 raise WazuhException(1005, str(e))
 
             # Create group in /etc/shared
-            Agent.create_group(group_id)
+            if not Agent.group_exists(group_id):
+                Agent.create_group(group_id)
 
         else:
             Agent.unset_group(agent_id)
