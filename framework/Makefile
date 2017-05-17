@@ -15,8 +15,8 @@ INSTALL_DIR  = install -o root -g ${OSSEC_GROUP} -m 0750  -d
 INSTALL_EXEC = install -o root -g ${OSSEC_GROUP} -m 0750
 INSTALL_FILE = install -o root -g ${OSSEC_GROUP} -m 0640
 
-DATABASE     = database
-LIBS         = $(DATABASE)/libsqlite3.so.0
+DATABASE_DIR     = database
+LIBS         = $(DATABASE_DIR)/libsqlite3.so.0
 
 .PHONY: all build install examples clean
 
@@ -39,8 +39,8 @@ examples: install
 
 build: $(LIBS)
 
-$(DATABASE)/libsqlite3.so.0: $(DATABASE)/sqlite3.c
+$(DATABASE_DIR)/libsqlite3.so.0: $(DATABASE_DIR)/sqlite3.c
 	$(CC) $(CFLAGS) $(LFLAGS) -o $@ $^
 
 clean:
-	$(RM_FILE) $(DATABASE)/libsqlite3.so.0
+	$(RM_FILE) $(DATABASE_DIR)/libsqlite3.so.0
