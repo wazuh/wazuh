@@ -277,3 +277,75 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
     return (1);
 }
 
+/* Send alerts via syslog from JSON alert
+ * Returns 1 on success or 0 on error
+ */
+int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config) {
+    cJSON * rule = cJSON_GetObjectItem(json_data, "rule");
+    cJSON * groups;
+    cJSON * item;
+    char * string;
+    int i;
+
+    mdebug2("OS_Alert_SendSyslog_JSON()");
+
+    /* Look if location is set */
+
+    if (syslog_config->location && !(item = cJSON_GetObjectItem(json_data, "location"), item && (string = item->valuestring, OSMatch_Execute(string, strlen(string), syslog_config->location)))) {
+        return 0;
+    }
+
+    /* Look for the level */
+
+    if (syslog_config->level && !(item = cJSON_GetObjectItem(rule, "level"), item && item->valueint >= (int)syslog_config->level)) {
+        return 0;
+    }
+
+    /* Look for rule id */
+
+    if (syslog_config->rule_id) {
+
+        // If no such rule or level, give up
+
+        if (!(rule && (item = cJSON_GetObjectItem(rule, "id"), item))) {
+            return 0;
+        }
+
+        for (i = 0; syslog_config->rule_id[i] && (int)syslog_config->rule_id[i] != item->valueint; i++);
+
+        /* If we found, id is going to be a valid rule */
+
+        if (!syslog_config->rule_id[i]) {
+            return (0);
+        }
+    }
+
+    /* Look for the group */
+
+    if (syslog_config->group) {
+        int found = 0;
+
+        if (!(rule && (groups = cJSON_GetObjectItem(json_data, "groups"), groups))) {
+            return 0;
+        }
+
+        cJSON_ArrayForEach(item, groups) {
+            string = item->valuestring;
+
+            if (OSMatch_Execute(string, strlen(string), syslog_config->group)) {
+                found++;
+                break;
+            }
+        }
+
+        if (!found) {
+            return 0;
+        }
+    }
+
+    string = cJSON_PrintUnformatted(json_data);
+    mdebug2("OS_Alert_SendSyslog_JSON(): sending '%s'", string);
+    OS_SendUDPbySize(syslog_config->socket, strlen(string), string);
+    free(string);
+    return 1;
+}

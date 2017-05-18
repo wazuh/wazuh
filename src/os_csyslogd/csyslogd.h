@@ -11,6 +11,7 @@
 #define _CSYSLOGD_H
 
 #include "config/csyslogd-config.h"
+#include "cJSON.h"
 
 #define OS_CSYSLOGD_MAX_TRIES 10
 
@@ -19,8 +20,15 @@
 /* Read syslog config */
 SyslogConfig **OS_ReadSyslogConf(int test_config, const char *cfgfile);
 
-/* Send alerts via syslog */
+/* Send alerts via syslog
+ * Returns 1 on success or 0 on error
+ */
 int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config);
+
+/* Send alerts via syslog from JSON alert
+ * Returns 1 on success or 0 on error
+ */
+int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config);
 
 /* Database inserting main function */
 void OS_CSyslogD(SyslogConfig **syslog_config) __attribute__((noreturn));
@@ -38,4 +46,3 @@ extern char __shost[512];
 extern char __shost_long[512];
 
 #endif /* _CSYSLOGD_H */
-
