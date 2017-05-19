@@ -382,7 +382,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     os = fgets(header, OS_MAXSTR, fp);
 
     if (!os) {
-        merror("%s: ERROR: Couldn't read file '%s'.", WM_DATABASE_LOGTAG, path);
+        debug1("%s: DEBUG: Empty file '%s'.", WM_DATABASE_LOGTAG, path);
         fclose(fp);
         return -1;
     }
