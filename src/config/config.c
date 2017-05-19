@@ -27,23 +27,23 @@ static int read_main_elements(const OS_XML *xml, int modules,
                               void *d2)
 {
     int i = 0;
-    const char *osglobal = "global";                    /* Server Config */
-    const char *osrules = "ruleset";                      /* Server Config */
-    const char *ossyscheck = "syscheck";                /* Agent Config  */
-    const char *osrootcheck = "rootcheck";              /* Agent Config  */
-    const char *osalerts = "alerts";                    /* Server Config */
-    const char *osemailalerts = "email_alerts";         /* Server Config */
-    const char *osdbd = "database_output";              /* Server Config */
-    const char *oscsyslogd = "syslog_output";           /* Server Config */
-    const char *oscagentless = "agentless";             /* Server Config */
-    const char *oslocalfile = "localfile";              /* Agent Config  */
-    const char *osremote = "remote";                    /* Agent Config  */
-    const char *osclient = "client";                    /* Agent Config  */
-    const char *oscommand = "command";                  /* ? Config      */
-    const char *osreports = "reports";                  /* Server Config */
-    const char *osintegratord = "integration";          /* Server Config */
-    const char *osactive_response = "active-response";  /* Agent Config  */
-    const char *oswmodule = "wodle";  /* Wodle - Wazuh Module  */
+    const char *osglobal = "global";                    /* Server Config        */
+    const char *osrules = "ruleset";                    /* Server Config        */
+    const char *ossyscheck = "syscheck";                /* Agent Config         */
+    const char *osrootcheck = "rootcheck";              /* Agent Config         */
+    const char *osalerts = "alerts";                    /* Server Config        */
+    const char *osemailalerts = "email_alerts";         /* Server Config        */
+    const char *osdbd = "database_output";              /* Server Config        */
+    const char *oscsyslogd = "syslog_output";           /* Server Config        */
+    const char *oscagentless = "agentless";             /* Server Config        */
+    const char *oslocalfile = "localfile";              /* Agent Config         */
+    const char *osremote = "remote";                    /* Agent Config         */
+    const char *osclient = "client";                    /* Agent Config         */
+    const char *oscommand = "command";                  /* ? Config             */
+    const char *osreports = "reports";                  /* Server Config        */
+    const char *osintegratord = "integration";          /* Server Config        */
+    const char *osactive_response = "active-response";  /* Agent Config         */
+    const char *oswmodule = "wodle";                    /* Wodle - Wazuh Module */
 
     while (node[i]) {
         XML_NODE chld_node = NULL;

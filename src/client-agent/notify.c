@@ -62,8 +62,8 @@ char *getsharedfiles()
 /* Periodically send notification to server */
 void run_notify()
 {
-    char keep_alive_random[1024];
-    char tmp_msg[OS_SIZE_1024 + 1];
+    char keep_alive_random[KEEPALIVE_SIZE];
+    char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE];
     char *uname;
     char *shared_files;
     os_md5 md5sum;
@@ -117,19 +117,20 @@ void run_notify()
         }
     }
 
-    rand_keepalive_str2(keep_alive_random, 700);
+    rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
 
     /* Create message */
     if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
             (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
-        snprintf(tmp_msg, OS_SIZE_1024, "#!-%s / %s\n%s\n%s",
+        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s\n%s",
                  uname, md5sum, shared_files, keep_alive_random);
     } else {
-        snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s\n%s",
+        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s\n%s",
                  uname, shared_files, keep_alive_random);
     }
 
     /* Send status message */
+    debug2("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
     send_msg(0, tmp_msg);
 
     free(uname);

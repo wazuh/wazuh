@@ -46,7 +46,7 @@ void LogCollectorStart()
     int max_file = 0;
     int f_check = 0;
     time_t curr_time = 0;
-    char keepalive[1024];
+    char keepalive[KEEPALIVE_SIZE];
 
 #ifndef WIN32
     int int_error = 0;
@@ -357,7 +357,7 @@ void LogCollectorStart()
         }
 
         /* Send keep alive message */
-        rand_keepalive_str(keepalive, 700);
+        rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
         SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
 
         /* Zero f_check */
