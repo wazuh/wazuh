@@ -322,6 +322,7 @@ static void c_files()
         os_realloc(groups, (p_size + 2) * sizeof(group_t *), groups);
         os_calloc(1, sizeof(group_t), groups[p_size]);
         groups[p_size]->group = strdup(entry->d_name);
+        groups[p_size + 1] = NULL;
         c_group(entry->d_name, subdir, &groups[p_size]->f_sum);
         closedir(subdir);
         p_size++;
