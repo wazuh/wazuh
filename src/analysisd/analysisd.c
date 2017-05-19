@@ -228,6 +228,10 @@ int main_analysisd(int argc, char **argv)
 
     debug1(READ_CONFIG, ARGV0);
 
+    if (!(Config.alerts_log || Config.jsonout_output)) {
+        ErrorExit(ARGV0 ": ERROR: All alert formats are disabled.");
+    }
+
 
 #ifdef LIBGEOIP_ENABLED
     Config.geoip_jsonout = getDefine_Int("analysisd", "geoip_jsonout", 0, 1);
