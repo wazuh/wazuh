@@ -69,5 +69,24 @@ int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key);
 int load_ca_cert(SSL_CTX *ctx, const char *ca_cert);
 int verify_callback(int ok, X509_STORE_CTX *store);
 
+// Thread for internal server
+void* run_local_server(void *arg);
+
+// Append key to insertion queue
+void add_insert(const keyentry *entry);
+
+// Append key to backup queue
+void add_backup(const keyentry *entry);
+
+// Append key to deletion queue
+void add_remove(const keyentry *entry);
+
+extern int local_sock;
+extern keystore keys;
+extern volatile int write_pending;
+extern volatile int running;
+extern pthread_mutex_t mutex_keys;
+extern pthread_cond_t cond_pending;
+
 #endif /* LIBOPENSSL_ENABLED */
 #endif /* _AUTHD_H */

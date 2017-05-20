@@ -32,8 +32,8 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6);
  * Bind to a specific file, using the "mode" permissions in
  * a Unix Domain socket.
  */
-int OS_BindUnixDomain(const char *path, mode_t mode, int max_msg_size) __attribute__((nonnull));
-int OS_ConnectUnixDomain(const char *path, int max_msg_size) __attribute__((nonnull));
+int OS_BindUnixDomain(const char *path, int type, int max_msg_size) __attribute__((nonnull));
+int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) __attribute__((nonnull));
 int OS_getsocketsize(int ossock);
 
 /* OS_Connect
@@ -86,4 +86,3 @@ int OS_CloseSocket(int socket);
 int OS_SetRecvTimeout(int socket, int seconds);
 
 #endif /* __OS_NET_H */
-

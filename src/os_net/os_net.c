@@ -123,7 +123,7 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6)
 
 #ifndef WIN32
 /* Bind to a Unix domain, using DGRAM sockets */
-int OS_BindUnixDomain(const char *path, mode_t mode, int max_msg_size)
+int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
 {
     int len;
     int ossock = 0;
@@ -136,7 +136,7 @@ int OS_BindUnixDomain(const char *path, mode_t mode, int max_msg_size)
     n_us.sun_family = AF_UNIX;
     strncpy(n_us.sun_path, path, sizeof(n_us.sun_path) - 1);
 
-    if ((ossock = socket(PF_UNIX, SOCK_DGRAM, 0)) < 0) {
+    if ((ossock = socket(PF_UNIX, type, 0)) < 0) {
         return (OS_SOCKTERR);
     }
 
@@ -146,7 +146,12 @@ int OS_BindUnixDomain(const char *path, mode_t mode, int max_msg_size)
     }
 
     /* Change permissions */
-    if (chmod(path, mode) < 0) {
+    if (chmod(path, 0660) < 0) {
+        OS_CloseSocket(ossock);
+        return (OS_SOCKTERR);
+    }
+
+    if (type == SOCK_STREAM && listen(ossock, 128) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
@@ -172,7 +177,7 @@ int OS_BindUnixDomain(const char *path, mode_t mode, int max_msg_size)
 /* Open a client Unix domain socket
  * ("/tmp/lala-socket",0666));
  */
-int OS_ConnectUnixDomain(const char *path, int max_msg_size)
+int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
 {
     int len;
     int ossock = 0;
@@ -185,7 +190,7 @@ int OS_ConnectUnixDomain(const char *path, int max_msg_size)
     /* Set up path */
     strncpy(n_us.sun_path, path, sizeof(n_us.sun_path) - 1);
 
-    if ((ossock = socket(PF_UNIX, SOCK_DGRAM, 0)) < 0) {
+    if ((ossock = socket(PF_UNIX, type, 0)) < 0) {
         return (OS_SOCKTERR);
     }
 
@@ -505,4 +510,3 @@ int OS_SetRecvTimeout(int socket, int seconds)
     struct timeval tv = { seconds, 0 };
     return setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
 }
-

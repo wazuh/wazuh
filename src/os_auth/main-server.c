@@ -50,12 +50,6 @@ static void* run_dispatcher(void *arg);
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
 
-/* Append key to insertion queue */
-static void add_insert(const keyentry *entry);
-
-/* Append key to deletion queue */
-static void add_backup(const keyentry *entry);
-
 /* Signal handler */
 static void handler(int signum);
 
@@ -69,8 +63,9 @@ int validate_host = 0;
 int use_ip_address = 0;
 SSL_CTX *ctx;
 int force_antiquity = -1;
-int m_queue = 0;
-int sock = 0;
+int m_queue = -1;
+int remote_sock = -1;
+int local_sock = -1;
 int save_removed = 1;
 
 keystore keys;
@@ -81,8 +76,10 @@ volatile int write_pending = 0;
 volatile int running = 1;
 struct keynode *queue_insert = NULL;
 struct keynode *queue_backup = NULL;
+struct keynode *queue_remove = NULL;
 struct keynode * volatile *insert_tail;
 struct keynode * volatile *backup_tail;
+struct keynode * volatile *remove_tail;
 
 pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
@@ -196,9 +193,12 @@ int main(int argc, char **argv)
     const char *server_key = NULL;
     char buf[4096 + 1];
     struct sockaddr_in _nc;
+    struct timeval timeout;
     socklen_t _ncl;
     pthread_t thread_dispatcher;
     pthread_t thread_writer;
+    pthread_t thread_local_server;
+    fd_set fdset;
 
     /* Initialize some variables */
     bio_err = 0;
@@ -382,8 +382,8 @@ int main(int argc, char **argv)
     }
 
     /* Connect via TCP */
-    sock = OS_Bindporttcp(port, NULL, 0);
-    if (sock <= 0) {
+    remote_sock = OS_Bindporttcp(port, NULL, 0);
+    if (remote_sock <= 0) {
         merror("%s: Unable to bind to port %d", ARGV0, port);
         exit(1);
     }
@@ -411,6 +411,7 @@ int main(int argc, char **argv)
 
     insert_tail = &queue_insert;
     backup_tail = &queue_backup;
+    remove_tail = &queue_remove;
 
     /* Start working threads */
 
@@ -428,6 +429,11 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
+    if (status = pthread_create(&thread_local_server, NULL, run_local_server, NULL), status != 0) {
+        merror("%s: ERROR: Couldn't create thread: %s", ARGV0, strerror(status));
+        return EXIT_FAILURE;
+    }
+
     /* Create PID files */
     if (CreatePID(ARGV0, getpid()) < 0) {
         ErrorExit(PID_ERROR, ARGV0);
@@ -441,7 +447,25 @@ int main(int argc, char **argv)
         memset(&_nc, 0, sizeof(_nc));
         _ncl = sizeof(_nc);
 
-        if ((client_sock = accept(sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
+        // Wait for socket
+        FD_ZERO(&fdset);
+        FD_SET(remote_sock, &fdset);
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 0;
+
+        switch (select(remote_sock + 1, &fdset, NULL, NULL, &timeout)) {
+        case -1:
+            if (errno != EINTR) {
+                ErrorExit(ARGV0 ": ERROR: at main(): select(): %s", strerror(errno));
+            }
+
+            continue;
+
+        case 0:
+            continue;
+        }
+
+        if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
             pthread_mutex_lock(&mutex_pool);
 
             if (full(pool_i, pool_j)) {
@@ -456,8 +480,10 @@ int main(int argc, char **argv)
 
             pthread_mutex_unlock(&mutex_pool);
         } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
-            merror("%s: ERROR: accept(): %s", ARGV0, strerror(errno));
+            merror("%s: ERROR: at run_local_server(): accept(): %s", ARGV0, strerror(errno));
     }
+
+    close(remote_sock);
 
     /* Join threads */
 
@@ -470,6 +496,7 @@ int main(int argc, char **argv)
 
     pthread_join(thread_dispatcher, NULL);
     pthread_join(thread_writer, NULL);
+    pthread_join(thread_local_server, NULL);
 
     verbose("%s: Exiting...", ARGV0);
     return (0);
@@ -485,9 +512,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *tmpstr;
     double antiquity;
     int acount;
-    char fname[2048 + 1];
-    char response[2048 + 1];
-    char *finalkey;
+    char fname[2048];
+    char response[2048];
     SSL *ssl;
     char *id_exist = NULL;
     char buf[4096 + 1];
@@ -593,9 +619,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             merror("%s: ERROR: Invalid request for new agent from: %s", ARGV0, srcip);
         } else {
             acount = 2;
-            finalkey = NULL;
-            response[2048] = '\0';
-            fname[2048] = '\0';
+            response[2047] = '\0';
+            fname[2047] = '\0';
 
             if (!OS_IsValidName(agentname)) {
                 merror("%s: ERROR: Invalid agent name: %s from %s", ARGV0, agentname, srcip);
@@ -620,7 +645,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip);
 
                     if (force_antiquity >= 0 && (antiquity >= force_antiquity || antiquity < 0)) {
-                        verbose("INFO: Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
+                        verbose(ARGV0 ": INFO: Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
                         add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist);
                     } else {
@@ -673,9 +698,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             /* Add the new agent */
 
-            finalkey = OS_AddNewAgent(&keys, agentname, use_ip_address ? srcip : NULL);
-
-            if (!finalkey) {
+            if (index = OS_AddNewAgent(&keys, agentname, use_ip_address ? srcip : NULL), index < 0) {
                 pthread_mutex_unlock(&mutex_keys);
                 merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
                 snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
@@ -687,8 +710,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 continue;
             }
 
-            snprintf(response, 2048, "OSSEC K:'%s'\n\n", finalkey);
-            verbose("%s: INFO: Agent key generated for %s (requested by %s)", ARGV0, agentname, srcip);
+            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, use_ip_address ? srcip : "any", keys.keyentries[index]->key);
+            verbose("%s: INFO: Agent key generated for '%s' (requested by %s)", ARGV0, agentname, srcip);
             ret = SSL_write(ssl, response, strlen(response));
 
             if (ret < 0) {
@@ -697,8 +720,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 ERR_print_errors_fp(stderr);
                 OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id);
             } else {
-                verbose("%s: INFO: Agent key created for %s (requested by %s)", ARGV0, agentname, srcip);
-
                 /* Add pending key to write */
                 add_insert(keys.keyentries[keys.keysize - 1]);
                 write_pending = 1;
@@ -706,7 +727,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
 
             pthread_mutex_unlock(&mutex_keys);
-            free(finalkey);
         }
 
         SSL_free(ssl);
@@ -714,6 +734,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     }
 
     SSL_CTX_free(ctx);
+    debug1("%s: DEBUG: Dispatch thread finished", ARGV0);
     return NULL;
 }
 
@@ -722,6 +743,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
     keystore *copy_keys;
     struct keynode *copy_insert;
     struct keynode *copy_backup;
+    struct keynode *copy_remove;
     struct keynode *cur;
     struct keynode *next;
     time_t cur_time;
@@ -735,10 +757,13 @@ void* run_writer(__attribute__((unused)) void *arg) {
         copy_keys = OS_DupKeys(&keys);
         copy_insert = queue_insert;
         copy_backup = queue_backup;
+        copy_remove = queue_remove;
         queue_insert = NULL;
         queue_backup = NULL;
+        queue_remove = NULL;
         insert_tail = &queue_insert;
         backup_tail = &queue_backup;
+        remove_tail = &queue_remove;
         write_pending = 0;
         pthread_mutex_unlock(&mutex_keys);
 
@@ -766,12 +791,22 @@ void* run_writer(__attribute__((unused)) void *arg) {
             free(cur->ip);
             free(cur);
         }
+
+        for (cur = copy_remove; cur; cur = next) {
+            next = cur->next;
+            delete_agentinfo(cur->id, cur->name);
+            OS_RemoveCounter(cur->id);
+            OS_RemoveAgentTimestamp(cur->id);
+            free(cur->id);
+            free(cur->name);
+            free(cur);
+        }
     }
 
     return NULL;
 }
 
-/* Append key to insertion queue */
+// Append key to insertion queue
 void add_insert(const keyentry *entry) {
     struct keynode *node;
 
@@ -784,7 +819,7 @@ void add_insert(const keyentry *entry) {
     insert_tail = &node->next;
 }
 
-/* Append key to deletion queue */
+// Append key to backup queue
 void add_backup(const keyentry *entry) {
     struct keynode *node;
 
@@ -797,6 +832,18 @@ void add_backup(const keyentry *entry) {
     backup_tail = &node->next;
 }
 
+// Append key to deletion queue
+void add_remove(const keyentry *entry) {
+    struct keynode *node;
+
+    os_calloc(1, sizeof(struct keynode), node);
+    node->id = strdup(entry->id);
+    node->name = strdup(entry->name);
+
+    (*remove_tail) = node;
+    remove_tail = &node->next;
+}
+
 /* Signal handler */
 static void handler(int signum) {
     switch (signum) {
@@ -805,8 +852,6 @@ static void handler(int signum) {
     case SIGTERM:
         merror(SIGNAL_RECV, ARGV0, signum, strsignal(signum));
         running = 0;
-        close(sock);
-        sock = -1;
         break;
     default:
         merror("%s: ERROR: unknown signal (%d)", ARGV0, signum);

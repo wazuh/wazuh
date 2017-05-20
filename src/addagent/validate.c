@@ -30,7 +30,7 @@ fpos_t fp_pos;
 static uid_t uid = -1;
 static uid_t gid = -1;
 
-char *OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
+int OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
 {
     os_md5 md1;
     os_md5 md2;
@@ -52,11 +52,7 @@ char *OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
     free(muname);
 
     snprintf(key, KEYSIZE, "%s%s", md1, md2);
-    OS_AddKey(keys, id, name, ip ? ip : "any", key);
-
-    os_calloc(2048, sizeof(char), finals);
-    snprintf(finals, 2048, "%s %s %s %s", id, name, ip ? ip : "any", key);
-    return finals;
+    return OS_AddKey(keys, id, name, ip ? ip : "any", key);
 }
 
 int OS_RemoveAgent(const char *u_id) {
