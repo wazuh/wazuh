@@ -9,15 +9,13 @@
 
 #include "shared.h"
 #include "maild.h"
-#include "../external/cJSON/cJSON.h"
+#include <external/cJSON/cJSON.h>
 #ifdef LIBGEOIP_ENABLED
 #include "config/config.h"
 #endif
 
-
 /* Receive a Message on the Mail queue */
-MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
-                      MailConfig *Mail, MailMsg **msg_sms)
+MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg **msg_sms)
 {
     int i = 0, sms_set = 0, donotgroup = 0;
     size_t body_size = OS_MAXSTR - 3, log_size;
@@ -329,18 +327,22 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
     return (mail);
 }
 
-MailMsg *OS_RecvMailQ_JSON(file_queue *fileq,
-                      MailConfig *Mail, MailMsg **msg_sms)
+MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sms)
 {
     int i = 0, sms_set = 0, donotgroup = 0;
     size_t body_size = OS_MAXSTR - 3, log_size;
     char logs[OS_MAXSTR + 1] = "";
-    char extra_data[OS_MAXSTR + 1];
     char *subject_host;
     char *json_str;
 
     MailMsg *mail;
-    cJSON *al_json, *json_object, *json_field;
+    cJSON *al_json;
+    cJSON *json_object;
+    cJSON *json_field;
+    cJSON *location;
+    cJSON *agent;
+    cJSON *agent_name;
+    cJSON *agent_ip;
     cJSON *rule;
     cJSON *mail_flag;
 
@@ -425,28 +427,51 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq,
     }
 
     /* Subject */
-    json_field = cJSON_GetObjectItem(al_json,"location");
-    if (!json_field) {
+
+    if (location = cJSON_GetObjectItem(al_json, "location"), !location) {
         return (NULL);
     }
-    subject_host = strdup(json_field->valuestring);
+
+    if (agent = cJSON_GetObjectItem(al_json, "agent"), !agent) {
+        return (NULL);
+    }
+
+    if (agent_name = cJSON_GetObjectItem(agent, "name"), !agent_name) {
+        return NULL;
+    }
+
+    if (agent_ip = cJSON_GetObjectItem(agent, "ip"), agent_ip) {
+        os_malloc(strlen(agent_name->valuestring) + strlen(agent_ip->valuestring) + strlen(location->valuestring) + 6, subject_host);
+        sprintf(subject_host, "(%s) %s->%s", agent_name->valuestring, agent_ip->valuestring, location->valuestring);
+    } else {
+        os_malloc(strlen(agent_name->valuestring) + strlen(location->valuestring) + 3, subject_host);
+        sprintf(subject_host, "%s->%s", agent_name->valuestring, location->valuestring);
+    }
+
+
 
     unsigned int alert_level = 0;
     char *alert_desc = NULL;
     char *timestamp = NULL;
     unsigned int rule_id = 0;
 
+    if (json_field = cJSON_GetObjectItem(rule,"level"), !json_field) {
+        return NULL;
+    }
+    alert_level = json_field->valueint;
+
+    if (json_field = cJSON_GetObjectItem(rule,"description"), !json_field) {
+        return NULL;
+    }
+    alert_desc = strdup(json_field->valuestring);
+
+    if (json_field = cJSON_GetObjectItem(rule,"id"), !json_field) {
+        return NULL;
+    }
+    rule_id = atoi(json_field->valuestring);
+
     /* We have two subject options - full and normal */
     if (Mail->subject_full) {
-        json_field = cJSON_GetObjectItem(rule,"level");
-        alert_level = json_field->valueint;
-
-        json_field = cJSON_GetObjectItem(rule,"description");
-        alert_desc = strdup(json_field->valuestring);
-
-        json_field = cJSON_GetObjectItem(rule,"id");
-        rule_id = atoi(json_field->valuestring);
-
         /* Option for a clean full subject (without ossec in the name) */
 #ifdef CLEANFULL
         snprintf(mail->subject, SUBJECT_SIZE - 1, MAIL_SUBJECT_FULL2,
@@ -465,12 +490,6 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq,
                  alert_level);
     }
 
-
-    /* Fix subject back */
-    if (subject_host) {
-        *subject_host = '-';
-    }
-
     json_field = cJSON_GetObjectItem(al_json,"timestamp");
     if (!json_field) {
         return (NULL);
@@ -484,7 +503,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq,
              rule_id,
              alert_level,
              alert_desc,
-             extra_data,
+             "",
              logs);
 
     debug2("OS_RecvMailQ: mail->body[%s]", mail->body);
@@ -618,10 +637,5 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq,
 
     /* Clear the memory */
     cJSON_Delete(al_json);
-    cJSON_Delete(json_object);
-    cJSON_Delete(json_field);
-    cJSON_Delete(rule);
-    cJSON_Delete(mail_flag);
-
     return (mail);
 }

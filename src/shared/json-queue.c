@@ -47,6 +47,10 @@ cJSON * jqueue_next(file_queue * queue) {
     char buffer[OS_MAXSTR + 1];
     char *end;
 
+    if (!queue->fp && jqueue_open(queue) < 0) {
+        return NULL;
+    }
+
     if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
         if (end = strchr(buffer, '\n'), end) {
             *end = '\0';

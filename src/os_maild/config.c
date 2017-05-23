@@ -10,12 +10,13 @@
 #include "shared.h"
 #include "maild.h"
 #include "config/config.h"
-
+#include "config/global-config.h"
 
 /* Read the Mail configuration */
 int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
 {
     int modules = 0;
+     _Config global;
 
     modules |= CMAIL;
 
@@ -37,11 +38,19 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
     Mail->gran_format = NULL;
     Mail->groupping = 1;
     Mail->strict_checking = 0;
+    Mail->source = 0;
 #ifdef LIBGEOIP_ENABLED
     Mail->geoip = 0;
 #endif
 
+    memset(&global, 0, sizeof(_Config));
+    global.alerts_log = 1;
+
     if (ReadConfig(modules, cfgfile, NULL, Mail) < 0) {
+        return (OS_INVALID);
+    }
+
+    if (ReadConfig(CGLOBAL, cfgfile, &global, NULL) < 0) {
         return (OS_INVALID);
     }
 
@@ -52,6 +61,14 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
         exit(0);
     }
 
+    if (global.alerts_log) {
+        Mail->source = MAIL_SOURCE_LOGS;
+    } else if (global.jsonout_output) {
+        Mail->source = MAIL_SOURCE_JSON;
+    } else {
+        merror(ARGV0 ": ERROR: All alert formats are disabled.");
+        return OS_INVALID;
+    }
+
     return (0);
 }
-
