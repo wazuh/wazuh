@@ -63,7 +63,6 @@ int validate_host = 0;
 int use_ip_address = 0;
 SSL_CTX *ctx;
 int force_insert = 0;
-int m_queue = -1;
 int remote_sock = -1;
 int local_sock = -1;
 int save_removed = 1;
@@ -401,11 +400,6 @@ int main(int argc, char **argv)
 
     nowChroot();
 
-    /* Queue for sending alerts */
-    if ((m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-        merror("%s: WARN: Can't connect to queue.", ARGV0);
-    }
-
     /* Initialize queues */
 
     insert_tail = &queue_insert;
@@ -646,16 +640,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         pthread_mutex_unlock(&mutex_keys);
                         merror("%s: ERROR: Duplicated IP %s", ARGV0, srcip);
                         snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
-
-                        if (m_queue >= 0) {
-                            char buffer[64];
-                            snprintf(buffer, 64, "ossec: Duplicated IP %s", srcip);
-
-                            if (SendMSG(m_queue, buffer, "ossec-authd", AUTH_MQ) < 0) {
-                                merror("%s: ERROR: Can't send event across socket.", ARGV0);
-                            }
-                        }
-
                         SSL_write(ssl, response, strlen(response));
                         snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
                         SSL_write(ssl, response, strlen(response));
