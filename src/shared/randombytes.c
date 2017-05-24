@@ -36,15 +36,18 @@ void randombytes(void *ptr, size_t length)
     }
 #else
     static int fh = -1;
+    ssize_t ret;
 
-    if (fh >= 0 || (fh = open("/dev/urandom", O_RDONLY)) >= 0 || (fh = open("/dev/random", O_RDONLY)) >= 0) {
-        const ssize_t ret = read(fh, ptr, length);
-        if (ret < 0 || (size_t) ret != length) {
+    if (fh < 0 && (fh = open("/dev/urandom", O_RDONLY), fh < 0 && (fh = open("/dev/random", O_RDONLY), fh < 0))) {
+        failed = 1;
+    } else {
+        ret = read(fh, ptr, length);
+
+        if (ret < 0 || (size_t)ret != length) {
             failed = 1;
         }
-    } else {
-        failed = 1;
     }
+
 #endif
 
     if (failed) {
