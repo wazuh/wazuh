@@ -600,19 +600,24 @@
           "format": "dateOptionalTime"
         },
         "status": {
-          "type": "keyword"
+          "type": "keyword",
+          "doc_values": "true"
         },
         "ip": {
-          "type": "keyword"
+          "type": "keyword",
+          "doc_values": "true"
         },
         "host": {
-          "type": "keyword"
+          "type": "keyword",
+          "doc_values": "true"
         },
         "name": {
-          "type": "keyword"
+          "type": "keyword",
+          "doc_values": "true"
         },
         "id": {
-          "type": "keyword"
+          "type": "keyword",
+          "doc_values": "true"
         }
       }
     }
