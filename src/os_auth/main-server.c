@@ -90,11 +90,12 @@ pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 static void help_authd()
 {
     print_header();
-    print_out("  %s: -[VhdtiF] [-g group] [-D dir] [-p port] [-P] [-v path [-s]] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[VhdtfiF] [-g group] [-D dir] [-p port] [-P] [-v path [-s]] [-x path] [-k path]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
     print_out("    -t          Test configuration.");
+    print_out("    -f          Run in foreground.");
     print_out("    -i          Use client's source IP address instead of any.");
     print_out("    -F          Force insertion: remove old agents with same name or IP.");
     print_out("    -r          Do not keep removed agents (delete).");
@@ -183,6 +184,7 @@ int main(int argc, char **argv)
     int c = 0, test_config = 0, status;
     int use_pass = 0;
     int auto_method = 0;
+    int run_foreground = 0;
     gid_t gid;
     int client_sock = 0, port = DEFAULT_PORT;
     const char *dir  = DEFAULTDIR;
@@ -204,7 +206,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while (c = getopt(argc, argv, "Vdhtig:D:p:v:sx:k:PFar"), c != -1) {
+    while (c = getopt(argc, argv, "Vdhtfig:D:p:v:sx:k:PFar"), c != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -232,6 +234,9 @@ int main(int argc, char **argv)
                 break;
             case 't':
                 test_config = 1;
+                break;
+            case 'f':
+                run_foreground = 1;
                 break;
             case 'P':
                 use_pass = 1;
@@ -288,6 +293,11 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
         ErrorExit(USER_ERROR, ARGV0, "", group);
+    }
+
+    if (!run_foreground) {
+        nowDaemon();
+        goDaemon();
     }
 
     /* Exit here if test config is set */

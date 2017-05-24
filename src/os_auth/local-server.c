@@ -32,17 +32,17 @@ typedef struct error_t {
 } error_t;
 
 static const error_t ERRORS[] = {
-    { 1001, "Internal error" },
-    { 1002, "Parsing JSON input" },
-    { 1003, "No such function" },
-    { 1004, "No such argument" },
-    { 1005, "No such name" },
-    { 1006, "No such IP" },
-    { 1007, "Duplicated IP" },
-    { 1008, "Duplicated name" },
-    { 1009, "Issue generating key" },
-    { 1010, "No such agent ID" },
-    { 1011, "Agent ID not found" }
+    { 9001, "Internal error" },
+    { 9002, "Parsing JSON input" },
+    { 9003, "No such function" },
+    { 9004, "No such argument" },
+    { 9005, "No such name" },
+    { 9006, "No such IP" },
+    { 9007, "Duplicated IP" },
+    { 9008, "Duplicated name" },
+    { 9009, "Issue generating key" },
+    { 9010, "No such agent ID" },
+    { 9011, "Agent ID not found" }
 };
 
 // Dispatch local request
