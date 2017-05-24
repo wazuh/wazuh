@@ -30,28 +30,30 @@ fpos_t fp_pos;
 static uid_t uid = -1;
 static uid_t gid = -1;
 
-int OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
+int OS_AddNewAgent(keystore *keys, const char *name, const char *ip, const char *key)
 {
     os_md5 md1;
     os_md5 md2;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
     char *muname;
-    char *finals;
     char id[9] = { '\0' };
-    char key[KEYSIZE] = { '\0' };
+    char buffer[KEYSIZE] = { '\0' };
 
-    srandom_init();
-    muname = getuname();
     snprintf(id, 9, "%03d", ++keys->id_counter);
 
-    snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, os_random(), muname);
-    snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)os_random());
-    OS_MD5_Str(str1, md1);
-    OS_MD5_Str(str2, md2);
-    free(muname);
+    if (!key) {
+        muname = getuname();
+        snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, os_random(), muname);
+        snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)os_random());
+        OS_MD5_Str(str1, md1);
+        OS_MD5_Str(str2, md2);
+        free(muname);
 
-    snprintf(key, KEYSIZE, "%s%s", md1, md2);
+        snprintf(buffer, KEYSIZE, "%s%s", md1, md2);
+        key = buffer;
+    }
+
     return OS_AddKey(keys, id, name, ip ? ip : "any", key);
 }
 

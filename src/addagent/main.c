@@ -187,6 +187,7 @@ int main(int argc, char **argv)
 
     /* Before chroot */
     srandom_init();
+    getuname();
 
 #ifndef WIN32
     /* Get the group name */

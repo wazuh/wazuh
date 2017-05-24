@@ -49,7 +49,7 @@ static const error_t ERRORS[] = {
 static char* local_dispatch(const char *input);
 
 // Add a new agent
-static cJSON* local_add(const char *name, const char *ip, int force);
+static cJSON* local_add(const char *name, const char *ip, const char *key, int force);
 
 // Remove an agent
 static cJSON* local_remove(const char *id);
@@ -152,6 +152,7 @@ char* local_dispatch(const char *input) {
         cJSON *item;
         char *name;
         char *ip;
+        char *key = NULL;
         int force = 0;
 
         if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
@@ -172,9 +173,9 @@ char* local_dispatch(const char *input) {
         }
 
         ip = item->valuestring;
+        key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
         force = (item = cJSON_GetObjectItem(arguments, "force"), item && cJSON_IsTrue(item)) ? 1 : 0;
-
-        response = local_add(name, ip, force);
+        response = local_add(name, ip, key, force);
     } else if (!strcmp(function->valuestring, "remove")) {
         cJSON *item;
 
@@ -230,7 +231,7 @@ fail:
     return output;
 }
 
-cJSON* local_add(const char *name, const char *ip, int force) {
+cJSON* local_add(const char *name, const char *ip, const char *key, int force) {
     int index;
     char *id_exist;
     cJSON *response;
@@ -270,7 +271,7 @@ cJSON* local_add(const char *name, const char *ip, int force) {
         }
     }
 
-    if (index = OS_AddNewAgent(&keys, name, ip), index < 0) {
+    if (index = OS_AddNewAgent(&keys, name, ip, key), index < 0) {
         ierror = EKEY;
         goto fail;
     }

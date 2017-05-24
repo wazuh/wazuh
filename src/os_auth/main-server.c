@@ -125,16 +125,6 @@ char *__generatetmppass()
     char str1[STR_SIZE +1];
     char *muname = NULL;
 
-    #ifndef WIN32
-        #ifdef __OpenBSD__
-        srandomdev();
-        #else
-        srandom(time(0) + getpid() + getppid());
-        #endif
-    #else
-        srandom(time(0) + getpid());
-    #endif
-
     rand1 = os_random();
     rand2 = os_random();
 
@@ -386,8 +376,9 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    /* Setup random */
+    /* Before chroot */
     srandom_init();
+    getuname();
 
     /* Load ossec uid and gid for creating backups */
     if (OS_LoadUid() < 0) {
@@ -686,7 +677,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             /* Add the new agent */
 
-            if (index = OS_AddNewAgent(&keys, agentname, use_ip_address ? srcip : NULL), index < 0) {
+            if (index = OS_AddNewAgent(&keys, agentname, use_ip_address ? srcip : NULL, NULL), index < 0) {
                 pthread_mutex_unlock(&mutex_keys);
                 merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
                 snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
