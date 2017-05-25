@@ -25,6 +25,7 @@
 #define EKEY        8
 #define ENOID       9
 #define ENOAGENT    10
+#define EDUPID      11
 
 typedef struct error_t {
     int code;
@@ -42,14 +43,15 @@ static const error_t ERRORS[] = {
     { 9008, "Duplicated name" },
     { 9009, "Issue generating key" },
     { 9010, "No such agent ID" },
-    { 9011, "Agent ID not found" }
+    { 9011, "Agent ID not found" },
+    { 9012, "Duplicated ID" }
 };
 
 // Dispatch local request
 static char* local_dispatch(const char *input);
 
 // Add a new agent
-static cJSON* local_add(const char *name, const char *ip, const char *key, int force);
+static cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force);
 
 // Remove an agent
 static cJSON* local_remove(const char *id);
@@ -150,6 +152,7 @@ char* local_dispatch(const char *input) {
 
     if (!strcmp(function->valuestring, "add")) {
         cJSON *item;
+        char *id;
         char *name;
         char *ip;
         char *key = NULL;
@@ -159,6 +162,8 @@ char* local_dispatch(const char *input) {
             ierror = ENOARGUMENT;
             goto fail;
         }
+
+        id = (item = cJSON_GetObjectItem(arguments, "id"), item) ? item->valuestring : NULL;
 
         if (item = cJSON_GetObjectItem(arguments, "name"), !item) {
             ierror = ENONAME;
@@ -175,7 +180,7 @@ char* local_dispatch(const char *input) {
         ip = item->valuestring;
         key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
         force = (item = cJSON_GetObjectItem(arguments, "force"), item && cJSON_IsTrue(item)) ? 1 : 0;
-        response = local_add(name, ip, key, force);
+        response = local_add(id, name, ip, key, force);
     } else if (!strcmp(function->valuestring, "remove")) {
         cJSON *item;
 
@@ -231,7 +236,7 @@ fail:
     return output;
 }
 
-cJSON* local_add(const char *name, const char *ip, const char *key, int force) {
+cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force) {
     int index;
     char *id_exist;
     cJSON *response;
@@ -240,6 +245,13 @@ cJSON* local_add(const char *name, const char *ip, const char *key, int force) {
 
     debug2(ARGV0 ": add(%s)", name);
     pthread_mutex_lock(&mutex_keys);
+
+    // Check for duplicated ID
+
+    if (id && OS_IsAllowedID(&keys, id) >= 0) {
+        ierror = EDUPID;
+        goto fail;
+    }
 
     /* Check for duplicated IP */
 
@@ -271,7 +283,7 @@ cJSON* local_add(const char *name, const char *ip, const char *key, int force) {
         }
     }
 
-    if (index = OS_AddNewAgent(&keys, name, ip, key), index < 0) {
+    if (index = OS_AddNewAgent(&keys, id, name, ip, key), index < 0) {
         ierror = EKEY;
         goto fail;
     }

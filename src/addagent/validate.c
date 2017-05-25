@@ -30,17 +30,20 @@ fpos_t fp_pos;
 static uid_t uid = -1;
 static uid_t gid = -1;
 
-int OS_AddNewAgent(keystore *keys, const char *name, const char *ip, const char *key)
+int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
 {
     os_md5 md1;
     os_md5 md2;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
     char *muname;
-    char id[9] = { '\0' };
+    char _id[9] = { '\0' };
     char buffer[KEYSIZE] = { '\0' };
 
-    snprintf(id, 9, "%03d", ++keys->id_counter);
+    if (!id) {
+        snprintf(_id, 9, "%03d", ++keys->id_counter);
+        id = _id;
+    }
 
     if (!key) {
         muname = getuname();
@@ -49,7 +52,6 @@ int OS_AddNewAgent(keystore *keys, const char *name, const char *ip, const char 
         OS_MD5_Str(str1, md1);
         OS_MD5_Str(str2, md2);
         free(muname);
-
         snprintf(buffer, KEYSIZE, "%s%s", md1, md2);
         key = buffer;
     }

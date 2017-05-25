@@ -677,7 +677,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             /* Add the new agent */
 
-            if (index = OS_AddNewAgent(&keys, agentname, use_ip_address ? srcip : NULL, NULL), index < 0) {
+            if (index = OS_AddNewAgent(&keys, NULL, agentname, use_ip_address ? srcip : NULL, NULL), index < 0) {
                 pthread_mutex_unlock(&mutex_keys);
                 merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
                 snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
