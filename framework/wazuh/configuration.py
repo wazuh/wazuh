@@ -410,7 +410,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     agent_conf += "/{0}".format(agent_conf_name)
 
     if not os_path.exists(agent_conf):
-        raise WazuhException(1013, agent_conf)
+        raise WazuhException(1006, agent_conf)
 
     try:
         # wrap the data
@@ -447,7 +447,7 @@ def get_file_conf(filename, group_id=None, type_conf=None):
         file_path = "{0}/{1}".format(common.shared_path, filename)
 
     if not os_path.exists(file_path):
-        raise WazuhException(1013, file_path)
+        raise WazuhException(1006, file_path)
 
     types = {
         'conf': get_agent_conf,

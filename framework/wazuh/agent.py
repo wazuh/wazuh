@@ -945,7 +945,7 @@ class Agent:
             group_path = "{0}/{1}".format(common.shared_path, group_id)
 
         if not path.exists(group_path):
-            raise WazuhException(1013, group_path)
+            raise WazuhException(1006, group_path)
 
         data = []
         for entry in listdir(group_path):
