@@ -27,9 +27,8 @@ static char *_rkcl_get_value(char *buf, int *type);
 #define RKCL_COND_ALL       0x001
 #define RKCL_COND_ANY       0x002
 #define RKCL_COND_REQ       0x004
-#define RKCL_COND_INV       0x010
-
-
+#define RKCL_COND_NON       0x008
+#define RKCL_COND_INV       0x016
 #ifdef WIN32
 char *_rkcl_getrootdir(char *root_dir, int dir_size)
 {
@@ -172,6 +171,8 @@ static char *_rkcl_get_name(char *buf, char *ref, int *condition)
         *condition |= RKCL_COND_ALL;
     } else if (strcmp(tmp_location, "any") == 0) {
         *condition |= RKCL_COND_ANY;
+    } else if (strcmp(tmp_location, "none") == 0) {
+        *condition |= RKCL_COND_NON;
     } else if (strcmp(tmp_location, "any required") == 0) {
         *condition |= RKCL_COND_ANY;
         *condition |= RKCL_COND_REQ;
@@ -316,7 +317,8 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
     /* Get the real entries */
     do {
         int g_found = 0;
-
+        int not_found = 0;
+        
         debug2("%s: DEBUG: Checking entry: '%s'.", ARGV0, name);
 
         /* Get each value */
@@ -502,6 +504,14 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
                 if (found) {
                     g_found = 1;
                 }
+            } else if (condition & RKCL_COND_NON) {
+                debug2("%s: DEBUG: Condition NON.", ARGV0);
+                if (!found && (not_found != -1)) {
+                    debug2("%s: DEBUG: Condition NON setze not_found=1.", ARGV0);
+                    not_found = 1;
+                } else {
+                    not_found = -1;
+                }
             } else {
                 /* Condition for ALL */
                 debug2("%s: DEBUG: Condition ALL.", ARGV0);
@@ -512,6 +522,10 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
                 }
             }
         } while (value != NULL);
+
+        if (condition & RKCL_COND_NON) {
+           if (not_found == -1){ g_found = 0;} else {g_found = 1;}
+        }
 
         /* Alert if necessary */
         if (g_found == 1) {
@@ -589,4 +603,3 @@ clean_return:
 
     return (1);
 }
-

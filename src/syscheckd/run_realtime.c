@@ -54,7 +54,7 @@ int realtime_checksumfile(const char *file_name)
             return (0);
         }
 
-        if (strcmp(c_sum, buf + 6) != 0) {
+        if (strcmp(c_sum, buf + 8) != 0) {
             char alert_msg[OS_MAXSTR + 1];
 
             alert_msg[OS_MAXSTR] = '\0';
