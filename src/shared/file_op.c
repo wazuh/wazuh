@@ -14,6 +14,7 @@
 
 #ifndef WIN32
 #include <libgen.h>
+#include <regex.h>
 #else
 #include <aclapi.h>
 #endif
@@ -532,7 +533,7 @@ int MergeAppendFile(const char *finalpath, const char *files)
         fclose(finalfp);
 
         if (chmod(finalpath, 0640) < 0) {
-            merror(CHMOD_ERROR, ARGV0, finalpath, errno, strerror(errno));
+            merror(CHMOD_ERROR, __local_name, finalpath, errno, strerror(errno));
             return 0;
         }
 
@@ -708,43 +709,321 @@ int mkstemp_ex(char *tmp_path)
     return (0);
 }
 
-
-/* Get uname. Memory must be freed after use */
-char *getuname()
+static const char *get_unix_version()
 {
-    struct utsname uts_buf;
+    FILE *os_release, *cmd_output, *version_release, *cmd_output_ver;
+    char buff[256];
+    static char string[256];
+    char *tag, *end;
+    char *name = NULL;
+    char *version = NULL;
 
-    if (uname(&uts_buf) >= 0) {
-        char *ret;
+    // Try to open /etc/os-release
+    os_release = fopen("/etc/os-release", "r");
+    // Try to open /usr/lib/os-release
+    if(!os_release) os_release = fopen("/usr/lib/os-release", "r");
 
-        ret = (char *) calloc(256, sizeof(char));
-        if (ret == NULL) {
-            return (NULL);
+    if(os_release){
+        while (fgets(buff, sizeof(buff)- 1, os_release)) {
+            tag = strtok(buff, "=");
+            if (strcmp (tag,"NAME") == 0){
+                name = strtok(NULL, "\n");
+                if (name[0] == '\"' && (end = strchr(++name, '\"'), end)) {
+                    *end = '\0';
+                }
+                name = strdup(name);
+                continue;
+            }
+
+            if (strcmp (tag,"VERSION_ID") == 0){
+                version = strtok(NULL, "\n");
+                if (version[0] == '\"' && (end = strchr(++version, '\"'), end)) {
+                    *end = '\0';
+                }
+                version = strdup(version);
+            }
         }
+        fclose(os_release);
+    }
+    // Linux old distributions without 'os-release' file
+    else {
+        regex_t regexCompiled;
+        regmatch_t match[2];
+        int match_size;
+        // CentOS
+        if (version_release = fopen("/etc/centos-release","r"), version_release){
+            name = strdup("CentOS Linux");
+            static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // Fedora
+        } else if (version_release = fopen("/etc/fedora-release","r"), version_release){
+            name = strdup("Fedora");
+            static const char *pattern = " ([0-9][0-9]*) ";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // RedHat
+        } else if (version_release = fopen("/etc/redhat-release","r"), version_release){
+            static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if (strstr(buff, "CentOS"))
+                    name = strdup("CentOS");
+                else if (strstr(buff, "Fedora"))
+                    name = strdup("Fedora");
+                else
+                    name = strdup("Red Hat Enterprise Linux");
 
-        snprintf(ret, 255, "%s %s %s %s %s - %s %s",
-                 uts_buf.sysname,
-                 uts_buf.nodename,
-                 uts_buf.release,
-                 uts_buf.version,
-                 uts_buf.machine,
-                 __ossec_name, __version);
-
-        return (ret);
-    } else {
-        char *ret;
-        ret = (char *) calloc(256, sizeof(char));
-        if (ret == NULL) {
-            return (NULL);
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // Ubuntu
+        } else if (version_release = fopen("/etc/lsb-release","r"), version_release){
+            name = strdup("Ubuntu");
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                tag = strtok(buff, "=");
+                if (strcmp(tag,"DISTRIB_RELEASE") == 0){
+                    version = strdup(strtok(NULL, "\n"));
+                    break;
+                }
+            }
+        // Gentoo
+        } else if (version_release = fopen("/etc/gentoo-release","r"), version_release){
+            name = strdup("Gentoo");
+            static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // SuSE
+        } else if (version_release = fopen("/etc/SuSE-release","r"), version_release){
+            name = strdup("SuSE Linux");
+            static const char *pattern = ".*VERSION = ([0-9][0-9]*)";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // Arch
+        } else if (version_release = fopen("/etc/arch-release","r"), version_release){
+            name = strdup("Arch Linux");
+            static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // Debian
+        } else if (version_release = fopen("/etc/debian_version","r"), version_release){
+            name = strdup("Debian GNU/Linux");
+            static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // Slackware
+        } else if (version_release = fopen("/etc/slackware-version","r"), version_release){
+            name = strdup("Slackware");
+            static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        } else if (cmd_output = popen("uname", "r"), cmd_output) {
+            if(fgets(buff,sizeof(buff) - 1, cmd_output) == NULL){
+                debug1("%s: ERROR: Can not read from command output (uname).", __local_name);
+                return NULL;
+            }
+            if (strcmp(strtok(buff, "\n"),"Darwin") == 0){ // Mac OS
+                name = strdup("Darwin");
+                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
+                    static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+                    if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                        merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                        return NULL;
+                    }
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        debug1("%s: ERROR: CRITICAL: Can not read from command output (uname -r).", __local_name);
+                        return NULL;
+                    }
+                    if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        version = malloc(match_size +1);
+                        snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    }
+                    pclose(cmd_output_ver);
+                }
+                regfree(&regexCompiled);
+            } else if (strcmp(strtok(buff, "\n"),"SunOS") == 0){ // Sun OS
+                name = strdup("SunOS");
+                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
+                    static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+                    if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                        merror("%s: CRITICAL: Can not compile regular expression..", __local_name);
+                        return NULL;
+                    }
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        debug1("%s: ERROR: Can not read from command output (uname -r).", __local_name);
+                        return NULL;
+                    }
+                    if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        version = malloc(match_size +1);
+                        snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    }
+                    pclose(cmd_output_ver);
+                }
+                regfree(&regexCompiled);
+            } else if (strcmp(strtok(buff, "\n"),"OpenBSD") == 0 ||
+                       strcmp(strtok(buff, "\n"),"NetBSD")  == 0 ||
+                       strcmp(strtok(buff, "\n"),"FreeBSD") == 0 ){ // BSD
+                name = strdup("BSD");
+                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
+                    static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+                    if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                        merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                        return NULL;
+                    }
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        debug1("%s: ERROR: Can not read from command output (uname -r).", __local_name);
+                        return NULL;
+                    }
+                    if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        version = malloc(match_size +1);
+                        snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    }
+                    pclose(cmd_output_ver);
+                }
+                regfree(&regexCompiled);
+            } else if (strcmp(strtok(buff, "\n"),"Linux") == 0){ // Linux undefined
+                name = strdup("Linux");
+            }
+            pclose(cmd_output);
         }
-
-        snprintf(ret, 255, "No system info available -  %s %s",
-                 __ossec_name, __version);
-
-        return (ret);
     }
 
-    return (NULL);
+    if (!name)
+        name = strdup("\0");
+    if (!version)
+        version = strdup("\0");
+
+    if (snprintf (string, 255, "%s: %s", name, version) >= 255) return NULL;
+
+    free(name);
+    free(version);
+
+    return string;
+}
+
+/* Get uname. Memory must be freed after use */
+const char *getuname()
+{
+    struct utsname uts_buf;
+    const char *os_version;
+    static char muname[512] = "";
+
+    if (!muname[0]){
+        if (uname(&uts_buf) >= 0) {
+            if (os_version = get_unix_version(), os_version){
+                snprintf(muname, 512, "%s %s %s %s %s [%s] - %s %s",
+                         uts_buf.sysname,
+                         uts_buf.nodename,
+                         uts_buf.release,
+                         uts_buf.version,
+                         uts_buf.machine,
+                         os_version,
+                         __ossec_name, __version);
+            }
+            else {
+                snprintf(muname, 512, "%s %s %s %s %s - %s %s",
+                         uts_buf.sysname,
+                         uts_buf.nodename,
+                         uts_buf.release,
+                         uts_buf.version,
+                         uts_buf.machine,
+                         __ossec_name, __version);
+            }
+        } else {
+            snprintf(muname, 512, "No system info available -  %s %s",
+                     __ossec_name, __version);
+        }
+    }
+
+    return muname;
 }
 
 /* Daemonize a process without closing stdin/stdout/stderr */
@@ -836,7 +1115,7 @@ void goDaemon()
 
 int checkVista()
 {
-    char *m_uname;
+    const char *m_uname;
     isVista = 0;
 
     m_uname = getuname();
@@ -858,8 +1137,6 @@ int checkVista()
         verbose("%s: INFO: System is older than Vista (%s).",
                 __local_name, m_uname);
     }
-
-    free(m_uname);
 
     return (isVista);
 }
@@ -1123,11 +1400,16 @@ cleanup:
 }
 
 /* Get uname for Windows */
-char *getuname()
+const char *getuname()
 {
     int ret_size = OS_SIZE_1024 - 2;
-    char *ret = NULL;
+    static char ret[OS_SIZE_1024 + 1] = "";
     char os_v[128 + 1];
+    FILE *cmd_output;
+    char *command;
+    size_t buf_tam = 100;
+    char read_buff[buf_tam];
+    int add_infoEx = 1;
 
     typedef void (WINAPI * PGNSI)(LPSYSTEM_INFO);
     typedef BOOL (WINAPI * PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
@@ -1150,14 +1432,14 @@ char *getuname()
         }
     }
 
-    /* Allocate memory */
-    os_calloc(OS_SIZE_1024 + 1, sizeof(char), ret);
-    ret[OS_SIZE_1024] = '\0';
+    if (ret[0] != '\0') {
+        return ret;
+    }
 
     switch (osvi.dwPlatformId) {
         /* Test for the Windows NT product family */
         case VER_PLATFORM_WIN32_NT:
-            if (osvi.dwMajorVersion == 6) {
+            if (osvi.dwMajorVersion == 6 && (osvi.dwMinorVersion == 0 || osvi.dwMinorVersion == 1) ) {
                 if (osvi.dwMinorVersion == 0) {
                     if (osvi.wProductType == VER_NT_WORKSTATION ) {
                         strncat(ret, "Microsoft Windows Vista ", ret_size - 1);
@@ -1170,18 +1452,6 @@ char *getuname()
                     } else {
                         strncat(ret, "Microsoft Windows Server 2008 R2 ", ret_size - 1);
                     }
-                } else if (osvi.dwMinorVersion == 2) {
-                    if (osvi.wProductType == VER_NT_WORKSTATION ) {
-                        strncat(ret, "Microsoft Windows 8 ", ret_size - 1);
-                    } else {
-                        strncat(ret, "Microsoft Windows Server 2012 ", ret_size - 1);
-                    }
-                } else if (osvi.dwMinorVersion == 3) {
-                    if (osvi.wProductType == VER_NT_WORKSTATION ) {
-                        strncat(ret, "Microsoft Windows 8.1 ", ret_size - 1);
-                    } else {
-                        strncat(ret, "Microsoft Windows Server 2012 R2 ", ret_size - 1);
-                    }
                 }
 
                 ret_size -= strlen(ret) + 1;
@@ -1189,10 +1459,13 @@ char *getuname()
 
                 /* Get product version */
                 pGPI = (PGPI) GetProcAddress(
-                           GetModuleHandle(TEXT("kernel32.dll")),
-                           "GetProductInfo");
+                              GetModuleHandle(TEXT("kernel32.dll")),
+                              "GetProductInfo");
 
-                pGPI( 6, 0, 0, 0, &dwType);
+                if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 0)
+                    pGPI( 6, 0, 0, 0, &dwType);
+                else
+                    pGPI( 6, 1, 0, 0, &dwType);
 
                 switch (dwType) {
                     case PRODUCT_UNLICENSED:
@@ -1312,9 +1585,38 @@ char *getuname()
                     case PRODUCT_WEB_SERVER_CORE:
                         strncat(ret, PRODUCT_WEB_SERVER_CORE_C, ret_size - 1);
                         break;
+
+                }
+                ret_size -= strlen(ret) + 1;
+
+            } else if (osvi.dwMajorVersion == 6 && (osvi.dwMinorVersion == 2 || osvi.dwMinorVersion == 3)) {
+                command = "wmic os get caption";
+                char *end;
+                cmd_output = popen(command, "r");
+                if (!cmd_output) {
+                    verbose("%s: ERROR: Unable to execute command: '%s'.", ARGV0, command);
+                }
+                if (strncmp(fgets(read_buff, buf_tam, cmd_output),"Caption",7) == 0) {
+                    if (!fgets(read_buff, buf_tam, cmd_output)){
+                        verbose("%s: ERROR: Can't get Version.", ARGV0);
+                        strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
+                    }
+                    else if (end = strpbrk(read_buff,"\r\n"), end) {
+                        *end = '\0';
+                        int i = strlen(read_buff) - 1;
+                        while(read_buff[i] == 32){
+                            read_buff[i] = '\0';
+                            i--;
+                        }
+                        strncat(ret, read_buff, ret_size - 1);
+                    }else
+                        strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
                 }
 
+                pclose(cmd_output);
+                add_infoEx = 0;
                 ret_size -= strlen(ret) + 1;
+
             } else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2) {
                 pGNSI = (PGNSI) GetProcAddress(
                             GetModuleHandle("kernel32.dll"),
@@ -1355,127 +1657,128 @@ char *getuname()
             }
 
             /* Test for specific product on Windows NT 4.0 SP6 and later */
-            if (bOsVersionInfoEx) {
-                /* Test for the workstation type */
-                if (osvi.wProductType == VER_NT_WORKSTATION &&
-                        si.wProcessorArchitecture != PROCESSOR_ARCHITECTURE_AMD64) {
-                    if ( osvi.dwMajorVersion == 4 ) {
-                        strncat(ret, "Workstation 4.0 ", ret_size - 1);
-                    } else if ( osvi.wSuiteMask & VER_SUITE_PERSONAL ) {
-                        strncat(ret, "Home Edition ", ret_size - 1);
-                    } else {
-                        strncat(ret, "Professional ", ret_size - 1);
+            if (add_infoEx){
+                if (bOsVersionInfoEx) {
+                    /* Test for the workstation type */
+                    if (osvi.wProductType == VER_NT_WORKSTATION &&
+                            si.wProcessorArchitecture != PROCESSOR_ARCHITECTURE_AMD64) {
+                        if ( osvi.dwMajorVersion == 4 ) {
+                            strncat(ret, "Workstation 4.0 ", ret_size - 1);
+                        } else if ( osvi.wSuiteMask & VER_SUITE_PERSONAL ) {
+                            strncat(ret, "Home Edition ", ret_size - 1);
+                        } else {
+                            strncat(ret, "Professional ", ret_size - 1);
+                        }
+
+                        /* Fix size */
+                        ret_size -= strlen(ret) + 1;
                     }
 
-                    /* Fix size */
-                    ret_size -= strlen(ret) + 1;
-                }
+                    /* Test for the server type */
+                    else if ( osvi.wProductType == VER_NT_SERVER ||
+                              osvi.wProductType == VER_NT_DOMAIN_CONTROLLER ) {
+                        if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2) {
+                            if (si.wProcessorArchitecture ==
+                                    PROCESSOR_ARCHITECTURE_IA64 ) {
+                                if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
+                                    strncat(ret,
+                                            "Datacenter Edition for Itanium-based Systems ",
+                                            ret_size - 1);
+                                else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
+                                    strncat(ret,
+                                            "Enterprise Edition for Itanium-based Systems ",
+                                            ret_size - 1);
 
-                /* Test for the server type */
-                else if ( osvi.wProductType == VER_NT_SERVER ||
-                          osvi.wProductType == VER_NT_DOMAIN_CONTROLLER ) {
-                    if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2) {
-                        if (si.wProcessorArchitecture ==
-                                PROCESSOR_ARCHITECTURE_IA64 ) {
-                            if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
-                                strncat(ret,
-                                        "Datacenter Edition for Itanium-based Systems ",
-                                        ret_size - 1);
-                            else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
-                                strncat(ret,
-                                        "Enterprise Edition for Itanium-based Systems ",
-                                        ret_size - 1);
+                                ret_size -= strlen(ret) + 1;
+                            } else if ( si.wProcessorArchitecture ==
+                                        PROCESSOR_ARCHITECTURE_AMD64 ) {
+                                if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
+                                    strncat(ret, "Datacenter x64 Edition ",
+                                            ret_size - 1 );
+                                else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
+                                    strncat(ret, "Enterprise x64 Edition ",
+                                            ret_size - 1 );
+                                else
+                                    strncat(ret, "Standard x64 Edition ",
+                                            ret_size - 1 );
 
-                            ret_size -= strlen(ret) + 1;
-                        } else if ( si.wProcessorArchitecture ==
-                                    PROCESSOR_ARCHITECTURE_AMD64 ) {
-                            if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
-                                strncat(ret, "Datacenter x64 Edition ",
-                                        ret_size - 1 );
-                            else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
-                                strncat(ret, "Enterprise x64 Edition ",
-                                        ret_size - 1 );
-                            else
-                                strncat(ret, "Standard x64 Edition ",
-                                        ret_size - 1 );
-
-                            ret_size -= strlen(ret) + 1;
-                        } else {
-                            if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
-                                strncat(ret, "Datacenter Edition ",
-                                        ret_size - 1 );
-                            else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE ) {
-                                strncat(ret, "Enterprise Edition ", ret_size - 1);
-                            } else if ( osvi.wSuiteMask == VER_SUITE_BLADE ) {
-                                strncat(ret, "Web Edition ", ret_size - 1 );
+                                ret_size -= strlen(ret) + 1;
                             } else {
-                                strncat(ret, "Standard Edition ", ret_size - 1);
+                                if ( osvi.wSuiteMask & VER_SUITE_DATACENTER )
+                                    strncat(ret, "Datacenter Edition ",
+                                            ret_size - 1 );
+                                else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE ) {
+                                    strncat(ret, "Enterprise Edition ", ret_size - 1);
+                                } else if ( osvi.wSuiteMask == VER_SUITE_BLADE ) {
+                                    strncat(ret, "Web Edition ", ret_size - 1 );
+                                } else {
+                                    strncat(ret, "Standard Edition ", ret_size - 1);
+                                }
+
+                                ret_size -= strlen(ret) + 1;
+                            }
+                        } else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 0) {
+                            if ( osvi.wSuiteMask & VER_SUITE_DATACENTER ) {
+                                strncat(ret, "Datacenter Server ", ret_size - 1);
+                            } else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE ) {
+                                strncat(ret, "Advanced Server ", ret_size - 1 );
+                            } else {
+                                strncat(ret, "Server ", ret_size - 1);
+                            }
+
+                            ret_size -= strlen(ret) + 1;
+                        } else if (osvi.dwMajorVersion <= 4) { /* Windows NT 4.0 */
+                            if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
+                                strncat(ret, "Server 4.0, Enterprise Edition ",
+                                        ret_size - 1 );
+                            else {
+                                strncat(ret, "Server 4.0 ", ret_size - 1);
                             }
 
                             ret_size -= strlen(ret) + 1;
                         }
-                    } else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 0) {
-                        if ( osvi.wSuiteMask & VER_SUITE_DATACENTER ) {
-                            strncat(ret, "Datacenter Server ", ret_size - 1);
-                        } else if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE ) {
-                            strncat(ret, "Advanced Server ", ret_size - 1 );
-                        } else {
-                            strncat(ret, "Server ", ret_size - 1);
-                        }
+                    }
+                }
+                /* Test for specific product on Windows NT 4.0 SP5 and earlier */
+                else {
+                    HKEY hKey;
+                    char szProductType[81];
+                    DWORD dwBufLen = 80;
+                    LONG lRet;
 
-                        ret_size -= strlen(ret) + 1;
-                    } else if (osvi.dwMajorVersion <= 4) { /* Windows NT 4.0 */
-                        if ( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
-                            strncat(ret, "Server 4.0, Enterprise Edition ",
-                                    ret_size - 1 );
-                        else {
-                            strncat(ret, "Server 4.0 ", ret_size - 1);
-                        }
+                    lRet = RegOpenKeyEx( HKEY_LOCAL_MACHINE,
+                                         "SYSTEM\\CurrentControlSet\\Control\\ProductOptions",
+                                         0, KEY_QUERY_VALUE, &hKey );
+                    if (lRet == ERROR_SUCCESS) {
+                        char __wv[32];
 
-                        ret_size -= strlen(ret) + 1;
+                        lRet = RegQueryValueEx( hKey, "ProductType", NULL, NULL,
+                                                (LPBYTE) szProductType, &dwBufLen);
+                        RegCloseKey( hKey );
+
+                        if ((lRet == ERROR_SUCCESS) && (dwBufLen < 80) ) {
+                            if (lstrcmpi( "WINNT", szProductType) == 0 ) {
+                                strncat(ret, "Workstation ", ret_size - 1);
+                            } else if (lstrcmpi( "LANMANNT", szProductType) == 0 ) {
+                                strncat(ret, "Server ", ret_size - 1);
+                            } else if (lstrcmpi( "SERVERNT", szProductType) == 0 ) {
+                                strncat(ret, "Advanced Server " , ret_size - 1);
+                            }
+
+                            ret_size -= strlen(ret) + 1;
+
+                            memset(__wv, '\0', 32);
+                            snprintf(__wv, 31,
+                                     "%d.%d ",
+                                     (int)osvi.dwMajorVersion,
+                                     (int)osvi.dwMinorVersion);
+
+                            strncat(ret, __wv, ret_size - 1);
+                            ret_size -= strlen(__wv) + 1;
+                        }
                     }
                 }
             }
-            /* Test for specific product on Windows NT 4.0 SP5 and earlier */
-            else {
-                HKEY hKey;
-                char szProductType[81];
-                DWORD dwBufLen = 80;
-                LONG lRet;
-
-                lRet = RegOpenKeyEx( HKEY_LOCAL_MACHINE,
-                                     "SYSTEM\\CurrentControlSet\\Control\\ProductOptions",
-                                     0, KEY_QUERY_VALUE, &hKey );
-                if (lRet == ERROR_SUCCESS) {
-                    char __wv[32];
-
-                    lRet = RegQueryValueEx( hKey, "ProductType", NULL, NULL,
-                                            (LPBYTE) szProductType, &dwBufLen);
-                    RegCloseKey( hKey );
-
-                    if ((lRet == ERROR_SUCCESS) && (dwBufLen < 80) ) {
-                        if (lstrcmpi( "WINNT", szProductType) == 0 ) {
-                            strncat(ret, "Workstation ", ret_size - 1);
-                        } else if (lstrcmpi( "LANMANNT", szProductType) == 0 ) {
-                            strncat(ret, "Server ", ret_size - 1);
-                        } else if (lstrcmpi( "SERVERNT", szProductType) == 0 ) {
-                            strncat(ret, "Advanced Server " , ret_size - 1);
-                        }
-
-                        ret_size -= strlen(ret) + 1;
-
-                        memset(__wv, '\0', 32);
-                        snprintf(__wv, 31,
-                                 "%d.%d ",
-                                 (int)osvi.dwMajorVersion,
-                                 (int)osvi.dwMinorVersion);
-
-                        strncat(ret, __wv, ret_size - 1);
-                        ret_size -= strlen(__wv) + 1;
-                    }
-                }
-            }
-
             /* Display service pack (if any) and build number */
             if ( osvi.dwMajorVersion == 4 &&
                     lstrcmpi( osvi.szCSDVersion, "Service Pack 6" ) == 0 ) {
@@ -1500,6 +1803,30 @@ char *getuname()
                 strncat(ret, __wp, ret_size - 1);
                 ret_size -= strlen(__wp) + 1;
                 RegCloseKey( hKey );
+            } else if (osvi.dwMajorVersion == 6 && (osvi.dwMinorVersion == 2 || osvi.dwMinorVersion == 3)) {
+                char __wp[64];
+                memset(__wp, '\0', 64);
+                command = "wmic os get BuildNumber";
+                cmd_output = popen(command, "r");
+                if (!cmd_output) {
+                    verbose("%s: ERROR: Unable to execute command: '%s'.", ARGV0, command);
+                    snprintf(__wp, 63, " (Build %s)", "desc");
+                }
+                if (strncmp(fgets(read_buff, buf_tam, cmd_output),"BuildNumber",11) == 0) {
+                    if (!fgets(read_buff, buf_tam, cmd_output)){
+                        verbose("%s: ERROR: Can't get BuildNumber.", ARGV0);
+                        snprintf(__wp, 63, " (Build %s)", "desc");
+                    }
+                    else {
+                        snprintf(__wp, 63, " (Build %i)", atoi(strtok(read_buff, " ")));
+                    }
+                }
+
+                pclose(cmd_output);
+
+                strncat(ret, __wp, ret_size - 1);
+                ret_size -= strlen(__wp) + 1;
+
             } else {
                 char __wp[64];
 
@@ -1547,6 +1874,7 @@ char *getuname()
     return (ret);
 
 }
+
 
 #endif /* WIN32 */
 
@@ -1686,19 +2014,19 @@ int OS_MoveFile(const char *src, const char *dst) {
         return 0;
     }
 
-    debug1("%s: WARN: Couldn't rename %s: %s", ARGV0, dst, strerror(errno));
+    debug1("%s: WARN: Couldn't rename %s: %s", __local_name, dst, strerror(errno));
 
     fp_src = fopen(src, "r");
 
     if (!fp_src) {
-        merror("%s: ERROR: Couldn't open file '%s'", ARGV0, src);
+        merror("%s: ERROR: Couldn't open file '%s'", __local_name, src);
         return -1;
     }
 
     fp_dst = fopen(dst, "w");
 
     if (!fp_dst) {
-        merror("%s: ERROR: Couldn't open file '%s'", ARGV0, dst);
+        merror("%s: ERROR: Couldn't open file '%s'", __local_name, dst);
         fclose(fp_src);
         unlink(src);
         return -1;
@@ -1708,7 +2036,7 @@ int OS_MoveFile(const char *src, const char *dst) {
         count_r = fread(buffer, 1, 4096, fp_src);
 
         if (ferror(fp_src)) {
-            merror("%s: ERROR: Couldn't read file '%s'", ARGV0, src);
+            merror("%s: ERROR: Couldn't read file '%s'", __local_name, src);
             status = -1;
             break;
         }
@@ -1716,7 +2044,7 @@ int OS_MoveFile(const char *src, const char *dst) {
         count_w = fwrite(buffer, 1, count_r, fp_dst);
 
         if (count_w != count_r || ferror(fp_dst)) {
-            merror("%s: ERROR: Couldn't write file '%s'", ARGV0, dst);
+            merror("%s: ERROR: Couldn't write file '%s'", __local_name, dst);
             status = -1;
             break;
         }

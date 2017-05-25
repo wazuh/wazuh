@@ -64,7 +64,6 @@ void run_notify()
 {
     char keep_alive_random[1024];
     char tmp_msg[OS_SIZE_1024 + 1];
-    char *uname;
     char *shared_files;
     os_md5 md5sum;
     time_t curr_time;
@@ -100,10 +99,8 @@ void run_notify()
      */
 
     /* Get uname */
-    uname = getuname();
-    if (!uname) {
+    if (!getuname()) {
         merror(MEM_ERROR, ARGV0, errno, strerror(errno));
-        return;
     }
 
     /* Get shared files */
@@ -111,7 +108,6 @@ void run_notify()
     if (!shared_files) {
         shared_files = strdup("\0");
         if (!shared_files) {
-            free(uname);
             merror(MEM_ERROR, ARGV0, errno, strerror(errno));
             return;
         }
@@ -123,16 +119,15 @@ void run_notify()
     if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
             (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
         snprintf(tmp_msg, OS_SIZE_1024, "#!-%s / %s\n%s\n%s",
-                 uname, md5sum, shared_files, keep_alive_random);
+                 getuname(), md5sum, shared_files, keep_alive_random);
     } else {
         snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s\n%s",
-                 uname, shared_files, keep_alive_random);
+                 getuname(), shared_files, keep_alive_random);
     }
 
     /* Send status message */
     send_msg(0, tmp_msg);
 
-    free(uname);
     free(shared_files);
 
     return;

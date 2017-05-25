@@ -216,8 +216,10 @@ void* wm_database_main(wm_database *data) {
 // Update manager information
 void wm_sync_manager() {
     char hostname[1024];
-    char *uname;
+    const char *uname;
     const char *path;
+    char *dist_name = NULL;
+    char *dist_ver = NULL;
     struct stat buffer;
 
     if (gethostname(hostname, 1024) == 0)
@@ -231,8 +233,18 @@ void wm_sync_manager() {
         if ((ptr = strstr(uname, " - ")))
             *ptr = '\0';
 
-        wdb_update_agent_version(0, uname, __ossec_name " " __version, NULL);
-        free(uname);
+        if (dist_name = strstr(uname, " ["), dist_name){
+            *dist_name = '\0';
+            dist_name += 2;
+            if (dist_ver = strstr(dist_name, ": "), dist_ver){
+                *dist_ver = '\0';
+                dist_ver += 2;
+                *(dist_ver + strlen(dist_ver) - 1) = '\0';
+            } else
+                *(dist_name + strlen(dist_name) - 1) = '\0';
+        }
+
+        wdb_update_agent_version(0, uname, __ossec_name " " __version, dist_name, dist_ver, NULL);
     }
 
     // Set starting offset if full_sync disabled
@@ -350,8 +362,9 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char buffer[OS_MAXSTR];
     char *os;
     char *version;
+    char *dist_name = NULL;
+    char *dist_ver = NULL;
     char *shared_sum;
-    char *end;
     FILE *fp;
     int result;
     clock_t clock0 = clock();
@@ -369,28 +382,36 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         return -1;
     }
 
-    if (!(version = strstr(os, " - "))) {
-        merror("%s: ERROR: Corrupt file '%s'.", WM_DATABASE_LOGTAG, path);
-        return -1;
-    }
-
-    *version = '\0';
-
-    if ((shared_sum = strstr(version += 3, " / "))) {
+    if (shared_sum = strstr(os, " / "), shared_sum){
         *shared_sum = '\0';
         shared_sum += 3;
-        end = strchr(shared_sum, '\n');
-    } else
-        end = strchr(version, '\n');
-
-    if (!end) {
+    } else {
         merror("%s: WARN: Corrupt line found parsing '%s' (incomplete). Returning.", WM_DATABASE_LOGTAG, path);
+        fclose(fp);
         return -1;
     }
 
-    *end = '\0';
+    if (version = strstr(os, " - "), version){
+        *version = '\0';
+        version += 3;
+    } else {
+        merror("%s: ERROR: Corrupt file '%s'.", WM_DATABASE_LOGTAG, path);
+        fclose(fp);
+        return -1;
+    }
 
-    result = wdb_update_agent_version(id_agent, os, version, shared_sum);
+    if (dist_name = strstr(os, " ["), dist_name){
+        *dist_name = '\0';
+        dist_name += 2;
+        if (dist_ver = strstr(dist_name, ": "), dist_ver){
+            *dist_ver = '\0';
+            dist_ver += 2;
+            *(dist_ver + strlen(dist_ver) - 1) = '\0';
+        } else
+            *(dist_name + strlen(dist_name) - 1) = '\0';
+    }
+
+    result = wdb_update_agent_version(id_agent, os, version, dist_name, dist_ver, shared_sum);
     debug2("%s: DEBUG: wm_sync_agentinfo(%d): %.3f ms.", WM_DATABASE_LOGTAG, id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
     return result;
 }

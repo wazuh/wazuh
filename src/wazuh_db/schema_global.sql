@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS agent (
     ip TEXT,
     key TEXT,
     os TEXT,
+    dist_name TEXT,
+    dist_ver TEXT,
     version TEXT,
     shared_sum TEXT,
     date_add TEXT NOT NULL,

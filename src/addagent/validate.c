@@ -36,7 +36,7 @@ char *OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
     os_md5 md2;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
-    char *muname;
+    const char *muname;
     char *finals;
     char id[9] = { '\0' };
     char key[KEYSIZE] = { '\0' };
@@ -49,7 +49,6 @@ char *OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
     snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)os_random());
     OS_MD5_Str(str1, md1);
     OS_MD5_Str(str2, md2);
-    free(muname);
 
     snprintf(key, KEYSIZE, "%s%s", md1, md2);
     OS_AddKey(keys, id, name, ip ? ip : "any", key);

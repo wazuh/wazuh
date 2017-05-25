@@ -229,13 +229,12 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 #endif
                     } else if (strcmp(xml_agent_os, node[i]->attributes[attrs]) == 0) {
 #ifdef CLIENT
-                        char *agentos = getuname();
+                        const char *agentos = getuname();
 
                         if (agentos) {
                             if (!OS_Match2(node[i]->values[attrs], agentos)) {
                                 passed_agent_test = 0;
                             }
-                            free(agentos);
                         } else {
                             passed_agent_test = 0;
                             merror("%s: ERROR: Unable to retrieve uname.", __local_name);

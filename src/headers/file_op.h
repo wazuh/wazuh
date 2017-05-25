@@ -51,7 +51,7 @@ void goDaemon(void);
 void goDaemonLight(void);
 
 /* Not really a file operation, but returns the uname */
-char *getuname(void);
+const char *getuname(void);
 
 /* Return basename of path */
 char *basename_ex(char *path) __attribute__((nonnull));
