@@ -179,7 +179,7 @@ char* local_dispatch(const char *input) {
 
         ip = item->valuestring;
         key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
-        force = (item = cJSON_GetObjectItem(arguments, "force"), item && cJSON_IsTrue(item)) ? 1 : 0;
+        force = (item = cJSON_GetObjectItem(arguments, "force"), item) ? item->valueint : -1;
         response = local_add(id, name, ip, key, force);
     } else if (!strcmp(function->valuestring, "remove")) {
         cJSON *item;
@@ -242,6 +242,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     cJSON *response;
     cJSON *data;
     int ierror;
+    double antiquity;
 
     debug2(ARGV0 ": add(%s)", name);
     pthread_mutex_lock(&mutex_keys);
@@ -257,7 +258,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
 
     if (strcmp(ip, "any")) {
         if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
-            if (force) {
+            if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
                 id_exist = keys.keyentries[index]->id;
                 verbose(ARGV0 ": INFO: Duplicated IP '%s' (%s). Saving backup.", ip, id_exist);
                 add_backup(keys.keyentries[index]);
@@ -272,7 +273,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     /* Check for duplicated names */
 
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
-        if (force) {
+        if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
             id_exist = keys.keyentries[index]->id;
             verbose(ARGV0 ": INFO: Duplicated name '%s' (%s). Saving backup.", name, id_exist);
             add_backup(keys.keyentries[index]);

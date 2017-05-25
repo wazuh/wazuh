@@ -62,7 +62,7 @@ const char *ca_cert = NULL;
 int validate_host = 0;
 int use_ip_address = 0;
 SSL_CTX *ctx;
-int force_insert = 0;
+int force_insert = -1;
 int remote_sock = -1;
 int local_sock = -1;
 int save_removed = 1;
@@ -89,14 +89,14 @@ pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 static void help_authd()
 {
     print_header();
-    print_out("  %s: -[VhdtfiF] [-g group] [-D dir] [-p port] [-P] [-v path [-s]] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[Vhdtfi] [-F <time>] [-g group] [-D dir] [-p port] [-P] [-v path [-s]] [-x path] [-k path]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
     print_out("    -i          Use client's source IP address instead of any.");
-    print_out("    -F          Force insertion: remove old agents with same name or IP.");
+    print_out("    -F <time>   Force insertion: remove old agent with same name or IP if its keepalive has more than <time> seconds.");
     print_out("    -r          Do not keep removed agents (delete).");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
@@ -171,6 +171,7 @@ int main(int argc, char **argv)
     FILE *fp;
     /* Count of pids we are wait()ing on */
     int c = 0, test_config = 0, status;
+    char *end;
     int use_pass = 0;
     int auto_method = 0;
     int run_foreground = 0;
@@ -195,7 +196,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while (c = getopt(argc, argv, "Vdhtfig:D:p:v:sx:k:PFar"), c != -1) {
+    while (c = getopt(argc, argv, "Vdhtfig:D:p:v:sx:k:PF:ar"), c != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -261,7 +262,16 @@ int main(int argc, char **argv)
                 server_key = optarg;
                 break;
             case 'F':
-                force_insert = 1;
+                if (!optarg) {
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                }
+
+                force_insert = strtol(optarg, &end, 10);
+
+                if (optarg == end || force_insert < 0) {
+                    ErrorExit("%s: Invalid number for -%c", ARGV0, c);
+                }
+
                 break;
             case 'r':
                 save_removed = 0;
@@ -494,6 +504,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     int ret;
     int parseok;
     char *tmpstr;
+    double antiquity;
     int acount;
     char fname[2048];
     char response[2048];
@@ -622,7 +633,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             if (use_ip_address) {
                 if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
-                    if (force_insert) {
+                    if (force_insert >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force_insert || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
                         verbose(ARGV0 ": INFO: Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
                         add_backup(keys.keyentries[index]);
@@ -644,7 +655,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             /* Check for duplicated names */
 
             if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
-                if (force_insert) {
+                if (force_insert >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force_insert || antiquity < 0)) {
                     id_exist = keys.keyentries[index]->id;
                     verbose(ARGV0 ": INFO: Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
                     add_backup(keys.keyentries[index]);

@@ -24,13 +24,14 @@ static char* _get_string_or_die(cJSON *object, const char *string);
 int main(int argc, char **argv) {
     int c;
     int sock;
-    int force = 0;
+    int force = -1;
     int json_format = 0;
     int action = ACTION_NONE;
     char id[9];
     char *name;
     char *ip = "any";
     char *output;
+    char *end;
     char buffer[OS_MAXSTR + 1];
     ssize_t length;
     uid_t uid;
@@ -47,7 +48,7 @@ int main(int argc, char **argv) {
 
     // Read configuration
 
-    while (c = getopt(argc, argv, "a:e:fhi:jr:V"), c != -1) {
+    while (c = getopt(argc, argv, "a:e:f:hi:jr:V"), c != -1) {
         switch (c) {
         case 'a':
             if (optarg) {
@@ -71,7 +72,16 @@ int main(int argc, char **argv) {
             break;
 
         case 'f':
-            force++;
+            if (!optarg) {
+                ErrorExit("%s: -%c needs an argument", ARGV0, c);
+            }
+
+            force = strtol(optarg, &end, 10);
+
+            if (optarg == end || force < 0) {
+                ErrorExit("%s: Invalid number for -%c", ARGV0, c);
+            }
+
             break;
 
         case 'h':
@@ -153,8 +163,8 @@ int main(int argc, char **argv) {
         cJSON_AddStringToObject(arguments, "name", name);
         cJSON_AddStringToObject(arguments, "ip", ip);
 
-        if (force) {
-            cJSON_AddTrueToObject(arguments, "force");
+        if (force >= 0) {
+            cJSON_AddNumberToObject(arguments, "force", force);
         }
 
         break;
@@ -278,12 +288,12 @@ static void helpmsg()
 {
     print_header();
 
-    print_out("  %s: -[Vhj] -a <name> [ -f ] [ -i <ip> ] | -r <id> | -e <id>", __local_name);
+    print_out("  %s: -[Vhj] -a <name> [ -f <time> ] [ -i <ip> ] | -r <id> | -e <id>", __local_name);
     print_out("    -a <name>   Add new agent.");
     print_out("    -r <id>     Remove an agent.");
     print_out("    -e <id>     Extracts key for an agent.");
     print_out("    -i <ip>     IP for new agent. Default: any.");
-    print_out("    -f          Force insertion (remove agents with duplicated name or IP).");
+    print_out("    -f <time>   Force insertion (remove agents with duplicated name or IP if its keepalive has more than <time> seconds.).");
     print_out("    -j          Use JSON output.");
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
