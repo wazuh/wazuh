@@ -365,6 +365,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char *dist_name = NULL;
     char *dist_ver = NULL;
     char *shared_sum;
+    char *end_line;
     FILE *fp;
     int result;
     clock_t clock0 = clock();
@@ -382,13 +383,17 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         return -1;
     }
 
-    if (shared_sum = strstr(os, " / "), shared_sum){
-        *shared_sum = '\0';
-        shared_sum += 3;
+    if (end_line = strstr(os, "\n"), end_line){
+        *end_line = '\0';
     } else {
         merror("%s: WARN: Corrupt line found parsing '%s' (incomplete). Returning.", WM_DATABASE_LOGTAG, path);
         fclose(fp);
         return -1;
+    }
+
+    if (shared_sum = strstr(os, " / "), shared_sum){
+        *shared_sum = '\0';
+        shared_sum += 3;
     }
 
     if (version = strstr(os, " - "), version){

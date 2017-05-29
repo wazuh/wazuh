@@ -128,7 +128,6 @@ char *__generatetmppass()
     os_md5 md4;
     char *fstring = NULL;
     char str1[STR_SIZE +1];
-    char *muname = NULL;
 
     #ifndef WIN32
         #ifdef __OpenBSD__
@@ -149,14 +148,11 @@ char *__generatetmppass()
     OS_MD5_Str(rand3, md3);
     OS_MD5_Str(rand4, md4);
 
-    muname = getuname();
-
-    snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, muname, rand2, md3, md4);
+    snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
     OS_MD5_Str(str1, md1);
     fstring = strdup(md1);
     free(rand3);
     free(rand4);
-    free(muname);
     return(fstring);
 }
 
