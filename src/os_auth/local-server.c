@@ -61,6 +61,7 @@ static cJSON* local_get(const char *id);
 
 // Thread for internal server
 void* run_local_server(__attribute__((unused)) void *arg) {
+    int sock;
     int peer;
     char buffer[OS_MAXSTR + 1];
     char *response;
@@ -70,7 +71,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
 
     debug1("%s: DEBUG: local server thread ready", ARGV0);
 
-    if (local_sock = OS_BindUnixDomain(AUTH_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), local_sock < 0) {
+    if (sock = OS_BindUnixDomain(AUTH_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         merror(ARGV0 ": Unable to bind to socket '%s'. Closing local server.", AUTH_LOCAL_SOCK);
         return NULL;
     }
@@ -79,11 +80,11 @@ void* run_local_server(__attribute__((unused)) void *arg) {
 
         // Wait for socket
         FD_ZERO(&fdset);
-        FD_SET(local_sock, &fdset);
+        FD_SET(sock, &fdset);
         timeout.tv_sec = 1;
         timeout.tv_usec = 0;
 
-        switch (select(local_sock + 1, &fdset, NULL, NULL, &timeout)) {
+        switch (select(sock + 1, &fdset, NULL, NULL, &timeout)) {
         case -1:
             if (errno != EINTR) {
                 ErrorExit(ARGV0 ": ERROR: at run_local_server(): select(): %s", strerror(errno));
@@ -95,7 +96,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             continue;
         }
 
-        if (peer = accept(local_sock, NULL, NULL), peer < 0) {
+        if (peer = accept(sock, NULL, NULL), peer < 0) {
             if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR)) {
                 merror(ARGV0 ": ERROR: at run_local_server(): accept(): %s", strerror(errno));
             }
@@ -127,7 +128,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
 
     debug1("%s: DEBUG: local server thread finished", ARGV0);
 
-    close(local_sock);
+    close(sock);
     return NULL;
 }
 

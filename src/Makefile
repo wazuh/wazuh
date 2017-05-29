@@ -1091,7 +1091,7 @@ os_auth/%.o: os_auth/%.c
 agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${JSON_INCLUDE} -I./os_auth $^ ${OSSEC_LDFLAGS} -o $@
 
-ossec-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+ossec-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${JSON_INCLUDE} -I./os_auth $^ ${OSSEC_LDFLAGS} -o $@
 
 wazuh-auth: os_auth/wazuh-auth.o addagent/validate.o addagent/b64.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}

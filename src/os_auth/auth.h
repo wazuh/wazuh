@@ -41,6 +41,7 @@
 
 #include "os_net/os_net.h"
 #include "addagent/manage_agents.h"
+#include "config/authd-config.h"
 
 extern BIO *bio_err;
 #define KEYFILE  "/etc/sslmanager.key"
@@ -81,12 +82,15 @@ void add_backup(const keyentry *entry);
 // Append key to deletion queue
 void add_remove(const keyentry *entry);
 
-extern int local_sock;
+// Read configuration
+int authd_read_config(const char *path);
+
 extern keystore keys;
 extern volatile int write_pending;
 extern volatile int running;
 extern pthread_mutex_t mutex_keys;
 extern pthread_cond_t cond_pending;
+extern authd_config_t config;
 
 #endif /* LIBOPENSSL_ENABLED */
 #endif /* _AUTHD_H */
