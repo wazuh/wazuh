@@ -1013,6 +1013,7 @@ static const char *get_unix_version()
 
     free(name);
     free(version);
+    free(id);
 
     return string;
 }
