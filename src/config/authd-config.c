@@ -9,22 +9,6 @@
  * Foundation.
  */
 
-/*
-<auth>
-  <!-- Default configuration -->
-  <port>1515</port>
-  <use-source-ip>no</use-source-ip>
-  <force-margin>-1</force-margin>
-  <clear-removed>no</clear-removed>
-  <use-password>no</use-password>
-  <ssl-agent-ca>PATH</ssl-agent-ca>
-  <ssl-verify-host>no</ssl-verify-host>
-  <ssl-manager-cert>/var/ossec/etc/sslmanager.cert</ssl-manager-cert>
-  <ssl-manager-key>/var/ossec/etc/sslmanager.key</ssl-manager-key>
-  <ssl-auto-negotiate>no</ssl-auto-negotiate>
-</auth>
-*/
-
 #include "shared.h"
 #include "authd-config.h"
 #include "config.h"
@@ -35,7 +19,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     /* XML Definitions */
     static const char *xml_port = "port";
     static const char *xml_use_source_ip = "use-source-ip";
-    static const char *xml_force_margin = "force-margin";
+    static const char *xml_force_time = "force-time";
     static const char *xml_clear_removed = "clear-removed";
     static const char *xml_use_password = "use-password";
     static const char *xml_ssl_agent_ca = "ssl-agent-ca";
@@ -70,7 +54,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             }
 
             config->flags.use_source_ip = b;
-        } else if (!strcmp(node[i]->element, xml_force_margin)) {
+        } else if (!strcmp(node[i]->element, xml_force_time)) {
             char *end;
             config->force_time = strtol(node[i]->content, &end, 10);
 
