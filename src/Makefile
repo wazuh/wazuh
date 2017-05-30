@@ -474,7 +474,6 @@ install-server-generic: install-common
 	install -m 0750 -o root -g 0 ossec-logtest ${PREFIX}/bin
 	install -m 0750 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
 	install -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
-	install -m 0750 -o root -g 0 wazuh-auth ${PREFIX}/bin
 	install -m 0750 -o root -g 0 ossec-dbd ${PREFIX}/bin
 	install -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
 	install -m 0750 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
@@ -624,7 +623,6 @@ BUILD_SERVER+=ossec-monitord
 BUILD_SERVER+=ossec-reportd
 ifneq (,$(filter ${USE_OPENSSL},auto yes))
 BUILD_SERVER+=ossec-authd
-BUILD_SERVER+=wazuh-auth
 endif
 BUILD_SERVER+=ossec-analysisd
 BUILD_SERVER+=ossec-logtest
@@ -1094,9 +1092,6 @@ agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/chec
 ossec-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${JSON_INCLUDE} -I./os_auth $^ ${OSSEC_LDFLAGS} -o $@
 
-wazuh-auth: os_auth/wazuh-auth.o addagent/validate.o addagent/b64.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
-	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${JSON_INCLUDE} -I./os_auth $^ ${OSSEC_LDFLAGS} -o $@
-
 #### integratord #####
 
 integrator_c := ${wildcard os_integrator/*.c}
@@ -1391,7 +1386,7 @@ clean-internals:
 	rm -f ${rootcheck_o} ${rootcheck_rk_o} rootcheck.a
 	rm -f ${syscheck_o} ossec-syscheckd
 	rm -f ${monitor_o} ossec-monitord
-	rm -f ${os_auth_o} ossec-authd agent-auth wazuh-auth
+	rm -f ${os_auth_o} ossec-authd agent-auth
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
 	rm -f ${integrator_o} ossec-integratord

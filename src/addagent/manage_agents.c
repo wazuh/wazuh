@@ -97,51 +97,40 @@ int add_agent(int json_output)
 
     char *id_exist = NULL;
     int force_antiquity;
+    int sock;
 
-    /* Check that ossec-authd isn't running */
+    const char *env_remove_dup = getenv("OSSEC_REMOVE_DUPLICATED");
 
-    if (check_authd()) {
-        if (json_output) {
-            char buffer[1024];
-            cJSON *json_root = cJSON_CreateObject();
-            snprintf(buffer, 1023, "ossec-authd is running");
-            cJSON_AddNumberToObject(json_root, "error", 72);
-            cJSON_AddStringToObject(json_root, "message", buffer);
-            printf("%s", cJSON_PrintUnformatted(json_root));
-            exit(1);
-        } else
-            ErrorExit("%s: ERROR: ossec-authd is running", ARGV0);
+    if (env_remove_dup) {
+        force_antiquity = strtol(env_remove_dup, NULL, 10);
     }
 
-    /* Check if we can open the auth_file */
-    fp = fopen(AUTH_FILE, "a");
-    if (!fp) {
-        if (json_output) {
-            char buffer[1024];
-            cJSON *json_root = cJSON_CreateObject();
-            snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
-            cJSON_AddNumberToObject(json_root, "error", 71);
-            cJSON_AddStringToObject(json_root, "message", buffer);
-            printf("%s", cJSON_PrintUnformatted(json_root));
-            exit(1);
-        } else
-            ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+    // Create socket
+
+    if (sock = auth_connect(), sock < 0) {
+        /* Check if we can open the auth_file */
+        fp = fopen(AUTH_FILE, "a");
+        if (!fp) {
+            if (json_output) {
+                char buffer[1024];
+                cJSON *json_root = cJSON_CreateObject();
+                snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+                cJSON_AddNumberToObject(json_root, "error", 71);
+                cJSON_AddStringToObject(json_root, "message", buffer);
+                printf("%s", cJSON_PrintUnformatted(json_root));
+                exit(1);
+            } else
+                ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+        }
+        fclose(fp);
+
+        /* Set time 2 */
+        time2 = time(0);
+        rand1 = os_random();
     }
-    fclose(fp);
-
-    /* Set time 2 */
-    time2 = time(0);
-    rand1 = os_random();
-
-    /* Zero strings */
-    memset(str1, '\0', STR_SIZE + 1);
-    memset(str2, '\0', STR_SIZE + 1);
 
     if (!json_output)
         printf(ADD_NEW);
-
-    /* Get the name */
-    memset(name, '\0', FILE_SIZE + 1);
 
     do {
         if (!json_output) {
@@ -181,11 +170,11 @@ int add_agent(int json_output)
             printf(INVALID_NAME, name);
         }
 
-        /* Search for name  -- no duplicates */
-        if (NameExist(name)) {
+        /* Search for name  -- no duplicates (only if Authd is not running) */
+        if (sock < 0 && NameExist(name)) {
             printf(ADD_ERROR_NAME, name);
         }
-    } while (NameExist(name) || !OS_IsValidName(name));
+    } while ((sock < 0 && NameExist(name)) || !OS_IsValidName(name));
 
     /* Get IP */
     memset(ip, '\0', FILE_SIZE + 1);
@@ -223,14 +212,8 @@ int add_agent(int json_output)
             _ip = NULL;
             free(c_ip.ip);
             c_ip.ip = NULL;
-        } else if ((id_exist = IPExist(ip))) {
-            double antiquity = -1;
-            const char *env_remove_dup = getenv("OSSEC_REMOVE_DUPLICATED");
-
-            if (env_remove_dup) {
-                force_antiquity = strtol(env_remove_dup, NULL, 10);
-                antiquity = OS_AgentAntiquity_ID(id_exist);
-            }
+        } else if (sock < 0 && (id_exist = IPExist(ip))) {
+            double antiquity = OS_AgentAntiquity_ID(id_exist);
 
             if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
 #ifdef REUSE_ID
@@ -258,7 +241,7 @@ int add_agent(int json_output)
         }
     } while (!_ip);
 
-    if (!*id) {
+    if (sock < 0 && !*id) {
         do {
             /* Default ID */
             for (i = 1; snprintf(id, 8, "%03d", i), IDExist(id, 0); i++);
@@ -295,13 +278,13 @@ int add_agent(int json_output)
                 printf(INVALID_ID, id);
 
             /* Search for ID KEY  -- no duplicates */
-            if (IDExist(id, 0)) {
+            if (sock < 0 && IDExist(id, 0)) {
                 printf(ADD_ERROR_ID, id);
             }
         } while (IDExist(id, 0) || !OS_IsValidID(id));
     }
 
-    if (!json_output) {
+    if (sock < 0 && !json_output) {
         printf(AGENT_INFO, id, name, ip);
         fflush(stdout);
     }
@@ -324,58 +307,64 @@ int add_agent(int json_output)
 
         /* If user accepts to add */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
-            time3 = time(0);
-            rand2 = os_random();
+            if (sock < 0) {
+                time3 = time(0);
+                rand2 = os_random();
 
-            if (TempFile(&file, AUTH_FILE, 1) < 0 ) {
-                if (json_output) {
-                    char buffer[1024];
-                    cJSON *json_root = cJSON_CreateObject();
-                    snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", KEYS_FILE, errno, strerror(errno));
-                    cJSON_AddNumberToObject(json_root, "error", 71);
-                    cJSON_AddStringToObject(json_root, "message", buffer);
-                    printf("%s", cJSON_PrintUnformatted(json_root));
-                    exit(1);
-                } else
-                    ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
+                if (TempFile(&file, AUTH_FILE, 1) < 0 ) {
+                    if (json_output) {
+                        char buffer[1024];
+                        cJSON *json_root = cJSON_CreateObject();
+                        snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", KEYS_FILE, errno, strerror(errno));
+                        cJSON_AddNumberToObject(json_root, "error", 71);
+                        cJSON_AddStringToObject(json_root, "message", buffer);
+                        printf("%s", cJSON_PrintUnformatted(json_root));
+                        exit(1);
+                    } else
+                        ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
+                }
+
+                /* Random 1: Time took to write the agent information
+                 * Random 2: Time took to choose the action
+                 * Random 3: All of this + time + pid
+                 * Random 4: Md5 all of this + the name, key and IP
+                 * Random 5: Final key
+                 */
+
+                snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
+                snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
+
+                OS_MD5_Str(str1, md1);
+                OS_MD5_Str(str2, md2);
+
+                snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), os_random(),
+                         (int)time3);
+                OS_MD5_Str(str1, md1);
+
+                snprintf(key, 65, "%s%s", md1, md2);
+                fprintf(file.fp, "%s %s %s %s\n", id, name, c_ip.ip, key);
+                fclose(file.fp);
+
+                if (OS_MoveFile(file.name, AUTH_FILE) < 0) {
+                    if (json_output) {
+                        char buffer[1024];
+                        cJSON *json_root = cJSON_CreateObject();
+                        snprintf(buffer, 1023, "Could not write file '%s'", AUTH_FILE);
+                        cJSON_AddNumberToObject(json_root, "error", 71);
+                        cJSON_AddStringToObject(json_root, "message", buffer);
+                        printf("%s", cJSON_PrintUnformatted(json_root));
+                        exit(1);
+                    } else
+                        ErrorExit("%s: Could not write file '%s'", ARGV0, AUTH_FILE);
+                }
+
+                free(file.name);
+                OS_AddAgentTimestamp(id, name, ip, time3);
+            } else {
+                if (auth_add_agent(sock, id, name, ip, env_remove_dup ? force_antiquity : -1, json_output) < 0) {
+                    break;
+                }
             }
-
-            /* Random 1: Time took to write the agent information
-             * Random 2: Time took to choose the action
-             * Random 3: All of this + time + pid
-             * Random 4: Md5 all of this + the name, key and IP
-             * Random 5: Final key
-             */
-
-            snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
-            snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
-
-            OS_MD5_Str(str1, md1);
-            OS_MD5_Str(str2, md2);
-
-            snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), os_random(),
-                     (int)time3);
-            OS_MD5_Str(str1, md1);
-
-            snprintf(key, 65, "%s%s", md1, md2);
-            fprintf(file.fp, "%s %s %s %s\n", id, name, c_ip.ip, key);
-            fclose(file.fp);
-
-            if (OS_MoveFile(file.name, AUTH_FILE) < 0) {
-                if (json_output) {
-                    char buffer[1024];
-                    cJSON *json_root = cJSON_CreateObject();
-                    snprintf(buffer, 1023, "Could not write file '%s'", AUTH_FILE);
-                    cJSON_AddNumberToObject(json_root, "error", 71);
-                    cJSON_AddStringToObject(json_root, "message", buffer);
-                    printf("%s", cJSON_PrintUnformatted(json_root));
-                    exit(1);
-                } else
-                    ErrorExit("%s: Could not write file '%s'", ARGV0, AUTH_FILE);
-            }
-
-            free(file.name);
-            OS_AddAgentTimestamp(id, name, ip, time3);
 
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
@@ -396,9 +385,9 @@ int add_agent(int json_output)
         }
     } while (1);
 
-    cleanup:
+cleanup:
     free(c_ip.ip);
-
+    auth_close(sock);
     return (0);
 }
 
@@ -407,26 +396,18 @@ int remove_agent(int json_output)
     char *user_input;
     char u_id[FILE_SIZE + 1];
     int id_exist;
+    int sock;
 
     u_id[FILE_SIZE] = '\0';
-
-    if (check_authd()) {
-        if (json_output) {
-            char buffer[1024];
-            cJSON *json_root = cJSON_CreateObject();
-            snprintf(buffer, 1023, "ossec-authd is running");
-            cJSON_AddNumberToObject(json_root, "error", 72);
-            cJSON_AddStringToObject(json_root, "message", buffer);
-            printf("%s", cJSON_PrintUnformatted(json_root));
-            exit(1);
-        } else
-            ErrorExit("%s: ERROR: ossec-authd is running", ARGV0);
-    }
 
     if (!(json_output || print_agents(0, 0, 0, 0))) {
         printf(NO_AGENT);
         return (0);
     }
+
+    // Create socket
+
+    sock = auth_connect();
 
     do {
         if (!json_output) {
@@ -442,33 +423,34 @@ int remove_agent(int json_output)
         }
 
         if (strcmp(user_input, QUIT) == 0) {
-            return (0);
+            goto cleanup;
         }
 
         FormatID(user_input);
         strncpy(u_id, user_input, FILE_SIZE);
-        id_exist = IDExist(user_input, 0);
 
-        if (!id_exist) {
-            if (json_output) {
-                char buffer[1024];
-                cJSON *json_root = cJSON_CreateObject();
-                snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", user_input);
-                cJSON_AddNumberToObject(json_root, "error", 78);
-                cJSON_AddStringToObject(json_root, "message", buffer);
-                printf("%s", cJSON_PrintUnformatted(json_root));
-                exit(1);
-            } else
-                printf(NO_ID, user_input);
+        if (sock < 0) {
+            if (id_exist = IDExist(user_input, 0), !id_exist) {
+                if (json_output) {
+                    char buffer[1024];
+                    cJSON *json_root = cJSON_CreateObject();
+                    snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", user_input);
+                    cJSON_AddNumberToObject(json_root, "error", 78);
+                    cJSON_AddStringToObject(json_root, "message", buffer);
+                    printf("%s", cJSON_PrintUnformatted(json_root));
+                    exit(1);
+                } else
+                    printf(NO_ID, user_input);
 
-            /* Exit here if we are using environment variables
-             * and our ID does not exist
-             */
-            if (getenv("OSSEC_AGENT_ID")) {
-                return (1);
+                /* Exit here if we are using environment variables
+                 * and our ID does not exist
+                 */
+                if (getenv("OSSEC_AGENT_ID")) {
+                    exit(1);
+                }
             }
         }
-    } while (!id_exist);
+    } while (sock < 0 && !id_exist);
 
     do {
         if (!json_output) {
@@ -485,48 +467,56 @@ int remove_agent(int json_output)
 
         /* If user confirms */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
-            /* Get full agent name */
-            char *full_name = getFullnameById(u_id);
-            if (!full_name) {
-                if (json_output) {
-                    char buffer[1024];
-                    cJSON *json_root = cJSON_CreateObject();
-                    snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", u_id);
-                    cJSON_AddNumberToObject(json_root, "error", 78);
-                    cJSON_AddStringToObject(json_root, "message", buffer);
-                    printf("%s", cJSON_PrintUnformatted(json_root));
-                    exit(1);
-                } else
-                    printf(NO_ID, u_id);
+            if (sock < 0) {
+                /* Get full agent name */
+                char *full_name = getFullnameById(u_id);
+                if (!full_name) {
+                    if (json_output) {
+                        char buffer[1024];
+                        cJSON *json_root = cJSON_CreateObject();
+                        snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", u_id);
+                        cJSON_AddNumberToObject(json_root, "error", 78);
+                        cJSON_AddStringToObject(json_root, "message", buffer);
+                        printf("%s", cJSON_PrintUnformatted(json_root));
+                        exit(1);
+                    } else
+                        printf(NO_ID, u_id);
 
-                return (1);
-            }
+                    goto cleanup;
+                }
 
-            if (!OS_RemoveAgent(u_id)) {
+                if (!OS_RemoveAgent(u_id)) {
+                    free(full_name);
+
+                    if (json_output) {
+                        char buffer[1024];
+                        cJSON *json_root = cJSON_CreateObject();
+                        snprintf(buffer, 1023, "Could not open object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+                        cJSON_AddNumberToObject(json_root, "error", 71);
+                        cJSON_AddStringToObject(json_root, "message", buffer);
+                        printf("%s", cJSON_PrintUnformatted(json_root));
+                        exit(1);
+                    } else
+                        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+                }
+
                 free(full_name);
-
-                if (json_output) {
-                    char buffer[1024];
-                    cJSON *json_root = cJSON_CreateObject();
-                    snprintf(buffer, 1023, "Could not open object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
-                    cJSON_AddNumberToObject(json_root, "error", 71);
-                    cJSON_AddStringToObject(json_root, "message", buffer);
-                    printf("%s", cJSON_PrintUnformatted(json_root));
-                    exit(1);
-                } else
-                    ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+                full_name = NULL;
+            } else {
+                if (auth_remove_agent(sock, u_id, json_output) < 0) {
+                    break;
+                }
             }
-
-            free(full_name);
-            full_name = NULL;
 
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
                 cJSON_AddNumberToObject(json_root, "error", 0);
                 cJSON_AddStringToObject(json_root, "data", "Agent removed");
                 printf("%s", cJSON_PrintUnformatted(json_root));
-            } else
+            } else {
                 printf(REMOVE_DONE, u_id);
+            }
+
             restart_necessary = 1;
             break;
         } else { /* if(user_input[0] == 'n' || user_input[0] == 'N') */
@@ -535,7 +525,9 @@ int remove_agent(int json_output)
         }
     } while (1);
 
-    return (0);
+cleanup:
+    auth_close(sock);
+    return 0;
 }
 
 int list_agents(int cmdlist)

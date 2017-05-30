@@ -47,6 +47,18 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
 void OS_RemoveAgentTimestamp(const char *id);
 void FormatID(char *id);
 
+// Connect to Agentd. Returns socket or -1 on error.
+int auth_connect();
+
+// Close socket if valid.
+int auth_close(int sock);
+
+// Add agent. Returns 0 on success or -1 on error.
+int auth_add_agent(int sock, char *id, const char *name, const char *ip, int force, int json_format);
+
+// Remove agent. Returns 0 on success or -1 on error.
+int auth_remove_agent(int sock, const char *id, int json_format);
+
 /* Load gid and uid.
  * Call before OS_BackupAgentInfo(), OS_BackupAgentInfo_ID() or OS_CreateBackupDir().
  * Should be called before chroot().
@@ -60,12 +72,6 @@ int list_agents(int cmdlist);
 
 /* Clear a line */
 char *chomp(char *str);
-
-/*
- * Check whether ossec-authd is running (returns 1) or not (returns 0).
- * Returns -1 on error.
- */
-int check_authd();
 
 /* Shared variables */
 extern int restart_necessary;
