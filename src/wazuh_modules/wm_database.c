@@ -13,6 +13,7 @@
 #include "sec.h"
 #include "wazuh_db/wdb.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
+#ifndef WIN32
 #include <regex.h>
 
 #ifdef INOTIFY_ENABLED
@@ -1036,5 +1037,7 @@ int set_max_queued_events(int size) {
     fclose(fp);
     return 0;
 }
+
+#endif
 
 #endif
