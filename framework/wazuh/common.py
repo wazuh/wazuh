@@ -53,6 +53,11 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global ARQUEUE
     ARQUEUE = "{0}/queue/alerts/ar".format(ossec_path)
 
+    # Socket
+    global AUTHD_SOCKET
+    AUTHD_SOCKET = "{0}/queue/agents/auth".format(ossec_path)
+
+
 # Common variables
 database_limit = 500
 

@@ -10,6 +10,8 @@ class WazuhException(Exception):
     """
 
     ERRORS = {
+	# < 1000: API
+
         # Wazuh: 0999 - 1099
         999: 'Incompatilbe version of Python',
         1000: 'Wazuh Internal Error',
@@ -22,6 +24,8 @@ class WazuhException(Exception):
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
         1012: 'Invalid message to queue',
+        1013: 'Unable to connect with socket',
+        1014: 'Error communicating with socket',
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
@@ -63,7 +67,7 @@ class WazuhException(Exception):
         1701: 'Agent does not exist',
         1702: 'Unable to restart agent(s)',
         1703: 'Action not available for Manager (Agent 000)',
-        1704: 'Adding/removing agents via API when ossec-authd is running is not compatible',
+        1704: '',
         1705: 'There is an agent with the same name',
         1706: 'There is an agent with the same IP',
         1707: 'Impossible to restart agent due to it is not active',
@@ -78,6 +82,7 @@ class WazuhException(Exception):
         2000: 'No such database file',
         2001: 'Incompatible version of SQLite',
 
+        # > 9000: Authd
     }
 
     def __init__(self, code, extra_message=None, cmd_error=False):

@@ -6,6 +6,7 @@
 from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
+from wazuh.ossec_socket import OssecSocket
 from wazuh.database import Connection
 from wazuh import manager
 from wazuh import common
@@ -42,7 +43,7 @@ class Agent:
         self.name = None
         self.ip = None
         self.internal_key = None
-        self.os = None
+        self.os = {}
         self.version = None
         self.dateAdd = None
         self.lastKeepAlive = None
@@ -50,7 +51,6 @@ class Agent:
         self.key = None
         self.configSum = None
         self.mergedSum = None
-        self.os_family = None
         self.group = None
 
         if args:
@@ -84,7 +84,8 @@ class Agent:
         return str(self.to_dict())
 
     def to_dict(self):
-        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os, 'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive, 'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum, 'os_family': self.os_family, 'group': self.group }
+        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os, 'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive, 'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum, 'group': self.group }
+
         return dictionary
 
     @staticmethod
@@ -119,7 +120,7 @@ class Agent:
         query = "SELECT {0} FROM agent WHERE id = :id"
         request = {'id': self.id}
 
-        select = ["id", "name", "ip", "key", "os", "version", "date_add", "last_keepalive", "config_sum", "merged_sum", "`group`"]
+        select = ["id", "name", "ip", "key", "version", "date_add", "last_keepalive", "config_sum", "merged_sum", "`group`", "os_name", "os_version", "os_major", "os_minor", "os_codename", "os_build", "os_platform", "os_uname"]
 
         conn.execute(query.format(','.join(select)), request)
 
@@ -137,29 +138,35 @@ class Agent:
             if tuple[3] != None:
                 self.internal_key = tuple[3]
             if tuple[4] != None:
-                self.os = tuple[4]
-                try:
-                    os_family = self.os.split(' ')[0]
-                    if os_family.lower() == "microsoft" or os_family.lower() == "windows":
-                        self.os_family = "Windows"
-                    else:
-                        self.os_family = os_family
-                except:
-                    self.os_family = None
+                self.version = tuple[4]
             if tuple[5] != None:
-                self.version = tuple[5]
+                self.dateAdd = tuple[5]
             if tuple[6] != None:
-                self.dateAdd = tuple[6]
-            if tuple[7] != None:
-                self.lastKeepAlive = tuple[7]
+                self.lastKeepAlive = tuple[6]
             else:
                 self.lastKeepAlive = 0
+            if tuple[7] != None:
+                self.configSum = tuple[7]
             if tuple[8] != None:
-                self.configSum = tuple[8]
+                self.mergedSum = tuple[8]
             if tuple[9] != None:
-                self.mergedSum = tuple[9]
+                self.group = tuple[9]
             if tuple[10] != None:
-                self.group = tuple[10]
+                self.os['name'] = tuple[10]
+            if tuple[11] != None:
+                self.os['version'] = tuple[11]
+            if tuple[12] != None:
+                self.os['major'] = tuple[12]
+            if tuple[13] != None:
+                self.os['minor'] = tuple[13]
+            if tuple[14] != None:
+                self.os['codename'] = tuple[14]
+            if tuple[15] != None:
+                self.os['build'] = tuple[15]
+            if tuple[16] != None:
+                self.os['platform'] = tuple[16]
+            if tuple[17] != None:
+                self.os['uname'] = tuple[17]
 
             if self.id != "000":
                 self.status = Agent.calculate_status(self.lastKeepAlive)
@@ -187,9 +194,9 @@ class Agent:
         #if self.internal_key:
         #    info['internal_key'] = self.internal_key
         if self.os:
-            info['os'] = self.os
-        if self.os_family:
-            info['os_family'] = self.os_family
+            os_no_empty = dict((k, v) for k, v in self.os.iteritems() if v)
+            if os_no_empty:
+                info['os'] = os_no_empty
         if self.version:
             info['version'] = self.version
         if self.dateAdd:
@@ -255,10 +262,37 @@ class Agent:
         :return: Message.
         """
 
-        # Check if authd is running
         manager_status = manager.status()
-        if 'ossec-authd' not in manager_status or manager_status['ossec-authd'] == 'running':
-            raise WazuhException(1704)
+        if 'ossec-authd' not in manager_status or manager_status['ossec-authd'] != 'running':
+            data = self._remove_manual(backup)
+        else:
+            data = self._remove_authd()
+
+        return data
+
+    def _remove_authd(self):
+        """
+        Deletes the agent.
+
+        :param backup: Create backup before removing the agent.
+        :return: Message.
+        """
+
+        msg = { "function": "remove", "arguments": { "id": str(self.id) } }
+
+        authd_socket = OssecSocket(common.AUTHD_SOCKET)
+        authd_socket.send(msg)
+        data = authd_socket.receive()
+        authd_socket.close()
+
+        return data
+
+    def _remove_manual(self, backup=False):
+        """
+        Deletes the agent.
+        :param backup: Create backup before removing the agent.
+        :return: Message.
+        """
 
         # Get info from DB
         self._load_info_from_DB()
@@ -340,11 +374,34 @@ class Agent:
                 if path.exists(agent_file[0]) and not path.exists(agent_file[1]):
                     rename(agent_file[0], agent_file[1])
 
-        return 'Agent removed'
+        return 'Agent deleted successfully.'
 
     def _add(self, name, ip, id=None, key=None, force=-1):
         """
-        Adds a agent to OSSEC.
+        Adds an agent to OSSEC.
+        2 uses:
+            - name and ip [force]: Add an agent like manage_agents (generate id and key).
+            - name, ip, id, key [force]: Insert an agent with an existing id and key.
+
+        :param name: name of the new agent.
+        :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
+        :param id: ID of the new agent.
+        :param key: Key of the new agent.
+        :param force: Remove old agents with same IP if disconnected since <force> seconds
+        :return: Agent ID.
+        """
+
+        manager_status = manager.status()
+        if 'ossec-authd' not in manager_status or manager_status['ossec-authd'] != 'running':
+            data = self._add_manual(name, ip, id, key, force)
+        else:
+            data = self._add_authd(name, ip, id, key, force)
+
+        return data
+
+    def _add_authd(self, name, ip, id=None, key=None, force=-1):
+        """
+        Adds an agent to OSSEC using authd.
         2 uses:
             - name and ip [force]: Add an agent like manage_agents (generate id and key).
             - name, ip, id, key [force]: Insert an agent with an existing id and key.
@@ -368,10 +425,45 @@ class Agent:
 
         force = force if type(force) == int else int(force)
 
-        # Check if authd is running
-        manager_status = manager.status()
-        if 'ossec-authd' not in manager_status or manager_status['ossec-authd'] == 'running':
-            raise WazuhException(1704)
+        msg = ""
+        if name and ip:
+            if id and key:
+                msg = { "function": "add", "arguments": { "name": name, "ip": ip, "force": force } }
+            else:
+                msg = { "function": "add", "arguments": { "name": name, "ip": ip, "id": id, "key": key, "force": force } }
+
+        authd_socket = OssecSocket(common.AUTHD_SOCKET)
+        authd_socket.send(msg)
+        data = authd_socket.receive()
+        authd_socket.close()
+
+        self.id = data['id']
+
+    def _add_manual(self, name, ip, id=None, key=None, force=-1):
+        """
+        Adds an agent to OSSEC manually.
+        2 uses:
+            - name and ip [force]: Add an agent like manage_agents (generate id and key).
+            - name, ip, id, key [force]: Insert an agent with an existing id and key.
+
+        :param name: name of the new agent.
+        :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
+        :param id: ID of the new agent.
+        :param key: Key of the new agent.
+        :param force: Remove old agents with same IP if disconnected since <force> seconds
+        :return: Agent ID.
+        """
+
+        # Check arguments
+        if id:
+            id = id.zfill(3)
+
+        ip = ip.lower()
+
+        if key and len(key) < 64:
+            raise WazuhException(1709)
+
+        force = force if type(force) == int else int(force)
 
         # Check if ip, name or id exist in client.keys
         last_id = 0
@@ -389,16 +481,26 @@ class Agent:
                 if line_data[1][0] in ('#!'):  # name starts with # or !
                     continue
 
+                check_remove = 0
                 if id and id == line_data[0]:
                     raise WazuhException(1708, id)
                 if name == line_data[1]:
-                    raise WazuhException(1705, name)
+                    if force < 0:
+                        raise WazuhException(1705, name)
+                    else:
+                        check_remove = 1
                 if ip != 'any' and ip == line_data[2]:
                     if force < 0:
                         raise WazuhException(1706, ip)
                     else:
-                        if force == 0 or Agent.check_if_delete_agent(line_data[0], force):
-                            Agent.remove_agent(line_data[0], backup=True)
+                        check_remove = 2
+
+                if check_remove:
+                    if force == 0 or Agent.check_if_delete_agent(line_data[0], force):
+                        Agent.remove_agent(line_data[0], backup=True)
+                    else:
+                        if check_remove == 1:
+                            raise WazuhException(1705, name)
                         else:
                             raise WazuhException(1706, ip)
 
@@ -438,11 +540,12 @@ class Agent:
         self.id = agent_id
 
     @staticmethod
-    def get_agents_overview(status="all", offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_agents_overview(status="all", os_platform="all", offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Gets a list of available agents with basic attributes.
 
         :param status: Filters by agent status: Active, Disconnected or Never connected.
+        :param os_platform: Filters by OS platform.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
@@ -458,8 +561,9 @@ class Agent:
 
         # Query
         query = "SELECT {0} FROM agent"
-        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive'}
-        select = ["id", "name", "ip", "last_keepalive"]
+        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive', 'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform' }
+        select = ["id", "name", "ip", "last_keepalive", "os_name", "os_version", "os_platform"]
+        search_fields = ["id", "name", "ip", "os_name", "os_version", "os_platform"]
         request = {}
 
         if status != "all":
@@ -474,10 +578,14 @@ class Agent:
             elif status.lower() == "never connected":
                 query += ' AND last_keepalive IS NULL AND id != 0'
 
+        if os_platform != "all":
+            request['os_platform'] = os_platform
+            query += ' AND os_platform = :os_platform'
+
         # Search
         if search:
             query += " AND NOT" if bool(search['negation']) else ' AND'
-            query += " (" + " OR ".join(x + ' LIKE :search' for x in ('id', 'name', 'ip')) + " )"
+            query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
             request['search'] = '%{0}%'.format(search['value'])
 
         if "FROM agent AND" in query:
@@ -499,13 +607,15 @@ class Agent:
                 for i in sort['fields']:
                     # Order by status ASC is the same that order by last_keepalive DESC.
                     if i == 'status':
-                        if sort['order'] == 'asc':
-                            str_order = "desc"
-                        else:
-                            str_order = "asc"
+                        str_order = "desc" if sort['order'] == 'asc' else "asc"
+                        order_str_field = '{0} {1}'.format(fields[i], str_order)
+                    # Order by version is order by major and minor
+                    elif i == 'os.version':
+                        order_str_field = "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(sort['order'])
                     else:
-                        str_order = sort['order']
-                    order_str_fields.append('{0} {1}'.format(fields[i], str_order))
+                        order_str_field = '{0} {1}'.format(fields[i], sort['order'])
+
+                    order_str_fields.append(order_str_field)
 
                 query += ' ORDER BY ' + ','.join(order_str_fields)
             else:
@@ -525,6 +635,7 @@ class Agent:
 
         for tuple in conn:
             data_tuple = {}
+            os = {}
 
             if tuple[0] != None:
                 data_tuple['id'] = str(tuple[0]).zfill(3)
@@ -537,6 +648,18 @@ class Agent:
                 lastKeepAlive = tuple[3]
             else:
                 lastKeepAlive = 0
+
+            if tuple[4] != None:
+                os['name'] = tuple[4]
+            if tuple[5] != None:
+                os['version'] = tuple[5]
+            if tuple[6] != None:
+                os['platform'] = tuple[6]
+
+            if os:
+                os_no_empty = dict((k, v) for k, v in os.iteritems() if v)
+                if os_no_empty:
+                    data_tuple['os'] = os_no_empty
 
             if data_tuple['id'] == "000":
                 data_tuple['status'] = "Active"
@@ -588,6 +711,70 @@ class Agent:
         never = conn.fetch()[0]
 
         return {'Total': total, 'Active': active, 'Disconnected': disconnected, 'Never connected': never}
+
+    @staticmethod
+    def get_os_summary(offset=0, limit=common.database_limit, sort=None, search=None):
+        """
+        Gets a list of available OS.
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        # Connect DB
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+
+        # Init query
+        query = "SELECT DISTINCT {0} FROM agent WHERE os_platform IS NOT null AND os_platform != ''"
+        fields = {'os.platform': 'os_platform'}  # field: db_column
+        select = ["os_platform"]
+        request = {}
+
+        # Search
+        if search:
+            query += " AND NOT" if bool(search['negation']) else ' AND'
+            query += " ( os_platform LIKE :search )"
+            request['search'] = '%{0}%'.format(search['value'])
+
+        # Count
+        conn.execute(query.format('COUNT(DISTINCT os_platform)'), request)
+        data = {'totalItems': conn.fetch()[0]}
+
+        # Sorting
+        if sort:
+            if sort['fields']:
+                allowed_sort_fields = fields.keys()
+                # Check if every element in sort['fields'] is in allowed_sort_fields.
+                if not set(sort['fields']).issubset(allowed_sort_fields):
+                    raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
+
+                order_str_fields = ['`{0}` {1}'.format(fields[i], sort['order']) for i in sort['fields']]
+                query += ' ORDER BY ' + ','.join(order_str_fields)
+            else:
+                query += ' ORDER BY os_platform {0}'.format(sort['order'])
+        else:
+            query += ' ORDER BY os_platform ASC'
+
+        # OFFSET - LIMIT
+        if limit:
+            query += ' LIMIT :offset,:limit'
+            request['offset'] = offset
+            request['limit'] = limit
+
+        conn.execute(query.format(','.join(select)), request)
+
+        data['items'] = []
+        for tuple in conn:
+            if tuple[0] != None:
+                data['items'].append(tuple[0])
+
+        return data
 
     @staticmethod
     def restart_agents(agent_id=None, restart_all=False):
