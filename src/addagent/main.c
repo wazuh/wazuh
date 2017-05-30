@@ -24,19 +24,19 @@ static int setenv(const char *name, const char *val, __attribute__((unused)) int
 __attribute__((noreturn)) static void helpmsg()
 {
     print_header();
-    print_out("  %s: -[Vhlj] [-a <ip> -n <name>] [-d sec] [-e id] [-r id] [-i id] [-f file]", ARGV0);
-    print_out("    -V          Version and license message");
-    print_out("    -h          This help message");
-    print_out("    -j          Use JSON output");
-    print_out("    -l          List available agents");
-    print_out("    -a <ip>     Add new agent");
-    print_out("    -e <id>     Extracts key for an agent (Manager only)");
-    print_out("    -r <id>     Remove an agent (Manager only)");
-    print_out("    -i <id>     Import authentication key (Agent only)");
-    print_out("    -n <name>   Name for new agent");
-    print_out("    -d <sec>    Remove agents with duplicated IP if disconnected since <sec> seconds");
-    print_out("    -f <file>   Bulk generate client keys from file (Manager only)");
-    print_out("                <file> contains lines in IP,NAME format");
+    print_out("  %s -[Vhlj] [-a <ip> -n <name>] [-F sec] [-e id] [-r id] [-i id] [-f file]", ARGV0);
+    print_out("    -V          Version and license message.");
+    print_out("    -h          This help message.");
+    print_out("    -j          Use JSON output.");
+    print_out("    -l          List available agents.");
+    print_out("    -a <ip>     Add new agent.");
+    print_out("    -n <name>   Name for new agent.");
+    print_out("    -e <id>     Extracts key for an agent (Manager only).");
+    print_out("    -r <id>     Remove an agent (Manager only).");
+    print_out("    -i <id>     Import authentication key (Agent only).");
+    print_out("    -F <sec>    Remove agents with duplicated IP if disconnected since <sec> seconds.");
+    print_out("    -f <file>   Bulk generate client keys from file (Manager only).");
+    print_out("                <file> contains lines in IP,NAME format.");
     exit(1);
 }
 
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vhle:r:i:f:ja:n:d:")) != -1) {
+    while ((c = getopt(argc, argv, "Vhle:r:i:f:ja:n:F:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -164,14 +164,14 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -n needs an argument.", ARGV0);
                 setenv("OSSEC_AGENT_NAME", optarg, 1);
                 break;
-            case 'd':
+            case 'F':
                 if (!optarg)
-                    ErrorExit("%s: -d needs an argument.", ARGV0);
+                    ErrorExit("%s: -F needs an argument.", ARGV0);
 
                 force_antiquity = strtol(optarg, &end, 10);
 
                 if (optarg == end || force_antiquity < 0)
-                    ErrorExit("%s: Invalid number for -d", ARGV0);
+                    ErrorExit("%s: Invalid number for -F", ARGV0);
 
                 setenv("OSSEC_REMOVE_DUPLICATED", optarg, 1);
                 break;
