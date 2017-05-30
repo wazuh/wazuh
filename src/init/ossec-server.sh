@@ -106,7 +106,7 @@ enable()
     if [ "X$2" = "X" ]; then
         echo ""
         echo "Enable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
 
@@ -127,7 +127,7 @@ enable()
         echo "Invalid enable option."
         echo ""
         echo "Enable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
 }
@@ -138,7 +138,7 @@ disable()
     if [ "X$2" = "X" ]; then
         echo ""
         echo "Disable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
 
@@ -159,7 +159,7 @@ disable()
         echo "Invalid disable option."
         echo ""
         echo "Disable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
 }
