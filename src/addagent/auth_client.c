@@ -15,7 +15,11 @@
 
 // Connect to Agentd. Returns socket or -1 on error.
 int auth_connect() {
+#ifndef WIN32
     return OS_ConnectUnixDomain(AUTH_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+#else
+    return -1;
+#endif
 }
 
 // Close socket if valid.
