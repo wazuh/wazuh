@@ -27,4 +27,10 @@ WazuhUpgrade()
             mv $passlist.bak $passlist
         fi
     fi
+
+    # Remove existing SQLite databases
+
+    rm -f $DIRECTORY/var/db/global.db*
+    rm -f $DIRECTORY/var/db/.profile.db*
+    rm -f $DIRECTORY/var/db/agents/*
 }
