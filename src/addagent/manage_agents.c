@@ -96,7 +96,7 @@ int add_agent(int json_output)
     c_ip.ip = NULL;
 
     char *id_exist = NULL;
-    int force_antiquity;
+    int force_antiquity = INT_MAX;
     int sock;
 
     const char *env_remove_dup = getenv("OSSEC_REMOVE_DUPLICATED");
