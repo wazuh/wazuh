@@ -24,5 +24,9 @@ int authd_read_config(const char *path) {
         return OS_INVALID;
     }
 
+    if (!config.flags.force_insert) {
+        config.force_time = -1;
+    }
+
     return 0;
 }

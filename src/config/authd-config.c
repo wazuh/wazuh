@@ -19,6 +19,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     /* XML Definitions */
     static const char *xml_port = "port";
     static const char *xml_use_source_ip = "use-source-ip";
+    static const char *xml_force_insert = "force-insert";
     static const char *xml_force_time = "force-time";
     static const char *xml_clear_removed = "clear-removed";
     static const char *xml_use_password = "use-password";
@@ -54,6 +55,15 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             }
 
             config->flags.use_source_ip = b;
+        } else if (!strcmp(node[i]->element, xml_force_insert)) {
+            short b = eval_bool(node[i]->content);
+
+            if (b < 0) {
+                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+
+            config->flags.force_insert = b;
         } else if (!strcmp(node[i]->element, xml_force_time)) {
             char *end;
             config->force_time = strtol(node[i]->content, &end, 10);

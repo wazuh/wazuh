@@ -11,6 +11,7 @@
 
 typedef struct authd_flags_t {
     unsigned short use_source_ip:1;
+    unsigned short force_insert:1;
     unsigned short clear_removed:1;
     unsigned short use_password:1;
     unsigned short verify_host:1;

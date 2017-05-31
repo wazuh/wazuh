@@ -342,7 +342,16 @@ int main(int argc, char **argv)
             config.flags.clear_removed = 1;
         }
 
-        if (force_insert >= -1) {
+        switch (force_insert) {
+        case -2:
+            break;
+
+        case -1:
+            config.flags.force_insert = 0;
+            config.force_time = -1;
+
+        default:
+            config.flags.force_insert = 1;
             config.force_time = force_insert;
         }
 
@@ -714,7 +723,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             if (config.flags.use_source_ip) {
                 if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
-                    if (config.force_time >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
+                    if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
                         verbose(ARGV0 ": INFO: Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
                         add_backup(keys.keyentries[index]);
@@ -736,7 +745,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             /* Check for duplicated names */
 
             if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
-                if (config.force_time >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
+                if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                     id_exist = keys.keyentries[index]->id;
                     verbose(ARGV0 ": INFO: Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
                     add_backup(keys.keyentries[index]);
