@@ -30,32 +30,30 @@ fpos_t fp_pos;
 static uid_t uid = -1;
 static uid_t gid = -1;
 
-char *OS_AddNewAgent(keystore *keys, const char *name, const char *ip)
+int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
 {
     os_md5 md1;
     os_md5 md2;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
-    const char *muname;
-    char *finals;
-    char id[9] = { '\0' };
-    char key[KEYSIZE] = { '\0' };
+    char _id[9] = { '\0' };
+    char buffer[KEYSIZE] = { '\0' };
 
-    srandom_init();
-    muname = getuname();
-    snprintf(id, 9, "%03d", ++keys->id_counter);
+    if (!id) {
+        snprintf(_id, 9, "%03d", ++keys->id_counter);
+        id = _id;
+    }
 
-    snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, os_random(), muname);
-    snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)os_random());
-    OS_MD5_Str(str1, md1);
-    OS_MD5_Str(str2, md2);
+    if (!key) {
+        snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, os_random(), getuname());
+        snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)os_random());
+        OS_MD5_Str(str1, md1);
+        OS_MD5_Str(str2, md2);
+        snprintf(buffer, KEYSIZE, "%s%s", md1, md2);
+        key = buffer;
+    }
 
-    snprintf(key, KEYSIZE, "%s%s", md1, md2);
-    OS_AddKey(keys, id, name, ip ? ip : "any", key);
-
-    os_calloc(2048, sizeof(char), finals);
-    snprintf(finals, 2048, "%s %s %s %s", id, name, ip ? ip : "any", key);
-    return finals;
+    return OS_AddKey(keys, id, name, ip ? ip : "any", key);
 }
 
 int OS_RemoveAgent(const char *u_id) {
@@ -825,29 +823,6 @@ void FormatID(char *id) {
         if (!*end)
             sprintf(id, "%03d", number);
     }
-}
-
-/*
- * Check whether ossec-authd is running (returns 1) or not (returns 0).
- * Returns -1 on error.
- */
-int check_authd() {
-    DIR *dir;
-    struct dirent *entry;
-    int found = 0;
-
-    if (!(dir = opendir(isChroot() ? "/var/run" : DEFAULTDIR "/var/run")))
-        return -1;
-
-    while ((entry = readdir(dir))) {
-        if (!(str_startwith(entry->d_name, "ossec-authd-") || str_endwith(entry->d_name, ".pid"))) {
-            found = 1;
-            break;
-        }
-    }
-
-    closedir(dir);
-    return found;
 }
 
 /* Load gid and uid.

@@ -1091,7 +1091,7 @@ void goDaemonLight()
         merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
     }
 
-    return;
+    nowDaemon();
 }
 
 /* Daemonize a process */
@@ -1137,7 +1137,7 @@ void goDaemon()
         merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
     }
 
-    return;
+    nowDaemon();
 }
 
 #else /* WIN32 */

@@ -316,6 +316,7 @@ int k_extract(const char *cmdextract, int json_output)
 int k_bulkload(const char *cmdbulk)
 {
     int i = 1;
+    int sock;
     FILE *fp, *infp;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
@@ -329,9 +330,7 @@ int k_bulkload(const char *cmdbulk)
     char delims[] = AGENT_FILE_DELIMS;
     char *token = NULL;
 
-    if (check_authd()) {
-        ErrorExit("%s: ERROR: ossec-authd is running", ARGV0);
-    }
+    sock = auth_connect();
 
     /* Check if we can open the input file */
     printf("Opening: [%s]\n", cmdbulk);
@@ -377,12 +376,7 @@ int k_bulkload(const char *cmdbulk)
         /* Set time 2 */
         time2 = time(0);
 
-        srandom_init();
         rand1 = os_random();
-
-        /* Zero strings */
-        memset(str1, '\0', STR_SIZE + 1);
-        memset(str2, '\0', STR_SIZE + 1);
 
         /* Check the name */
         if (!OS_IsValidName(name)) {
@@ -391,7 +385,7 @@ int k_bulkload(const char *cmdbulk)
         }
 
         /* Search for name  -- no duplicates */
-        if (NameExist(name)) {
+        if (sock < 0 && NameExist(name)) {
             printf(ADD_ERROR_NAME, name);
             continue;
         }
@@ -401,66 +395,77 @@ int k_bulkload(const char *cmdbulk)
             continue;
         }
 
-        /* Default ID */
-        i = MAX_AGENTS + 32512;
-        snprintf(id, 8, "%03d", i);
-        while (!IDExist(id, 0)) {
-            i--;
+        if (sock < 0 && IPExist(ip)) {
+            printf(IP_ERROR, ip);
+            continue;
+        }
+
+        if (sock < 0) {
+            /* Default ID */
+            i = MAX_AGENTS + 32512;
             snprintf(id, 8, "%03d", i);
+            while (sock < 0 && !IDExist(id, 0)) {
+                i--;
+                snprintf(id, 8, "%03d", i);
 
-            /* No key present, use id 0 */
-            if (i <= 0) {
-                i = 0;
-                break;
+                /* No key present, use id 0 */
+                if (i <= 0) {
+                    i = 0;
+                    break;
+                }
             }
-        }
-        snprintf(id, 8, "%03d", i + 1);
+            snprintf(id, 8, "%03d", i + 1);
 
-        if (!OS_IsValidID(id)) {
-            printf(INVALID_ID, id);
-            goto cleanup;
-        }
+            if (!OS_IsValidID(id)) {
+                printf(INVALID_ID, id);
+                goto cleanup;
+            }
 
-        /* Search for ID KEY  -- no duplicates */
-        if (IDExist(id, 0)) {
-            printf(NO_DEFAULT, i + 1);
-            goto cleanup;
-        }
+            /* Search for ID KEY  -- no duplicates */
+            if (sock < 0 && IDExist(id, 0)) {
+                printf(NO_DEFAULT, i + 1);
+                goto cleanup;
+            }
 
-        printf(AGENT_INFO, id, name, ip);
-        fflush(stdout);
+            printf(AGENT_INFO, id, name, ip);
+            fflush(stdout);
 
-        time3 = time(0);
-        rand2 = os_random();
+            time3 = time(0);
+            rand2 = os_random();
 
-        fp = fopen(AUTH_FILE, "a");
-        if (!fp) {
-            ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
-        }
+            fp = fopen(AUTH_FILE, "a");
+            if (!fp) {
+                ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
+            }
 #ifndef WIN32
-        if (chmod(AUTH_FILE, 0640) == -1) {
-            ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
-        }
+            if (chmod(AUTH_FILE, 0640) == -1) {
+                ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+            }
 #endif
 
-        /* Random 1: Time took to write the agent information
-         * Random 2: Time took to choose the action
-         * Random 3: All of this + time + pid
-         * Random 4: MD5 all of this + the name, key and IP
-         * Random 5: Final key
-         */
+            /* Random 1: Time took to write the agent information
+             * Random 2: Time took to choose the action
+             * Random 3: All of this + time + pid
+             * Random 4: MD5 all of this + the name, key and IP
+             * Random 5: Final key
+             */
 
-        snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
-        snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
+            snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
+            snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
 
-        OS_MD5_Str(str1, md1);
-        OS_MD5_Str(str2, md2);
+            OS_MD5_Str(str1, md1);
+            OS_MD5_Str(str2, md2);
 
-        snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), os_random(), (int)time3);
-        OS_MD5_Str(str1, md1);
+            snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), os_random(), (int)time3);
+            OS_MD5_Str(str1, md1);
 
-        fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
-        fclose(fp);
+            fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
+            fclose(fp);
+        } else {
+            if (auth_add_agent(sock, id, name, ip, -1, 0) < 0) {
+                goto cleanup;
+            }
+        }
 
         printf(AGENT_ADD, id);
         restart_necessary = 1;
