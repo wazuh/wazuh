@@ -48,7 +48,7 @@ static void save_removed_key(keystore *keys, const char *key) {
 }
 
 /* Create the final key */
-void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
+int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
 {
     os_md5 filesum1;
     os_md5 filesum2;
@@ -126,8 +126,7 @@ void OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip,
         os_strdup(key, keys->keyentries[keys->keysize]->key);
 
     /* Ready for next */
-    keys->keysize++;
-
+    return keys->keysize++;
 }
 
 /* Check if the authentication key file is present */
@@ -526,7 +525,7 @@ int OS_DeleteKey(keystore *keys, const char *id) {
     }
 
     keys->keyentries[keys->keysize] = keys->keyentries[keys->keysize + 1];
-    return 0;
+    return i;
 }
 
 /* Write keystore on client keys file */

@@ -41,6 +41,7 @@
 
 #include "os_net/os_net.h"
 #include "addagent/manage_agents.h"
+#include "config/authd-config.h"
 
 extern BIO *bio_err;
 #define KEYFILE  "/etc/sslmanager.key"
@@ -68,6 +69,28 @@ SSL_CTX *get_ssl_context(int auto_method);
 int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key);
 int load_ca_cert(SSL_CTX *ctx, const char *ca_cert);
 int verify_callback(int ok, X509_STORE_CTX *store);
+
+// Thread for internal server
+void* run_local_server(void *arg);
+
+// Append key to insertion queue
+void add_insert(const keyentry *entry);
+
+// Append key to backup queue
+void add_backup(const keyentry *entry);
+
+// Append key to deletion queue
+void add_remove(const keyentry *entry);
+
+// Read configuration
+int authd_read_config(const char *path);
+
+extern keystore keys;
+extern volatile int write_pending;
+extern volatile int running;
+extern pthread_mutex_t mutex_keys;
+extern pthread_cond_t cond_pending;
+extern authd_config_t config;
 
 #endif /* LIBOPENSSL_ENABLED */
 #endif /* _AUTHD_H */

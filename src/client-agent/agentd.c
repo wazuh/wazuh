@@ -31,6 +31,13 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         goDaemon();
     }
 
+    if (!getuname()) {
+        merror(MEM_ERROR, ARGV0, errno, strerror(errno));
+    } else
+        verbose("%s: INFO: Version detected -> %s", ARGV0, getuname());
+
+
+
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
         ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));

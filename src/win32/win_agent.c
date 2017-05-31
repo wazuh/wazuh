@@ -23,7 +23,7 @@
 
 time_t __win32_curr_time = 0;
 time_t __win32_shared_time = 0;
-char *__win32_uname = NULL;
+const char *__win32_uname = NULL;
 char *__win32_shared = NULL;
 HANDLE hMutex;
 

@@ -69,7 +69,6 @@ void run_notify()
     char keep_alive_random[KEEPALIVE_SIZE];
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE];
     static char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
-    char *uname;
     char *shared_files;
     os_md5 md5sum;
     time_t curr_time;
@@ -105,10 +104,8 @@ void run_notify()
      */
 
     /* Get uname */
-    uname = getuname();
-    if (!uname) {
+    if (!getuname()) {
         merror(MEM_ERROR, ARGV0, errno, strerror(errno));
-        return;
     }
 
     /* Format labeled data */
@@ -123,7 +120,6 @@ void run_notify()
     if (!shared_files) {
         shared_files = strdup("\0");
         if (!shared_files) {
-            free(uname);
             merror(MEM_ERROR, ARGV0, errno, strerror(errno));
             return;
         }
@@ -135,17 +131,16 @@ void run_notify()
     if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
             (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
         snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
-                 uname, md5sum, tmp_labels, shared_files, keep_alive_random);
+                 getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
     } else {
         snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
-                 uname, tmp_labels, shared_files, keep_alive_random);
+                 getuname(), tmp_labels, shared_files, keep_alive_random);
     }
 
     /* Send status message */
     debug2("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
     send_msg(0, tmp_msg);
 
-    free(uname);
     free(shared_files);
 
     return;

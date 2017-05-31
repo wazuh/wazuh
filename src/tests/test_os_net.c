@@ -235,11 +235,11 @@ START_TEST(test_unix)
     const int msg_size = 2048;
     char buffer[BUFFERSIZE];
 
-    ck_assert_int_ge((server_socket = OS_BindUnixDomain(socket_path, 0660, msg_size)), 0);
+    ck_assert_int_ge((server_socket = OS_BindUnixDomain(socket_path, SOCK_DGRAM, 0660, msg_size)), 0);
 
     ck_assert_int_ge(OS_getsocketsize(server_socket), msg_size);
 
-    ck_assert_int_ge((client_socket = OS_ConnectUnixDomain(socket_path, msg_size)), 0);
+    ck_assert_int_ge((client_socket = OS_ConnectUnixDomain(socket_path, SOCK_DGRAM, msg_size)), 0);
 
     ck_assert_int_eq(OS_SendUnix(client_socket, SENDSTRING, 5), 0);
 

@@ -99,7 +99,7 @@ int OS_Server_ReadInsertDB(const DBConfig *db_config)
     }
 
     /* Get system uname */
-    info = getuname();
+    info = strdup(getuname());
     if (!info) {
         merror(MEM_ERROR, ARGV0, errno, strerror(errno));
         return (0);
@@ -119,4 +119,3 @@ int OS_Server_ReadInsertDB(const DBConfig *db_config)
 
     return (server_id);
 }
-

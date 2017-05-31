@@ -14,6 +14,7 @@
 
 #ifndef WIN32
 #include <libgen.h>
+#include <regex.h>
 #else
 #include <aclapi.h>
 #endif
@@ -617,7 +618,7 @@ int MergeAppendFile(const char *finalpath, const char *files)
         fclose(finalfp);
 
         if (chmod(finalpath, 0640) < 0) {
-            merror(CHMOD_ERROR, ARGV0, finalpath, errno, strerror(errno));
+            merror(CHMOD_ERROR, __local_name, finalpath, errno, strerror(errno));
             return 0;
         }
 
@@ -793,43 +794,350 @@ int mkstemp_ex(char *tmp_path)
     return (0);
 }
 
-
-/* Get uname. Memory must be freed after use */
-char *getuname()
+static const char *get_unix_version()
 {
-    struct utsname uts_buf;
+    FILE *os_release, *cmd_output, *version_release, *cmd_output_ver;
+    char buff[256];
+    static char string[256];
+    char *tag, *end;
+    char *name = NULL;
+    char *id = NULL;
+    char *version = NULL;
 
-    if (uname(&uts_buf) >= 0) {
-        char *ret;
+    // Try to open /etc/os-release
+    os_release = fopen("/etc/os-release", "r");
+    // Try to open /usr/lib/os-release
+    if(!os_release) os_release = fopen("/usr/lib/os-release", "r");
 
-        ret = (char *) calloc(256, sizeof(char));
-        if (ret == NULL) {
-            return (NULL);
+    if(os_release){
+        while (fgets(buff, sizeof(buff)- 1, os_release)) {
+            tag = strtok(buff, "=");
+            if (strcmp (tag,"NAME") == 0){
+                name = strtok(NULL, "\n");
+                if (name[0] == '\"' && (end = strchr(++name, '\"'), end)) {
+                    *end = '\0';
+                }
+                name = strdup(name);
+                continue;
+            }
+
+            if (strcmp (tag,"VERSION") == 0){
+                version = strtok(NULL, "\n");
+                if (version[0] == '\"' && (end = strchr(++version, '\"'), end)) {
+                    *end = '\0';
+                }
+                version = strdup(version);
+                continue;
+            }
+
+            if (strcmp (tag,"ID") == 0){
+                id = strtok(NULL, " \n");
+                if (id[0] == '\"' && (end = strchr(++id, '\"'), end)) {
+                    *end = '\0';
+                }
+                id = strdup(id);
+            }
         }
+        fclose(os_release);
+    }
+    // Linux old distributions without 'os-release' file
+    else {
+        regex_t regexCompiled;
+        regmatch_t match[2];
+        int match_size;
+        // CentOS
+        if (version_release = fopen("/etc/centos-release","r"), version_release){
+            name = strdup("CentOS Linux");
+            id = strdup("centos");
+            static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // Fedora
+        } else if (version_release = fopen("/etc/fedora-release","r"), version_release){
+            name = strdup("Fedora");
+            id = strdup("fedora");
+            static const char *pattern = " ([0-9][0-9]*) ";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // RedHat
+        } else if (version_release = fopen("/etc/redhat-release","r"), version_release){
+            static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if (strstr(buff, "CentOS")){
+                    name = strdup("CentOS");
+                    id = strdup("centos");
+                }else if (strstr(buff, "Fedora")){
+                    name = strdup("Fedora");
+                    id = strdup("fedora");
+                }else{
+                    name = strdup("Red Hat Enterprise Linux");
+                    id = strdup("rhel");
+                }
 
-        snprintf(ret, 255, "%s %s %s %s %s - %s %s",
-                 uts_buf.sysname,
-                 uts_buf.nodename,
-                 uts_buf.release,
-                 uts_buf.version,
-                 uts_buf.machine,
-                 __ossec_name, __version);
-
-        return (ret);
-    } else {
-        char *ret;
-        ret = (char *) calloc(256, sizeof(char));
-        if (ret == NULL) {
-            return (NULL);
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // Ubuntu
+        } else if (version_release = fopen("/etc/lsb-release","r"), version_release){
+            name = strdup("Ubuntu");
+            id = strdup("ubuntu");
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                tag = strtok(buff, "=");
+                if (strcmp(tag,"DISTRIB_RELEASE") == 0){
+                    version = strdup(strtok(NULL, "\n"));
+                    break;
+                }
+            }
+        // Gentoo
+        } else if (version_release = fopen("/etc/gentoo-release","r"), version_release){
+            name = strdup("Gentoo");
+            id = strdup("gentoo");
+            static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // SuSE
+        } else if (version_release = fopen("/etc/SuSE-release","r"), version_release){
+            name = strdup("SuSE Linux");
+            id = strdup("suse");
+            static const char *pattern = ".*VERSION = ([0-9][0-9]*)";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // Arch
+        } else if (version_release = fopen("/etc/arch-release","r"), version_release){
+            name = strdup("Arch Linux");
+            id = strdup("arch");
+            static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // Debian
+        } else if (version_release = fopen("/etc/debian_version","r"), version_release){
+            name = strdup("Debian GNU/Linux");
+            id = strdup("debian");
+            static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        // Slackware
+        } else if (version_release = fopen("/etc/slackware-version","r"), version_release){
+            name = strdup("Slackware");
+            id = strdup("slackware");
+            static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return NULL;
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    version = malloc(match_size +1);
+                    snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            regfree(&regexCompiled);
+        } else if (cmd_output = popen("uname", "r"), cmd_output) {
+            if(fgets(buff,sizeof(buff) - 1, cmd_output) == NULL){
+                debug1("%s: ERROR: Can not read from command output (uname).", __local_name);
+                return NULL;
+            }
+            if (strcmp(strtok(buff, "\n"),"Darwin") == 0){ // Mac OS
+                name = strdup("Darwin");
+                id = strdup("darwin");
+                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
+                    static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+                    if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                        merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                        return NULL;
+                    }
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        debug1("%s: ERROR: CRITICAL: Can not read from command output (uname -r).", __local_name);
+                        return NULL;
+                    }
+                    if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        version = malloc(match_size +1);
+                        snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    }
+                    pclose(cmd_output_ver);
+                }
+                regfree(&regexCompiled);
+            } else if (strcmp(strtok(buff, "\n"),"SunOS") == 0){ // Sun OS
+                name = strdup("SunOS");
+                id = strdup("sunos");
+                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
+                    static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+                    if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                        merror("%s: CRITICAL: Can not compile regular expression..", __local_name);
+                        return NULL;
+                    }
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        debug1("%s: ERROR: Can not read from command output (uname -r).", __local_name);
+                        return NULL;
+                    }
+                    if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        version = malloc(match_size +1);
+                        snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    }
+                    pclose(cmd_output_ver);
+                }
+                regfree(&regexCompiled);
+            } else if (strcmp(strtok(buff, "\n"),"OpenBSD") == 0 ||
+                       strcmp(strtok(buff, "\n"),"NetBSD")  == 0 ||
+                       strcmp(strtok(buff, "\n"),"FreeBSD") == 0 ){ // BSD
+                name = strdup("BSD");
+                id = strdup("bsd");
+                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
+                    static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+                    if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                        merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                        return NULL;
+                    }
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        debug1("%s: ERROR: Can not read from command output (uname -r).", __local_name);
+                        return NULL;
+                    }
+                    if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        version = malloc(match_size +1);
+                        snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    }
+                    pclose(cmd_output_ver);
+                }
+                regfree(&regexCompiled);
+            } else if (strcmp(strtok(buff, "\n"),"Linux") == 0){ // Linux undefined
+                name = strdup("Linux");
+                id = strdup("linux");
+            }
+            pclose(cmd_output);
         }
-
-        snprintf(ret, 255, "No system info available -  %s %s",
-                 __ossec_name, __version);
-
-        return (ret);
     }
 
-    return (NULL);
+    if (!name)
+        name = strdup("\0");
+    if (!version)
+        version = strdup("\0");
+    if (!id)
+        id = strdup("\0");
+
+    if (snprintf (string, 255, "%s|%s: %s", name, id, version) >= 255) return NULL;
+
+    free(name);
+    free(version);
+    free(id);
+
+    return string;
+}
+
+/* Get uname. Memory must be freed after use */
+const char *getuname()
+{
+    struct utsname uts_buf;
+    const char *os_version;
+    static char muname[512] = "";
+
+    if (!muname[0]){
+        if (uname(&uts_buf) >= 0) {
+            if (os_version = get_unix_version(), os_version){
+                snprintf(muname, 512, "%s %s %s %s %s [%s] - %s %s",
+                         uts_buf.sysname,
+                         uts_buf.nodename,
+                         uts_buf.release,
+                         uts_buf.version,
+                         uts_buf.machine,
+                         os_version,
+                         __ossec_name, __version);
+            }
+            else {
+                snprintf(muname, 512, "%s %s %s %s %s - %s %s",
+                         uts_buf.sysname,
+                         uts_buf.nodename,
+                         uts_buf.release,
+                         uts_buf.version,
+                         uts_buf.machine,
+                         __ossec_name, __version);
+            }
+        } else {
+            snprintf(muname, 512, "No system info available -  %s %s",
+                     __ossec_name, __version);
+        }
+    }
+
+    return muname;
 }
 
 /* Daemonize a process without closing stdin/stdout/stderr */
@@ -868,7 +1176,7 @@ void goDaemonLight()
         merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
     }
 
-    return;
+    nowDaemon();
 }
 
 /* Daemonize a process */
@@ -914,14 +1222,14 @@ void goDaemon()
         merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
     }
 
-    return;
+    nowDaemon();
 }
 
 #else /* WIN32 */
 
 int checkVista()
 {
-    char *m_uname;
+    const char *m_uname;
     isVista = 0;
 
     m_uname = getuname();
@@ -945,8 +1253,6 @@ int checkVista()
         verbose("%s: INFO: System is older than Vista (%s).",
                 __local_name, m_uname);
     }
-
-    free(m_uname);
 
     return (isVista);
 }
@@ -1210,10 +1516,10 @@ cleanup:
 }
 
 /* Get uname for Windows */
-char *getuname()
+const char *getuname()
 {
     int ret_size = OS_SIZE_1024 - 2;
-    char *ret = NULL;
+    static char ret[OS_SIZE_1024 + 1] = "";
     char os_v[128 + 1];
     FILE *cmd_output;
     char *command;
@@ -1242,9 +1548,9 @@ char *getuname()
         }
     }
 
-    /* Allocate memory */
-    os_calloc(OS_SIZE_1024 + 1, sizeof(char), ret);
-    ret[OS_SIZE_1024] = '\0';
+    if (ret[0] != '\0') {
+        return ret;
+    }
 
     switch (osvi.dwPlatformId) {
         /* Test for the Windows NT product family */
@@ -1398,7 +1704,6 @@ char *getuname()
 
                 }
                 ret_size -= strlen(ret) + 1;
-
             } else if (osvi.dwMajorVersion == 6 && (osvi.dwMinorVersion == 2 || osvi.dwMinorVersion == 3)) {
                 command = "wmic os get caption";
                 char *end;
@@ -1602,12 +1907,16 @@ char *getuname()
                                      "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Hotfix\\Q246009",
                                      0, KEY_QUERY_VALUE, &hKey );
                 if ( lRet == ERROR_SUCCESS )
-                    snprintf(__wp, 63, "Service Pack 6a (Build %d)",
+                    snprintf(__wp, 63, "Service Pack 6a [Ver: %i.%i.%d]",
+                             (int)osvi.dwMajorVersion,
+                             (int)osvi.dwMinorVersion,
                              (int)osvi.dwBuildNumber & 0xFFFF );
                 else { /* Windows NT 4.0 prior to SP6a */
-                    snprintf(__wp, 63, "%s (Build %d)",
+                    snprintf(__wp, 63, "%s [Ver: %i.%i.%d]",
                              osvi.szCSDVersion,
-                             (int)osvi.dwBuildNumber & 0xFFFF);
+                             (int)osvi.dwMajorVersion,
+                             (int)osvi.dwMinorVersion,
+                             (int)osvi.dwBuildNumber & 0xFFFF );
                 }
 
                 strncat(ret, __wp, ret_size - 1);
@@ -1616,19 +1925,19 @@ char *getuname()
             } else if (osvi.dwMajorVersion == 6 && (osvi.dwMinorVersion == 2 || osvi.dwMinorVersion == 3)) {
                 char __wp[64];
                 memset(__wp, '\0', 64);
-                command = "wmic os get BuildNumber";
+                command = "wmic os get Version";
                 cmd_output = popen(command, "r");
                 if (!cmd_output) {
                     verbose("%s: ERROR: Unable to execute command: '%s'.", ARGV0, command);
-                    snprintf(__wp, 63, " (Build %s)", "desc");
+                    snprintf(__wp, 63, " [Ver: %s]", "desc");
                 }
-                if (strncmp(fgets(read_buff, buf_tam, cmd_output),"BuildNumber",11) == 0) {
+                if (strncmp(fgets(read_buff, buf_tam, cmd_output),"Version",7) == 0) {
                     if (!fgets(read_buff, buf_tam, cmd_output)){
-                        verbose("%s: ERROR: Can't get BuildNumber.", ARGV0);
-                        snprintf(__wp, 63, " (Build %s)", "desc");
+                        verbose("%s: ERROR: Can't get Version.", ARGV0);
+                        snprintf(__wp, 63, " [Ver: %s]", "desc");
                     }
                     else {
-                        snprintf(__wp, 63, " (Build %i)", atoi(strtok(read_buff, " ")));
+                        snprintf(__wp, 63, " [Ver: %s]", strtok(read_buff," "));
                     }
                 }
 
@@ -1642,9 +1951,11 @@ char *getuname()
 
                 memset(__wp, '\0', 64);
 
-                snprintf(__wp, 63, "%s (Build %d)",
+                snprintf(__wp, 63, "%s [Ver: %i.%i.%d]",
                          osvi.szCSDVersion,
-                         (int)osvi.dwBuildNumber & 0xFFFF);
+                         (int)osvi.dwMajorVersion,
+                         (int)osvi.dwMinorVersion,
+                         (int)osvi.dwBuildNumber & 0xFFFF );
 
                 strncat(ret, __wp, ret_size - 1);
                 ret_size -= strlen(__wp) + 1;
@@ -1684,6 +1995,7 @@ char *getuname()
     return (ret);
 
 }
+
 
 #endif /* WIN32 */
 
@@ -1823,19 +2135,19 @@ int OS_MoveFile(const char *src, const char *dst) {
         return 0;
     }
 
-    debug1("%s: WARN: Couldn't rename %s: %s", ARGV0, dst, strerror(errno));
+    debug1("%s: WARN: Couldn't rename %s: %s", __local_name, dst, strerror(errno));
 
     fp_src = fopen(src, "r");
 
     if (!fp_src) {
-        merror("%s: ERROR: Couldn't open file '%s'", ARGV0, src);
+        merror("%s: ERROR: Couldn't open file '%s'", __local_name, src);
         return -1;
     }
 
     fp_dst = fopen(dst, "w");
 
     if (!fp_dst) {
-        merror("%s: ERROR: Couldn't open file '%s'", ARGV0, dst);
+        merror("%s: ERROR: Couldn't open file '%s'", __local_name, dst);
         fclose(fp_src);
         unlink(src);
         return -1;
@@ -1845,7 +2157,7 @@ int OS_MoveFile(const char *src, const char *dst) {
         count_r = fread(buffer, 1, 4096, fp_src);
 
         if (ferror(fp_src)) {
-            merror("%s: ERROR: Couldn't read file '%s'", ARGV0, src);
+            merror("%s: ERROR: Couldn't read file '%s'", __local_name, src);
             status = -1;
             break;
         }
@@ -1853,7 +2165,7 @@ int OS_MoveFile(const char *src, const char *dst) {
         count_w = fwrite(buffer, 1, count_r, fp_dst);
 
         if (count_w != count_r || ferror(fp_dst)) {
-            merror("%s: ERROR: Couldn't write file '%s'", ARGV0, dst);
+            merror("%s: ERROR: Couldn't write file '%s'", __local_name, dst);
             status = -1;
             break;
         }

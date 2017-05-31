@@ -101,6 +101,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Default queue */
 #define DEFAULTQUEUE    "/queue/ossec/queue"
 
+// Authd local socket
+#define AUTH_LOCAL_SOCK "/queue/agents/auth"
+
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
 

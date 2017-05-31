@@ -50,12 +50,6 @@ static void* run_dispatcher(void *arg);
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
 
-/* Append key to insertion queue */
-static void add_insert(const keyentry *entry);
-
-/* Append key to deletion queue */
-static void add_backup(const keyentry *entry);
-
 /* Signal handler */
 static void handler(int signum);
 
@@ -63,26 +57,23 @@ static void handler(int signum);
 static void cleanup();
 
 /* Shared variables */
-char *authpass = NULL;
-const char *ca_cert = NULL;
-int validate_host = 0;
-int use_ip_address = 0;
-SSL_CTX *ctx;
-int force_antiquity = -1;
-int m_queue = 0;
-int sock = 0;
-int save_removed = 1;
+static char *authpass = NULL;
+static SSL_CTX *ctx;
+static int remote_sock = -1;
 
+authd_config_t config;
 keystore keys;
-struct client pool[AUTH_POOL];
-volatile int pool_i = 0;
-volatile int pool_j = 0;
+static struct client pool[AUTH_POOL];
+static volatile int pool_i = 0;
+static volatile int pool_j = 0;
 volatile int write_pending = 0;
 volatile int running = 1;
-struct keynode *queue_insert = NULL;
-struct keynode *queue_backup = NULL;
-struct keynode * volatile *insert_tail;
-struct keynode * volatile *backup_tail;
+static struct keynode *queue_insert = NULL;
+static struct keynode *queue_backup = NULL;
+static struct keynode *queue_remove = NULL;
+static struct keynode * volatile *insert_tail;
+static struct keynode * volatile *backup_tail;
+static struct keynode * volatile *remove_tail;
 
 pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
@@ -93,24 +84,24 @@ pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 static void help_authd()
 {
     print_header();
-    print_out("  %s: -[Vhdti] [-f sec] [-g group] [-D dir] [-p port] [-P] [-v path [-s]] [-x path] [-k path]", ARGV0);
-    print_out("    -V          Version and license message");
-    print_out("    -h          This help message");
-    print_out("    -d          Execute in debug mode. This parameter");
-    print_out("                can be specified multiple times");
-    print_out("                to increase the debug level.");
-    print_out("    -t          Test configuration");
-    print_out("    -i          Use client's source IP address");
-    print_out("    -f <sec>    Remove old agents with same IP if disconnected since <sec> seconds");
+    print_out("  %s: -[Vhdtfi] [-F <time>] [-g group] [-D dir] [-p port] [-P] [-v path [-s]] [-x path] [-k path]", ARGV0);
+    print_out("    -V          Version and license message.");
+    print_out("    -h          This help message.");
+    print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
+    print_out("    -t          Test configuration.");
+    print_out("    -f          Run in foreground.");
+    print_out("    -i          Use client's source IP address instead of any.");
+    print_out("    -F <time>   Force insertion: remove old agent with same name or IP if its keepalive has more than <time> seconds.");
+    print_out("    -F no       Disable force insertion.");
     print_out("    -r          Do not keep removed agents (delete).");
-    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
-    print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
-    print_out("    -P          Enable shared password authentication (at %s or random).", AUTHDPASS_PATH);
-    print_out("    -v <path>   Full path to CA certificate used to verify clients");
-    print_out("    -s          Used with -v, enable source host verification");
-    print_out("    -x <path>   Full path to server certificate (default: %s%s)", DEFAULTDIR, CERTFILE);
-    print_out("    -k <path>   Full path to server key (default: %s%s)", DEFAULTDIR, KEYFILE);
+    print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
+    print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
+    print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
+    print_out("    -P          Enable shared password authentication, at %s or random.", AUTHDPASS_PATH);
+    print_out("    -v <path>   Full path to CA certificate used to verify clients.");
+    print_out("    -s          Used with -v, enable source host verification.");
+    print_out("    -x <path>   Full path to server certificate. Default: %s%s.", DEFAULTDIR, CERTFILE);
+    print_out("    -k <path>   Full path to server key. Default: %s%s.", DEFAULTDIR, KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out(" ");
     exit(1);
@@ -128,17 +119,6 @@ char *__generatetmppass()
     os_md5 md4;
     char *fstring = NULL;
     char str1[STR_SIZE +1];
-    char *muname = NULL;
-
-    #ifndef WIN32
-        #ifdef __OpenBSD__
-        srandomdev();
-        #else
-        srandom(time(0) + getpid() + getppid());
-        #endif
-    #else
-        srandom(time(0) + getpid());
-    #endif
 
     rand1 = os_random();
     rand2 = os_random();
@@ -149,14 +129,11 @@ char *__generatetmppass()
     OS_MD5_Str(rand3, md3);
     OS_MD5_Str(rand4, md4);
 
-    muname = getuname();
-
-    snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, muname, rand2, md3, md4);
+    snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
     OS_MD5_Str(str1, md1);
     fstring = strdup(md1);
     free(rand3);
     free(rand4);
-    free(muname);
     return(fstring);
 }
 
@@ -185,20 +162,21 @@ int main(int argc, char **argv)
 {
     FILE *fp;
     /* Count of pids we are wait()ing on */
-    int c = 0, test_config = 0, status;
-    int use_pass = 0;
-    int auto_method = 0;
+    int test_config = 0;
+    int status;
+    int run_foreground = 0;
     gid_t gid;
-    int client_sock = 0, port = DEFAULT_PORT;
+    int client_sock = 0;
     const char *dir  = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
-    const char *server_cert = NULL;
-    const char *server_key = NULL;
     char buf[4096 + 1];
     struct sockaddr_in _nc;
+    struct timeval timeout;
     socklen_t _ncl;
     pthread_t thread_dispatcher;
     pthread_t thread_writer;
+    pthread_t thread_local_server;
+    fd_set fdset;
 
     /* Initialize some variables */
     bio_err = 0;
@@ -206,90 +184,195 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtig:D:p:v:sx:k:Pf:ar")) != -1) {
+    // Get options
+
+    {
+        int c;
         char *end;
+        int use_pass = 0;
+        int auto_method = 0;
+        int validate_host = 0;
+        int use_ip_address = 0;
+        int clear_removed = 0;
+        int force_insert = -2;
+        const char *ca_cert = NULL;
+        const char *server_cert = NULL;
+        const char *server_key = NULL;
+        unsigned short port = 0;  // TODO: config.port
 
-        switch (c) {
-            case 'V':
-                print_version();
-                break;
-            case 'h':
-                help_authd();
-                break;
-            case 'd':
-                nowDebug();
-                break;
-            case 'i':
-                use_ip_address = 1;
-                break;
-            case 'g':
-                if (!optarg) {
-                    ErrorExit("%s: -g needs an argument", ARGV0);
-                }
-                group = optarg;
-                break;
-            case 'D':
-                if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
-                }
-                dir = optarg;
-                break;
-            case 't':
-                test_config = 1;
-                break;
-            case 'P':
-                use_pass = 1;
-                break;
-            case 'p':
-                if (!optarg) {
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
-                }
-                port = atoi(optarg);
-                if (port <= 0 || port >= 65536) {
-                    ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
-                }
-                break;
-            case 'v':
-                if (!optarg) {
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
-                }
-                ca_cert = optarg;
-                break;
-            case 's':
-                validate_host = 1;
-                break;
-            case 'x':
-                if (!optarg) {
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
-                }
-                server_cert = optarg;
-                break;
-            case 'k':
-                if (!optarg) {
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
-                }
-                server_key = optarg;
-                break;
-            case 'f':
-                if (!optarg)
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+        while (c = getopt(argc, argv, "Vdhtfig:D:p:v:sx:k:PF:ar"), c != -1) {
+            switch (c) {
+                case 'V':
+                    print_version();
+                    break;
 
-                force_antiquity = strtol(optarg, &end, 10);
+                case 'h':
+                    help_authd();
+                    break;
 
-                if (optarg == end || force_antiquity < 0)
-                    ErrorExit("%s: Invalid number for -f", ARGV0);
+                case 'd':
+                    nowDebug();
+                    break;
 
-                break;
-            case 'r':
-                save_removed = 0;
-                break;
-            case 'a':
-                auto_method = 1;
-                break;
-            default:
-                help_authd();
-                break;
+                case 'i':
+                    use_ip_address = 1;
+                    break;
+
+                case 'g':
+                    if (!optarg) {
+                        ErrorExit("%s: -g needs an argument", ARGV0);
+                    }
+                    group = optarg;
+                    break;
+
+                case 'D':
+                    if (!optarg) {
+                        ErrorExit("%s: -D needs an argument", ARGV0);
+                    }
+                    dir = optarg;
+                    break;
+
+                case 't':
+                    test_config = 1;
+                    break;
+
+                case 'f':
+                    run_foreground = 1;
+                    break;
+
+                case 'P':
+                    use_pass = 1;
+                    break;
+
+                case 'p':
+                    if (!optarg) {
+                        ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    }
+
+                    if (port = (unsigned short)atoi(optarg), port == 0) {
+                        ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
+                    }
+                    break;
+
+                case 'v':
+                    if (!optarg) {
+                        ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    }
+                    ca_cert = optarg;
+                    break;
+
+                case 's':
+                    validate_host = 1;
+                    break;
+
+                case 'x':
+                    if (!optarg) {
+                        ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    }
+                    server_cert = optarg;
+                    break;
+
+                case 'k':
+                    if (!optarg) {
+                        ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    }
+                    server_key = optarg;
+                    break;
+
+                case 'F':
+                    if (!optarg) {
+                        ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    }
+
+                    if (!strcmp(optarg, "no")) {
+                        force_insert = -1;
+                    } else {
+                        force_insert = strtol(optarg, &end, 10);
+
+                        if (*end != '\0' || force_insert < 0) {
+                            ErrorExit("%s: Invalid value for -%c", ARGV0, c);
+                        }
+                    }
+
+                    break;
+
+                case 'r':
+                    clear_removed = 1;
+                    break;
+
+                case 'a':
+                    auto_method = 1;
+                    break;
+
+                default:
+                    help_authd();
+                    break;
+            }
         }
+
+        // Return -1 if not configured
+        if (authd_read_config(DEFAULTCPATH) < 0) {
+            ErrorExit(CONFIG_ERROR, ARGV0, DEFAULTCPATH);
+        }
+
+        // Overwrite arguments
+
+        if (use_pass) {
+            config.flags.use_password = 1;
+        }
+
+        if (auto_method) {
+            config.flags.auto_negotiate = 1;
+        }
+
+        if (validate_host) {
+            config.flags.verify_host = 1;
+        }
+
+        if (use_ip_address){
+            config.flags.use_source_ip = 1;
+        }
+
+        if (clear_removed) {
+            config.flags.clear_removed = 1;
+        }
+
+        switch (force_insert) {
+        case -2:
+            break;
+
+        case -1:
+            config.flags.force_insert = 0;
+            config.force_time = -1;
+
+        default:
+            config.flags.force_insert = 1;
+            config.force_time = force_insert;
+        }
+
+        if (ca_cert) {
+            free(config.agent_ca);
+            config.agent_ca = strdup(ca_cert);
+        }
+
+        if (server_cert) {
+            free(config.manager_cert);
+            config.manager_cert = strdup(server_cert);
+        }
+
+        if (server_key) {
+            free(config.manager_key);
+            config.manager_key = strdup(server_key);
+        }
+
+        if (port) {
+            config.port = port;
+        }
+    }
+
+    /* Exit here if test config is set */
+    if (test_config) {
+        exit(0);
     }
 
     /* Start daemon -- NB: need to double fork and setsid */
@@ -301,9 +384,9 @@ int main(int argc, char **argv)
         ErrorExit(USER_ERROR, ARGV0, "", group);
     }
 
-    /* Exit here if test config is set */
-    if (test_config) {
-        exit(0);
+    if (!run_foreground) {
+        nowDaemon();
+        goDaemon();
     }
 
     /* Privilege separation */
@@ -331,11 +414,11 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 #ifdef LEGACY_SSL
-    auto_method = 1;
+    config.flags.auto_negotiate = 1;
     merror("WARN: TLS v1.2 method-forcing disabled. This program was compiled to use SSL/TLS auto-negotiation.");
 #endif
 
-    if (use_pass) {
+    if (config.flags.use_password) {
 
         /* Checking if there is a custom password file */
         fp = fopen(AUTHDPASS_PATH, "r");
@@ -356,14 +439,14 @@ int main(int argc, char **argv)
         }
 
         if (buf[0] != '\0')
-            verbose("Accepting connections. Using password specified on file: %s", AUTHDPASS_PATH);
+            verbose("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHDPASS_PATH);
         else {
             /* Getting temporary pass. */
             authpass = __generatetmppass();
-            verbose("Accepting connections. Random password chosen for agent authentication: %s", authpass);
+            verbose("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
         }
     } else
-        verbose("Accepting connections. No password required.");
+        verbose("Accepting connections on port %hu. No password required.", config.port);
 
     /* Getting SSL cert. */
 
@@ -375,21 +458,22 @@ int main(int argc, char **argv)
     fclose(fp);
 
     /* Start SSL */
-    ctx = os_ssl_keys(1, dir, server_cert, server_key, ca_cert, auto_method);
+    ctx = os_ssl_keys(1, dir, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
     if (!ctx) {
         merror("%s: ERROR: SSL error. Exiting.", ARGV0);
         exit(1);
     }
 
     /* Connect via TCP */
-    sock = OS_Bindporttcp(port, NULL, 0);
-    if (sock <= 0) {
-        merror("%s: Unable to bind to port %d", ARGV0, port);
+    remote_sock = OS_Bindporttcp(config.port, NULL, 0);
+    if (remote_sock <= 0) {
+        merror("%s: Unable to bind to port %d", ARGV0, config.port);
         exit(1);
     }
 
-    /* Setup random */
+    /* Before chroot */
     srandom_init();
+    getuname();
 
     /* Load ossec uid and gid for creating backups */
     if (OS_LoadUid() < 0) {
@@ -402,15 +486,11 @@ int main(int argc, char **argv)
 
     nowChroot();
 
-    /* Queue for sending alerts */
-    if ((m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-        merror("%s: WARN: Can't connect to queue.", ARGV0);
-    }
-
     /* Initialize queues */
 
     insert_tail = &queue_insert;
     backup_tail = &queue_backup;
+    remove_tail = &queue_remove;
 
     /* Start working threads */
 
@@ -428,6 +508,11 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
+    if (status = pthread_create(&thread_local_server, NULL, run_local_server, NULL), status != 0) {
+        merror("%s: ERROR: Couldn't create thread: %s", ARGV0, strerror(status));
+        return EXIT_FAILURE;
+    }
+
     /* Create PID files */
     if (CreatePID(ARGV0, getpid()) < 0) {
         ErrorExit(PID_ERROR, ARGV0);
@@ -441,7 +526,25 @@ int main(int argc, char **argv)
         memset(&_nc, 0, sizeof(_nc));
         _ncl = sizeof(_nc);
 
-        if ((client_sock = accept(sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
+        // Wait for socket
+        FD_ZERO(&fdset);
+        FD_SET(remote_sock, &fdset);
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 0;
+
+        switch (select(remote_sock + 1, &fdset, NULL, NULL, &timeout)) {
+        case -1:
+            if (errno != EINTR) {
+                ErrorExit(ARGV0 ": ERROR: at main(): select(): %s", strerror(errno));
+            }
+
+            continue;
+
+        case 0:
+            continue;
+        }
+
+        if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
             pthread_mutex_lock(&mutex_pool);
 
             if (full(pool_i, pool_j)) {
@@ -456,8 +559,10 @@ int main(int argc, char **argv)
 
             pthread_mutex_unlock(&mutex_pool);
         } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
-            merror("%s: ERROR: accept(): %s", ARGV0, strerror(errno));
+            merror("%s: ERROR: at run_local_server(): accept(): %s", ARGV0, strerror(errno));
     }
+
+    close(remote_sock);
 
     /* Join threads */
 
@@ -470,6 +575,7 @@ int main(int argc, char **argv)
 
     pthread_join(thread_dispatcher, NULL);
     pthread_join(thread_writer, NULL);
+    pthread_join(thread_local_server, NULL);
 
     verbose("%s: Exiting...", ARGV0);
     return (0);
@@ -485,9 +591,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *tmpstr;
     double antiquity;
     int acount;
-    char fname[2048 + 1];
-    char response[2048 + 1];
-    char *finalkey;
+    char fname[2048];
+    char response[2048];
     SSL *ssl;
     char *id_exist = NULL;
     char buf[4096 + 1];
@@ -497,7 +602,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     memset(srcip, '\0', IPSIZE + 1);
 
     OS_PassEmptyKeyfile();
-    OS_ReadKeys(&keys, 0, save_removed);
+    OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
     debug1("%s: DEBUG: Dispatch thread ready", ARGV0);
 
     while (running) {
@@ -528,7 +633,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         /* Additional verification of the agent's certificate. */
 
-        if (validate_host && ca_cert) {
+        if (config.flags.verify_host && config.agent_ca) {
             if (check_x509_cert(ssl, srcip) != VERIFY_TRUE) {
                 merror("%s: DEBUG: Unable to verify server certificate.", ARGV0);
                 SSL_free(ssl);
@@ -593,9 +698,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             merror("%s: ERROR: Invalid request for new agent from: %s", ARGV0, srcip);
         } else {
             acount = 2;
-            finalkey = NULL;
-            response[2048] = '\0';
-            fname[2048] = '\0';
+            response[2047] = '\0';
+            fname[2047] = '\0';
 
             if (!OS_IsValidName(agentname)) {
                 merror("%s: ERROR: Invalid agent name: %s from %s", ARGV0, agentname, srcip);
@@ -612,31 +716,17 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             /* Check for duplicated IP */
 
-            if (use_ip_address) {
-                index = OS_IsAllowedIP(&keys, srcip);
-
-                if (index >= 0) {
-                    id_exist = keys.keyentries[index]->id;
-                    antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip);
-
-                    if (force_antiquity >= 0 && (antiquity >= force_antiquity || antiquity < 0)) {
-                        verbose("INFO: Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
+            if (config.flags.use_source_ip) {
+                if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
+                    if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
+                        id_exist = keys.keyentries[index]->id;
+                        verbose(ARGV0 ": INFO: Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
                         add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist);
                     } else {
                         pthread_mutex_unlock(&mutex_keys);
                         merror("%s: ERROR: Duplicated IP %s", ARGV0, srcip);
                         snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
-
-                        if (m_queue >= 0) {
-                            char buffer[64];
-                            snprintf(buffer, 64, "ossec: Duplicated IP %s", srcip);
-
-                            if (SendMSG(m_queue, buffer, "ossec-authd", AUTH_MQ) < 0) {
-                                merror("%s: ERROR: Can't send event across socket.", ARGV0);
-                            }
-                        }
-
                         SSL_write(ssl, response, strlen(response));
                         snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
                         SSL_write(ssl, response, strlen(response));
@@ -648,34 +738,42 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
 
             /* Check for duplicated names */
-            strncpy(fname, agentname, 2048);
 
-            while (OS_IsAllowedName(&keys, fname) >= 0) {
-                snprintf(fname, 2048, "%s%d", agentname, acount);
+            if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
+                if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
+                    id_exist = keys.keyentries[index]->id;
+                    verbose(ARGV0 ": INFO: Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
+                    add_backup(keys.keyentries[index]);
+                    OS_DeleteKey(&keys, id_exist);
+                } else {
+                    strncpy(fname, agentname, 2048);
 
-                if (++acount > MAX_TAG_COUNTER)
-                    break;
+                    while (OS_IsAllowedName(&keys, fname) >= 0) {
+                        snprintf(fname, 2048, "%s%d", agentname, acount);
+
+                        if (++acount > MAX_TAG_COUNTER)
+                            break;
+                    }
+
+                    if (acount > MAX_TAG_COUNTER) {
+                        pthread_mutex_unlock(&mutex_keys);
+                        merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
+                        snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        continue;
+                    }
+
+                    agentname = fname;
+                }
             }
-
-            if (acount > MAX_TAG_COUNTER) {
-                pthread_mutex_unlock(&mutex_keys);
-                merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
-                snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                SSL_write(ssl, response, strlen(response));
-                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                SSL_write(ssl, response, strlen(response));
-                SSL_free(ssl);
-                close(client.socket);
-                continue;
-            }
-
-            agentname = fname;
 
             /* Add the new agent */
 
-            finalkey = OS_AddNewAgent(&keys, agentname, use_ip_address ? srcip : NULL);
-
-            if (!finalkey) {
+            if (index = OS_AddNewAgent(&keys, NULL, agentname, config.flags.use_source_ip ? srcip : NULL, NULL), index < 0) {
                 pthread_mutex_unlock(&mutex_keys);
                 merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
                 snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
@@ -687,8 +785,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 continue;
             }
 
-            snprintf(response, 2048, "OSSEC K:'%s'\n\n", finalkey);
-            verbose("%s: INFO: Agent key generated for %s (requested by %s)", ARGV0, agentname, srcip);
+            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, config.flags.use_source_ip ? srcip : "any", keys.keyentries[index]->key);
+            verbose("%s: INFO: Agent key generated for '%s' (requested by %s)", ARGV0, agentname, srcip);
             ret = SSL_write(ssl, response, strlen(response));
 
             if (ret < 0) {
@@ -697,8 +795,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 ERR_print_errors_fp(stderr);
                 OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id);
             } else {
-                verbose("%s: INFO: Agent key created for %s (requested by %s)", ARGV0, agentname, srcip);
-
                 /* Add pending key to write */
                 add_insert(keys.keyentries[keys.keysize - 1]);
                 write_pending = 1;
@@ -706,7 +802,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
 
             pthread_mutex_unlock(&mutex_keys);
-            free(finalkey);
         }
 
         SSL_free(ssl);
@@ -714,6 +809,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     }
 
     SSL_CTX_free(ctx);
+    debug1("%s: DEBUG: Dispatch thread finished", ARGV0);
     return NULL;
 }
 
@@ -722,6 +818,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
     keystore *copy_keys;
     struct keynode *copy_insert;
     struct keynode *copy_backup;
+    struct keynode *copy_remove;
     struct keynode *cur;
     struct keynode *next;
     time_t cur_time;
@@ -735,10 +832,13 @@ void* run_writer(__attribute__((unused)) void *arg) {
         copy_keys = OS_DupKeys(&keys);
         copy_insert = queue_insert;
         copy_backup = queue_backup;
+        copy_remove = queue_remove;
         queue_insert = NULL;
         queue_backup = NULL;
+        queue_remove = NULL;
         insert_tail = &queue_insert;
         backup_tail = &queue_backup;
+        remove_tail = &queue_remove;
         write_pending = 0;
         pthread_mutex_unlock(&mutex_keys);
 
@@ -766,12 +866,22 @@ void* run_writer(__attribute__((unused)) void *arg) {
             free(cur->ip);
             free(cur);
         }
+
+        for (cur = copy_remove; cur; cur = next) {
+            next = cur->next;
+            delete_agentinfo(cur->id, cur->name);
+            OS_RemoveCounter(cur->id);
+            OS_RemoveAgentTimestamp(cur->id);
+            free(cur->id);
+            free(cur->name);
+            free(cur);
+        }
     }
 
     return NULL;
 }
 
-/* Append key to insertion queue */
+// Append key to insertion queue
 void add_insert(const keyentry *entry) {
     struct keynode *node;
 
@@ -784,7 +894,7 @@ void add_insert(const keyentry *entry) {
     insert_tail = &node->next;
 }
 
-/* Append key to deletion queue */
+// Append key to backup queue
 void add_backup(const keyentry *entry) {
     struct keynode *node;
 
@@ -797,6 +907,18 @@ void add_backup(const keyentry *entry) {
     backup_tail = &node->next;
 }
 
+// Append key to deletion queue
+void add_remove(const keyentry *entry) {
+    struct keynode *node;
+
+    os_calloc(1, sizeof(struct keynode), node);
+    node->id = strdup(entry->id);
+    node->name = strdup(entry->name);
+
+    (*remove_tail) = node;
+    remove_tail = &node->next;
+}
+
 /* Signal handler */
 static void handler(int signum) {
     switch (signum) {
@@ -805,8 +927,6 @@ static void handler(int signum) {
     case SIGTERM:
         merror(SIGNAL_RECV, ARGV0, signum, strsignal(signum));
         running = 0;
-        close(sock);
-        sock = -1;
         break;
     default:
         merror("%s: ERROR: unknown signal (%d)", ARGV0, signum);

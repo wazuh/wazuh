@@ -13,6 +13,8 @@
 #include "sec.h"
 #include "wazuh_db/wdb.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
+#ifndef WIN32
+#include <regex.h>
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
@@ -226,23 +228,81 @@ void* wm_database_main(wm_database *data) {
 // Update manager information
 void wm_sync_manager() {
     char hostname[1024];
-    char *uname;
+    const char *os_uname;
     const char *path;
+    char *os_name = NULL;
+    char *os_major = NULL;
+    char *os_minor = NULL;
+    char *os_build = NULL;
+    char *os_version = NULL;
+    char *os_codename = NULL;
+    char *os_platform = NULL;
     struct stat buffer;
+    regex_t regexCompiled;
+    regmatch_t match[2];
+    int match_size;
 
     if (gethostname(hostname, 1024) == 0)
         wdb_update_agent_name(0, hostname);
     else
         merror("%s: ERROR: Couldn't get manager's hostname: %s.", WM_DATABASE_LOGTAG, strerror(errno));
 
-    if ((uname = getuname())) {
+    if ((os_uname = getuname())) {
         char *ptr;
 
-        if ((ptr = strstr(uname, " - ")))
+        if ((ptr = strstr(os_uname, " - ")))
             *ptr = '\0';
 
-        wdb_update_agent_version(0, uname, __ossec_name " " __version, NULL, NULL);
-        free(uname);
+        if (os_name = strstr(os_uname, " ["), os_name){
+            *os_name = '\0';
+            os_name += 2;
+            if (os_version = strstr(os_name, ": "), os_version){
+                *os_version = '\0';
+                os_version += 2;
+                *(os_version + strlen(os_version) - 1) = '\0';
+            } else
+                *(os_name + strlen(os_name) - 1) = '\0';
+            // os_name|os_platform
+            if (os_platform = strstr(os_name, "|"), os_platform){
+                *os_platform = '\0';
+                os_platform ++;
+            }
+            // os_major.os_minor (os_codename)
+            if (os_codename = strstr(os_version, " ("), os_codename){
+                *os_codename = '\0';
+                os_codename += 2;
+                *(os_codename + strlen(os_codename) - 1) = '\0';
+            }
+            // Get os_major
+            static const char *pattern_major = "^([0-9]+)\\.*";
+            if (regcomp(&regexCompiled, pattern_major, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return;
+            }
+            if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_major = malloc(match_size +1);
+                snprintf (os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+            }
+            regfree(&regexCompiled);
+            // Get os_minor
+            static const char *pattern_minor = "^[0-9]+\\.([0-9]+)\\.*";
+            if (regcomp(&regexCompiled, pattern_minor, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return;
+            }
+            if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_minor = malloc(match_size +1);
+                snprintf (os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+            }
+            regfree(&regexCompiled);
+        }
+
+        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __version, NULL, NULL);
+
+        free(os_major);
+        free(os_minor);
     }
 
     // Set starting offset if full_sync disabled
@@ -367,12 +427,23 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char files[OS_MAXSTR];
     char *os;
     char *version;
+    char *os_name = NULL;
+    char *os_major = NULL;
+    char *os_minor = NULL;
+    char *os_build = NULL;
+    char *os_version = NULL;
+    char *os_codename = NULL;
+    char *os_platform = NULL;
     char *config_sum;
     char *merged_sum;
     char *end;
+    char *end_line;
     FILE *fp;
     int result;
     clock_t clock0 = clock();
+    regex_t regexCompiled;
+    regmatch_t match[2];
+    int match_size;
 
     if (!(fp = fopen(path, "r"))) {
         merror(FOPEN_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
@@ -387,28 +458,119 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         return -1;
     }
 
-    if (!(version = strstr(os, " - "))) {
-        merror("%s: ERROR: Corrupt file '%s'.", WM_DATABASE_LOGTAG, path);
-        fclose(fp);
-        return -1;
-    }
-
-    *version = '\0';
-
-    if ((config_sum = strstr(version += 3, " / "))) {
-        *config_sum = '\0';
-        config_sum += 3;
-        end = strchr(config_sum, '\n');
-    } else
-        end = strchr(version, '\n');
-
-    if (!end) {
+    if (end_line = strstr(os, "\n"), end_line){
+        *end_line = '\0';
+    } else {
         merror("%s: WARN: Corrupt line found parsing '%s' (incomplete). Returning.", WM_DATABASE_LOGTAG, path);
         fclose(fp);
         return -1;
     }
 
-    *end = '\0';
+    if (config_sum = strstr(os, " / "), config_sum){
+        *config_sum = '\0';
+        config_sum += 3;
+    }
+
+    if (version = strstr(os, " - "), version){
+        *version = '\0';
+        version += 3;
+    } else {
+        merror("%s: ERROR: Corrupt file '%s'.", WM_DATABASE_LOGTAG, path);
+        fclose(fp);
+        return -1;
+    }
+
+    // [Ver: os_major.os_minor.os_build]
+    if (os_version = strstr(os, " [Ver: "), os_version){
+        *os_version = '\0';
+        os_version += 7;
+        os_name = os;
+        *(os_version + strlen(os_version) - 1) = '\0';
+      // Get os_major
+        static const char *pattern_win_major = "^([0-9]+)\\.*";
+        if (regcomp(&regexCompiled, pattern_win_major, REG_EXTENDED)) {
+            merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+            return -1;
+        }
+        if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+            match_size = match[1].rm_eo - match[1].rm_so;
+            os_major = malloc(match_size +1);
+            snprintf (os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+        }
+        regfree(&regexCompiled);
+        // Get os_minor
+        static const char *pattern_win_minor = "^[0-9]+\\.([0-9]+)\\.*";
+        if (regcomp(&regexCompiled, pattern_win_minor, REG_EXTENDED)) {
+            merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+            return -1;
+        }
+        if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+            match_size = match[1].rm_eo - match[1].rm_so;
+            os_minor = malloc(match_size +1);
+            snprintf (os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+        }
+        regfree(&regexCompiled);
+        // Get os_build
+        static const char *pattern_win_build = "^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*";
+        if (regcomp(&regexCompiled, pattern_win_build, REG_EXTENDED)) {
+            merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+            return -1;
+        }
+        if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+            match_size = match[1].rm_eo - match[1].rm_so;
+            os_build = malloc(match_size +1);
+            snprintf (os_build, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+        }
+        regfree(&regexCompiled);
+        os_platform = "windows";
+    }
+    else {
+        if (os_name = strstr(os, " ["), os_name){
+            *os_name = '\0';
+            os_name += 2;
+            if (os_version = strstr(os_name, ": "), os_version){
+                *os_version = '\0';
+                os_version += 2;
+                *(os_version + strlen(os_version) - 1) = '\0';
+            } else
+                *(os_name + strlen(os_name) - 1) = '\0';
+            // os_name|os_platform
+            if (os_platform = strstr(os_name, "|"), os_platform){
+                *os_platform = '\0';
+                os_platform ++;
+            }
+            // os_major.os_minor (os_codename)
+            if (os_codename = strstr(os_version, " ("), os_codename){
+                *os_codename = '\0';
+                os_codename += 2;
+                *(os_codename + strlen(os_codename) - 1) = '\0';
+            }
+            // Get os_major
+            static const char *pattern_major = "^([0-9]+)\\.*";
+            if (regcomp(&regexCompiled, pattern_major, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return -1;
+            }
+            if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_major = malloc(match_size +1);
+                snprintf (os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+            }
+            regfree(&regexCompiled);
+            // Get os_minor
+            static const char *pattern_minor = "^[0-9]+\\.([0-9]+)\\.*";
+            if (regcomp(&regexCompiled, pattern_minor, REG_EXTENDED)) {
+                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                return -1;
+            }
+            if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_minor = malloc(match_size +1);
+                snprintf (os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+            }
+            regfree(&regexCompiled);
+        }
+    }
 
     // Search for merged.mg sum
 
@@ -422,8 +584,12 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         }
     }
 
-    result = wdb_update_agent_version(id_agent, os, version, config_sum, end ? merged_sum : NULL);
+    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, version, config_sum, end ? merged_sum : NULL);
     debug2("%s: DEBUG: wm_sync_agentinfo(%d): %.3f ms.", WM_DATABASE_LOGTAG, id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+
+    free(os_major);
+    free(os_minor);
+    free(os_build);
     fclose(fp);
     return result;
 }
@@ -940,5 +1106,7 @@ int set_max_queued_events(int size) {
     fclose(fp);
     return 0;
 }
+
+#endif
 
 #endif

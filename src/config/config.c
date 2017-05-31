@@ -45,6 +45,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osactive_response = "active-response";  /* Agent Config  */
     const char *oswmodule = "wodle";                    /* Wodle - Wazuh Module  */
     const char *oslabels = "labels";                    /* Labels Config */
+    const char *osauthd = "auth";                       /* Authd Config */
 
     while (node[i]) {
         XML_NODE chld_node = NULL;
@@ -129,6 +130,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, oslabels) == 0) {
             if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (strcmp(node[i]->element, osauthd) == 0) {
+            if ((modules & CAUTHD) && (Read_Authd(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else {
@@ -234,13 +239,12 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 #endif
                     } else if (strcmp(xml_agent_os, node[i]->attributes[attrs]) == 0) {
 #ifdef CLIENT
-                        char *agentos = getuname();
+                        const char *agentos = getuname();
 
                         if (agentos) {
                             if (!OS_Match2(node[i]->values[attrs], agentos)) {
                                 passed_agent_test = 0;
                             }
-                            free(agentos);
                         } else {
                             passed_agent_test = 0;
                             merror("%s: ERROR: Unable to retrieve uname.", __local_name);
