@@ -58,7 +58,7 @@ int buffer_append(const char *msg);
 void *dispatch_buffer(void * arg);
 
 /* Send message to server */
-int send_msg(int agentid, const char *msg);
+int send_msg(int agentid, const char *msg, ssize_t msg_length);
 
 /* Extract the shared files */
 char *getsharedfiles(void);

@@ -52,7 +52,7 @@ int OS_MD5_File(const char *fname, os_md5 output, int mode)
     return (0);
 }
 
-int OS_MD5_Str(const char *str, os_md5 output)
+int OS_MD5_Str(const char *str, ssize_t length, os_md5 output)
 {
     unsigned char digest[16];
 
@@ -60,7 +60,7 @@ int OS_MD5_Str(const char *str, os_md5 output)
 
     MD5_CTX ctx;
     MD5Init(&ctx);
-    MD5Update(&ctx, (const unsigned char *)str, (unsigned)strlen(str));
+    MD5Update(&ctx, (const unsigned char *)str, length < 0 ? (unsigned)strlen(str) : (unsigned)length);
     MD5Final(digest, &ctx);
 
     output[32] = '\0';

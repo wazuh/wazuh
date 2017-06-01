@@ -66,7 +66,7 @@ void save_controlmsg(unsigned int agentid, char *msg);
 
 /* Send message to agent */
 /* Must not call key_lock() before this */
-int send_msg(const char *agent_id, const char *msg);
+int send_msg(const char *agent_id, const char *msg, ssize_t msg_length);
 
 int check_keyupdate(void);
 

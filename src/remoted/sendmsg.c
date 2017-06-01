@@ -63,7 +63,7 @@ int check_keyupdate()
  * Returns -1 on error
  * Must not call key_lock() before this
  */
-int send_msg(const char *agent_id, const char *msg)
+int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 {
     int key_id;
     int sock = -1;
@@ -88,7 +88,7 @@ int send_msg(const char *agent_id, const char *msg)
         return (-1);
     }
 
-    msg_size = CreateSecMSG(&keys, msg, crypt_msg, key_id);
+    msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, key_id);
 
     if (logr.proto[logr.position] == UDP_PROTO) {
         memcpy(&peer_info, &keys.keyentries[key_id]->peer_info, sizeof(peer_info));

@@ -25,7 +25,7 @@ int main(int argc, char **argv)
     }
 
     else if (strcmp(argv[1], "str") == 0) {
-        OS_MD5_Str(argv[2], filesum);
+        OS_MD5_Str(argv[2], -1, filesum);
     }
 
     else {

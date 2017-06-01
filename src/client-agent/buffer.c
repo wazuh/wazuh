@@ -183,7 +183,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     #else
             select(0 , NULL, NULL, NULL, &timeout);
     #endif
-            send_msg(0, warn_msg);
+            send_msg(0, warn_msg, -1);
         }
 
         if (buff.full){
@@ -196,7 +196,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     #else
             select(0 , NULL, NULL, NULL, &timeout);
     #endif
-            send_msg(0, full_msg);
+            send_msg(0, full_msg, -1);
         }
 
         if (buff.flood){
@@ -209,7 +209,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     #else
             select(0 , NULL, NULL, NULL, &timeout);
     #endif
-            send_msg(0, flood_msg);
+            send_msg(0, flood_msg, -1);
         }
 
         if (buff.normal){
@@ -222,7 +222,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     #else
             select(0 , NULL, NULL, NULL, &timeout);
     #endif
-            send_msg(0, normal_msg);
+            send_msg(0, normal_msg, -1);
         }
 
 #ifdef WIN32
@@ -230,7 +230,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 #else
         select(0 , NULL, NULL, NULL, &timeout);
 #endif
-        send_msg(0, msg_output);
+        send_msg(0, msg_output, -1);
         free(msg_output);
     }
 }

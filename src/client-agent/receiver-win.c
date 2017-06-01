@@ -21,6 +21,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 {
     ssize_t recv_b;
     netsize_t length;
+    size_t msg_length;
     int reads;
     char file[OS_SIZE_1024 + 1];
     char buffer[OS_MAXSTR + 1];
@@ -100,7 +101,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, agt->rip[agt->rip_id]);
+            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->rip[agt->rip_id]);
             if (tmp_msg == NULL) {
                 mwarn(MSG_ERROR, agt->rip[agt->rip_id]);
                 continue;

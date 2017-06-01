@@ -126,11 +126,11 @@ char *__generatetmppass()
     rand3 = GetRandomNoise();
     rand4 = GetRandomNoise();
 
-    OS_MD5_Str(rand3, md3);
-    OS_MD5_Str(rand4, md4);
+    OS_MD5_Str(rand3, -1, md3);
+    OS_MD5_Str(rand4, -1, md4);
 
     snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
-    OS_MD5_Str(str1, md1);
+    OS_MD5_Str(str1, -1, md1);
     fstring = strdup(md1);
     free(rand3);
     free(rand4);

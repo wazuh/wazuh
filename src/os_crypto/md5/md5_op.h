@@ -17,7 +17,6 @@
 typedef char os_md5[33];
 
 int OS_MD5_File(const char *fname, os_md5 output, int mode) __attribute((nonnull));
-int OS_MD5_Str(const char *str, os_md5 output) __attribute((nonnull));
+int OS_MD5_Str(const char *str, ssize_t length, os_md5 output) __attribute((nonnull));
 
 #endif
-

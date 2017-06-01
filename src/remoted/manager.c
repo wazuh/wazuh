@@ -62,7 +62,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-    send_msg(keys.keyentries[agentid]->id, msg_ack);
+    send_msg(keys.keyentries[agentid]->id, msg_ack, -1);
 
     if (strcmp(r_msg, HC_STARTUP) == 0) {
         mdebug1("Agent %s sent HC_STARTUP from %s.", keys.keyentries[agentid]->name, inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr));
@@ -389,7 +389,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     snprintf(buf, OS_SIZE_1024, "%s%s%s %s\n",
              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
 
-    if (send_msg(agent_id, buf) == -1) {
+    if (send_msg(agent_id, buf, -1) == -1) {
         merror(SEC_ERROR);
         fclose(fp);
         return (-1);
@@ -399,7 +399,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     while ((n = fread(buf, 1, 900, fp)) > 0) {
         buf[n] = '\0';
 
-        if (send_msg(agent_id, buf) == -1) {
+        if (send_msg(agent_id, buf, -1) == -1) {
             merror(SEC_ERROR);
             fclose(fp);
             return (-1);
@@ -418,7 +418,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     /* Send the message to close the file */
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
 
-    if (send_msg(agent_id, buf) == -1) {
+    if (send_msg(agent_id, buf, -1) == -1) {
         merror(SEC_ERROR);
         fclose(fp);
         return (-1);

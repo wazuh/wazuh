@@ -124,7 +124,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                     if (keys.keyentries[i]->rcvd >= (time(0) - (3 * NOTIFY_TIME))) {
                         strncpy(agent_id, keys.keyentries[i]->id, KEYSIZE);
                         key_unlock();
-                        send_msg(agent_id, msg_to_send);
+                        send_msg(agent_id, msg_to_send, -1);
                         key_lock();
                     }
                 }
@@ -145,13 +145,13 @@ void *AR_Forward(__attribute__((unused)) void *arg)
 
                 strncpy(agent_id, keys.keyentries[key_id]->id, KEYSIZE);
                 key_unlock();
-                send_msg(agent_id, msg_to_send);
+                send_msg(agent_id, msg_to_send, -1);
             }
 
             /* Send to a pre-defined agent */
             else if (ar_location & SPECIFIC_AGENT) {
                 ar_location++;
-                send_msg(ar_agent_id, msg_to_send);
+                send_msg(ar_agent_id, msg_to_send, -1);
             }
         }
     }

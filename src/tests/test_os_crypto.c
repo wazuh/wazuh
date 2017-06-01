@@ -41,7 +41,7 @@ START_TEST(test_md5string)
     const char *string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
     os_md5 buffer;
 
-    OS_MD5_Str(string, buffer);
+    OS_MD5_Str(string, -1, buffer);
 
     ck_assert_str_eq(buffer, string_md5);
 }

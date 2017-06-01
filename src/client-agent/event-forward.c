@@ -31,7 +31,7 @@ void *EventForward()
                 break;
             }
         }else{
-            if (send_msg(0, msg) < 0) {
+            if (send_msg(0, msg, -1) < 0) {
                 break;
             }
         }

@@ -100,19 +100,19 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
         /** Generate final symmetric key **/
 
         /* MD5 from name, id and key */
-        OS_MD5_Str(name, filesum1);
-        OS_MD5_Str(id,  filesum2);
+        OS_MD5_Str(name, -1, filesum1);
+        OS_MD5_Str(id, -1, filesum2);
 
         /* Generate new filesum1 */
         snprintf(_finalstr, sizeof(_finalstr) - 1, "%s%s", filesum1, filesum2);
 
         /* Use just half of the first MD5 (name/id) */
-        OS_MD5_Str(_finalstr, filesum1);
+        OS_MD5_Str(_finalstr, -1, filesum1);
         filesum1[15] = '\0';
         filesum1[16] = '\0';
 
         /* Second md is just the key */
-        OS_MD5_Str(key, filesum2);
+        OS_MD5_Str(key, -1, filesum2);
 
         /* Generate final key */
         snprintf(_finalstr, 49, "%s%s", filesum2, filesum1);

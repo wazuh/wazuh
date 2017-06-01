@@ -334,12 +334,12 @@ int add_agent(int json_output)
                 snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
                 snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
 
-                OS_MD5_Str(str1, md1);
-                OS_MD5_Str(str2, md2);
+                OS_MD5_Str(str1, -1, md1);
+                OS_MD5_Str(str2, -1, md2);
 
                 snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), os_random(),
                          (int)time3);
-                OS_MD5_Str(str1, md1);
+                OS_MD5_Str(str1, -1, md1);
 
                 snprintf(key, 65, "%s%s", md1, md2);
                 fprintf(file.fp, "%s %s %s %s\n", id, name, c_ip.ip, key);

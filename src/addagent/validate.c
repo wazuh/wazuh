@@ -47,8 +47,8 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     if (!key) {
         snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, os_random(), getuname());
         snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)os_random());
-        OS_MD5_Str(str1, md1);
-        OS_MD5_Str(str2, md2);
+        OS_MD5_Str(str1, -1, md1);
+        OS_MD5_Str(str2, -1, md2);
         snprintf(buffer, KEYSIZE, "%s%s", md1, md2);
         key = buffer;
     }

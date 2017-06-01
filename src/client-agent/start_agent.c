@@ -133,6 +133,7 @@ void start_agent(int is_startup)
 {
     ssize_t recv_b = 0;
     netsize_t length;
+    size_t msg_length;
     int attempts = 0, g_attempts = 1;
 
     char *tmp_msg;
@@ -153,7 +154,7 @@ void start_agent(int is_startup)
 
     while (1) {
         /* Send start up message */
-        send_msg(0, msg);
+        send_msg(0, msg, -1);
         attempts = 0;
 
         /* Read until our reply comes back */
@@ -188,14 +189,14 @@ void start_agent(int is_startup)
                         }
                     }
 
-                    send_msg(0, msg);
+                    send_msg(0, msg, -1);
                 }
 
                 continue;
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, agt->rip[agt->rip_id]);
+            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->rip[agt->rip_id]);
             if (tmp_msg == NULL) {
                 mwarn(MSG_ERROR, agt->rip[agt->rip_id]);
                 continue;
@@ -217,7 +218,7 @@ void start_agent(int is_startup)
                                  keys.keyentries[0]->ip->ip);
                         snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
                                  "ossec", msg);
-                        send_msg(0, fmsg);
+                        send_msg(0, fmsg, -1);
                     }
                     return;
                 }

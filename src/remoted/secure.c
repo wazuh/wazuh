@@ -226,6 +226,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1];
     char *tmp_msg;
+    size_t msg_length;
 
     /* Set the source IP */
     strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
@@ -289,8 +290,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     }
 
     /* Decrypt the message */
-    tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg,
-                         agentid, recv_b - 1, srcip);
+    tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip);
 
     if (tmp_msg == NULL) {
 

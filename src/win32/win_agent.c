@@ -434,7 +434,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
     /* Send events to the manager across the buffer */
     if (!agt->buffer){
-        send_msg(0, tmpstr);
+        send_msg(0, tmpstr, -1);
     }else{
         buffer_append(tmpstr);
     }
@@ -522,7 +522,7 @@ void send_win32_info(time_t curr_time)
     /* Create message */
     mdebug2("Sending keep alive: %s", tmp_msg);
 
-    msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
+    msg_size = CreateSecMSG(&keys, tmp_msg, strlen(tmp_msg), crypt_msg, 0);
 
     if (msg_size == 0) {
         merror(SEC_ERROR);

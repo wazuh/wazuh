@@ -26,6 +26,7 @@ int receive_msg()
 {
     ssize_t recv_b;
     netsize_t length;
+    size_t msg_length;
     int reads = 0;
     char buffer[OS_MAXSTR + 1];
     char cleartext[OS_MAXSTR + 1];
@@ -67,7 +68,7 @@ int receive_msg()
 
         buffer[recv_b] = '\0';
 
-        tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, agt->rip[agt->rip_id]);
+        tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->rip[agt->rip_id]);
         if (tmp_msg == NULL) {
             mwarn(MSG_ERROR, agt->rip[agt->rip_id]);
             continue;

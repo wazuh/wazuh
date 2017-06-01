@@ -118,11 +118,10 @@ int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip) __a
 /** Function prototypes -- send/recv messages **/
 
 /* Decrypt and decompress a remote message */
-char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
-                 int id, unsigned int buffer_size, const char *ip) __attribute((nonnull));
+char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *ip) __attribute((nonnull));
 
 /* Create an OSSEC message (encrypt and compress) */
-size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, unsigned int id) __attribute((nonnull));
+size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, unsigned int id) __attribute((nonnull));
 
 
 /** Remote IDs directories and internal definitions */
