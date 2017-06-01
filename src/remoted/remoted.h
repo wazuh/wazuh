@@ -62,7 +62,13 @@ void *wait_for_msgs(void *none);
 void *update_shared_files(void *none);
 
 /* Save control messages */
-void save_controlmsg(unsigned int agentid, char *msg);
+void save_controlmsg(unsigned int agentid, char *msg, size_t msg_length);
+
+// Request listener thread entry point
+void * req_main(void * arg);
+
+// Save request data (ack or response). Return 0 on success or -1 on error.
+int req_save(const char * counter, const char * buffer, size_t length);
 
 /* Send message to agent */
 /* Must not call key_lock() before this */

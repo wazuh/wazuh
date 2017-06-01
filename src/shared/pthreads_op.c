@@ -15,7 +15,7 @@
 /* Create a new thread and give the argument passed to the function
  * Returns 0 on success or -1 on error
  */
-int CreateThread(void *function_pointer(void *data), void *data)
+int CreateThread(void * (*function_pointer)(void *), void *data)
 {
     pthread_t lthread;
     int ret = 0;
@@ -35,4 +35,3 @@ int CreateThread(void *function_pointer(void *data), void *data)
 }
 
 #endif /* !WIN32 */
-

@@ -36,8 +36,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     } else
         minfo("Version detected -> %s", getuname());
 
-
-
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
@@ -136,6 +134,10 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Send integrity message for agent configs */
     intcheck_file(OSSECCONF, dir);
     intcheck_file(OSSEC_DEFINES, dir);
+
+    // Start request module
+    req_init();
+    w_create_thread(req_receiver, NULL);
 
     /* Send first notification */
     run_notify();

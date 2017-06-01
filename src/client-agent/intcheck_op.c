@@ -33,7 +33,7 @@ int intcheck_file(const char *file_name, const char *dir)
     {
         snprintf(newsum, 911, "%c:%s:-1 %s%s", SYSCHECK_MQ, SYSCHECK,
                  dir, file_name);
-        send_msg(0, newsum, -1);
+        send_msg(newsum, -1);
 
         return (1);
     }
@@ -65,6 +65,6 @@ int intcheck_file(const char *file_name, const char *dir)
              mf_sum,
              sf_sum, dir, file_name);
 
-    send_msg(0, newsum, -1);
+    send_msg(newsum, -1);
     return (1);
 }

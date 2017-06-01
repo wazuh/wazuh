@@ -13,14 +13,14 @@
 
 
 /* Send a message to the server */
-int send_msg(int agentid, const char *msg, ssize_t msg_length)
+int send_msg(const char *msg, ssize_t msg_length)
 {
     ssize_t msg_size;
     netsize_t length;
     char crypt_msg[OS_MAXSTR + 1];
     int recv_b;
 
-    msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, agentid);
+    msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, 0);
     if (msg_size == 0) {
         merror(SEC_ERROR);
         return (-1);

@@ -274,6 +274,16 @@ int local_start()
         merror(THREAD_ERROR);
     }
 
+    /* Start request receiver thread */
+    if (CreateThread(NULL,
+                     0,
+                     (LPTHREAD_START_ROUTINE)req_receiver,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID2) == NULL) {
+        merror(THREAD_ERROR, ARGV0);
+    }
+
     /* Send agent information message */
     send_win32_info(time(0));
 
@@ -434,7 +444,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
     /* Send events to the manager across the buffer */
     if (!agt->buffer){
-        send_msg(0, tmpstr, -1);
+        send_msg(tmpstr, -1);
     }else{
         buffer_append(tmpstr);
     }

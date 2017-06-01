@@ -138,7 +138,8 @@ void run_notify()
     }
 
     /* Send status message */
-    send_msg(0, tmp_msg, -1);
+    mdebug2("Sending keep alive: %s", tmp_msg);
+    send_msg(tmp_msg, -1);
 
     free(shared_files);
 

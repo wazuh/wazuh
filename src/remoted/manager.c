@@ -52,13 +52,29 @@ static pthread_cond_t awake_mutex = PTHREAD_COND_INITIALIZER;
  * read_contromsg (other thread) is going to deal with it
  * (only if message changed)
  */
-void save_controlmsg(unsigned int agentid, char *r_msg)
+void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
 {
     char msg_ack[OS_FLSIZE + 1];
     char *end;
     char *uname;
     pending_data_t *data;
     FILE * fp;
+
+    if (strncmp(r_msg, HC_REQUEST, msg_length) == 0) {
+        char * counter = r_msg + strlen(HC_REQUEST);
+        char * payload;
+
+        if (payload = strchr(counter, ' '), !payload) {
+            merror("Request control format error.");
+            mdebug2("r_msg = \"%s\"", r_msg);
+            return;
+        }
+
+        *(payload++) = '\0';
+
+        req_save(counter, payload, msg_length - (payload - r_msg));
+        return;
+    }
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);

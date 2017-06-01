@@ -154,7 +154,7 @@ void start_agent(int is_startup)
 
     while (1) {
         /* Send start up message */
-        send_msg(0, msg, -1);
+        send_msg(msg, -1);
         attempts = 0;
 
         /* Read until our reply comes back */
@@ -189,7 +189,7 @@ void start_agent(int is_startup)
                         }
                     }
 
-                    send_msg(0, msg, -1);
+                    send_msg(msg, -1);
                 }
 
                 continue;
@@ -218,7 +218,7 @@ void start_agent(int is_startup)
                                  keys.keyentries[0]->ip->ip);
                         snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
                                  "ossec", msg);
-                        send_msg(0, fmsg, -1);
+                        send_msg(fmsg, -1);
                     }
                     return;
                 }

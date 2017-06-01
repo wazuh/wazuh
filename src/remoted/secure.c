@@ -52,27 +52,24 @@ void HandleSecure()
     manager_init();
 
     /* Create Active Response forwarder thread */
-    if (CreateThread(update_shared_files, (void *)NULL) != 0) {
-        merror_exit(THREAD_ERROR);
-    }
+    w_create_thread(update_shared_files, NULL);
 
     /* Create Active Response forwarder thread */
-    if (CreateThread(AR_Forward, (void *)NULL) != 0) {
-        merror_exit(THREAD_ERROR);
-    }
+    w_create_thread(AR_Forward, NULL);
+
+    // Create Request listener thread
+    w_create_thread(req_main, NULL);
 
     /* Create wait_for_msgs threads */
 
     {
         int i;
-        int thread_pool = getDefine_Int("remoted", "thread_pool", 1, 64);
+        int sender_pool = getDefine_Int("remoted", "sender_pool", 1, 64);
 
-        mdebug2("Creating %d sender threads.", thread_pool);
+        mdebug2("Creating %d sender threads.", sender_pool);
 
-        for (i = 0; i < thread_pool; i++) {
-            if (CreateThread(wait_for_msgs, (void *)NULL) != 0) {
-                merror_exit(THREAD_ERROR);
-            }
+        for (i = 0; i < sender_pool; i++) {
+            w_create_thread(wait_for_msgs, NULL);
         }
     }
 
@@ -309,7 +306,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         }
 
         keys.keyentries[agentid]->rcvd = time(0);
-        save_controlmsg((unsigned)agentid, tmp_msg);
+        save_controlmsg((unsigned)agentid, tmp_msg, msg_length - 3);
 
         return;
     }

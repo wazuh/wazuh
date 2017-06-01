@@ -20,6 +20,7 @@ static FILE *fp = NULL;
 static char file_sum[34] = "";
 static char file[OS_SIZE_1024 + 1] = "";
 
+// TODO: Remove calls for WIN32
 
 /* Receive events from the server */
 int receive_msg()
@@ -113,6 +114,11 @@ int receive_msg()
             /* Ack from server */
             else if (strcmp(tmp_msg, HC_ACK) == 0) {
                 continue;
+            }
+
+            // Request from manager (or request ack)
+            else if (IS_REQ(tmp_msg)) {
+                req_push(tmp_msg + strlen(HC_REQUEST), msg_length - strlen(HC_REQUEST) - 3);
             }
 
             /* Close any open file pointer if it was being written to */

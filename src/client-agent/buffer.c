@@ -62,7 +62,7 @@ int buffer_append(const char *msg){
     switch (state) {
 
         case NORMAL:
-            if (full(i, j)){
+            if (full(i, j, agt->buflength + 1)){
                 buff.full = 1;
                 state = FULL;
                 start = time(0);
@@ -73,7 +73,7 @@ int buffer_append(const char *msg){
             break;
 
         case WARNING:
-            if (full(i, j)){
+            if (full(i, j, agt->buflength + 1)){
                 buff.full = 1;
                 state = FULL;
                 start = time(0);
@@ -92,7 +92,7 @@ int buffer_append(const char *msg){
             break;
     }
 
-    if (full(i, j)){
+    if (full(i, j, agt->buflength + 1)){
 
         pthread_mutex_unlock(&mutex_lock);
         mdebug2("Unable to store new packet: Buffer is full.");
@@ -101,7 +101,7 @@ int buffer_append(const char *msg){
     }else{
 
         buffer[i] = strdup(msg);
-        forward(i);
+        forward(i, agt->buflength + 1);
         pthread_cond_signal(&cond_no_empty);
         pthread_mutex_unlock(&mutex_lock);
 
@@ -169,7 +169,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         }
 
         char * msg_output = buffer[j];
-        forward(j);
+        forward(j, agt->buflength + 1);
         pthread_mutex_unlock(&mutex_lock);
 
         if (buff.warn){
@@ -183,7 +183,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     #else
             select(0 , NULL, NULL, NULL, &timeout);
     #endif
-            send_msg(0, warn_msg, -1);
+            send_msg(warn_msg, -1);
         }
 
         if (buff.full){
@@ -196,7 +196,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     #else
             select(0 , NULL, NULL, NULL, &timeout);
     #endif
-            send_msg(0, full_msg, -1);
+            send_msg(full_msg, -1);
         }
 
         if (buff.flood){
@@ -209,7 +209,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     #else
             select(0 , NULL, NULL, NULL, &timeout);
     #endif
-            send_msg(0, flood_msg, -1);
+            send_msg(flood_msg, -1);
         }
 
         if (buff.normal){
@@ -222,7 +222,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     #else
             select(0 , NULL, NULL, NULL, &timeout);
     #endif
-            send_msg(0, normal_msg, -1);
+            send_msg(normal_msg, -1);
         }
 
 #ifdef WIN32
@@ -230,7 +230,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 #else
         select(0 , NULL, NULL, NULL, &timeout);
 #endif
-        send_msg(0, msg_output, -1);
+        send_msg(msg_output, -1);
         free(msg_output);
     }
 }

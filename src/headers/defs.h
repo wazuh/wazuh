@@ -111,6 +111,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Authd local socket
 #define AUTH_LOCAL_SOCK "/queue/agents/auth"
 
+// Remote requests socket
+#define REMOTE_REQ_SOCK "/queue/ossec/request"
+
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
 

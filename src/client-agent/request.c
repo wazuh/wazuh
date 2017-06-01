@@ -1,0 +1,274 @@
+/* Remote request manager
+ * Copyright (C) 2017 Wazuh Inc.
+ * June 2, 2017.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "agentd.h"
+#include <shared.h>
+#include <pthread.h>
+#include <request_op.h>
+#include <os_net/os_net.h>
+
+static OSHash * req_table;
+static req_node_t ** req_pool;
+static volatile int pool_i = 0;
+static volatile int pool_j = 0;
+
+static pthread_mutex_t mutex_table = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t pool_available = PTHREAD_COND_INITIALIZER;
+
+static int request_pool;
+static int rto_sec;
+static int rto_usec;
+static int max_attempts;
+
+// Initialize request module
+void req_init() {
+    // Get values from internal options
+
+    request_pool = getDefine_Int("remoted", "request_pool", 1, 64);
+    rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
+    rto_usec = getDefine_Int("remoted", "request_rto_usec", 0, 999999);
+    max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
+
+    // Create hash table and request pool
+
+    if (req_table = OSHash_Create(), !req_table) {
+        merror_exit("At req_main(): OSHash_Create()");
+    }
+
+    os_calloc(request_pool, sizeof(req_node_t *), req_pool);
+}
+
+// Push a request message into dispathing queue. Return 0 on success or -1 on error.
+int req_push(char * buffer, size_t length) {
+    char * counter;
+    char * target;
+    char * payload;
+    char response[REQ_RESPONSE_LENGTH];
+    char sockname[PATH_MAX];
+    int sock = -1;
+    int error;
+    req_node_t * node;
+
+    counter = buffer;
+
+    if (target = strchr(counter, ' '), !target) {
+        merror("Request format is incorrect [target].");
+        mdebug2("buffer = \"%s\"", buffer);
+        return -1;
+    }
+
+    *(target++) = '\0';
+
+    if (IS_ACK(target)) {
+        w_mutex_lock(&mutex_table);
+        node = OSHash_Get(req_table, counter);
+        w_mutex_unlock(&mutex_table);
+
+        if (node) {
+            w_mutex_lock(&node->mutex);
+            free(node->buffer);
+            memcpy(node->buffer, buffer, length);
+            w_cond_signal(&node->available);
+            w_mutex_unlock(&node->mutex);
+        } else {
+            mdebug1("Request counter (%s) not found. Duplicated ACK?", counter);
+        }
+    } else {
+        if (payload = strchr(target, ' '), !target) {
+            merror("Request format is incorrect [payload].");
+            mdebug2("target = \"%s\"", target);
+            return -1;
+        }
+
+        *(payload++) = '\0';
+        length -= (payload - buffer);
+        snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
+
+#ifndef WIN32
+
+        // Windows won't use sockets. Request will be executed directly.
+
+        if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+            merror("At req_push(): Could not connect to socket '%s': %s.", sockname, strerror(errno));
+            // Example: #!-req 16 err Permission denied
+            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err %s", counter, strerror(errno));
+            send_msg(response, -1);
+            return -1;
+        }
+
+#endif
+
+        // Send ACK, only in UDP mode
+
+        if (agt->protocol == UDP_PROTO) {
+            // Example: #!-req 16 ack
+            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", counter);
+            send_msg(response, -1);
+        }
+
+        // Create and insert node
+        node = req_create(sock, counter, buffer, length);
+
+        w_mutex_lock(&mutex_table);
+        error = OSHash_Add(req_table, counter, node);
+        w_mutex_unlock(&mutex_table);
+
+        switch (error) {
+        case 0:
+            merror("At req_push(): OSHash_Add()");
+            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err Internal error", counter);
+            send_msg(response, -1);
+            req_free(node);
+            return -1;
+
+        case 1:
+            mdebug1("Duplicated counter. RTO too short?");
+            req_free(node);
+            return 0;
+
+        case 2:
+            w_mutex_lock(&mutex_pool);
+
+            if (full(pool_i, pool_j, request_pool)) {
+                merror("Too many requests. Rejecting counter %s.", counter);
+                w_mutex_unlock(&mutex_pool);
+
+                // Delete node from hash table
+                w_mutex_lock(&mutex_table);
+                OSHash_Delete(req_table, counter);
+                w_mutex_unlock(&mutex_table);
+
+                req_free(node);
+                return -1;
+            } else {
+                req_pool[pool_i] = node;
+                forward(pool_i, request_pool);
+                w_cond_signal(&pool_available);
+            }
+
+            w_mutex_unlock(&mutex_pool);
+        }
+    }
+
+    return 0;
+}
+
+// Request receiver thread start
+void * req_receiver(__attribute__((unused)) void * arg) {
+    int attempts;
+    ssize_t length;
+    req_node_t * node;
+    char buffer[OS_MAXSTR + 1];
+    char response[REQ_RESPONSE_LENGTH];
+    int rlen;
+
+    while (1) {
+
+        // Get next node from queue
+
+        w_mutex_lock(&mutex_pool);
+
+        while (empty(pool_i, pool_j)) {
+            w_cond_wait(&pool_available, &mutex_pool);
+        }
+
+        node = req_pool[pool_j];
+        forward(pool_j, request_pool);
+        w_mutex_unlock(&mutex_pool);
+
+#ifdef WIN32
+        // In Windows, execute directly
+        // length = wcom_dispatch(node->buffer, node->length, buffer);
+#else
+        // In Unix, forward request to target socket
+
+        // Send data
+
+        if (send(node->sock, node->buffer, node->length, 0)) {
+            merror("send(): %s", strerror(errno));
+            strcpy(buffer, "err Send data");
+            length = strlen(buffer);
+        }
+
+        // Get response
+
+        switch (length = recv(node->sock, buffer, OS_MAXSTR, 0), length) {
+        case -1:
+            merror("recv(): %s", strerror(errno));
+            strcpy(buffer, "err Receive data");
+            length = strlen(buffer);
+
+        case 0:
+            mdebug1("Empty message from local client.");
+            strcpy(buffer, "err Empty response");
+            length = strlen(buffer);
+
+        default:
+            buffer[length] = '\0';
+        }
+
+#endif
+
+        for (attempts = 0; attempts < max_attempts; attempts++) {
+            struct timespec timeout = { rto_sec, rto_usec * 1000 };
+
+            // Build response string
+            // Example: #!-req 16 Hello World
+            rlen = snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ", node->counter);
+            length = length + rlen > OS_MAXSTR ? OS_MAXSTR : length + rlen;
+            memmove(buffer + rlen, buffer, length - rlen);
+            memcpy(buffer, response, rlen);
+            buffer[length] = '\0';
+
+            // Try to send message
+
+            if (send_msg(buffer, length)) {
+                merror("Sending request to manager.");
+                break;
+            }
+
+            // Wait for ACK, only in UDP mode
+
+            if (agt->protocol == UDP_PROTO) {
+                w_mutex_lock(&node->mutex);
+
+                if (IS_ACK(node->buffer)) {
+                    w_mutex_unlock(&node->mutex);
+                    break;
+                } else {
+                    if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0) {
+                        w_mutex_unlock(&node->mutex);
+                        continue;
+                    } else {
+                        w_mutex_unlock(&node->mutex);
+                    }
+                }
+            } else {
+                // TCP handles ACK by itself
+                break;
+            }
+        }
+
+        if (attempts == max_attempts) {
+            merror("Couldn't send response to manager: number of attempts exceeded.");
+        }
+
+        // Delete node from hash table
+        w_mutex_lock(&mutex_table);
+        OSHash_Delete(req_table, node->counter);
+        w_mutex_unlock(&mutex_table);
+
+        // Delete node
+        req_free(node);
+    }
+
+    return NULL;
+}
