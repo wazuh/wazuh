@@ -22,7 +22,7 @@ static void help_dbd(void) __attribute__((noreturn));
 /* Print information regarding enabled databases */
 static void print_db_info()
 {
-#ifdef UMYSQL_DATABASE_ENABLED
+#ifdef MYSQL_DATABASE_ENABLED
     print_out("    Compiled with MySQL support");
 #endif
 
