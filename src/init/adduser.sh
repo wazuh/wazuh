@@ -77,7 +77,7 @@ else
 	    if [ "$UNAME" = "OpenBSD" ]; then
                ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
 	    elif [ "$UNAME" = "SunOS" ]; then
-			   ${USERADD} -m -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
+			   ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
 		else
 	       ${USERADD} "${U}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
 	    fi
