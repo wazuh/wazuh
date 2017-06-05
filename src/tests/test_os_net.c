@@ -11,8 +11,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "../os_net/os_net.h"
-#include "../headers/os_err.h"
+#include "shared.h"
+#include "os_net/os_net.h"
+#include "os_err.h"
 
 #define IPV4 "127.0.0.1"
 #define IPV6 "::1"
@@ -235,7 +236,7 @@ START_TEST(test_unix)
     const int msg_size = 2048;
     char buffer[BUFFERSIZE];
 
-    ck_assert_int_ge((server_socket = OS_BindUnixDomain(socket_path, SOCK_DGRAM, 0660, msg_size)), 0);
+    ck_assert_int_ge((server_socket = OS_BindUnixDomain(socket_path, SOCK_DGRAM, msg_size)), 0);
 
     ck_assert_int_ge(OS_getsocketsize(server_socket), msg_size);
 
