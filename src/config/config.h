@@ -10,24 +10,25 @@
 #ifndef _HCONFIG__H
 #define _HCONFIG__H
 
-#define CGLOBAL       0000001
-#define CRULES        0000002
-#define CSYSCHECK     0000004
-#define CROOTCHECK    0000010
-#define CALERTS       0000020
-#define CLOCALFILE    0000040
-#define CREMOTE       0000100
-#define CCLIENT       0000200
-#define CMAIL         0000400
-#define CAR           0001000
-#define CDBD          0002000
-#define CSYSLOGD      0004000
-#define CAGENT_CONFIG 0010000
-#define CAGENTLESS    0020000
-#define CREPORTS      0040000
-#define CINTEGRATORD  0100000
-#define CWMODULE      0200000
-#define CAUTHD        0400000
+#define CGLOBAL       00000001
+#define CRULES        00000002
+#define CSYSCHECK     00000004
+#define CROOTCHECK    00000010
+#define CALERTS       00000020
+#define CLOCALFILE    00000040
+#define CREMOTE       00000100
+#define CCLIENT       00000200
+#define CMAIL         00000400
+#define CAR           00001000
+#define CDBD          00002000
+#define CSYSLOGD      00004000
+#define CAGENT_CONFIG 00010000
+#define CAGENTLESS    00020000
+#define CREPORTS      00040000
+#define CINTEGRATORD  00100000
+#define CWMODULE      00200000
+#define CLABELS       00400000
+#define CAUTHD        01000000
 
 #define UDP_PROTO   6
 #define TCP_PROTO   17
@@ -55,6 +56,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
+int Read_Labels(XML_NODE node, void *d1, void *d2);
 int Read_Authd(XML_NODE node, void *d1, void *d2);
 
 #endif /* _HCONFIG__H */

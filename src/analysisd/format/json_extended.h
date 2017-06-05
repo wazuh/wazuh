@@ -30,6 +30,8 @@ void W_JSON_ParseGroups(cJSON *root, const Eventinfo *lf);
 void W_JSON_ParseGroupsCompliance(cJSON *root);
 // Parse Rootcheck compliance
 void W_JSON_ParseRootcheck(cJSON *root, const Eventinfo *lf);
+// Parse labels
+void W_JSON_ParseLabels(cJSON *root, const Eventinfo *lf);
 // Detecting if an alert comes from rootcheck
 int W_isRootcheck(cJSON *root);
 // Parsing PCI Compliance groups

@@ -28,7 +28,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 {
     int i = 0;
     const char *osglobal = "global";                    /* Server Config */
-    const char *osrules = "ruleset";                      /* Server Config */
+    const char *osrules = "ruleset";                    /* Server Config */
     const char *ossyscheck = "syscheck";                /* Agent Config  */
     const char *osrootcheck = "rootcheck";              /* Agent Config  */
     const char *osalerts = "alerts";                    /* Server Config */
@@ -43,7 +43,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osreports = "reports";                  /* Server Config */
     const char *osintegratord = "integration";          /* Server Config */
     const char *osactive_response = "active-response";  /* Agent Config  */
-    const char *oswmodule = "wodle";  /* Wodle - Wazuh Module  */
+    const char *oswmodule = "wodle";                    /* Wodle - Wazuh Module  */
+    const char *oslabels = "labels";                    /* Labels Config */
     const char *osauthd = "auth";                       /* Authd Config */
 
     while (node[i]) {
@@ -125,6 +126,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (strcmp(node[i]->element, oslabels) == 0) {
+            if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osauthd) == 0) {

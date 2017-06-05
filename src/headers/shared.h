@@ -205,6 +205,7 @@ extern const char *__local_name;
 #include "report_op.h"
 #include "string_op.h"
 #include "randombytes.h"
+#include "labels_op.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"

@@ -32,6 +32,7 @@
 #include "cleanevent.h"
 #include "dodiff.h"
 #include "output/jsonout.h"
+#include "labels.h"
 
 #ifdef PICVIZ_OUTPUT_ENABLED
 #include "output/picviz.h"
@@ -680,6 +681,11 @@ void OS_ReadMSG_analysisd(int m_queue)
         Free_Eventinfo(lf);
     }
 
+    /* Initialize label cache */
+    labels_init();
+    Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 1);
+    Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
+
     debug1("%s: DEBUG: Startup completed. Waiting for new messages..", ARGV0);
 
     if (Config.custom_alert_output) {
@@ -934,6 +940,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 /* Log the alert if configured to */
                 if (currently_rule->alert_opts & DO_LOGALERT) {
                     lf->comment = ParseRuleComment(lf);
+                    lf->labels = labels_find(lf);
                     __crt_ftell = ftell(_aflog);
 
                     if (Config.custom_alert_output) {

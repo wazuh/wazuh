@@ -23,6 +23,7 @@ typedef struct _agent {
     int max_time_reconnect_try;
     char *profile;
     int protocol;
+    wlabel_t *labels; /* null-ended label set */
 } agent;
 
 #endif /* __CAGENTD_H */
