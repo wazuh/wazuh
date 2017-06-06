@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+#ifdef LIBOPENSSL_ENABLED
+
 #include <external/cJSON/cJSON.h>
 #include <pthread.h>
 #include <sys/wait.h>
@@ -370,3 +372,5 @@ cJSON* local_get(const char *id) {
     pthread_mutex_unlock(&mutex_keys);
     return response;
 }
+
+#endif // LIBOPENSSL_ENABLED
