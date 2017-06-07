@@ -9,15 +9,15 @@
 
 # Auto generated build files
 src/LOCATION
-src/external/zlib-1.2.8/configure.log
-src/external/zlib-1.2.8/Makefile
-src/external/zlib-1.2.8/zconf.h
-src/external/zlib-1.2.8/zlib.pc
+src/external/zlib/configure.log
+src/external/zlib/Makefile
+src/external/zlib/zconf.h
+src/external/zlib/zlib.pc
 src/isbigendian.c
 src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
 src/Config.OS
-src/external/zlib-1.2.8/ztest*
+src/external/zlib/ztest*
 
 # Compiled programs
 src/agent-auth
