@@ -61,21 +61,26 @@ lock() {
         # Waiting 1 second before trying again
         sleep 1;
         i=`expr $i + 1`;
+        pid=`cat ${LOCK_PID}` 2>/dev/null
 
-        # If PID is not present, speed things a bit.
-        kill -0 `cat ${LOCK_PID}` >/dev/null 2>&1
-        if [ ! $? = 0 ]; then
-            # Pid is not present.
-            i=`expr $i + 1`;
+        if [ $? = 0 ]
+        then
+            kill -0 ${pid} >/dev/null 2>&1
+            if [ ! $? = 0 ]; then
+                # Pid is not present.
+                # Unlocking and executing
+                unlock;
+                mkdir ${LOCK} > /dev/null 2>&1
+                echo "$$" > ${LOCK_PID}
+                return;
+            fi
         fi
 
         # We tried 10 times to acquire the lock.
         if [ "$i" = "${MAX_ITERATION}" ]; then
-            # Unlocking and executing
-            unlock;
-            mkdir ${LOCK} > /dev/null 2>&1
-            echo "$$" > ${LOCK_PID}
-            return;
+            echo "ERROR: Another instance is locking this process."
+            echo "If you are sure that no other instance is running, please remove ${LOCK}"
+            exit 1
         fi
     done
 }
@@ -192,7 +197,6 @@ start()
         exit 1;
     fi
 
-    lock;
     checkpid;
 
     # We actually start them now.
@@ -214,7 +218,6 @@ start()
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
-    unlock;
 
     ls -la "${DIR}/ossec-agent/" >/dev/null 2>&1
     if [ $? = 0 ]; then
@@ -257,7 +260,6 @@ pstatus()
 
 stopa()
 {
-    lock;
     checkpid;
     for i in ${DAEMONS}; do
         pstatus ${i};
@@ -270,7 +272,6 @@ stopa()
         rm -f ${DIR}/var/run/${i}*.pid
     done
 
-    unlock;
 
     ls -la "${DIR}/ossec-agent/" >/dev/null 2>&1
     if [ $? = 0 ]; then
@@ -286,28 +287,40 @@ stopa()
 case "$1" in
 start)
     testconfig
+    lock
     start
+    unlock
     ;;
 stop)
+    lock
     stopa
+    unlock
     ;;
 restart)
     testconfig
+    lock
     stopa
-    sleep 1;
+    sleep 1
     start
+    unlock
     ;;
 status)
+    lock
     status
+    unlock
     ;;
 help)
     help
     ;;
 enable)
+    lock
     enable $1 $2;
+    unlock
     ;;
 disable)
+    lock
     disable $1 $2;
+    unlock
     ;;
 *)
     help

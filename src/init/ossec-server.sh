@@ -66,21 +66,26 @@ lock()
         # Waiting 1 second before trying again
         sleep 1;
         i=`expr $i + 1`;
+        pid=`cat ${LOCK_PID}` 2>/dev/null
 
-        # If PID is not present, speed things a bit.
-        kill -0 `cat ${LOCK_PID}` >/dev/null 2>&1
-        if [ ! $? = 0 ]; then
-            # Pid is not present.
-            i=`expr $i + 1`;
+        if [ $? = 0 ]
+        then
+            kill -0 ${pid} >/dev/null 2>&1
+            if [ ! $? = 0 ]; then
+                # Pid is not present.
+                # Unlocking and executing
+                unlock;
+                mkdir ${LOCK} > /dev/null 2>&1
+                echo "$$" > ${LOCK_PID}
+                return;
+            fi
         fi
 
         # We tried 10 times to acquire the lock.
         if [ "$i" = "${MAX_ITERATION}" ]; then
-            # Unlocking and executing
-            unlock;
-            mkdir ${LOCK} > /dev/null 2>&1
-            echo "$$" > ${LOCK_PID}
-            return;
+            echo "ERROR: Another instance is locking this process."
+            echo "If you are sure that no other instance is running, please remove ${LOCK}"
+            exit 1
         fi
     done
 }
@@ -169,9 +174,7 @@ status()
     RETVAL=0
     first=true
 
-    lock;
     checkpid;
-    unlock;
 
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
@@ -238,7 +241,7 @@ start()
         fi
         exit 1;
     fi
-    lock;
+
     checkpid;
 
     # We actually start them now.
@@ -294,7 +297,6 @@ start()
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
-    unlock;
 
     if [ $USE_JSON = true ]; then
         echo -n ']}'
@@ -336,7 +338,6 @@ pstatus()
 
 stopa()
 {
-    lock;
     checkpid;
     first=true
     if [ $USE_JSON = true ]; then
@@ -366,7 +367,6 @@ stopa()
         rm -f ${DIR}/var/run/${i}*.pid
     done
 
-    unlock;
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     else
@@ -388,37 +388,51 @@ fi
 case "$action" in
 start)
     testconfig
+    lock
     start
+    unlock
     ;;
 stop)
+    lock
     stopa
+    unlock
     ;;
 restart)
     testconfig
+    lock
     if [ $USE_JSON = true ]; then
         stopa > /dev/null 2>&1
     else
         stopa
     fi
-    sleep 1;
+    sleep 1
     start
+    unlock
     ;;
 reload)
     DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+    lock
     stopa
     start
+    unlock
     ;;
 status)
+    lock
     status
+    unlock
     ;;
 help)
     help
     ;;
 enable)
+    lock
     enable $action $arg;
+    unlock
     ;;
 disable)
+    lock
     disable $action $arg;
+    unlock
     ;;
 *)
     help
