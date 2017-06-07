@@ -41,7 +41,7 @@ void * req_main(__attribute__((unused)) void * arg) {
     int sock;
     int error;
     int request_timeout;
-    unsigned int counter = 0;
+    unsigned int counter = (unsigned int)os_random();
     char counter_s[COUNTER_LENGTH];
     req_node_t * node;
 
@@ -175,6 +175,7 @@ void * req_main(__attribute__((unused)) void * arg) {
 // Dispatcher theads entry point
 void * req_dispath(req_node_t * node) {
     int attempts;
+    int ploff;
     size_t ldata;
     char * agentid = NULL;
     char * payload = NULL;
@@ -197,9 +198,11 @@ void * req_dispath(req_node_t * node) {
     _payload++;
 
     os_strdup(node->buffer, agentid);
-    ldata = node->length - (_payload - node->buffer);
-    os_malloc(ldata, payload);
-    memcpy(payload, _payload, ldata);
+    ldata = strlen(CONTROL_HEADER) + strlen(HC_REQUEST) + strlen(node->counter) + 1 + node->length - (_payload - node->buffer);
+    os_malloc(ldata + 1, payload);
+    ploff = snprintf(payload, ldata, CONTROL_HEADER HC_REQUEST "%s ", node->counter);
+    memcpy(payload + ploff, _payload, ldata - ploff);
+    payload[ldata] = '\0';
 
     // Drain payload
 
@@ -208,13 +211,14 @@ void * req_dispath(req_node_t * node) {
     node->length = 0;
 
     w_mutex_unlock(&node->mutex);
+    mdebug2("Sending request: '%s'", payload);
 
     for (attempts = 0; attempts < max_attempts; attempts++) {
         struct timespec timeout = { response_timeout, 0 };
 
         // Try to send message
 
-        if (send_msg(agentid, payload, node->length - (payload - agentid))) {
+        if (send_msg(agentid, payload, ldata)) {
             merror("Sending request to agent '%s'.", agentid);
             goto cleanup;
         }

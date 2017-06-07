@@ -238,6 +238,9 @@ static void ExecdStart(int q)
         repeated_hash = NULL;
     }
 
+    // Start com request thread
+    w_create_thread(wcom_main, NULL);
+
     /* Main loop */
     while (1) {
         int timeout_value;

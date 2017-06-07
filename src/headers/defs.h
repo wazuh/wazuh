@@ -114,6 +114,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Remote requests socket
 #define REMOTE_REQ_SOCK "/queue/ossec/request"
 
+// Local requests soket
+#define COM_LOCAL_SOCK  "/queue/ossec/com"
+
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
 

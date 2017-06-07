@@ -49,6 +49,11 @@ size_t wcom_unmerge(const char *file_path, char *output);
 size_t wcom_exec(const char *command, char *output);
 size_t wcom_dispatch(char *command, size_t length, char *output);
 
+#ifndef WIN32
+// Com request thread dispatcher
+void * wcom_main(void * arg);
+#endif
+
 /* Timeout data structure */
 typedef struct _timeout_data {
     time_t time_of_addition;

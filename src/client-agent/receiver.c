@@ -75,6 +75,8 @@ int receive_msg()
             continue;
         }
 
+        mdebug2("Received message: '%s'", tmp_msg);
+
         /* Check for commands */
         if (IsValidHeader(tmp_msg)) {
             available_server = (int)time(NULL);
