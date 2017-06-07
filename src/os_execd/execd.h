@@ -40,6 +40,15 @@ int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
 int WinExecd_Start(void);
 void WinTimeoutRun(int timeout);
 
+size_t wcom_open(const char *file_path, const char *mode, char *output);
+size_t wcom_write(const char *file_path, char *buffer, size_t length, char *output);
+//size_t wcom_read(const char *file_path, char *buffer, size_t length, char *output);
+size_t wcom_close(const char *file_path, char *output);
+size_t wcom_sha1(const char *file_path, char *output);
+size_t wcom_unmerge(const char *file_path, char *output);
+size_t wcom_exec(const char *command, char *output);
+size_t wcom_dispatch(char *command, size_t length, char *output);
+
 /* Timeout data structure */
 typedef struct _timeout_data {
     time_t time_of_addition;
@@ -50,4 +59,3 @@ typedef struct _timeout_data {
 void FreeTimeoutEntry(timeout_data *timeout_entry);
 
 #endif
-
