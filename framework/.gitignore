@@ -10,5 +10,4 @@ dist/
 build/
 
 # Objects
-database/*.so*
-
+libsqlite3.so*

@@ -76,7 +76,9 @@ else
         if ! grep "^${U}:" /etc/passwd > /dev/null 2>&1; then
 	    if [ "$UNAME" = "OpenBSD" ]; then
                ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
-	    else
+	    elif [ "$UNAME" = "SunOS" ]; then
+			   ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
+		else
 	       ${USERADD} "${U}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
 	    fi
         fi

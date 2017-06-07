@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+#ifdef LIBOPENSSL_ENABLED
+
 #include "shared.h"
 #include "auth.h"
 #include "config/config.h"
@@ -30,3 +32,5 @@ int authd_read_config(const char *path) {
 
     return 0;
 }
+
+#endif
