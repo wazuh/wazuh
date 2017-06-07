@@ -5,6 +5,7 @@ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_LUA=external/lua-5.2.3/
 EXTERNAL_ZLIB=external/zlib/
+EXTERNAL_SQLITE=external/sqlite/
 LUA_PLAT=posix
 MAXAGENTS?=8000
 REUSE_ID?=no
@@ -810,7 +811,7 @@ wmodules.a: ${wmodules_o}
 
 #### SQLite ####
 
-sqlite_c := $(wildcard wazuh_db/*.c)
+sqlite_c := $(wildcard wazuh_db/*.c) ${EXTERNAL_SQLITE}sqlite3.c
 sqlite_sql := $(wildcard wazuh_db/*.sql)
 sqlite_o := $(sqlite_c:.c=.o) $(sqlite_sql:.sql=.o)
 
@@ -819,6 +820,9 @@ wazuh_db/schema_%.o: wazuh_db/schema_%.sql
 
 wazuh_db/%.o: wazuh_db/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-analysisd\" -c $^ -o $@
+
+${EXTERNAL_SQLITE}sqlite3.o: ${EXTERNAL_SQLITE}sqlite3.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
 #### Config ##########
 

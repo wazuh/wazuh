@@ -12,7 +12,7 @@
 #ifndef WDB_H
 #define WDB_H
 
-#include "sqlite3.h"
+#include "external/sqlite/sqlite3.h"
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
 
