@@ -37,11 +37,15 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
     if (strcmp(rcv_comm, "open") == 0){
         // open [rw file_path]
         mode = rcv_args;
-        path = strchr(mode, ' ');
-        *path = '\0';
-        path++;
-
-        return wcom_open(path, mode, output);
+        if (path = strchr(mode, ' '), path){
+            *path = '\0';
+            path++;
+            return wcom_open(path, mode, output);
+        }else {
+            merror("%s: ERROR: Bad WCOM open message.", __local_name);
+            strcpy(output, "err Open file");
+            return strlen(output);
+        }
 
     }else if (strcmp(rcv_comm, "write") == 0){
         // write [length file_path data]
