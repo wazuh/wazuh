@@ -20,8 +20,9 @@ req_node_t * req_create(int sock, const char * counter, const char * buffer, siz
     os_malloc(sizeof(req_node_t), node);
     node->sock = sock;
     os_strdup(counter, node->counter);
-    os_malloc(length, node->buffer);
+    os_malloc(length + 1, node->buffer);
     memcpy(node->buffer, buffer, length);
+    node->buffer[length] = '\0';
     node->length = length;
     w_mutex_init(&node->mutex, NULL);
     w_cond_init(&node->available, NULL);
@@ -33,8 +34,9 @@ req_node_t * req_create(int sock, const char * counter, const char * buffer, siz
 void req_update(req_node_t * node, const char * buffer, size_t length) {
     w_mutex_lock(&node->mutex);
     free(node->buffer);
-    os_malloc(length, node->buffer);
+    os_malloc(length + 1, node->buffer);
     memcpy(node->buffer, buffer, length);
+    node->buffer[length] = '\0';
     node->length = length;
     w_cond_signal(&node->available);
     w_mutex_unlock(&node->mutex);

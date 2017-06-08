@@ -29,7 +29,7 @@ static pthread_cond_t pool_available = PTHREAD_COND_INITIALIZER;
 
 static int request_pool;
 static int rto_sec;
-static int rto_usec;
+static int rto_msec;
 static int max_attempts;
 
 // Initialize request module
@@ -38,7 +38,7 @@ void req_init() {
 
     request_pool = getDefine_Int("remoted", "request_pool", 1, 64);
     rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
-    rto_usec = getDefine_Int("remoted", "request_rto_usec", 0, 999999);
+    rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
     max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
 
     // Create hash table and request pool
@@ -73,19 +73,16 @@ int req_push(char * buffer, size_t length) {
 
     if (IS_ACK(target)) {
         w_mutex_lock(&mutex_table);
-        node = OSHash_Get(req_table, counter);
-        w_mutex_unlock(&mutex_table);
 
-        if (node) {
-            w_mutex_lock(&node->mutex);
-            free(node->buffer);
-            memcpy(node->buffer, buffer, length);
-            w_cond_signal(&node->available);
-            w_mutex_unlock(&node->mutex);
+        if (node = OSHash_Get(req_table, counter), node) {
+            req_update(node, target, length);
         } else {
             mdebug1("Request counter (%s) not found. Duplicated ACK?", counter);
         }
+
+        w_mutex_unlock(&mutex_table);
     } else {
+
         if (payload = strchr(target, ' '), !target) {
             merror("Request format is incorrect [payload].");
             mdebug2("target = \"%s\"", target);
@@ -94,16 +91,29 @@ int req_push(char * buffer, size_t length) {
 
         *(payload++) = '\0';
         length -= (payload - buffer);
-        snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
 
 #ifndef WIN32
 
-        // Windows won't use sockets. Request will be executed directly.
+        snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
 
         if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-            merror("At req_push(): Could not connect to socket '%s': %s.", sockname, strerror(errno));
+            merror("At req_push(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+
             // Example: #!-req 16 err Permission denied
-            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err %s", counter, strerror(errno));
+            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err %s", counter, errno == ENOENT ? "Invalid target" : strerror(errno));
+            send_msg(response, -1);
+
+            return -1;
+        }
+
+#else
+
+        // Windows only supports requests to "com"
+
+        if (strcmp(target, "com")) {
+            merror("Request attempt to invalid target '%s'", target);
+            // Example: #!-req 16 err Permission denied
+            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err Invalid target", counter);
             send_msg(response, -1);
             return -1;
         }
@@ -113,14 +123,14 @@ int req_push(char * buffer, size_t length) {
         // Send ACK, only in UDP mode
 
         if (agt->protocol == UDP_PROTO) {
+            mdebug2("req_push(): Sending ack (%s).", counter);
             // Example: #!-req 16 ack
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", counter);
             send_msg(response, -1);
         }
 
         // Create and insert node
-        node = req_create(sock, counter, buffer, length);
-
+        node = req_create(sock, counter, payload, length);
         w_mutex_lock(&mutex_table);
         error = OSHash_Add(req_table, counter, node);
         w_mutex_unlock(&mutex_table);
@@ -194,66 +204,73 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 #else
         // In Unix, forward request to target socket
 
+        mdebug2("req_receiver(): sending '%s' to socket", node->buffer);
+
         // Send data
 
-        if (send(node->sock, node->buffer, node->length, 0)) {
+        if (send(node->sock, node->buffer, node->length, 0) != (ssize_t)node->length) {
             merror("send(): %s", strerror(errno));
             strcpy(buffer, "err Send data");
             length = strlen(buffer);
-        }
+        } else {
 
-        // Get response
+            // Get response
 
-        switch (length = recv(node->sock, buffer, OS_MAXSTR, 0), length) {
-        case -1:
-            merror("recv(): %s", strerror(errno));
-            strcpy(buffer, "err Receive data");
-            length = strlen(buffer);
+            switch (length = recv(node->sock, buffer, OS_MAXSTR, 0), length) {
+            case -1:
+                merror("recv(): %s", strerror(errno));
+                strcpy(buffer, "err Receive data");
+                length = strlen(buffer);
 
-        case 0:
-            mdebug1("Empty message from local client.");
-            strcpy(buffer, "err Empty response");
-            length = strlen(buffer);
+            case 0:
+                mdebug1("Empty message from local client.");
+                strcpy(buffer, "err Empty response");
+                length = strlen(buffer);
 
-        default:
-            buffer[length] = '\0';
+            default:
+                buffer[length] = '\0';
+            }
         }
 
 #endif
 
-        for (attempts = 0; attempts < max_attempts; attempts++) {
-            struct timespec timeout = { rto_sec, rto_usec * 1000 };
+        // Build response string
+        // Example: #!-req 16 Hello World
+        rlen = snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ", node->counter);
+        length = length + rlen > OS_MAXSTR ? OS_MAXSTR : length + rlen;
+        memmove(buffer + rlen, buffer, length - rlen);
+        memcpy(buffer, response, rlen);
+        buffer[length] = '\0';
 
-            // Build response string
-            // Example: #!-req 16 Hello World
-            rlen = snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ", node->counter);
-            length = length + rlen > OS_MAXSTR ? OS_MAXSTR : length + rlen;
-            memmove(buffer + rlen, buffer, length - rlen);
-            memcpy(buffer, response, rlen);
-            buffer[length] = '\0';
+        mdebug2("req_receiver(): sending '%s' to server", buffer);
+
+        for (attempts = 0; attempts < max_attempts; attempts++) {
+            struct timespec timeout;
+            struct timeval now = { 0, 0 };
 
             // Try to send message
 
             if (send_msg(buffer, length)) {
-                merror("Sending request to manager.");
+                merror("Sending response to manager.");
                 break;
             }
 
             // Wait for ACK, only in UDP mode
 
             if (agt->protocol == UDP_PROTO) {
-                w_mutex_lock(&node->mutex);
-
                 if (IS_ACK(node->buffer)) {
-                    w_mutex_unlock(&node->mutex);
+
                     break;
                 } else {
+
+                    gettimeofday(&now, NULL);
+                    timeout.tv_sec = now.tv_sec + rto_sec;
+                    timeout.tv_nsec = now.tv_usec * 1000 + rto_msec * 1000000;
+
                     if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0) {
-                        w_mutex_unlock(&node->mutex);
                         continue;
-                    } else {
-                        w_mutex_unlock(&node->mutex);
                     }
+
                 }
             } else {
                 // TCP handles ACK by itself
@@ -264,6 +281,8 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         if (attempts == max_attempts) {
             merror("Couldn't send response to manager: number of attempts exceeded.");
         }
+
+        w_mutex_unlock(&node->mutex);
 
         // Delete node from hash table
         w_mutex_lock(&mutex_table);

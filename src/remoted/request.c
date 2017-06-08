@@ -25,12 +25,17 @@ static void req_pool_post();
 // Wait for available pool. Returns 1 on success or 0 on error
 static int req_pool_wait();
 
+static const char * WR_INTERNAL_ERROR = "err Internal error";
+static const char * WR_SEND_ERROR = "err Cannot send request";
+static const char * WR_ATTEMPT_ERROR = "err Maximum attempts exceeded";
+static const char * WR_TIMEOUT_ERROR = "err Response timeout";
+
 static OSHash * req_table;
 static pthread_mutex_t mutex_table = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pool_available = PTHREAD_COND_INITIALIZER;
 static int rto_sec;
-static int rto_usec;
+static int rto_msec;
 static int max_attempts;
 static int request_pool;
 static int request_timeout;
@@ -53,7 +58,7 @@ void * req_main(__attribute__((unused)) void * arg) {
     request_timeout = getDefine_Int("remoted", "request_timeout", 1, 600);
     response_timeout = getDefine_Int("remoted", "response_timeout", 1, 3600);
     rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
-    rto_usec = getDefine_Int("remoted", "request_rto_usec", 0, 999999);
+    rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
     max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
 
     // Create hash table
@@ -71,7 +76,6 @@ void * req_main(__attribute__((unused)) void * arg) {
 
     while (1) {
         int peer;
-        int granted = 0;
         ssize_t length;
         char buffer[OS_MAXSTR + 1];
 
@@ -123,12 +127,6 @@ void * req_main(__attribute__((unused)) void * arg) {
         default:
             buffer[length] = '\0';
 
-            // Wait for thread pool
-
-            if (granted = req_pool_wait(), !granted) {
-                break;
-            }
-
             // Set counter, create node and insert into hash table
 
             snprintf(counter_s, COUNTER_LENGTH, "%x", counter++);
@@ -150,22 +148,24 @@ void * req_main(__attribute__((unused)) void * arg) {
                 break;
 
             case 2:
+
+                // Wait for thread pool
+
+                if (!req_pool_wait()) {
+                    break;
+                }
+
                 // Run thread
                 w_create_thread(req_dispath, node);
-            }
 
-            // Do not close peer
-            continue;
+                // Do not close peer
+                continue;
+            }
         }
 
         // If we reached here, there was an error
 
-        // If request pool was decremented, reset it
-
-        if (granted) {
-            req_pool_post();
-        }
-
+        send(peer, WR_INTERNAL_ERROR, strlen(WR_INTERNAL_ERROR), 0);
         close(peer);
     }
 
@@ -181,6 +181,8 @@ void * req_dispath(req_node_t * node) {
     char * payload = NULL;
     char * _payload;
     char response[REQ_RESPONSE_LENGTH];
+    struct timespec timeout;
+    struct timeval now = { 0, 0 };
 
     mdebug2("Running request dispatcher thread. Counter=%s", node->counter);
 
@@ -190,7 +192,6 @@ void * req_dispath(req_node_t * node) {
 
     if (_payload = strchr(node->buffer, ' '), !_payload) {
         merror("Request has no agent id.");
-        w_mutex_unlock(&node->mutex);
         goto cleanup;
     }
 
@@ -210,71 +211,75 @@ void * req_dispath(req_node_t * node) {
     node->buffer = NULL;
     node->length = 0;
 
-    w_mutex_unlock(&node->mutex);
     mdebug2("Sending request: '%s'", payload);
 
     for (attempts = 0; attempts < max_attempts; attempts++) {
-        struct timespec timeout = { response_timeout, 0 };
 
         // Try to send message
 
         if (send_msg(agentid, payload, ldata)) {
             merror("Sending request to agent '%s'.", agentid);
+            send(node->sock, WR_SEND_ERROR, strlen(WR_SEND_ERROR), 0);
             goto cleanup;
         }
 
         // Wait for ACK or response
 
-        w_mutex_lock(&node->mutex);
-
         if (node->buffer) {
-            w_mutex_unlock(&node->mutex);
             break;
         } else {
+            gettimeofday(&now, NULL);
+            timeout.tv_sec = now.tv_sec + rto_sec;
+            timeout.tv_nsec = now.tv_usec * 1000 + rto_msec * 1000000;
+
             if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0) {
-                w_mutex_unlock(&node->mutex);
                 continue;
-            } else {
-                w_mutex_unlock(&node->mutex);
             }
         }
     }
 
     if (attempts == max_attempts) {
         merror("Couldn't send request to agent '%s': number of attempts exceeded.", agentid);
+        send(node->sock, WR_ATTEMPT_ERROR, strlen(WR_ATTEMPT_ERROR), 0);
         goto cleanup;
     }
 
     // If buffer is ACK, wait for response
 
-    w_mutex_lock(&node->mutex);
+    for (attempts = 0; attempts < max_attempts && IS_ACK(node->buffer); attempts++) {
+        gettimeofday(&now, NULL);
+        timeout.tv_sec = now.tv_sec + response_timeout;
+        timeout.tv_nsec = now.tv_usec * 1000;
 
-    while (IS_ACK(node->buffer)) {
-        w_cond_wait(&node->available, &node->mutex);
+        if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0) {
+            continue;
+        } else {
+            merror("Response timeout for request counter '%s'.", node->counter);
+            send(node->sock, WR_TIMEOUT_ERROR, strlen(WR_TIMEOUT_ERROR), 0);
+            goto cleanup;
+        }
     }
 
     // Send ACK, only in UDP mode
 
     if (logr.proto[logr.position] == UDP_PROTO) {
         // Example: #!-req 16 ack
+        mdebug2("req_dispath(): Sending ack (%s).", node->counter);
         snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);
         send_msg(agentid, response, -1);
     }
 
-    w_mutex_unlock(&node->mutex);
-
-    // At this point, no other thread should write on node
-
     // Send response to local peer
 
     if (send(node->sock, node->buffer, node->length, 0) != (ssize_t)node->length) {
-        merror("send(): %s", strerror(errno));
+        merror("At req_dispath(): send(): %s", strerror(errno));
     }
-
-    // Clean up
 
 cleanup:
 
+    // Clean up
+
+    w_mutex_unlock(&node->mutex);
     w_mutex_lock(&mutex_table);
 
     if (!OSHash_Delete(req_table, node->counter)) {
@@ -284,27 +289,28 @@ cleanup:
     w_mutex_unlock(&mutex_table);
     req_free(node);
     free(agentid);
-
     req_pool_post();
-
     return NULL;
 }
 
 // Save request data (ack or response). Return 0 on success or -1 on error.
 int req_save(const char * counter, const char * buffer, size_t length) {
     req_node_t * node;
+    int retval = 0;
+
+    mdebug2("req_save(): Saving '%s'", buffer);
 
     w_mutex_lock(&mutex_table);
-    node = OSHash_Get(req_table, counter);
-    w_mutex_unlock(&mutex_table);
 
-    if (!node) {
+    if (node = OSHash_Get(req_table, counter), node) {
+        req_update(node, buffer, length);
+    } else {
         mdebug1("Request counter (%s) not found. Duplicated message?", counter);
-        return -1;
+        retval = -1;
     }
 
-    req_update(node, buffer, length);
-    return 0;
+    w_mutex_unlock(&mutex_table);
+    return retval;
 }
 
 // Increment request pool
@@ -317,12 +323,17 @@ void req_pool_post() {
 
 // Wait for available pool. Returns 1 on success or 0 on error
 int req_pool_wait() {
-    struct timespec timeout = { request_timeout, 0 };
+    struct timespec timeout;
+    struct timeval now = { 0, 0 };
     int wait_ok = 1;
 
     w_mutex_lock(&mutex_pool);
 
     while (!request_pool && wait_ok) {
+        gettimeofday(&now, NULL);
+        timeout.tv_sec = now.tv_sec + request_timeout;
+        timeout.tv_nsec = now.tv_usec * 1000;
+
         switch (pthread_cond_timedwait(&pool_available, &mutex_pool, &timeout)) {
         case 0:
             break;

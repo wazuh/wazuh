@@ -60,7 +60,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
     pending_data_t *data;
     FILE * fp;
 
-    if (strncmp(r_msg, HC_REQUEST, msg_length) == 0) {
+    if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
         char * counter = r_msg + strlen(HC_REQUEST);
         char * payload;
 

@@ -35,7 +35,7 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         *rcv_args = '\0';
         rcv_args++;
     } else {
-        merror("%s: ERROR: WCOM bad command.", __local_name);
+        merror("WCOM bad command.");
         strcpy(output, "err Bad command");
         return strlen(output);
     }
@@ -48,7 +48,7 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
             path++;
             return wcom_open(path, mode, output);
         }else {
-            merror("%s: ERROR: Bad WCOM open message.", __local_name);
+            merror("Bad WCOM open message.");
             strcpy(output, "err Open file");
             return strlen(output);
         }
@@ -131,7 +131,7 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char *outp
     }
 
     if (strcmp(file.path, file_path) != 0) {
-        merror("%s: ERROR: At wcom_write(): No file is opened.", __local_name);
+        merror("At wcom_write(): No file is opened.");
         strcpy(output, "err No file opened.");
         return 2;
     }
@@ -155,7 +155,7 @@ size_t wcom_close(const char *file_path, char *output){
     }
 
     if (strcmp(file.path, file_path) != 0) {
-        merror("%s: ERROR: At wcom_close(): No file is opened.", __local_name);
+        merror("At wcom_close(): No file is opened.");
         strcpy(output, "err No file opened");
         return 2;
     }
@@ -175,7 +175,7 @@ size_t wcom_sha1(const char *file_path, char *output){
 
     os_sha1 sha1;
     if (OS_SHA1_File(file_path, sha1, OS_BINARY) < 0){
-        merror("%s: ERROR: At wcom_sha1(): Error generating SHA1.", __local_name);
+        merror("At wcom_sha1(): Error generating SHA1.");
         strcpy(output, "err Cannot generate SHA1");
         return strlen(output);
     } else {
@@ -186,7 +186,7 @@ size_t wcom_sha1(const char *file_path, char *output){
 size_t wcom_unmerge(const char *file_path, char *output){
 
     if (UnmergeFiles(file_path, NULL) == 0){
-        merror("%s: ERROR: At wcom_unmerge(): Error unmerging file.", __local_name);
+        merror("At wcom_unmerge(): Error unmerging file.");
         strcpy(output, "err Cannot unmerge file");
         return strlen(output);
     } else {
@@ -196,18 +196,20 @@ size_t wcom_unmerge(const char *file_path, char *output){
 }
 size_t wcom_exec(char *command, char *output){
     static int timeout = 0;
+    int status;
     char *out;
 
     if (timeout == 0) {
         timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
     }
 
-    if (wm_exec(command, &out, 0, timeout) < 0) {
-        merror("%s: ERROR: At wcom_exec(): Error executing command [%s]", __local_name, command);
+    if (wm_exec(command, &out, &status, timeout) < 0) {
+        merror("At wcom_exec(): Error executing command [%s]", command);
         strcpy(output, "err Cannot execute command");
         return strlen(output);
     } else {
-        strncpy(output, out, OS_MAXSTR);
+        int offset = snprintf(output, OS_MAXSTR, "ok %d ", status);
+        strncpy(output + offset, out, OS_MAXSTR - offset + 1);
         free(out);
         return strlen(output);
     }

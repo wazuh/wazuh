@@ -121,6 +121,7 @@ int receive_msg()
             // Request from manager (or request ack)
             else if (IS_REQ(tmp_msg)) {
                 req_push(tmp_msg + strlen(HC_REQUEST), msg_length - strlen(HC_REQUEST) - 3);
+                continue;
             }
 
             /* Close any open file pointer if it was being written to */

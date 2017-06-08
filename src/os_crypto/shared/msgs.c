@@ -235,7 +235,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
 
         msg_local = (unsigned int) atoi(f_msg);
         f_msg += 5;
-        *final_size -= (f_msg - cleartext);
+        *final_size -= (f_msg - buffer);
 
         /* Return the message if we don't need to verify the counter */
         if (!_s_verify_counter) {
