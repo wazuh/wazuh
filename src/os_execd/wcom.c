@@ -12,6 +12,8 @@
 #include <pthread.h>
 #include "os_net/os_net.h"
 #include "execd.h"
+#include "os_crypto/sha1/sha1_op.h"
+#include "wazuh_modules/wmodules.h"
 
 // Current opened file
 
@@ -32,6 +34,10 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
     if ((rcv_args = strchr(rcv_comm, ' '))){
         *rcv_args = '\0';
         rcv_args++;
+    } else {
+        merror("%s: ERROR: WCOM bad command.", __local_name);
+        strcpy(output, "err Bad command");
+        return strlen(output);
     }
 
     if (strcmp(rcv_comm, "open") == 0){
@@ -124,6 +130,12 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char *outp
         return 2;
     }
 
+    if (strcmp(file.path, file_path) != 0) {
+        merror("%s: ERROR: At wcom_write(): No file is opened.", __local_name);
+        strcpy(output, "err No file opened.");
+        return 2;
+    }
+
     if (fwrite(buffer, 1, length, file.fp) == length) {
         strcpy(output, "ok");
         return 2;
@@ -142,6 +154,12 @@ size_t wcom_close(const char *file_path, char *output){
         return 2;
     }
 
+    if (strcmp(file.path, file_path) != 0) {
+        merror("%s: ERROR: At wcom_close(): No file is opened.", __local_name);
+        strcpy(output, "err No file opened");
+        return 2;
+    }
+
     *file.path = '\0';
 
     if (fclose(file.fp)) {
@@ -151,15 +169,48 @@ size_t wcom_close(const char *file_path, char *output){
         strcpy(output, "ok");
         return 2;
     }
+    return 0;
 }
 size_t wcom_sha1(const char *file_path, char *output){
-    strcpy(output, "err Not implemented");
+
+    os_sha1 sha1;
+    if (OS_SHA1_File(file_path, sha1, OS_BINARY) < 0){
+        merror("%s: ERROR: At wcom_sha1(): Error generating SHA1.", __local_name);
+        strcpy(output, "err Cannot generate SHA1");
+        return strlen(output);
+    } else {
+        strncpy(output, sha1, 64);
+        return strlen(output);
+    }
 }
 size_t wcom_unmerge(const char *file_path, char *output){
-    strcpy(output, "err Not implemented");
+
+    if (UnmergeFiles(file_path, NULL) == 0){
+        merror("%s: ERROR: At wcom_unmerge(): Error unmerging file.", __local_name);
+        strcpy(output, "err Cannot unmerge file");
+        return strlen(output);
+    } else {
+        strcpy(output, "ok");
+        return 2;
+    }
 }
-size_t wcom_exec(const char *command, char *output){
-    strcpy(output, "err Not implemented");
+size_t wcom_exec(char *command, char *output){
+    static int timeout = 0;
+    char *out;
+
+    if (timeout == 0) {
+        timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
+    }
+
+    if (wm_exec(command, &out, 0, timeout) < 0) {
+        merror("%s: ERROR: At wcom_exec(): Error executing command [%s]", __local_name, command);
+        strcpy(output, "err Cannot execute command");
+        return strlen(output);
+    } else {
+        strncpy(output, out, OS_MAXSTR);
+        free(out);
+        return strlen(output);
+    }
 }
 
 #ifndef WIN32

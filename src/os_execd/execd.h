@@ -46,7 +46,7 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char *outp
 size_t wcom_close(const char *file_path, char *output);
 size_t wcom_sha1(const char *file_path, char *output);
 size_t wcom_unmerge(const char *file_path, char *output);
-size_t wcom_exec(const char *command, char *output);
+size_t wcom_exec(char *command, char *output);
 size_t wcom_dispatch(char *command, size_t length, char *output);
 
 #ifndef WIN32
