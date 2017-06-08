@@ -54,7 +54,7 @@ int main(int argc, char **argv)
         system(cmd);
 
         /* Change permissions */
-        system("echo y|cacls * /T /G  \"*S-1-5-32-544:F\" ");
+        system("echo y|icacls * /T /G  \"*S-1-5-32-544:F\" ");
 
         /* Copy them back */
         snprintf(cmd, OS_MAXSTR, "move ..\\os_win32ui.exe .");
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
         snprintf(cmd, OS_MAXSTR, "move ..\\help.txt .");
         system(cmd);
     } else {
-        system("echo y|cacls . /T /G  \"*S-1-5-32-544:F\" ");
+        system("echo y|icacls . /T /G  \"*S-1-5-32-544:F\" ");
     }
 
     return (1);
