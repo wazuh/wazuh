@@ -169,9 +169,16 @@ void* wm_database_main(wm_database *data) {
                 break;
             }
 
+            buffer[count - 1] = '\0';
+
             for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
                 event = (struct inotify_event*)&buffer[i];
                 debug2("%s: DEBUG: inotify: i='%zd', name='%s', mask='%u', wd='%d'", ARGV0, i, event->name, event->mask, event->wd);
+
+                if (event->len > IN_BUFFER_SIZE) {
+                    merror("%s: ERROR: Inotify event too large (%u)", WM_DATABASE_LOGTAG, event->len);
+                    break;
+                }
 
                 if (event->wd == wd_agents) {
                     if (!strcmp(event->name, keysfile))
