@@ -10,8 +10,14 @@
 #ifndef OS_REGEX_OP_H
 #define OS_REGEX_OP_H
 
+#ifndef WIN32
+#include <regex.h>
+
 /* POSIX regex pattern matching */
 int OS_PRegex(const char *str, const char *regex);
 
-#endif
+// Execute a POSIX regex. Return 1 on success or 0 on error.
+int w_regexec(const char * pattern, const char * string, size_t nmatch, regmatch_t * pmatch);
 
+#endif
+#endif

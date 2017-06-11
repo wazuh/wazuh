@@ -35,10 +35,10 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL, __local_name);
-            return (OS_INVALID);
+            goto error;
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, __local_name, node[i]->element);
-            return (OS_INVALID);
+            goto error;
         } else if (strcmp(node[i]->element, xml_label) == 0) {
             key = NULL;
             hidden = 0;
@@ -49,7 +49,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                         key = node[i]->values[j];
                     } else {
                         merror("%s: ERROR: label with empty key.", __local_name);
-                        return OS_INVALID;
+                        goto error;
                     }
                 } else if (strcmp(node[i]->attributes[j], xml_hidden) == 0) {
                     if (strcmp(node[i]->values[j], "yes") == 0)
@@ -58,14 +58,14 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                         hidden = 0;
                     else {
                         merror("%s: ERROR: Invalid content for attribute '%s'.", __local_name, node[i]->attributes[j]);
-                        return OS_INVALID;
+                        goto error;
                     }
                 }
             }
 
             if (!key) {
                 merror("%s: ERROR: expected 'key' attribute for label.", __local_name);
-                return OS_INVALID;
+                goto error;
             }
 
             if (strlen(node[i]->content) == 0) {
@@ -79,10 +79,14 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             }
         } else {
             merror(XML_INVELEM, __local_name, node[i]->element);
-            return (OS_INVALID);
+            goto error;
         }
     }
 
     *(wlabel_t **)d1 = labels;
     return 0;
+
+error:
+    labels_free(labels);
+    return OS_INVALID;
 }

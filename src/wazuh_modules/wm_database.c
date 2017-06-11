@@ -14,7 +14,6 @@
 #include "wazuh_db/wdb.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
 #ifndef WIN32
-#include <regex.h>
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
@@ -235,7 +234,6 @@ void wm_sync_manager() {
     char *os_codename = NULL;
     char *os_platform = NULL;
     struct stat buffer;
-    regex_t regexCompiled;
     regmatch_t match[2];
     int match_size;
 
@@ -270,30 +268,22 @@ void wm_sync_manager() {
                 os_codename += 2;
                 *(os_codename + strlen(os_codename) - 1) = '\0';
             }
+
             // Get os_major
-            static const char *pattern_major = "^([0-9]+)\\.*";
-            if (regcomp(&regexCompiled, pattern_major, REG_EXTENDED)) {
-                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
-                return;
-            }
-            if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+
+            if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_major = malloc(match_size +1);
                 snprintf (os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
             }
-            regfree(&regexCompiled);
+
             // Get os_minor
-            static const char *pattern_minor = "^[0-9]+\\.([0-9]+)\\.*";
-            if (regcomp(&regexCompiled, pattern_minor, REG_EXTENDED)) {
-                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
-                return;
-            }
-            if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+
+            if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_minor = malloc(match_size +1);
                 snprintf (os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
             }
-            regfree(&regexCompiled);
         }
 
         wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __version, NULL);
@@ -429,7 +419,6 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     FILE *fp;
     int result;
     clock_t clock0 = clock();
-    regex_t regexCompiled;
     regmatch_t match[2];
     int match_size;
 
@@ -450,7 +439,6 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         *end_line = '\0';
     } else {
         merror("%s: WARN: Corrupt line found parsing '%s' (incomplete). Returning.", WM_DATABASE_LOGTAG, path);
-        fclose(fp);
         return -1;
     }
 
@@ -464,7 +452,6 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         version += 3;
     } else {
         merror("%s: ERROR: Corrupt file '%s'.", WM_DATABASE_LOGTAG, path);
-        fclose(fp);
         return -1;
     }
 
@@ -474,42 +461,30 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         os_version += 7;
         os_name = os;
         *(os_version + strlen(os_version) - 1) = '\0';
-      // Get os_major
-        static const char *pattern_win_major = "^([0-9]+)\\.*";
-        if (regcomp(&regexCompiled, pattern_win_major, REG_EXTENDED)) {
-            merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
-            return -1;
-        }
-        if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+
+        // Get os_major
+
+        if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
-            os_major = malloc(match_size +1);
-            snprintf (os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+            os_major = malloc(match_size +1 );
+            snprintf (os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
         }
-        regfree(&regexCompiled);
+
         // Get os_minor
-        static const char *pattern_win_minor = "^[0-9]+\\.([0-9]+)\\.*";
-        if (regcomp(&regexCompiled, pattern_win_minor, REG_EXTENDED)) {
-            merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
-            return -1;
-        }
-        if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+
+        if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
             os_minor = malloc(match_size +1);
-            snprintf (os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+            snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
         }
-        regfree(&regexCompiled);
+
         // Get os_build
-        static const char *pattern_win_build = "^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*";
-        if (regcomp(&regexCompiled, pattern_win_build, REG_EXTENDED)) {
-            merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
-            return -1;
-        }
-        if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+
+        if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
             os_build = malloc(match_size +1);
-            snprintf (os_build, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+            snprintf(os_build, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
         }
-        regfree(&regexCompiled);
 
         result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, "windows", os_build, os, version, shared_sum);
 
@@ -538,30 +513,22 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
                 os_codename += 2;
                 *(os_codename + strlen(os_codename) - 1) = '\0';
             }
+
             // Get os_major
-            static const char *pattern_major = "^([0-9]+)\\.*";
-            if (regcomp(&regexCompiled, pattern_major, REG_EXTENDED)) {
-                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
-                return -1;
-            }
-            if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+
+            if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_major = malloc(match_size +1);
-                snprintf (os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+                snprintf(os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
             }
-            regfree(&regexCompiled);
+
             // Get os_minor
-            static const char *pattern_minor = "^[0-9]+\\.([0-9]+)\\.*";
-            if (regcomp(&regexCompiled, pattern_minor, REG_EXTENDED)) {
-                merror("%s: CRITICAL: Can not compile regular expression.", __local_name);
-                return -1;
-            }
-            if(regexec(&regexCompiled, os_version, 2, match, 0) == 0){
+
+            if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_minor = malloc(match_size +1);
-                snprintf (os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+                snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
             }
-            regfree(&regexCompiled);
         }
 
         result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, version, shared_sum);
