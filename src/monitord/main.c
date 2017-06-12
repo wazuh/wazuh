@@ -125,6 +125,7 @@ int main(int argc, char **argv)
     mond.compress = (short) getDefine_Int("monitord", "compress", 0, 1);
     mond.sign = (short) getDefine_Int("monitord", "sign", 0, 1);
     mond.monitor_agents = no_agents ? 0 : (short) getDefine_Int("monitord", "monitor_agents", 0, 1);
+    mond.keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
 
     mond.agents = NULL;
     mond.smtpserver = NULL;
