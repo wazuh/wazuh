@@ -8,7 +8,6 @@
  */
 
 #ifndef WIN32
-#include <regex.h>
 
 #include "shared.h"
 
@@ -29,7 +28,7 @@ int OS_PRegex(const char *str, const char *regex)
         return (0);
     }
 
-    if (regexec(&preg, str, strlen(str), NULL, 0) != 0) {
+    if (regexec(&preg, str, 0, NULL, 0) != 0) {
         /* Didn't match */
         regfree(&preg);
         return (0);
@@ -37,7 +36,25 @@ int OS_PRegex(const char *str, const char *regex)
 
     regfree(&preg);
     return (1);
+}
 
+// Execute a POSIX regex. Return 1 on success or 0 on error.
+int w_regexec(const char * pattern, const char * string, size_t nmatch, regmatch_t * pmatch) {
+    regex_t regex;
+    int result;
+
+    if (!(pattern && string)) {
+        return 0;
+    }
+
+    if (regcomp(&regex, pattern, REG_EXTENDED)) {
+        merror("%s: ERROR: Couldn't compile regular expression '%s'", __local_name, pattern);
+        return 0;
+    }
+
+    result = regexec(&regex, string, nmatch, pmatch, 0);
+    regfree(&regex);
+    return !result;
 }
 
 #endif /* !WIN32 */

@@ -37,7 +37,8 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         return NULL;
     }
 
-    strncpy(hostname, lf->hostname + 1, OS_MAXSTR - 1);
+    strncpy(hostname, lf->hostname + 1, OS_MAXSTR);
+    hostname[OS_MAXSTR - 1] = '\0';
 
     if (!(ip = strstr(hostname, ") "))) {
         return NULL;

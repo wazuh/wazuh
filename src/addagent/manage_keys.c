@@ -475,5 +475,10 @@ cleanup:
     };
 
     fclose(infp);
+
+    if (sock >= 0) {
+        close(sock);
+    }
+
     return (0);
 }

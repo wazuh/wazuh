@@ -344,6 +344,7 @@ int main(int argc, char **argv)
         case -1:
             config.flags.force_insert = 0;
             config.force_time = -1;
+            break;
 
         default:
             config.flags.force_insert = 1;
