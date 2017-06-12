@@ -377,7 +377,7 @@ install-hybrid: install-server-generic
 
 install-server: install-server-generic
 
-install-common: build
+install-common:
 	./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
 
 	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/
@@ -415,7 +415,9 @@ install-common: build
 
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
+ifneq (,$(wildcard ../wodles/oscap/content/*))
 	${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/* ${PREFIX}/wodles/oscap/content
+endif
 
 	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
 	${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
