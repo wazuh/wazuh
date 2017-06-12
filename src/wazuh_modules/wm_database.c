@@ -255,34 +255,35 @@ void wm_sync_manager() {
                 *os_version = '\0';
                 os_version += 2;
                 *(os_version + strlen(os_version) - 1) = '\0';
+
+                // os_major.os_minor (os_codename)
+                if (os_codename = strstr(os_version, " ("), os_codename){
+                    *os_codename = '\0';
+                    os_codename += 2;
+                    *(os_codename + strlen(os_codename) - 1) = '\0';
+                }
+
+                // Get os_major
+                if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_major = malloc(match_size +1);
+                    snprintf (os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+                }
+
+                // Get os_minor
+                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_minor = malloc(match_size +1);
+                    snprintf (os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
+                }
+
             } else
                 *(os_name + strlen(os_name) - 1) = '\0';
+                
             // os_name|os_platform
             if (os_platform = strstr(os_name, "|"), os_platform){
                 *os_platform = '\0';
                 os_platform ++;
-            }
-            // os_major.os_minor (os_codename)
-            if (os_codename = strstr(os_version, " ("), os_codename){
-                *os_codename = '\0';
-                os_codename += 2;
-                *(os_codename + strlen(os_codename) - 1) = '\0';
-            }
-
-            // Get os_major
-
-            if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                os_major = malloc(match_size +1);
-                snprintf (os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
-            }
-
-            // Get os_minor
-
-            if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                os_minor = malloc(match_size +1);
-                snprintf (os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
             }
         }
 
@@ -500,34 +501,35 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
                 *os_version = '\0';
                 os_version += 2;
                 *(os_version + strlen(os_version) - 1) = '\0';
+
+                // os_major.os_minor (os_codename)
+                if (os_codename = strstr(os_version, " ("), os_codename){
+                    *os_codename = '\0';
+                    os_codename += 2;
+                    *(os_codename + strlen(os_codename) - 1) = '\0';
+                }
+
+                // Get os_major
+                if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_major = malloc(match_size +1);
+                    snprintf(os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+                }
+
+                // Get os_minor
+                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_minor = malloc(match_size +1);
+                    snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+                }
+
             } else
                 *(os_name + strlen(os_name) - 1) = '\0';
+
             // os_name|os_platform
             if (os_platform = strstr(os_name, "|"), os_platform){
                 *os_platform = '\0';
                 os_platform ++;
-            }
-            // os_major.os_minor (os_codename)
-            if (os_codename = strstr(os_version, " ("), os_codename){
-                *os_codename = '\0';
-                os_codename += 2;
-                *(os_codename + strlen(os_codename) - 1) = '\0';
-            }
-
-            // Get os_major
-
-            if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                os_major = malloc(match_size +1);
-                snprintf(os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-            }
-
-            // Get os_minor
-
-            if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                os_minor = malloc(match_size +1);
-                snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
             }
         }
 
