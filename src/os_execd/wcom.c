@@ -133,7 +133,7 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char *outp
     if (strcmp(file.path, file_path) != 0) {
         merror("At wcom_write(): No file is opened.");
         strcpy(output, "err No file opened.");
-        return 2;
+        return strlen(output);
     }
 
     if (fwrite(buffer, 1, length, file.fp) == length) {
@@ -151,13 +151,13 @@ size_t wcom_close(const char *file_path, char *output){
     if (!*file.path) {
         merror("At wcom_close(): No file is opened.");
         strcpy(output, "err No file opened");
-        return 2;
+        return strlen(output);
     }
 
     if (strcmp(file.path, file_path) != 0) {
         merror("At wcom_close(): No file is opened.");
         strcpy(output, "err No file opened");
-        return 2;
+        return strlen(output);
     }
 
     *file.path = '\0';
@@ -165,6 +165,7 @@ size_t wcom_close(const char *file_path, char *output){
     if (fclose(file.fp)) {
         merror("At wcom_close(): %s", strerror(errno));
         strcpy(output, "err Cannot close");
+        return strlen(output);
     } else {
         strcpy(output, "ok");
         return 2;
