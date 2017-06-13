@@ -30,11 +30,11 @@ static const char * MONTHS[] = {
     "Dec"
 };
 
-static void remove_old_logs(const char *base_dir);
+static void remove_old_logs(const char *base_dir, int keep_log_days);
 static void remove_old_logs_y(const char * base_dir, int year, time_t threshold);
 static void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold);
 
-void rotate_log(const struct tm *p) {
+void w_rotate_log(const struct tm *p, int compress, int keep_log_days) {
     char old_path[PATH_MAX];
     char base_dir[PATH_MAX];
     char year_dir[PATH_MAX];
@@ -70,7 +70,7 @@ void rotate_log(const struct tm *p) {
     }
 
     if (rename(old_path, new_path) == 0) {
-        if (mond.compress) {
+        if (compress) {
             OS_CompressLog(new_path);
         }
     } else {
@@ -78,11 +78,11 @@ void rotate_log(const struct tm *p) {
     }
 
     // Remove old compressed files
-    remove_old_logs(base_dir);
+    remove_old_logs(base_dir, keep_log_days);
 }
 
-void remove_old_logs(const char *base_dir) {
-    time_t threshold = time(NULL) - (mond.keep_log_days + 1) * 86400;
+void remove_old_logs(const char *base_dir, int keep_log_days) {
+    time_t threshold = time(NULL) - (keep_log_days + 1) * 86400;
     char path[PATH_MAX];
     int year;
     DIR *dir;

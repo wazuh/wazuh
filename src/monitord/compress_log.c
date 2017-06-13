@@ -23,11 +23,6 @@ void OS_CompressLog(const char *logfile)
 
     char buf[OS_MAXSTR + 1];
 
-    /* Do not compress */
-    if (mond.compress == 0) {
-        return;
-    }
-
     /* Clear memory */
     memset(logfileGZ, '\0', OS_FLSIZE + 1);
     memset(buf, '\0', OS_MAXSTR + 1);

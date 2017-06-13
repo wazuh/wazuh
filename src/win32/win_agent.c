@@ -231,6 +231,16 @@ int local_start()
         merror(THREAD_ERROR, ARGV0);
     }
 
+    /* Launch rotation thread */
+    if (CreateThread(NULL,
+                     0,
+                     (LPTHREAD_START_ROUTINE)w_rotate_log_thread,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID) == NULL) {
+        merror(THREAD_ERROR, ARGV0);
+    }
+
     /* Check if server is connected */
     os_setwait();
     start_agent(1);

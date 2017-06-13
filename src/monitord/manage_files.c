@@ -76,7 +76,10 @@ void manage_files(int cday, int cmon, int cyear)
              "archive",
              pp_old->tm_mday);
     OS_SignLog(elogfile, elogfile_old, 0);
-    OS_CompressLog(elogfile);
+
+    if (mond.compress) {
+        OS_CompressLog(elogfile);
+    }
 
     /* JSON Event logfile */
     snprintf(ejlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
@@ -94,8 +97,10 @@ void manage_files(int cday, int cmon, int cyear)
              pp_old->tm_mday);
 
     OS_SignLog(ejlogfile, ejlogfile_old, 0);
-    OS_CompressLog(ejlogfile);
 
+    if (mond.compress) {
+        OS_CompressLog(ejlogfile);
+    }
 
     /* alert logfile  */
     snprintf(alogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
@@ -113,7 +118,10 @@ void manage_files(int cday, int cmon, int cyear)
              pp_old->tm_mday);
 
     OS_SignLog(alogfile, alogfile_old, 0);
-    OS_CompressLog(alogfile);
+
+    if (mond.compress) {
+        OS_CompressLog(alogfile);
+    }
 
     /* alert logfile  */
     snprintf(ajlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
@@ -132,7 +140,10 @@ void manage_files(int cday, int cmon, int cyear)
              pp_old->tm_mday);
 
     OS_SignLog(ajlogfile, ajlogfile_old, 0);
-    OS_CompressLog(ajlogfile);
+
+    if (mond.compress) {
+        OS_CompressLog(ajlogfile);
+    }
 
     /* firewall events */
     snprintf(flogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
@@ -150,7 +161,10 @@ void manage_files(int cday, int cmon, int cyear)
              pp_old->tm_mday);
 
     OS_SignLog(flogfile, flogfile_old, 0);
-    OS_CompressLog(flogfile);
+
+    if (mond.compress) {
+        OS_CompressLog(flogfile);
+    }
 
     return;
 }

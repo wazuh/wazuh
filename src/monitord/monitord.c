@@ -66,7 +66,7 @@ void Monitord()
         /* Day changed, deal with log files */
         if (today != p->tm_mday) {
             /* Rotate and compress ossec.log */
-            rotate_log(p);
+            w_rotate_log(p, mond.compress, mond.keep_log_days);
 
             /* Generate reports */
             generate_reports(today, thismonth, thisyear, p);
