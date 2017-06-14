@@ -224,20 +224,23 @@ void * req_dispath(req_node_t * node) {
             goto cleanup;
         }
 
-        // Wait for ACK or response
+        // Wait for ACK or response, only in UDP mode
 
-        if (node->buffer) {
-            break;
-        } else {
+        if (logr.proto[logr.position] == UDP_PROTO) {
             gettimeofday(&now, NULL);
             nsec = now.tv_usec * 1000 + rto_msec * 1000000;
             timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
             timeout.tv_nsec = nsec % 1000000000;
 
-            if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0) {
-                continue;
+            if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0 && node->buffer) {
+                break;
             }
+        } else {
+            // TCP handles ACK by itself
+            break;
         }
+
+        mdebug2("Timeout for waiting ACK from agent '%s', resending.", agentid);
     }
 
     if (attempts == max_attempts) {
@@ -300,7 +303,7 @@ int req_save(const char * counter, const char * buffer, size_t length) {
     req_node_t * node;
     int retval = 0;
 
-    mdebug2("req_save(): Saving '%s'", buffer);
+    mdebug2("req_save(): Saving '%s:%s'", counter, buffer);
 
     w_mutex_lock(&mutex_table);
 

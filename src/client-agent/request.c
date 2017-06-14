@@ -199,6 +199,8 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         forward(pool_j, request_pool);
         w_mutex_unlock(&mutex_pool);
 
+        w_mutex_lock(&node->mutex);
+
 #ifdef WIN32
         // In Windows, execute directly
         length = wcom_dispatch(node->buffer, node->length, buffer);
@@ -259,25 +261,20 @@ void * req_receiver(__attribute__((unused)) void * arg) {
             // Wait for ACK, only in UDP mode
 
             if (agt->protocol == UDP_PROTO) {
-                if (IS_ACK(node->buffer)) {
+                gettimeofday(&now, NULL);
+                nsec = now.tv_usec * 1000 + rto_msec * 1000000;
+                timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
+                timeout.tv_nsec = nsec % 1000000000;
 
+                if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0 && IS_ACK(node->buffer)) {
                     break;
-                } else {
-
-                    gettimeofday(&now, NULL);
-                    nsec = now.tv_usec * 1000 + rto_msec * 1000000;
-                    timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
-                    timeout.tv_nsec = nsec % 1000000000;
-
-                    if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0) {
-                        continue;
-                    }
-
                 }
             } else {
                 // TCP handles ACK by itself
                 break;
             }
+
+            mdebug2("Timeout for waiting ACK from manager, resending.");
         }
 
         if (attempts == max_attempts) {
