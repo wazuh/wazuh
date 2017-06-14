@@ -178,6 +178,7 @@ int req_push(char * buffer, size_t length) {
 // Request receiver thread start
 void * req_receiver(__attribute__((unused)) void * arg) {
     int attempts;
+    long nsec;
     ssize_t length;
     req_node_t * node;
     char buffer[OS_MAXSTR + 1];
@@ -264,8 +265,9 @@ void * req_receiver(__attribute__((unused)) void * arg) {
                 } else {
 
                     gettimeofday(&now, NULL);
-                    timeout.tv_sec = now.tv_sec + rto_sec;
-                    timeout.tv_nsec = now.tv_usec * 1000 + rto_msec * 1000000;
+                    nsec = now.tv_usec * 1000 + rto_msec * 1000000;
+                    timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
+                    timeout.tv_nsec = nsec % 1000000000;
 
                     if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0) {
                         continue;

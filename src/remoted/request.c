@@ -176,6 +176,7 @@ void * req_main(__attribute__((unused)) void * arg) {
 void * req_dispath(req_node_t * node) {
     int attempts;
     int ploff;
+    long nsec;
     size_t ldata;
     char * agentid = NULL;
     char * payload = NULL;
@@ -229,8 +230,9 @@ void * req_dispath(req_node_t * node) {
             break;
         } else {
             gettimeofday(&now, NULL);
-            timeout.tv_sec = now.tv_sec + rto_sec;
-            timeout.tv_nsec = now.tv_usec * 1000 + rto_msec * 1000000;
+            nsec = now.tv_usec * 1000 + rto_msec * 1000000;
+            timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
+            timeout.tv_nsec = nsec % 1000000000;
 
             if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0) {
                 continue;
