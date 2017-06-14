@@ -13,22 +13,25 @@
 
 // Thread to rotate internal log
 void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
-    time_t tm = time(NULL);
-    struct tm *p = localtime(&tm);
-    int today = p->tm_mday;
+    time_t now = time(NULL);
+    struct tm tm;
+    int today;
     int compress = getDefine_Int("monitord", "compress", 0, 1);
     int keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
 
     debug1("%s: Log rotating thread started.", __local_name);
 
-    while (1) {
-        tm = time(NULL);
-        p = localtime(&tm);
+    localtime_r(&now, &tm);
+    today = tm.tm_mday;
 
-        if (today != p->tm_mday) {
+    while (1) {
+        now = time(NULL);
+        localtime_r(&now, &tm);
+
+        if (today != tm.tm_mday) {
             /* Rotate and compress ossec.log */
-            w_rotate_log(p, compress, keep_log_days);
-            today = p->tm_mday;
+            w_rotate_log(compress, keep_log_days);
+            today = tm.tm_mday;
         }
 
         sleep(1);

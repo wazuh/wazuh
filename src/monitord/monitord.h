@@ -23,7 +23,7 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p);
 void monitor_agents(void);
 void OS_SignLog(const char *logfile, const char *logfile_old, int log_missing);
 void OS_CompressLog(const char *logfile);
-void w_rotate_log(const struct tm *p, int compress, int keep_log_days);
+void w_rotate_log(int compress, int keep_log_days);
 
 /* Global variables */
 extern monitor_config mond;

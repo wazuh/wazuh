@@ -34,14 +34,18 @@ static void remove_old_logs(const char *base_dir, int keep_log_days);
 static void remove_old_logs_y(const char * base_dir, int year, time_t threshold);
 static void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold);
 
-void w_rotate_log(const struct tm *p, int compress, int keep_log_days) {
+void w_rotate_log(int compress, int keep_log_days) {
     char old_path[PATH_MAX];
     char base_dir[PATH_MAX];
     char year_dir[PATH_MAX];
     char month_dir[PATH_MAX];
     char new_path[PATH_MAX];
+    time_t now = time(NULL) - 86400;
+    struct tm tm;
 
     debug1("%s: DEBUG: Rotating file ossec.log", __local_name);
+
+    localtime_r(&now, &tm);
 
 #ifdef WIN32
     // ossec.log
@@ -55,9 +59,9 @@ void w_rotate_log(const struct tm *p, int compress, int keep_log_days) {
     snprintf(base_dir, PATH_MAX, "%s/logs/ossec", isChroot() ? "" : DEFAULTDIR);
 #endif
 
-    snprintf(year_dir, PATH_MAX, "%s/%d", base_dir, p->tm_year + 1900);
-    snprintf(month_dir, PATH_MAX, "%s/%s", year_dir, MONTHS[p->tm_mon]);
-    snprintf(new_path, PATH_MAX, "%s/ossec-%02d.log", month_dir, p->tm_mday);
+    snprintf(year_dir, PATH_MAX, "%s/%d", base_dir, tm.tm_year + 1900);
+    snprintf(month_dir, PATH_MAX, "%s/%s", year_dir, MONTHS[tm.tm_mon]);
+    snprintf(new_path, PATH_MAX, "%s/ossec-%02d.log", month_dir, tm.tm_mday);
 
     // Create folders
 
@@ -151,13 +155,15 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     int day;
     struct dirent *dirent;
     time_t now = time(NULL);
-    struct tm *p = localtime(&now);
+    struct tm tm;
 
-    p->tm_year = year - 1900;
-    p->tm_mon = month;
-    p->tm_hour = 0;
-    p->tm_min = 0;
-    p->tm_sec = 0;
+    localtime_r(&now, &tm);
+
+    tm.tm_year = year - 1900;
+    tm.tm_mon = month;
+    tm.tm_hour = 0;
+    tm.tm_min = 0;
+    tm.tm_sec = 0;
 
     if (dir = opendir(base_dir), !dir) {
         merror("%s: ERROR: Couldn't open directory '%s' to delete old logs: %s", __local_name, base_dir, strerror(errno));
@@ -171,9 +177,9 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
         }
 
         if (sscanf(dirent->d_name, "ossec-%02d.log", &day) > 0) {
-            p->tm_mday = day;
+            tm.tm_mday = day;
 
-            if (mktime(p) < threshold) {
+            if (mktime(&tm) <= threshold) {
                 snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
                 debug2("%s: Removing old log '%s'", __local_name, path);
                 unlink(path);
