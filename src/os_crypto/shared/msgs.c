@@ -378,8 +378,6 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     char _finmsg[OS_MAXSTR + 2];
     os_md5 md5sum;
 
-    length = strlen(msg);
-
     /* Check for invalid msg sizes */
     if ((msg_length > (OS_MAXSTR - OS_HEADER_SIZE)) || (msg_length < 1)) {
         merror(ENCSIZE_ERROR, msg);
@@ -400,13 +398,17 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     }
     local_count++;
 
-    length = snprintf(_tmpmsg, OS_MAXSTR, "%05hu%010u:%04u:%s", rand1, global_count, local_count, msg);
+    length = snprintf(_tmpmsg, OS_MAXSTR, "%05hu%010u:%04u:", rand1, global_count, local_count);
+    memcpy(_tmpmsg + length, msg, msg_length);
+    length += msg_length;
 
     /* Generate MD5 of the unencrypted string */
     OS_MD5_Str(_tmpmsg, length, md5sum);
 
-    /* Generate final msg to be compressed */
-    length = snprintf(_finmsg, OS_MAXSTR, "%s%s", md5sum, _tmpmsg);
+    /* Generate final msg to be compressed: <md5sum><_tmpmsg> */
+    strcpy(_finmsg, md5sum);
+    memcpy(_finmsg + 32, _tmpmsg, length);
+    length += 32;
 
     /* Compress the message
      * We assign the first 8 bytes for padding
