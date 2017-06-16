@@ -60,6 +60,7 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
 		DEFINES+=-DHIGHFIRST
 		PATH:=${PATH}:/usr/vac/bin
+		OSSEC_LDFLAGS+=-pthread
 else
 ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
@@ -418,14 +419,14 @@ install-common: build
 ifneq (,$(wildcard /etc/TIMEZONE))
 	${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
 endif
-# Solaris Needs some extra files 
+# Solaris Needs some extra files
 ifeq (${uname_S},SunOS)
 	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
 	#${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
 	cp -rf /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
 	chown root:${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/*
 	find ${PREFIX}/usr/share/lib/zoneinfo/ -type d -exec chmod 0750 {} +
-	find ${PREFIX}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +	
+	find ${PREFIX}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +
 endif
 	${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
 ifeq (,$(wildcard ${PREFIX}/etc/local_internal_options.conf))
