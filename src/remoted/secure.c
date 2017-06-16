@@ -41,7 +41,7 @@ void HandleSecure()
     struct kevent *events = NULL;
 #elif defined(__linux__)
     int epoll_fd = 0;
-    struct epoll_event request = { 0 };
+    struct epoll_event request = { .events = 0 };
     struct epoll_event *events = NULL;
 #endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
 
