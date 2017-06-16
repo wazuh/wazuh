@@ -294,6 +294,7 @@ cleanup:
     w_mutex_unlock(&mutex_table);
     req_free(node);
     free(agentid);
+    free(payload);
     req_pool_post();
     return NULL;
 }

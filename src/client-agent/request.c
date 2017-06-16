@@ -82,8 +82,7 @@ int req_push(char * buffer, size_t length) {
 
         w_mutex_unlock(&mutex_table);
     } else {
-
-        if (payload = strchr(target, ' '), !target) {
+        if (payload = strchr(target, ' '), !payload) {
             merror("Request format is incorrect [payload].");
             mdebug2("target = \"%s\"", target);
             return -1;
@@ -224,11 +223,13 @@ void * req_receiver(__attribute__((unused)) void * arg) {
                 merror("recv(): %s", strerror(errno));
                 strcpy(buffer, "err Receive data");
                 length = strlen(buffer);
+                break;
 
             case 0:
                 mdebug1("Empty message from local client.");
                 strcpy(buffer, "err Empty response");
                 length = strlen(buffer);
+                break;
 
             default:
                 buffer[length] = '\0';
