@@ -58,7 +58,7 @@ static int __DBInsertServer(const char *server, const char *info, const DBConfig
                  "INSERT INTO "
                  "server(last_contact, version, hostname, information) "
                  "VALUES ('%u', '%s', '%s', '%s')",
-                 (unsigned int)time(0), __version, server, info);
+                 (unsigned int)time(0), __ossec_version, server, info);
 
         if (!osdb_query_insert(db_config->conn, sql_query)) {
             merror(DB_GENERROR, ARGV0);
@@ -71,7 +71,7 @@ static int __DBInsertServer(const char *server, const char *info, const DBConfig
                  "UPDATE server SET "
                  "last_contact='%u',version='%s',information='%s' "
                  "WHERE hostname = '%s'",
-                 (unsigned int)time(0), __version, info, server);
+                 (unsigned int)time(0), __ossec_version, info, server);
 
         if (!osdb_query_insert(db_config->conn, sql_query)) {
             merror(DB_GENERROR, ARGV0);

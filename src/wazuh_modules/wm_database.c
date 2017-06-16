@@ -238,7 +238,7 @@ void wm_sync_manager() {
         if ((ptr = strstr(uname, " - ")))
             *ptr = '\0';
 
-        wdb_update_agent_version(0, uname, __ossec_name " " __version, NULL);
+        wdb_update_agent_version(0, uname, __ossec_name " " __ossec_version, NULL);
         free(uname);
     }
 
