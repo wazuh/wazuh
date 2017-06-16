@@ -13,6 +13,7 @@
 #ifdef WIN32
 #define mkdir(x, y) _mkdir(x)
 #define unlink(x) _unlink(x)
+#define localtime_r(x, y) localtime_s(y, x)
 #endif
 
 static const char * MONTHS[] = {

@@ -11,6 +11,10 @@
 #include "agentd.h"
 #include "monitord/monitord.h"
 
+#ifdef WIN32
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
+
 // Thread to rotate internal log
 void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     time_t now = time(NULL);
