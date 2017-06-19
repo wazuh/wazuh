@@ -1,6 +1,43 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v2.1.0]
+
+### Added
+
+ - Rotate and compress log feature.
+ - Labeling data for agents to be shown in alerts.
+ - New 'auth' configuration template.
+ - Make manage_agents capable of add and remove agents via Authd.
+ - Implemented XML configuration for Authd.
+ - Option -F for Authd to force insertion if it finds duplicated name.
+ - Local auth client to manage agent keys.
+ - Added OS name and version into global.db.
+ 
+### Changed
+
+ - Updated SQLite library to 3.19.2.
+ - Updated zlib to 1.2.11.
+ - Updated cJSON library to 1.4.7.
+ - Change some manage_agents option parameters.
+ - Run Auth in backgroud by default.
+
+### Fixed
+
+ - Fixed compiling error on systems with no OpenSSL.
+ - Fixed compiling warning at manage_agents.
+ - Fixed ossec-control enable/disable help message.
+ - Fixed unique aperture of random device on Unix.
+ - Fixed file sum comparison bug at Syscheck realtime engine. (Thanks to Arshad Khan)
+ - Close analysisd if alert outputs are disabled for all formats.
+ - Read Windows version name for versions newer than Windows 8 / Windows Server 2012.
+ 
+### Removed
+
+ - Remove unused message queue to send alerts from Authd.
+ 
+ 
+
 ## [v2.0.2]
 
 ### Changed
