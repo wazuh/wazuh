@@ -1,6 +1,22 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v2.0.2]
+
+### Changed
+
+ - Remove temporary files created by Syscheck changes reports.
+
+ 
+### Fixed
+
+ - Fixed segmentation fault bug when stopping on CentOS 5.
+ - Fixed compatibility with AIX.
+ - Fixed race conditions in ossec-control script.
+ - Fixed compiling issue on Windows.
+ - Fixed compatibility with Solaris.
+ 
+
 ## [v2.0.1]
 
 ### Changed

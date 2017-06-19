@@ -34,7 +34,11 @@ Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2017 Wazuh Inc."
 OutFile "${OutFile}"
 
+<<<<<<< HEAD
 VIProductVersion "2.1.0.0"
+=======
+VIProductVersion "2.0.2.1"
+>>>>>>> 2.0
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
 VIAddVersionKey LegalCopyright "2017 - Wazuh Inc."

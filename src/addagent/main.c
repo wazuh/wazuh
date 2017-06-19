@@ -43,7 +43,7 @@ __attribute__((noreturn)) static void helpmsg()
 static void print_banner()
 {
     printf("\n");
-    printf(BANNER, __ossec_name, __version, (int)(21 - strlen(__ossec_name) - strlen(__version)), "                     ");
+    printf(BANNER, __ossec_name, __ossec_version, (int)(21 - strlen(__ossec_name) - strlen(__ossec_version)), "                     ");
 
 #ifdef CLIENT
     printf(BANNER_CLIENT);

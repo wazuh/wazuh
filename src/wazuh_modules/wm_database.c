@@ -279,7 +279,7 @@ void wm_sync_manager() {
 
             } else
                 *(os_name + strlen(os_name) - 1) = '\0';
-                
+
             // os_name|os_platform
             if (os_platform = strstr(os_name, "|"), os_platform){
                 *os_platform = '\0';
@@ -287,7 +287,7 @@ void wm_sync_manager() {
             }
         }
 
-        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __version, NULL);
+        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __ossec_version, NULL);
 
         free(os_major);
         free(os_minor);

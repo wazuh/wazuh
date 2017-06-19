@@ -35,7 +35,7 @@ struct file_system_type {
     const char *name;
 #ifdef WIN32
     const unsigned __int32 f_type;
-#elif !defined(WIN32) && (defined(Linux) || defined(FreeBSD))
+#elif defined(Linux) || defined(FreeBSD)
     // Same type as statfs.f_type
     const typeof(((struct statfs *)0)->f_type) f_type;
 #else

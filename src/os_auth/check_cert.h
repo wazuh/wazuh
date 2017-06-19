@@ -37,7 +37,7 @@
 #define DNS_MAX_LABELS    127
 #define DNS_MAX_LABEL_LEN 63
 
-typedef struct label_t {
+typedef struct {
     char text[DNS_MAX_LABEL_LEN + 1];
     size_t len;
 }
@@ -55,4 +55,3 @@ char *asn1_to_cstr(ASN1_STRING *astr);
 
 #endif /* LIBOPENSSL_ENABLED */
 #endif /* _CHECK_CERT_H */
-

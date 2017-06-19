@@ -127,7 +127,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
                  tstamp,
                  __author,
                  __ossec_name,
-                 __version,
+                 __ossec_version,
                  al_data->rule,
                  al_data->comment,
                  (al_data->level > 10) ? 10 : al_data->level,

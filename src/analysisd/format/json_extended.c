@@ -3,11 +3,6 @@
  *
  */
 
-// Support strptime() on Linux
-#ifdef __linux__
-#define _XOPEN_SOURCE 600
-#endif
-
 #include "json_extended.h"
 #include <stddef.h>
 #include "config.h"

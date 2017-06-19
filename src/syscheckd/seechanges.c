@@ -11,6 +11,10 @@
 #include "os_crypto/md5/md5_op.h"
 #include "syscheck.h"
 
+#ifdef WIN32
+#define unlink(x) _unlink(x)
+#endif
+
 /* Prototypes */
 static char *gen_diff_alert(const char *filename, time_t alert_diff_time) __attribute__((nonnull));
 static int seechanges_dupfile(const char *old, const char *current) __attribute__((nonnull));
@@ -139,14 +143,16 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     size_t n = 0;
     FILE *fp;
     char *diff_str;
+    char path[PATH_MAX + 1];
     char buf[OS_MAXSTR + 1];
 
+    path[PATH_MAX] = '\0';
     buf[OS_MAXSTR] = '\0';
 
-    snprintf(buf, OS_MAXSTR, "%s/local/%s/diff.%d",
+    snprintf(path, PATH_MAX, "%s/local/%s/diff.%d",
              DIFF_DIR_PATH, filename + PATH_OFFSET, (int)alert_diff_time);
 
-    fp = fopen(buf, "r");
+    fp = fopen(path, "r");
     if (!fp) {
         merror("%s: ERROR: Unable to generate diff alert.", ARGV0);
         return (NULL);
@@ -154,6 +160,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 
     n = fread(buf, 1, 4096 - 1, fp);
     fclose(fp);
+    unlink(path);
 
     switch (n) {
     case 0:
@@ -416,12 +423,15 @@ char *seechanges_addfile(const char *filename)
 
 cleanup:
 
+    unlink(tmp_location);
     free(tmp_location_filtered);
     free(old_location_filtered);
     free(diff_location_filtered);
 
-    if (status == -1)
+    if (status == -1) {
+        unlink(diff_location);
         return (NULL);
+    }
 
     /* Generate alert */
     return (gen_diff_alert(filename, new_date_of_change));

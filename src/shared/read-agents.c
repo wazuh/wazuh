@@ -1126,7 +1126,7 @@ static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_inf
     if (!agent_name) {
         char *ossec_version = NULL;
         agt_info->os = strdup(getuname());
-        os_strdup(__ossec_name " " __version, agt_info->version);
+        os_strdup(__ossec_name " " __ossec_version, agt_info->version);
 
         /* Remove newline */
         ossec_version = strchr(agt_info->os, '\n');

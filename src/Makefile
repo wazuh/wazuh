@@ -52,7 +52,7 @@ INSTALL=install
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
-		DEFINES+=-DINOTIFY_ENABLED
+		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
@@ -61,6 +61,7 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
 		DEFINES+=-DHIGHFIRST
 		PATH:=${PATH}:/usr/vac/bin
+		OSSEC_LDFLAGS+=-pthread
 else
 ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
