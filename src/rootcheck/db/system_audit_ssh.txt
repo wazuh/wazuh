@@ -35,7 +35,7 @@ f:$sshd_file -> r:^#\s*PermitRootLogin;
 # PubkeyAuthentication yes
 # Access only by public key
 # Generally people will use weak passwords and have poor password practices. Keys are considered stronger than password.
-[SSH Hardening - 4: No Public Key autentication {PCI_DSS: 2.2.4}] [any] [4]
+[SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}] [any] [4]
 f:$sshd_file -> !r:^# && r:PubkeyAuthentication\.+no;
 f:$sshd_file -> r:^#\s*PubkeyAuthentication;
 
