@@ -297,7 +297,7 @@ void wm_sync_manager() {
             }
         }
 
-        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __version, NULL, NULL);
+        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __ossec_version, NULL, NULL);
 
         free(os_major);
         free(os_minor);

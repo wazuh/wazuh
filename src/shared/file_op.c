@@ -1105,7 +1105,7 @@ const char *getuname()
                          uts_buf.version,
                          uts_buf.machine,
                          os_version,
-                         __ossec_name, __version);
+                         __ossec_name, __ossec_version);
             }
             else {
                 snprintf(muname, 512, "%s %s %s %s %s - %s %s",
@@ -1114,11 +1114,11 @@ const char *getuname()
                          uts_buf.release,
                          uts_buf.version,
                          uts_buf.machine,
-                         __ossec_name, __version);
+                         __ossec_name, __ossec_version);
             }
         } else {
             snprintf(muname, 512, "No system info available -  %s %s",
-                     __ossec_name, __version);
+                     __ossec_name, __ossec_version);
         }
     }
 
@@ -1974,7 +1974,7 @@ const char *getuname()
     }
 
     /* Add OSSEC-HIDS version */
-    snprintf(os_v, 128, " - %s %s", __ossec_name, __version);
+    snprintf(os_v, 128, " - %s %s", __ossec_name, __ossec_version);
     strncat(ret, os_v, ret_size - 1);
 
     return (ret);

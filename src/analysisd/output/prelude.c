@@ -26,7 +26,7 @@
 #define ANALYZER_CLASS "Host IDS, File Integrity Checker, Log Analyzer"
 #define ANALYZER_MODEL "Ossec"
 #define ANALYZER_MANUFACTURER __site
-#define ANALYZER_VERSION __version
+#define ANALYZER_VERSION __ossec_version
 
 /** OSSEC to prelude severity mapping. **/
 static const char *(ossec2prelude_sev[]) = {"info", "info", "info", "info",

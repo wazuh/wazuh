@@ -73,7 +73,7 @@ then
 
     # File defs.h
 
-    egrep "^#define __version +\"v.+\"" $DEFS_FILE > /dev/null
+    egrep "^#define __ossec_version +\"v.+\"" $DEFS_FILE > /dev/null
 
     if [ $? != 0 ]
     then
@@ -81,7 +81,7 @@ then
         exit 1
     fi
 
-    sed -E -i "s/^(#define __version +)\"v.*\"/\1\"$version\"/" $DEFS_FILE
+    sed -E -i "s/^(#define __ossec_version +)\"v.*\"/\1\"$version\"/" $DEFS_FILE
 
     # File help.txt
 

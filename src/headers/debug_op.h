@@ -22,6 +22,15 @@
 #define __attribute__(x)
 #endif
 
+/* For internal logs */
+#ifndef LOGFILE
+#ifndef WIN32
+#define LOGFILE   "/logs/ossec.log"
+#else
+#define LOGFILE "ossec.log"
+#endif
+#endif
+
 void debug1(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
 void debug2(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
 void merror(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
@@ -49,4 +58,3 @@ int isChroot(void);
 #endif /* end debug analysisd */
 
 #endif /* __DEBUG_H */
-

@@ -11,7 +11,6 @@
 #include "config/config.h"
 #include "monitord.h"
 #include "os_net/os_net.h"
-#include <getopt.h>
 
 /* Prototypes */
 static void help_monitord(void) __attribute__((noreturn));
@@ -33,7 +32,7 @@ static void help_monitord()
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
-    print_out("    --no-agents Disable agent monitoring.");
+    print_out("    -n          Disable agent monitoring.");
     print_out(" ");
     exit(1);
 }
@@ -49,21 +48,14 @@ int main(int argc, char **argv)
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
 
-    struct option options[] = {
-        { "no-agents", no_argument, &no_agents, 1 },
-        { 0, 0, 0, 0 }
-    };
-
     /* Initialize global variables */
     mond.a_queue = 0;
 
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt_long(argc, argv, "Vdhtfu:g:D:c:", options, NULL)) != -1) {
+    while ((c = getopt(argc, argv, "Vdhtfu:g:D:c:n")) != -1) {
         switch (c) {
-            case 0:
-                break;
             case 'V':
                 print_version();
                 break;
@@ -103,6 +95,9 @@ int main(int argc, char **argv)
             case 't':
                 test_config = 1;
                 break;
+            case 'n':
+                no_agents = 1;
+                break;
             default:
                 help_monitord();
                 break;
@@ -125,6 +120,7 @@ int main(int argc, char **argv)
     mond.compress = (short) getDefine_Int("monitord", "compress", 0, 1);
     mond.sign = (short) getDefine_Int("monitord", "sign", 0, 1);
     mond.monitor_agents = no_agents ? 0 : (short) getDefine_Int("monitord", "monitor_agents", 0, 1);
+    mond.keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
 
     mond.agents = NULL;
     mond.smtpserver = NULL;

@@ -43,7 +43,11 @@
 
 #ifndef WIN32
 #include <sys/wait.h>
+
+// Only Linux and FreeBSD need mount.h */
+#if defined(Linux) || defined(FreeBSD)
 #include <sys/mount.h>
+#endif
 
 /* HPUX does not have select.h */
 #ifndef HPUX
@@ -82,6 +86,7 @@
 #include <io.h>
 #include <ws2tcpip.h>
 #include <shlwapi.h>
+#include <direct.h>
 #endif
 
 #include <time.h>

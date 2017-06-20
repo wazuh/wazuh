@@ -18,6 +18,7 @@ void Monitord()
 {
     time_t tm;
     struct tm *p;
+    int counter = 0;
 
     int today = 0;
     int thismonth = 0;
@@ -54,14 +55,19 @@ void Monitord()
     while (1) {
         tm = time(NULL);
         p = localtime(&tm);
+        counter++;
 
-        /* Check for unavailable agents */
-        if (mond.monitor_agents) {
+        /* Check for unavailable agents, every two minutes */
+        if (mond.monitor_agents && counter >= 120) {
             monitor_agents();
+            counter = 0;
         }
 
         /* Day changed, deal with log files */
         if (today != p->tm_mday) {
+            /* Rotate and compress ossec.log */
+            w_rotate_log(mond.compress, mond.keep_log_days);
+
             /* Generate reports */
             generate_reports(today, thismonth, thisyear, p);
             manage_files(today, thismonth, thisyear);
@@ -71,7 +77,6 @@ void Monitord()
             thisyear = p->tm_year + 1900;
         }
 
-        /* We only check every two minutes */
-        sleep(120);
+        sleep(1);
     }
 }

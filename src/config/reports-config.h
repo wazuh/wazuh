@@ -28,6 +28,7 @@ typedef struct _monitor_config {
     short int sign;
     short int monitor_agents;
     int a_queue;
+    int keep_log_days;
 
     char *smtpserver;
     char *emailfrom;

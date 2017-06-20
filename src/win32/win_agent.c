@@ -35,7 +35,7 @@ void send_win32_info(time_t curr_time);
 /* Help message */
 void agent_help()
 {
-    printf("\n%s %s %s .\n", __ossec_name, ARGV0, __version);
+    printf("\n%s %s %s .\n", __ossec_name, ARGV0, __ossec_version);
     printf("Available options:\n");
     printf("\t/?                This help message.\n");
     printf("\t-h                This help message.\n");
@@ -225,6 +225,16 @@ int local_start()
     if (CreateThread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)skthread,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID) == NULL) {
+        merror(THREAD_ERROR, ARGV0);
+    }
+
+    /* Launch rotation thread */
+    if (CreateThread(NULL,
+                     0,
+                     (LPTHREAD_START_ROUTINE)w_rotate_log_thread,
                      NULL,
                      0,
                      (LPDWORD)&threadID) == NULL) {

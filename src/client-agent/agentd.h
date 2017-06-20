@@ -53,6 +53,9 @@ void run_notify(void);
 /* Format labels from config into string. Return 0 on success or -1 on error. */
 int format_labels(char *str, size_t size);
 
+// Thread to rotate internal log
+void * w_rotate_log_thread(void * arg);
+
 /*** Global variables ***/
 
 /* Global variables. Only modified during startup. */

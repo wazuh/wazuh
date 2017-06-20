@@ -15,14 +15,14 @@
 void print_header()
 {
     print_out(" ");
-    print_out("%s %s - %s (%s)", __ossec_name, __version, __author, __contact);
+    print_out("%s %s - %s (%s)", __ossec_name, __ossec_version, __author, __contact);
     print_out("%s", __site);
 }
 
 void print_version()
 {
     print_out(" ");
-    print_out("%s %s - %s", __ossec_name, __version, __author);
+    print_out("%s %s - %s", __ossec_name, __ossec_version, __author);
     print_out(" ");
     print_out("%s", __license);
     exit(1);

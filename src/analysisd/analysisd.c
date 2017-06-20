@@ -822,18 +822,6 @@ void OS_ReadMSG_analysisd(int m_queue)
                 }
             }
 
-            /* We only check if the last message is
-             * duplicated on syslog
-             */
-            else if (lf->decoder_info->type == SYSLOG) {
-                /* Check if the message is duplicated */
-                if (LastMsg_Stats(lf->full_log) == 1) {
-                    goto CLMEM;
-                } else {
-                    LastMsg_Change(lf->full_log);
-                }
-            }
-
             /* Stats checking */
             if (Config.stats) {
                 if (Check_Hour() == 1) {

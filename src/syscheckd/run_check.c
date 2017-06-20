@@ -9,7 +9,6 @@
 
 /* SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE */
 #ifdef __linux__
-#define _GNU_SOURCE
 #include <sched.h>
 #endif
 

@@ -19,16 +19,6 @@ static void _log(const char *msg, va_list args) __attribute__((format(printf, 1,
 void WinSetError();
 #endif
 
-/* For internal logs */
-#ifndef LOGFILE
-#ifndef WIN32
-#define LOGFILE   "/logs/ossec.log"
-#else
-#define LOGFILE "ossec.log"
-#endif
-#endif
-
-
 static void _log(const char *msg, va_list args)
 {
     time_t tm;

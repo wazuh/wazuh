@@ -83,6 +83,12 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Ignore SIGPIPE, it will be detected on recv */
     signal(SIGPIPE, SIG_IGN);
 
+    /* Launch rotation thread */
+
+    if (CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
+        ErrorExit(THREAD_ERROR, __local_name);
+    }
+
     /* Connect remote */
     rc = 0;
     while (rc < agt->rip_id) {
