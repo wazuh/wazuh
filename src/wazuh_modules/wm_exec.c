@@ -164,6 +164,7 @@ DWORD WINAPI Reader(LPVOID args) {
 
 // Unix version ----------------------------------------------------------------
 
+#include <unistd.h>
 #define EXECVE_ERROR 0xFF
 
 static void* reader(void *args);   // Reading thread's start point
@@ -203,8 +204,10 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
     // Create pipe for child's stdout
 
-    if (pipe(pipe_fd) < 0)
+    if (pipe2(pipe_fd, O_CLOEXEC) < 0) {
+        merror("%s: ERROR: at wm_exec(): pipe2(): %s", __local_name, strerror(errno));
         return -1;
+    }
 
     // Fork
 
