@@ -29,12 +29,10 @@
 #define ENOAGENT    10
 #define EDUPID      11
 
-typedef struct error_t {
+static const struct {
     int code;
     char *message;
-} error_t;
-
-static const error_t ERRORS[] = {
+} ERRORS[] = {
     { 9001, "Internal error" },
     { 9002, "Parsing JSON input" },
     { 9003, "No such function" },
