@@ -183,7 +183,8 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
     snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
 
-    MergeAppendFile(merged_tmp, NULL);
+    // First call, truncate merged file
+    MergeAppendFile(merged_tmp, NULL, group);
     f_size++;
 
     // Merge ar.conf always
@@ -194,7 +195,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         os_calloc(1, sizeof(file_sum), f_sum[f_size]);
         strncpy(f_sum[f_size]->sum, md5sum, 32);
         os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
-        MergeAppendFile(merged_tmp, DEFAULTAR);
+        MergeAppendFile(merged_tmp, DEFAULTAR, NULL);
         f_size++;
     }
 
@@ -219,7 +220,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         os_calloc(1, sizeof(file_sum), f_sum[f_size]);
         strncpy(f_sum[f_size]->sum, md5sum, 32);
         os_strdup(entry->d_name, f_sum[f_size]->name);
-        MergeAppendFile(merged_tmp, file);
+        MergeAppendFile(merged_tmp, file, NULL);
         f_size++;
     }
 

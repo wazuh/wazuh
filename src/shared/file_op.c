@@ -598,7 +598,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir)
     return (ret);
 }
 
-int MergeAppendFile(const char *finalpath, const char *files)
+int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
 {
     size_t n = 0;
     long files_size = 0;
@@ -615,6 +615,11 @@ int MergeAppendFile(const char *finalpath, const char *files)
                    __local_name, finalpath);
             return (0);
         }
+
+        if (tag) {
+            fprintf(finalfp, "#%s\n", tag);
+        }
+
         fclose(finalfp);
 
         if (chmod(finalpath, 0640) < 0) {
@@ -648,6 +653,11 @@ int MergeAppendFile(const char *finalpath, const char *files)
     } else {
         tmpfile = files;
     }
+
+    if (tag) {
+        fprintf(finalfp, "#%s\n", tag);
+    }
+
     fprintf(finalfp, "!%ld %s\n", files_size, tmpfile);
 
     fseek(fp, 0, SEEK_SET);
@@ -663,7 +673,7 @@ int MergeAppendFile(const char *finalpath, const char *files)
     return (1);
 }
 
-int MergeFiles(const char *finalpath, char **files)
+int MergeFiles(const char *finalpath, char **files, const char *tag)
 {
     int i = 0, ret = 1;
     size_t n = 0;
@@ -679,6 +689,10 @@ int MergeFiles(const char *finalpath, char **files)
         merror("%s: ERROR: Unable to create merged file: '%s'.",
                __local_name, finalpath);
         return (0);
+    }
+
+    if (tag) {
+        fprintf(finalfp, "#%s\n", tag);
     }
 
     while (files[i]) {

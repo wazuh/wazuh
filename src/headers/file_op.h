@@ -40,9 +40,9 @@ char *GetRandomNoise();
 
 int DeletePID(const char *name) __attribute__((nonnull));
 
-int MergeFiles(const char *finalpath, char **files) __attribute__((nonnull));
+int MergeFiles(const char *finalpath, char **files, const char *tag) __attribute__((nonnull(1, 2)));
 
-int MergeAppendFile(const char *finalpath, const char *files) __attribute__((nonnull(1)));
+int MergeAppendFile(const char *finalpath, const char *files, const char *tag) __attribute__((nonnull(1)));
 
 int UnmergeFiles(const char *finalpath, const char *optdir) __attribute__((nonnull(1)));
 
