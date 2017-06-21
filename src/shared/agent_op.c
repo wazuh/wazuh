@@ -7,9 +7,7 @@
  * Foundation
  */
 
-#include "agent_op.h"
 #include "shared.h"
-
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
@@ -89,10 +87,10 @@ char *os_read_agent_name()
         int len;
 
         // strip the newlines
-        len = strlen(buf) - 1; 
-        while (len > 0 && buf[len] == '\n') 
-            buf[len--] = '\0'; 
-        
+        len = strlen(buf) - 1;
+        while (len > 0 && buf[len] == '\n')
+            buf[len--] = '\0';
+
         os_strdup(buf, ret);
         fclose(fp);
 
@@ -243,3 +241,53 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
     return (1);
 }
 
+/* Read group. Returns 0 on success or -1 on failure. */
+int get_agent_group(const char *id, char *group, size_t size) {
+    char path[PATH_MAX];
+    int result = 0;
+    FILE *fp;
+
+    if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", id) >= PATH_MAX) {
+        merror("%s: ERROR: At get_agent_group(): file path too large for agent '%s'.", __local_name, id);
+        return -1;
+    }
+
+    if (!(fp = fopen(path, "r"))) {
+        debug1("%s: DEBUG: At get_agent_group(): file '%s' not found.", __local_name, path);
+        return -1;
+    }
+
+    if (fgets(group, size, fp)) {
+        char *endl = strchr(group, '\n');
+
+        if (endl) {
+            *endl = '\0';
+        }
+    } else {
+        merror("%s: WARN: Empty group for agent ID '%s'.", __local_name, id);
+        result = -1;
+    }
+
+    fclose(fp);
+    return result;
+}
+
+/* Set agent group. Returns 0 on success or -1 on failure. */
+int set_agent_group(const char * id, const char * group) {
+    char path[PATH_MAX];
+    FILE *fp;
+
+    if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", id) >= PATH_MAX) {
+        merror("%s: ERROR: At set_agent_group(): file path too large for agent '%s'.", __local_name, id);
+        return -1;
+    }
+
+    if (!(fp = fopen(path, "w"))) {
+        debug1("%s: DEBUG: At get_agent_group(): file '%s' not found.", __local_name, path);
+        return -1;
+    }
+
+    fprintf(fp, "%s\n", group);
+    fclose(fp);
+    return 0;
+}

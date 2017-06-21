@@ -1348,35 +1348,3 @@ char **get_agents(int flag)
     closedir(dp);
     return (f_files);
 }
-
-/* Read group. If the function fails, it writes "default" on group and returns -1. */
-int get_agent_group(const char *id, char *group, size_t size) {
-    char path[PATH_MAX];
-    FILE *fp;
-
-    if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", id) >= PATH_MAX) {
-        merror("%s: ERROR: At get_agent_group(): file path too large for agent '%s'.", __local_name, id);
-        strncpy(group, DEFAULT_GROUP, size - 1);
-        return -1;
-    }
-
-    if (!(fp = fopen(path, "r"))) {
-        debug1("%s: DEBUG: At get_agent_group(): file '%s' not found. Using default.", __local_name, path);
-        strncpy(group, DEFAULT_GROUP, size - 1);
-        return -1;
-    }
-
-    if (fgets(group, size, fp)) {
-        char *endl = strchr(group, '\n');
-
-        if (endl) {
-            *endl = '\0';
-        }
-    } else {
-        merror("%s: WARN: Empty group for agent ID '%s'. Using default.", __local_name, id);
-        strncpy(group, DEFAULT_GROUP, size - 1);
-    }
-
-    fclose(fp);
-    return 0;
-}

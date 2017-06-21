@@ -46,5 +46,10 @@ char *os_read_agent_profile(void);
 int os_write_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id,
                         const char *cfg_profile_name) __attribute__((nonnull(1, 3)));
 
-#endif /* __AGENT_OP_H */
+/* Read agent group. Returns 0 on success or -1 on failure. */
+int get_agent_group(const char *id, char *group, size_t size);
 
+/* Set agent group. Returns 0 on success or -1 on failure. */
+int set_agent_group(const char * id, const char * group);
+
+#endif /* __AGENT_OP_H */

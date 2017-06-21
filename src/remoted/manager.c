@@ -31,6 +31,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
 static void c_group(const char *group, DIR *dp, file_sum ***_f_sum);
 static void c_files(void);
 static file_sum** find_sum(const char *group);
+static file_sum ** find_group(const char * file, const char * md5, char group[KEYSIZE]);
 
 /* Global vars */
 static group_t **groups;
@@ -349,6 +350,25 @@ file_sum** find_sum(const char *group) {
     return NULL;
 }
 
+file_sum ** find_group(const char * file, const char * md5, char group[KEYSIZE]) {
+    int i;
+    int j;
+    file_sum ** f_sum;
+
+    for (i = 0; groups[i]; i++) {
+        f_sum = groups[i]->f_sum;
+
+        for (j = 0; f_sum[j]; j++) {
+            if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
+                strncpy(group, groups[i]->group, KEYSIZE);
+                return f_sum;
+            }
+        }
+    }
+
+    return NULL;
+}
+
 /* Send a file to the agent
  * Returns -1 on error
  */
@@ -416,7 +436,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 {
     int i;
     char group[KEYSIZE];
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     os_md5 tmp_sum;
 
     if (!groups) {
@@ -426,7 +446,9 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
     debug2("%s: DEBUG: read_controlmsg(): reading '%s'", ARGV0, msg);
 
-    get_agent_group(agent_id, group, KEYSIZE);
+    if (get_agent_group(agent_id, group, KEYSIZE) < 0) {
+        group[0] = '\0';
+    }
 
     /* Lock mutex */
     if (pthread_mutex_lock(&files_mutex) != 0) {
@@ -434,18 +456,18 @@ static void read_controlmsg(const char *agent_id, char *msg)
         return;
     }
 
-    f_sum = find_sum(group);
+    // If group was got, get file sum array
 
-    if (!f_sum) {
-        /* Unlock mutex */
-        if (pthread_mutex_unlock(&files_mutex) != 0) {
-            merror(MUTEX_ERROR, ARGV0);
+    if (group[0]) {
+        if (f_sum = find_sum(group), !f_sum) {
+            /* Unlock mutex */
+            if (pthread_mutex_unlock(&files_mutex) != 0) {
+                merror(MUTEX_ERROR, ARGV0);
+            }
+
+            merror("%s: ERROR: No such group '%s' for agent '%s'", __local_name, group, agent_id);
+            return;
         }
-
-        merror(ARGV0 ": ERROR: No such group '%s' for agent '%s'",
-               group,
-               agent_id);
-        return;
     }
 
     /* Parse message */
@@ -483,6 +505,27 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         *file = '\0';
         file++;
+
+        // If group was not got, guess it by matching sum
+
+        if (!f_sum) {
+            if (f_sum = find_group(file, md5, group), !f_sum) {
+                // If the group could not be guessed, set to "default"
+                strncpy(group, "default", KEYSIZE);
+
+                if (f_sum = find_sum(group), !f_sum) {
+                    /* Unlock mutex */
+                    if (pthread_mutex_unlock(&files_mutex) != 0) {
+                        merror(MUTEX_ERROR, ARGV0);
+                    }
+
+                    merror("%s: ERROR: No such group '%s' for agent '%s'", __local_name, group, agent_id);
+                    return;
+                }
+            }
+
+            set_agent_group(agent_id, group);
+        }
 
         /* New agents only have merged.mg */
         if (strcmp(file, SHAREDCFG_FILENAME) == 0) {
