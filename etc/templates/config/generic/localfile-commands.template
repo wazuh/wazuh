@@ -6,7 +6,8 @@
 
   <localfile>
     <log_format>full_command</log_format>
-    <command>netstat -tln | grep -v 127.0.0.1 | sort</command>
+    <command>netstat -tulpen | sort</command>
+    <alias>netstat listening ports</alias>
     <frequency>360</frequency>
   </localfile>
 
