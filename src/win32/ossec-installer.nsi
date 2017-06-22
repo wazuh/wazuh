@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "3.0.0-beta3"
-!define REVISION "3466"
+!define VERSION "3.0.0-alpha4"
+!define REVISION "3467"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -34,7 +34,7 @@ Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2017 Wazuh Inc."
 OutFile "${OutFile}"
 
-VIProductVersion "3.0.0.6"
+VIProductVersion "3.0.0.7"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
 VIAddVersionKey LegalCopyright "2017 - Wazuh Inc."
