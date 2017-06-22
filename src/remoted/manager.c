@@ -51,23 +51,19 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     char msg_ack[OS_FLSIZE + 1];
     char *begin_shared;
     char *end;
+    char *uname;
     pending_data_t *data;
+    FILE * fp;
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-
     send_msg(agentid, msg_ack);
 
-    /* Check if there is a keep alive already for this agent */
-    if ((data = OSHash_Get(pending_data, keys.keyentries[agentid]->id)) &&
-        data->message && strcmp(data->message, r_msg) == 0) {
-        utimes(data->keep_alive, NULL);
-    } else if (strcmp(r_msg, HC_STARTUP) == 0) {
+    if (strcmp(r_msg, HC_STARTUP) == 0) {
         debug1("%s: DEBUG: Agent %s sent HC_STARTUP from %s.", ARGV0, keys.keyentries[agentid]->name, inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr));
         return;
     } else {
-        FILE *fp;
-        char *uname = r_msg;
+        uname = r_msg;
 
         /* Clean uname and shared files (remove random string) */
 
@@ -78,85 +74,88 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             for (begin_shared = r_msg; (end = strchr(r_msg, '\n')); r_msg = end + 1);
             *r_msg = '\0';
         } else {
-            merror("%s: WARN: Invalid message from agent id: '%d'(uname)",
-                   ARGV0,
-                   agentid);
+            merror("%s: WARN: Invalid message from agent id: '%d'(uname)", ARGV0, agentid);
             return;
         }
 
-        /* Lock mutex */
-        if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
-            merror(MUTEX_ERROR, ARGV0);
-            return;
-        }
-
-        if (data || (data = OSHash_Get(pending_data, keys.keyentries[agentid]->id))) {
-            free(data->message);
+        /* Check if there is a keep alive already for this agent */
+        if (data = OSHash_Get(pending_data, keys.keyentries[agentid]->id), data && data->message && strcmp(data->message, uname) == 0) {
+            utimes(data->keep_alive, NULL);
         } else {
-            os_calloc(1, sizeof(pending_data_t), data);
-
-            if (OSHash_Add(pending_data, keys.keyentries[agentid]->id, data) != 2) {
-                merror("%s: ERROR: Couldn't add pending data into hash table.", ARGV0);
-
-                /* Unlock mutex */
-                if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
-                    merror(MUTEX_ERROR, ARGV0);
-                }
-
-                free(data);
+            /* Lock mutex */
+            if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
+                merror(MUTEX_ERROR, ARGV0);
                 return;
             }
-        }
 
-        /* Update message */
-        debug2("%s: DEBUG: save_controlmsg(): inserting '%s'", ARGV0, uname);
-        os_strdup(uname, data->message);
-
-        /* Mark data as changed and insert into queue */
-
-        if (!data->changed) {
-            if (full(queue_i, queue_j)) {
-                merror("%s: ERROR: Pending message queue full.", ARGV0);
+            if (data || (data = OSHash_Get(pending_data, keys.keyentries[agentid]->id))) {
+                free(data->message);
             } else {
-                strncpy(pending_queue[queue_i], keys.keyentries[agentid]->id, 8);
-                forward(queue_i);
+                os_calloc(1, sizeof(pending_data_t), data);
 
-                /* Signal that new data is available */
-                pthread_cond_signal(&awake_mutex);
+                if (OSHash_Add(pending_data, keys.keyentries[agentid]->id, data) != 2) {
+                    merror("%s: ERROR: Couldn't add pending data into hash table.", ARGV0);
+
+                    /* Unlock mutex */
+                    if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
+                        merror(MUTEX_ERROR, ARGV0);
+                    }
+
+                    free(data);
+                    return;
+                }
             }
 
-            data->changed = 1;
-        }
+            /* Update message */
+            debug2("%s: DEBUG: save_controlmsg(): inserting '%s'", ARGV0, uname);
+            os_strdup(uname, data->message);
 
-        /* Unlock mutex */
-        if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
-            merror(MUTEX_ERROR, ARGV0);
+            /* Mark data as changed and insert into queue */
 
-            return;
-        }
+            if (!data->changed) {
+                if (full(queue_i, queue_j)) {
+                    merror("%s: ERROR: Pending message queue full.", ARGV0);
+                } else {
+                    strncpy(pending_queue[queue_i], keys.keyentries[agentid]->id, 8);
+                    forward(queue_i);
 
-        /* This is not critical section since is not used by another thread */
+                    /* Signal that new data is available */
+                    pthread_cond_signal(&awake_mutex);
+                }
 
-        if (!data->keep_alive) {
-            char agent_file[PATH_MAX];
+                data->changed = 1;
+            }
 
-            /* Write to the agent file */
-            snprintf(agent_file, PATH_MAX, "%s/%s-%s",
-                     AGENTINFO_DIR,
-                     keys.keyentries[agentid]->name,
-                     keys.keyentries[agentid]->ip->ip);
+            /* Unlock mutex */
+            if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
+                merror(MUTEX_ERROR, ARGV0);
 
-            os_strdup(agent_file, data->keep_alive);
-        }
+                return;
+            }
 
-        /* Write uname to the file */
+            /* This is not critical section since is not used by another thread */
 
-        if ((fp = fopen(data->keep_alive, "w"))) {
-            *begin_shared = '\0';
-            fprintf(fp, "%s\n", uname);
-            fclose(fp);
-        } else {
-            merror(FOPEN_ERROR, ARGV0, data->keep_alive, errno, strerror(errno));
+            if (!data->keep_alive) {
+                char agent_file[PATH_MAX];
+
+                /* Write to the agent file */
+                snprintf(agent_file, PATH_MAX, "%s/%s-%s",
+                         AGENTINFO_DIR,
+                         keys.keyentries[agentid]->name,
+                         keys.keyentries[agentid]->ip->ip);
+
+                os_strdup(agent_file, data->keep_alive);
+            }
+
+            /* Write uname to the file */
+
+            if ((fp = fopen(data->keep_alive, "w"))) {
+                *begin_shared = '\0';
+                fprintf(fp, "%s\n", uname);
+                fclose(fp);
+            } else {
+                merror(FOPEN_ERROR, ARGV0, data->keep_alive, errno, strerror(errno));
+            }
         }
     }
 }
