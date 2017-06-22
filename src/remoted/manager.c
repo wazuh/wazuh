@@ -439,6 +439,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     char group[KEYSIZE];
     file_sum **f_sum = NULL;
     os_md5 tmp_sum;
+    char *end;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -446,6 +447,17 @@ static void read_controlmsg(const char *agent_id, char *msg)
     }
 
     debug2("%s: DEBUG: read_controlmsg(): reading '%s'", ARGV0, msg);
+
+    // Skip agent-info and label data
+
+    if (msg = strchr(msg, '\n'), !msg) {
+        merror("%s: ERROR: Invalid message from agent ID '%s' (strchr \\n)", ARGV0, agent_id);
+        return;
+    }
+
+    for (msg++; (*msg == '\"' || *msg == '!') && (end = strchr(msg, '\n')); msg = end + 1);
+
+    // Get agent group
 
     if (get_agent_group(agent_id, group, KEYSIZE) < 0) {
         group[0] = '\0';
