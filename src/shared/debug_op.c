@@ -12,6 +12,7 @@
 static int dbg_flag = 0;
 static int chroot_flag = 0;
 static int daemon_flag = 0;
+static int enabled_json = 0;
 
 static void _log(const char *msg, va_list args) __attribute__((format(printf, 1, 0))) __attribute__((nonnull));
 
@@ -24,12 +25,15 @@ static void _log(const char *msg, va_list args)
     time_t tm;
     struct tm *p;
     va_list args2; /* For the stderr print */
+    va_list args3; /* For the JSON output */
     FILE *fp;
+    FILE *fp2;
 
     tm = time(NULL);
     p = localtime(&tm);
     /* Duplicate args */
     va_copy(args2, args);
+    va_copy(args3, args);
 
     /* If under chroot, log directly to /logs/ossec.log */
     if (chroot_flag == 1) {
@@ -58,6 +62,39 @@ static void _log(const char *msg, va_list args)
         fflush(fp);
         fclose(fp);
     }
+
+    enabled_json = getDefine_Int("shared", "enabled_log_json", 0, 1);
+
+    if (enabled_json){
+
+      /* If under chroot, log directly to /logs/ossec.log */
+      if (chroot_flag == 1) {
+          fp2 = fopen(LOGJSONFILE, "a");
+      } else {
+          char _logjsonfile[256];
+  #ifndef WIN32
+          snprintf(_logjsonfile, 256, "%s%s", DEFAULTDIR, LOGJSONFILE);
+  #else
+          snprintf(_logjsonfile, 256, "%s", LOGJSONFILE);
+  #endif
+          fp2 = fopen(_logjsonfile, "a");
+      }
+
+      if (fp2) {
+          (void)fprintf(fp2, "%d/%02d/%02d %02d:%02d:%02d ",
+                        p->tm_year + 1900, p->tm_mon + 1,
+                        p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
+          (void)vfprintf(fp2, msg, args3);
+  #ifdef WIN32
+          (void)fprintf(fp2, "\r\n");
+  #else
+          (void)fprintf(fp2, "\n");
+  #endif
+          fflush(fp2);
+          fclose(fp2);
+      }
+    }
+
 
     /* Only if not in daemon mode */
     if (daemon_flag == 0) {

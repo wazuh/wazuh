@@ -26,8 +26,10 @@
 #ifndef LOGFILE
 #ifndef WIN32
 #define LOGFILE   "/logs/ossec.log"
+#define LOGJSONFILE "/logs/ossec.json"
 #else
 #define LOGFILE "ossec.log"
+#define LOGJSONFILE "ossec.json"
 #endif
 #endif
 
