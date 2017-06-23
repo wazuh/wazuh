@@ -680,6 +680,12 @@ crypto_md5_sha1_o := $(crypto_md5_sha1_c:.c=.o)
 os_crypto/md5_sha1/%.o: os_crypto/md5_sha1/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
+crypto_hmac_c := os_crypto/hmac/hmac.c
+crypto_hmac_o := $(crypto_hmac_c:.c=.o)
+
+os_crypto/hmac/%.o: os_crypto/hmac/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
 crypto_shared_c := $(wildcard os_crypto/shared/*.c)
 crypto_shared_o := $(crypto_shared_c:.c=.o)
 
@@ -691,7 +697,8 @@ crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_o} \
 					 ${crypto_sha1_o} \
 					 ${crypto_shared_o} \
-					 ${crypto_md5_sha1_o}
+					 ${crypto_md5_sha1_o}\
+					 ${crypto_hmac_o}
 
 os_crypto.a: ${crypto_o}
 	${OSSEC_LINK} $@ $^
