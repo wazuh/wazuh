@@ -389,3 +389,235 @@ WriteManager()
 
     echo "</ossec_config>" >> $NEWCONFIG
 }
+
+
+InstallCommon(){
+
+    PREFIX='/var/ossec'
+    OSSEC_GROUP='ossec'
+    OSSEC_USER='ossec'
+    OSSEC_USER_MAIL='ossecm'
+    OSSEC_USER_REM='ossecr'
+    EXTERNAL_LUA='external/lua-5.2.3/'
+    INSTALL="install"
+
+    if [ ${INSTYPE} = 'server' ]; then
+        OSSEC_CONTROL_SRC='./init/ossec-server.sh'
+        OSSEC_CONF_SRC='../etc/ossec-server.conf'
+    elif [ ${INSTYPE} = 'agent' ]; then
+        OSSEC_CONTROL_SRC='./init/ossec-client.sh'
+        OSSEC_CONF_SRC='../etc/ossec-agent.conf'
+    elif [ ${INSTYPE} = 'local' ]; then
+        OSSEC_CONTROL_SRC='./init/ossec-local.sh'
+        OSSEC_CONF_SRC='../etc/ossec-local.conf'
+    fi
+
+    if [ ! ${PREFIX} = ${INSTALLDIR} ]; then
+        PREFIX=${INSTALLDIR}
+    fi
+
+    ./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
+
+	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/
+	${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
+	${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/ossec
+	${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
+	${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.json
+	${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
+
+	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/bin
+	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua
+	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/native
+	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/compiled
+	${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
+	${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
+	${INSTALL} -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin
+	${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
+	${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-lua ${PREFIX}/bin/
+	${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-luac ${PREFIX}/bin/
+	${INSTALL} -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
+	${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
+	${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
+
+	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
+	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
+	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
+	${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
+	${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
+	${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agents
+
+	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
+	${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles
+	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
+	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
+
+	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
+	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
+
+    if [ "$(ls -A ../wodles/oscap/content)" ]; then
+        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/* ${PREFIX}/wodles/oscap/content
+    fi
+
+	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
+	${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
+
+	${INSTALL} -d -m 1750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
+
+    if [ -f /etc/TIMEZONE ]; then
+	       ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
+    fi
+    # Solaris Needs some extra files
+    if [ ${DIST_NAME} = "SunOS" ]; then
+	    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
+        cp -rf /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
+        chown root:${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/*
+        find ${PREFIX}/usr/share/lib/zoneinfo/ -type d -exec chmod 0750 {} +
+        find ${PREFIX}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +
+    fi
+
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
+
+    if [ -f ${PREFIX}/etc/local_internal_options.conf ]; then
+        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/local_internal_options.conf ${PREFIX}/etc/local_internal_options.conf
+    fi
+
+    if [ -f ${PREFIX}/etc/client.keys ]; then
+        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+    fi
+
+    if [ ! -f ${PREFIX}/etc/ossec.conf ]; then
+        if [ -f  ../etc/ossec.mc ]; then
+            ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${PREFIX}/etc/ossec.conf
+        else
+            ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ${OSSEC_CONF_SRC} ${PREFIX}/etc/ossec.conf
+        fi
+    fi
+
+	${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
+	${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
+	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
+	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
+	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
+	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
+
+	${INSTALL} -d -m 0700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
+
+	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
+	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
+
+	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
+	${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
+
+	./init/fw-check.sh execute
+}
+
+InstallServer(){
+
+    InstallCommon
+
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/decoders
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rules
+    ${INSTALL} -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db
+    ${INSTALL} -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db/agents
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
+    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rootcheck
+    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
+
+    ${INSTALL} -m 0750 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 ossec-analysisd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 ossec-monitord ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 ossec-reportd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 ossec-maild ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 ossec-logtest ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 ossec-dbd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 clear_stats ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 list_agents ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 ossec-regex ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 syscheck_update ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 agent_control ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 syscheck_control ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 rootcheck_control ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 -b update/ruleset/update_ruleset.py ${PREFIX}/bin/update_ruleset
+
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/decoders
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/rules
+
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b update/ruleset/RULESET_VERSION ${PREFIX}/ruleset/VERSION
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
+    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
+    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/rootcheck
+    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
+
+    ${MAKEBIN} -C ../framework install
+
+    if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
+        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
+    fi
+    if [ ! -f ${PREFIX}/etc/rules/local_rules.xml ]; then
+        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
+    fi
+    if [ ! -f ${PREFIX}/etc/lists ]; then
+        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
+    fi
+    if [ ! -f ${PREFIX}/etc/lists/amazon ]; then
+        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
+        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
+    fi
+    if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
+        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
+        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys.cdb ${PREFIX}/etc/lists/audit-keys.cdb
+    fi
+
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
+
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
+
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
+
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
+    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-groups
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
+    ${INSTALL} -m 750 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations
+    touch ${PREFIX}/logs/integrations.log
+    chmod 640 ${PREFIX}/logs/integrations.log
+    chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
+
+    rm -f ${PREFIX}/etc/shared/merged.mg
+}
+
+InstallAgent(){
+
+    InstallCommon
+
+    ${INSTALL} -m 0750 -o root -g 0 ossec-agentd ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 agent-auth ${PREFIX}/bin
+
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
+    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
+
+}
+
+InstallWazuh(){
+    if [ "X$INSTYPE" = "Xagent" ]; then
+        InstallAgent
+    elif [ "X$INSTYPE" = "Xserver" ]; then
+        InstallServer
+    elif [ "X$INSTYPE" = "Xlocal" ]; then
+        InstallServer
+    fi
+}

@@ -109,7 +109,8 @@ Install()
         UpdateStopOSSEC
     fi
 
-    ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install
+    # Install
+    InstallWazuh
 
     cd ../
 
