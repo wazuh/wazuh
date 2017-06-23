@@ -225,7 +225,7 @@ static int seechanges_dupfile(const char *old, const char *current)
     do {
         buf[n] = '\0';
 
-        if (fwrite(buf, n, 1, fpw) < 1) {
+        if (fwrite(buf, 1, n, fpw) != n) {
             merror("%s: ERROR: Unable to write data on file '%s'", ARGV0, current);
             break;
         }
