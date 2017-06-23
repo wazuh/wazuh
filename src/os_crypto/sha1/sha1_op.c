@@ -59,3 +59,21 @@ int OS_SHA1_File(const char *fname, os_sha1 output, int mode)
 
     return (0);
 }
+
+int OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output)
+{
+    unsigned char md[SHA_DIGEST_LENGTH];
+    size_t n;
+
+    SHA_CTX c;
+    SHA1_Init(&c);
+    SHA1_Update(&c, (const unsigned char *)str, length < 0 ? (unsigned)strlen(str) : (unsigned)length);
+    SHA1_Final(&(md[0]), &c);
+
+    for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+        snprintf(output, 3, "%02x", md[n]);
+        output += 2;
+    }
+
+    return (0);
+}
