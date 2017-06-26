@@ -175,18 +175,18 @@ size_t wcom_close(const char *file_path, char *output){
 size_t wcom_sha1(const char *file_path, char *output){
 
     os_sha1 sha1;
+
     if (OS_SHA1_File(file_path, sha1, OS_BINARY) < 0){
         merror("At wcom_sha1(): Error generating SHA1.");
         strcpy(output, "err Cannot generate SHA1");
         return strlen(output);
     } else {
-        strncpy(output, sha1, 64);
+        snprintf(output, OS_MAXSTR + 1, "ok %s", sha1);
         return strlen(output);
     }
 }
 size_t wcom_unmerge(const char *file_path, char *output){
-
-    if (UnmergeFiles(file_path, NULL) == 0){
+    if (UnmergeFiles(file_path, NULL, OS_BINARY) == 0){
         merror("At wcom_unmerge(): Error unmerging file.");
         strcpy(output, "err Cannot unmerge file");
         return strlen(output);

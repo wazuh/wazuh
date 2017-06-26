@@ -44,7 +44,7 @@ int MergeFiles(const char *finalpath, char **files, const char *tag) __attribute
 
 int MergeAppendFile(const char *finalpath, const char *files, const char *tag) __attribute__((nonnull(1)));
 
-int UnmergeFiles(const char *finalpath, const char *optdir) __attribute__((nonnull(1)));
+int UnmergeFiles(const char *finalpath, const char *optdir, int mode) __attribute__((nonnull(1)));
 
 /* Daemonize a process */
 void goDaemon(void);
@@ -75,5 +75,8 @@ int isVista;
 
 /* Delete directory recorsively */
 int rmdir_ex(const char *path);
+
+// Make directory recursively
+int mkdir_ex(const char * path);
 
 #endif /* __FILE_H */

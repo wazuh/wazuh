@@ -205,7 +205,7 @@ int receive_msg()
                         final_file = strrchr(file, '/');
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
-                                UnmergeFiles(file, SHAREDCFG_DIR);
+                                UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
                             }
                         } else {
                             /* Remove file */

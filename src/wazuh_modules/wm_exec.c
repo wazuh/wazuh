@@ -205,7 +205,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
     // Create pipe for child's stdout
 
     if (pipe2(pipe_fd, O_CLOEXEC) < 0) {
-        merror("%s: ERROR: at wm_exec(): pipe2(): %s", __local_name, strerror(errno));
+        merror("At wm_exec(): pipe2(): %s", strerror(errno));
         return -1;
     }
 

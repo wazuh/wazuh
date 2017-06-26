@@ -15,11 +15,10 @@ int main(int argc, char **argv)
     if (strcmp(argv[1], "m") == 0) {
         MergeFiles(argv[2], argv + 3);
     } else if (strcmp(argv[1], "u") == 0) {
-        UnmergeFiles(argv[2]);
+        UnmergeFiles(argv[2], OS_TEXT);
     } else {
         printf("ERROR\n");
     }
 
     return (0);
 }
-

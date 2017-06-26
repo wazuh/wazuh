@@ -372,11 +372,10 @@
 #define PRODUCT_STORAGE_WORKGROUP_SERVER_CORE_C "Storage Server Workgroup (core installation) "
 #endif
 
-#endif /* WIN32 */
-
-#ifdef WIN32
 #define mkstemp(x) 0
-#endif
+#define mkdir(x, y) mkdir(x)
+
+#endif /* WIN32 */
 
 const char *__local_name = "unset";
 
@@ -497,17 +496,19 @@ int DeletePID(const char *name)
     return (0);
 }
 
-int UnmergeFiles(const char *finalpath, const char *optdir)
+int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
 {
     int ret = 1;
     size_t i = 0, n = 0, files_size = 0;
     char *files;
+    char sep;
+    char * psep;
     char final_name[2048 + 1];
     char buf[2048 + 1];
     FILE *fp;
     FILE *finalfp;
 
-    finalfp = fopen(finalpath, "r");
+    finalfp = fopen(finalpath, mode == OS_BINARY ? "rb" : "r");
     if (!finalfp) {
         merror("Unable to read merged file: '%s'.", finalpath);
         return (0);
@@ -546,8 +547,26 @@ int UnmergeFiles(const char *finalpath, const char *optdir)
             final_name[2048] = '\0';
         }
 
+        // Create directory
+
+#ifdef WIN32
+        if (psep = strrchr(files, '/'), psep || (psep = strrchr(files, '\\'), psep)) {
+#else
+        if (psep = strrchr(files, '/'), psep) {
+#endif
+            sep = *psep;
+            *psep = '\0';
+
+            if (mkdir_ex(files)) {
+                merror("Unmerging '%s': couldn't create directory '%s'", finalpath, files);
+                return 0;
+            }
+
+            *psep = sep;
+        }
+
         /* Open filename */
-        fp = fopen(final_name, "w");
+        fp = fopen(final_name, mode == OS_BINARY ? "wb" : "w");
         if (!fp) {
             ret = 0;
             merror("Unable to unmerge file '%s'.", final_name);
@@ -2077,4 +2096,68 @@ int OS_MoveFile(const char *src, const char *dst) {
     fclose(fp_dst);
     unlink(dst);
     return status;
+}
+
+// Make directory recursively
+int mkdir_ex(const char * path) {
+    char sep;
+    char * temp = strdup(path);
+    char * psep;
+    char * next;
+
+#ifndef WIN32
+    for (next = temp; psep = strchr(next, '/'), psep; next = psep + 1) {
+#else
+    for (next = temp; psep = strchr(next, '/'), psep || (psep = strchr(next, '\\'), psep); next = psep + 1) {
+#endif
+
+        sep = *psep;
+        *psep = '\0';
+
+        if (mkdir(temp, 0770) < 0) {
+            switch (errno) {
+            case EEXIST:
+                if (IsDir(temp) < 0) {
+                    merror("Couldn't make dir '%s': not a directory.", temp);
+                    free(temp);
+                    return -1;
+                }
+
+                break;
+
+            case EISDIR:
+                break;
+
+            default:
+                merror("Couldn't make dir '%s': %s", temp, strerror(errno));
+                free(temp);
+                return -1;
+            }
+        }
+
+        *psep = sep;
+    }
+
+    free(temp);
+
+    if (mkdir(path, 0770) < 0) {
+        switch (errno) {
+        case EEXIST:
+            if (IsDir(path) < 0) {
+                merror("Couldn't make dir '%s': not a directory.", path);
+                return -1;
+            }
+
+            break;
+
+        case EISDIR:
+            break;
+
+        default:
+            merror("Couldn't make dir '%s': %s", path, strerror(errno));
+            return -1;
+        }
+    }
+
+    return 0;
 }
