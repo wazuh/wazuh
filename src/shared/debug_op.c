@@ -8,6 +8,7 @@
  */
 
 #include "headers/shared.h"
+#include <external/cJSON/cJSON.h>
 
 static int dbg_flag = 0;
 static int chroot_flag = 0;
@@ -28,40 +29,15 @@ static void _log(const char *msg, va_list args)
     va_list args3; /* For the JSON output */
     FILE *fp;
     FILE *fp2;
+    char timestamp[OS_MAXSTR];
+    char jsonstr[OS_MAXSTR];
+    char *output;
 
     tm = time(NULL);
     p = localtime(&tm);
     /* Duplicate args */
     va_copy(args2, args);
     va_copy(args3, args);
-
-    /* If under chroot, log directly to /logs/ossec.log */
-    if (chroot_flag == 1) {
-        fp = fopen(LOGFILE, "a");
-    } else {
-        char _logfile[256];
-#ifndef WIN32
-        snprintf(_logfile, 256, "%s%s", DEFAULTDIR, LOGFILE);
-#else
-        snprintf(_logfile, 256, "%s", LOGFILE);
-#endif
-        fp = fopen(_logfile, "a");
-    }
-
-    /* Maybe log to syslog if the log file is not available */
-    if (fp) {
-        (void)fprintf(fp, "%d/%02d/%02d %02d:%02d:%02d ",
-                      p->tm_year + 1900, p->tm_mon + 1,
-                      p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
-        (void)vfprintf(fp, msg, args);
-#ifdef WIN32
-        (void)fprintf(fp, "\r\n");
-#else
-        (void)fprintf(fp, "\n");
-#endif
-        fflush(fp);
-        fclose(fp);
-    }
 
     enabled_json = getDefine_Int("shared", "enabled_log_json", 0, 1);
 
@@ -81,17 +57,57 @@ static void _log(const char *msg, va_list args)
       }
 
       if (fp2) {
-          (void)fprintf(fp2, "%d/%02d/%02d %02d:%02d:%02d ",
+
+          cJSON *json_log = cJSON_CreateObject();
+
+          snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d ",
                         p->tm_year + 1900, p->tm_mon + 1,
                         p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
-          (void)vfprintf(fp2, msg, args3);
+
+          vsnprintf(jsonstr, OS_MAXSTR, msg, args3);
+          cJSON_AddStringToObject(json_log, "timestamp", timestamp);
+          cJSON_AddStringToObject(json_log, "description", jsonstr);
+          output = cJSON_PrintUnformatted(json_log);
+          (void)fprintf(fp2, "%s", output);
+
   #ifdef WIN32
           (void)fprintf(fp2, "\r\n");
   #else
           (void)fprintf(fp2, "\n");
   #endif
+          cJSON_Delete(json_log);
+          free(output);
           fflush(fp2);
           fclose(fp2);
+      }
+
+    }else{
+      /* If under chroot, log directly to /logs/ossec.log */
+      if (chroot_flag == 1) {
+          fp = fopen(LOGFILE, "a");
+      } else {
+          char _logfile[256];
+  #ifndef WIN32
+          snprintf(_logfile, 256, "%s%s", DEFAULTDIR, LOGFILE);
+  #else
+          snprintf(_logfile, 256, "%s", LOGFILE);
+  #endif
+          fp = fopen(_logfile, "a");
+      }
+
+      /* Maybe log to syslog if the log file is not available */
+      if (fp) {
+          (void)fprintf(fp, "%d/%02d/%02d %02d:%02d:%02d ",
+                        p->tm_year + 1900, p->tm_mon + 1,
+                        p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
+          (void)vfprintf(fp, msg, args);
+  #ifdef WIN32
+          (void)fprintf(fp, "\r\n");
+  #else
+          (void)fprintf(fp, "\n");
+  #endif
+          fflush(fp);
+          fclose(fp);
       }
     }
 
@@ -110,8 +126,9 @@ static void _log(const char *msg, va_list args)
 #endif
     }
 
-    /* args2 must be ended here */
+    /* args must be ended here */
     va_end(args2);
+    va_end(args3);
 }
 
 void debug1(const char *msg, ...)
