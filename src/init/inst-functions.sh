@@ -477,11 +477,11 @@ InstallCommon(){
 
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
 
-    if [ -f ${PREFIX}/etc/local_internal_options.conf ]; then
+    if [ ! -f ${PREFIX}/etc/local_internal_options.conf ]; then
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/local_internal_options.conf ${PREFIX}/etc/local_internal_options.conf
     fi
 
-    if [ -f ${PREFIX}/etc/client.keys ]; then
+    if [ ! -f ${PREFIX}/etc/client.keys ]; then
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
     fi
 
