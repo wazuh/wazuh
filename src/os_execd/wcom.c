@@ -107,13 +107,28 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
 }
 
 size_t wcom_open(const char *file_path, const char *mode, char *output) {
+    char final_path[PATH_MAX + 1];
+
     if (*file.path) {
         merror("File '%s' was opened. Closing.", file.path);
         fclose(file.fp);
+        *file.path = '\0';
     }
 
-    if (file.fp = fopen(file_path, mode), file.fp) {
-        strncpy(file.path, file_path, PATH_MAX);
+    if (strcmp(mode, "w") && strcmp(mode, "wb")) {
+        merror("At WCOM open: Unsupported mode '%s'", mode);
+        strcpy(output, "err Unsupported mode");
+        return strlen(output);
+    }
+
+    if (snprintf(final_path, PATH_MAX + 1, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, INCOMING_DIR, file_path) > PATH_MAX) {
+        merror("At WCOM open: Name too long");
+        strcpy(output, "err Name too long");
+        return strlen(output);
+    }
+
+    if (file.fp = fopen(final_path, mode), file.fp) {
+        strncpy(file.path, final_path, PATH_MAX);
         strcpy(output, "ok");
         return 2;
     } else {
@@ -124,15 +139,23 @@ size_t wcom_open(const char *file_path, const char *mode, char *output) {
 }
 
 size_t wcom_write(const char *file_path, char *buffer, size_t length, char *output) {
+    char final_path[PATH_MAX + 1];
+
     if (!*file.path) {
         merror("At wcom_write(): No file is opened.");
-        strcpy(output, "err No file opened.");
-        return 2;
+        strcpy(output, "err No file opened");
+        return strlen(output);
     }
 
-    if (strcmp(file.path, file_path) != 0) {
+    if (snprintf(final_path, PATH_MAX + 1, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, INCOMING_DIR, file_path) > PATH_MAX) {
+        merror("At WCOM write: Name too long");
+        strcpy(output, "err Name too long");
+        return strlen(output);
+    }
+
+    if (strcmp(file.path, final_path) != 0) {
         merror("At wcom_write(): No file is opened.");
-        strcpy(output, "err No file opened.");
+        strcpy(output, "err No file opened");
         return strlen(output);
     }
 
@@ -140,21 +163,28 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char *outp
         strcpy(output, "ok");
         return 2;
     } else {
-        merror("At wcom_write(): Cannot write on '%s'", file_path);
+        merror("At wcom_write(): Cannot write on '%s'", final_path);
         strcpy(output, "err Cannot write");
         return strlen(output);
     }
-
-    return 0;
 }
+
 size_t wcom_close(const char *file_path, char *output){
+    char final_path[PATH_MAX + 1];
+
     if (!*file.path) {
         merror("At wcom_close(): No file is opened.");
         strcpy(output, "err No file opened");
         return strlen(output);
     }
 
-    if (strcmp(file.path, file_path) != 0) {
+    if (snprintf(final_path, PATH_MAX + 1, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, INCOMING_DIR, file_path) > PATH_MAX) {
+        merror("At WCOM open: Name too long");
+        strcpy(output, "err Name too long");
+        return strlen(output);
+    }
+
+    if (strcmp(file.path, final_path) != 0) {
         merror("At wcom_close(): No file is opened.");
         strcpy(output, "err No file opened");
         return strlen(output);
@@ -170,8 +200,8 @@ size_t wcom_close(const char *file_path, char *output){
         strcpy(output, "ok");
         return 2;
     }
-    return 0;
 }
+
 size_t wcom_sha1(const char *file_path, char *output){
 
     os_sha1 sha1;

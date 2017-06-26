@@ -270,6 +270,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SHAREDCFG_DIR   "shared"
 #endif
 
+// Incoming directory
+#ifndef WIN32
+#define INCOMING_DIR   "/var/incoming"
+#else
+#define INCOMING_DIR   "incoming"
+#endif
+
 /* Built-in defines */
 #define DEFAULTQPATH    DEFAULTDIR DEFAULTQUEUE
 
