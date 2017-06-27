@@ -499,10 +499,10 @@ int DeletePID(const char *name)
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
 {
     int ret = 1;
+    int state_ok;
     size_t i = 0, n = 0, files_size = 0;
     char *files;
-    char sep;
-    char * psep;
+    char * copy;
     char final_name[2048 + 1];
     char buf[2048 + 1];
     FILE *fp;
@@ -539,9 +539,20 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
             continue;
         }
         files++;
+        state_ok = 1;
 
         if (optdir) {
             snprintf(final_name, 2048, "%s/%s", optdir, files);
+
+            // Check that final_name is inside optdir
+            copy = strdup(final_name);
+
+            if (strncmp(dirname(copy), optdir, strlen(optdir))) {
+                merror("Unmerging '%s': unable to unmerge '%s'", finalpath, final_name);
+                state_ok = 0;
+            }
+
+            free(copy);
         } else {
             strncpy(final_name, files, 2048);
             final_name[2048] = '\0';
@@ -549,27 +560,25 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
 
         // Create directory
 
-#ifdef WIN32
-        if (psep = strrchr(files, '/'), psep || (psep = strrchr(files, '\\'), psep)) {
-#else
-        if (psep = strrchr(files, '/'), psep) {
-#endif
-            sep = *psep;
-            *psep = '\0';
+        copy = strdup(final_name);
 
-            if (mkdir_ex(files)) {
-                merror("Unmerging '%s': couldn't create directory '%s'", finalpath, files);
-                return 0;
-            }
-
-            *psep = sep;
+        if (mkdir_ex(dirname(copy))) {
+            merror("Unmerging '%s': couldn't create directory '%s'", finalpath, files);
+            state_ok = 0;
         }
 
+        free(copy);
+
         /* Open filename */
-        fp = fopen(final_name, mode == OS_BINARY ? "wb" : "w");
-        if (!fp) {
+
+        if (state_ok) {
+            if (fp = fopen(final_name, mode == OS_BINARY ? "wb" : "w"), !fp) {
+                ret = 0;
+                merror("Unable to unmerge file '%s'.", final_name);
+            }
+        } else {
+            fp = NULL;
             ret = 0;
-            merror("Unable to unmerge file '%s'.", final_name);
         }
 
         if (files_size < sizeof(buf) - 1) {
@@ -2114,7 +2123,7 @@ int mkdir_ex(const char * path) {
         sep = *psep;
         *psep = '\0';
 
-        if (mkdir(temp, 0770) < 0) {
+        if (*temp && mkdir(temp, 0770) < 0) {
             switch (errno) {
             case EEXIST:
                 if (IsDir(temp) < 0) {

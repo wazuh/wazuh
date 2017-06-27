@@ -22,6 +22,8 @@ static struct {
     FILE * fp;
 } file;
 
+static int jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
+
 size_t wcom_dispatch(char *command, size_t length, char *output){
 
     char *rcv_comm = command;
@@ -121,9 +123,9 @@ size_t wcom_open(const char *file_path, const char *mode, char *output) {
         return strlen(output);
     }
 
-    if (snprintf(final_path, PATH_MAX + 1, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, INCOMING_DIR, file_path) > PATH_MAX) {
-        merror("At WCOM open: Name too long");
-        strcpy(output, "err Name too long");
+    if (jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
+        merror("At WCOM open: Invalid file name");
+        strcpy(output, "err Invalid file name");
         return strlen(output);
     }
 
@@ -147,9 +149,9 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char *outp
         return strlen(output);
     }
 
-    if (snprintf(final_path, PATH_MAX + 1, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, INCOMING_DIR, file_path) > PATH_MAX) {
-        merror("At WCOM write: Name too long");
-        strcpy(output, "err Name too long");
+    if (jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
+        merror("At WCOM open: Invalid file name");
+        strcpy(output, "err Invalid file name");
         return strlen(output);
     }
 
@@ -178,9 +180,9 @@ size_t wcom_close(const char *file_path, char *output){
         return strlen(output);
     }
 
-    if (snprintf(final_path, PATH_MAX + 1, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, INCOMING_DIR, file_path) > PATH_MAX) {
-        merror("At WCOM open: Name too long");
-        strcpy(output, "err Name too long");
+    if (jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
+        merror("At WCOM open: Invalid file name");
+        strcpy(output, "err Invalid file name");
         return strlen(output);
     }
 
@@ -203,10 +205,16 @@ size_t wcom_close(const char *file_path, char *output){
 }
 
 size_t wcom_sha1(const char *file_path, char *output){
-
+    char final_path[PATH_MAX + 1];
     os_sha1 sha1;
 
-    if (OS_SHA1_File(file_path, sha1, OS_BINARY) < 0){
+    if (jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
+        merror("At WCOM open: Invalid file name");
+        strcpy(output, "err Invalid file name");
+        return strlen(output);
+    }
+
+    if (OS_SHA1_File(final_path, sha1, OS_BINARY) < 0){
         merror("At wcom_sha1(): Error generating SHA1.");
         strcpy(output, "err Cannot generate SHA1");
         return strlen(output);
@@ -216,7 +224,15 @@ size_t wcom_sha1(const char *file_path, char *output){
     }
 }
 size_t wcom_unmerge(const char *file_path, char *output){
-    if (UnmergeFiles(file_path, NULL, OS_BINARY) == 0){
+    char final_path[PATH_MAX + 1];
+
+    if (jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
+        merror("At WCOM open: Invalid file name");
+        strcpy(output, "err Invalid file name");
+        return strlen(output);
+    }
+
+    if (UnmergeFiles(file_path, isChroot() ? INCOMING_DIR : DEFAULTDIR INCOMING_DIR, OS_BINARY) == 0){
         merror("At wcom_unmerge(): Error unmerging file.");
         strcpy(output, "err Cannot unmerge file");
         return strlen(output);
@@ -314,3 +330,17 @@ void * wcom_main(__attribute__((unused)) void * arg) {
 }
 
 #endif
+
+static int jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
+    const char * begin;
+
+    // Find last '/' or '\'
+
+#ifndef WIN32
+    begin = (begin = strrchr(filename, '/'), begin) ? begin + 1 : filename;
+#else
+    begin = (begin = strrchr(filename, '/'), begin || (begin = strrchr(filename, '\\'), begin)) ? begin + 1 : filename;
+#endif
+
+    return snprintf(finalpath, PATH_MAX + 1, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, basedir, begin) > PATH_MAX ? -1 : 0;
+}
