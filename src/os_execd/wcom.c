@@ -14,6 +14,7 @@
 #include "execd.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "wazuh_modules/wmodules.h"
+#include "external/zlib/zlib.h"
 
 // Current opened file
 
@@ -32,6 +33,8 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
     char *path = NULL;
     char *mode = NULL;
     char *data = NULL;
+    char * source;
+    char * target;
 
     if ((rcv_args = strchr(rcv_comm, ' '))){
         *rcv_args = '\0';
@@ -97,6 +100,19 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         // unmerge [file_path]
         return wcom_unmerge(rcv_args, output);
 
+    } else if (strcmp(rcv_comm, "uncompress") == 0){
+        // uncompress [file_path]
+        source = rcv_args;
+
+        if (target = strchr(rcv_args, ' '), target) {
+            *(target++) = '\0';
+            return wcom_uncompress(source, target, output);
+        } else {
+            merror("Bad WCOM uncompress message.");
+            strcpy(output, "err Too few commands");
+            return strlen(output);
+        }
+
     }else if (strcmp(rcv_comm, "exec") == 0){
         // exec [command]
         return wcom_exec(rcv_args, output);
@@ -144,19 +160,19 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char *outp
     char final_path[PATH_MAX + 1];
 
     if (!*file.path) {
-        merror("At wcom_write(): No file is opened.");
+        merror("At WCOM write: No file is opened.");
         strcpy(output, "err No file opened");
         return strlen(output);
     }
 
     if (jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
-        merror("At WCOM open: Invalid file name");
+        merror("At WCOM write: Invalid file name");
         strcpy(output, "err Invalid file name");
         return strlen(output);
     }
 
     if (strcmp(file.path, final_path) != 0) {
-        merror("At wcom_write(): No file is opened.");
+        merror("At WCOM write: No file is opened.");
         strcpy(output, "err No file opened");
         return strlen(output);
     }
@@ -165,7 +181,7 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char *outp
         strcpy(output, "ok");
         return 2;
     } else {
-        merror("At wcom_write(): Cannot write on '%s'", final_path);
+        merror("At WCOM write: Cannot write on '%s'", final_path);
         strcpy(output, "err Cannot write");
         return strlen(output);
     }
@@ -175,19 +191,19 @@ size_t wcom_close(const char *file_path, char *output){
     char final_path[PATH_MAX + 1];
 
     if (!*file.path) {
-        merror("At wcom_close(): No file is opened.");
+        merror("At WCOM close: No file is opened.");
         strcpy(output, "err No file opened");
         return strlen(output);
     }
 
     if (jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
-        merror("At WCOM open: Invalid file name");
+        merror("At WCOM close: Invalid file name");
         strcpy(output, "err Invalid file name");
         return strlen(output);
     }
 
     if (strcmp(file.path, final_path) != 0) {
-        merror("At wcom_close(): No file is opened.");
+        merror("At WCOM close: No file is opened.");
         strcpy(output, "err No file opened");
         return strlen(output);
     }
@@ -195,7 +211,7 @@ size_t wcom_close(const char *file_path, char *output){
     *file.path = '\0';
 
     if (fclose(file.fp)) {
-        merror("At wcom_close(): %s", strerror(errno));
+        merror("At WCOM close: %s", strerror(errno));
         strcpy(output, "err Cannot close");
         return strlen(output);
     } else {
@@ -209,13 +225,13 @@ size_t wcom_sha1(const char *file_path, char *output){
     os_sha1 sha1;
 
     if (jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
-        merror("At WCOM open: Invalid file name");
+        merror("At WCOM sha1: Invalid file name");
         strcpy(output, "err Invalid file name");
         return strlen(output);
     }
 
     if (OS_SHA1_File(final_path, sha1, OS_BINARY) < 0){
-        merror("At wcom_sha1(): Error generating SHA1.");
+        merror("At WCOM sha1: Error generating SHA1.");
         strcpy(output, "err Cannot generate SHA1");
         return strlen(output);
     } else {
@@ -227,13 +243,13 @@ size_t wcom_unmerge(const char *file_path, char *output){
     char final_path[PATH_MAX + 1];
 
     if (jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
-        merror("At WCOM open: Invalid file name");
+        merror("At WCOM unmerge: Invalid file name");
         strcpy(output, "err Invalid file name");
         return strlen(output);
     }
 
-    if (UnmergeFiles(file_path, isChroot() ? INCOMING_DIR : DEFAULTDIR INCOMING_DIR, OS_BINARY) == 0){
-        merror("At wcom_unmerge(): Error unmerging file.");
+    if (UnmergeFiles(final_path, isChroot() ? INCOMING_DIR : DEFAULTDIR INCOMING_DIR, OS_BINARY) == 0){
+        merror("At WCOM unmerge: Error unmerging file '%s.'", final_path);
         strcpy(output, "err Cannot unmerge file");
         return strlen(output);
     } else {
@@ -241,6 +257,63 @@ size_t wcom_unmerge(const char *file_path, char *output){
         return 2;
     }
 }
+
+size_t wcom_uncompress(const char * source, const char * target, char * output) {
+    char final_source[PATH_MAX + 1];
+    char final_target[PATH_MAX + 1];
+    char buffer[4096];
+    gzFile fsource;
+    FILE *ftarget;
+    int length;
+
+    if (jailfile(final_source, INCOMING_DIR, source) > PATH_MAX) {
+        merror("At WCOM uncompress: Invalid file name");
+        strcpy(output, "err Invalid file name");
+        return strlen(output);
+    }
+
+    if (jailfile(final_target, INCOMING_DIR, target) > PATH_MAX) {
+        merror("At WCOM uncompress: Invalid file name");
+        strcpy(output, "err Invalid file name");
+        return strlen(output);
+    }
+
+    if (fsource = gzopen(final_source, "rb"), !fsource) {
+        merror("At WCOM uncompress: Unable to open '%s'", final_source);
+        strcpy(output, "err Unable to open source");
+        return strlen(output);
+    }
+
+    if (ftarget = fopen(final_target, "wb"), !ftarget) {
+        gzclose(fsource);
+        merror("At WCOM uncompress: Unable to open '%s'", final_target);
+        strcpy(output, "err Unable to open target");
+        return strlen(output);
+    }
+
+    while (length = gzread(fsource, buffer, 4096), length > 0) {
+        if ((int)fwrite(buffer, 1, length, ftarget) != length) {
+            gzclose(fsource);
+            fclose(ftarget);
+            merror("At WCOM uncompress: Unable to write '%s'", final_target);
+            strcpy(output, "err Unable to write target");
+            return strlen(output);
+        }
+    }
+
+    if (length < 0) {
+        merror("At WCOM uncompress: Unable to read '%s'", final_source);
+        strcpy(output, "err Unable to read source");
+    } else {
+        unlink(final_source);
+        strcpy(output, "ok");
+    }
+
+    gzclose(fsource);
+    fclose(ftarget);
+    return strlen(output);
+}
+
 size_t wcom_exec(char *command, char *output){
     static int timeout = 0;
     int status;
@@ -251,7 +324,7 @@ size_t wcom_exec(char *command, char *output){
     }
 
     if (wm_exec(command, &out, &status, timeout) < 0) {
-        merror("At wcom_exec(): Error executing command [%s]", command);
+        merror("At WCOM exec: Error executing command [%s]", command);
         strcpy(output, "err Cannot execute command");
         return strlen(output);
     } else {
