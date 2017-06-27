@@ -204,8 +204,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
     // Create pipe for child's stdout
 
-    if (pipe2(pipe_fd, O_CLOEXEC) < 0) {
-        merror("At wm_exec(): pipe2(): %s", strerror(errno));
+    if (pipe(pipe_fd) < 0) {
+        merror("At wm_exec(): pipe(): %s", strerror(errno));
         return -1;
     }
 
@@ -228,6 +228,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         close(pipe_fd[0]);
         dup2(pipe_fd[1], STDOUT_FILENO);
         dup2(pipe_fd[1], STDERR_FILENO);
+        close(pipe_fd[1]);
 
         setsid();
         if (nice(wm_task_nice)) {}
