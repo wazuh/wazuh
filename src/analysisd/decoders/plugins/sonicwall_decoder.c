@@ -32,7 +32,7 @@ static OSRegex *__sonic_regex_prox = NULL;
 
 void *SonicWall_Decoder_Init()
 {
-    debug1("%s: Initializing SonicWall decoder..", ARGV0);
+    mdebug1("Initializing SonicWall decoder..");
 
     /* Allocate memory */
     os_calloc(1, sizeof(OSRegex), __sonic_regex_sdip);
@@ -41,29 +41,29 @@ void *SonicWall_Decoder_Init()
 
     /* Compile our regexes */
     if (!OSRegex_Compile(SONICWALL_REGEX, __sonic_regex_sdip, OS_RETURN_SUBSTRING)) {
-        merror(REGEX_COMPILE, ARGV0, SONICWALL_REGEX, __sonic_regex_sdip->error);
+        merror(REGEX_COMPILE, SONICWALL_REGEX, __sonic_regex_sdip->error);
         return (0);
     }
     if (!OSRegex_Compile(SONICWALL_REGID, __sonic_regex_prid, OS_RETURN_SUBSTRING)) {
-        merror(REGEX_COMPILE, ARGV0, SONICWALL_REGID, __sonic_regex_prid->error);
+        merror(REGEX_COMPILE, SONICWALL_REGID, __sonic_regex_prid->error);
         return (0);
     }
     if (!OSRegex_Compile(SONICWALL_PROXY, __sonic_regex_prox, OS_RETURN_SUBSTRING)) {
-        merror(REGEX_COMPILE, ARGV0, SONICWALL_PROXY, __sonic_regex_prox->error);
+        merror(REGEX_COMPILE, SONICWALL_PROXY, __sonic_regex_prox->error);
         return (0);
     }
 
     /* We must have the sub_strings to retrieve the nodes */
     if (!__sonic_regex_sdip->sub_strings) {
-        merror(REGEX_SUBS, ARGV0, SONICWALL_REGEX);
+        merror(REGEX_SUBS, SONICWALL_REGEX);
         return (0);
     }
     if (!__sonic_regex_prid->sub_strings) {
-        merror(REGEX_SUBS, ARGV0, SONICWALL_REGID);
+        merror(REGEX_SUBS, SONICWALL_REGID);
         return (0);
     }
     if (!__sonic_regex_prox->sub_strings) {
-        merror(REGEX_SUBS, ARGV0, SONICWALL_PROXY);
+        merror(REGEX_SUBS, SONICWALL_PROXY);
         return (0);
     }
 
@@ -253,7 +253,7 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf)
             /* Set the URL */
             lf->url = final_url;
         } else {
-            merror("%s: Error getting regex - SonicWall." , ARGV0);
+            merror("Error getting regex - SonicWall." );
         }
 
         return (NULL);

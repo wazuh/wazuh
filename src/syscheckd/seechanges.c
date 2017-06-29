@@ -85,7 +85,7 @@ int is_text(magic_t cookie, const void *buf, size_t len)
 
     if (!magic) {
         const char *err = magic_error(cookie);
-        merror("%s: ERROR: magic_buffer: %s", ARGV0, err ? err : "unknown");
+        merror("magic_buffer: %s", err ? err : "unknown");
         return (1); // TODO default to true?
     } else {
         if (strncmp(magic, "text/", 5) == 0) {
@@ -154,7 +154,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 
     fp = fopen(path, "r");
     if (!fp) {
-        merror("%s: ERROR: Unable to generate diff alert.", ARGV0);
+        merror("Unable to generate diff alert.");
         return (NULL);
     }
 
@@ -164,7 +164,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 
     switch (n) {
     case 0:
-        merror("%s: ERROR: Unable to generate diff alert (fread).", ARGV0);
+        merror("Unable to generate diff alert (fread).");
         return (NULL);
     case 4095:
         n -= strlen(STR_MORE_CHANGES);
@@ -182,7 +182,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     diff_str = strchr(buf, '\n');
 
     if (!diff_str) {
-        merror("%s: ERROR: Unable to find second line of alert string.", ARGV0);
+        merror("Unable to find second line of alert string.");
         return NULL;
     }
 
@@ -226,7 +226,7 @@ static int seechanges_dupfile(const char *old, const char *current)
         buf[n] = '\0';
 
         if (fwrite(buf, n, 1, fpw) < 1) {
-            merror("%s: ERROR: Unable to write data on file '%s'", ARGV0, current);
+            merror("Unable to write data on file '%s'", current);
             break;
         }
     } while ((n = fread(buf, 1, 2048, fpr)) > 0);
@@ -250,7 +250,7 @@ static int seechanges_createpath(const char *filename)
     newdir = buffer;
     tmpstr = strtok(buffer + PATH_OFFSET, "/\\");
     if (!tmpstr) {
-        merror("%s: ERROR: Invalid path name: '%s'", ARGV0, filename);
+        merror("Invalid path name: '%s'", filename);
         free(buffer);
         return (0);
     }
@@ -263,7 +263,7 @@ static int seechanges_createpath(const char *filename)
             if (mkdir(newdir) == -1)
 #endif
             {
-                merror(MKDIR_ERROR, ARGV0, newdir, errno, strerror(errno));
+                merror(MKDIR_ERROR, newdir, errno, strerror(errno));
                 free(buffer);
                 return (0);
             }
@@ -313,7 +313,7 @@ char *seechanges_addfile(const char *filename)
     if (OS_MD5_File(old_location, md5sum_old, OS_BINARY) != 0) {
         seechanges_createpath(old_location);
         if (seechanges_dupfile(filename, old_location) != 1) {
-            merror(RENAME_ERROR, ARGV0, filename, old_location, errno, strerror(errno));
+            merror(RENAME_ERROR, filename, old_location, errno, strerror(errno));
         }
         return (NULL);
     }
@@ -341,12 +341,12 @@ char *seechanges_addfile(const char *filename)
     );
 
     if (rename(old_location, tmp_location) == -1) {
-        merror(RENAME_ERROR, ARGV0, old_location, tmp_location, errno, strerror(errno));
+        merror(RENAME_ERROR, old_location, tmp_location, errno, strerror(errno));
         return (NULL);
     }
 
     if (seechanges_dupfile(filename, old_location) != 1) {
-        merror("%s: ERROR: Unable to create snapshot for %s", ARGV0, filename);
+        merror("Unable to create snapshot for %s", filename);
         return (NULL);
     }
 
@@ -372,12 +372,12 @@ char *seechanges_addfile(const char *filename)
         char* nodiff_message = "<Diff truncated because nodiff option>";
         fdiff = fopen(diff_location, "w");
         if (!fdiff){
-            merror("%s: ERROR: Unable to open file for writing `%s`", ARGV0, diff_location);
+            merror("Unable to open file for writing `%s`", diff_location);
             goto cleanup;
         }
 
         if (fwrite(nodiff_message, strlen(nodiff_message) + 1, 1, fdiff) < 1) {
-            merror("%s: ERROR: Unable to write data on file '%s'", ARGV0, diff_location);
+            merror("Unable to write data on file '%s'", diff_location);
         }
         fclose(fdiff);
         /* Success */
@@ -390,7 +390,7 @@ char *seechanges_addfile(const char *filename)
         diff_location_filtered = filter(diff_location);
 
         if (!(tmp_location_filtered && old_location_filtered && diff_location_filtered)) {
-            debug1("%s: DEBUG: Diff execution skipped for containing insecure characters.", ARGV0);
+            mdebug1("Diff execution skipped for containing insecure characters.");
             goto cleanup;
         }
 
@@ -413,7 +413,7 @@ char *seechanges_addfile(const char *filename)
         int pstatus = system(diff_cmd);
         if (pstatus < 0 || pstatus > 1) {
 #endif
-            merror("%s: ERROR: Unable to run `%s`", ARGV0, diff_cmd);
+            merror("Unable to run `%s`", diff_cmd);
             goto cleanup;
         }
 

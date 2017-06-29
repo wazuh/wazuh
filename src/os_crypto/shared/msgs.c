@@ -43,7 +43,7 @@ void OS_StartCounter(keystore *keys)
 
     rids_file[OS_FLSIZE] = '\0';
 
-    debug1("%s: OS_StartCounter: keysize: %u", __local_name, keys->keysize);
+    mdebug1("OS_StartCounter: keysize: %u", keys->keysize);
 
     /* Start receiving counter */
     for (i = 0; i <= keys->keysize; i++) {
@@ -75,18 +75,16 @@ void OS_StartCounter(keystore *keys)
                     }
                 }
 
-                merror("%s: Unable to open agent file. errno: %d",
-                       __local_name, my_error);
-                ErrorExit(FOPEN_ERROR, __local_name, rids_file, errno, strerror(errno));
+                merror("Unable to open agent file. errno: %d", my_error);
+                merror_exit(FOPEN_ERROR, rids_file, errno, strerror(errno));
             }
         } else {
             unsigned int g_c = 0, l_c = 0;
             if (fscanf(keys->keyentries[i]->fp, "%u:%u", &g_c, &l_c) != 2) {
                 if (i == keys->keysize) {
-                    verbose("%s: INFO: No previous sender counter.", __local_name);
+                    minfo("No previous sender counter.");
                 } else {
-                    verbose("%s: INFO: No previous counter available for '%s'.",
-                            __local_name,
+                    minfo("No previous counter available for '%s'.",
                             keys->keyentries[i]->name);
                 }
 
@@ -95,13 +93,13 @@ void OS_StartCounter(keystore *keys)
             }
 
             if (i == keys->keysize) {
-                verbose("%s: INFO: Assigning sender counter: %u:%u",
-                        __local_name, g_c, l_c);
+                minfo("Assigning sender counter: %u:%u",
+                        g_c, l_c);
                 global_count = g_c;
                 local_count = l_c;
             } else {
-                verbose("%s: INFO: Assigning counter for agent %s: '%u:%u'.",
-                        __local_name, keys->keyentries[i]->name, g_c, l_c);
+                minfo("Assigning counter for agent %s: '%u:%u'.",
+                        keys->keyentries[i]->name, g_c, l_c);
 
                 keys->keyentries[i]->global = g_c;
                 keys->keyentries[i]->local = l_c;
@@ -109,7 +107,7 @@ void OS_StartCounter(keystore *keys)
         }
     }
 
-    debug2("%s: DEBUG: Stored counter.", __local_name);
+    mdebug2("Stored counter.");
 
     /* Get counter values */
     if (_s_recv_flush == 0) {
@@ -185,14 +183,14 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
     if (*buffer == ':') {
         buffer++;
     } else {
-        merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->id, srcip);
+        merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
         return (NULL);
     }
 
     /* Decrypt message */
     if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->key,
                    buffer_size, OS_DECRYPT)) {
-        merror(ENCKEY_ERROR, __local_name, keys->keyentries[id]->ip->ip);
+        merror(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
         return (NULL);
     }
 
@@ -210,14 +208,14 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 
         /* Uncompress */
         if (!os_zlib_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR)) {
-            merror(UNCOMPRESS_ERR, __local_name);
+            merror(UNCOMPRESS_ERR);
             return (NULL);
         }
 
         /* Check checksum */
         f_msg = CheckSum(buffer);
         if (f_msg == NULL) {
-            merror(ENCSUM_ERROR, __local_name, keys->keyentries[id]->ip->ip);
+            merror(ENCSUM_ERROR, keys->keyentries[id]->ip->ip);
             return (NULL);
         }
 
@@ -230,7 +228,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 
         /* Check for the right message format */
         if (*f_msg != ':') {
-            merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->id, srcip);
+            merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
             return (NULL);
         }
         f_msg++;
@@ -273,15 +271,14 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
         }
 
         /* Warn about duplicated messages */
-        merror("%s: WARN: Duplicate error:  global: %u, local: %u, "
+        mwarn("Duplicate error:  global: %u, local: %u, "
                "saved global: %u, saved local:%u",
-               __local_name,
                msg_global,
                msg_local,
                keys->keyentries[id]->global,
                keys->keyentries[id]->local);
 
-        merror(ENCTIME_ERROR, __local_name, keys->keyentries[id]->name);
+        merror(ENCTIME_ERROR, keys->keyentries[id]->name);
         return (NULL);
     }
 
@@ -297,7 +294,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
         cleartext++;
         f_msg = CheckSum(cleartext);
         if (f_msg == NULL) {
-            merror(ENCSUM_ERROR, __local_name, keys->keyentries[id]->ip->ip);
+            merror(ENCSUM_ERROR, keys->keyentries[id]->ip->ip);
             return (NULL);
         }
 
@@ -320,7 +317,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
                 f_msg++;
                 return (f_msg);
             } else {
-                merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->id, srcip);
+                merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
                 return (NULL);
             }
         }
@@ -338,7 +335,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
                 f_msg++;
                 return (f_msg);
             } else {
-                merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->id, srcip);
+                merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
                 return (NULL);
             }
         }
@@ -350,19 +347,18 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
         }
 
         /* Warn about duplicated message */
-        merror("%s: WARN: Duplicate error:  msg_count: %u, time: %u, "
+        mwarn("Duplicate error:  msg_count: %u, time: %u, "
                "saved count: %u, saved_time:%u",
-               __local_name,
                msg_count,
                msg_time,
                keys->keyentries[id]->local,
                keys->keyentries[id]->global);
 
-        merror(ENCTIME_ERROR, __local_name, keys->keyentries[id]->name);
+        merror(ENCTIME_ERROR, keys->keyentries[id]->name);
         return (NULL);
     }
 
-    merror(ENCFORMAT_ERROR, __local_name, keys->keyentries[id]->id, srcip);
+    merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
     return (NULL);
 }
 
@@ -383,7 +379,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
 
     /* Check for invalid msg sizes */
     if ((msg_size > (OS_MAXSTR - OS_HEADER_SIZE)) || (msg_size < 1)) {
-        merror(ENCSIZE_ERROR, __local_name, msg);
+        merror(ENCSIZE_ERROR, msg);
         return (0);
     }
 
@@ -417,7 +413,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
      */
     cmp_size = os_zlib_compress(_finmsg, _tmpmsg + 8, msg_size, OS_MAXSTR - 12);
     if (!cmp_size) {
-        merror(COMPRESS_ERR, __local_name, _finmsg);
+        merror(COMPRESS_ERR, _finmsg);
         return (0);
     }
     cmp_size++;
@@ -443,7 +439,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
     c_orig_size += msg_size;
     c_comp_size += cmp_size;
     if (evt_count > _s_comp_print) {
-        verbose("%s: INFO: Event count after '%u': %lu->%lu (%lu%%)", __local_name,
+        minfo("Event count after '%u': %lu->%lu (%lu%%)",
                 evt_count,
                 (unsigned long)c_orig_size,
                 (unsigned long)c_comp_size,

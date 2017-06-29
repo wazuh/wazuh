@@ -40,23 +40,23 @@ void OS_SignLog(const char *logfile, const char *logfile_old, int log_missing)
 
     /* Generate MD5 of the old file */
     if (OS_MD5_File(logfilesum_old, mf_sum_old, OS_TEXT) < 0) {
-        merror("%s: No previous md5 checksum found: '%s'. "
-               "Starting over.", ARGV0, logfilesum_old);
+        merror("No previous md5 checksum found: '%s'. "
+               "Starting over.", logfilesum_old);
         strncpy(mf_sum_old, "none", 6);
     }
 
     /* Generate SHA-1 of the old file  */
     if (OS_SHA1_File(logfilesum_old, sf_sum_old, OS_TEXT) < 0) {
-        merror("%s: No previous sha1 checksum found: '%s'. "
-               "Starting over.", ARGV0, logfilesum_old);
+        merror("No previous sha1 checksum found: '%s'. "
+               "Starting over.", logfilesum_old);
         strncpy(sf_sum_old, "none", 6);
     }
 
     /* Generate MD5 of the current file */
     if (OS_MD5_File(logfile, mf_sum, OS_TEXT) < 0) {
         if (log_missing) {
-            merror("%s: File '%s' not found. MD5 checksum skipped.",
-                   ARGV0, logfile);
+            merror("File '%s' not found. MD5 checksum skipped.",
+                   logfile);
         }
         strncpy(mf_sum, "none", 6);
     }
@@ -64,15 +64,15 @@ void OS_SignLog(const char *logfile, const char *logfile_old, int log_missing)
     /* Generate SHA-1 of the current file */
     if (OS_SHA1_File(logfile, sf_sum, OS_TEXT) < 0) {
         if (log_missing) {
-            merror("%s: File '%s' not found. SHA1 checksum skipped.",
-                   ARGV0, logfile);
+            merror("File '%s' not found. SHA1 checksum skipped.",
+                   logfile);
         }
         strncpy(sf_sum, "none", 6);
     }
 
     fp = fopen(logfilesum, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, ARGV0, logfilesum, errno, strerror(errno));
+        merror(FOPEN_ERROR, logfilesum, errno, strerror(errno));
         return;
     }
 
@@ -87,4 +87,3 @@ void OS_SignLog(const char *logfile, const char *logfile_old, int log_missing)
 
     return;
 }
-

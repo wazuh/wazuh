@@ -66,12 +66,12 @@ int main(int argc, char **argv)
                 break;
             case 'u':
                 if(!optarg)
-                    ErrorExit("%s: -u needs an argument",ARGV0);
+                    merror_exit("-u needs an argument");
                 user = optarg;
                 break;
             case 'g':
                 if(!optarg)
-                    ErrorExit("%s: -g needs an argument",ARGV0);
+                    merror_exit("-g needs an argument");
                 group = optarg;
                 break;
             case 't':
@@ -87,22 +87,22 @@ int main(int argc, char **argv)
     }
 
     /* Starting daemon */
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if((uid < 0)||(gid < 0))
     {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Reading configuration */
     if(!OS_ReadIntegratorConf(cfg, &integrator_config) || !integrator_config[0])
     {
         /* Not configured */
-        verbose("%s: INFO: Remote integrations not configured. "
-                "Clean exit.", ARGV0);
+        minfo("Remote integrations not configured. "
+                "Clean exit.");
         exit(0);
     }
 
@@ -131,24 +131,24 @@ int main(int argc, char **argv)
 
     /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
 
     /* Changing user */
     if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
 
     /* Basic start up completed. */
-    debug1(PRIVSEP_MSG,ARGV0,dir,user);
+    mdebug1(PRIVSEP_MSG ,dir,user);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
 
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* the real daemon now */
     OS_IntegratorD(integrator_config);

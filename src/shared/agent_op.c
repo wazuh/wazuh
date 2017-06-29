@@ -39,7 +39,7 @@ int os_set_restart_syscheck()
 
     fp = fopen(SYSCHECK_RESTART, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, __local_name, SYSCHECK_RESTART, errno, strerror(errno));
+        merror(FOPEN_ERROR, SYSCHECK_RESTART, errno, strerror(errno));
         return (0);
     }
 
@@ -57,7 +57,7 @@ char *os_read_agent_name()
     char buf[1024 + 1];
     FILE *fp = NULL;
 
-    debug2("%s: calling os_read_agent_name().", __local_name);
+    mdebug2("Calling os_read_agent_name().");
 
     if (isChroot()) {
         fp = fopen(AGENT_INFO_FILE, "r");
@@ -77,7 +77,7 @@ char *os_read_agent_name()
     }
 
     if (!fp) {
-        debug1(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
+        mdebug1(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
 
@@ -89,14 +89,14 @@ char *os_read_agent_name()
         int len;
 
         // strip the newlines
-        len = strlen(buf) - 1; 
-        while (len > 0 && buf[len] == '\n') 
-            buf[len--] = '\0'; 
-        
+        len = strlen(buf) - 1;
+        while (len > 0 && buf[len] == '\n')
+            buf[len--] = '\0';
+
         os_strdup(buf, ret);
         fclose(fp);
 
-        debug2("%s: os_read_agent_name returned (%s).", __local_name, ret);
+        mdebug2("os_read_agent_name returned (%s).", ret);
 
         return (ret);
     }
@@ -113,11 +113,11 @@ char *os_read_agent_ip()
     char buf[1024 + 1];
     FILE *fp;
 
-    debug2("%s: calling os_read_agent_ip().", __local_name);
+    mdebug2("Calling os_read_agent_ip().");
 
     fp = fopen(AGENT_INFO_FILE, "r");
     if (!fp) {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
+        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
 
@@ -144,11 +144,11 @@ char *os_read_agent_id()
     char buf[1024 + 1];
     FILE *fp;
 
-    debug2("%s: calling os_read_agent_id().", __local_name);
+    mdebug2("Calling os_read_agent_id().");
 
     fp = fopen(AGENT_INFO_FILE, "r");
     if (!fp) {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
+        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
 
@@ -182,7 +182,7 @@ char *os_read_agent_profile()
     char buf[1024 + 1];
     FILE *fp;
 
-    debug2("%s: calling os_read_agent_profile().", __local_name);
+    mdebug2("Calling os_read_agent_profile().");
 
     if (isChroot()) {
         fp = fopen(AGENT_INFO_FILE, "r");
@@ -191,8 +191,8 @@ char *os_read_agent_profile()
     }
 
     if (!fp) {
-        debug2("%s: Failed to open file. Errno=%d.", __local_name, errno);
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
+        mdebug2("Failed to open file. Errno=%d.", errno);
+        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
 
@@ -207,7 +207,7 @@ char *os_read_agent_profile()
         os_trimcrlf(buf);
 
         os_strdup(buf, ret);
-        debug2("%s: os_read_agent_profile() = [%s]", __local_name, ret);
+        mdebug2("os_read_agent_profile() = [%s]", ret);
 
         fclose(fp);
 
@@ -228,7 +228,7 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 
     fp = fopen(AGENT_INFO_FILE, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
+        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (0);
     }
 
@@ -242,4 +242,3 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
     fclose(fp);
     return (1);
 }
-

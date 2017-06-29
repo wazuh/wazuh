@@ -30,24 +30,24 @@ void zeromq_output_start(const char *uri)
 {
     int rc;
 
-    debug1("%s: DEBUG: New ZeroMQ Context", ARGV0);
+    mdebug1("New ZeroMQ Context");
     zeromq_context = zctx_new();
     if (zeromq_context == NULL) {
-        merror("%s: Unable to initialize ZeroMQ library", ARGV0);
+        merror("Unable to initialize ZeroMQ library");
         return;
     }
 
-    debug1("%s: DEBUG: New ZeroMQ Socket: ZMQ_PUB", ARGV0);
+    mdebug1("New ZeroMQ Socket: ZMQ_PUB");
     zeromq_pubsocket = zsocket_new(zeromq_context, ZMQ_PUB);
     if (zeromq_pubsocket == NULL) {
-        merror("%s: Unable to initialize ZeroMQ Socket", ARGV0);
+        merror("Unable to initialize ZeroMQ Socket");
         return;
     }
 
-    debug1("%s: DEBUG: Listening on ZeroMQ Socket: %s", ARGV0, uri);
+    mdebug1("Listening on ZeroMQ Socket: %s", uri);
     rc = zsocket_bind(zeromq_pubsocket, "%s", uri);
     if (rc) {
-        merror("%s: Unable to bind the ZeroMQ Socket: %s.", ARGV0, uri);
+        merror("Unable to bind the ZeroMQ Socket: %s.", uri);
         return;
     }
 }
@@ -56,26 +56,26 @@ void zeromq_output_start(const char *uri, const char *client_cert_path, const ch
 {
     int rc;
 
-    debug1("%s: DEBUG: New ZeroMQ Socket: ZMQ_PUB", ARGV0);
+    mdebug1("New ZeroMQ Socket: ZMQ_PUB");
     zeromq_pubsocket = zsock_new(ZMQ_PUB);
     if (zeromq_pubsocket == NULL) {
-        merror("%s: Unable to initialize ZeroMQ Socket", ARGV0);
+        merror("Unable to initialize ZeroMQ Socket");
         return;
     }
 
     if (zsys_has_curve()) {
         if (client_cert_path && server_cert_path) {
-            debug1("%s: DEBUG: Initiating CURVE for ZeroMQ Socket", ARGV0);
+            mdebug1("Initiating CURVE for ZeroMQ Socket");
             auth = zactor_new(zauth, NULL);
             if (!auth) {
-                merror("%s: Unable to start auth for ZeroMQ Sock", ARGV0);
+                merror("Unable to start auth for ZeroMQ Sock");
             }
             zstr_sendx(auth, "CURVE", client_cert_path, NULL);
             zsock_wait(auth);
 
             zcert_t *server_cert = zcert_load(server_cert_path);
             if (!server_cert) {
-                merror("%s: Unable to load server certificate: %s.", ARGV0, server_cert_path);
+                merror("Unable to load server certificate: %s.", server_cert_path);
             }
 
             zcert_apply(server_cert, zeromq_pubsocket);
@@ -85,10 +85,10 @@ void zeromq_output_start(const char *uri, const char *client_cert_path, const ch
         }
     }
 
-    debug1("%s: DEBUG: Listening on ZeroMQ Socket: %s", ARGV0, uri);
+    mdebug1("Listening on ZeroMQ Socket: %s", uri);
     rc = zsock_bind(zeromq_pubsocket, "%s", uri);
     if (rc) {
-        merror("%s: Unable to bind the ZeroMQ Socket: %s.", ARGV0, uri);
+        merror("Unable to bind the ZeroMQ Socket: %s.", uri);
         return;
     }
 }

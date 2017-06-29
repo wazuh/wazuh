@@ -37,7 +37,7 @@ void SendSecurityToken(const int socket, SecBuffer *OutBuffers)
     {
         sent = send(socket, OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer, 0);
         if (sent <= 0)
-            ErrorExit("%s: Could not send security token to server (is ossec-authd running ?)", ARGV0);
+            merror_exit("Could not send security token to server (is ossec-authd running ?)");
 
         // Free Output Buffer
         FreeContextBuffer(OutBuffers[0].pvBuffer);
@@ -63,12 +63,12 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
     // Get manager IP address
     manager = OS_GetHost(manager, 3);
     if (manager == NULL)
-        ErrorExit("%s: Could not resolve manager's hostname", ARGV0);
+        merror_exit("Could not resolve manager's hostname");
 
     // Connect via TCP
     *socket = OS_ConnectTCP(port, manager, 0);
     if (socket == 0)
-        ErrorExit("%s: Unable to connect to %s:%d", ARGV0, manager, port);
+        merror_exit("Unable to connect to %s:%d", manager, port);
 
     // Setting authentication credentials
     ZeroMemory(&auth_cred, sizeof (auth_cred));
@@ -78,7 +78,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
 
     status = AcquireCredentialsHandle(NULL, UNISP_NAME, SECPKG_CRED_OUTBOUND, NULL, &auth_cred, NULL, NULL, cred, NULL);
     if (status != SEC_E_OK)
-        ErrorExit("%s: Could not acquire credentials (AcquireCredentialsHandle failed with error code 0x%lX", ARGV0, status);
+        merror_exit("Could not acquire credentials (AcquireCredentialsHandle failed with error code 0x%lX", status);
 
     //
     // Initialize security context
@@ -97,7 +97,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
 
     buffer = LocalAlloc(LMEM_FIXED, IO_BUFFER_SIZE);
     if (buffer == NULL)
-        ErrorExit("%s: out of memory !", ARGV0);
+        merror_exit("Out of memory!");
 
     input_flags = ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_CONFIDENTIALITY | ISC_REQ_INTEGRITY | ISC_REQ_MANUAL_CRED_VALIDATION | ISC_REQ_REPLAY_DETECT | ISC_REQ_SEQUENCE_DETECT | ISC_REQ_STREAM;
     status = InitializeSecurityContext(cred, NULL, NULL, input_flags, 0, 0, NULL, 0, context, &OutBuffer, &output_flags, NULL);
@@ -110,15 +110,15 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
             total_read = 0;
             break;
         case SEC_E_UNSUPPORTED_FUNCTION: // 0x80090302
-            ErrorExit("%s: ERROR: Couldn't negotiate encryption protocol. Try to run ossec-authd with \"-a\" option.", ARGV0);
+            merror_exit("Couldn't negotiate encryption protocol. Try to run ossec-authd with \"-a\" option.");
             break;
         case SEC_E_INCOMPLETE_MESSAGE:   // 0x80090318
             break;
         case SEC_E_ILLEGAL_MESSAGE:      // 0x80090326
-            ErrorExit("%s: Illegal message: maybe the manager requested certificate verification (unsupported).", ARGV0);
+            merror_exit("Illegal message: maybe the manager requested certificate verification (unsupported).");
             break;
         default:
-            merror("%s: WARN: unexpected status (0x%lx).", ARGV0, status);
+            mwarn("Unexpected status (0x%lx).", status);
         }
 
         // See if we have data to retrieve from server
@@ -126,7 +126,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
         {
             read = recv(*socket, buffer + total_read, IO_BUFFER_SIZE - total_read, 0);
             if (read <= 0)
-                ErrorExit("%s: Could not get security token from server", ARGV0);
+                merror_exit("Could not get security token from server");
 
             total_read += read;
         }
@@ -170,13 +170,13 @@ void SendSecureMessage(const int socket, CtxtHandle *context, const char *format
     // Get sizes for given context
     status = QueryContextAttributes(context, SECPKG_ATTR_STREAM_SIZES, &sizes);
     if (status != SEC_E_OK)
-        ErrorExit("%s: Could not get message sizes (QueryContextAttributes failed with error code 0x%lX)", ARGV0, status);
+        merror_exit("Could not get message sizes (QueryContextAttributes failed with error code 0x%lX)", status);
 
     // Construct message
     buffer_length = sizes.cbHeader + sizes.cbMaximumMessage + sizes.cbTrailer;
     buffer = LocalAlloc(LMEM_FIXED, buffer_length);
     if (buffer == NULL)
-        ErrorExit("%s: out of memory !", ARGV0);
+        merror_exit("Out of memory!");
     vsnprintf(buffer + sizes.cbHeader, buffer_length - sizes.cbHeader, format, args);
     msg_length = strlen(buffer + sizes.cbHeader);
 
@@ -201,11 +201,11 @@ void SendSecureMessage(const int socket, CtxtHandle *context, const char *format
 
     status = EncryptMessage(context, 0, &msg, 0);
     if (status != SEC_E_OK)
-        ErrorExit("%s: Could not encrypt message (EncryptMessage failed with error code %lX)", ARGV0, status);
+        merror_exit("Could not encrypt message (EncryptMessage failed with error code %lX)", status);
 
     sent = send(socket, buffer, msg_buffers[0].cbBuffer + msg_buffers[1].cbBuffer + msg_buffers[2].cbBuffer, 0);
     if (sent <= 0)
-            ErrorExit("%s: Could not send message to server", ARGV0);
+            merror_exit("Could not send message to server");
 
     va_end(args);
 }
@@ -229,7 +229,7 @@ char *ReceiveSecureMessage(const int socket, CtxtHandle *context)
         {
             read = recv(socket, buffer + buffer_length, IO_BUFFER_SIZE - buffer_length, 0);
             if (read <= 0)
-                ErrorExit("%s: Could not receive message from server (or invalid password)", ARGV0);
+                merror_exit("Could not receive message from server (or invalid password)");
 
             buffer_length += read;
         }
@@ -249,7 +249,7 @@ char *ReceiveSecureMessage(const int socket, CtxtHandle *context)
         status = DecryptMessage(context, &msg, 0, NULL);
 
         if ((status != SEC_E_OK) && (status != SEC_E_INCOMPLETE_MESSAGE))
-            ErrorExit("%s: Could not decrypt received message (DecryptMessage failed with error code 0x%lX)", ARGV0, status);
+            merror_exit("Could not decrypt received message (DecryptMessage failed with error code 0x%lX)", status);
 
         if (status == SEC_E_OK)
         {
@@ -274,7 +274,7 @@ char *ReceiveSecureMessage(const int socket, CtxtHandle *context)
 void InstallAuthKeys(char *msg)
 {
     if (strncmp(msg, "ERROR", 5) == 0)
-        ErrorExit("%s: %s (from manager)", ARGV0, msg);
+        merror_exit("%s (from manager)", msg);
     else if (strncmp(msg, "OSSEC K:'", 9) == 0)
     {
         char *key;
@@ -288,19 +288,19 @@ void InstallAuthKeys(char *msg)
         tmpstr = strchr(key, '\'');
 
         if (!tmpstr)
-            ErrorExit("%s: Invalid key received. Closing connection.", ARGV0);
+            merror_exit("Invalid key received. Closing connection.");
 
         *tmpstr = '\0';
         entry = OS_StrBreak(' ', key, 4);
 
         if (!OS_IsValidID(entry[0]) || !OS_IsValidName(entry[1]) ||
             !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3]))
-            ErrorExit("%s: Invalid key received (2). Closing connection.", ARGV0);
+            merror_exit("Invalid key received (2). Closing connection.");
 
         fp = fopen(KEYSFILE_PATH, "w");
 
         if (!fp)
-            ErrorExit("%s: Unable to open key file: %s", ARGV0, KEYSFILE_PATH);
+            merror_exit("Unable to open key file: %s", KEYSFILE_PATH);
 
         fprintf(fp, "%s\n", key);
         fclose(fp);
@@ -308,7 +308,7 @@ void InstallAuthKeys(char *msg)
         printf("INFO: Valid key created. Finished.\n");
     }
     else
-        ErrorExit("%s: Unknown message received (%s)", ARGV0, msg);
+        merror_exit("Unknown message received (%s)", msg);
 }
 
 void DisconnectFromServer(const int socket, CtxtHandle *context, CredHandle *cred)
@@ -333,7 +333,7 @@ void DisconnectFromServer(const int socket, CtxtHandle *context, CredHandle *cre
 
     status = ApplyControlToken(context, &OutBuffer);
     if (status != SEC_E_OK)
-        ErrorExit("%s: Could not correclty close connection", ARGV0);
+        merror_exit("Could not correclty close connection");
 
     input_flags = ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_CONFIDENTIALITY | ISC_REQ_INTEGRITY | ISC_REQ_MANUAL_CRED_VALIDATION | ISC_REQ_REPLAY_DETECT | ISC_REQ_SEQUENCE_DETECT | ISC_REQ_STREAM;
     OutBuffers[0].pvBuffer   = NULL;
@@ -346,11 +346,11 @@ void DisconnectFromServer(const int socket, CtxtHandle *context, CredHandle *cre
 
     status = InitializeSecurityContext(cred, context, NULL, input_flags, 0, 0, NULL, 0, context, &OutBuffer, &output_flags, NULL);
     if (status != SEC_E_OK)
-        ErrorExit("%s: Could not correclty close connection (2)", ARGV0);
+        merror_exit("Could not correclty close connection (2)");
 
     sent = send(socket, OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer, 0);
     if (sent <= 0)
-        ErrorExit("%s: Could not correclty close connection (3)", ARGV0);
+        merror_exit("Could not correclty close connection (3)");
 
     FreeContextBuffer(OutBuffers[0].pvBuffer);
     DeleteSecurityContext(context);
@@ -384,26 +384,26 @@ int main(int argc, char **argv)
                 break;
             case 'm':
                if(!optarg)
-                    ErrorExit("%s: -%c needs an argument",ARGV0, c);
+                    merror_exit("-%c needs an argument", c);
                 manager = optarg;
                 break;
             case 'A':
                if(!optarg)
-                    ErrorExit("%s: -%c needs an argument",ARGV0, c);
+                    merror_exit("-%c needs an argument", c);
                 agentname = optarg;
                 break;
             case 'p':
                if(!optarg)
-                    ErrorExit("%s: -%c needs an argument",ARGV0, c);
+                    merror_exit("-%c needs an argument", c);
                 port = atoi(optarg);
                 if(port <= 0 || port >= 65536)
                 {
-                    ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
+                    merror_exit("Invalid port: %s", optarg);
                 }
                 break;
             case 'P':
                 if (!optarg)
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    merror_exit("-%c needs an argument", c);
 
                 authpass = optarg;
                 break;
@@ -416,13 +416,13 @@ int main(int argc, char **argv)
     // Initialize Windows Networking
     error = WSAStartup(MAKEWORD(2, 2), &wsa);
     if (error)
-        ErrorExit("%s: Could not initialize networking (WSAStartup failed with error code %u)", ARGV0, error);
+        merror_exit("Could not initialize networking (WSAStartup failed with error code %u)", error);
 
     // Determine agent_name
     if(agentname == NULL)
     {
         if(gethostname(hostname, 512) != 0)
-            ErrorExit("%s: ERROR: Unable to extract hostname. Custom agent name not set.", ARGV0);
+            merror_exit("Unable to extract hostname. Custom agent name not set.");
 
         agentname = hostname;
     }

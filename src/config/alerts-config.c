@@ -29,22 +29,22 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
     Config = (_Config *)configp;
 
     if (!Config) {
-        merror("%s: ERROR: Configuration handle is NULL.", __local_name);
+        merror("Configuration handle is NULL.");
         return (OS_INVALID);
     }
 
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL, __local_name);
+            merror(XML_ELEMNULL);
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, __local_name, node[i]->element);
+            merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         }
         /* Mail notification */
         else if (strcmp(node[i]->element, xml_email_level) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 
@@ -53,7 +53,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
         /* Log alerts */
         else if (strcmp(node[i]->element, xml_log_level) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
             Config->logbylevel  = (u_int8_t) atoi(node[i]->content);
@@ -66,14 +66,14 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
             } else if (strcmp(node[i]->content, "no") == 0) {
                 Config->loggeoip = 0;
             } else {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 
         }
 #endif
         else {
-            merror(XML_INVELEM, __local_name, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
         i++;

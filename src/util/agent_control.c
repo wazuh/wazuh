@@ -120,21 +120,21 @@ int main(int argc, char **argv)
             /* no break; */
             case 'u':
                 if (!optarg) {
-                    merror("%s: -u needs an argument", ARGV0);
+                    merror("-u needs an argument");
                     helpmsg();
                 }
                 agent_id = optarg;
                 break;
             case 'b':
                 if (!optarg) {
-                    merror("%s: -b needs an argument", ARGV0);
+                    merror("-b needs an argument");
                     helpmsg();
                 }
                 ip_address = optarg;
                 break;
             case 'f':
                 if (!optarg) {
-                    merror("%s: -e needs an argument", ARGV0);
+                    merror("-e needs an argument");
                     helpmsg();
                 }
                 ar = optarg;
@@ -162,17 +162,17 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Set the group */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Chroot to the default directory */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
 
     /* Inside chroot now */
@@ -180,7 +180,7 @@ int main(int argc, char **argv)
 
     /* Set the user */
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* Get server hostname */
@@ -443,7 +443,7 @@ int main(int argc, char **argv)
         os_set_restart_syscheck();
 
         /* Connect to remoted */
-        debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
+        mdebug1("Connecting to remoted...");
         arq = connect_to_remoted();
         if (arq < 0) {
             if(json_output){
@@ -456,7 +456,7 @@ int main(int argc, char **argv)
             }
             exit(1);
         }
-        debug1("%s: DEBUG: Connected...", ARGV0);
+        mdebug1("Connected...");
 
         /* Send restart message to all agents */
         if (send_msg_to_agent(arq, HC_SK_RESTART, NULL, NULL) == 0) {
@@ -499,7 +499,7 @@ int main(int argc, char **argv)
         }
 
         /* Connect to remoted */
-        debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
+        mdebug1("Connecting to remoted...");
         arq = connect_to_remoted();
         if (arq < 0) {
             if(json_output){
@@ -512,7 +512,7 @@ int main(int argc, char **argv)
             }
             exit(1);
         }
-        debug1("%s: DEBUG: Connected...", ARGV0);
+        mdebug1("Connected...");
 
         if (send_msg_to_agent(arq, HC_SK_RESTART, agent_id, NULL) == 0) {
             if(json_output){
@@ -553,7 +553,7 @@ int main(int argc, char **argv)
         }
 
         /* Connect to remoted */
-        debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
+        mdebug1("Connecting to remoted...");
         arq = connect_to_remoted();
         if (arq < 0) {
             if(json_output){
@@ -566,7 +566,7 @@ int main(int argc, char **argv)
             }
             exit(1);
         }
-        debug1("%s: DEBUG: Connected...", ARGV0);
+        mdebug1("Connected...");
 
         if (send_msg_to_agent(arq, "restart-ossec0", restart_all_agents ? NULL : agent_id, "null") == 0) {
             if(json_output){
@@ -595,13 +595,13 @@ int main(int argc, char **argv)
     /* Run active response on the specified agent id */
     if (ip_address && ar && (agent_id || restart_all_agents)) {
         /* Connect to remoted */
-        debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
+        mdebug1("Connecting to remoted...");
         arq = connect_to_remoted();
         if (arq < 0) {
             printf("\n** Unable to connect to remoted.\n");
             exit(1);
         }
-        debug1("%s: DEBUG: Connected...", ARGV0);
+        mdebug1("Connected...");
 
         if (send_msg_to_agent(arq, ar, agent_id, ip_address) == 0) {
             printf("\n%s %s: Running active response '%s' on: %s\n",

@@ -7,9 +7,9 @@
  * Foundation
  */
 
-/* Functions to generate debug/verbose/err reports
+/* Functions to generate debug/information/error/warning/critical reports
  *
- * We have two debug levels (1 and 2), a verbose mode and an error function
+ * We have two debug levels (1 and 2), a verbose mode and functions to catch warnings, errors, and critical situations
  *
  * To see these messages, use the "-d","-v" options (or "-d" twice to see debug2)
  * The merror is printed by default when an important error occurs
@@ -33,13 +33,21 @@
 #endif
 #endif
 
-void debug1(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
-void debug2(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
+void mdebug1(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
+void mtdebug1(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
+void mdebug2(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
+void mtdebug2(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
 void merror(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
-void verbose(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
+void mterror(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
+void mwarn(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
+void mtwarn(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
+void minfo(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
+void mtinfo(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
 void print_out(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
-void log2file(const char *msg, ... ) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
-void ErrorExit(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull)) __attribute__ ((noreturn));
+void mferror(const char *msg, ... ) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
+void mtferror(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
+void merror_exit(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull)) __attribute__ ((noreturn));
+void mterror_exit(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull)) __attribute__ ((noreturn));
 
 /* Use these three functions to set when you
  * enter in debug, chroot or daemon mode
@@ -54,7 +62,7 @@ int isChroot(void);
 
 /* Debug analysisd */
 #ifdef DEBUGAD
-#define DEBUG_MSG(x,y,z) verbose(x,y,z)
+#define DEBUG_MSG(x,y,z) minfo(x,y,z)
 #else
 #define DEBUG_MSG(x,y,z)
 #endif /* end debug analysisd */

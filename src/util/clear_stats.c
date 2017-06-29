@@ -52,17 +52,17 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Set the group */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Chroot to the default directory */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
 
     /* Inside chroot now */
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 
     /* Set the user */
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* User options */
@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 
         daily = opendir(daily_dir);
         if (!daily) {
-            ErrorExit("%s: Unable to open: '%s'", ARGV0, daily_dir);
+            merror_exit("Unable to open: '%s'", daily_dir);
         }
 
         while ((entry = readdir(daily)) != NULL) {
@@ -129,8 +129,7 @@ int main(int argc, char **argv)
             snprintf(dir_path, OS_MAXSTR, "%s/%d", daily_dir, i);
             daily = opendir(dir_path);
             if (!daily) {
-                ErrorExit("%s: Unable to open: '%s' (no stats)",
-                          ARGV0, dir_path);
+                merror_exit("Unable to open: '%s' (no stats)", dir_path);
             }
 
             while ((entry = readdir(daily)) != NULL) {

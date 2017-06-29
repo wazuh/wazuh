@@ -132,11 +132,11 @@ int rk_check_file(char *file, char *pattern)
         } else {
             full_negate = pt_check_negate(pattern);
             /* Check for content in the file */
-            debug1("checking file: %s", file);
+            mtdebug1(ARGV0, "Checking file: %s", file);
             fp = fopen(file, "r");
             if (fp) {
 
-                debug1(" starting new file: %s", file);
+                mtdebug1(ARGV0, "Starting new file: %s", file);
                 buf[OS_SIZE_2048] = '\0';
                 while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
                     char *nbuf;
@@ -155,11 +155,11 @@ int rk_check_file(char *file, char *pattern)
 #endif
                     /* Matched */
                     pt_result = pt_matches(buf, pattern);
-                    debug1("Buf == \"%s\"", buf);
-                    debug1("Pattern == \"%s\"", pattern);
-                    debug1("pt_result == %d and full_negate == %d", pt_result, full_negate);
+                    mtdebug1(ARGV0, "Buf == \"%s\"", buf);
+                    mtdebug1(ARGV0, "Pattern == \"%s\"", pattern);
+                    mtdebug1(ARGV0, "pt_result == %d and full_negate == %d", pt_result, full_negate);
                     if ((pt_result == 1 && full_negate == 0) ) {
-                        debug1("alerting file %s on line %s", file, buf);
+                        mtdebug1(ARGV0, "Alerting file %s on line %s", file, buf);
                         int i = 0;
                         char _b_msg[OS_SIZE_1024 + 1];
 
@@ -190,7 +190,7 @@ int rk_check_file(char *file, char *pattern)
                          * break out of loop and make sure the full negate does
                          * not alert.
                          */
-                        debug1("found a complete match for full_negate");
+                        mtdebug1(ARGV0, "Found a complete match for full_negate");
                         full_negate = 0;
                         break;
                     }
@@ -199,7 +199,7 @@ int rk_check_file(char *file, char *pattern)
                 fclose(fp);
 
                 if (full_negate == 1) {
-                    debug1("full_negate alerting - file %s", file);
+                    mtdebug1(ARGV0, "Full_negate alerting - file %s", file);
                     int i = 0;
                     char _b_msg[OS_SIZE_1024 + 1];
 
@@ -266,7 +266,7 @@ int pt_check_negate(const char *pattern)
         tmp_pattern = tmp_pt;
     }
 
-    debug1("pattern: %s is fill_negate", pattern);
+    mtdebug1(ARGV0, "Pattern: %s is fill_negate", pattern);
     free(mypattern);
     return (1);
 }
@@ -322,7 +322,7 @@ int pt_matches(const char *str, char *pattern)
         } else if (strncasecmp(pattern, "r:", 2) == 0) {
             pattern += 2;
             if (OS_Regex(pattern, str)) {
-                debug1("pattern: %s matches %s.", pattern, str);
+                mtdebug1(ARGV0, "Pattern: %s matches %s.", pattern, str);
                 ret_code = 1;
             }
         } else if (strncasecmp(pattern, "<:", 2) == 0) {
@@ -463,7 +463,7 @@ int is_file(char *file_name)
     /* Get dir name */
     file_basename = strrchr(file_name, '/');
     if (!file_basename) {
-        merror("%s: RK: Invalid file name: %s!", ARGV0, file_name);
+        mterror(ARGV0, "RK: Invalid file name: %s!", file_name);
         return (0);
     }
 
@@ -499,7 +499,7 @@ int is_file(char *file_name)
 
             /* Return to the previous directory */
             if (chdir(curr_dir) == -1) {
-                merror(CHDIR_ERROR, ARGV0, curr_dir, errno, strerror(errno));
+                mterror(ARGV0, CHDIR_ERROR, curr_dir, errno, strerror(errno));
                 return (0);
             }
         }
@@ -512,7 +512,7 @@ int is_file(char *file_name)
 
             /* Return to the previous directory */
             if (chdir(curr_dir) == -1) {
-                merror(CHDIR_ERROR, ARGV0, curr_dir, errno, strerror(errno));
+                mterror(ARGV0, CHDIR_ERROR, curr_dir, errno, strerror(errno));
                 return (0);
             }
         } else if (errno == ENOTDIR) {
@@ -636,4 +636,3 @@ int is_process(char *value, OSList *p_list)
 
     return (0);
 }
-

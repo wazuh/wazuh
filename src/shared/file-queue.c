@@ -95,7 +95,7 @@ static int Handle_Queue(file_queue *fileq, int flags)
         }
 
         if (fseek(fileq->fp, 0, SEEK_END) < 0) {
-            merror(FSEEK_ERROR, __local_name, fileq->file_name, errno, strerror(errno));
+            merror(FSEEK_ERROR, fileq->file_name, errno, strerror(errno));
             fclose(fileq->fp);
             fileq->fp = NULL;
             return (-1);
@@ -104,7 +104,7 @@ static int Handle_Queue(file_queue *fileq, int flags)
 
     /* File change time */
     if (fstat(fileno(fileq->fp), &fileq->f_status) < 0) {
-        merror(FSTAT_ERROR, __local_name, fileq->file_name, errno, strerror(errno));
+        merror(FSTAT_ERROR, fileq->file_name, errno, strerror(errno));
         fclose(fileq->fp);
         fileq->fp = NULL;
         return (-1);

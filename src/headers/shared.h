@@ -161,22 +161,20 @@ typedef unsigned char u_int8_t;
 #define MSG_DONTWAIT MSG_NONBLOCK
 #endif
 
-/* Local name */
 extern const char *__local_name;
-
 /*** Global prototypes ***/
 /*** These functions will exit on error. No need to check return code ***/
 
 /* for calloc: x = calloc(4,sizeof(char)) -> os_calloc(4,sizeof(char),x) */
-#define os_calloc(x,y,z) ((z = (__typeof__(z)) calloc(x,y)))?(void)1:ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno))
+#define os_calloc(x,y,z) ((z = (__typeof__(z)) calloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
 
-#define os_strdup(x,y) ((y = strdup(x)))?(void)1:ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno))
+#define os_strdup(x,y) ((y = strdup(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
 
-#define os_malloc(x,y) ((y = (__typeof__(y)) malloc(x)))?(void)1:ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno))
+#define os_malloc(x,y) ((y = (__typeof__(y)) malloc(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
 
 #define os_free(x) (x)?free(x):merror("free a null")
 
-#define os_realloc(x,y,z) ((z = (__typeof__(z))realloc(x,y)))?(void)1:ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno))
+#define os_realloc(x,y,z) ((z = (__typeof__(z))realloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
 
 #define os_clearnl(x,p) if((p = strrchr(x, '\n')))*p = '\0';
 

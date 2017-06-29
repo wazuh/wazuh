@@ -90,7 +90,7 @@ int realtime_checksumfile(const char *file_name)
 
             for (i = 0; syscheck.dir[i]; i++) {
                 if (strcmp(syscheck.dir[i], buf) == 0) {
-                    debug1("%s: DEBUG: Scanning new file '%s' with options for directory '%s'.", ARGV0, file_name, buf);
+                    mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, buf);
                     read_dir(file_name, syscheck.opts[i], syscheck.filerestrict[i]);
                     break;
                 }
@@ -117,11 +117,11 @@ int realtime_checksumfile(const char *file_name)
 /* Start real time monitoring using inotify */
 int realtime_start()
 {
-    verbose("%s: INFO: Initializing real time file monitoring engine.", ARGV0);
+    minfo("Initializing real time file monitoring engine.");
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if (syscheck.realtime == NULL) {
-        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+        merror_exit(MEM_ERROR, errno, strerror(errno));
     }
     syscheck.realtime->dirtb = OSHash_Create();
     syscheck.realtime->fd = -1;
@@ -129,7 +129,7 @@ int realtime_start()
 #ifdef INOTIFY_ENABLED
     syscheck.realtime->fd = inotify_init();
     if (syscheck.realtime->fd < 0) {
-        merror("%s: ERROR: Unable to initialize inotify.", ARGV0);
+        merror("Unable to initialize inotify.");
         return (-1);
     }
 #endif
@@ -153,11 +153,11 @@ int realtime_adddir(const char *dir)
         if(syscheck.skip_nfs) {
             short is_nfs = IsNFS(dir);
             if( is_nfs == 1 ) {
-                merror("%s: ERROR: %s NFS Directories do not support iNotify.", ARGV0, dir);
+                merror("%s NFS Directories do not support iNotify.", dir);
             	return(-1);
             }
             else {
-                debug2("%s: DEBUG: syscheck.skip_nfs=%d, %s::is_nfs=%d", ARGV0, syscheck.skip_nfs, dir, is_nfs);
+                mdebug2("syscheck.skip_nfs=%d, %s::is_nfs=%d", syscheck.skip_nfs, dir, is_nfs);
             }
         }
 
@@ -165,8 +165,7 @@ int realtime_adddir(const char *dir)
                                dir,
                                REALTIME_MONITOR_FLAGS);
         if (wd < 0) {
-            merror("%s: ERROR: Unable to add directory to real time "
-                   "monitoring: '%s'. %d %d", ARGV0, dir, wd, errno);
+            merror("Unable to add directory to real time monitoring: '%s'. %d %d", dir, wd, errno);
         } else {
             char wdchar[32 + 1];
             wdchar[32] = '\0';
@@ -178,12 +177,11 @@ int realtime_adddir(const char *dir)
 
                 ndir = strdup(dir);
                 if (ndir == NULL) {
-                    ErrorExit("%s: ERROR: Out of memory. Exiting.", ARGV0);
+                    merror_exit("Out of memory. Exiting.");
                 }
 
                 OSHash_Add(syscheck.realtime->dirtb, wdchar, ndir);
-                debug1("%s: DEBUG: Directory added for real time monitoring: "
-                       "'%s'.", ARGV0, ndir);
+                mdebug1("Directory added for real time monitoring: '%s'.", ndir);
             }
         }
     }
@@ -203,7 +201,7 @@ int realtime_process()
 
     len = read(syscheck.realtime->fd, buf, REALTIME_EVENT_BUFFER);
     if (len < 0) {
-        merror("%s: ERROR: Unable to read from real time buffer.", ARGV0);
+        merror("Unable to read from real time buffer.");
     } else if (len > 0) {
         while (i < (size_t) len) {
             event = (struct inotify_event *) (void *) &buf[i];
@@ -258,13 +256,12 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     TCHAR finalfile[MAX_PATH];
 
     if (dwBytes == 0) {
-        merror("%s: ERROR: real time call back called, but 0 bytes.", ARGV0);
+        merror("real time call back called, but 0 bytes.");
         return;
     }
 
     if (dwerror != ERROR_SUCCESS) {
-        merror("%s: ERROR: real time call back called, but error is set.",
-               ARGV0);
+        merror("real time call back called, but error is set.");
         return;
     }
 
@@ -273,8 +270,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     snprintf(wdchar, 32, "%d", (int)overlap->Offset);
     rtlocald = OSHash_Get(syscheck.realtime->dirtb, wdchar);
     if (rtlocald == NULL) {
-        merror("%s: ERROR: real time call back called, but hash is empty.",
-               ARGV0);
+        merror("real time call back called, but hash is empty.");
         return;
     }
 
@@ -310,7 +306,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
 int realtime_start()
 {
-    verbose("%s: INFO: Initializing real time file monitoring engine.", ARGV0);
+    minfo("Initializing real time file monitoring engine.");
 
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
     syscheck.realtime->dirtb = (void *)OSHash_Create();
@@ -333,8 +329,7 @@ int realtime_win32read(win32rtfim *rtlocald)
                                &rtlocald->overlap,
                                RTCallBack);
     if (rc == 0) {
-        merror("%s: ERROR: Unable to set directory for monitoring: %s",
-               ARGV0, rtlocald->dir);
+        merror("Unable to set directory for monitoring: %s", rtlocald->dir);
         sleep(2);
     }
 
@@ -352,8 +347,7 @@ int realtime_adddir(const char *dir)
 
     /* Maximum limit for realtime on Windows */
     if (syscheck.realtime->fd > 256) {
-        merror("%s: ERROR: Unable to add directory to real time "
-               "monitoring: '%s' - Maximum size permitted.", ARGV0, dir);
+        merror("Unable to add directory to real time monitoring: '%s' - Maximum size permitted.", dir);
         return (0);
     }
 
@@ -372,8 +366,7 @@ int realtime_adddir(const char *dir)
             rtlocald->h == NULL) {
         free(rtlocald);
         rtlocald = NULL;
-        merror("%s: ERROR: Unable to add directory to real time "
-               "monitoring: '%s'.", ARGV0, dir);
+        merror("Unable to add directory to real time monitoring: '%s'.", dir);
         return (0);
     }
 
@@ -384,8 +377,7 @@ int realtime_adddir(const char *dir)
     snprintf(wdchar, 32, "%d", (int)rtlocald->overlap.Offset);
 
     if (OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
-        merror("%s: ERROR: Entry already in the real time hash: %s",
-               ARGV0, wdchar);
+        merror("Entry already in the real time hash: %s", wdchar);
         CloseHandle(rtlocald->overlap.hEvent);
         free(rtlocald);
         rtlocald = NULL;
@@ -406,7 +398,7 @@ int realtime_adddir(const char *dir)
 
 int realtime_start()
 {
-    verbose("%s: ERROR: Unable to initalize real time file monitoring.", ARGV0);
+    merror("Unable to initalize real time file monitoring.");
 
     return (0);
 }

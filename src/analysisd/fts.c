@@ -33,18 +33,18 @@ int FTS_Init()
 
     fts_list = OSList_Create();
     if (!fts_list) {
-        merror(LIST_ERROR, ARGV0);
+        merror(LIST_ERROR);
         return (0);
     }
 
     /* Create store data */
     fts_store = OSHash_Create();
     if (!fts_store) {
-        merror(LIST_ERROR, ARGV0);
+        merror(LIST_ERROR);
         return (0);
     }
     if (!OSHash_setSize(fts_store, 2048)) {
-        merror(LIST_ERROR, ARGV0);
+        merror(LIST_ERROR);
         return (0);
     }
 
@@ -59,7 +59,7 @@ int FTS_Init()
                           6, 128);
 
     if (!OSList_SetMaxSize(fts_list, fts_list_size)) {
-        merror(LIST_SIZE_ERROR, ARGV0);
+        merror(LIST_SIZE_ERROR);
         return (0);
     }
 
@@ -73,7 +73,7 @@ int FTS_Init()
         }
 
         if (chmod(FTS_QUEUE, 0640) == -1) {
-            merror(CHMOD_ERROR, ARGV0, FTS_QUEUE, errno, strerror(errno));
+            merror(CHMOD_ERROR, FTS_QUEUE, errno, strerror(errno));
             return 0;
         }
 
@@ -81,14 +81,14 @@ int FTS_Init()
         gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
         if (uid != (uid_t) - 1 && gid != (gid_t) - 1) {
             if (chown(FTS_QUEUE, uid, gid) == -1) {
-                merror(CHOWN_ERROR, ARGV0, FTS_QUEUE, errno, strerror(errno));
+                merror(CHOWN_ERROR, FTS_QUEUE, errno, strerror(errno));
                 return (0);
             }
         }
 
         fp_list = fopen(FTS_QUEUE, "r+");
         if (!fp_list) {
-            merror(FOPEN_ERROR, ARGV0, FTS_QUEUE, errno, strerror(errno));
+            merror(FOPEN_ERROR, FTS_QUEUE, errno, strerror(errno));
             return (0);
         }
     }
@@ -107,7 +107,7 @@ int FTS_Init()
         os_strdup(_line, tmp_s);
         if (OSHash_Add(fts_store, tmp_s, tmp_s) <= 0) {
             free(tmp_s);
-            merror(LIST_ADD_ERROR, ARGV0);
+            merror(LIST_ADD_ERROR);
         }
     }
 
@@ -121,7 +121,7 @@ int FTS_Init()
         }
 
         if (chmod(IG_QUEUE, 0640) == -1) {
-            merror(CHMOD_ERROR, ARGV0, IG_QUEUE, errno, strerror(errno));
+            merror(CHMOD_ERROR, IG_QUEUE, errno, strerror(errno));
             return (0);
         }
 
@@ -129,19 +129,19 @@ int FTS_Init()
         gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
         if (uid != (uid_t) - 1 && gid != (gid_t) - 1) {
             if (chown(IG_QUEUE, uid, gid) == -1) {
-                merror(CHOWN_ERROR, ARGV0, IG_QUEUE, errno, strerror(errno));
+                merror(CHOWN_ERROR, IG_QUEUE, errno, strerror(errno));
                 return (0);
             }
         }
 
         fp_ignore = fopen(IG_QUEUE, "r+");
         if (!fp_ignore) {
-            merror(FOPEN_ERROR, ARGV0, IG_QUEUE, errno, strerror(errno));
+            merror(FOPEN_ERROR, IG_QUEUE, errno, strerror(errno));
             return (0);
         }
     }
 
-    debug1("%s: DEBUG: FTSInit completed.", ARGV0);
+    mdebug1("FTSInit completed.");
 
     return (1);
 }

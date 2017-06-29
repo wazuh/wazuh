@@ -101,7 +101,7 @@ void osdb_escapestr(char *str)
 static void osdb_checkerror()
 {
     if (!db_config_pt || db_config_pt->error_count > 20) {
-        ErrorExit(DB_MAINERROR, ARGV0);
+        merror_exit(DB_MAINERROR);
     }
 
     /* If error count is too large, we try to reconnect */
@@ -114,7 +114,7 @@ static void osdb_checkerror()
         }
 
         while (i <= db_config_pt->maxreconnect) {
-            merror(DB_ATTEMPT, ARGV0);
+            minfo(DB_ATTEMPT);
             db_config_pt->conn = osdb_connect(db_config_pt->host,
                                               db_config_pt->user,
                                               db_config_pt->pass,
@@ -133,11 +133,11 @@ static void osdb_checkerror()
 
         /* If we weren't able to connect, exit */
         if (!db_config_pt->conn) {
-            ErrorExit(DB_MAINERROR, ARGV0);
+            merror_exit(DB_MAINERROR);
         }
 
-        verbose("%s: Connected to database '%s' at '%s'.",
-                ARGV0, db_config_pt->db, db_config_pt->host);
+        minfo("Connected to database '%s' at '%s'.",
+                db_config_pt->db, db_config_pt->host);
     }
 }
 
@@ -169,7 +169,7 @@ void *mysql_osdb_connect(const char *host, const char *user, const char *pass, c
     MYSQL *conn;
     conn = mysql_init(NULL);
     if (conn == NULL) {
-        merror(DBINIT_ERROR, ARGV0);
+        merror(DBINIT_ERROR);
         return (NULL);
     }
 
@@ -185,7 +185,7 @@ void *mysql_osdb_connect(const char *host, const char *user, const char *pass, c
     }
     if (mysql_real_connect(conn, host, user, pass, db,
                            port, sock, 0) == NULL) {
-        merror(DBCONN_ERROR, ARGV0, host, db, mysql_error(conn));
+        merror(DBCONN_ERROR, host, db, mysql_error(conn));
         mysql_close(conn);
         return (NULL);
     }
@@ -196,7 +196,7 @@ void *mysql_osdb_connect(const char *host, const char *user, const char *pass, c
 /* Close the database connection */
 void *mysql_osdb_close(void *db_conn)
 {
-    merror(DB_CLOSING, ARGV0);
+    minfo(DB_CLOSING);
     mysql_close(db_conn);
     return (NULL);
 }
@@ -206,7 +206,7 @@ int mysql_osdb_query_insert(void *db_conn, const char *query)
 {
     if (mysql_query(db_conn, query) != 0) {
         /* failure; report error */
-        merror(DBQUERY_ERROR, ARGV0, query, mysql_error(db_conn));
+        merror(DBQUERY_ERROR, query, mysql_error(db_conn));
         osdb_seterror();
         return (0);
     }
@@ -226,7 +226,7 @@ int mysql_osdb_query_select(void *db_conn, const char *query)
     /* Send the query. It can not fail. */
     if (mysql_query(db_conn, query) != 0) {
         /* Failure: report error */
-        merror(DBQUERY_ERROR, ARGV0, query, mysql_error(db_conn));
+        merror(DBQUERY_ERROR, query, mysql_error(db_conn));
         osdb_seterror();
         return (0);
     }
@@ -235,7 +235,7 @@ int mysql_osdb_query_select(void *db_conn, const char *query)
     result_data = mysql_use_result(db_conn);
     if (result_data == NULL) {
         /* Failure: report error */
-        merror(DBQUERY_ERROR, ARGV0, query, mysql_error(db_conn));
+        merror(DBQUERY_ERROR, query, mysql_error(db_conn));
         osdb_seterror();
         return (0);
     }
@@ -266,7 +266,7 @@ void *postgresql_osdb_connect(const char *host, const char *user, const char *pa
 
     conn = PQsetdbLogin(host, NULL, NULL, NULL, db, user, pass);
     if (PQstatus(conn) == CONNECTION_BAD) {
-        merror(DBCONN_ERROR, ARGV0, host, db, PQerrorMessage(conn));
+        merror(DBCONN_ERROR, host, db, PQerrorMessage(conn));
         PQfinish(conn);
         return (NULL);
     }
@@ -277,7 +277,7 @@ void *postgresql_osdb_connect(const char *host, const char *user, const char *pa
 /* Terminates db connection */
 void *postgresql_osdb_close(void *db_conn)
 {
-    merror(DB_CLOSING, ARGV0);
+    minfo(DB_CLOSING);
     PQfinish(db_conn);
     return (NULL);
 }
@@ -289,13 +289,13 @@ int postgresql_osdb_query_insert(void *db_conn, const char *query)
 
     result = PQexec(db_conn, query);
     if (!result) {
-        merror(DBQUERY_ERROR, ARGV0, query, PQerrorMessage(db_conn));
+        merror(DBQUERY_ERROR, query, PQerrorMessage(db_conn));
         osdb_seterror();
         return (0);
     }
 
     if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-        merror(DBQUERY_ERROR, ARGV0, query, PQerrorMessage(db_conn));
+        merror(DBQUERY_ERROR, query, PQerrorMessage(db_conn));
         PQclear(result);
         osdb_seterror();
         return (0);
@@ -316,7 +316,7 @@ int postgresql_osdb_query_select(void *db_conn, const char *query)
 
     result = PQexec(db_conn, query);
     if (!result) {
-        merror(DBQUERY_ERROR, ARGV0, query, PQerrorMessage(db_conn));
+        merror(DBQUERY_ERROR, query, PQerrorMessage(db_conn));
         osdb_seterror();
         return (0);
     }
@@ -326,7 +326,7 @@ int postgresql_osdb_query_select(void *db_conn, const char *query)
             result_int = atoi(PQgetvalue(result, 0, 0));
         }
     } else {
-        merror(DBQUERY_ERROR, ARGV0, query, PQerrorMessage(db_conn));
+        merror(DBQUERY_ERROR, query, PQerrorMessage(db_conn));
         osdb_seterror();
         return (0);
     }
@@ -346,24 +346,23 @@ void *none_osdb_connect(__attribute__((unused)) const char *host, __attribute__(
                         __attribute__((unused)) const char *pass, __attribute__((unused)) const char *db,
                         __attribute__((unused)) unsigned int port, __attribute__((unused)) const char *sock)
 {
-    merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
+    merror("Database support not enabled. Exiting.");
     return (NULL);
 }
 void *none_osdb_close(__attribute__((unused)) void *db_conn)
 {
-    merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
+    merror("Database support not enabled. Exiting.");
     return (NULL);
 }
 int none_osdb_query_insert(__attribute__((unused)) void *db_conn, __attribute__((unused)) const char *query)
 {
-    merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
+    merror("Database support not enabled. Exiting.");
     return (0);
 }
 int none_osdb_query_select(__attribute__((unused)) void *db_conn, __attribute__((unused)) const char *query)
 {
-    merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
+    merror("Database support not enabled. Exiting.");
     return (0);
 }
 
 #endif
-

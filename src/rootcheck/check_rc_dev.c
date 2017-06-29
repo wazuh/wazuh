@@ -31,7 +31,7 @@ static int read_dev_file(const char *file_name)
     /* Process directories recursively */
     if (S_ISDIR(statbuf.st_mode)) {
 #ifdef DEBUG
-        verbose("%s: Reading dir: %s\n", ARGV0, file_name);
+        mtinfo(ARGV0, "Reading dir: %s\n", file_name);
 #endif
         return (read_dev_dir(file_name));
     }
@@ -84,7 +84,7 @@ static int read_dev_dir(const char *dir_name)
                                            };
 
     if (dir_name == NULL || strlen(dir_name) > PATH_MAX) {
-        merror("%s: Invalid directory given.", ARGV0);
+        mterror(ARGV0, "Invalid directory given.");
         return (-1);
     }
 
@@ -144,7 +144,7 @@ void check_rc_dev(const char *basedir)
     char file_path[OS_SIZE_1024 + 1];
 
     _dev_total = 0, _dev_errors = 0;
-    debug1("%s: DEBUG: Starting on check_rc_dev", ARGV0);
+    mtdebug1(ARGV0, "Starting on check_rc_dev");
 
     snprintf(file_path, OS_SIZE_1024, "%s/dev", basedir);
 
@@ -169,4 +169,3 @@ void check_rc_dev(__attribute__((unused)) char *basedir)
 }
 
 #endif /* WIN32 */
-

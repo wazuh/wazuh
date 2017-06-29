@@ -109,35 +109,35 @@ int OS_ReadXMLRules(const char *rulefile,
         i = strlen(RULEPATH) + strlen(rulefile) + 2;
         rulepath = (char *)calloc(i, sizeof(char));
         if (!rulepath) {
-            ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
         snprintf(rulepath, i, "%s/%s", RULEPATH, rulefile);
     } else {
         os_strdup(rulefile, rulepath);
-        debug1("%s is the rulefile", rulefile);
-        debug1("Not modifing the rule path");
+        mdebug1("%s is the rulefile", rulefile);
+        mdebug1("Not modifing the rule path");
     }
 
     /* Read the XML */
     if (OS_ReadXML(rulepath, &xml) < 0) {
-        merror(XML_ERROR, __local_name, rulepath, xml.err, xml.err_line);
+        merror(XML_ERROR, rulepath, xml.err, xml.err_line);
         retval = -1;
         goto cleanup;
     }
-    debug1("%s: DEBUG: read xml for rule '%s'.", __local_name, rulepath);
+    mdebug1("Read xml for rule '%s'.", rulepath);
 
     /* Apply any variables found */
     if (OS_ApplyVariables(&xml) != 0) {
-        merror(XML_ERROR_VAR, __local_name, rulepath, xml.err);
+        merror(XML_ERROR_VAR, rulepath, xml.err);
         retval = -1;
         goto cleanup;
     }
-    debug1("%s: DEBUG: XML Variables applied.", __local_name);
+    mdebug1("XML Variables applied.");
 
     /* Get the root elements */
     node = OS_GetElementsbyNode(&xml, NULL);
     if (!node) {
-        merror(CONFIG_ERROR, __local_name, rulepath);
+        merror(CONFIG_ERROR, rulepath);
         retval = -1;
         goto cleanup;
     }
@@ -152,7 +152,7 @@ int OS_ReadXMLRules(const char *rulefile,
         if (node[i]->element) {
             /* Verify group */
             if (strcasecmp(node[i]->element, xml_group) != 0) {
-                merror(RL_INV_ROOT, __local_name, node[i]->element);
+                merror(RL_INV_ROOT, node[i]->element);
                 retval = -1;
                 goto cleanup;
             }
@@ -161,12 +161,12 @@ int OS_ReadXMLRules(const char *rulefile,
                     (!node[i]->values[0]) || (!node[i]->attributes[0]) ||
                     (strcasecmp(node[i]->attributes[0], "name") != 0) ||
                     (node[i]->attributes[1])) {
-                merror(RL_INV_ROOT, __local_name, node[i]->element);
+                merror(RL_INV_ROOT, node[i]->element);
                 retval = -1;
                 goto cleanup;
             }
         } else {
-            merror(XML_READ_ERROR, __local_name);
+            merror(XML_READ_ERROR);
             retval = -1;
             goto cleanup;
         }
@@ -195,14 +195,14 @@ int OS_ReadXMLRules(const char *rulefile,
             /* Check if the rule element is correct */
             if ((!rule[j]->element) ||
                     (strcasecmp(rule[j]->element, xml_rule) != 0)) {
-                merror(RL_INV_RULE, __local_name, node[i]->element);
+                merror(RL_INV_RULE, node[i]->element);
                 retval = -1;
                 goto cleanup;
             }
 
             /* Check for the attributes of the rule */
             if ((!rule[j]->attributes) || (!rule[j]->values)) {
-                merror(RL_INV_RULE, __local_name, rulefile);
+                merror(RL_INV_RULE, rulefile);
                 retval = -1;
                 goto cleanup;
             }
@@ -212,14 +212,14 @@ int OS_ReadXMLRules(const char *rulefile,
 
             if (_OS_GetRulesAttributes(rule[j]->attributes, rule[j]->values,
                                        config_ruleinfo) < 0) {
-                merror(RL_INV_ATTR, __local_name, rulefile);
+                merror(RL_INV_ATTR, rulefile);
                 retval = -1;
                 goto cleanup;
             }
 
             /* We must have an id or level */
             if ((config_ruleinfo->sigid == -1) || (config_ruleinfo->level == -1)) {
-                merror(RL_INV_ATTR, __local_name, rulefile);
+                merror(RL_INV_ATTR, rulefile);
                 retval = -1;
                 goto cleanup;
             }
@@ -232,7 +232,7 @@ int OS_ReadXMLRules(const char *rulefile,
             /* Get rules options */
             rule_opt =  OS_GetElementsbyNode(&xml, rule[j]);
             if (rule_opt == NULL) {
-                merror(RL_NO_OPT, __local_name, config_ruleinfo->sigid);
+                merror(RL_NO_OPT, config_ruleinfo->sigid);
                 retval = -1;
                 goto cleanup;
             }
@@ -258,9 +258,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     config_ruleinfo->day_time =
                         OS_IsValidTime(rule_opt[k]->content);
                     if (!config_ruleinfo->day_time) {
-                        merror(INVALID_CONFIG, __local_name,
-                               rule_opt[k]->element,
-                               rule_opt[k]->content);
+                        merror(INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
                         retval = -1;
                         goto cleanup;
                     }
@@ -273,9 +271,7 @@ int OS_ReadXMLRules(const char *rulefile,
                         OS_IsValidDay(rule_opt[k]->content);
 
                     if (!config_ruleinfo->week_day) {
-                        merror(INVALID_CONFIG, __local_name,
-                               rule_opt[k]->element,
-                               rule_opt[k]->content);
+                        merror(INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
                         retval = -1;
                         goto cleanup;
                     }
@@ -321,7 +317,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     /* Check if the IP is valid */
                     if (!OS_IsValidIP(rule_opt[k]->content,
                                       config_ruleinfo->srcip[ip_s])) {
-                        merror(INVALID_IP, __local_name, rule_opt[k]->content);
+                        merror(INVALID_IP, rule_opt[k]->content);
                         retval = -1;
                         goto cleanup;
                     }
@@ -350,7 +346,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     /* Checking if the IP is valid */
                     if (!OS_IsValidIP(rule_opt[k]->content,
                                       config_ruleinfo->dstip[ip_s])) {
-                        merror(INVALID_IP, __local_name, rule_opt[k]->content);
+                        merror(INVALID_IP, rule_opt[k]->content);
                         retval = -1;
                         goto cleanup;
                     }
@@ -429,7 +425,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     } else if (strcmp(rule_opt[k]->content, "ossec") == 0) {
                         config_ruleinfo->category = OSSEC_RL;
                     } else {
-                        merror(INVALID_CAT, __local_name, rule_opt[k]->content);
+                        merror(INVALID_CAT, rule_opt[k]->content);
                         retval = -1;
                         goto cleanup;
                     }
@@ -439,9 +435,7 @@ int OS_ReadXMLRules(const char *rulefile,
                                       rule_opt[k]->content);
                 } else if (strcasecmp(rule_opt[k]->element, xml_if_level) == 0) {
                     if (!OS_StrIsNum(rule_opt[k]->content)) {
-                        merror(INVALID_CONFIG, __local_name,
-                               xml_if_level,
-                               rule_opt[k]->content);
+                        merror(INVALID_CONFIG, xml_if_level, rule_opt[k]->content);
                         retval = -1;
                         goto cleanup;
                     }
@@ -469,9 +463,7 @@ int OS_ReadXMLRules(const char *rulefile,
                                       xml_if_matched_sid) == 0) {
                     config_ruleinfo->context = 1;
                     if (!OS_StrIsNum(rule_opt[k]->content)) {
-                        merror(INVALID_CONFIG, __local_name,
-                               rule_opt[k]->element,
-                               rule_opt[k]->content);
+                        merror(INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
                         retval = -1;
                         goto cleanup;
                     }
@@ -564,12 +556,9 @@ int OS_ReadXMLRules(const char *rulefile,
                             config_ruleinfo->alert_opts |= NO_AR;
                         }
                     } else {
-                        merror(XML_VALUEERR, __local_name, xml_options,
-                               rule_opt[k]->content);
+                        merror(XML_VALUEERR, xml_options, rule_opt[k]->content);
 
-                        merror(INVALID_ELEMENT, __local_name,
-                               rule_opt[k]->element,
-                               rule_opt[k]->content);
+                        merror(INVALID_ELEMENT, rule_opt[k]->element, rule_opt[k]->content);
                         retval = -1;
                         goto cleanup;
                     }
@@ -598,9 +587,7 @@ int OS_ReadXMLRules(const char *rulefile,
 
                     }
                     if (!config_ruleinfo->ignore) {
-                        merror(INVALID_ELEMENT, __local_name,
-                               rule_opt[k]->element,
-                               rule_opt[k]->content);
+                        merror(INVALID_ELEMENT, rule_opt[k]->element, rule_opt[k]->content);
 
                         retval = -1;
                         goto cleanup;
@@ -630,9 +617,7 @@ int OS_ReadXMLRules(const char *rulefile,
 
                     }
                     if (!config_ruleinfo->ckignore) {
-                        merror(INVALID_ELEMENT, __local_name,
-                               rule_opt[k]->element,
-                               rule_opt[k]->content);
+                        merror(INVALID_ELEMENT, rule_opt[k]->element, rule_opt[k]->content);
 
                         retval = -1;
                         goto cleanup;
@@ -649,7 +634,7 @@ int OS_ReadXMLRules(const char *rulefile,
                  *
                 else
                 {
-                    merror(XML_INVELEM, __local_name, rule_opt[k]->element);
+                    merror(XML_INVELEM, rule_opt[k]->element);
                     OS_ClearXML(&xml);
                     return(-1);
                 }
@@ -662,9 +647,7 @@ int OS_ReadXMLRules(const char *rulefile,
             if ((config_ruleinfo->context_opts ||
                     config_ruleinfo->frequency) &&
                     !config_ruleinfo->context) {
-                merror("%s: Invalid use of frequency/context options. "
-                       "Missing if_matched on rule '%d'.",
-                       __local_name, config_ruleinfo->sigid);
+                merror("Invalid use of frequency/context options. Missing if_matched on rule '%d'.", config_ruleinfo->sigid);
                 retval = -1;
                 goto cleanup;
             }
@@ -689,8 +672,7 @@ int OS_ReadXMLRules(const char *rulefile,
             if (regex) {
                 os_calloc(1, sizeof(OSRegex), config_ruleinfo->regex);
                 if (!OSRegex_Compile(regex, config_ruleinfo->regex, 0)) {
-                    merror(REGEX_COMPILE, __local_name, regex,
-                           config_ruleinfo->regex->error);
+                    merror(REGEX_COMPILE, regex, config_ruleinfo->regex->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -702,8 +684,7 @@ int OS_ReadXMLRules(const char *rulefile,
             if (match) {
                 os_calloc(1, sizeof(OSMatch), config_ruleinfo->match);
                 if (!OSMatch_Compile(match, config_ruleinfo->match, 0)) {
-                    merror(REGEX_COMPILE, __local_name, match,
-                           config_ruleinfo->match->error);
+                    merror(REGEX_COMPILE, match, config_ruleinfo->match->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -715,8 +696,7 @@ int OS_ReadXMLRules(const char *rulefile,
             if (id) {
                 os_calloc(1, sizeof(OSMatch), config_ruleinfo->id);
                 if (!OSMatch_Compile(id, config_ruleinfo->id, 0)) {
-                    merror(REGEX_COMPILE, __local_name, id,
-                           config_ruleinfo->id->error);
+                    merror(REGEX_COMPILE, id, config_ruleinfo->id->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -728,8 +708,7 @@ int OS_ReadXMLRules(const char *rulefile,
             if (srcport) {
                 os_calloc(1, sizeof(OSMatch), config_ruleinfo->srcport);
                 if (!OSMatch_Compile(srcport, config_ruleinfo->srcport, 0)) {
-                    merror(REGEX_COMPILE, __local_name, srcport,
-                           config_ruleinfo->id->error);
+                    merror(REGEX_COMPILE, srcport, config_ruleinfo->id->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -741,8 +720,7 @@ int OS_ReadXMLRules(const char *rulefile,
             if (dstport) {
                 os_calloc(1, sizeof(OSMatch), config_ruleinfo->dstport);
                 if (!OSMatch_Compile(dstport, config_ruleinfo->dstport, 0)) {
-                    merror(REGEX_COMPILE, __local_name, dstport,
-                           config_ruleinfo->id->error);
+                    merror(REGEX_COMPILE, dstport, config_ruleinfo->id->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -754,8 +732,7 @@ int OS_ReadXMLRules(const char *rulefile,
             if (status) {
                 os_calloc(1, sizeof(OSMatch), config_ruleinfo->status);
                 if (!OSMatch_Compile(status, config_ruleinfo->status, 0)) {
-                    merror(REGEX_COMPILE, __local_name, status,
-                           config_ruleinfo->status->error);
+                    merror(REGEX_COMPILE, status, config_ruleinfo->status->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -767,8 +744,7 @@ int OS_ReadXMLRules(const char *rulefile,
             if (hostname) {
                 os_calloc(1, sizeof(OSMatch), config_ruleinfo->hostname);
                 if (!OSMatch_Compile(hostname, config_ruleinfo->hostname, 0)) {
-                    merror(REGEX_COMPILE, __local_name, hostname,
-                           config_ruleinfo->hostname->error);
+                    merror(REGEX_COMPILE, hostname, config_ruleinfo->hostname->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -781,8 +757,7 @@ int OS_ReadXMLRules(const char *rulefile,
                 os_calloc(1, sizeof(OSMatch), config_ruleinfo->extra_data);
                 if (!OSMatch_Compile(extra_data,
                                      config_ruleinfo->extra_data, 0)) {
-                    merror(REGEX_COMPILE, __local_name, extra_data,
-                           config_ruleinfo->extra_data->error);
+                    merror(REGEX_COMPILE, extra_data, config_ruleinfo->extra_data->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -795,8 +770,7 @@ int OS_ReadXMLRules(const char *rulefile,
                 os_calloc(1, sizeof(OSMatch), config_ruleinfo->program_name);
                 if (!OSMatch_Compile(program_name,
                                      config_ruleinfo->program_name, 0)) {
-                    merror(REGEX_COMPILE, __local_name, program_name,
-                           config_ruleinfo->program_name->error);
+                    merror(REGEX_COMPILE, program_name, config_ruleinfo->program_name->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -808,8 +782,7 @@ int OS_ReadXMLRules(const char *rulefile,
             if (user) {
                 os_calloc(1, sizeof(OSMatch), config_ruleinfo->user);
                 if (!OSMatch_Compile(user, config_ruleinfo->user, 0)) {
-                    merror(REGEX_COMPILE, __local_name, user,
-                           config_ruleinfo->user->error);
+                    merror(REGEX_COMPILE, user, config_ruleinfo->user->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -821,8 +794,7 @@ int OS_ReadXMLRules(const char *rulefile,
             if (url) {
                 os_calloc(1, sizeof(OSMatch), config_ruleinfo->url);
                 if (!OSMatch_Compile(url, config_ruleinfo->url, 0)) {
-                    merror(REGEX_COMPILE, __local_name, url,
-                           config_ruleinfo->url->error);
+                    merror(REGEX_COMPILE, url, config_ruleinfo->url->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -836,8 +808,7 @@ int OS_ReadXMLRules(const char *rulefile,
 
                 if (!OSMatch_Compile(if_matched_group,
                                      config_ruleinfo->if_matched_group, 0)) {
-                    merror(REGEX_COMPILE, __local_name, if_matched_group,
-                           config_ruleinfo->if_matched_group->error);
+                    merror(REGEX_COMPILE, if_matched_group, config_ruleinfo->if_matched_group->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -851,8 +822,7 @@ int OS_ReadXMLRules(const char *rulefile,
                           config_ruleinfo->if_matched_regex);
                 if (!OSRegex_Compile(if_matched_regex,
                                      config_ruleinfo->if_matched_regex, 0)) {
-                    merror(REGEX_COMPILE, __local_name, if_matched_regex,
-                           config_ruleinfo->if_matched_regex->error);
+                    merror(REGEX_COMPILE, if_matched_regex, config_ruleinfo->if_matched_regex->error);
                     retval = -1;
                     goto cleanup;
                 }
@@ -914,7 +884,7 @@ static RuleInfo *_OS_AllocateRule()
     /* Allocate memory for structure */
     ruleinfo_pt = (RuleInfo *)calloc(1, sizeof(RuleInfo));
     if (ruleinfo_pt == NULL) {
-        ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
+        merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
     /* Default values */
@@ -1008,7 +978,7 @@ static int _OS_GetRulesAttributes(char **attributes, char **values,
     /* Get attributes */
     while (attributes[k]) {
         if (!values[k]) {
-            merror(RL_EMPTY_ATTR, __local_name, attributes[k]);
+            merror(RL_EMPTY_ATTR, attributes[k]);
             return (-1);
         }
         /* Get rule Id */
@@ -1016,7 +986,7 @@ static int _OS_GetRulesAttributes(char **attributes, char **values,
             if (OS_StrIsNum(values[k]) && (strlen(values[k]) <= 6 )) {
                 ruleinfo_pt->sigid = atoi(values[k]);
             } else {
-                merror(XML_VALUEERR, __local_name, attributes[k], values[k]);
+                merror(XML_VALUEERR, attributes[k], values[k]);
                 return (-1);
             }
         }
@@ -1025,7 +995,7 @@ static int _OS_GetRulesAttributes(char **attributes, char **values,
             if (OS_StrIsNum(values[k]) && (strlen(values[k]) <= 3)) {
                 ruleinfo_pt->level = atoi(values[k]);
             } else {
-                merror(XML_VALUEERR, __local_name, attributes[k], values[k]);
+                merror(XML_VALUEERR, attributes[k], values[k]);
                 return (-1);
             }
         }
@@ -1040,7 +1010,7 @@ static int _OS_GetRulesAttributes(char **attributes, char **values,
                     ruleinfo_pt->alert_opts |= DO_EXTRAINFO;
                 }
             } else {
-                merror(XML_VALUEERR, __local_name, attributes[k], values[k]);
+                merror(XML_VALUEERR, attributes[k], values[k]);
                 return (-1);
             }
         }
@@ -1049,7 +1019,7 @@ static int _OS_GetRulesAttributes(char **attributes, char **values,
             if (OS_StrIsNum(values[k]) && (strlen(values[k]) <= 5)) {
                 ruleinfo_pt->timeframe = atoi(values[k]);
             } else {
-                merror(XML_VALUEERR, __local_name, attributes[k], values[k]);
+                merror(XML_VALUEERR, attributes[k], values[k]);
                 return (-1);
             }
         }
@@ -1058,21 +1028,20 @@ static int _OS_GetRulesAttributes(char **attributes, char **values,
             if (OS_StrIsNum(values[k]) && (strlen(values[k]) <= 4)) {
                 ruleinfo_pt->frequency = atoi(values[k]);
             } else {
-                merror(XML_VALUEERR, __local_name, attributes[k], values[k]);
+                merror(XML_VALUEERR, attributes[k], values[k]);
                 return (-1);
             }
         }
         /* Rule accuracy */
         else if (strcasecmp(attributes[k], xml_accuracy) == 0) {
-            merror("%s: XXX: Use of 'accuracy' isn't supported. Ignoring.",
-                   __local_name);
+            merror("Use of 'accuracy' isn't supported. Ignoring.");
         }
         /* Rule ignore_time */
         else if (strcasecmp(attributes[k], xml_ignore_time) == 0) {
             if (OS_StrIsNum(values[k]) && (strlen(values[k]) <= 4)) {
                 ruleinfo_pt->ignore_time = atoi(values[k]);
             } else {
-                merror(XML_VALUEERR, __local_name, attributes[k], values[k]);
+                merror(XML_VALUEERR, attributes[k], values[k]);
                 return (-1);
             }
         }
@@ -1084,11 +1053,11 @@ static int _OS_GetRulesAttributes(char **attributes, char **values,
                 ruleinfo_pt->alert_opts |= DO_OVERWRITE;
             } else if (strcmp(values[k], "no") == 0) {
             } else {
-                merror(XML_VALUEERR, __local_name, attributes[k], values[k]);
+                merror(XML_VALUEERR, attributes[k], values[k]);
                 return (-1);
             }
         } else {
-            merror(XML_INVELEM, __local_name, attributes[k]);
+            merror(XML_INVELEM, attributes[k]);
             return (-1);
         }
         k++;

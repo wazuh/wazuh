@@ -27,8 +27,8 @@ void OS_PicvizOpen(const char *socket)
 {
     picviz_fp = fopen(socket, "a");
     if (!picviz_fp) {
-        merror("%s: Unable to open picviz socket file '%s'.",
-               ARGV0, socket);
+        merror("Unable to open picviz socket file '%s'.",
+               socket);
     }
 }
 
@@ -65,4 +65,3 @@ void OS_PicvizClose(void)
 }
 
 #endif
-

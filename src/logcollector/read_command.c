@@ -22,12 +22,12 @@ void *read_command(int pos, int *rc, int drop_it)
     str[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    debug2("%s: DEBUG: Running command '%s'", ARGV0, logff[pos].command);
+    mdebug2("Running command '%s'", logff[pos].command);
 
     cmd_output = popen(logff[pos].command, "r");
     if (!cmd_output) {
-        merror("%s: ERROR: Unable to execute command: '%s'.",
-               ARGV0, logff[pos].command);
+        merror("Unable to execute command: '%s'.",
+               logff[pos].command);
 
         logff[pos].command = NULL;
         return (NULL);
@@ -55,16 +55,16 @@ void *read_command(int pos, int *rc, int drop_it)
             continue;
         }
 
-        debug2("%s: DEBUG: Reading command message: '%s'", ARGV0, str);
+        mdebug2("Reading command message: '%s'", str);
 
         /* Send message to queue */
         if (drop_it == 0) {
             if (SendMSG(logr_queue, str,
                         (NULL != logff[pos].alias) ? logff[pos].alias : logff[pos].command,
                         LOCALFILE_MQ) < 0) {
-                merror(QUEUE_SEND, ARGV0);
+                merror(QUEUE_SEND);
                 if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
                 }
             }
         }
@@ -76,4 +76,3 @@ void *read_command(int pos, int *rc, int drop_it)
 
     return (NULL);
 }
-

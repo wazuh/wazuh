@@ -201,7 +201,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
              extra_data,
              logs);
 #endif
-    debug2("OS_RecvMailQ: mail->body[%s]", mail->body);
+    mdebug2("OS_RecvMailQ: mail->body[%s]", mail->body);
 
     /* Check for granular email configs */
     if (Mail->gran_to) {

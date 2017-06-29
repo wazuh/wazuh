@@ -103,19 +103,19 @@ int main(int argc, char **argv)
                 break;
             case 'e':
 #ifdef CLIENT
-                ErrorExit("%s: Key export only available on a master.", ARGV0);
+                merror_exit("Key export only available on a master.");
 #endif
                 if (!optarg) {
-                    ErrorExit("%s: -e needs an argument.", ARGV0);
+                    merror_exit("-e needs an argument.");
                 }
                 cmdexport = optarg;
                 break;
             case 'r':
 #ifdef CLIENT
-                ErrorExit("%s: Key removal only available on a master.", ARGV0);
+                merror_exit("Key removal only available on a master.");
 #endif
                 if (!optarg) {
-                    ErrorExit("%s: -r needs an argument.", ARGV0);
+                    merror_exit("-r needs an argument.");
                 }
 
                 /* Use environment variables already available to remove_agent() */
@@ -125,19 +125,19 @@ int main(int argc, char **argv)
                 break;
             case 'i':
 #ifndef CLIENT
-                ErrorExit("%s: Key import only available on an agent.", ARGV0);
+                merror_exit("Key import only available on an agent.");
 #endif
                 if (!optarg) {
-                    ErrorExit("%s: -i needs an argument.", ARGV0);
+                    merror_exit("-i needs an argument.");
                 }
                 cmdimport = optarg;
                 break;
             case 'f':
 #ifdef CLIENT
-                ErrorExit("%s: Bulk generate keys only available on a master.", ARGV0);
+                merror_exit("Bulk generate keys only available on a master.");
 #endif
                 if (!optarg) {
-                    ErrorExit("%s: -f needs an argument.", ARGV0);
+                    merror_exit("-f needs an argument.");
                 }
                 cmdbulk = optarg;
                 printf("Bulk load file: %s\n", cmdbulk);
@@ -150,10 +150,10 @@ int main(int argc, char **argv)
                 break;
             case 'a':
 #ifdef CLIENT
-                ErrorExit("%s: Agent adding only available on a master.", ARGV0);
+                merror_exit("Agent adding only available on a master.");
 #endif
                 if (!optarg)
-                    ErrorExit("%s: -a needs an argument.", ARGV0);
+                    merror_exit("-a needs an argument.");
                 setenv("OSSEC_ACTION", "a", 1);
                 setenv("OSSEC_ACTION_CONFIRMED", "y", 1);
                 setenv("OSSEC_AGENT_IP", optarg, 1);
@@ -161,17 +161,17 @@ int main(int argc, char **argv)
             break;
             case 'n':
                 if (!optarg)
-                    ErrorExit("%s: -n needs an argument.", ARGV0);
+                    merror_exit("-n needs an argument.");
                 setenv("OSSEC_AGENT_NAME", optarg, 1);
                 break;
             case 'F':
                 if (!optarg)
-                    ErrorExit("%s: -F needs an argument.", ARGV0);
+                    merror_exit("-F needs an argument.");
 
                 force_antiquity = strtol(optarg, &end, 10);
 
                 if (optarg == end || force_antiquity < 0)
-                    ErrorExit("%s: Invalid number for -F", ARGV0);
+                    merror_exit("Invalid number for -F");
 
                 setenv("OSSEC_REMOVE_DUPLICATED", optarg, 1);
                 break;
@@ -193,22 +193,22 @@ int main(int argc, char **argv)
     /* Get the group name */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, "", group);
+        merror_exit(USER_ERROR, "", group);
     }
 
     /* Set the group */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Load ossec uid and gid for creating backups */
     if (OS_LoadUid() < 0) {
-        ErrorExit("%s: ERROR: Couldn't get user and group id.", ARGV0);
+        merror_exit("Couldn't get user and group id.");
     }
 
     /* Chroot to the default directory */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
 
     /* Inside chroot now */
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
 
     /* Check for errors */
     if (!ret) {
-        ErrorExit(GMF_ERROR);
+        merror_exit(GMF_ERROR);
     }
 
     /* Get last error */
@@ -231,9 +231,9 @@ int main(int argc, char **argv)
     /* Look for errors */
     if (last_error != ERROR_SUCCESS) {
         if (last_error == ERROR_INSUFFICIENT_BUFFER) {
-            ErrorExit(GMF_BUFF_ERROR, ret, sizeof(path));
+            merror_exit(GMF_BUFF_ERROR, ret, sizeof(path));
         } else {
-            ErrorExit(GMF_UNKN_ERROR, last_error);
+            merror_exit(GMF_UNKN_ERROR, last_error);
         }
     }
 
@@ -242,7 +242,7 @@ int main(int argc, char **argv)
 
     /* Move to correct directory */
     if (chdir(path)) {
-        ErrorExit(CHDIR_ERROR, ARGV0, path, errno, strerror(errno));
+        merror_exit(CHDIR_ERROR, path, errno, strerror(errno));
     }
 
     /* Check permissions */
@@ -250,7 +250,7 @@ int main(int argc, char **argv)
     if (fp) {
         fclose(fp);
     } else {
-        ErrorExit(CONF_ERROR, OSSECCONF);
+        merror_exit(CONF_ERROR, OSSECCONF);
     }
 #endif
 

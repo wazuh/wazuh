@@ -100,17 +100,15 @@ char *convert_windows_string(LPCWSTR string)
                                NULL);
 
     if (size == 0) {
-        log2file(
-            "%s: ERROR: Could not WideCharToMultiByte() when determining size which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not WideCharToMultiByte() when determining size which returned (%lu)",
             GetLastError());
         return (NULL);
     }
 
     if ((dest = calloc(size, sizeof(char))) == NULL) {
-        log2file(
-            "%s: ERROR: Could not calloc() memory for WideCharToMultiByte() which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not calloc() memory for WideCharToMultiByte() which returned [(%d)-(%s)]",
             errno,
             strerror(errno)
         );
@@ -127,9 +125,8 @@ char *convert_windows_string(LPCWSTR string)
                                  NULL);
 
     if (result == 0) {
-        log2file(
-            "%s: ERROR: Could not WideCharToMultiByte() which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not WideCharToMultiByte() which returned (%lu)",
             GetLastError());
         free(dest);
         return (NULL);
@@ -157,17 +154,15 @@ wchar_t *convert_unix_string(char *string)
                                0);
 
     if (size == 0) {
-        log2file(
-            "%s: ERROR: Could not MultiByteToWideChar() when determining size which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not MultiByteToWideChar() when determining size which returned (%lu)",
             GetLastError());
         return (NULL);
     }
 
     if ((dest = calloc(size, sizeof(wchar_t))) == NULL) {
-        log2file(
-            "%s: ERROR: Could not calloc() memory for MultiByteToWideChar() which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not calloc() memory for MultiByteToWideChar() which returned [(%d)-(%s)]",
             errno,
             strerror(errno));
         return (NULL);
@@ -181,9 +176,8 @@ wchar_t *convert_unix_string(char *string)
                                  size);
 
     if (result == 0) {
-        log2file(
-            "%s: ERROR: Could not MultiByteToWideChar() which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not MultiByteToWideChar() which returned (%lu)",
             GetLastError());
         free(dest);
         return (NULL);
@@ -204,7 +198,7 @@ char* filter_special_chars(const char *string) {
 
     for (i = 0; i <= n; i++)
         filtered[j++] = (string[i] == '\\') ? string[++i] : string[i];
-    
+
     return filtered;
 }
 
@@ -230,14 +224,12 @@ int get_username_and_domain(os_event *event)
      * things work but it is nice to have for error and debug logging.
      */
     if (!ConvertSidToStringSid(event->uid, &StringSid)) {
-        debug1(
-            "%s: WARN: Could not convert SID to string which returned (%lu)",
-            ARGV0,
+        mdebug1(
+            "Could not convert SID to string which returned (%lu)",
             GetLastError());
     }
 
-    debug1("%s: DEBUG: Performing a LookupAccountSid() on (%s)",
-           ARGV0,
+    mdebug1("Performing a LookupAccountSid() on (%s)",
            StringSid ? StringSid : "unknown");
 
     /* Make initial call to get buffer size */
@@ -255,9 +247,8 @@ int get_username_and_domain(os_event *event)
     }
 
     if ((event->user = calloc(user_length, sizeof(char))) == NULL) {
-        log2file(
-            "%s: ERROR: Could not lookup SID (%s) due to calloc() failure on user which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not lookup SID (%s) due to calloc() failure on user which returned [(%d)-(%s)]",
             StringSid ? StringSid : "unknown",
             errno,
             strerror(errno));
@@ -265,9 +256,8 @@ int get_username_and_domain(os_event *event)
     }
 
     if ((event->domain = calloc(domain_length, sizeof(char))) == NULL) {
-        log2file(
-            "%s: ERROR: Could not lookup SID (%s) due to calloc() failure on domain which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not lookup SID (%s) due to calloc() failure on domain which returned [(%d)-(%s)]",
             StringSid ? StringSid : "unknown",
             errno,
             strerror(errno));
@@ -282,9 +272,8 @@ int get_username_and_domain(os_event *event)
                               &domain_length,
                               &account_type);
     if (result == FALSE) {
-        log2file(
-            "%s: ERROR: Could not LookupAccountSid() for (%s) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not LookupAccountSid() for (%s) which returned (%lu)",
             StringSid ? StringSid : "unknown",
             GetLastError());
         goto cleanup;
@@ -323,9 +312,8 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
                                          0,
                                          0);
     if (publisher == NULL) {
-        log2file(
-            "%s: ERROR: Could not EvtOpenPublisherMetadata() with flags (%lu) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not EvtOpenPublisherMetadata() with flags (%lu) which returned (%lu)",
             flags,
             GetLastError());
         goto cleanup;
@@ -342,18 +330,16 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
                               NULL,
                               &size);
     if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        log2file(
-            "%s: ERROR: Could not EvtFormatMessage() to determine buffer size with flags (%lu) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not EvtFormatMessage() to determine buffer size with flags (%lu) which returned (%lu)",
             flags,
             GetLastError());
         goto cleanup;
     }
 
     if ((buffer = calloc(size, sizeof(wchar_t))) == NULL) {
-        log2file(
-            "%s: ERROR: Could not calloc() memory which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not calloc() memory which returned [(%d)-(%s)]",
             errno,
             strerror(errno));
         goto cleanup;
@@ -369,9 +355,8 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
                               buffer,
                               &size);
     if (result == FALSE) {
-        log2file(
-            "%s: ERROR: Could not EvtFormatMessage() with flags (%lu) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not EvtFormatMessage() with flags (%lu) which returned (%lu)",
             flags,
             GetLastError());
         goto cleanup;
@@ -403,9 +388,8 @@ EVT_HANDLE read_bookmark(os_channel *channel)
          * file did not exist which should be logged
          */
         if (errno != ENOENT) {
-            log2file(
-                "%s: ERROR: Could not fopen() existing bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-                ARGV0,
+            mferror(
+                "Could not fopen() existing bookmark (%s) for (%s) which returned [(%d)-(%s)]",
                 channel->bookmark_filename,
                 channel->evt_log,
                 errno,
@@ -416,9 +400,8 @@ EVT_HANDLE read_bookmark(os_channel *channel)
 
     size = fread(bookmark_xml, sizeof(wchar_t), OS_MAXSTR, fp);
     if (ferror(fp)) {
-        log2file(
-            "%s: ERROR: Could not fread() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not fread() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
             channel->evt_log,
             errno,
@@ -439,9 +422,8 @@ EVT_HANDLE read_bookmark(os_channel *channel)
 
     /* Create bookmark from saved XML */
     if ((bookmark = EvtCreateBookmark(bookmark_xml)) == NULL) {
-        log2file(
-            "%s: ERROR: Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
             channel->bookmark_filename,
             channel->evt_log,
             GetLastError());
@@ -472,9 +454,8 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
              channel->bookmark_name);
 
     if ((bookmark = EvtCreateBookmark(NULL)) == NULL) {
-        log2file(
-            "%s: ERROR: Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
             channel->bookmark_filename,
             channel->evt_log,
             GetLastError());
@@ -482,9 +463,8 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     }
 
     if (!EvtUpdateBookmark(bookmark, evt)) {
-        log2file(
-            "%s: ERROR: Could not EvtUpdateBookmark() bookmark (%s) for (%s) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not EvtUpdateBookmark() bookmark (%s) for (%s) which returned (%lu)",
             channel->bookmark_filename,
             channel->evt_log,
             GetLastError());
@@ -500,9 +480,8 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
                        &size,
                        &count);
     if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        log2file(
-            "%s: ERROR: Could not EvtRender() to get buffer size to update bookmark (%s) for (%s) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not EvtRender() to get buffer size to update bookmark (%s) for (%s) which returned (%lu)",
             channel->bookmark_filename,
             channel->evt_log,
             GetLastError());
@@ -510,9 +489,8 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     }
 
     if ((buffer = calloc(size, sizeof(char))) == NULL) {
-        log2file(
-            "%s: ERROR: Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
             channel->evt_log,
             errno,
@@ -527,26 +505,24 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
                    buffer,
                    &size,
                    &count)) {
-        log2file(
-            "%s: ERROR: Could not EvtRender() bookmark (%s) for (%s) which returned (%lu)",
-            ARGV0, channel->bookmark_filename, channel->evt_log,
+        mferror(
+            "Could not EvtRender() bookmark (%s) for (%s) which returned (%lu)",
+            channel->bookmark_filename, channel->evt_log,
             GetLastError());
         goto cleanup;
     }
 
     if (mkstemp_ex(tmp_file)) {
-        log2file(
-            "%s: ERROR: Could not mkstemp_ex() temporary bookmark (%s) for (%s)",
-            ARGV0,
+        mferror(
+            "Could not mkstemp_ex() temporary bookmark (%s) for (%s)",
             tmp_file,
             channel->evt_log);
         goto cleanup;
     }
 
     if ((fp = fopen(tmp_file, "w")) == NULL) {
-        log2file(
-            "%s: ERROR: Could not fopen() temporary bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not fopen() temporary bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             tmp_file,
             channel->evt_log,
             errno,
@@ -560,9 +536,8 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     clean_tmp = 1;
 
     if ((fwrite(buffer, 1, size, fp)) < size) {
-        log2file(
-            "%s: ERROR: Could not fwrite() to temporary bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not fwrite() to temporary bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             tmp_file,
             channel->evt_log,
             errno,
@@ -573,9 +548,8 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     fclose(fp);
 
     if (rename_ex(tmp_file, channel->bookmark_filename)) {
-        log2file(
-            "%s: ERROR: Could not rename_ex() temporary bookmark (%s) to (%s) for (%s)",
-            ARGV0,
+        mferror(
+            "Could not rename_ex() temporary bookmark (%s) to (%s) for (%s)",
             tmp_file,
             channel->bookmark_filename,
             channel->evt_log);
@@ -597,8 +571,7 @@ cleanup:
     }
 
     if (status == 0 && clean_tmp == 1 && unlink(tmp_file)) {
-        log2file(DELETE_ERROR,
-                 ARGV0,
+        mferror(DELETE_ERROR,
                  tmp_file,
                  errno,
                  strerror(errno));
@@ -618,9 +591,8 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
     int size = 80;
 
     if ((timestamp = malloc(size)) == NULL) {
-        log2file(
-            "%s: ERROR: Could not malloc() memory to convert timestamp which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not malloc() memory to convert timestamp which returned [(%d)-(%s)]",
             errno,
             strerror(errno));
         goto cleanup;
@@ -639,17 +611,15 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
      * SYSTEMTIME
      */
     if (FileTimeToLocalFileTime(&fTime, &lfTime) == 0) {
-        log2file(
-            "%s: ERROR: Could not FileTimeToLocalFileTime() to convert timestamp which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not FileTimeToLocalFileTime() to convert timestamp which returned (%lu)",
             GetLastError());
         goto cleanup;
     }
 
     if (FileTimeToSystemTime(&lfTime, &sysTime) == 0) {
-        log2file(
-            "%s: ERROR: Could not FileTimeToSystemTime() to convert timestamp which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not FileTimeToSystemTime() to convert timestamp which returned (%lu)",
             GetLastError());
         goto cleanup;
     }
@@ -685,9 +655,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     int result = 0;
 
     if ((context = EvtCreateRenderContext(count, NULL, EvtRenderContextSystem)) == NULL) {
-        log2file(
-            "%s: ERROR: Could not EvtCreateRenderContext() for (%s) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not EvtCreateRenderContext() for (%s) which returned (%lu)",
             channel->evt_log,
             GetLastError());
         goto cleanup;
@@ -702,18 +671,16 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
                        &buffer_length,
                        &count);
     if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        log2file(
-            "%s: ERROR: Could not EvtRender() to determine buffer size for (%s) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not EvtRender() to determine buffer size for (%s) which returned (%lu)",
             channel->evt_log,
             GetLastError());
         goto cleanup;
     }
 
     if ((properties_values = malloc(buffer_length)) == NULL) {
-        log2file(
-            "%s: ERROR: Could not malloc() memory to process event (%s) which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not malloc() memory to process event (%s) which returned [(%d)-(%s)]",
             channel->evt_log,
             errno,
             strerror(errno));
@@ -727,9 +694,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
                    properties_values,
                    &buffer_length,
                    &count)) {
-        log2file(
-            "%s: ERROR: Could not EvtRender() for (%s) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not EvtRender() for (%s) which returned (%lu)",
             channel->evt_log,
             GetLastError());
         goto cleanup;
@@ -774,9 +740,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     }
 
     if ((event.timestamp = WinEvtTimeToString(event.time_created)) == NULL) {
-        log2file(
-            "%s: ERROR: Could not convert timestamp for (%s)",
-            ARGV0,
+        mferror(
+            "Could not convert timestamp for (%s)",
             channel->evt_log);
         goto cleanup;
     }
@@ -786,9 +751,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
     /* Get event log message */
     if ((event.message = get_message(evt, properties_values[EvtSystemProviderName].StringVal, EvtFormatMessageEvent)) == NULL) {
-        log2file(
-            "%s: ERROR: Could not get message for (%s)",
-            ARGV0,
+        mferror(
+            "Could not get message for (%s)",
             channel->evt_log);
     } else {
         /* Format message */
@@ -811,7 +775,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     );
 
     if (SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0) {
-        merror(QUEUE_SEND, ARGV0);
+        merror(QUEUE_SEND);
     }
 
     if (channel->bookmark_enabled) {
@@ -850,9 +814,8 @@ void win_start_event_channel(char *evt_log, char future, char *query)
     int status = 0;
 
     if ((channel = calloc(1, sizeof(os_channel))) == NULL) {
-        log2file(
-            "%s: ERROR: Could not calloc() memory for channel to start reading (%s) which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not calloc() memory for channel to start reading (%s) which returned [(%d)-(%s)]",
             evt_log,
             errno,
             strerror(errno));
@@ -863,9 +826,8 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 
     /* Create copy of event log string */
     if ((channel->bookmark_name = strdup(channel->evt_log)) == NULL) {
-        log2file(
-            "%s: ERROR: Could not strdup() event log name to start reading (%s) which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not strdup() event log name to start reading (%s) which returned [(%d)-(%s)]",
             channel->evt_log,
             errno,
             strerror(errno));
@@ -879,9 +841,8 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 
     /* Convert evt_log to Windows string */
     if ((wchannel = convert_unix_string(channel->evt_log)) == NULL) {
-        log2file(
-            "%s: ERROR: Could not convert_unix_string() evt_log for (%s) which returned [(%d)-(%s)]",
-            ARGV0,
+        mferror(
+            "Could not convert_unix_string() evt_log for (%s) which returned [(%d)-(%s)]",
             channel->evt_log,
             errno,
             strerror(errno));
@@ -891,19 +852,17 @@ void win_start_event_channel(char *evt_log, char future, char *query)
     /* Convert query to Windows string */
     if (query) {
         if ((filtered_query = filter_special_chars(query)) == NULL) {
-            log2file(
-                "%s: ERROR: Could not filter_special_chars() query for (%s) which returned [(%d)-(%s)]",
-                ARGV0,
+            mferror(
+                "Could not filter_special_chars() query for (%s) which returned [(%d)-(%s)]",
                 channel->evt_log,
                 errno,
                 strerror(errno));
             goto cleanup;
         }
-    	
+
         if ((wquery = convert_unix_string(filtered_query)) == NULL) {
-            log2file(
-                "%s: ERROR: Could not convert_unix_string() query for (%s) which returned [(%d)-(%s)]",
-                ARGV0,
+            mferror(
+                "Could not convert_unix_string() query for (%s) which returned [(%d)-(%s)]",
                 channel->evt_log,
                 errno,
                 strerror(errno));
@@ -946,9 +905,8 @@ void win_start_event_channel(char *evt_log, char future, char *query)
     }
 
     if (result == NULL) {
-        log2file(
-            "%s: ERROR: Could not EvtSubscribe() for (%s) which returned (%lu)",
-            ARGV0,
+        mferror(
+            "Could not EvtSubscribe() for (%s) which returned (%lu)",
             channel->evt_log,
             GetLastError());
         goto cleanup;
@@ -980,4 +938,3 @@ cleanup:
 
 #endif /* EVENTCHANNEL_SUPPORT */
 #endif /* WIN32 */
-

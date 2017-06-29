@@ -926,12 +926,11 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
 
     if ((rc = OS_SendUnix(msocket, agt_msg, 0)) < 0) {
         if (rc == OS_SOCKBUSY) {
-            merror("%s: ERROR: Remoted socket busy.", __local_name);
+            merror("Remoted socket busy.");
         } else {
-            merror("%s: ERROR: Remoted socket error.", __local_name);
+            merror("Remoted socket error.");
         }
-        merror("%s: Error communicating with remoted queue (%d).",
-               __local_name, rc);
+        merror("Error communicating with remoted queue (%d).", rc);
 
         return (-1);
     }
@@ -947,7 +946,7 @@ int connect_to_remoted()
     int arq = -1;
 
     if ((arq = StartMQ(ARQUEUE, WRITE)) < 0) {
-        merror(ARQ_ERROR, __local_name);
+        merror(ARQ_ERROR);
         return (-1);
     }
 
@@ -1274,10 +1273,7 @@ char **get_agents(int flag)
     /* Open the directory */
     dp = opendir(AGENTINFO_DIR);
     if (!dp) {
-        merror("%s: Error opening directory: '%s': %s ",
-               __local_name,
-               AGENTINFO_DIR,
-               strerror(errno));
+        merror("Error opening directory: '%s': %s ", AGENTINFO_DIR, strerror(errno));
         return (NULL);
     }
 
@@ -1316,7 +1312,7 @@ char **get_agents(int flag)
 
         f_files = (char **)realloc(f_files, (f_size + 2) * sizeof(char *));
         if (!f_files) {
-            ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
 
         /* Add agent entry */

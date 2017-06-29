@@ -60,7 +60,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries = (keyentry **)realloc(keys->keyentries,
                                             (keys->keysize + 2) * sizeof(keyentry *));
     if (!keys->keyentries) {
-        ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
+        merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
     keys->keyentries[keys->keysize + 1] = keys->keyentries[keys->keysize];
@@ -75,7 +75,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     /* Agent IP */
     os_calloc(1, sizeof(os_ip), keys->keyentries[keys->keysize]->ip);
     if (OS_IsValidIP(ip, keys->keyentries[keys->keysize]->ip) == 0) {
-        ErrorExit(INVALID_IP, __local_name, ip);
+        merror_exit(INVALID_IP, ip);
     }
 
     /* We need to remove the "/" from the CIDR */
@@ -135,17 +135,17 @@ int OS_CheckKeys()
     FILE *fp;
 
     if (File_DateofChange(KEYSFILE_PATH) < 0) {
-        merror(NO_AUTHFILE, __local_name, KEYSFILE_PATH);
-        merror(NO_CLIENT_KEYS, __local_name);
+        merror(NO_AUTHFILE, KEYSFILE_PATH);
+        merror(NO_CLIENT_KEYS);
         return (0);
     }
 
     fp = fopen(KEYSFILE_PATH, "r");
     if (!fp) {
         /* We can leave from here */
-        merror(FOPEN_ERROR, __local_name, KEYSFILE_PATH, errno, strerror(errno));
-        merror(NO_AUTHFILE, __local_name, KEYSFILE_PATH);
-        merror(NO_CLIENT_KEYS, __local_name);
+        merror(FOPEN_ERROR, KEYSFILE_PATH, errno, strerror(errno));
+        merror(NO_AUTHFILE, KEYSFILE_PATH);
+        merror(NO_CLIENT_KEYS);
         return (0);
     }
 
@@ -171,23 +171,23 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
 
     /* Check if the keys file is present and we can read it */
     if ((keys->file_change = File_DateofChange(keys_file)) < 0) {
-        merror(NO_AUTHFILE, __local_name, keys_file);
-        ErrorExit(NO_CLIENT_KEYS, __local_name);
+        merror(NO_AUTHFILE, keys_file);
+        merror_exit(NO_CLIENT_KEYS);
     }
 
     keys->inode = File_Inode(keys_file);
     fp = fopen(keys_file, "r");
     if (!fp) {
         /* We can leave from here */
-        merror(FOPEN_ERROR, __local_name, keys_file, errno, strerror(errno));
-        ErrorExit(NO_CLIENT_KEYS, __local_name);
+        merror(FOPEN_ERROR, keys_file, errno, strerror(errno));
+        merror_exit(NO_CLIENT_KEYS);
     }
 
     /* Initialize hashes */
     keys->keyhash_id = OSHash_Create();
     keys->keyhash_ip = OSHash_Create();
     if (!keys->keyhash_id || !keys->keyhash_ip) {
-        ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
+        merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
     /* Initialize structure */
@@ -214,7 +214,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
         valid_str = buffer;
         tmp_str = strchr(buffer, ' ');
         if (!tmp_str) {
-            merror(INVALID_KEY, __local_name, buffer);
+            merror(INVALID_KEY, buffer);
             continue;
         }
 
@@ -249,7 +249,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
         valid_str = tmp_str;
         tmp_str = strchr(tmp_str, ' ');
         if (!tmp_str) {
-            merror(INVALID_KEY, __local_name, buffer);
+            merror(INVALID_KEY, buffer);
             continue;
         }
 
@@ -261,7 +261,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
         valid_str = tmp_str;
         tmp_str = strchr(tmp_str, ' ');
         if (!tmp_str) {
-            merror(INVALID_KEY, __local_name, buffer);
+            merror(INVALID_KEY, buffer);
             continue;
         }
 
@@ -286,8 +286,8 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
 
         /* Check for maximum agent size */
         if (keys->keysize >= (MAX_AGENTS - 2)) {
-            merror(AG_MAX_ERROR, __local_name, MAX_AGENTS - 2);
-            ErrorExit(CONFIG_ERROR, __local_name, keys_file);
+            merror(AG_MAX_ERROR, MAX_AGENTS - 2);
+            merror_exit(CONFIG_ERROR, keys_file);
         }
 
         continue;
@@ -302,9 +302,9 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
     /* Check if there are any agents available */
     if (keys->keysize == 0) {
         if (pass_empty_keyfile) {
-            debug1(NO_CLIENT_KEYS, __local_name);
+            mdebug1(NO_CLIENT_KEYS);
         } else {
-            ErrorExit(NO_CLIENT_KEYS, __local_name);
+            merror_exit(NO_CLIENT_KEYS);
         }
     }
 
@@ -399,28 +399,28 @@ int OS_UpdateKeys(keystore *keys)
     keystore *old_keys;
 
     if (keys->file_change != File_DateofChange(KEYS_FILE) || keys->inode != File_Inode(KEYS_FILE)) {
-        merror(ENCFILE_CHANGED, __local_name);
-        debug1("%s: DEBUG: OS_DupKeys", __local_name);
+        minfo(ENCFILE_CHANGED);
+        mdebug1("OS_DupKeys");
         old_keys = OS_DupKeys(keys);
 
-        debug1("%s: DEBUG: Freekeys", __local_name);
+        mdebug1("Freekeys");
         OS_FreeKeys(keys);
 
         /* Read keys */
-        debug1("%s: DEBUG: OS_ReadKeys", __local_name);
-        verbose(ENC_READ, __local_name);
+        mdebug1("OS_ReadKeys");
+        minfo(ENC_READ);
         OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed);
 
-        debug1("%s: DEBUG: OS_StartCounter", __local_name);
+        mdebug1("OS_StartCounter");
         OS_StartCounter(keys);
 
-        debug1("%s: DEBUG: move_netdata", __local_name);
+        mdebug1("move_netdata");
         move_netdata(keys, old_keys);
 
         OS_FreeKeys(old_keys);
         free(old_keys);
 
-        debug1("%s: DEBUG: OS_UpdateKeys completed", __local_name);
+        mdebug1("OS_UpdateKeys completed");
         return (1);
     }
     return (0);

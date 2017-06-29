@@ -32,30 +32,30 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     }
 
     if (!getuname()) {
-        merror(MEM_ERROR, ARGV0, errno, strerror(errno));
+        merror(MEM_ERROR, errno, strerror(errno));
     } else
-        verbose("%s: INFO: Version detected -> %s", ARGV0, getuname());
+        minfo("Version detected -> %s", getuname());
 
 
 
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* chroot */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
     nowChroot();
 
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* Create the queue and read from it. Exit if fails. */
     if ((agt->m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0) {
-        ErrorExit(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
+        merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
     maxfd = agt->m_queue;
@@ -63,11 +63,11 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     /* Read private keys  */
-    verbose(ENC_READ, ARGV0);
+    minfo(ENC_READ);
 
     OS_ReadKeys(&keys, 1, 0);
     OS_StartCounter(&keys);
@@ -76,7 +76,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
                         agt->profile);
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     os_random();
 
@@ -86,19 +86,19 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Launch rotation thread */
 
     if (CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
-        ErrorExit(THREAD_ERROR, __local_name);
+        merror_exit(THREAD_ERROR);
     }
 
     /* Connect remote */
     rc = 0;
     while (rc < agt->rip_id) {
-        verbose("%s: INFO: Server IP Address: %s", ARGV0, agt->rip[rc]);
+        minfo("Server IP Address: %s", agt->rip[rc]);
         rc++;
     }
 
     /* Try to connect to the server */
     if (!connect_server(0)) {
-        ErrorExit(UNABLE_CONN, ARGV0);
+        merror_exit(UNABLE_CONN);
     }
 
     /* Set max fd for select */
@@ -109,8 +109,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
         if ((agt->execdq = StartMQ(EXECQUEUE, WRITE)) < 0) {
-            merror("%s: ERROR: Unable to connect to the active response "
-                   "queue (disabled).", ARGV0);
+            merror("Unable to connect to the active response "
+                   "queue (disabled).");
             agt->execdq = -1;
         }
     }
@@ -153,7 +153,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         /* Wait with a timeout for any descriptor */
         rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
         if (rc == -1) {
-            ErrorExit(SELECT_ERROR, ARGV0, errno, strerror(errno));
+            merror_exit(SELECT_ERROR, errno, strerror(errno));
         } else if (rc == 0) {
             continue;
         }
@@ -161,7 +161,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         /* For the receiver */
         if (FD_ISSET(agt->sock, &fdset)) {
             if (receive_msg() < 0) {
-                merror(LOST_ERROR, ARGV0);
+                merror(LOST_ERROR);
                 start_agent(0);
             }
         }

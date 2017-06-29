@@ -54,19 +54,19 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, node[i]->element);
             return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, xml_integrator_level) == 0)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return(OS_INVALID);
             }
 
@@ -151,7 +151,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
             if(!OSMatch_Compile(node[i]->content,
                                 integrator_config[s]->location, 0))
             {
-                merror(REGEX_COMPILE, ARGV0, node[i]->content,
+                merror(REGEX_COMPILE, node[i]->content,
                        integrator_config[s]->location->error);
                 return(-1);
             }
@@ -162,25 +162,25 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
             if(!OSMatch_Compile(node[i]->content,
                                 integrator_config[s]->group, 0))
             {
-                merror(REGEX_COMPILE, ARGV0, node[i]->content,
+                merror(REGEX_COMPILE, node[i]->content,
                        integrator_config[s]->group->error);
                 return(-1);
             }
         } else if (strcmp(node[i]->element, xml_integrator_max_log) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, ARGV0,node[i]->element, node[i]->content);
+                merror(XML_VALUEERR,node[i]->element, node[i]->content);
                 return(OS_INVALID);
             }
 
             integrator_config[s]->max_log = atoi(node[i]->content);
 
             if (integrator_config[s]->max_log < 165 || integrator_config[s]->max_log > 1024) {
-                merror(XML_VALUEERR, ARGV0,node[i]->element, node[i]->content);
+                merror(XML_VALUEERR,node[i]->element, node[i]->content);
                 return(OS_INVALID);
             }
         } else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             return(OS_INVALID);
         }
         i++;
@@ -189,7 +189,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     /* We must have at least one entry set */
     if(!integrator_config[s]->name)
     {
-        merror(XML_INV_INTEGRATOR, ARGV0);
+        merror(XML_INV_INTEGRATOR);
         return(OS_INVALID);
     }
 

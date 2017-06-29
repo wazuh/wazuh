@@ -22,7 +22,7 @@ int send_msg(int agentid, const char *msg)
 
     msg_size = CreateSecMSG(&keys, msg, crypt_msg, agentid);
     if (msg_size == 0) {
-        merror(SEC_ERROR, ARGV0);
+        merror(SEC_ERROR);
         return (-1);
     }
 
@@ -36,7 +36,7 @@ int send_msg(int agentid, const char *msg)
     }
 
     if (recv_b < 0) {
-        merror(SEND_ERROR, ARGV0, "server");
+        merror(SEND_ERROR, "server");
         sleep(1);
         return (-1);
     }

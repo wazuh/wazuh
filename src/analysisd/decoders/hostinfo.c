@@ -89,7 +89,7 @@ void HostinfoInit()
         }
     }
     if (!_hi_fp) {
-        merror(FOPEN_ERROR, ARGV0, _hi_buf, errno, strerror(errno));
+        merror(FOPEN_ERROR, _hi_buf, errno, strerror(errno));
         return;
     }
 
@@ -129,8 +129,8 @@ int DecodeHostinfo(Eventinfo *lf)
 
     /* Check maximum number of errors */
     if (hi_err > 30) {
-        merror("%s: Too many errors handling host information db. "
-               "Ignoring it.", ARGV0);
+        merror("Too many errors handling host information db. "
+               "Ignoring it.");
         return (0);
     }
 
@@ -139,7 +139,7 @@ int DecodeHostinfo(Eventinfo *lf)
     opened[OS_MAXSTR] = '\0';
     fp = HI_File();
     if (!fp) {
-        merror("%s: Error handling host information database.", ARGV0);
+        merror("Error handling host information database.");
         hi_err++;
         return (0);
     }
@@ -150,7 +150,7 @@ int DecodeHostinfo(Eventinfo *lf)
     /* Get IP */
     tmpstr = __go_after(buffer, HOST_HOST);
     if (!tmpstr) {
-        merror("%s: Error handling host information database.", ARGV0);
+        merror("Error handling host information database.");
         hi_err++;
 
         return (0);
@@ -160,7 +160,7 @@ int DecodeHostinfo(Eventinfo *lf)
     ip = tmpstr;
     tmpstr = strchr(tmpstr, ',');
     if (!tmpstr) {
-        merror("%s: Error handling host information database.", ARGV0);
+        merror("Error handling host information database.");
         hi_err++;
 
         return (0);
@@ -221,4 +221,3 @@ int DecodeHostinfo(Eventinfo *lf)
 
     return (1);
 }
-

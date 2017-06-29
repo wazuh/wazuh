@@ -51,10 +51,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
         XML_NODE chld_node = NULL;
 
         if (!node[i]->element) {
-            merror(XML_ELEMNULL, __local_name);
+            merror(XML_ELEMNULL);
             goto fail;
         } else if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-            merror(XML_INVELEM, __local_name, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             goto fail;
         } else if (strcmp(node[i]->element, osglobal) == 0) {
             if (((modules & CGLOBAL) || (modules & CMAIL))
@@ -137,7 +137,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else {
-            merror(XML_INVELEM, __local_name, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             goto fail;
         }
 
@@ -175,10 +175,10 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     if (OS_ReadXML(cfgfile, &xml) < 0) {
         if (modules & CAGENT_CONFIG) {
 #ifndef CLIENT
-            merror(XML_ERROR, __local_name, cfgfile, xml.err, xml.err_line);
+            merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
 #endif
         } else {
-            merror(XML_ERROR, __local_name, cfgfile, xml.err, xml.err_line);
+            merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
         }
         return (OS_INVALID);
     }
@@ -192,7 +192,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     i = 0;
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL, __local_name);
+            merror(XML_ELEMNULL);
             OS_ClearNode(node);
             OS_ClearXML(&xml);
             return (OS_INVALID);
@@ -204,7 +204,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
             /* Main element does not need to have any child */
             if (chld_node) {
                 if (read_main_elements(&xml, modules, chld_node, d1, d2) < 0) {
-                    merror(CONFIG_ERROR, __local_name, cfgfile);
+                    merror(CONFIG_ERROR, cfgfile);
                     OS_ClearNode(chld_node);
                     OS_ClearNode(node);
                     OS_ClearXML(&xml);
@@ -247,13 +247,13 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                             }
                         } else {
                             passed_agent_test = 0;
-                            merror("%s: ERROR: Unable to retrieve uname.", __local_name);
+                            merror("Unable to retrieve uname.");
                         }
 #endif
                     } else if (strcmp(xml_agent_profile, node[i]->attributes[attrs]) == 0) {
 #ifdef CLIENT
                         char *agentprofile = os_read_agent_profile();
-                        debug2("Read agent config profile name [%s]", agentprofile);
+                        mdebug2("Read agent config profile name [%s]", agentprofile);
 
                         if (!agentprofile) {
                             passed_agent_test = 0;
@@ -264,17 +264,17 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                              */
                             if (!OS_Match2(node[i]->values[attrs], agentprofile)) {
                                 passed_agent_test = 0;
-                                debug2("[%s] did not match agent config profile name [%s]",
+                                mdebug2("[%s] did not match agent config profile name [%s]",
                                        node[i]->values[attrs], agentprofile);
                             } else {
-                                debug2("Matched agent config profile name [%s]", agentprofile);
+                                mdebug2("Matched agent config profile name [%s]", agentprofile);
                             }
                             free(agentprofile);
                         }
 #endif
                     } else if (strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0) {
                     } else {
-                        merror(XML_INVATTR, __local_name, node[i]->attributes[attrs],
+                        merror(XML_INVATTR, node[i]->attributes[attrs],
                                cfgfile);
                     }
                     attrs++;
@@ -283,7 +283,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 #ifdef CLIENT
             else {
                 char *agentprofile = os_read_agent_profile();
-                debug2("agent_config element does not have any attributes.");
+                mdebug2("agent_config element does not have any attributes.");
 
                 /* if node does not have any attributes, it is a generic config block.
                  * check if agent has a profile name
@@ -292,7 +292,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                  */
 
                 if (!agentprofile) {
-                    debug2("but agent has a profile name.");
+                    mdebug2("but agent has a profile name.");
                     passed_agent_test = 0;
                 } else {
                     free(agentprofile);
@@ -303,7 +303,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
             /* Main element does not need to have any child */
             if (chld_node) {
                 if (passed_agent_test && read_main_elements(&xml, modules, chld_node, d1, d2) < 0) {
-                    merror(CONFIG_ERROR, __local_name, cfgfile);
+                    merror(CONFIG_ERROR, cfgfile);
                     OS_ClearNode(chld_node);
                     OS_ClearNode(node);
                     OS_ClearXML(&xml);
@@ -313,7 +313,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                 OS_ClearNode(chld_node);
             }
         } else {
-            merror(XML_INVELEM, __local_name, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             OS_ClearNode(node);
             OS_ClearXML(&xml);
             return (OS_INVALID);

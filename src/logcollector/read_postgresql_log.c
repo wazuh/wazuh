@@ -16,12 +16,12 @@
 /* Send pgsql message and check the return code */
 static void __send_pgsql_msg(int pos, int drop_it, char *buffer)
 {
-    debug2("%s: DEBUG: Reading PostgreSQL message: '%s'", ARGV0, buffer);
+    mdebug2("Reading PostgreSQL message: '%s'", buffer);
     if (drop_it == 0) {
         if (SendMSG(logr_queue, buffer, logff[pos].file, POSTGRESQL_MQ) < 0) {
-            merror(QUEUE_SEND, ARGV0);
+            merror(QUEUE_SEND);
             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
             }
         }
     }

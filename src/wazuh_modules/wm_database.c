@@ -63,7 +63,7 @@ const wm_context WM_DATABASE_CONTEXT = {
 void* wm_database_main(wm_database *data) {
     module = data;
 
-    verbose("%s: INFO: Module started.", WM_DATABASE_LOGTAG);
+    mtinfo(WM_DATABASE_LOGTAG, "Module started.");
 
     // Manager name synchronization
 
@@ -90,7 +90,7 @@ void* wm_database_main(wm_database *data) {
         old_max_queued_events = get_max_queued_events();
 
         if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
-            debug1("%s: DEBUG: Setting inotify queued events limit to '%d'", WM_DATABASE_LOGTAG, data->max_queued_events);
+            mtdebug1(WM_DATABASE_LOGTAG, "Setting inotify queued events limit to '%d'", data->max_queued_events);
 
              if (set_max_queued_events(data->max_queued_events) < 0) {
                  // Error: do not reset then
@@ -102,19 +102,19 @@ void* wm_database_main(wm_database *data) {
     // Start inotify
 
     if ((fd = inotify_init()) < 0) {
-        merror("%s: ERROR: Couldn't init inotify: %s.", WM_DATABASE_LOGTAG, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, "Couldn't init inotify: %s.", strerror(errno));
         return NULL;
     }
 
     // Reset inotify queued events limit
 
     if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
-        debug2("%s: DEBUG: Restoring inotify queued events limit to '%d'", WM_DATABASE_LOGTAG, old_max_queued_events);
+        mtdebug2(WM_DATABASE_LOGTAG, "Restoring inotify queued events limit to '%d'", old_max_queued_events);
         set_max_queued_events(old_max_queued_events);
     }
 
     if (!(keysfile = strrchr(keysfile_dir, '/'))) {
-        merror("%s: CRITICAL: Couldn't decode keys file path '%s'.", WM_DATABASE_LOGTAG, keysfile_dir);
+        mterror(WM_DATABASE_LOGTAG, "Couldn't decode keys file path '%s'.", keysfile_dir);
         return NULL;
     }
 
@@ -124,31 +124,31 @@ void* wm_database_main(wm_database *data) {
 
     if (data->sync_agents) {
         if ((wd_agents = inotify_add_watch(fd, keysfile_dir, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)
-            merror("%s: ERROR: Couldn't watch client.keys file: %s.", WM_DATABASE_LOGTAG, strerror(errno));
+            mterror(WM_DATABASE_LOGTAG, "Couldn't watch client.keys file: %s.", strerror(errno));
 
-        debug2("%s: DEBUG: wd_agents='%d'", ARGV0, wd_agents);
+        mtdebug2(WM_DATABASE_LOGTAG, "wd_agents='%d'", wd_agents);
 
         if ((wd_agentinfo = inotify_add_watch(fd, DEFAULTDIR AGENTINFO_DIR, IN_CLOSE_WRITE | IN_ATTRIB)) < 0)
-            merror("%s: ERROR: Couldn't watch the agent info directory: %s.", WM_DATABASE_LOGTAG, strerror(errno));
+            mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent info directory: %s.", strerror(errno));
 
-        debug2("%s: DEBUG: wd_agentinfo='%d'", ARGV0, wd_agentinfo);
+        mtdebug2(WM_DATABASE_LOGTAG, "wd_agentinfo='%d'", wd_agentinfo);
         wm_sync_agents();
         wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
     }
 
     if (data->sync_syscheck) {
         if ((wd_syscheck = inotify_add_watch(fd, DEFAULTDIR SYSCHECK_DIR, IN_MODIFY)) < 0)
-            merror("%s: ERROR: Couldn't watch Syscheck directory: %s.", WM_DATABASE_LOGTAG, strerror(errno));
+            mterror(WM_DATABASE_LOGTAG, "Couldn't watch Syscheck directory: %s.", strerror(errno));
 
-        debug2("%s: DEBUG: wd_syscheck='%d'", ARGV0, wd_syscheck);
+        mtdebug2(WM_DATABASE_LOGTAG, "wd_syscheck='%d'", wd_syscheck);
         wm_scan_directory(DEFAULTDIR SYSCHECK_DIR);
     }
 
     if (data->sync_rootcheck) {
         if ((wd_rootcheck = inotify_add_watch(fd, DEFAULTDIR ROOTCHECK_DIR, IN_MODIFY)) < 0)
-            merror("%s: ERROR: Couldn't watch Rootcheck directory: %s.", WM_DATABASE_LOGTAG, strerror(errno));
+            mterror(WM_DATABASE_LOGTAG, "Couldn't watch Rootcheck directory: %s.", strerror(errno));
 
-        debug2("%s: DEBUG: wd_rootcheck='%d'", ARGV0, wd_rootcheck);
+        mtdebug2(WM_DATABASE_LOGTAG, "wd_rootcheck='%d'", wd_rootcheck);
         wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
     }
 
@@ -158,12 +158,12 @@ void* wm_database_main(wm_database *data) {
 
         // Wait for changes
 
-        debug1("%s: DEBUG: Waiting for event notification...", WM_DATABASE_LOGTAG);
+        mtdebug1(WM_DATABASE_LOGTAG, "Waiting for event notification...");
 
         do {
             if ((count = read(fd, buffer, IN_BUFFER_SIZE)) < 0) {
                 if (errno != EAGAIN)
-                    merror("%s: ERROR: read(): %s.", WM_DATABASE_LOGTAG, strerror(errno));
+                    mterror(WM_DATABASE_LOGTAG, "read(): %s.", strerror(errno));
 
                 break;
             }
@@ -172,10 +172,10 @@ void* wm_database_main(wm_database *data) {
 
             for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
                 event = (struct inotify_event*)&buffer[i];
-                debug2("%s: DEBUG: inotify: i='%zd', name='%s', mask='%u', wd='%d'", ARGV0, i, event->name, event->mask, event->wd);
+                mtdebug2(WM_DATABASE_LOGTAG, "inotify: i='%zd', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
 
                 if (event->len > IN_BUFFER_SIZE) {
-                    merror("%s: ERROR: Inotify event too large (%u)", WM_DATABASE_LOGTAG, event->len);
+                    mterror(WM_DATABASE_LOGTAG, "Inotify event too large (%u)", event->len);
                     break;
                 }
 
@@ -190,10 +190,10 @@ void* wm_database_main(wm_database *data) {
                 else if (event->wd == wd_rootcheck)
                     wm_sync_file(DEFAULTDIR ROOTCHECK_DIR, event->name);
                 else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
-                    merror("%s: ERROR: Inotify event queue overflowed.", WM_DATABASE_LOGTAG);
+                    mterror(WM_DATABASE_LOGTAG, "Inotify event queue overflowed.");
                     continue;
                 } else
-                    merror("%s: ERROR: Unknown watch descriptor '%d', mask='%u'.", WM_DATABASE_LOGTAG, event->wd, event->mask);
+                    mterror(WM_DATABASE_LOGTAG, "Unknown watch descriptor '%d', mask='%u'.", event->wd, event->mask);
             }
         } while (count > 0);
     }
@@ -240,7 +240,7 @@ void wm_sync_manager() {
     if (gethostname(hostname, 1024) == 0)
         wdb_update_agent_name(0, hostname);
     else
-        merror("%s: ERROR: Couldn't get manager's hostname: %s.", WM_DATABASE_LOGTAG, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, "Couldn't get manager's hostname: %s.", strerror(errno));
 
     if ((os_uname = getuname())) {
         char *ptr;
@@ -303,16 +303,16 @@ void wm_sync_manager() {
         if (!stat(path, &buffer) && buffer.st_size > 0) {
             switch (wdb_get_agent_status(0)) {
             case -1:
-                merror("%s: ERROR: Couldn't get database status for manager.", WM_DATABASE_LOGTAG);
+                mterror(WM_DATABASE_LOGTAG, "Couldn't get database status for manager.");
                 break;
             case WDB_AGENT_EMPTY:
                 if (wdb_set_agent_offset(0, WDB_SYSCHECK, buffer.st_size) < 1)
-                    merror("%s: ERROR: Couldn't write offset data on database for manager.", WM_DATABASE_LOGTAG);
+                    mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for manager.");
             }
         }
 
         if (wdb_set_agent_status(0, WDB_AGENT_UPDATED) < 1) {
-            merror("%s: ERROR: Couldn't write agent status on database for manager.", WM_DATABASE_LOGTAG);
+            mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for manager.");
         }
     }
 }
@@ -324,7 +324,7 @@ void wm_check_agents() {
     struct stat buffer;
 
     if (stat(KEYSFILE_PATH, &buffer) < 0) {
-        merror("%s: ERROR: Couldn't get client.keys stat: %s.", WM_DATABASE_LOGTAG, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, "Couldn't get client.keys stat: %s.", strerror(errno));
     } else {
         if (buffer.st_mtime != timestamp || buffer.st_ino != inode) {
             /* Synchronize */
@@ -346,7 +346,7 @@ void wm_sync_agents() {
     clock_t clock0 = clock();
     struct stat buffer;
 
-    debug1("%s: DEBUG: Synchronizing agents.", WM_DATABASE_LOGTAG);
+    mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing agents.");
     OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, 0, 0);
 
@@ -356,10 +356,10 @@ void wm_sync_agents() {
         entry = keys.keyentries[i];
         int id;
 
-        debug2("%s: DEBUG: Synchronizing agent %s '%s'.", WM_DATABASE_LOGTAG, entry->id, entry->name);
+        mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing agent %s '%s'.", entry->id, entry->name);
 
         if (!(id = atoi(entry->id))) {
-            merror("%s: ERROR: at wm_sync_agents(): invalid ID number.", WM_DATABASE_LOGTAG);
+            mterror(WM_DATABASE_LOGTAG, "At wm_sync_agents(): invalid ID number.");
             continue;
         }
 
@@ -370,17 +370,17 @@ void wm_sync_agents() {
 
             if (stat(path, &buffer) < 0) {
                 if (errno != ENOENT)
-                    merror(FSTAT_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
+                    mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
             } else if (wdb_set_agent_offset(id, WDB_SYSCHECK, buffer.st_size) < 1)
-                merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s).", WM_DATABASE_LOGTAG, id, entry->name);
+                mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id, entry->name);
 
             snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck-registry", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
 
             if (stat(path, &buffer) < 0) {
                 if (errno != ENOENT)
-                    merror(FSTAT_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
+                    mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
             } else if (wdb_set_agent_offset(id, WDB_SYSCHECK_REGISTRY, buffer.st_size) < 1)
-                merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s).", WM_DATABASE_LOGTAG, id, entry->name);
+                mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id, entry->name);
         }
     }
 
@@ -400,8 +400,8 @@ void wm_sync_agents() {
     }
 
     OS_FreeKeys(&keys);
-    debug1("%s: DEBUG: Agent sync completed.", WM_DATABASE_LOGTAG);
-    debug2("%s: DEBUG: wm_sync_agents(): %.3f ms.", WM_DATABASE_LOGTAG, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+    mtdebug1(WM_DATABASE_LOGTAG, "Agent sync completed.");
+    mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms.", (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 }
 
 int wm_sync_agentinfo(int id_agent, const char *path) {
@@ -424,7 +424,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     int match_size;
 
     if (!(fp = fopen(path, "r"))) {
-        merror(FOPEN_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
         return -1;
     }
 
@@ -432,14 +432,14 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     fclose(fp);
 
     if (!os) {
-        merror("%s: ERROR: Couldn't read file '%s'.", WM_DATABASE_LOGTAG, path);
+        mterror(WM_DATABASE_LOGTAG, "Couldn't read file '%s'.", path);
         return -1;
     }
 
     if (end_line = strstr(os, "\n"), end_line){
         *end_line = '\0';
     } else {
-        merror("%s: WARN: Corrupt line found parsing '%s' (incomplete). Returning.", WM_DATABASE_LOGTAG, path);
+        mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s' (incomplete). Returning.", path);
         return -1;
     }
 
@@ -452,7 +452,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         *version = '\0';
         version += 3;
     } else {
-        merror("%s: ERROR: Corrupt file '%s'.", WM_DATABASE_LOGTAG, path);
+        mterror(WM_DATABASE_LOGTAG, "Corrupt file '%s'.", path);
         return -1;
     }
 
@@ -539,7 +539,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         free(os_minor);
     }
 
-    debug2("%s: DEBUG: wm_sync_agentinfo(%d): %.3f ms.", WM_DATABASE_LOGTAG, id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+    mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agentinfo(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
     return result;
 }
 
@@ -548,11 +548,11 @@ void wm_scan_directory(const char *dirname) {
     struct dirent *dirent;
     DIR *dir;
 
-    debug1("%s: DEBUG: Scanning directory '%s'.", WM_DATABASE_LOGTAG, dirname);
+    mtdebug1(WM_DATABASE_LOGTAG, "Scanning directory '%s'.", dirname);
     snprintf(path, PATH_MAX, "%s", dirname);
 
     if (!(dir = opendir(path))) {
-        merror("%s: ERROR: Couldn't open directory '%s': %s.", WM_DATABASE_LOGTAG, path, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", path, strerror(errno));
         return;
     }
 
@@ -575,7 +575,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     int type;
     sqlite3 *db;
 
-    debug1("%s: DEBUG: Synchronizing file '%s/%s'", WM_DATABASE_LOGTAG, dirname, fname);
+    mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing file '%s/%s'", dirname, fname);
     snprintf(path, PATH_MAX, "%s/%s", dirname, fname);
 
     if (!strcmp(dirname, DEFAULTDIR AGENTINFO_DIR))
@@ -595,7 +595,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
             strcpy(name, "localhost");
         }
     } else {
-        merror("%s: ERROR: Directory name '%s' not recognized.", WM_DATABASE_LOGTAG, dirname);
+        mterror(WM_DATABASE_LOGTAG, "Directory name '%s' not recognized.", dirname);
         return -1;
     }
 
@@ -605,7 +605,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         switch (wm_extract_agent(fname, name, addr, &is_registry)) {
         case 0:
             if ((id_agent = wdb_find_agent(name, addr)) < 0) {
-                debug2("%s: WARN: No such agent at database for file %s/%s", WM_DATABASE_LOGTAG, dirname, fname);
+                mtdebug2(WM_DATABASE_LOGTAG, "No such agent at database for file %s/%s", dirname, fname);
                 return -1;
             }
 
@@ -615,26 +615,26 @@ int wm_sync_file(const char *dirname, const char *fname) {
             break;
 
         case 1:
-            debug1("%s: DEBUG: Ignoring file '%s/%s'", WM_DATABASE_LOGTAG, dirname, fname);
+            mtdebug1(WM_DATABASE_LOGTAG, "Ignoring file '%s/%s'", dirname, fname);
             return 0;
 
         default:
-            merror("%s: WARN: Couldn't extract agent name and address from file %s/%s", WM_DATABASE_LOGTAG, dirname, fname);
+            mtwarn(WM_DATABASE_LOGTAG, "Couldn't extract agent name and address from file %s/%s", dirname, fname);
             return -1;
         }
     }
 
     if (stat(path, &buffer) < 0) {
-        merror(FSTAT_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
         return -1;
     }
 
     switch (wdb_get_agent_status(id_agent)) {
     case -1:
-        merror("%s: ERROR: Couldn't get database status for agent '%d'.", WM_DATABASE_LOGTAG, id_agent);
+        mterror(WM_DATABASE_LOGTAG, "Couldn't get database status for agent '%d'.", id_agent);
         return -1;
     case WDB_AGENT_PENDING:
-        merror("%s: WARN: Agent '%d' database status was 'pending'. Data could be lost.", WM_DATABASE_LOGTAG, id_agent);
+        mtwarn(WM_DATABASE_LOGTAG, "Agent '%d' database status was 'pending'. Data could be lost.", id_agent);
         wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED);
         break;
     }
@@ -643,29 +643,29 @@ int wm_sync_file(const char *dirname, const char *fname) {
     case WDB_SYSCHECK:
     case WDB_SYSCHECK_REGISTRY:
         if ((offset = wdb_get_agent_offset(id_agent, type)) < 0) {
-            merror("%s: ERROR: Couldn't file offset from database for agent '%d'.", WM_DATABASE_LOGTAG, id_agent);
+            mterror(WM_DATABASE_LOGTAG, "Couldn't file offset from database for agent '%d'.", id_agent);
             return -1;
         }
 
         if (buffer.st_size < offset) {
-            merror("%s: WARN: File '%s' was truncated.", WM_DATABASE_LOGTAG, path);
+            mtwarn(WM_DATABASE_LOGTAG, "File '%s' was truncated.", path);
             offset = 0;
         }
 
         if (buffer.st_size > offset) {
             if (!(db = wdb_open_agent(id_agent, name))) {
-                merror("%s: ERROR: Couldn't open database for file '%s/%s'.", WM_DATABASE_LOGTAG, dirname, fname);
+                mterror(WM_DATABASE_LOGTAG, "Couldn't open database for file '%s/%s'.", dirname, fname);
                 return -1;
             }
 
             if (wdb_set_agent_status(id_agent, WDB_AGENT_PENDING) < 1) {
-                merror("%s: ERROR: Couldn't write agent status on database for agent %d (%s).", WM_DATABASE_LOGTAG, id_agent, name);
+                mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
                 sqlite3_close_v2(db);
                 return -1;
             }
 
             if (wdb_set_agent_offset(id_agent, type, buffer.st_size) < 1) {
-                merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s).", WM_DATABASE_LOGTAG, id_agent, name);
+                mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id_agent, name);
                 sqlite3_close_v2(db);
                 return -1;
             }
@@ -674,32 +674,32 @@ int wm_sync_file(const char *dirname, const char *fname) {
             sqlite3_close_v2(db);
 
             if (wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED) < 1) {
-                merror("%s: ERROR: Couldn't write agent status on database for agent %d (%s).", WM_DATABASE_LOGTAG, id_agent, name);
+                mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
                 return -1;
             }
 
             if (offset < 0) {
-                merror("%s: ERROR: Couldn't fill syscheck database for file '%s/%s'.", WM_DATABASE_LOGTAG, dirname, fname);
+                mterror(WM_DATABASE_LOGTAG, "Couldn't fill syscheck database for file '%s/%s'.", dirname, fname);
                 return -1;
             }
 
             if (offset != buffer.st_size && wdb_set_agent_offset(id_agent, type, offset) < 1) {
-                merror("%s: ERROR: Couldn't write offset data on database for agent %d (%s) (post-fill).", WM_DATABASE_LOGTAG, id_agent, name);
+                mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s) (post-fill).", id_agent, name);
                 return -1;
             }
         } else
-            debug1("%s: DEBUG: Skipping file '%s/%s' (no new data).", WM_DATABASE_LOGTAG, dirname, fname);
+            mtdebug1(WM_DATABASE_LOGTAG, "Skipping file '%s/%s' (no new data).", dirname, fname);
 
         break;
 
     case WDB_ROOTCHECK:
         if (!(db = wdb_open_agent(id_agent, name))) {
-            merror("%s: ERROR: Couldn't open database for file '%s/%s'.", WM_DATABASE_LOGTAG, dirname, fname);
+            mterror(WM_DATABASE_LOGTAG, "Couldn't open database for file '%s/%s'.", dirname, fname);
             return -1;
         }
 
         if (wdb_set_agent_status(id_agent, WDB_AGENT_PENDING) < 1) {
-            merror("%s: ERROR: Couldn't write agent status on database for agent %d (%s).", WM_DATABASE_LOGTAG, id_agent, name);
+            mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
             sqlite3_close_v2(db);
             return -1;
         }
@@ -708,12 +708,12 @@ int wm_sync_file(const char *dirname, const char *fname) {
         sqlite3_close_v2(db);
 
         if (wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED) < 1) {
-            merror("%s: ERROR: Couldn't write agent status on database for agent %d (%s).", WM_DATABASE_LOGTAG, id_agent, name);
+            mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
             return -1;
         }
 
         if (result < 0) {
-            merror("%s: ERROR: Couldn't fill rootcheck database for file '%s/%s'.", WM_DATABASE_LOGTAG, dirname, fname);
+            mterror(WM_DATABASE_LOGTAG, "Couldn't fill rootcheck database for file '%s/%s'.", dirname, fname);
             return -1;
         }
 
@@ -743,12 +743,12 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
     sk_sum_t sum;
 
     if (!(fp = fopen(path, "r"))) {
-        merror(FOPEN_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
         return -1;
     }
 
     if (fseek(fp, offset, SEEK_SET) < 0) {
-        merror(FSEEK_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, FSEEK_ERROR, path, errno, strerror(errno));
         fclose(fp);
         return -1;
     }
@@ -760,7 +760,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
         end = strchr(buffer, '\n');
 
         if (!end) {
-            merror("%s: WARN: Corrupt line found parsing '%s' (incomplete). Breaking.", WM_DATABASE_LOGTAG, path);
+            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s' (incomplete). Breaking.", path);
             break;
         } else if (end == buffer)
             continue;
@@ -769,7 +769,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
         c_sum = buffer + 3;
 
         if (!(timestamp = strstr(c_sum, " !"))) {
-            merror("%s: WARN: Corrupt line found parsing '%s' (no timestamp found).", WM_DATABASE_LOGTAG, path);
+            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s' (no timestamp found).", path);
             continue;
         }
 
@@ -777,7 +777,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
         timestamp += 2;
 
         if (!(f_name = strchr(timestamp, ' '))) {
-            merror("%s: WARN: Corrupt line found parsing '%s'.", WM_DATABASE_LOGTAG, path);
+            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s'.", path);
             continue;
         }
 
@@ -798,7 +798,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
                 event = "readded";
                 break;
             default:
-                merror("%s: ERROR: Couldn't extract FIM data from database.", WM_DATABASE_LOGTAG);
+                mterror(WM_DATABASE_LOGTAG, "Couldn't extract FIM data from database.");
                 continue;
             }
 
@@ -807,18 +807,18 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
             event = "deleted";
             break;
         default:
-            merror("%s: WARN: Corrupt line found parsing '%s'.", WM_DATABASE_LOGTAG, path);
+            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s'.", path);
             continue;
         }
 
         if (wdb_insert_fim(db, type, atol(timestamp), f_name, event, &sum) < 0)
-            merror("%s: ERROR: Couldn't insert FIM event into database from file '%s'.", WM_DATABASE_LOGTAG, path);
+            mterror(WM_DATABASE_LOGTAG, "Couldn't insert FIM event into database from file '%s'.", path);
 
         count++;
     }
 
     wdb_commit(db);
-    debug2("%s: DEBUG: Syscheck file sync finished. Count: %d. Time: %.3lf ms.", WM_DATABASE_LOGTAG, count, (double)(clock() - clock_ini) / CLOCKS_PER_SEC * 1000);
+    mtdebug2(WM_DATABASE_LOGTAG, "Syscheck file sync finished. Count: %d. Time: %.3lf ms.", count, (double)(clock() - clock_ini) / CLOCKS_PER_SEC * 1000);
 
     fclose(fp);
     return last_offset;
@@ -834,7 +834,7 @@ int wm_fill_rootcheck(sqlite3 *db, const char *path) {
     FILE *fp;
 
     if (!(fp = fopen(path, "r"))) {
-        merror(FOPEN_ERROR, WM_DATABASE_LOGTAG, path, errno, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
         return -1;
     }
 
@@ -845,7 +845,7 @@ int wm_fill_rootcheck(sqlite3 *db, const char *path) {
         end = strchr(buffer, '\n');
 
         if (!end) {
-            merror("%s: WARN: Corrupt line found parsing '%s' (incomplete). Breaking.", WM_DATABASE_LOGTAG, path);
+            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s' (incomplete). Breaking.", path);
             break;
         } else if (end == buffer)
             continue;
@@ -853,17 +853,17 @@ int wm_fill_rootcheck(sqlite3 *db, const char *path) {
         *end = '\0';
 
         if (rk_decode_event(buffer, &event) < 0) {
-            merror("%s: WARN: Corrupt line found parsing '%s'.", WM_DATABASE_LOGTAG, path);
+            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s'.", path);
             continue;
         }
 
         switch (wdb_update_pm(db, &event)) {
             case -1:
-                merror("%s: ERROR: Updating PM tuple on SQLite database for file '%s'.", WM_DATABASE_LOGTAG, path);
+                mterror(WM_DATABASE_LOGTAG, "Updating PM tuple on SQLite database for file '%s'.", path);
                 continue;
             case 0:
                 if (wdb_insert_pm(db, &event) < 0) {
-                    merror("%s: ERROR: Inserting PM tuple on SQLite database for file '%s'.", WM_DATABASE_LOGTAG, path);
+                    mterror(WM_DATABASE_LOGTAG, "Inserting PM tuple on SQLite database for file '%s'.", path);
                     continue;
                 }
 
@@ -875,7 +875,7 @@ int wm_fill_rootcheck(sqlite3 *db, const char *path) {
     }
 
     wdb_commit(db);
-    debug2("%s: DEBUG: Rootcheck file sync finished. Count: %d. Time: %.3lf ms.", WM_DATABASE_LOGTAG, count, (double)(clock() - clock_ini) / CLOCKS_PER_SEC * 1000);
+    mtdebug2(WM_DATABASE_LOGTAG, "Rootcheck file sync finished. Count: %d. Time: %.3lf ms.", count, (double)(clock() - clock_ini) / CLOCKS_PER_SEC * 1000);
 
     fclose(fp);
     return 0;
@@ -986,7 +986,7 @@ int get_max_queued_events() {
     FILE *fp;
 
     if (!(fp = fopen(MAX_QUEUED_EVENTS_PATH, "r"))) {
-        merror(FOPEN_ERROR, WM_DATABASE_LOGTAG, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
         return -1;
     }
 
@@ -1005,7 +1005,7 @@ int set_max_queued_events(int size) {
     FILE *fp;
 
     if (!(fp = fopen(MAX_QUEUED_EVENTS_PATH, "w"))) {
-        merror(FOPEN_ERROR, WM_DATABASE_LOGTAG, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
         return -1;
     }
 

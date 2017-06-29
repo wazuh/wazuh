@@ -98,14 +98,14 @@ int main(int argc, char **argv)
             case 'i':
                 info_agent++;
                 if (!optarg) {
-                    merror("%s: -u needs an argument", ARGV0);
+                    merror("-u needs an argument");
                     helpmsg();
                 }
                 agent_id = optarg;
                 break;
             case 'u':
                 if (!optarg) {
-                    merror("%s: -u needs an argument", ARGV0);
+                    merror("-u needs an argument");
                     helpmsg();
                 }
                 agent_id = optarg;
@@ -127,17 +127,17 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Set the group */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Chroot to the default directory */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
 
     /* Inside chroot now */
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
 
     /* Set the user */
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* Get server hostname */
@@ -188,7 +188,7 @@ int main(int argc, char **argv)
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else
-                    ErrorExit("%s: Unable to open: '%s'", ARGV0, ROOTCHECK_DIR);
+                    merror_exit("Unable to open: '%s'", ROOTCHECK_DIR);
             }
 
             while ((entry = readdir(sys_dir)) != NULL) {

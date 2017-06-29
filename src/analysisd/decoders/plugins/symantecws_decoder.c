@@ -15,7 +15,7 @@
 
 void *SymantecWS_Decoder_Init()
 {
-    debug1("%s: Initializing SymantecWS decoder..", ARGV0);
+    mdebug1("Initializing SymantecWS decoder..");
 
     /* There is nothing to do over here */
     return (NULL);

@@ -34,23 +34,23 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL, __local_name);
+            merror(XML_ELEMNULL);
             return OS_INVALID;
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, __local_name, node[i]->element);
+            merror(XML_VALUENULL, node[i]->element);
             return OS_INVALID;
         } else if (!strcmp(node[i]->element, xml_port)) {
             config->port = (unsigned short)atoi(node[i]->content);
 
             if (!config->port) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, xml_use_source_ip)) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
 
@@ -59,7 +59,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
 
@@ -69,14 +69,14 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             config->force_time = strtol(node[i]->content, &end, 10);
 
             if (*end != '\0') {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, xml_clear_removed)) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
 
@@ -85,7 +85,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
 
@@ -97,7 +97,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
 
@@ -112,13 +112,13 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
 
             config->flags.auto_negotiate = b;
         } else {
-            merror(XML_INVELEM, __local_name, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;
         }
     }

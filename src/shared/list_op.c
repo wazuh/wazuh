@@ -134,7 +134,7 @@ void OSList_DeleteOldestNode(OSList *list)
         free(list->first_node);
         list->first_node = next;
     } else {
-        merror("%s: No Oldest node to delete", __local_name);
+        merror("No Oldest node to delete");
     }
 
     return;
@@ -232,7 +232,7 @@ int OSList_AddData(OSList *list, void *data)
     /* Allocate memory for new node */
     newnode = (OSListNode *) calloc(1, sizeof(OSListNode));
     if (!newnode) {
-        merror(MEM_ERROR, __local_name, errno, strerror(errno));
+        merror(MEM_ERROR, errno, strerror(errno));
         return (0);
     }
 

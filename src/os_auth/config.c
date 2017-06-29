@@ -20,7 +20,7 @@ int authd_read_config(const char *path) {
     config.port = DEFAULT_PORT;
     config.force_time = -1;
 
-    debug2("%s: debug: Reading configuration '%s'", __local_name, path);
+    mdebug2("Reading configuration '%s'", path);
 
     if (ReadConfig(CAUTHD, path, &config, NULL) < 0) {
         return OS_INVALID;

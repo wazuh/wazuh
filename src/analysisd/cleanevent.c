@@ -38,7 +38,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Set pieces as the message */
     pieces = strchr(msg, ':');
     if (!pieces) {
-        merror(FORMAT_ERROR, ARGV0);
+        merror(FORMAT_ERROR);
         return (-1);
     }
 
@@ -500,7 +500,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         lf->location = strchr(lf->agent_id, ']');
 
         if (!lf->location) {
-            merror(FORMAT_ERROR, ARGV0);
+            merror(FORMAT_ERROR);
             return (-1);
         }
 

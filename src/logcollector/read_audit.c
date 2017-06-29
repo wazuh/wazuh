@@ -26,7 +26,7 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it)
         if (n + z + 1 < OS_MAXSTR) {
             if (n > 0)
                 message[n++] = ' ';
-            
+
             strncpy(message + n, cache[i], z);
         }
 
@@ -38,10 +38,10 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it)
         message[n] = '\0';
 
         if (SendMSG(logr_queue, message, file, LOCALFILE_MQ) < 0) {
-            merror(QUEUE_SEND, ARGV0);
+            merror(QUEUE_SEND);
 
             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
             }
         }
     }
@@ -56,9 +56,9 @@ void *read_audit(int pos, int *rc, int drop_it) {
     char *p;
     size_t z;
     long offset = ftell(logff[pos].fp);
-    
+
     if (offset < 0) {
-        merror(FTELL_ERROR, ARGV0, logff[pos].file, errno, strerror(errno));
+        merror(FTELL_ERROR, logff[pos].file, errno, strerror(errno));
         return NULL;
     }
 
@@ -72,10 +72,10 @@ void *read_audit(int pos, int *rc, int drop_it) {
                 // Message too large, discard line
                 while (fgets(buffer, OS_MAXSTR, logff[pos].fp) && !strchr(buffer, '\n'));
             } else {
-                debug1("%s: Message not complete. Trying again: '%s'", ARGV0, buffer);
-                
+                mdebug1("Message not complete. Trying again: '%s'", buffer);
+
                 if (fseek(logff[pos].fp, offset, SEEK_SET) < 0) {
-                    merror(FSEEK_ERROR, ARGV0, logff[pos].file, errno, strerror(errno));
+                    merror(FSEEK_ERROR, logff[pos].file, errno, strerror(errno));
                     break;
                 }
             }
@@ -86,10 +86,10 @@ void *read_audit(int pos, int *rc, int drop_it) {
         // Extract header: "type=\.* msg=audit(\d+.\d+:\d+):"
 
         if (strncmp(buffer, "type=", 5) || !((id = strstr(buffer + 5, "msg=audit(")) && (p = strstr(id += 10, "): ")))) {
-            merror("%s: ERROR: discarding audit message because of invalid syntax", ARGV0);
+            merror("Discarding audit message because of invalid syntax.");
             break;
         }
-        
+
         z = p - id;
 
         if (strncmp(id, header, z)) {
@@ -104,7 +104,7 @@ void *read_audit(int pos, int *rc, int drop_it) {
         } else {
             // The header is the same: store
             if (icache == MAX_CACHE)
-                merror("%s: ERROR: discarding audit message because cache is full", ARGV0);
+                merror("Discarding audit message because cache is full.");
             else
                 cache[icache++] = strdup(buffer);
         }

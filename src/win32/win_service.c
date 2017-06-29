@@ -124,7 +124,7 @@ int InstallService(char *path)
 
     /* Uninstall service (if it exists) */
     if (!UninstallService()) {
-        verbose("%s: ERROR: Failure running UninstallService().", ARGV0);
+        merror("Failure running UninstallService().");
         return (0);
     }
 
@@ -166,7 +166,7 @@ int InstallService(char *path)
         goto install_error;
     }
 
-    verbose("%s: INFO: Successfully added to the service database.", ARGV0);
+    minfo("Successfully added to the service database.");
     return (1);
 
 install_error: {
@@ -185,7 +185,7 @@ install_error: {
                        0,
                        NULL);
 
-        verbose("%s: ERROR: Unable to create service entry: %s", ARGV0, (LPCTSTR)lpMsgBuf);
+        merror("Unable to create service entry: %s", (LPCTSTR)lpMsgBuf);
         return (0);
     }
 }
@@ -204,32 +204,32 @@ int UninstallService()
         schService = OpenService(schSCManager, g_lpszServiceName, SERVICE_STOP | DELETE);
         if (schService) {
             if (CheckServiceRunning()) {
-                verbose("%s: INFO: Found (%s) service is running going to try and stop it.", ARGV0, g_lpszServiceName);
+                minfo("Found (%s) service is running going to try and stop it.", g_lpszServiceName);
                 ret = ControlService(schService, SERVICE_CONTROL_STOP, &lpServiceStatus);
                 if (!ret) {
-                    verbose("%s: ERROR: Failure stopping service (%s) before removing it (%ld).", ARGV0, g_lpszServiceName, GetLastError());
+                    merror("Failure stopping service (%s) before removing it (%ld).", g_lpszServiceName, GetLastError());
                 } else {
-                    verbose("%s: INFO: Successfully stopped (%s).", ARGV0, g_lpszServiceName);
+                    minfo("Successfully stopped (%s).", g_lpszServiceName);
                 }
             } else {
-                verbose("%s: INFO: Found (%s) service is not running.", ARGV0, g_lpszServiceName);
+                minfo("Found (%s) service is not running.", g_lpszServiceName);
                 ret = 1;
             }
 
             if (ret && DeleteService(schService)) {
-                verbose("%s: INFO: Successfully removed (%s) from the service database.", ARGV0, g_lpszServiceName);
+                minfo("Successfully removed (%s) from the service database.", g_lpszServiceName);
                 rc = 1;
             }
             CloseServiceHandle(schService);
         } else {
-            verbose("%s: INFO: Service does not exist (%s) nothing to remove.", ARGV0, g_lpszServiceName);
+            minfo("Service does not exist (%s) nothing to remove.", g_lpszServiceName);
             rc = 1;
         }
         CloseServiceHandle(schSCManager);
     }
 
     if (!rc) {
-        verbose("%s: ERROR: Failure removing (%s) from the service database.", ARGV0, g_lpszServiceName);
+        merror("Failure removing (%s) from the service database.", g_lpszServiceName);
     }
 
     return (rc);
@@ -245,9 +245,9 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
             ossecServiceStatus.dwCheckPoint             = 0;
             ossecServiceStatus.dwWaitHint               = 0;
 
-            verbose("%s: INFO: Received exit signal.", ARGV0);
+            minfo("Received exit signal.");
             SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
-            verbose("%s: INFO: Exiting...", ARGV0);
+            minfo("Exiting...");
             return;
         default:
             break;
@@ -270,7 +270,7 @@ int os_WinMain(__attribute__((unused)) int argc, __attribute__((unused)) char **
     };
 
     if (!StartServiceCtrlDispatcher(steDispatchTable)) {
-        verbose("%s: INFO: Unable to set service information.", ARGV0);
+        minfo("Unable to set service information.");
         return (1);
     }
 
@@ -293,7 +293,7 @@ void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__
                                    OssecServiceCtrlHandler);
 
     if (ossecServiceStatusHandle == (SERVICE_STATUS_HANDLE)0) {
-        verbose("%s: INFO: RegisterServiceCtrlHandler failed.", ARGV0);
+        minfo("RegisterServiceCtrlHandler failed.");
         return;
     }
 
@@ -302,7 +302,7 @@ void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__
     ossecServiceStatus.dwWaitHint = 0;
 
     if (!SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus)) {
-        verbose("%s: INFO: SetServiceStatus error.", ARGV0);
+        minfo("SetServiceStatus error.");
         return;
     }
 

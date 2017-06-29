@@ -206,7 +206,7 @@ int OSHash_Add(OSHash *self, const char *key, void *data)
     new_node->key = strdup(key);
     if ( new_node->key == NULL ) {
         free(new_node);
-        debug1("hash_op: DEBUG: strdup() failed!");
+        mdebug1("hash_op: strdup() failed!");
         return (0);
     }
 

@@ -57,11 +57,11 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip, int for
 
     switch (length = recv(sock, buffer, OS_MAXSTR, 0), length) {
     case -1:
-        ErrorExit("%s: ERROR: recv(): %s", __local_name, strerror(errno));
+        merror_exit("recv(): %s", strerror(errno));
         break;
 
     case 0:
-        ErrorExit("%s: ERROR: empty message from local server.", __local_name);
+        merror_exit("Empty message from local server.");
         break;
 
     default:
@@ -70,29 +70,29 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip, int for
         // Decode response
 
         if (response = cJSON_Parse(buffer), !response) {
-            ErrorExit("%s: ERROR: Parsing JSON response.", __local_name);
+            merror_exit("Parsing JSON response.");
         }
 
         // Detect error condition
 
         if (error = cJSON_GetObjectItem(response, "error"), !error) {
-            ErrorExit("%s: ERROR: No such status from response.", __local_name);
+            merror_exit("No such status from response.");
         } else if (error->valueint > 0) {
             if (json_format) {
                 printf("%s", buffer);
             } else {
                 message = cJSON_GetObjectItem(response, "message");
-                merror("%s: ERROR %d: %s", __local_name, error->valueint, message ? message->valuestring : "(undefined)");
+                merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
             }
 
             result = -1;
         } else {
             if (data = cJSON_GetObjectItem(response, "data"), !data) {
-                ErrorExit("%s: ERROR: No data received.", __local_name);
+                merror_exit("No data received.");
             }
 
             if (data_id = cJSON_GetObjectItem(data, "id"), !data) {
-                ErrorExit("%s: ERROR: No id received.", __local_name);
+                merror_exit("No id received.");
             }
 
             strncpy(id, data_id->valuestring, FILE_SIZE);
@@ -129,11 +129,11 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
 
     switch (length = recv(sock, buffer, OS_MAXSTR, 0), length) {
     case -1:
-        ErrorExit("%s: ERROR: recv(): %s", __local_name, strerror(errno));
+        merror_exit("recv(): %s", strerror(errno));
         break;
 
     case 0:
-        ErrorExit("%s: DEBUG: empty message from local server.", __local_name);
+        merror_exit("Empty message from local server.");
         break;
 
     default:
@@ -142,19 +142,19 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
         // Decode response
 
         if (response = cJSON_Parse(buffer), !response) {
-            ErrorExit("%s: ERROR: Parsing JSON response.", __local_name);
+            merror_exit("Parsing JSON response.");
         }
 
         // Detect error condition
 
         if (error = cJSON_GetObjectItem(response, "error"), !error) {
-            ErrorExit("%s: ERROR: No such status from response.", __local_name);
+            merror_exit("No such status from response.");
         } else if (error->valueint > 0) {
             if (json_format) {
                 printf("%s", buffer);
             } else {
                 message = cJSON_GetObjectItem(response, "message");
-                merror("%s: ERROR %d: %s", __local_name, error->valueint, message ? message->valuestring : "(undefined)");
+                merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
             }
 
             result = -1;

@@ -512,12 +512,12 @@ void OS_InitFwLog()
 {
     /* Initialize fw log regexes */
     if (!OSMatch_Compile(FWDROP, &FWDROPpm, 0)) {
-        ErrorExit(REGEX_COMPILE, ARGV0, FWDROP,
+        merror_exit(REGEX_COMPILE, FWDROP,
                   FWDROPpm.error);
     }
 
     if (!OSMatch_Compile(FWALLOW, &FWALLOWpm, 0)) {
-        ErrorExit(REGEX_COMPILE, ARGV0, FWALLOW,
+        merror_exit(REGEX_COMPILE, FWALLOW,
                   FWALLOWpm.error);
     }
 }

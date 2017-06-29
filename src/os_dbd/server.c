@@ -61,7 +61,7 @@ static int __DBInsertServer(const char *server, const char *info, const DBConfig
                  (unsigned int)time(0), __ossec_version, server, info);
 
         if (!osdb_query_insert(db_config->conn, sql_query)) {
-            merror(DB_GENERROR, ARGV0);
+            merror(DB_GENERROR);
         }
     }
 
@@ -74,7 +74,7 @@ static int __DBInsertServer(const char *server, const char *info, const DBConfig
                  (unsigned int)time(0), __ossec_version, info, server);
 
         if (!osdb_query_insert(db_config->conn, sql_query)) {
-            merror(DB_GENERROR, ARGV0);
+            merror(DB_GENERROR);
         }
     }
 
@@ -89,19 +89,19 @@ int OS_Server_ReadInsertDB(const DBConfig *db_config)
     int server_id = 0;
     char *info;
 
-    debug1("%s: DEBUG: entering OS_Server_ReadInsertDB()", ARGV0);
+    mdebug1("Entering OS_Server_ReadInsertDB()");
 
     /* Get server hostname */
     memset(__shost, '\0', 512);
     if (gethostname(__shost, 512 - 1) != 0) {
-        merror("%s: Error: gethostname() failed", ARGV0);
+        merror("gethostname() failed");
         return (0);
     }
 
     /* Get system uname */
     info = strdup(getuname());
     if (!info) {
-        merror(MEM_ERROR, ARGV0, errno, strerror(errno));
+        merror(MEM_ERROR, errno, strerror(errno));
         return (0);
     }
 

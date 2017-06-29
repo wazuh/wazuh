@@ -94,25 +94,25 @@ int main(int argc, char **argv)
                 break;
             case 'u':
                 if (!optarg) {
-                    ErrorExit("%s: -u needs an argument", ARGV0);
+                    merror_exit("-u needs an argument");
                 }
                 user = optarg;
                 break;
             case 'g':
                 if (!optarg) {
-                    ErrorExit("%s: -g needs an argument", ARGV0);
+                    merror_exit("-g needs an argument");
                 }
                 group = optarg;
                 break;
             case 'D':
                 if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
+                    merror_exit("-D needs an argument");
                 }
                 dir = optarg;
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument", ARGV0);
+                    merror_exit("-c needs an argument");
                 }
                 cfg = optarg;
                 break;
@@ -126,18 +126,18 @@ int main(int argc, char **argv)
     }
 
     /* Start daemon */
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Read configuration */
     if ((c = OS_ReadDBConf(test_config, cfg, &db_config)) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* Exit here if test config is set */
@@ -153,13 +153,13 @@ int main(int argc, char **argv)
 
     /* Not configured */
     if (c == 0) {
-        verbose("%s: Database not configured. Clean exit.", ARGV0);
+        minfo("Database not configured. Clean exit.");
         exit(0);
     }
 
     /* Maybe disable this debug? */
-    debug1("%s: DEBUG: Connecting to '%s', using '%s', '%s', '%s', %d,'%s'.",
-           ARGV0, db_config.host, db_config.user,
+    mdebug1("Connecting to '%s', using '%s', '%s', '%s', %d,'%s'.",
+           db_config.host, db_config.user,
            db_config.pass, db_config.db, db_config.port, db_config.sock);
 
     /* Set config pointer */
@@ -188,22 +188,22 @@ int main(int argc, char **argv)
 
     /* If after the maxreconnect attempts, it still didn't work, exit here */
     if (!db_config.conn) {
-        merror(DB_CONFIGERR, ARGV0);
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror(DB_CONFIGERR);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* We must notify that we connected -- easy debugging */
-    verbose("%s: Connected to database '%s' at '%s'.",
-            ARGV0, db_config.db, db_config.host);
+    minfo("Connected to database '%s' at '%s'.",
+            db_config.db, db_config.host);
 
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* chroot */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
 
     /* Now in chroot */
@@ -212,34 +212,33 @@ int main(int argc, char **argv)
     /* Insert server info into the db */
     db_config.server_id = OS_Server_ReadInsertDB(&db_config);
     if (db_config.server_id <= 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* Read rules and insert into the db */
     if (OS_InsertRulesDB(&db_config) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* Change user */
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* Basic start up completed */
-    debug1(PRIVSEP_MSG, ARGV0, dir, user);
+    mdebug1(PRIVSEP_MSG, dir, user);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
 
     /* Create PID files */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* The real daemon now */
     OS_DBD(&db_config);
 }
-

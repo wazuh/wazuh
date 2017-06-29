@@ -26,6 +26,9 @@ int main(int argc, char **argv)
     int debug = 0;
     int test_config = 0;
     wmodule *cur_module;
+    
+    /* Set the name */
+    OS_SetName(ARGV0);
 
     // Get command line options
 
@@ -69,7 +72,7 @@ int main(int argc, char **argv)
     if (test_config)
         exit(EXIT_SUCCESS);
 
-    verbose("%s: INFO: Process started.", ARGV0);
+    minfo("Process started.");
 
     // Run modules
 
@@ -77,7 +80,7 @@ int main(int argc, char **argv)
         int error = pthread_create(&cur_module->thread, NULL, cur_module->context->start, cur_module->data);
 
         if (error)
-            ErrorExit("%s: ERROR: fork(): %s", ARGV0, strerror(error));
+            merror_exit("fork(): %s", strerror(error));
     }
 
     // Wait for threads
@@ -137,14 +140,14 @@ void wm_setup()
     }
 
     if (chdir(DEFAULTDIR) < 0)
-        ErrorExit("%s: ERROR: chdir(): %s", ARGV0, strerror(errno));
+        merror_exit("chdir(): %s", strerror(errno));
 
     wm_check();
 
     // Create PID file
 
     if (CreatePID(ARGV0, getpid()) < 0)
-        ErrorExit("%s: ERROR: Couldn't create PID file: (%s)", ARGV0, strerror(errno));
+        merror_exit("Couldn't create PID file: (%s)", strerror(errno));
 
     // Signal management
 
@@ -164,7 +167,7 @@ void wm_cleanup()
     // Delete PID file
 
     if (DeletePID(ARGV0) < 0)
-        merror("%s: ERROR: Couldn't delete PID file.", ARGV0);
+        merror("Couldn't delete PID file.");
 
     // Kill active child processes
     wm_kill_children();
@@ -180,6 +183,6 @@ void wm_handler(int signum)
     case SIGTERM:
         exit(EXIT_SUCCESS);
     default:
-        merror("%s: ERROR: unknown signal (%d)", ARGV0, signum);
+        merror("unknown signal (%d)", signum);
     }
 }

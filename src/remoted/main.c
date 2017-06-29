@@ -67,13 +67,13 @@ int main(int argc, char **argv)
                 break;
             case 'u':
                 if (!optarg) {
-                    ErrorExit("%s: -u needs an argument", ARGV0);
+                    merror_exit("-u needs an argument");
                 }
                 user = optarg;
                 break;
             case 'g':
                 if (!optarg) {
-                    ErrorExit("%s: -g needs an argument", ARGV0);
+                    merror_exit("-g needs an argument");
                 }
                 group = optarg;
                 break;
@@ -82,13 +82,13 @@ int main(int argc, char **argv)
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c need an argument", ARGV0);
+                    merror_exit("-c need an argument");
                 }
                 cfg = optarg;
                 break;
             case 'D':
                 if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
+                    merror_exit("-D needs an argument");
                 }
                 dir = optarg;
                 break;
@@ -110,11 +110,11 @@ int main(int argc, char **argv)
         }
     }
 
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
     /* Return 0 if not configured */
     if (RemotedConfig(cfg, &logr) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* Exit if test_config is set */
@@ -136,7 +136,7 @@ int main(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Setup random */
@@ -152,12 +152,12 @@ int main(int argc, char **argv)
 
     /* Set new group */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* chroot */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
     nowChroot();
 
@@ -170,7 +170,7 @@ int main(int argc, char **argv)
     os_random();
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* Really start the program */
     i = 0;
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
         /* Fork for each connection handler */
         if (fork() == 0) {
             /* On the child */
-            debug1("%s: DEBUG: Forking remoted: '%d'.", ARGV0, i);
+            mdebug1("Forking remoted: '%d'.", i);
             logr.position = i;
             HandleRemote(uid);
         } else {

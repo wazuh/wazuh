@@ -32,10 +32,10 @@ void init_magic(magic_t *cookie_ptr)
 
     if (!*cookie_ptr) {
         const char *err = magic_error(*cookie_ptr);
-        merror("%s: ERROR: Can't init libmagic: %s", ARGV0, err ? err : "unknown");
+        merror("Can't init libmagic: %s", err ? err : "unknown");
     } else if (magic_load(*cookie_ptr, NULL) < 0) {
         const char *err = magic_error(*cookie_ptr);
-        merror("%s: ERROR: Can't load magic file: %s", ARGV0, err ? err : "unknown");
+        merror("Can't load magic file: %s", err ? err : "unknown");
         magic_close(*cookie_ptr);
         *cookie_ptr = 0;
     }
@@ -73,23 +73,23 @@ int Start_win32_Syscheck()
     /* Read internal options */
     read_internal(debug_level);
 
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {
-        ErrorExit(NO_CONFIG, ARGV0, cfg);
+        merror_exit(NO_CONFIG, cfg);
     }
 
     /* Read syscheck config */
     if ((r = Read_Syscheck_Config(cfg)) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     } else if ((r == 1) || (syscheck.disabled == 1)) {
         /* Disabled */
         if (!syscheck.dir) {
-            merror(SK_NO_DIR, ARGV0);
+            minfo(SK_NO_DIR);
             dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
         } else if (!syscheck.dir[0]) {
-            merror(SK_NO_DIR, ARGV0);
+            minfo(SK_NO_DIR);
         }
 
         syscheck.dir[0] = NULL;
@@ -105,7 +105,7 @@ int Start_win32_Syscheck()
         }
         syscheck.registry[0].entry = NULL;
 
-        merror("%s: WARN: Syscheck disabled.", ARGV0);
+        mwarn("Syscheck disabled.");
     }
 
     /* Rootcheck config */
@@ -113,14 +113,13 @@ int Start_win32_Syscheck()
         syscheck.rootcheck = 1;
     } else {
         syscheck.rootcheck = 0;
-        merror("%s: WARN: Rootcheck module disabled.", ARGV0);
+        mwarn("Rootcheck module disabled.");
     }
 
     /* Print options */
     r = 0;
     while (syscheck.registry[r].entry != NULL) {
-        verbose("%s: INFO: Monitoring registry entry: '%s%s'.",
-                ARGV0, syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
+        minfo("Monitoring registry entry: '%s%s'.", syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
         r++;
     }
 
@@ -128,30 +127,26 @@ int Start_win32_Syscheck()
     r = 0;
     while (syscheck.dir[r] != NULL) {
 	char optstr[ 100 ];
-        verbose("%s: INFO: Monitoring directory: '%s', with options %s.",
-	    ARGV0, syscheck.dir[r],
-	    syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+        minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
         r++;
     }
 
     /* Print ignores. */
     if(syscheck.ignore)
 	for (r = 0; syscheck.ignore[r] != NULL; r++)
-	    verbose("%s: INFO: ignoring: '%s'",
-		ARGV0, syscheck.ignore[r]);
+	    minfo("Ignoring: '%s'", syscheck.ignore[r]);
 
     /* Print files with no diff. */
     if (syscheck.nodiff){
         r = 0;
         while (syscheck.nodiff[r] != NULL) {
-            verbose("%s: INFO: No diff for file: '%s'",
-                    ARGV0, syscheck.nodiff[r]);
+            minfo("No diff for file: '%s'", syscheck.nodiff[r]);
             r++;
         }
     }
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, getpid());
+    minfo(STARTUP_MSG, getpid());
 
     /* Some sync time */
     sleep(syscheck.tsleep + 10);
@@ -212,7 +207,7 @@ int main(int argc, char **argv)
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument", ARGV0);
+                    merror_exit("-c needs an argument");
                 }
                 cfg = optarg;
                 break;
@@ -228,25 +223,25 @@ int main(int argc, char **argv)
     /* Read internal options */
     read_internal(debug_level);
 
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {
-        ErrorExit(NO_CONFIG, ARGV0, cfg);
+        merror_exit(NO_CONFIG, cfg);
     }
 
     /* Read syscheck config */
     if ((r = Read_Syscheck_Config(cfg)) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     } else if ((r == 1) || (syscheck.disabled == 1)) {
         if (!syscheck.dir) {
             if (!test_config) {
-                merror(SK_NO_DIR, ARGV0);
+                minfo(SK_NO_DIR);
             }
             dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
-                merror(SK_NO_DIR, ARGV0);
+                minfo(SK_NO_DIR);
             }
         }
 
@@ -259,7 +254,7 @@ int main(int argc, char **argv)
         }
 
         if (!test_config) {
-            merror("%s: WARN: Syscheck disabled.", ARGV0);
+            mwarn("Syscheck disabled.");
         }
     }
 
@@ -268,7 +263,7 @@ int main(int argc, char **argv)
         syscheck.rootcheck = 1;
     } else {
         syscheck.rootcheck = 0;
-        merror("%s: WARN: Rootcheck module disabled.", ARGV0);
+        mwarn("Rootcheck module disabled.");
     }
 
     /* Exit if testing config */
@@ -291,15 +286,15 @@ int main(int argc, char **argv)
 
     /* Connect to the queue */
     if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        merror(QUEUE_ERROR, ARGV0, DEFAULTQPATH, strerror(errno));
+        merror(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
 
         sleep(5);
         if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
             /* more 10 seconds of wait */
-            merror(QUEUE_ERROR, ARGV0, DEFAULTQPATH, strerror(errno));
+            merror(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
             sleep(10);
             if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
             }
         }
     }
@@ -309,38 +304,34 @@ int main(int argc, char **argv)
 
     /* Create pid */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     if (syscheck.rootcheck) {
-        verbose(STARTUP_MSG, "ossec-rootcheck", (int)getpid());
+        mtinfo("rootcheck", STARTUP_MSG, (int)getpid());
     }
 
     /* Print directories to be monitored */
     r = 0;
     while (syscheck.dir[r] != NULL) {
 	char optstr[ 100 ];
-        verbose("%s: INFO: Monitoring directory: '%s', with options %s.",
-	    ARGV0, syscheck.dir[r],
-	    syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+        minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
         r++;
     }
 
     /* Print ignores. */
     if(syscheck.ignore)
 	for (r = 0; syscheck.ignore[r] != NULL; r++)
-	    verbose("%s: INFO: ignoring: '%s'",
-		ARGV0, syscheck.ignore[r]);
+	    minfo("Ignoring: '%s'", syscheck.ignore[r]);
 
     /* Print files with no diff. */
     if (syscheck.nodiff){
         r = 0;
         while (syscheck.nodiff[r] != NULL) {
-            verbose("%s: INFO: No diff for file: '%s'",
-                    ARGV0, syscheck.nodiff[r]);
+            minfo("No diff for file: '%s'", syscheck.nodiff[r]);
             r++;
         }
     }
@@ -350,14 +341,11 @@ int main(int argc, char **argv)
     while (syscheck.dir[r] != NULL) {
         if (syscheck.opts[r] & CHECK_REALTIME) {
 #ifdef INOTIFY_ENABLED
-            verbose("%s: INFO: Directory set for real time monitoring: "
-                    "'%s'.", ARGV0, syscheck.dir[r]);
+            minfo("Directory set for real time monitoring: '%s'.", syscheck.dir[r]);
 #elif defined(WIN32)
-            verbose("%s: INFO: Directory set for real time monitoring: "
-                    "'%s'.", ARGV0, syscheck.dir[r]);
+            minfo("Directory set for real time monitoring: '%s'.", syscheck.dir[r]);
 #else
-            verbose("%s: WARN: Ignoring flag for real time monitoring on "
-                    "directory: '%s'.", ARGV0, syscheck.dir[r]);
+            mwarn("Ignoring flag for real time monitoring on directory: '%s'.", syscheck.dir[r]);
 #endif
         }
         r++;

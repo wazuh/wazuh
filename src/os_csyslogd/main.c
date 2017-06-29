@@ -67,25 +67,25 @@ int main(int argc, char **argv)
                 break;
             case 'u':
                 if (!optarg) {
-                    ErrorExit("%s: -u needs an argument", ARGV0);
+                    merror_exit("-u needs an argument");
                 }
                 user = optarg;
                 break;
             case 'g':
                 if (!optarg) {
-                    ErrorExit("%s: -g needs an argument", ARGV0);
+                    merror_exit("-g needs an argument");
                 }
                 group = optarg;
                 break;
             case 'D':
                 if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
+                    merror_exit("-D needs an argument");
                 }
                 dir = optarg;
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument", ARGV0);
+                    merror_exit("-c needs an argument");
                 }
                 cfg = optarg;
                 break;
@@ -99,13 +99,13 @@ int main(int argc, char **argv)
     }
 
     /* Start daemon */
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Read configuration */
@@ -114,7 +114,7 @@ int main(int argc, char **argv)
     /* Get server hostname */
     memset(__shost, '\0', 512);
     if (gethostname(__shost, 512 - 1) != 0) {
-        ErrorExit("%s: ERROR: gethostname() failed", ARGV0);
+        merror_exit("gethostname() failed");
     } else {
         /* Save the full hostname */
         memcpy(__shost_long, __shost, 512);
@@ -141,19 +141,19 @@ int main(int argc, char **argv)
 
     /* Not configured */
     if (!syslog_config || !syslog_config[0]) {
-        verbose("%s: INFO: Remote syslog server not configured. "
-                "Clean exit.", ARGV0);
+        minfo("Remote syslog server not configured. "
+                "Clean exit.");
         exit(0);
     }
 
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* chroot */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
 
     /* Now in chroot */
@@ -161,24 +161,23 @@ int main(int argc, char **argv)
 
     /* Change user */
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* Basic start up completed */
-    debug1(PRIVSEP_MSG, ARGV0, dir, user);
+    mdebug1(PRIVSEP_MSG, dir, user);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
 
     /* Create PID files */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* The real daemon now */
     OS_CSyslogD(syslog_config);
 }
-

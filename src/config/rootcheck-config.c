@@ -62,17 +62,17 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL, __local_name);
+            merror(XML_ELEMNULL);
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, __local_name, node[i]->element);
+            merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         }
 
         /* Get frequency */
         else if (strcmp(node[i]->element, xml_time) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 
@@ -82,13 +82,13 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
         else if (strcmp(node[i]->element, xml_scanall) == 0) {
             rootcheck->scanall = eval_bool(node[i]->content);
             if (rootcheck->scanall == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_disabled) == 0) {
             rootcheck->disabled = eval_bool(node[i]->content);
             if (rootcheck->disabled == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         }
@@ -97,7 +97,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
             rootcheck->skip_nfs = eval_bool(node[i]->content);
             if (rootcheck->skip_nfs == OS_INVALID)
             {
-                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -105,7 +105,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
         {
             rootcheck->readall = eval_bool(node[i]->content);
             if (rootcheck->readall == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_rootkit_files) == 0) {
@@ -147,50 +147,50 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
         } else if (strcmp(node[i]->element, xml_check_dev) == 0) {
             rootcheck->checks.rc_dev = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_dev == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_files) == 0) {
             rootcheck->checks.rc_files = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_files == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_if) == 0) {
             rootcheck->checks.rc_if = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_if == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_pids) == 0) {
             rootcheck->checks.rc_pids = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_pids == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_ports) == 0) {
             rootcheck->checks.rc_ports = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_ports == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_sys) == 0) {
             rootcheck->checks.rc_sys = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_sys == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_trojans) == 0) {
             rootcheck->checks.rc_trojans = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_trojans == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_check_unixaudit) == 0) {
 #ifndef WIN32
             rootcheck->checks.rc_unixaudit = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_unixaudit == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 #endif
@@ -198,7 +198,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 #ifdef WIN32
             rootcheck->checks.rc_winapps = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_winapps == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 #endif
@@ -206,7 +206,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 #ifdef WIN32
             rootcheck->checks.rc_winaudit = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_winaudit == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 #endif
@@ -214,12 +214,12 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 #ifdef WIN32
             rootcheck->checks.rc_winmalware = eval_bool(node[i]->content);
             if (rootcheck->checks.rc_winmalware == OS_INVALID) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 #endif
         } else {
-            merror(XML_INVELEM, __local_name, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
         i++;

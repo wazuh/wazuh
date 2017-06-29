@@ -54,7 +54,7 @@ static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
     if (tmp_node) {
         new_node = (OSDecoderNode *)calloc(1, sizeof(OSDecoderNode));
         if (new_node == NULL) {
-            merror(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror(MEM_ERROR, errno, strerror(errno));
             return (NULL);
         }
 
@@ -70,20 +70,20 @@ static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
 
                 /* Multi-regexes patterns cannot have prematch */
                 if (pi->prematch) {
-                    merror(PDUP_INV, ARGV0, pi->name);
+                    merror(PDUP_INV, pi->name);
                     goto error;
                 }
 
                 /* Multi-regex patterns cannot have fts set */
                 if (pi->fts) {
-                    merror(PDUPFTS_INV, ARGV0, pi->name);
+                    merror(PDUPFTS_INV, pi->name);
                     goto error;
                 }
 
                 if (tmp_node->osdecoder->regex && pi->regex) {
                     tmp_node->osdecoder->get_next = 1;
                 } else {
-                    merror(DUP_INV, ARGV0, pi->name);
+                    merror(DUP_INV, pi->name);
                     goto error;
                 }
             }
@@ -92,7 +92,7 @@ static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
 
         /* Must have a prematch set */
         if (!rm_f && (pi->regex_offset & AFTER_PREVREGEX)) {
-            merror(INV_OFFSET, ARGV0, pi->name);
+            merror(INV_OFFSET, pi->name);
             goto error;
         }
 
@@ -106,14 +106,14 @@ static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
     else {
         /* Must not have a previous regex set */
         if (pi->regex_offset & AFTER_PREVREGEX) {
-            merror(INV_OFFSET, ARGV0, pi->name);
+            merror(INV_OFFSET, pi->name);
             return (NULL);
         }
 
         tmp_node = (OSDecoderNode *)calloc(1, sizeof(OSDecoderNode));
 
         if (tmp_node == NULL) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
 
         tmp_node->child = NULL;
@@ -155,7 +155,7 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
             if (strcmp(tmp_node->osdecoder->name, pi->parent) == 0) {
                 tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi);
                 if (!tmp_node->child) {
-                    merror(DEC_PLUGIN_ERR, ARGV0);
+                    merror(DEC_PLUGIN_ERR);
                     return (0);
                 }
                 added = 1;
@@ -169,7 +169,7 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
             if (strcmp(tmp_node->osdecoder->name, pi->parent) == 0) {
                 tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi);
                 if (!tmp_node->child) {
-                    merror(DEC_PLUGIN_ERR, ARGV0);
+                    merror(DEC_PLUGIN_ERR);
                     return (0);
                 }
                 added = 1;
@@ -182,12 +182,12 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
             return (1);
         }
 
-        merror(PPLUGIN_INV, ARGV0, pi->parent);
+        merror(PPLUGIN_INV, pi->parent);
         return (0);
     } else {
         osdecodernode = _OS_AddOSDecoder(osdecodernode, pi);
         if (!osdecodernode) {
-            merror(DEC_PLUGIN_ERR, ARGV0);
+            merror(DEC_PLUGIN_ERR);
             return (0);
         }
 

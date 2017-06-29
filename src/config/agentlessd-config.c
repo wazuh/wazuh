@@ -54,21 +54,21 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
     /* Read the XML */
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL, __local_name);
+            merror(XML_ELEMNULL);
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, __local_name, node[i]->element);
+            merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_lessd_frequency) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 
             lessd_config->entries[s]->frequency = atoi(node[i]->content);
         } else if (strcmp(node[i]->element, xml_lessd_port) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 
@@ -107,9 +107,9 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
                      node[i]->content);
 
             if (File_DateofChange(script_path) <= 0) {
-                merror("%s: ERROR: Unable to find '%s' at '%s'.",
-                       __local_name, node[i]->content, AGENTLESSDIRPATH);
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror("Unable to find '%s' at '%s'.",
+                       node[i]->content, AGENTLESSDIRPATH);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
             os_strdup(node[i]->content, lessd_config->entries[s]->type);
@@ -126,11 +126,11 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
                 lessd_config->entries[s]->state |= LESSD_STATE_PERIODIC;
                 lessd_config->entries[s]->state |= LESSD_STATE_DIFF;
             } else {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else {
-            merror(XML_INVELEM, __local_name, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
         i++;
@@ -140,16 +140,15 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
     if (!lessd_config->entries[s]->server ||
             !lessd_config->entries[s]->state ||
             !lessd_config->entries[s]->type) {
-        merror(XML_INV_MISSOPTS, __local_name);
+        merror(XML_INV_MISSOPTS);
         return (OS_INVALID);
     }
 
     if ((lessd_config->entries[s]->state == LESSD_STATE_PERIODIC) &&
             !lessd_config->entries[s]->frequency) {
-        merror(XML_INV_MISSFREQ, __local_name);
+        merror(XML_INV_MISSFREQ);
         return (OS_INVALID);
     }
 
     return (0);
 }
-

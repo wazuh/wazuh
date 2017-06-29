@@ -49,7 +49,7 @@ void agent_help()
 /* syscheck main thread */
 void *skthread()
 {
-    verbose("%s: Starting syscheckd thread.", ARGV0);
+    minfo("Starting syscheckd thread.");
 
     Start_win32_Syscheck();
 
@@ -102,14 +102,14 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[1], "help") == 0) {
             agent_help();
         } else {
-            merror("%s: Unknown option: %s", ARGV0, argv[1]);
+            merror("Unknown option: %s", argv[1]);
             exit(1);
         }
     }
 
     /* Start it */
     if (!os_WinMain(argc, argv)) {
-        ErrorExit("%s: Unable to start WinMain.", ARGV0);
+        merror_exit("Unable to start WinMain.");
     }
 
     return (0);
@@ -128,7 +128,7 @@ int local_start()
     /* Start agent */
     agt = (agent *)calloc(1, sizeof(agent));
     if (!agt) {
-        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+        merror_exit(MEM_ERROR, errno, strerror(errno));
     }
     agt->port = DEFAULT_SECURE;
 
@@ -143,18 +143,18 @@ int local_start()
 
     /* Configuration file not present */
     if (File_DateofChange(cfg) < 0) {
-        ErrorExit("%s: Configuration file '%s' not found", ARGV0, cfg);
+        merror_exit("Configuration file '%s' not found", cfg);
     }
 
     /* Start Winsock */
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
-        ErrorExit("%s: WSAStartup() failed", ARGV0);
+        merror_exit("WSAStartup() failed");
     }
 
     /* Read agent config */
-    debug1("%s: DEBUG: Reading agent configuration.", ARGV0);
+    mdebug1("Reading agent configuration.");
     if (ClientConf(cfg) < 0) {
-        ErrorExit(CLIENT_ERROR, ARGV0);
+        merror_exit(CLIENT_ERROR);
     }
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
@@ -164,19 +164,19 @@ int local_start()
     }
     if (agt->max_time_reconnect_try <= agt->notify_time) {
         agt->max_time_reconnect_try = (agt->notify_time * 3);
-        verbose("%s: Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", ARGV0, agt->notify_time, agt->max_time_reconnect_try);
+        minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
-    verbose("%s: Using notify time: %d and max time to reconnect: %d", ARGV0, agt->notify_time, agt->max_time_reconnect_try);
+    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
 
     /* Read logcollector config file */
-    debug1("%s: DEBUG: Reading logcollector configuration.", ARGV0);
+    mdebug1("Reading logcollector configuration.");
     if (LogCollectorConfig(cfg, accept_manager_commands) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* Check auth keys */
     if (!OS_CheckKeys()) {
-        ErrorExit(AG_NOKEYS_EXIT, ARGV0);
+        merror_exit(AG_NOKEYS_EXIT);
     }
 
     /* If there is no file to monitor, create a clean entry
@@ -191,7 +191,7 @@ int local_start()
         logff[1].file = NULL;
         logff[1].logformat = NULL;
 
-        merror(NO_FILE, ARGV0);
+        minfo(NO_FILE);
     }
 
     /* Read execd config */
@@ -200,7 +200,7 @@ int local_start()
     }
 
     /* Read keys */
-    verbose(ENC_READ, ARGV0);
+    minfo(ENC_READ);
 
     OS_ReadKeys(&keys, 1, 0);
     OS_StartCounter(&keys);
@@ -215,10 +215,10 @@ int local_start()
     StartMQ("", 0);
 
     /* Start mutex */
-    debug1("%s: DEBUG: Creating thread mutex.", ARGV0);
+    mdebug1("Creating thread mutex.");
     hMutex = CreateMutex(NULL, FALSE, NULL);
     if (hMutex == NULL) {
-        ErrorExit("%s: Error creating mutex.", ARGV0);
+        merror_exit("Error creating mutex.");
     }
 
     /* Start syscheck thread */
@@ -228,7 +228,7 @@ int local_start()
                      NULL,
                      0,
                      (LPDWORD)&threadID) == NULL) {
-        merror(THREAD_ERROR, ARGV0);
+        merror(THREAD_ERROR);
     }
 
     /* Launch rotation thread */
@@ -238,7 +238,7 @@ int local_start()
                      NULL,
                      0,
                      (LPDWORD)&threadID) == NULL) {
-        merror(THREAD_ERROR, ARGV0);
+        merror(THREAD_ERROR);
     }
 
     /* Check if server is connected */
@@ -257,7 +257,7 @@ int local_start()
                      NULL,
                      0,
                      (LPDWORD)&threadID2) == NULL) {
-        merror(THREAD_ERROR, ARGV0);
+        merror(THREAD_ERROR);
     }
 
     /* Send agent information message */
@@ -283,7 +283,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
     tmpstr[OS_MAXSTR + 1] = '\0';
     crypt_msg[OS_MAXSTR + 1] = '\0';
 
-    debug2("%s: DEBUG: Attempting to send message to server.", ARGV0);
+    mdebug2("Attempting to send message to server.");
 
     /* Using a mutex to synchronize the writes */
     while (1) {
@@ -292,14 +292,14 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
         if (dwWaitResult != WAIT_OBJECT_0) {
             switch (dwWaitResult) {
                 case WAIT_TIMEOUT:
-                    merror("%s: Error waiting mutex (timeout).", ARGV0);
+                    merror("Error waiting mutex (timeout).");
                     sleep(5);
                     continue;
                 case WAIT_ABANDONED:
-                    merror("%s: Error waiting mutex (abandoned).", ARGV0);
+                    merror("Error waiting mutex (abandoned).");
                     return (0);
                 default:
-                    merror("%s: Error waiting mutex.", ARGV0);
+                    merror("Error waiting mutex.");
                     return (0);
             }
         } else {
@@ -313,7 +313,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 #ifndef ONEWAY_ENABLED
     /* Check if the server has responded */
     if ((cu_time - available_server) > agt->notify_time) {
-        verbose("%s: INFO: Sending agent information to server.", ARGV0);
+        minfo("Sending agent information to server.");
         send_win32_info(cu_time);
 
         /* Attempt to send message again */
@@ -331,7 +331,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
         /* If we reached here, the server is unavailable for a while */
         if ((cu_time - available_server) > agt->max_time_reconnect_try) {
             int wi = 1;
-            debug1("%s: DEBUG: More than %d seconds without server response...is server alive? and Is there connection?", ARGV0, agt->max_time_reconnect_try);
+            mdebug1("More than %d seconds without server response...is server alive? and Is there connection?", agt->max_time_reconnect_try);
 
             /* Last attempt before going into reconnect mode */
             sleep(1);
@@ -349,7 +349,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
                 int mod_sleep = 12;
 
                 /* If response is not available, set lock and wait for it */
-                verbose(SERVER_UNAV, ARGV0);
+                mwarn(SERVER_UNAV);
 
                 /* Go into reconnect mode */
                 while ((cu_time - available_server) > agt->max_time_reconnect_try) {
@@ -370,12 +370,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
                     /* If we have more than one server, try all */
                     if (wi > 12 && agt->rip[1]) {
                         int curr_rip = agt->rip_id;
-                        merror("%s: INFO: Trying next server ip in "
-                               "line: '%s'.",
-                               ARGV0,
-                               agt->rip[agt->rip_id + 1] != NULL ?
-                               agt->rip[agt->rip_id + 1] :
-                               agt->rip[0]);
+                        minfo("Trying next server IP in line: '%s'.", agt->rip[agt->rip_id + 1] != NULL ? agt->rip[agt->rip_id + 1] : agt->rip[0]);
 
                         connect_server(agt->rip_id + 1);
 
@@ -397,9 +392,8 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
                     }
                 }
 
-                verbose(AG_CONNECTED, ARGV0, agt->rip[agt->rip_id],
-                        agt->port);
-                verbose(SERVER_UP, ARGV0);
+                minfo(AG_CONNECTED, agt->rip[agt->rip_id], agt->port);
+                minfo(SERVER_UP);
             }
         }
     }
@@ -410,7 +404,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
     /* Send notification */
     else if ((cu_time - __win32_curr_time) > (NOTIFY_TIME - 200)) {
-        debug1("%s: DEBUG: Sending info to server (ctime2)...", ARGV0);
+        mdebug1("Sending info to server (ctime2)...");
         send_win32_info(cu_time);
     }
 
@@ -424,16 +418,16 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
     }
 
 
-    debug2("%s: DEBUG: Sending message to server: '%s'", ARGV0, message);
+    mdebug2("Sending message to server: '%s'", message);
 
     snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, pl, message);
     _ssize = CreateSecMSG(&keys, tmpstr, crypt_msg, 0);
 
     /* Returns NULL if can't create encrypted message */
     if (_ssize == 0) {
-        merror(SEC_ERROR, ARGV0);
+        merror(SEC_ERROR);
         if (!ReleaseMutex(hMutex)) {
-            merror("%s: Error releasing mutex.", ARGV0);
+            merror("Error releasing mutex.");
         }
 
         return (-1);
@@ -442,23 +436,23 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
     /* Send _ssize of crypt_msg */
     if (agt->protocol == UDP_PROTO) {
         if (OS_SendUDPbySize(agt->sock, _ssize, crypt_msg) < 0) {
-            merror(SEND_ERROR, ARGV0, "server");
+            merror(SEND_ERROR, "server");
             sleep(1);
         }
     } else {
         netsize_t length = _ssize;
 
         if (OS_SendTCPbySize(agt->sock, sizeof(length), (void*)&length) < 0) {
-            merror(SEND_ERROR, ARGV0, "server");
+            merror(SEND_ERROR, "server");
             sleep(1);
         } else if (OS_SendTCPbySize(agt->sock, _ssize, crypt_msg) < 0) {
-            merror(SEND_ERROR, ARGV0, "server");
+            merror(SEND_ERROR, "server");
             sleep(1);
         }
     }
 
     if (!ReleaseMutex(hMutex)) {
-        merror("%s: Error releasing mutex.", ARGV0);
+        merror("Error releasing mutex.");
     }
     return (0);
 }
@@ -482,7 +476,7 @@ void send_win32_info(time_t curr_time)
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
     crypt_msg[OS_MAXSTR + 1] = '\0';
 
-    debug1("%s: DEBUG: Sending keep alive message.", ARGV0);
+    mdebug1("Sending keep alive message.");
 
     /* Fix time */
     __win32_curr_time = curr_time;
@@ -491,7 +485,7 @@ void send_win32_info(time_t curr_time)
     if (!__win32_uname) {
         __win32_uname = getuname();
         if (!__win32_uname) {
-            merror("%s: Error generating system information.", ARGV0);
+            merror("Error generating system information.");
             os_strdup("Microsoft Windows - Unknown (unable to get system info)", __win32_uname);
         }
     }
@@ -499,7 +493,7 @@ void send_win32_info(time_t curr_time)
     /* Format labeled data */
 
     if (!tmp_labels[0] && labels_format(agt->labels, tmp_labels, OS_MAXSTR - OS_HEADER_SIZE) < 0) {
-        merror("%s: ERROR: too large labeled data.", ARGV0);
+        merror("Too large labeled data.");
         tmp_labels[0] = '\0';
     }
 
@@ -519,7 +513,7 @@ void send_win32_info(time_t curr_time)
         if (!__win32_shared) {
             __win32_shared = strdup("\0");
             if (!__win32_shared) {
-                merror(MEM_ERROR, ARGV0, errno, strerror(errno));
+                merror(MEM_ERROR, errno, strerror(errno));
                 return;
             }
         }
@@ -538,29 +532,29 @@ void send_win32_info(time_t curr_time)
     }
 
     /* Create message */
-    debug2("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
+    mdebug2("Sending keep alive: %s", tmp_msg);
 
     msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
 
     if (msg_size == 0) {
-        merror(SEC_ERROR, ARGV0);
+        merror(SEC_ERROR);
         return;
     }
 
     /* Send UDP message */
     if (agt->protocol == UDP_PROTO) {
         if (OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0) {
-            merror(SEND_ERROR, ARGV0, "server");
+            merror(SEND_ERROR, "server");
             sleep(1);
         }
     } else {
         netsize_t length = msg_size;
 
         if (OS_SendTCPbySize(agt->sock, sizeof(length), (void*)&length) < 0) {
-            merror(SEND_ERROR, ARGV0, "server");
+            merror(SEND_ERROR, "server");
             sleep(1);
         } else if (OS_SendTCPbySize(agt->sock, msg_size, crypt_msg) < 0) {
-            merror(SEND_ERROR, ARGV0, "server");
+            merror(SEND_ERROR, "server");
             sleep(1);
         }
     }

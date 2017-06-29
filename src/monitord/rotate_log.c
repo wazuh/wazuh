@@ -46,8 +46,7 @@ void w_rotate_log(int compress, int keep_log_days) {
     time_t now = time(NULL) - 86400;
     struct tm tm;
 
-    debug1("%s: DEBUG: Rotating file ossec.log", __local_name);
-    debug1("%s: DEBUG: Rotating file ossec.json", __local_name);
+    mdebug1("DEBUG: Rotating log files");
 
     localtime_r(&now, &tm);
 
@@ -75,11 +74,11 @@ void w_rotate_log(int compress, int keep_log_days) {
     // Create folders
 
     if (IsDir(year_dir) < 0 && mkdir(year_dir, 0770) < 0) {
-        ErrorExit(MKDIR_ERROR, __local_name, year_dir, errno, strerror(errno));
+        merror_exit(MKDIR_ERROR, year_dir, errno, strerror(errno));
     }
 
     if (IsDir(month_dir) < 0 && mkdir(month_dir, 0770) < 0) {
-        ErrorExit(MKDIR_ERROR, __local_name, month_dir, errno, strerror(errno));
+        merror_exit(MKDIR_ERROR, month_dir, errno, strerror(errno));
     }
 
     if (rename(old_path, new_path) == 0) {
@@ -87,7 +86,7 @@ void w_rotate_log(int compress, int keep_log_days) {
             OS_CompressLog(new_path);
         }
     } else {
-        merror("%s: ERROR: Couldn't rename '%s' to '%s'", __local_name, old_path, new_path);
+        merror("Couldn't rename '%s' to '%s'", old_path, new_path);
     }
 
     if (rename(old_path_json, new_path_json) == 0) {
@@ -95,7 +94,7 @@ void w_rotate_log(int compress, int keep_log_days) {
             OS_CompressLog(new_path_json);
         }
     } else {
-        merror("%s: ERROR: Couldn't rename '%s' to '%s'", __local_name, old_path_json, new_path_json);
+        merror("Couldn't rename '%s' to '%s'", old_path_json, new_path_json);
     }
 
     // Remove old compressed files
@@ -110,7 +109,7 @@ void remove_old_logs(const char *base_dir, int keep_log_days) {
     struct dirent *dirent;
 
     if (dir = opendir(base_dir), !dir) {
-        merror("%s: ERROR: Couldn't open directory '%s' to delete old logs: %s", __local_name, base_dir, strerror(errno));
+        merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
@@ -136,7 +135,7 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
     struct dirent *dirent;
 
     if (dir = opendir(base_dir), !dir) {
-        merror("%s: ERROR: Couldn't open directory '%s' to delete old logs: %s", __local_name, base_dir, strerror(errno));
+        merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
@@ -159,7 +158,7 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
         if (month < 12) {
             remove_old_logs_m(path, year, month, threshold);
         } else {
-            merror("%s: WARN: Unexpected folder '%s'", __local_name, path);
+            mwarn("Unexpected folder '%s'", path);
         }
     }
 
@@ -183,7 +182,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     tm.tm_sec = 0;
 
     if (dir = opendir(base_dir), !dir) {
-        merror("%s: ERROR: Couldn't open directory '%s' to delete old logs: %s", __local_name, base_dir, strerror(errno));
+        merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
@@ -198,7 +197,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
             if (mktime(&tm) <= threshold) {
                 snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                debug2("%s: Removing old log '%s'", __local_name, path);
+                mdebug2("Removing old log '%s'", path);
                 unlink(path);
             }
         }
@@ -208,7 +207,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
             if (mktime(&tm) <= threshold) {
                 snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                debug2("%s: Removing old log '%s'", __local_name, path);
+                mdebug2("Removing old log '%s'", path);
                 unlink(path);
             }
         }

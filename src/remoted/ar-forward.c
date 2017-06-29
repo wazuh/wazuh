@@ -31,7 +31,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
 
     /* Create the unix queue */
     if ((arq = StartMQ(ARQUEUE, READ)) < 0) {
-        ErrorExit(QUEUE_ERROR, ARGV0, ARQUEUE, strerror(errno));
+        merror_exit(QUEUE_ERROR, ARQUEUE, strerror(errno));
     }
 
     memset(msg, '\0', OS_SIZE_1024 + 1);
@@ -48,7 +48,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             /* Location is going to be the agent name */
             tmp_str = strchr(msg, ')');
             if (!tmp_str) {
-                merror(EXECD_INV_MSG, ARGV0, msg);
+                mwarn(EXECD_INV_MSG, msg);
                 continue;
             }
             *tmp_str = '\0';
@@ -59,7 +59,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             /* Extract the source IP */
             tmp_str = strchr(tmp_str, ' ');
             if (!tmp_str) {
-                merror(EXECD_INV_MSG, ARGV0, msg);
+                mwarn(EXECD_INV_MSG, msg);
                 continue;
             }
             tmp_str++;
@@ -84,7 +84,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             /* Extract the active response location */
             tmp_str = strchr(ar_location_str, ' ');
             if (!tmp_str) {
-                merror(EXECD_INV_MSG, ARGV0, msg);
+                mwarn(EXECD_INV_MSG, msg);
                 continue;
             }
             *tmp_str = '\0';
@@ -94,7 +94,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             ar_agent_id = tmp_str;
             tmp_str = strchr(tmp_str, ' ');
             if (!tmp_str) {
-                merror(EXECD_INV_MSG, ARGV0, msg);
+                mwarn(EXECD_INV_MSG, msg);
                 continue;
             }
             *tmp_str = '\0';
@@ -130,7 +130,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                 agent_id = OS_IsAllowedName(&keys, location);
                 if (agent_id < 0) {
                     key_unlock();
-                    merror(AR_NOAGENT_ERROR, ARGV0, location);
+                    merror(AR_NOAGENT_ERROR, location);
                     continue;
                 }
 
@@ -145,7 +145,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
 
                 if (agent_id < 0) {
                     key_unlock();
-                    merror(AR_NOAGENT_ERROR, ARGV0, ar_agent_id);
+                    merror(AR_NOAGENT_ERROR, ar_agent_id);
                     continue;
                 }
 

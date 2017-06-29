@@ -116,13 +116,13 @@ int main(int argc, char **argv)
                 break;
             case 'g':
                 if (!optarg) {
-                    ErrorExit("%s: -g needs an argument", ARGV0);
+                    merror_exit("-g needs an argument");
                 }
                 group = optarg;
                 break;
             case 'D':
             if (!optarg) {
-                ErrorExit("%s: -g needs an argument", ARGV0);
+                merror_exit("-g needs an argument");
             }
             dir = optarg;
             break;
@@ -131,46 +131,46 @@ int main(int argc, char **argv)
                 break;
             case 'm':
                 if (!optarg) {
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    merror_exit("-%c needs an argument", c);
                 }
                 manager = optarg;
                 break;
             case 'A':
                 if (!optarg) {
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    merror_exit("-%c needs an argument", c);
                 }
                 agentname = optarg;
                 break;
             case 'p':
                 if (!optarg) {
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    merror_exit("-%c needs an argument", c);
                 }
                 port = atoi(optarg);
                 if (port <= 0 || port >= 65536) {
-                    ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
+                    merror_exit("Invalid port: %s", optarg);
                 }
                 break;
             case 'v':
                 if (!optarg) {
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    merror_exit("-%c needs an argument", c);
                 }
                 ca_cert = optarg;
                 break;
             case 'x':
                 if (!optarg) {
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    merror_exit("-%c needs an argument", c);
                 }
                 agent_cert = optarg;
                 break;
             case 'k':
                 if (!optarg) {
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    merror_exit("-%c needs an argument", c);
                 }
                 agent_key = optarg;
                 break;
             case 'P':
                 if (!optarg)
-                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                    merror_exit("-%c needs an argument", c);
 
                 authpass = optarg;
                 break;
@@ -184,13 +184,13 @@ int main(int argc, char **argv)
     }
 
     /* Start daemon */
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
 #ifndef WIN32
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, "", group);
+        merror_exit(USER_ERROR, "", group);
     }
 
     /* Exit here if test config is set */
@@ -200,7 +200,7 @@ int main(int argc, char **argv)
 
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Signal manipulation */
@@ -208,22 +208,22 @@ int main(int argc, char **argv)
 
     /* Create PID files */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 #else
     /* Initialize Windows socket stuff */
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
-        ErrorExit("%s: WSAStartup() failed", ARGV0);
+        merror_exit("WSAStartup() failed");
     }
 #endif /* WIN32 */
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     if (agentname == NULL) {
         lhostname[512] = '\0';
         if (gethostname(lhostname, 512 - 1) != 0) {
-            merror("%s: ERROR: Unable to extract hostname. Custom agent name not set.", ARGV0);
+            merror("Unable to extract hostname. Custom agent name not set.");
             exit(1);
         }
         agentname = lhostname;
@@ -231,18 +231,18 @@ int main(int argc, char **argv)
 
 #ifdef LEGACY_SSL
     auto_method = 1;
-    merror("WARN: TLS v1.2 method-forcing disabled. This program was compiled to use SSL/TLS auto-negotiation.");
+    mwarn("TLS v1.2 method-forcing disabled. This program was compiled to use SSL/TLS auto-negotiation.");
 #endif
 
     /* Start SSL */
     ctx = os_ssl_keys(0, dir, agent_cert, agent_key, ca_cert, auto_method);
     if (!ctx) {
-        merror("%s: ERROR: SSL error. Exiting.", ARGV0);
+        merror("SSL error. Exiting.");
         exit(1);
     }
 
     if (!manager) {
-        merror("%s: ERROR: Manager IP not set.", ARGV0);
+        merror("Manager IP not set.");
         exit(1);
     }
 
@@ -251,7 +251,7 @@ int main(int argc, char **argv)
      * the hostname is preserved so that certificate verification can be done.
      */
     if (!(ipaddress = OS_GetHost(manager, 3))) {
-        merror("%s: Could not resolve hostname: %s\n", ARGV0, manager);
+        merror("Could not resolve hostname: %s\n", manager);
         exit(1);
     }
 
@@ -280,7 +280,7 @@ int main(int argc, char **argv)
     /* Connect via TCP */
     sock = OS_ConnectTCP(port, ipaddress, 0);
     if (sock <= 0) {
-        merror("%s: Unable to connect to %s:%d", ARGV0, ipaddress, port);
+        merror("Unable to connect to %s:%d", ipaddress, port);
         exit(1);
     }
 
@@ -292,7 +292,7 @@ int main(int argc, char **argv)
     ret = SSL_connect(ssl);
     if (ret <= 0) {
         ERR_print_errors_fp(stderr);
-        merror("%s: ERROR: SSL error (%d). Exiting.", ARGV0, ret);
+        merror("SSL error (%d). Exiting.", ret);
         exit(1);
     }
 
@@ -305,7 +305,7 @@ int main(int argc, char **argv)
     if (ca_cert) {
         printf("INFO: Verifing manager's certificate\n");
         if (check_x509_cert(ssl, manager) != VERIFY_TRUE) {
-            debug1("%s: DEBUG: Unable to verify server certificate.", ARGV0);
+            mdebug1("Unable to verify server certificate.");
             exit(1);
         }
     }

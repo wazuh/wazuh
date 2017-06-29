@@ -87,25 +87,25 @@ int main(int argc, char **argv)
                 break;
             case 'u':
                 if (!optarg) {
-                    ErrorExit("%s: -u needs an argument", ARGV0);
+                    merror_exit("-u needs an argument");
                 }
                 user = optarg;
                 break;
             case 'g':
                 if (!optarg) {
-                    ErrorExit("%s: -g needs an argument", ARGV0);
+                    merror_exit("-g needs an argument");
                 }
                 group = optarg;
                 break;
             case 'D':
                 if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
+                    merror_exit("-D needs an argument");
                 }
                 dir = optarg;
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument", ARGV0);
+                    merror_exit("-c needs an argument");
                 }
                 cfg = optarg;
                 break;
@@ -125,27 +125,27 @@ int main(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Found user */
-    debug1(FOUND_USER, ARGV0);
+    mdebug1(FOUND_USER);
 
     /* Read configuration file */
     if (GlobalConf(cfg) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
-    debug1(READ_CONFIG, ARGV0);
+    mdebug1(READ_CONFIG);
 
     /* Set the group */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Chroot */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
 
     nowChroot();
@@ -163,7 +163,7 @@ int main(int argc, char **argv)
         listfiles = Config.lists;
         while (listfiles && *listfiles) {
             if (Lists_OP_LoadList(*listfiles) < 0) {
-                ErrorExit(LISTS_ERROR, ARGV0, *listfiles);
+                merror_exit(LISTS_ERROR, *listfiles);
             }
             free(*listfiles);
             listfiles++;

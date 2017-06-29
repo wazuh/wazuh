@@ -28,14 +28,13 @@ void HandleRemote(int uid)
     /* If syslog connection and allowips is not defined, exit */
     if (logr.conn[position] == SYSLOG_CONN) {
         if (logr.allowips == NULL) {
-            ErrorExit(NO_SYSLOG, ARGV0);
+            merror_exit(NO_SYSLOG);
         } else {
             os_ip **tmp_ips;
 
             tmp_ips = logr.allowips;
             while (*tmp_ips) {
-                verbose("%s: Remote syslog allowed from: '%s'",
-                        ARGV0, (*tmp_ips)->ip);
+                minfo("Remote syslog allowed from: '%s'", (*tmp_ips)->ip);
                 tmp_ips++;
             }
         }
@@ -45,28 +44,28 @@ void HandleRemote(int uid)
     if (logr.proto[position] == TCP_PROTO) {
         if ((logr.sock =
                     OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
-            ErrorExit(BIND_ERROR, ARGV0, logr.port[position]);
+            merror_exit(BIND_ERROR, logr.port[position]);
         }
     } else {
         /* Using UDP. Fast, unreliable... perfect */
         if ((logr.sock =
                     OS_Bindportudp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
-            ErrorExit(BIND_ERROR, ARGV0, logr.port[position]);
+            merror_exit(BIND_ERROR, logr.port[position]);
         }
     }
 
     /* Revoke privileges */
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, REMUSER, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, REMUSER, errno, strerror(errno));
     }
 
     /* Create PID */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* If secure connection, deal with it */
     if (logr.conn[position] == SECURE_CONN) {

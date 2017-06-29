@@ -19,14 +19,14 @@ void randombytes(void *ptr, size_t length)
     if (prov == 0) {
         if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, 0)) {
             if (GetLastError() == (DWORD)NTE_BAD_KEYSET) {
-                debug1("%s: DEBUG: No default container was found. Attempting to create default container.", __local_name);
+                mdebug1("No default container was found. Attempting to create default container.");
 
                 if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET)) {
-                    merror("%s: ERROR: CryptAcquireContext: (%lx)", __local_name, GetLastError());
+                    merror("CryptAcquireContext: (%lx)", GetLastError());
                     failed = 1;
                 }
             } else {
-                merror("%s: ERROR: CryptAcquireContext: (%lx)", __local_name, GetLastError());
+                merror("CryptAcquireContext: (%lx)", GetLastError());
                 failed = 1;
             }
         }
@@ -51,7 +51,7 @@ void randombytes(void *ptr, size_t length)
 #endif
 
     if (failed) {
-        ErrorExit("%s: ERROR: randombytes failed for all possible methods for accessing random data", __local_name);
+        merror_exit("randombytes failed for all possible methods for accessing random data");
     }
 }
 

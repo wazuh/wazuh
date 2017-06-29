@@ -48,7 +48,7 @@ void monitor_agents()
             snprintf(str, OS_SIZE_1024 - 1, OS_AG_DISCON, *cr_agents);
             if (SendMSG(mond.a_queue, str, ARGV0,
                         LOCALFILE_MQ) < 0) {
-                merror(QUEUE_SEND, ARGV0);
+                merror(QUEUE_SEND);
             }
         }
 

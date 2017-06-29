@@ -56,25 +56,25 @@ void HandleSecure()
 
     /* Create Active Response forwarder thread */
     if (CreateThread(AR_Forward, (void *)NULL) != 0) {
-        ErrorExit(THREAD_ERROR, ARGV0);
+        merror_exit(THREAD_ERROR);
     }
 
     /* Create wait_for_msgs thread */
     if (CreateThread(wait_for_msgs, (void *)NULL) != 0) {
-        ErrorExit(THREAD_ERROR, ARGV0);
+        merror_exit(THREAD_ERROR);
     }
 
     /* Connect to the message queue
      * Exit if it fails.
      */
     if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-        ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
-    verbose(AG_AX_AGENTS, ARGV0, MAX_AGENTS);
+    minfo(AG_AX_AGENTS, MAX_AGENTS);
 
     /* Read authentication keys */
-    verbose(ENC_READ, ARGV0);
+    minfo(ENC_READ);
     OS_ReadKeys(&keys, 1, 0);
     OS_StartCounter(&keys);
 
@@ -90,7 +90,7 @@ void HandleSecure()
         kqueue_fd = kqueue();
 
         if (kqueue_fd < 0) {
-            ErrorExit(KQUEUE_ERROR, ARGV0);
+            merror_exit(KQUEUE_ERROR);
         }
 
         EV_SET(&request, logr.sock, EVFILT_READ, EV_ADD, 0, 0, 0);
@@ -100,14 +100,14 @@ void HandleSecure()
         epoll_fd = epoll_create(MAX_EVENTS);
 
         if (epoll_fd < 0) {
-            ErrorExit(EPOLL_ERROR, ARGV0);
+            merror_exit(EPOLL_ERROR);
         }
 
         request.events = EPOLLIN;
         request.data.fd = logr.sock;
 
         if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, logr.sock, &request) < 0) {
-            ErrorExit(EPOLL_ERROR, ARGV0);
+            merror_exit(EPOLL_ERROR);
         }
 #endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
     }
@@ -133,17 +133,17 @@ void HandleSecure()
                 if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
-                        ErrorExit(ACCEPT_ERROR, ARGV0);
+                        merror_exit(ACCEPT_ERROR);
                     }
 
-                    debug1("%s: DEBUG: New TCP connection at %s.", ARGV0, inet_ntoa(peer_info.sin_addr));
+                    mdebug1("New TCP connection at %s.", inet_ntoa(peer_info.sin_addr));
 #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
                     EV_SET(&request, sock_client, EVFILT_READ, EV_ADD, 0, 0, 0);
                     kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO);
 #elif defined(__linux__)
                     request.data.fd = sock_client;
                     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_client, &request) < 0) {
-                        ErrorExit(EPOLL_ERROR, ARGV0);
+                        merror_exit(EPOLL_ERROR);
                     }
 #endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
                 } else {
@@ -151,25 +151,25 @@ void HandleSecure()
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
 
                     if (getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size) < 0) {
-                        merror("%s: ERROR: Couldn't get the remote peer information: %s", ARGV0, strerror(errno));
+                        merror("Couldn't get the remote peer information: %s", strerror(errno));
                         close(sock_client);
                         continue;
                     }
 
-                    debug2("%s: DEBUG: recv(): length=%d [%zu]", ARGV0, length, recv_b);
+                    mdebug2("recv(): length=%d [%zu]", length, recv_b);
 
                     /* Nothing received */
                     if (recv_b <= 0 || length > OS_MAXSTR) {
                         if (recv_b <= 0) {
-                            debug1("%s: DEBUG: TCP peer at %s disconnected.", ARGV0, inet_ntoa(peer_info.sin_addr));
+                            mdebug1("TCP peer at %s disconnected.", inet_ntoa(peer_info.sin_addr));
                         } else {
-                            merror(RECV_ERROR, ARGV0);
+                            merror(RECV_ERROR);
                         }
 #ifdef __linux__
                         /* Kernel event is automatically deleted when closed */
                         request.data.fd = sock_client;
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
-                            ErrorExit(EPOLL_ERROR, ARGV0);
+                            merror_exit(EPOLL_ERROR);
                         }
 #endif /* __linux__ */
 
@@ -180,11 +180,11 @@ void HandleSecure()
                     recv_b = recv(sock_client, buffer, length, MSG_WAITALL);
 
                     if (recv_b != length) {
-                        merror(RECV_ERROR, ARGV0);
+                        merror(RECV_ERROR);
 #ifdef __linux__
                         request.data.fd = sock_client;
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
-                            ErrorExit(EPOLL_ERROR, ARGV0);
+                            merror_exit(EPOLL_ERROR);
                         }
 #endif /* __linux__ */
                         close(sock_client);
@@ -240,7 +240,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         }
 
         if (*tmp_msg != '!') {
-            merror(ENCFORMAT_ERROR, __local_name, "(unknown)", srcip);
+            merror(ENCFORMAT_ERROR, "(unknown)", srcip);
 
             if (sock_client >= 0)
                 close(sock_client);
@@ -255,7 +255,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
 
         if (agentid == -1) {
-            merror(ENC_IP_ERROR, ARGV0, buffer + 1, srcip);
+            merror(ENC_IP_ERROR, buffer + 1, srcip);
 
             if (sock_client >= 0)
                 close(sock_client);
@@ -266,7 +266,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         agentid = OS_IsAllowedIP(&keys, srcip);
 
         if (agentid < 0) {
-            merror(DENYIP_WARN, ARGV0, srcip);
+            mwarn(DENYIP_WARN, srcip);
 
             if (sock_client >= 0)
                 close(sock_client);
@@ -311,10 +311,10 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
      */
     if (SendMSG(logr.m_queue, tmp_msg, srcmsg,
                 SECURE_MQ) < 0) {
-        merror(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
+        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
         if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
+            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
     }
 }

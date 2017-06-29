@@ -26,7 +26,7 @@ static const char *pidfile = NULL;
 
 void HandleSIG(int sig)
 {
-    merror(SIGNAL_RECV, pidfile, sig, strsignal(sig));
+    minfo(SIGNAL_RECV, sig, strsignal(sig));
 
     DeletePID(pidfile);
 
@@ -65,4 +65,3 @@ void StartSIG2(const char *process_name, void (*func)(int))
 }
 
 #endif /* !WIN32 */
-

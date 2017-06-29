@@ -406,13 +406,7 @@ int DeletePID(const char *name)
     }
 
     if (unlink(file)) {
-        log2file(
-            DELETE_ERROR,
-            __local_name,
-            file,
-            errno,
-            strerror(errno)
-        );
+        mferror(DELETE_ERROR, file, errno, strerror(errno));
     }
 
     return (0);
@@ -430,8 +424,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir)
 
     finalfp = fopen(finalpath, "r");
     if (!finalfp) {
-        merror("%s: ERROR: Unable to read merged file: '%s'.",
-               __local_name, finalpath);
+        merror("Unable to read merged file: '%s'.", finalpath);
         return (0);
     }
 
@@ -472,8 +465,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir)
         fp = fopen(final_name, "w");
         if (!fp) {
             ret = 0;
-            merror("%s: ERROR: Unable to unmerge file '%s'.",
-                   __local_name, final_name);
+            merror("Unable to unmerge file '%s'.", final_name);
         }
 
         if (files_size < sizeof(buf) - 1) {
@@ -526,14 +518,13 @@ int MergeAppendFile(const char *finalpath, const char *files)
     if (files == NULL) {
         finalfp = fopen(finalpath, "w");
         if (!finalfp) {
-            merror("%s: ERROR: Unable to create merged file: '%s'.",
-                   __local_name, finalpath);
+            merror("Unable to create merged file: '%s'.", finalpath);
             return (0);
         }
         fclose(finalfp);
 
         if (chmod(finalpath, 0640) < 0) {
-            merror(CHMOD_ERROR, __local_name, finalpath, errno, strerror(errno));
+            merror(CHMOD_ERROR, finalpath, errno, strerror(errno));
             return 0;
         }
 
@@ -542,14 +533,13 @@ int MergeAppendFile(const char *finalpath, const char *files)
 
     finalfp = fopen(finalpath, "a");
     if (!finalfp) {
-        merror("%s: ERROR: Unable to append merged file: '%s'.",
-               __local_name, finalpath);
+        merror("Unable to append merged file: '%s'.", finalpath);
         return (0);
     }
 
     fp = fopen(files, "r");
     if (!fp) {
-        merror("%s: ERROR: Unable to merge file '%s'.", __local_name, files);
+        merror("Unable to merge file '%s'.", files);
         fclose(finalfp);
         return (0);
     }
@@ -591,15 +581,14 @@ int MergeFiles(const char *finalpath, char **files)
 
     finalfp = fopen(finalpath, "w");
     if (!finalfp) {
-        merror("%s: ERROR: Unable to create merged file: '%s'.",
-               __local_name, finalpath);
+        merror("Unable to create merged file: '%s'.", finalpath);
         return (0);
     }
 
     while (files[i]) {
         fp = fopen(files[i], "r");
         if (!fp) {
-            merror("%s: ERROR: Unable to merge file '%s'.", __local_name, files[i]);
+            merror("Unable to merge file '%s'.", files[i]);
             i++;
             ret = 0;
             continue;
@@ -644,14 +633,7 @@ char *basename_ex(char *path)
 int rename_ex(const char *source, const char *destination)
 {
     if (rename(source, destination)) {
-        log2file(
-            RENAME_ERROR,
-            __local_name,
-            source,
-            destination,
-            errno,
-            strerror(errno)
-        );
+        mferror(RENAME_ERROR, source, destination, errno, strerror(errno));
 
         return (-1);
     }
@@ -669,13 +651,7 @@ int mkstemp_ex(char *tmp_path)
     umask(old_mask);
 
     if (fd == -1) {
-        log2file(
-            MKSTEMP_ERROR,
-            __local_name,
-            tmp_path,
-            errno,
-            strerror(errno)
-        );
+        mferror(MKSTEMP_ERROR, tmp_path, errno, strerror(errno));
 
         return (-1);
     }
@@ -684,22 +660,10 @@ int mkstemp_ex(char *tmp_path)
     if (fchmod(fd, 0600) == -1) {
         close(fd);
 
-        log2file(
-            CHMOD_ERROR,
-            __local_name,
-            tmp_path,
-            errno,
-            strerror(errno)
-        );
+        mferror(CHMOD_ERROR, tmp_path, errno, strerror(errno));
 
         if (unlink(tmp_path)) {
-            log2file(
-                DELETE_ERROR,
-                __local_name,
-                tmp_path,
-                errno,
-                strerror(errno)
-            );
+            mferror(DELETE_ERROR, tmp_path, errno, strerror(errno));
         }
 
         return (-1);
@@ -766,7 +730,7 @@ static const char *get_unix_version()
             id = strdup("centos");
             static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                ErrorExit("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                merror_exit("Can not compile regular expression.");
             }
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
                 if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
@@ -784,7 +748,7 @@ static const char *get_unix_version()
             id = strdup("fedora");
             static const char *pattern = " ([0-9][0-9]*) ";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                ErrorExit("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                merror_exit("Can not compile regular expression.");
             }
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
                 if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
@@ -800,7 +764,7 @@ static const char *get_unix_version()
         } else if (version_release = fopen("/etc/redhat-release","r"), version_release){
             static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                ErrorExit("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                merror_exit("Can not compile regular expression.");
             }
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
                 if (strstr(buff, "CentOS")){
@@ -848,7 +812,7 @@ static const char *get_unix_version()
             id = strdup("gentoo");
             static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                ErrorExit("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                merror_exit("Can not compile regular expression.");
             }
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
                 if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
@@ -866,7 +830,7 @@ static const char *get_unix_version()
             id = strdup("suse");
             static const char *pattern = ".*VERSION = ([0-9][0-9]*)";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                ErrorExit("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                merror_exit("Can not compile regular expression.");
             }
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
                 if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
@@ -884,7 +848,7 @@ static const char *get_unix_version()
             id = strdup("arch");
             static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                ErrorExit("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                merror_exit("Can not compile regular expression.");
             }
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
                 if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
@@ -902,7 +866,7 @@ static const char *get_unix_version()
             id = strdup("debian");
             static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                ErrorExit("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                merror_exit("Can not compile regular expression.");
             }
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
                 if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
@@ -920,7 +884,7 @@ static const char *get_unix_version()
             id = strdup("slackware");
             static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                ErrorExit("%s: CRITICAL: Can not compile regular expression.", __local_name);
+                merror_exit("Can not compile regular expression.");
             }
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
                 if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
@@ -934,13 +898,13 @@ static const char *get_unix_version()
             fclose(version_release);
         } else if (cmd_output = popen("uname", "r"), cmd_output) {
             if(fgets(buff,sizeof(buff) - 1, cmd_output) == NULL){
-                debug1("%s: ERROR: Can not read from command output (uname).", __local_name);
+                mdebug1("Can not read from command output (uname).");
             } else if (strcmp(strtok(buff, "\n"),"Darwin") == 0){ // Mac OS
                 name = strdup("Darwin");
                 id = strdup("darwin");
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        debug1("%s: ERROR: Can not read from command output (uname -r).", __local_name);
+                        mdebug1("Can not read from command output (uname -r).");
                     } else if (w_regexec("([0-9][0-9]*\\.[0-9][0-9]*)\\.*", buff, 2, match)){
                         match_size = match[1].rm_eo - match[1].rm_so;
                         version = malloc(match_size +1);
@@ -953,7 +917,7 @@ static const char *get_unix_version()
                 id = strdup("sunos");
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        debug1("%s: ERROR: Can not read from command output (uname -r).", __local_name);
+                        mdebug1("Can not read from command output (uname -r).");
                     } else if (w_regexec("([0-9][0-9]*\\.[0-9][0-9]*)\\.*", buff, 2, match)){
                         match_size = match[1].rm_eo - match[1].rm_so;
                         version = malloc(match_size +1);
@@ -968,7 +932,7 @@ static const char *get_unix_version()
                 id = strdup("bsd");
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        debug1("%s: ERROR: Can not read from command output (uname -r).", __local_name);
+                        mdebug1("Can not read from command output (uname -r).");
                     } else if (w_regexec("([0-9][0-9]*\\.[0-9][0-9]*)\\.*", buff, 2, match)){
                         match_size = match[1].rm_eo - match[1].rm_so;
                         version = malloc(match_size +1);
@@ -993,7 +957,7 @@ static const char *get_unix_version()
         id = strdup("\0");
 
     if (snprintf (string, 255, "%s|%s: %s", name, id, version) >= 255) {
-        merror("%s: ERROR: Getting UNIX version: string too large.", __local_name);
+        merror("Getting UNIX version: string too large.");
     }
 
     free(name);
@@ -1048,7 +1012,7 @@ void goDaemonLight()
     pid = fork();
 
     if (pid < 0) {
-        merror(FORK_ERROR, __local_name, errno, strerror(errno));
+        merror(FORK_ERROR, errno, strerror(errno));
         return;
     } else if (pid) {
         exit(0);
@@ -1056,14 +1020,14 @@ void goDaemonLight()
 
     /* Become session leader */
     if (setsid() < 0) {
-        merror(SETSID_ERROR, __local_name, errno, strerror(errno));
+        merror(SETSID_ERROR, errno, strerror(errno));
         return;
     }
 
     /* Fork again */
     pid = fork();
     if (pid < 0) {
-        merror(FORK_ERROR, __local_name, errno, strerror(errno));
+        merror(FORK_ERROR, errno, strerror(errno));
         return;
     } else if (pid) {
         exit(0);
@@ -1073,7 +1037,7 @@ void goDaemonLight()
 
     /* Go to / */
     if (chdir("/") == -1) {
-        merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
+        merror(CHDIR_ERROR, "/", errno, strerror(errno));
     }
 
     nowDaemon();
@@ -1087,7 +1051,7 @@ void goDaemon()
 
     pid = fork();
     if (pid < 0) {
-        merror(FORK_ERROR, __local_name, errno, strerror(errno));
+        merror(FORK_ERROR, errno, strerror(errno));
         return;
     } else if (pid) {
         exit(0);
@@ -1095,14 +1059,14 @@ void goDaemon()
 
     /* Become session leader */
     if (setsid() < 0) {
-        merror(SETSID_ERROR, __local_name, errno, strerror(errno));
+        merror(SETSID_ERROR, errno, strerror(errno));
         return;
     }
 
     /* Fork again */
     pid = fork();
     if (pid < 0) {
-        merror(FORK_ERROR, __local_name, errno, strerror(errno));
+        merror(FORK_ERROR, errno, strerror(errno));
         return;
     } else if (pid) {
         exit(0);
@@ -1119,7 +1083,7 @@ void goDaemon()
 
     /* Go to / */
     if (chdir("/") == -1) {
-        merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
+        merror(CHDIR_ERROR, "/", errno, strerror(errno));
     }
 
     nowDaemon();
@@ -1134,7 +1098,7 @@ int checkVista()
 
     m_uname = getuname();
     if (!m_uname) {
-        merror(MEM_ERROR, __local_name, errno, strerror(errno));
+        merror(MEM_ERROR, errno, strerror(errno));
         return (0);
     }
 
@@ -1145,11 +1109,9 @@ int checkVista()
             strstr(m_uname, "Windows 8") ||
             strstr(m_uname, "Windows Server 2012")) {
         isVista = 1;
-        verbose("%s: INFO: System is Vista or newer (%s).",
-                __local_name, m_uname);
+        minfo("System is Vista or newer (%s).", m_uname);
     } else {
-        verbose("%s: INFO: System is older than Vista (%s).",
-                __local_name, m_uname);
+        minfo("System is older than Vista (%s).", m_uname);
     }
 
     return (isVista);
@@ -1165,13 +1127,7 @@ char *basename_ex(char *path)
 int rename_ex(const char *source, const char *destination)
 {
     if (!MoveFileEx(source, destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-        log2file(
-            "%s: ERROR: Could not move (%s) to (%s) which returned (%lu)",
-            __local_name,
-            source,
-            destination,
-            GetLastError()
-        );
+        mferror("Could not move (%s) to (%s) which returned (%lu)", source, destination, GetLastError());
 
         return (-1);
     }
@@ -1200,24 +1156,13 @@ int mkstemp_ex(char *tmp_path)
     result = _mktemp_s(tmp_path, strlen(tmp_path) + 1);
 
     if (result != 0) {
-        log2file(
-            "%s: ERROR: Could not create temporary file (%s) which returned (%d)",
-            __local_name,
-            tmp_path,
-            result
-        );
+        mferror("Could not create temporary file (%s) which returned (%d)", tmp_path, result);
 
         return (-1);
     }
 #else
     if (_mktemp(tmp_path) == NULL) {
-        log2file(
-            "%s: ERROR: Could not create temporary file (%s) which returned [(%d)-(%s)]",
-            __local_name,
-            tmp_path,
-            errno,
-            strerror(errno)
-        );
+        mferror("Could not create temporary file (%s) which returned [(%d)-(%s)]", tmp_path, errno, strerror(errno));
 
         return (-1);
     }
@@ -1234,11 +1179,7 @@ int mkstemp_ex(char *tmp_path)
              );
 
     if (!result) {
-        log2file(
-            "%s: ERROR: Could not create BUILTIN\\Administrators group SID which returned (%lu)",
-            __local_name,
-            GetLastError()
-        );
+        mferror("Could not create BUILTIN\\Administrators group SID which returned (%lu)", GetLastError());
 
         goto cleanup;
     }
@@ -1253,11 +1194,7 @@ int mkstemp_ex(char *tmp_path)
              );
 
     if (!result) {
-        log2file(
-            "%s: ERROR: Could not create SYSTEM group SID which returned (%lu)",
-            __local_name,
-            GetLastError()
-        );
+        mferror("Could not create SYSTEM group SID which returned (%lu)", GetLastError());
 
         goto cleanup;
     }
@@ -1285,11 +1222,7 @@ int mkstemp_ex(char *tmp_path)
     dwResult = SetEntriesInAcl(2, ea, NULL, &pACL);
 
     if (dwResult != ERROR_SUCCESS) {
-        log2file(
-            "%s: ERROR: Could not set ACL entries which returned (%lu)",
-            __local_name,
-            dwResult
-        );
+        mferror("Could not set ACL entries which returned (%lu)", dwResult);
 
         goto cleanup;
     }
@@ -1301,54 +1234,34 @@ int mkstemp_ex(char *tmp_path)
           );
 
     if (pSD == NULL) {
-        log2file(
-            "%s: ERROR: Could not initalize SECURITY_DESCRIPTOR because of a LocalAlloc() failure which returned (%lu)",
-            __local_name,
-            GetLastError()
-        );
+        mferror("Could not initalize SECURITY_DESCRIPTOR because of a LocalAlloc() failure which returned (%lu)", GetLastError());
 
         goto cleanup;
     }
 
     if (!InitializeSecurityDescriptor(pSD, SECURITY_DESCRIPTOR_REVISION)) {
-        log2file(
-            "%s: ERROR: Could not initalize SECURITY_DESCRIPTOR because of an InitializeSecurityDescriptor() failure which returned (%lu)",
-            __local_name,
-            GetLastError()
-        );
+        mferror("Could not initalize SECURITY_DESCRIPTOR because of an InitializeSecurityDescriptor() failure which returned (%lu)", GetLastError());
 
         goto cleanup;
     }
 
     /* Set owner */
     if (!SetSecurityDescriptorOwner(pSD, NULL, FALSE)) {
-        log2file(
-            "%s: ERROR: Could not set owner which returned (%lu)",
-            __local_name,
-            GetLastError()
-        );
+        mferror("Could not set owner which returned (%lu)", GetLastError());
 
         goto cleanup;
     }
 
     /* Set group owner */
     if (!SetSecurityDescriptorGroup(pSD, NULL, FALSE)) {
-        log2file(
-            "%s: ERROR: Could not set group owner which returned (%lu)",
-            __local_name,
-            GetLastError()
-        );
+        mferror("Could not set group owner which returned (%lu)", GetLastError());
 
         goto cleanup;
     }
 
     /* Add ACL to security descriptor */
     if (!SetSecurityDescriptorDacl(pSD, TRUE, pACL, FALSE)) {
-        log2file(
-            "%s: ERROR: Could not set SECURITY_DESCRIPTOR DACL which returned (%lu)",
-            __local_name,
-            GetLastError()
-        );
+        mferror("Could not set SECURITY_DESCRIPTOR DACL which returned (%lu)", GetLastError());
 
         goto cleanup;
     }
@@ -1369,23 +1282,13 @@ int mkstemp_ex(char *tmp_path)
         );
 
     if (h == INVALID_HANDLE_VALUE) {
-        log2file(
-            "%s: ERROR: Could not create temporary file (%s) which returned (%lu)",
-            __local_name,
-            tmp_path,
-            GetLastError()
-        );
+        mferror("Could not create temporary file (%s) which returned (%lu)", tmp_path, GetLastError());
 
         goto cleanup;
     }
 
     if (!CloseHandle(h)) {
-        log2file(
-            "%s: ERROR: Could not close file handle to (%s) which returned (%lu)",
-            __local_name,
-            tmp_path,
-            GetLastError()
-        );
+        mferror("Could not close file handle to (%s) which returned (%lu)", tmp_path, GetLastError());
 
         goto cleanup;
     }
@@ -1608,11 +1511,11 @@ const char *getuname()
                 char *end;
                 cmd_output = popen(command, "r");
                 if (!cmd_output) {
-                    verbose("%s: ERROR: Unable to execute command: '%s'.", ARGV0, command);
+                    merror("Unable to execute command: '%s'.", command);
                 }
                 if (strncmp(fgets(read_buff, buf_tam, cmd_output),"Caption",7) == 0) {
                     if (!fgets(read_buff, buf_tam, cmd_output)){
-                        verbose("%s: ERROR: Can't get Version.", ARGV0);
+                        merror("Can't get Version.");
                         strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
                     }
                     else if (end = strpbrk(read_buff,"\r\n"), end) {
@@ -1827,12 +1730,12 @@ const char *getuname()
                 command = "wmic os get Version";
                 cmd_output = popen(command, "r");
                 if (!cmd_output) {
-                    verbose("%s: ERROR: Unable to execute command: '%s'.", ARGV0, command);
+                    merror("Unable to execute command: '%s'.", command);
                     snprintf(__wp, 63, " [Ver: %s]", "desc");
                 }
                 if (strncmp(fgets(read_buff, buf_tam, cmd_output),"Version",7) == 0) {
                     if (!fgets(read_buff, buf_tam, cmd_output)){
-                        verbose("%s: ERROR: Can't get Version.", ARGV0);
+                        merror("Can't get Version.");
                         snprintf(__wp, 63, " [Ver: %s]", "desc");
                     }
                     else {
@@ -2034,19 +1937,19 @@ int OS_MoveFile(const char *src, const char *dst) {
         return 0;
     }
 
-    debug1("%s: WARN: Couldn't rename %s: %s", __local_name, dst, strerror(errno));
+    mdebug1("Couldn't rename %s: %s", dst, strerror(errno));
 
     fp_src = fopen(src, "r");
 
     if (!fp_src) {
-        merror("%s: ERROR: Couldn't open file '%s'", __local_name, src);
+        merror("Couldn't open file '%s'", src);
         return -1;
     }
 
     fp_dst = fopen(dst, "w");
 
     if (!fp_dst) {
-        merror("%s: ERROR: Couldn't open file '%s'", __local_name, dst);
+        merror("Couldn't open file '%s'", dst);
         fclose(fp_src);
         unlink(src);
         return -1;
@@ -2056,7 +1959,7 @@ int OS_MoveFile(const char *src, const char *dst) {
         count_r = fread(buffer, 1, 4096, fp_src);
 
         if (ferror(fp_src)) {
-            merror("%s: ERROR: Couldn't read file '%s'", __local_name, src);
+            merror("Couldn't read file '%s'", src);
             status = -1;
             break;
         }
@@ -2064,7 +1967,7 @@ int OS_MoveFile(const char *src, const char *dst) {
         count_w = fwrite(buffer, 1, count_r, fp_dst);
 
         if (count_w != count_r || ferror(fp_dst)) {
-            merror("%s: ERROR: Couldn't write file '%s'", __local_name, dst);
+            merror("Couldn't write file '%s'", dst);
             status = -1;
             break;
         }

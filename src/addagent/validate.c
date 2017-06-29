@@ -613,7 +613,7 @@ void OS_BackupAgentInfo_ID(const char *id) {
     char *ip;
 
     if (!name) {
-        merror("%s: ERROR: Agent id %s not found.", ARGV0, id);
+        merror("Agent id %s not found.", id);
         return;
     }
 
@@ -638,7 +638,7 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
     path_backup = OS_CreateBackupDir(id, name, ip, timer);
 
     if (!path_backup) {
-        merror("%s: ERROR: Couldn't create backup directory.", ARGV0);
+        merror("Couldn't create backup directory.");
         return;
     }
 
@@ -670,10 +670,10 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
     status += link(path_src, path_dst);
 
     if (status < 0) {
-        debug1("%s: Couldn't create some backup files.", ARGV0);
+        mdebug1("Couldn't create some backup files.");
 
         if (status == -6) {
-            debug1("%s: Backup directory empty. Removing %s", ARGV0, path_backup);
+            mdebug1("Backup directory empty. Removing %s", path_backup);
             rmdir(path_backup);
         }
     }
@@ -686,7 +686,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
     char timestamp[40];
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror("%s: CRITICAL: Unspecified uid or gid.", ARGV0);
+        merror("Unspecified uid or gid.");
         return NULL;
     }
 
@@ -757,7 +757,7 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
     char timestamp[40];
 
     if (TempFile(&file, TIMESTAMP_FILE, 1) < 0) {
-        merror("%s: ERROR: Couldn't open timestamp file.", ARGV0);
+        merror("Couldn't open timestamp file.");
         return;
     }
 
@@ -801,7 +801,7 @@ void OS_RemoveAgentTimestamp(const char *id)
     fclose(fp);
 
     if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
-        merror("%s: ERROR: Couldn't open timestamp file.", ARGV0);
+        merror("Couldn't open timestamp file.");
         free(buffer);
         return;
     }
@@ -835,7 +835,7 @@ int OS_LoadUid() {
     gid = Privsep_GetGroup(GROUPGLOBAL);
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, ARGV0, USER, GROUPGLOBAL);
+        merror(USER_ERROR, USER, GROUPGLOBAL);
         return -1;
     } else {
         return 0;

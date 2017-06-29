@@ -44,7 +44,7 @@ static void HandleClient(int client_socket, char *srcip)
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     /* Initialize some variables */
@@ -66,7 +66,7 @@ static void HandleClient(int client_socket, char *srcip)
         if (!buffer_pt) {
             /* Buffer is full */
             if ((sb_size - r_sz) <= 2) {
-                merror("%s: Full buffer receiving from: '%s'", ARGV0, srcip);
+                merror("Full buffer receiving from: '%s'", srcip);
                 sb_size = OS_MAXSTR;
                 storage_buffer[0] = '\0';
                 continue;
@@ -88,7 +88,7 @@ static void HandleClient(int client_socket, char *srcip)
          * Check if buffer will be full
          */
         if ((sb_size - r_sz) <= 2) {
-            merror("%s: Full buffer receiving from: '%s'.", ARGV0, srcip);
+            merror("Full buffer receiving from: '%s'.", srcip);
             sb_size = OS_MAXSTR;
             storage_buffer[0] = '\0';
             tmp_buffer[0] = '\0';
@@ -117,10 +117,10 @@ static void HandleClient(int client_socket, char *srcip)
 
         /* Send to the queue */
         if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
-            merror(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
+            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
             if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
+                merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
             }
         }
 
@@ -149,7 +149,7 @@ void HandleSyslogTCP()
      * Exit if it fails.
      */
     if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-        ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     while (1) {
@@ -158,7 +158,7 @@ void HandleSyslogTCP()
             int wp;
             wp = waitpid((pid_t) - 1, NULL, WNOHANG);
             if (wp < 0) {
-                merror(WAITPID_ERROR, ARGV0, errno, strerror(errno));
+                merror(WAITPID_ERROR, errno, strerror(errno));
             }
 
             /* if = 0, we still need to wait for the child process */
@@ -172,13 +172,13 @@ void HandleSyslogTCP()
         /* Accept new connections */
         int client_socket = OS_AcceptTCP(logr.sock, srcip, IPSIZE);
         if (client_socket < 0) {
-            merror("%s: WARN: Accepting tcp connection from client failed.", ARGV0);
+            mwarn("Accepting tcp connection from client failed.");
             continue;
         }
 
         /* Check if IP is allowed here */
         if (OS_IPNotAllowed(srcip)) {
-            merror(DENYIP_WARN, ARGV0, srcip);
+            mwarn(DENYIP_WARN, srcip);
             close(client_socket);
             continue;
         }
@@ -196,4 +196,3 @@ void HandleSyslogTCP()
         }
     }
 }
-

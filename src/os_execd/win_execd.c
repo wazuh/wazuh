@@ -34,7 +34,7 @@ int WinExecd_Start()
 
     /* Read config */
     if ((c = ExecdConfig(cfg)) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* Exit if test_config */
@@ -44,18 +44,18 @@ int WinExecd_Start()
 
     /* Active response disabled */
     if (c == 1) {
-        verbose(EXEC_DISABLED, ARGV0);
+        minfo(EXEC_DISABLED);
         return (0);
     }
 
     /* Create list for timeout */
     timeout_list = OSList_Create();
     if (!timeout_list) {
-        ErrorExit(LIST_ERROR, ARGV0);
+        merror_exit(LIST_ERROR);
     }
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, getpid());
+    minfo(STARTUP_MSG, getpid());
 
     return (1);
 }
@@ -116,7 +116,7 @@ void WinExecdRun(char *exec_msg)
     /* Zero the name */
     tmp_msg = strchr(exec_msg, ' ');
     if (!tmp_msg) {
-        merror(EXECD_INV_MSG, ARGV0, exec_msg);
+        mwarn(EXECD_INV_MSG, exec_msg);
         return;
     }
     *tmp_msg = '\0';
@@ -126,7 +126,7 @@ void WinExecdRun(char *exec_msg)
     cmd_user = tmp_msg;
     tmp_msg = strchr(tmp_msg, ' ');
     if (!tmp_msg) {
-        merror(EXECD_INV_MSG, ARGV0, cmd_user);
+        mwarn(EXECD_INV_MSG, cmd_user);
         return;
     }
     *tmp_msg = '\0';
@@ -136,7 +136,7 @@ void WinExecdRun(char *exec_msg)
     cmd_ip = tmp_msg;
     tmp_msg = strchr(tmp_msg, ' ');
     if (!tmp_msg) {
-        merror(EXECD_INV_MSG, ARGV0, cmd_ip);
+        mwarn(EXECD_INV_MSG, cmd_ip);
         return;
     }
     *tmp_msg = '\0';
@@ -148,7 +148,7 @@ void WinExecdRun(char *exec_msg)
         ReadExecConfig();
         command = GetCommandbyName(name, &timeout_value);
         if (!command) {
-            merror(EXEC_INV_NAME, ARGV0, name);
+            merror(EXEC_INV_NAME, name);
             return;
         }
     }
@@ -220,7 +220,7 @@ void WinExecdRun(char *exec_msg)
 
             /* Add command to the timeout list */
             if (!OSList_AddData(timeout_list, timeout_entry)) {
-                merror(LIST_ADD_ERROR, ARGV0);
+                merror(LIST_ADD_ERROR);
                 FreeTimeoutEntry(timeout_entry);
             }
         }
@@ -253,4 +253,3 @@ void WinExecdRun(char *exec_msg)
 }
 
 #endif /* WIN32 */
-

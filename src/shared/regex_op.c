@@ -24,7 +24,7 @@ int OS_PRegex(const char *str, const char *regex)
     }
 
     if (regcomp(&preg, regex, REG_EXTENDED | REG_NOSUB) != 0) {
-        merror("%s: Posix Regex compile error (%s).", __local_name, regex);
+        merror("Posix Regex compile error (%s).", regex);
         return (0);
     }
 
@@ -48,7 +48,7 @@ int w_regexec(const char * pattern, const char * string, size_t nmatch, regmatch
     }
 
     if (regcomp(&regex, pattern, REG_EXTENDED)) {
-        merror("%s: ERROR: Couldn't compile regular expression '%s'", __local_name, pattern);
+        merror("Couldn't compile regular expression '%s'", pattern);
         return 0;
     }
 

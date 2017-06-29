@@ -53,7 +53,7 @@ void HandleSyslog()
      * Exit if it fails.
      */
     if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-        ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     /* Infinite loop */
@@ -93,17 +93,16 @@ void HandleSyslog()
 
         /* Check if IP is allowed here */
         if (OS_IPNotAllowed(srcip)) {
-            merror(DENYIP_WARN, ARGV0, srcip);
+            mwarn(DENYIP_WARN, srcip);
             continue;
         }
 
         if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
-            merror(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
+            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
             if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
+                merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
             }
         }
     }
 }
-

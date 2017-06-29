@@ -77,25 +77,25 @@ int main(int argc, char **argv)
                 break;
             case 'u':
                 if (!optarg) {
-                    ErrorExit("%s: -u needs an argument", ARGV0);
+                    merror_exit("-u needs an argument");
                 }
                 user = optarg;
                 break;
             case 'g':
                 if (!optarg) {
-                    ErrorExit("%s: -g needs an argument", ARGV0);
+                    merror_exit("-g needs an argument");
                 }
                 group = optarg;
                 break;
             case 'D':
                 if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
+                    merror_exit("-D needs an argument");
                 }
                 dir = optarg;
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument", ARGV0);
+                    merror_exit("-c needs an argument");
                 }
                 cfg = optarg;
                 break;
@@ -109,18 +109,18 @@ int main(int argc, char **argv)
     }
 
     /* Start daemon */
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Read configuration */
     if (MailConf(test_config, cfg, &mail) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* Read internal options */
@@ -157,32 +157,32 @@ int main(int argc, char **argv)
 
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* chroot */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
     nowChroot();
 
     /* Change user */
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
-    debug1(PRIVSEP_MSG, ARGV0, dir, user);
+    mdebug1(PRIVSEP_MSG, dir, user);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
 
     /* Create PID files */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* The real daemon now */
     OS_Run(&mail);
@@ -241,12 +241,12 @@ static void OS_Run(MailConfig *mail)
             pid = fork();
 
             if (pid < 0) {
-                merror(FORK_ERROR, ARGV0, errno, strerror(errno));
+                merror(FORK_ERROR, errno, strerror(errno));
                 sleep(30);
                 continue;
             } else if (pid == 0) {
                 if (OS_Sendsms(mail, p, msg_sms) < 0) {
-                    merror(SNDMAIL_ERROR, ARGV0, mail->smtpserver);
+                    merror(SNDMAIL_ERROR, mail->smtpserver);
                 }
 
                 exit(0);
@@ -282,12 +282,12 @@ static void OS_Run(MailConfig *mail)
 
             pid = fork();
             if (pid < 0) {
-                merror(FORK_ERROR, ARGV0, errno, strerror(errno));
+                merror(FORK_ERROR, errno, strerror(errno));
                 sleep(30);
                 continue;
             } else if (pid == 0) {
                 if (OS_Sendmail(mail, p) < 0) {
-                    merror(SNDMAIL_ERROR, ARGV0, mail->smtpserver);
+                    merror(SNDMAIL_ERROR, mail->smtpserver);
                 }
 
                 exit(0);
@@ -395,7 +395,7 @@ snd_check_hour:
             int p_status;
             wp = waitpid((pid_t) - 1, &p_status, WNOHANG);
             if (wp < 0) {
-                merror(WAITPID_ERROR, ARGV0, errno, strerror(errno));
+                merror(WAITPID_ERROR, errno, strerror(errno));
                 n_errs++;
             }
 
@@ -404,8 +404,8 @@ snd_check_hour:
                 break;
             } else {
                 if (p_status != 0) {
-                    merror(CHLDWAIT_ERROR, ARGV0, p_status);
-                    merror(SNDMAIL_ERROR, ARGV0, mail->smtpserver);
+                    merror(CHLDWAIT_ERROR, p_status);
+                    merror(SNDMAIL_ERROR, mail->smtpserver);
                     n_errs++;
                 }
                 childcount--;
@@ -413,8 +413,8 @@ snd_check_hour:
 
             /* Too many errors */
             if (n_errs > 6) {
-                merror(TOOMANY_WAIT_ERROR, ARGV0);
-                merror(SNDMAIL_ERROR, ARGV0, mail->smtpserver);
+                merror(TOOMANY_WAIT_ERROR);
+                merror(SNDMAIL_ERROR, mail->smtpserver);
                 exit(1);
             }
         }

@@ -126,36 +126,36 @@ int k_import(const char *cmdimport)
 
                 if (user_input[0] == 'y' || user_input[0] == 'Y') {
                     if (mkstemp_ex(tmp_path)) {
-                        ErrorExit(MKSTEMP_ERROR, ARGV0, tmp_path, errno, strerror(errno));
+                        merror_exit(MKSTEMP_ERROR, tmp_path, errno, strerror(errno));
                     }
 
 #ifndef WIN32
                     if (chmod(tmp_path, 0640) == -1) {
                         if (unlink(tmp_path)) {
-                            verbose(DELETE_ERROR, ARGV0, tmp_path, errno, strerror(errno));
+                            minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
                         }
 
-                        ErrorExit(CHMOD_ERROR, ARGV0, tmp_path, errno, strerror(errno));
+                        merror_exit(CHMOD_ERROR, tmp_path, errno, strerror(errno));
                     }
 #endif
 
                     fp = fopen(tmp_path, "w");
                     if (!fp) {
                         if (unlink(tmp_path)) {
-                            verbose(DELETE_ERROR, ARGV0, tmp_path, errno, strerror(errno));
+                            minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
                         }
 
-                        ErrorExit(FOPEN_ERROR, ARGV0, tmp_path, errno, strerror(errno));
+                        merror_exit(FOPEN_ERROR, tmp_path, errno, strerror(errno));
                     }
                     fprintf(fp, "%s\n", line_read);
                     fclose(fp);
 
                     if (rename_ex(tmp_path, KEYS_FILE)) {
                         if (unlink(tmp_path)) {
-                            verbose(DELETE_ERROR, ARGV0, tmp_path, errno, strerror(errno));
+                            minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
                         }
 
-                        ErrorExit(RENAME_ERROR, ARGV0, tmp_path, KEYS_FILE, errno, strerror(errno));
+                        merror_exit(RENAME_ERROR, tmp_path, KEYS_FILE, errno, strerror(errno));
                     }
 
                     /* Remove sender counter */
@@ -251,7 +251,7 @@ int k_extract(const char *cmdextract, int json_output)
             printf("%s", cJSON_PrintUnformatted(json_root));
             exit(1);
         } else
-            ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+            merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
     }
 
     if (fsetpos(fp, &fp_pos)) {
@@ -260,7 +260,7 @@ int k_extract(const char *cmdextract, int json_output)
             cJSON_AddStringToObject(json_root, "message", "Can not set fileposition");
             printf("%s", cJSON_PrintUnformatted(json_root));
         } else
-            merror("%s: Can not set fileposition.", ARGV0);
+            merror("Can not set fileposition.");
 
         exit(1);
     }
@@ -337,13 +337,13 @@ int k_bulkload(const char *cmdbulk)
     infp = fopen(cmdbulk, "r");
     if (!infp) {
         perror("Failed.");
-        ErrorExit(FOPEN_ERROR, ARGV0, cmdbulk, errno, strerror(errno));
+        merror_exit(FOPEN_ERROR, cmdbulk, errno, strerror(errno));
     }
 
     /* Check if we can open the auth_file */
     fp = fopen(AUTH_FILE, "a");
     if (!fp) {
-        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+        merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
     }
     fclose(fp);
 
@@ -363,13 +363,13 @@ int k_bulkload(const char *cmdbulk)
         token = strtok(NULL, delims);
 
         if (!token)
-            ErrorExit(SYNTAX_ERROR, cmdbulk);
+            merror_exit(SYNTAX_ERROR, cmdbulk);
 
         strncpy(name, trimwhitespace(token), FILE_SIZE - 1);
 
 #ifndef WIN32
         if (chmod(AUTH_FILE, 0640) == -1) {
-            ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+            merror_exit(CHMOD_ERROR, AUTH_FILE, errno, strerror(errno));
         }
 #endif
 
@@ -435,11 +435,11 @@ int k_bulkload(const char *cmdbulk)
 
             fp = fopen(AUTH_FILE, "a");
             if (!fp) {
-                ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
+                merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
             }
 #ifndef WIN32
             if (chmod(AUTH_FILE, 0640) == -1) {
-                ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+                merror_exit(CHMOD_ERROR, AUTH_FILE, errno, strerror(errno));
             }
 #endif
 

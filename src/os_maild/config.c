@@ -47,7 +47,7 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
 
     if (!Mail->mn) {
         if (!test_config) {
-            verbose(MAIL_DIS, ARGV0);
+            minfo(MAIL_DIS);
         }
         exit(0);
     }

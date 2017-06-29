@@ -74,7 +74,7 @@ int main(int argc, char **argv)
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument", ARGV0);
+                    merror_exit("-c needs an argument");
                 }
                 cfg = optarg;
                 break;
@@ -100,14 +100,14 @@ int main(int argc, char **argv)
         }
     }
 
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
     accept_manager_commands = getDefine_Int("logcollector", "remote_commands",
                                             0, 1);
 
     /* Read config file */
     if (LogCollectorConfig(cfg, accept_manager_commands) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* Get loop timeout */
@@ -135,7 +135,7 @@ int main(int argc, char **argv)
         logff[1].file = NULL;
         logff[1].logformat = NULL;
 
-        merror(NO_FILE, ARGV0);
+        minfo(NO_FILE);
     }
 
     /* Start signal handler */
@@ -149,16 +149,16 @@ int main(int argc, char **argv)
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     /* Wait 6 seconds for the analysisd/agentd to settle */
-    debug1("%s: DEBUG: Waiting main daemons to settle.", ARGV0);
+    mdebug1("Waiting main daemons to settle.");
     sleep(6);
 
     /* Start the queue */
     if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+        merror_exit(QUEUE_FATAL, DEFAULTQPATH);
     }
 
     /* Main loop */

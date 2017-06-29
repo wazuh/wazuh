@@ -66,20 +66,20 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
 		send_syscheck_msg(alert_msg);
 		return (0);
 	}else{
-		merror("%s: Error accessing '%s'.", ARGV0, file_name);
+		merror("Error accessing '%s'.", file_name);
 		return (-1);
 	}
     }
 
     if (S_ISDIR(statbuf.st_mode)) {
 #ifdef DEBUG
-        verbose("%s: Reading dir: %s\n", ARGV0, file_name);
+        minfo("Reading dir: %s\n", file_name);
 #endif
 
 #ifdef WIN32
         /* Directory links are not supported */
         if (GetFileAttributes(file_name) & FILE_ATTRIBUTE_REPARSE_POINT) {
-            merror("%s: WARN: Links are not supported: '%s'", ARGV0, file_name);
+            mwarn("Links are not supported: '%s'", file_name);
             return (-1);
         }
 #endif
@@ -180,7 +180,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0);
 
             if (OSHash_Add(syscheck.fp, file_name, strdup(alert_msg)) <= 0) {
-                merror("%s: ERROR: Unable to add file to db: %s", ARGV0, file_name);
+                merror("Unable to add file to db: %s", file_name);
             }
 
             /* Send the new checksum to the analysis server */
@@ -241,11 +241,11 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
         __counter++;
 
 #ifdef DEBUG
-        verbose("%s: file '%s %s'", ARGV0, file_name, mf_sum);
+        minfo("File '%s %s'", file_name, mf_sum);
 #endif
     } else {
 #ifdef DEBUG
-        verbose("%s: *** IRREG file: '%s'\n", ARGV0, file_name);
+        minfo("*** IRREG file: '%s'\n", file_name);
 #endif
     }
 
@@ -265,7 +265,7 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction)
 
     /* Directory should be valid */
     if ((dir_name == NULL) || ((dir_size = strlen(dir_name)) > PATH_MAX)) {
-        merror(NULL_ERROR, ARGV0);
+        merror(NULL_ERROR);
         return (-1);
     }
 
@@ -309,14 +309,10 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction)
         }
 
         if (defaultfilesn[di] == NULL) {
-            merror("%s: WARN: Error opening directory: '%s': %s ",
-                   ARGV0, dir_name, strerror(errno));
+            mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
         }
 #else
-        merror("%s: WARN: Error opening directory: '%s': %s ",
-               ARGV0,
-               dir_name,
-               strerror(errno));
+        mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
 #endif /* WIN32 */
         return (-1);
     }
@@ -326,10 +322,7 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction)
 #if defined(INOTIFY_ENABLED) || defined(WIN32)
         realtime_adddir(dir_name);
 #else
-        merror("%s: WARN: realtime monitoring request on unsupported system for '%s'",
-                ARGV0,
-                dir_name
-        );
+        mwarn("realtime monitoring request on unsupported system for '%s'", dir_name);
 #endif
     }
 
@@ -382,37 +375,35 @@ int create_db()
     /* Create store data */
     syscheck.fp = OSHash_Create();
     if (!syscheck.fp) {
-        ErrorExit("%s: Unable to create syscheck database."
-                  ". Exiting.", ARGV0);
+        merror_exit("Unable to create syscheck database. Exiting.");
     }
 
     if (!OSHash_setSize(syscheck.fp, 2048)) {
-        merror(LIST_ERROR, ARGV0);
+        merror(LIST_ERROR);
         return (0);
     }
 
     if ((syscheck.dir == NULL) || (syscheck.dir[0] == NULL)) {
-        merror("%s: No directories to check.", ARGV0);
+        merror("No directories to check.");
         return (-1);
     }
 
-    merror("%s: INFO: Starting syscheck database (pre-scan).", ARGV0);
+    minfo("Starting syscheck database (pre-scan).");
 
     /* Read all available directories */
     __counter = 0;
     do {
         if (read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]) == 0) {
-            debug2("%s: Directory loaded from syscheck db: %s", ARGV0, syscheck.dir[i]);
+            mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
         i++;
     } while (syscheck.dir[i] != NULL);
 
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
     if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
-        verbose("%s: INFO: Real time file monitoring engine started.", ARGV0);
+        minfo("Real time file monitoring engine started.");
     }
 #endif
-    merror("%s: INFO: Finished creating syscheck database (pre-scan "
-           "completed).", ARGV0);
+    minfo("Finished creating syscheck database (pre-scan completed).");
     return (0);
 }

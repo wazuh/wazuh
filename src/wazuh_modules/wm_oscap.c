@@ -42,7 +42,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
     // Check configuration and show debug information
 
     wm_oscap_setup(oscap);
-    verbose("%s: INFO: Module started.", WM_OSCAP_LOGTAG);
+    mtinfo(WM_OSCAP_LOGTAG, "Module started.");
 
     // First sleeping
 
@@ -50,7 +50,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
         time_start = time(NULL);
 
         if (oscap->state.next_time > time_start) {
-            verbose("%s: INFO: Waiting for turn to evaluate.", WM_OSCAP_LOGTAG);
+            mtinfo(WM_OSCAP_LOGTAG, "Waiting for turn to evaluate.");
             sleep(oscap->state.next_time - time_start);
         }
     }
@@ -59,7 +59,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
 
     while (1) {
 
-        verbose("%s: INFO: Starting evaluation.", WM_OSCAP_LOGTAG);
+        mtinfo(WM_OSCAP_LOGTAG, "Starting evaluation.");
 
         // Get time and execute
         time_start = time(NULL);
@@ -70,18 +70,18 @@ void* wm_oscap_main(wm_oscap *oscap) {
 
         time_sleep = time(NULL) - time_start;
 
-        verbose("%s: INFO: Evaluation finished.", WM_OSCAP_LOGTAG);
+        mtinfo(WM_OSCAP_LOGTAG, "Evaluation finished.");
 
         if ((time_t)oscap->interval >= time_sleep) {
             time_sleep = oscap->interval - time_sleep;
             oscap->state.next_time = oscap->interval + time_start;
         } else {
-            merror("%s: ERROR: Interval overtaken.", WM_OSCAP_LOGTAG);
+            mterror(WM_OSCAP_LOGTAG, "Interval overtaken.");
             time_sleep = oscap->state.next_time = 0;
         }
 
         if (wm_state_io(&WM_OSCAP_CONTEXT, WM_IO_WRITE, &oscap->state, sizeof(oscap->state)) < 0)
-            merror("%s: ERROR: Couldn't save running state.", WM_OSCAP_LOGTAG);
+            mterror(WM_OSCAP_LOGTAG, "Couldn't save running state.");
 
         // If time_sleep=0, yield CPU
         sleep(time_sleep);
@@ -112,7 +112,7 @@ void wm_oscap_setup(wm_oscap *_oscap) {
         sleep(WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
-        merror("%s: ERROR: Can't connect to queue.", WM_OSCAP_LOGTAG);
+        mterror(WM_OSCAP_LOGTAG, "Can't connect to queue.");
         pthread_exit(NULL);
     }
 
@@ -125,7 +125,7 @@ void wm_oscap_setup(wm_oscap *_oscap) {
 
 void wm_oscap_cleanup() {
     close(queue_fd);
-    verbose("%s: INFO: Module finished.", WM_OSCAP_LOGTAG);
+    mtinfo(WM_OSCAP_LOGTAG, "Module finished.");
 }
 
 // Run an OpenSCAP policy
@@ -150,7 +150,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         wm_strcat(&command, "--oval", ' ');
         break;
     default:
-        merror("%s: ERROR: Unspecified content type for file '%s'. This shouln't happen.", WM_OSCAP_LOGTAG, eval->path);
+        mterror(WM_OSCAP_LOGTAG, "Unspecified content type for file '%s'. This shouln't happen.", eval->path);
         pthread_exit(NULL);
     }
 
@@ -186,13 +186,13 @@ void wm_oscap_run(wm_oscap_eval *eval) {
 
     // Execute
 
-    debug1("%s: DEBUG: Launching command: %s", WM_OSCAP_LOGTAG, command);
+    mtdebug1(WM_OSCAP_LOGTAG, "Launching command: %s", command);
 
     switch (wm_exec(command, &output, &status, eval->timeout)) {
     case 0:
         if (status > 0) {
-            merror("%s: WARN: Ignoring content '%s' due to error (%d).", WM_OSCAP_LOGTAG, eval->path, status);
-            debug2("%s: DEBUG: OUTPUT: %s", WM_OSCAP_LOGTAG, output);
+            mtwarn(WM_OSCAP_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+            mtdebug2(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
             eval->flags.error = 1;
         }
 
@@ -202,11 +202,11 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         free(output);
         output = NULL;
         wm_strcat(&output, "oscap: ERROR: Timeout expired.", '\0');
-        merror("%s: ERROR: Timeout expired executing '%s'.", WM_OSCAP_LOGTAG, eval->path);
+        mterror(WM_OSCAP_LOGTAG, "Timeout expired executing '%s'.", eval->path);
         break;
 
     default:
-        merror("%s: ERROR: Internal calling. Exiting...", WM_OSCAP_LOGTAG);
+        mterror(WM_OSCAP_LOGTAG, "Internal calling. Exiting...");
         pthread_exit(NULL);
     }
 
@@ -226,14 +226,14 @@ void wm_oscap_check() {
     // Check if disabled
 
     if (!oscap->flags.enabled) {
-        merror("%s: INFO: Module disabled. Exiting...", WM_OSCAP_LOGTAG);
+        mtinfo(WM_OSCAP_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
     }
 
     // Check if evals
 
     if (!oscap->evals) {
-        merror("%s: WARN: No evals defined. Exiting...", WM_OSCAP_LOGTAG);
+        mtwarn(WM_OSCAP_LOGTAG, "No evals defined. Exiting...");
         pthread_exit(NULL);
     }
 
@@ -257,19 +257,19 @@ void wm_oscap_info() {
     wm_oscap_eval *eval;
     wm_oscap_profile *profile;
 
-    verbose("%s: INFO: SHOW_MODULE_OSCAP: ----", WM_OSCAP_LOGTAG);
-    verbose("%s: INFO: Timeout: %d", WM_OSCAP_LOGTAG, oscap->timeout);
-    verbose("%s: INFO: Policies:", WM_OSCAP_LOGTAG);
+    mtinfo(WM_OSCAP_LOGTAG, "SHOW_MODULE_OSCAP: ----");
+    mtinfo(WM_OSCAP_LOGTAG, "Timeout: %d", oscap->timeout);
+    mtinfo(WM_OSCAP_LOGTAG, "Policies:");
 
     for (eval = (wm_oscap_eval*)oscap->evals; eval; eval = eval->next){
-        verbose("%s: INFO: [%s]", WM_OSCAP_LOGTAG, eval->path);
-        verbose("%s: INFO: \tProfiles:", WM_OSCAP_LOGTAG);
+        mtinfo(WM_OSCAP_LOGTAG, "[%s]", eval->path);
+        mtinfo(WM_OSCAP_LOGTAG, "\tProfiles:");
 
         for (profile = (wm_oscap_profile*)eval->profiles; profile; profile = profile->next)
-            verbose("%s: INFO: \t\tName: %s", WM_OSCAP_LOGTAG, profile->name);
+            mtinfo(WM_OSCAP_LOGTAG, "\t\tName: %s", profile->name);
     }
 
-    verbose("%s: INFO: SHOW_MODULE_OSCAP: ----", WM_OSCAP_LOGTAG);
+    mtinfo(WM_OSCAP_LOGTAG, "SHOW_MODULE_OSCAP: ----");
 }
 
 // Destroy data

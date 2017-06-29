@@ -63,7 +63,7 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
             !db_config->pass ||
             !db_config->db ||
             !db_config->db_type) {
-        merror(DB_MISS_CONFIG, ARGV0);
+        merror(DB_MISS_CONFIG);
         return (OS_INVALID);
     }
 
@@ -92,18 +92,18 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
     /* Check for config errros */
     if (db_config->db_type == MYSQLDB) {
 #ifndef MYSQL_DATABASE_ENABLED
-        merror(DB_COMPILED, ARGV0, "mysql");
+        merror(DB_COMPILED, "mysql");
         return (OS_INVALID);
 #endif
     } else if (db_config->db_type == POSTGDB) {
 #ifndef PGSQL_DATABASE_ENABLED
-        merror(DB_COMPILED, ARGV0, "postgresql");
+        merror(DB_COMPILED, "postgresql");
         return (OS_INVALID);
 #endif
     }
 
     if (osdb_connect == NULL) {
-        merror("%s: Invalid DB configuration (Internal error?). ", ARGV0);
+        merror("Invalid DB configuration (Internal error?). ");
         return (OS_INVALID);
     }
 

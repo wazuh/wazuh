@@ -30,6 +30,13 @@
 #define OS_SIZE_256     256
 #define OS_SIZE_128     128
 
+/* Level of log messages */
+#define LOGLEVEL_CRITICAL 0
+#define LOGLEVEL_ERROR 1
+#define LOGLEVEL_WARNING 2
+#define LOGLEVEL_INFO 3
+#define LOGLEVEL_DEBUG 4
+
 #define OS_MAXSTR       OS_SIZE_6144    /* Size for logs, sockets, etc  */
 #define OS_BUFFER_SIZE  OS_SIZE_2048    /* Size of general buffers      */
 #define OS_FLSIZE       OS_SIZE_256     /* Maximum file size            */

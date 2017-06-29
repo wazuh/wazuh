@@ -63,7 +63,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     }
 
     if (OS_SetRecvTimeout(socket, SOCK_RECV_TIME0) < 0) {
-        merror("%s: ERROR: Couldn't set receiving timeout for socket.", ARGV0);
+        merror("Couldn't set receiving timeout for socket.");
     }
 
     /* Receive the banner */
@@ -268,7 +268,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     mailmsg = OS_PopLastMail();
 
     if (mailmsg == NULL) {
-        merror("%s: No email to be sent. Inconsistent state.", ARGV0);
+        merror("No email to be sent. Inconsistent state.");
         return (OS_INVALID);
     }
 
@@ -279,7 +279,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     }
 
     if (OS_SetRecvTimeout(socket, SOCK_RECV_TIME0) < 0) {
-        merror("%s: ERROR: Couldn't set receiving timeout for socket.", ARGV0);
+        merror("Couldn't set receiving timeout for socket.");
     }
 
     /* Receive the banner */

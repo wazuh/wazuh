@@ -41,14 +41,14 @@ void Monitord()
 
     /* Connect to the message queue or exit */
     if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-        ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     /* Send startup message */
     snprintf(str, OS_SIZE_1024 - 1, OS_AD_STARTED);
     if (SendMSG(mond.a_queue, str, ARGV0,
                 LOCALFILE_MQ) < 0) {
-        merror(QUEUE_SEND, ARGV0);
+        merror(QUEUE_SEND);
     }
 
     /* Main monitor loop */

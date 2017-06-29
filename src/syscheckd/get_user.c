@@ -61,10 +61,10 @@ const char *get_user(const char *path, __attribute__((unused)) int uid)
 
         switch (dwErrorCode) {
         case ERROR_SHARING_VIOLATION: // 32
-            debug1("%s: DEBUG: CreateFile (%s) error = %lu", ARGV0, path, dwErrorCode);
+            mdebug1("CreateFile (%s) error = %lu", path, dwErrorCode);
             break;
         default:
-            merror("%s: ERROR: CreateFile (%s) error = %lu", ARGV0, path, dwErrorCode);
+            merror("CreateFile (%s) error = %lu", path, dwErrorCode);
         }
 
         return "";
@@ -88,7 +88,7 @@ const char *get_user(const char *path, __attribute__((unused)) int uid)
         DWORD dwErrorCode = 0;
 
         dwErrorCode = GetLastError();
-        merror("%s: ERROR: GetSecurityInfo error = %lu", ARGV0, dwErrorCode);
+        merror("GetSecurityInfo error = %lu", dwErrorCode);
         return "";
     }
 
@@ -109,9 +109,9 @@ const char *get_user(const char *path, __attribute__((unused)) int uid)
         dwErrorCode = GetLastError();
 
         if (dwErrorCode == ERROR_NONE_MAPPED)
-            debug1("%s: DEBUG: Account owner not found for file '%s'", ARGV0, path);
+            mdebug1("Account owner not found for file '%s'", path);
         else
-            merror("%s: ERROR: Error in LookupAccountSid.", ARGV0);
+            merror("Error in LookupAccountSid.");
 
         return "";
     }

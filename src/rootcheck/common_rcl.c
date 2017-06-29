@@ -284,7 +284,7 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
     /* Get Windows rootdir */
     _rkcl_getrootdir(root_dir, sizeof(root_dir) - 1);
     if (root_dir[0] == '\0') {
-        merror(INVALID_ROOTDIR, ARGV0);
+        mterror(ARGV0, INVALID_ROOTDIR);
     }
 #endif
     /* Get variables */
@@ -302,7 +302,7 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
         if (rc_code == 0) {
             break;
         } else if (rc_code == -1) {
-            merror(INVALID_RKCL_VAR, ARGV0, nbuf);
+            mterror(ARGV0, INVALID_RKCL_VAR, nbuf);
             goto clean_return;
         }
     }
@@ -310,7 +310,7 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
     /* Get first name */
     name = _rkcl_get_name(nbuf, ref, &condition);
     if (name == NULL || condition == RKCL_COND_INV) {
-        merror(INVALID_RKCL_NAME, ARGV0, nbuf);
+        mterror(ARGV0, INVALID_RKCL_NAME, nbuf);
         goto clean_return;
     }
 
@@ -318,8 +318,8 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
     do {
         int g_found = 0;
         int not_found = 0;
-        
-        debug2("%s: DEBUG: Checking entry: '%s'.", ARGV0, name);
+
+        mtdebug2(ARGV0, "Checking entry: '%s'.", name);
 
         /* Get each value */
         do {
@@ -340,7 +340,7 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
             /* Get value to look for */
             value = _rkcl_get_value(nbuf, &type);
             if (value == NULL) {
-                merror(INVALID_RKCL_VALUE, ARGV0, nbuf);
+                mterror(ARGV0, INVALID_RKCL_VALUE, nbuf);
                 goto clean_return;
             }
 
@@ -362,7 +362,7 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
                 if (value[0] == '$') {
                     f_value = (char *) OSStore_Get(vars, value);
                     if (!f_value) {
-                        merror(INVALID_RKCL_VAR, ARGV0, value);
+                        mterror(ARGV0, INVALID_RKCL_VAR, value);
                         continue;
                     }
                 }
@@ -385,9 +385,9 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
                 }
 #endif
 
-                debug2("%s: DEBUG: Checking file: '%s'.", ARGV0, f_value);
+                mtdebug2(ARGV0, "Checking file: '%s'.", f_value);
                 if (rk_check_file(f_value, pattern)) {
-                    debug1("%s: DEBUG: found file.", ARGV0);
+                    mtdebug1(ARGV0, "Found file.");
                     found = 1;
                 }
             }
@@ -406,9 +406,9 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
                     pattern = _rkcl_get_pattern(entry);
                 }
 
-                debug2("%s: DEBUG: Checking registry: '%s'.", ARGV0, value);
+                mtdebug2(ARGV0, "Checking registry: '%s'.", value);
                 if (is_registry(value, entry, pattern)) {
-                    debug2("%s: DEBUG: found registry.", ARGV0);
+                    mtdebug2(ARGV0, "Found registry.");
                     found = 1;
                 }
 
@@ -423,7 +423,7 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
 
                 file = _rkcl_get_pattern(value);
                 if (!file) {
-                    merror(INVALID_RKCL_VAR, ARGV0, value);
+                    mterror(ARGV0, INVALID_RKCL_VAR, value);
                     continue;
                 }
 
@@ -433,7 +433,7 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
                 if (value[0] == '$') {
                     f_value = (char *) OSStore_Get(vars, value);
                     if (!f_value) {
-                        merror(INVALID_RKCL_VAR, ARGV0, value);
+                        mterror(ARGV0, INVALID_RKCL_VAR, value);
                         continue;
                     }
                 } else {
@@ -449,17 +449,17 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
 
                 while (dir) {
 
-                    debug2("%s: Checking dir: %s", ARGV0, dir);
+                    mtdebug2(ARGV0, "Checking dir: %s", dir);
 
                     short is_nfs = IsNFS(dir);
                     if( is_nfs == 1 && rootcheck.skip_nfs ) {
-                        debug1("%s: DEBUG: rootcheck.skip_nfs enabled and %s is flagged as NFS.", ARGV0, dir);
+                        mtdebug1(ARGV0, "rootcheck.skip_nfs enabled and %s is flagged as NFS.", dir);
                     }
                     else {
-                        debug2("%s: DEBUG: %s => is_nfs=%d, skip_nfs=%d", ARGV0, dir, is_nfs, rootcheck.skip_nfs);
+                        mtdebug2(ARGV0, "%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, rootcheck.skip_nfs);
 
                         if (rk_check_dir(dir, file, pattern)) {
-                            debug2("%s: DEBUG: Found dir.", ARGV0);
+                            mtdebug2(ARGV0, "Found dir.");
                             found = 1;
                         }
                     }
@@ -482,9 +482,9 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
 
             /* Check for a process */
             else if (type == RKCL_TYPE_PROCESS) {
-                debug2("%s: DEBUG: Checking process: '%s'.", ARGV0, value);
+                mtdebug2(ARGV0, "Checking process: '%s'.", value);
                 if (is_process(value, p_list)) {
-                    debug2("%s: DEBUG: found process.", ARGV0);
+                    mtdebug2(ARGV0, "Found process.");
                     found = 1;
                 }
             }
@@ -500,21 +500,21 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
 
             /* Check the conditions */
             if (condition & RKCL_COND_ANY) {
-                debug2("%s: DEBUG: Condition ANY.", ARGV0);
+                mtdebug2(ARGV0, "Condition ANY.");
                 if (found) {
                     g_found = 1;
                 }
             } else if (condition & RKCL_COND_NON) {
-                debug2("%s: DEBUG: Condition NON.", ARGV0);
+                mtdebug2(ARGV0, "Condition NON.");
                 if (!found && (not_found != -1)) {
-                    debug2("%s: DEBUG: Condition NON setze not_found=1.", ARGV0);
+                    mtdebug2(ARGV0, "Condition NON setze not_found=1.");
                     not_found = 1;
                 } else {
                     not_found = -1;
                 }
             } else {
                 /* Condition for ALL */
-                debug2("%s: DEBUG: Condition ALL.", ARGV0);
+                mtdebug2(ARGV0, "Condition ALL.");
                 if (found && (g_found != -1)) {
                     g_found = 1;
                 } else {
@@ -588,7 +588,7 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
         /* Get name already read */
         name = _rkcl_get_name(nbuf, ref, &condition);
         if (!name) {
-            merror(INVALID_RKCL_NAME, ARGV0, nbuf);
+            mterror(ARGV0, INVALID_RKCL_NAME, nbuf);
             goto clean_return;
         }
     } while (nbuf != NULL);

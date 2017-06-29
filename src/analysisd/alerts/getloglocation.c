@@ -70,14 +70,14 @@ int OS_GetLogLocation(const Eventinfo *lf)
     snprintf(__elogfile, OS_FLSIZE, "%s/%d/", EVENTS, lf->year);
     if (IsDir(__elogfile) == -1)
         if (mkdir(__elogfile, 0770) == -1) {
-            ErrorExit(MKDIR_ERROR, ARGV0, __elogfile, errno, strerror(errno));
+            merror_exit(MKDIR_ERROR, __elogfile, errno, strerror(errno));
         }
 
     snprintf(__elogfile, OS_FLSIZE, "%s/%d/%s", EVENTS, lf->year, lf->mon);
 
     if (IsDir(__elogfile) == -1)
         if (mkdir(__elogfile, 0770) == -1) {
-            ErrorExit(MKDIR_ERROR, ARGV0, __elogfile, errno, strerror(errno));
+            merror_exit(MKDIR_ERROR, __elogfile, errno, strerror(errno));
         }
 
     /* Create the logfile name */
@@ -90,14 +90,14 @@ int OS_GetLogLocation(const Eventinfo *lf)
 
     _eflog = fopen(__elogfile, "a");
     if (!_eflog) {
-        ErrorExit("%s: Error opening logfile: '%s'", ARGV0, __elogfile);
+        merror_exit("Error opening logfile: '%s'", __elogfile);
     }
 
     /* Create a symlink */
     unlink(EVENTS_DAILY);
 
     if (link(__elogfile, EVENTS_DAILY) == -1) {
-        ErrorExit(LINK_ERROR, ARGV0, __elogfile, EVENTS_DAILY, errno, strerror(errno));
+        merror_exit(LINK_ERROR, __elogfile, EVENTS_DAILY, errno, strerror(errno));
     }
     /* For the events in JSON */
     if (Config.logall_json) {
@@ -112,14 +112,14 @@ int OS_GetLogLocation(const Eventinfo *lf)
         snprintf(__ejlogfile, OS_FLSIZE, "%s/%d/", EVENTS, lf->year);
         if (IsDir(__ejlogfile) == -1)
             if (mkdir(__ejlogfile, 0770) == -1) {
-                ErrorExit(MKDIR_ERROR, ARGV0, __ejlogfile, errno, strerror(errno));
+                merror_exit(MKDIR_ERROR, __ejlogfile, errno, strerror(errno));
         }
 
         snprintf(__ejlogfile, OS_FLSIZE, "%s/%d/%s", EVENTS, lf->year, lf->mon);
 
         if (IsDir(__ejlogfile) == -1)
             if (mkdir(__ejlogfile, 0770) == -1) {
-                ErrorExit(MKDIR_ERROR, ARGV0, __ejlogfile, errno, strerror(errno));
+                merror_exit(MKDIR_ERROR, __ejlogfile, errno, strerror(errno));
         }
 
         /* Create the json archives logfile name */
@@ -133,14 +133,14 @@ int OS_GetLogLocation(const Eventinfo *lf)
         _ejflog = fopen(__ejlogfile, "a");
 
         if (!_ejflog) {
-            ErrorExit("%s: Error opening logfile: '%s'", ARGV0, __ejlogfile);
+            merror_exit("Error opening logfile: '%s'", __ejlogfile);
         }
 
         /* Create a symlink */
         unlink(EVENTSJSON_DAILY);
 
         if (link(__ejlogfile, EVENTSJSON_DAILY) == -1) {
-            ErrorExit(LINK_ERROR, ARGV0, __ejlogfile, EVENTSJSON_DAILY, errno, strerror(errno));
+            merror_exit(LINK_ERROR, __ejlogfile, EVENTSJSON_DAILY, errno, strerror(errno));
         }
     }
     
@@ -156,14 +156,14 @@ int OS_GetLogLocation(const Eventinfo *lf)
     snprintf(__alogfile, OS_FLSIZE, "%s/%d/", ALERTS, lf->year);
     if (IsDir(__alogfile) == -1)
         if (mkdir(__alogfile, 0770) == -1) {
-            ErrorExit(MKDIR_ERROR, ARGV0, __alogfile, errno, strerror(errno));
+            merror_exit(MKDIR_ERROR, __alogfile, errno, strerror(errno));
         }
 
     snprintf(__alogfile, OS_FLSIZE, "%s/%d/%s", ALERTS, lf->year, lf->mon);
 
     if (IsDir(__alogfile) == -1)
         if (mkdir(__alogfile, 0770) == -1) {
-            ErrorExit(MKDIR_ERROR, ARGV0, __alogfile, errno, strerror(errno));
+            merror_exit(MKDIR_ERROR, __alogfile, errno, strerror(errno));
         }
 
     /* Create the logfile name */
@@ -177,14 +177,14 @@ int OS_GetLogLocation(const Eventinfo *lf)
     _aflog = fopen(__alogfile, "a");
 
     if (!_aflog) {
-        ErrorExit("%s: Error opening logfile: '%s'", ARGV0, __alogfile);
+        merror_exit("Error opening logfile: '%s'", __alogfile);
     }
 
     /* Create a symlink */
     unlink(ALERTS_DAILY);
 
     if (link(__alogfile, ALERTS_DAILY) == -1) {
-        ErrorExit(LINK_ERROR, ARGV0, __alogfile, ALERTS_DAILY, errno, strerror(errno));
+        merror_exit(LINK_ERROR, __alogfile, ALERTS_DAILY, errno, strerror(errno));
     }
 
     if (Config.jsonout_output) {
@@ -199,14 +199,14 @@ int OS_GetLogLocation(const Eventinfo *lf)
         snprintf(__jlogfile, OS_FLSIZE, "%s/%d/", ALERTS, lf->year);
         if (IsDir(__jlogfile) == -1)
             if (mkdir(__jlogfile, 0770) == -1) {
-                ErrorExit(MKDIR_ERROR, ARGV0, __jlogfile, errno, strerror(errno));
+                merror_exit(MKDIR_ERROR, __jlogfile, errno, strerror(errno));
             }
 
         snprintf(__jlogfile, OS_FLSIZE, "%s/%d/%s", ALERTS, lf->year, lf->mon);
 
         if (IsDir(__jlogfile) == -1)
             if (mkdir(__jlogfile, 0770) == -1) {
-                ErrorExit(MKDIR_ERROR, ARGV0, __jlogfile, errno, strerror(errno));
+                merror_exit(MKDIR_ERROR, __jlogfile, errno, strerror(errno));
             }
 
         /* Create the json logfile name */
@@ -220,14 +220,14 @@ int OS_GetLogLocation(const Eventinfo *lf)
         _jflog = fopen(__jlogfile, "a");
 
         if (!_jflog) {
-            ErrorExit("%s: Error opening logfile: '%s'", ARGV0, __jlogfile);
+            merror_exit("Error opening logfile: '%s'", __jlogfile);
         }
 
         /* Create a symlink */
         unlink(ALERTSJSON_DAILY);
 
         if (link(__jlogfile, ALERTSJSON_DAILY) == -1) {
-            ErrorExit(LINK_ERROR, ARGV0, __jlogfile, ALERTSJSON_DAILY, errno, strerror(errno));
+            merror_exit(LINK_ERROR, __jlogfile, ALERTSJSON_DAILY, errno, strerror(errno));
         }
     } 
 
@@ -243,14 +243,14 @@ int OS_GetLogLocation(const Eventinfo *lf)
     snprintf(__flogfile, OS_FLSIZE, "%s/%d/", FWLOGS, lf->year);
     if (IsDir(__flogfile) == -1)
         if (mkdir(__flogfile, 0770) == -1) {
-            ErrorExit(MKDIR_ERROR, ARGV0, __flogfile, errno, strerror(errno));
+            merror_exit(MKDIR_ERROR, __flogfile, errno, strerror(errno));
         }
 
     snprintf(__flogfile, OS_FLSIZE, "%s/%d/%s", FWLOGS, lf->year, lf->mon);
 
     if (IsDir(__flogfile) == -1)
         if (mkdir(__flogfile, 0770) == -1) {
-            ErrorExit(MKDIR_ERROR, ARGV0, __flogfile, errno, strerror(errno));
+            merror_exit(MKDIR_ERROR, __flogfile, errno, strerror(errno));
         }
 
     /* Create the logfile name */
@@ -264,14 +264,14 @@ int OS_GetLogLocation(const Eventinfo *lf)
     _fflog = fopen(__flogfile, "a");
 
     if (!_fflog) {
-        ErrorExit("%s: Error opening logfile: '%s'", ARGV0, __flogfile);
+        merror_exit("Error opening logfile: '%s'", __flogfile);
     }
 
     /* Create a symlink */
     unlink(FWLOGS_DAILY);
 
     if (link(__flogfile, FWLOGS_DAILY) == -1) {
-        ErrorExit(LINK_ERROR, ARGV0, __flogfile, FWLOGS_DAILY, errno, strerror(errno));
+        merror_exit(LINK_ERROR, __flogfile, FWLOGS_DAILY, errno, strerror(errno));
     }
 
     /* Setting the new day */

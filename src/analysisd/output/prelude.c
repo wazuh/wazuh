@@ -73,8 +73,8 @@ add_idmef_object(idmef_message_t *msg, const char *object, const char *value)
 
     ret = idmef_path_set(path, msg, val);
     if (ret < 0) {
-        merror("%s: OSSEC2Prelude: IDMEF: Cannot add object '%s': %s.",
-               ARGV0, object, prelude_strerror(ret));
+        merror("OSSEC2Prelude: IDMEF: Cannot add object '%s': %s.",
+               object, prelude_strerror(ret));
     }
 
     idmef_value_destroy(val);
@@ -116,8 +116,8 @@ setup_analyzer(idmef_analyzer_t *analyzer)
     return 0;
 
 err:
-    merror("%s: OSSEC2Prelude: %s: IDMEF error: %s.",
-           ARGV0, prelude_strsource(ret), prelude_strerror(ret));
+    merror("OSSEC2Prelude: %s: IDMEF error: %s.",
+           prelude_strsource(ret), prelude_strerror(ret));
 
     return -1;
 }
@@ -129,24 +129,24 @@ void prelude_start(const char *profile, int argc, char **argv)
 
     ret = prelude_init(&argc, argv);
     if (ret < 0) {
-        merror("%s: %s: Unable to initialize the Prelude library: %s.",
-               ARGV0, prelude_strsource(ret), prelude_strerror(ret));
+        merror("%s: Unable to initialize the Prelude library: %s.",
+               prelude_strsource(ret), prelude_strerror(ret));
         return;
     }
 
     ret = prelude_client_new(&prelude_client,
                              profile != NULL ? profile : DEFAULT_ANALYZER_NAME);
     if (!prelude_client) {
-        merror("%s: %s: Unable to create a prelude client object: %s.",
-               ARGV0, prelude_strsource(ret), prelude_strerror(ret));
+        merror("%s: Unable to create a prelude client object: %s.",
+               prelude_strsource(ret), prelude_strerror(ret));
 
         return;
     }
 
     ret = setup_analyzer(prelude_client_get_analyzer(prelude_client));
     if (ret < 0) {
-        merror("%s: %s: Unable to setup analyzer: %s",
-               ARGV0, prelude_strsource(ret), prelude_strerror(ret));
+        merror("%s: Unable to setup analyzer: %s",
+               prelude_strsource(ret), prelude_strerror(ret));
 
         prelude_client_destroy(prelude_client,
                                PRELUDE_CLIENT_EXIT_STATUS_FAILURE);
@@ -158,8 +158,8 @@ void prelude_start(const char *profile, int argc, char **argv)
                                    prelude_client_get_flags(prelude_client)
                                    | PRELUDE_CLIENT_FLAGS_ASYNC_TIMER);
     if (ret < 0) {
-        merror("%s: %s: Unable to set prelude client flags: %s.",
-               ARGV0, prelude_strsource(ret), prelude_strerror(ret));
+        merror("%s: Unable to set prelude client flags: %s.",
+               prelude_strsource(ret), prelude_strerror(ret));
     }
 
     /* Set uid and gid of ossec */
@@ -170,8 +170,8 @@ void prelude_start(const char *profile, int argc, char **argv)
 
     ret = prelude_client_start(prelude_client);
     if (ret < 0) {
-        merror("%s: %s: Unable to initialize prelude client: %s.",
-               ARGV0, prelude_strsource(ret), prelude_strerror(ret));
+        merror("%s: Unable to initialize prelude client: %s.",
+               prelude_strsource(ret), prelude_strerror(ret));
 
         prelude_client_destroy(prelude_client,
                                PRELUDE_CLIENT_EXIT_STATUS_FAILURE);
@@ -192,8 +192,8 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
                            int perm)
 {
 
-    debug1("%s: DEBUG: filename = %s.", ARGV0, filename);
-    debug1("%s: DEBUG: category = %s.", ARGV0, category);
+    mdebug1("filename = %s.", filename);
+    mdebug1("category = %s.", category);
     add_idmef_object(idmef, "alert.target(0).file(>>).name", filename);
     add_idmef_object(idmef, "alert.target(0).file(-1).category", category);
 
@@ -209,7 +209,7 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
 
     /* Add the owner */
     if (owner) {
-        debug1("%s: DEBUG: owner = %s.", ARGV0, owner);
+        mdebug1("owner = %s.", owner);
         add_idmef_object(idmef, "alert.target(0).file(-1).file_access(>>).user_id.number", owner);
         add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).user_id.type", "user-privs");
 
@@ -233,7 +233,7 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
 
     /* Add the group owner */
     if (gowner) {
-        debug1("%s: DEBUG: gowner = %s.", ARGV0, gowner);
+        mdebug1("gowner = %s.", gowner);
         add_idmef_object(idmef, "alert.target(0).file(-1).file_access(>>).user_id.number", gowner);
         add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).user_id.type", "group-privs");
 
@@ -284,7 +284,7 @@ void OS_PreludeLog(const Eventinfo *lf)
     /* Generate prelude alert */
     ret = idmef_message_new(&idmef);
     if ( ret < 0 ) {
-        merror("%s: OSSEC2Prelude: Cannot create IDMEF message", ARGV0);
+        merror("OSSEC2Prelude: Cannot create IDMEF message");
         return;
     }
 
@@ -493,7 +493,7 @@ void OS_PreludeLog(const Eventinfo *lf)
                              idmef_analyzer_ref
                              (prelude_client_get_analyzer(prelude_client)),
                              IDMEF_LIST_PREPEND);
-    debug1("%s: DEBUG: lf->filename = %s.", ARGV0, lf->filename);
+    mdebug1("lf->filename = %s.", lf->filename);
     if (lf->filename) {
         FileAccess_PreludeLog(idmef,
                               "original",
@@ -511,14 +511,13 @@ void OS_PreludeLog(const Eventinfo *lf)
                               lf->owner_after,
                               lf->gowner_after,
                               lf->perm_after);
-        debug1("%s: DEBUG: done with alert.target(0).file(1)", ARGV0);
+        mdebug1("Done with alert.target(0).file(1)");
     }
 
-    debug1("%s: DEBUG: Sending IDMEF alert", ARGV0);
+    mdebug1("Sending IDMEF alert");
     prelude_client_send_idmef(prelude_client, idmef);
-    debug1("%s: DEBUG: destroying IDMEF alert", ARGV0);
+    mdebug1("Destroying IDMEF alert");
     idmef_message_destroy(idmef);
 }
 
 #endif /* PRELUDE_OUTPUT_ENABLED */
-

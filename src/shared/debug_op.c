@@ -15,13 +15,13 @@ static int chroot_flag = 0;
 static int daemon_flag = 0;
 static int enabled_json = 0;
 
-static void _log(const char *msg, va_list args) __attribute__((format(printf, 1, 0))) __attribute__((nonnull));
+static void _log(int level, const char *tag, const char *msg, va_list args) __attribute__((format(printf, 2, 0))) __attribute__((nonnull));
 
 #ifdef WIN32
 void WinSetError();
 #endif
 
-static void _log(const char *msg, va_list args)
+static void _log(int level, const char *tag, const char *msg, va_list args)
 {
     time_t tm;
     struct tm *p;
@@ -32,6 +32,20 @@ static void _log(const char *msg, va_list args)
     char timestamp[OS_MAXSTR];
     char jsonstr[OS_MAXSTR];
     char *output;
+    const char *strlevel[5]={
+      "CRITICAL",
+      "ERROR",
+      "WARNING",
+      "INFO",
+      "DEBUG"
+    };
+    const char *strleveljson[5]={
+      "critical",
+      "error",
+      "warning",
+      "info",
+      "debug"
+    };
 
     tm = time(NULL);
     p = localtime(&tm);
@@ -60,12 +74,14 @@ static void _log(const char *msg, va_list args)
 
           cJSON *json_log = cJSON_CreateObject();
 
-          snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d ",
+          snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
                         p->tm_year + 1900, p->tm_mon + 1,
                         p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
 
           vsnprintf(jsonstr, OS_MAXSTR, msg, args3);
           cJSON_AddStringToObject(json_log, "timestamp", timestamp);
+          cJSON_AddStringToObject(json_log, "tag", tag);
+          cJSON_AddStringToObject(json_log, "level", strleveljson[level]);
           cJSON_AddStringToObject(json_log, "description", jsonstr);
           output = cJSON_PrintUnformatted(json_log);
           (void)fprintf(fp2, "%s", output);
@@ -100,6 +116,8 @@ static void _log(const char *msg, va_list args)
           (void)fprintf(fp, "%d/%02d/%02d %02d:%02d:%02d ",
                         p->tm_year + 1900, p->tm_mon + 1,
                         p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
+          (void)fprintf(fp, "%s: ", tag);
+          (void)fprintf(fp, "%s: ", strlevel[level]);
           (void)vfprintf(fp, msg, args);
   #ifdef WIN32
           (void)fprintf(fp, "\r\n");
@@ -118,6 +136,8 @@ static void _log(const char *msg, va_list args)
         (void)fprintf(stderr, "%d/%02d/%02d %02d:%02d:%02d ",
                       p->tm_year + 1900, p->tm_mon + 1 , p->tm_mday,
                       p->tm_hour, p->tm_min, p->tm_sec);
+        (void)fprintf(stderr, "%s: ", tag);
+        (void)fprintf(stderr, "%s: ", strlevel[level]);
         (void)vfprintf(stderr, msg, args2);
 #ifdef WIN32
         (void)fprintf(stderr, "\r\n");
@@ -131,25 +151,48 @@ static void _log(const char *msg, va_list args)
     va_end(args3);
 }
 
-void debug1(const char *msg, ...)
+void mdebug1(const char *msg, ...)
 {
     if (dbg_flag >= 1) {
         va_list args;
+        int level = LOGLEVEL_DEBUG;
+        const char *tag = __local_name;
         va_start(args, msg);
-
-        _log(msg, args);
-
+        _log(level, tag, msg, args);
         va_end(args);
     }
 }
 
-void debug2(const char *msg, ...)
+void mtdebug1(const char *tag, const char *msg, ...)
+{
+    if (dbg_flag >= 1) {
+        va_list args;
+        int level = LOGLEVEL_DEBUG;
+        va_start(args, msg);
+        _log(level, tag, msg, args);
+        va_end(args);
+    }
+}
+
+void mdebug2(const char *msg, ...)
 {
     if (dbg_flag >= 2) {
         va_list args;
-
+        int level = LOGLEVEL_DEBUG;
+        const char *tag = __local_name;
         va_start(args, msg);
-        _log(msg, args);
+        _log(level, tag, msg, args);
+        va_end(args);
+    }
+}
+
+void mtdebug2(const char *tag, const char *msg, ...)
+{
+    if (dbg_flag >= 2) {
+        va_list args;
+        int level = LOGLEVEL_DEBUG;
+        va_start(args, msg);
+        _log(level, tag, msg, args);
         va_end(args);
     }
 }
@@ -157,24 +200,71 @@ void debug2(const char *msg, ...)
 void merror(const char *msg, ... )
 {
     va_list args;
+    int level = LOGLEVEL_ERROR;
+    const char *tag = __local_name;
 
     va_start(args, msg);
-    _log(msg, args);
+    _log(level, tag, msg, args);
     va_end(args);
 }
 
-void verbose(const char *msg, ... )
+void mterror(const char *tag, const char *msg, ... )
 {
     va_list args;
+    int level = LOGLEVEL_ERROR;
 
     va_start(args, msg);
-    _log(msg, args);
+    _log(level, tag, msg, args);
+    va_end(args);
+}
+
+void mwarn(const char *msg, ... )
+{
+    va_list args;
+    int level = LOGLEVEL_WARNING;
+    const char *tag = __local_name;
+
+    va_start(args, msg);
+    _log(level, tag, msg, args);
+    va_end(args);
+}
+
+void mtwarn(const char *tag, const char *msg, ... )
+{
+    va_list args;
+    int level = LOGLEVEL_WARNING;
+
+    va_start(args, msg);
+    _log(level, tag, msg, args);
+    va_end(args);
+}
+
+void minfo(const char *msg, ... )
+{
+    va_list args;
+    int level = LOGLEVEL_INFO;
+    const char *tag = __local_name;
+
+    va_start(args, msg);
+    _log(level, tag, msg, args);
+    va_end(args);
+}
+
+void mtinfo(const char *tag, const char *msg, ... )
+{
+    va_list args;
+    int level = LOGLEVEL_INFO;
+
+    va_start(args, msg);
+    _log(level, tag, msg, args);
     va_end(args);
 }
 
 /* Only logs to a file */
-void log2file(const char *msg, ... )
+void mferror(const char *msg, ... )
 {
+    int level = LOGLEVEL_ERROR;
+    const char *tag = __local_name;
     int dbg_tmp;
     va_list args;
     va_start(args, msg);
@@ -182,16 +272,36 @@ void log2file(const char *msg, ... )
     /* We set daemon flag to 1, so nothing is printed to the terminal */
     dbg_tmp = daemon_flag;
     daemon_flag = 1;
-    _log(msg, args);
+    _log(level, tag, msg, args);
 
     daemon_flag = dbg_tmp;
 
     va_end(args);
 }
 
-void ErrorExit(const char *msg, ...)
+/* Only logs to a file */
+void mtferror(const char *tag, const char *msg, ... )
+{
+    int level = LOGLEVEL_ERROR;
+    int dbg_tmp;
+    va_list args;
+    va_start(args, msg);
+
+    /* We set daemon flag to 1, so nothing is printed to the terminal */
+    dbg_tmp = daemon_flag;
+    daemon_flag = 1;
+    _log(level, tag, msg, args);
+
+    daemon_flag = dbg_tmp;
+
+    va_end(args);
+}
+
+void merror_exit(const char *msg, ...)
 {
     va_list args;
+    int level = LOGLEVEL_CRITICAL;
+    const char *tag = __local_name;
 
 #ifdef WIN32
     /* If not MA */
@@ -201,7 +311,26 @@ void ErrorExit(const char *msg, ...)
 #endif
 
     va_start(args, msg);
-    _log(msg, args);
+    _log(level, tag, msg, args);
+    va_end(args);
+
+    exit(1);
+}
+
+void mterror_exit(const char *tag, const char *msg, ...)
+{
+    va_list args;
+    int level = LOGLEVEL_CRITICAL;
+
+#ifdef WIN32
+    /* If not MA */
+#ifndef MA
+    WinSetError();
+#endif
+#endif
+
+    va_start(args, msg);
+    _log(level, tag, msg, args);
     va_end(args);
 
     exit(1);

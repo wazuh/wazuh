@@ -60,7 +60,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
         /* Wait with a timeout for any descriptor */
         recv_b = select(agt->sock + 1, &fdset, NULL, NULL, &selecttime);
         if (recv_b == -1) {
-            merror(SELECT_ERROR, ARGV0, errno, strerror(errno));
+            merror(SELECT_ERROR, errno, strerror(errno));
             sleep(30);
             continue;
         } else if (recv_b == 0) {
@@ -80,7 +80,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
 
                 if (recv_b <= 0) {
-                    merror(LOST_ERROR, ARGV0);
+                    merror(LOST_ERROR);
                     start_agent(0);
                     break;
                 }
@@ -88,7 +88,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
                 if (recv_b != length) {
-                    merror(RECV_ERROR, ARGV0);
+                    merror(RECV_ERROR);
                     break;
                 }
             } else {
@@ -102,7 +102,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
             /* Id of zero -- only one key allowed */
             tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, agt->rip[agt->rip_id]);
             if (tmp_msg == NULL) {
-                merror(MSG_ERROR, ARGV0, agt->rip[agt->rip_id]);
+                mwarn(MSG_ERROR, agt->rip[agt->rip_id]);
                 continue;
             }
 
@@ -184,7 +184,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                     fp = fopen(file, "w");
                     if (!fp) {
-                        merror(FOPEN_ERROR, ARGV0, file, errno, strerror(errno));
+                        merror(FOPEN_ERROR, file, errno, strerror(errno));
                     }
                 }
 
@@ -209,8 +209,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
                         file[0] = '\0';
                     } else {
                         if (strcmp(currently_md5, file_sum) != 0) {
-                            debug1("%s: Failed md5 for: %s -- deleting.",
-                                   ARGV0, file);
+                            mdebug1("Failed md5 for: %s -- deleting.",
+                                   file);
                             unlink(file);
                         } else {
                             char *final_file;
@@ -231,7 +231,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 }
 
                 else {
-                    merror("%s: WARN: Unknown message received from server.", ARGV0);
+                    mwarn("Unknown message received from server.");
                 }
             }
 
@@ -241,8 +241,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
             }
 
             else {
-                merror("%s: WARN: Unknown message received. No action defined.",
-                       ARGV0);
+                mwarn("Unknown message received. No action defined.");
             }
         }
     }

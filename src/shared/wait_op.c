@@ -61,7 +61,7 @@ void os_wait()
     }
 
     /* Wait until the lock is gone */
-    verbose(WAITING_MSG, __local_name);
+    mwarn(WAITING_MSG);
     while (1) {
         if (!__wait_lock) {
             break;
@@ -71,7 +71,7 @@ void os_wait()
         sleep(LOCK_LOOP);
     }
 
-    verbose(WAITING_FREE, __local_name);
+    minfo(WAITING_FREE);
     return;
 
 }
@@ -94,7 +94,7 @@ void os_wait()
     }
 
     /* Wait until the lock is gone */
-    verbose(WAITING_MSG, __local_name);
+    mwarn(WAITING_MSG);
     while (1) {
         if (isChroot()) {
             if (stat(WAIT_FILE, &file_status) == -1) {
@@ -110,9 +110,8 @@ void os_wait()
         sleep(LOCK_LOOP);
     }
 
-    verbose(WAITING_FREE, __local_name);
+    minfo(WAITING_FREE);
     return;
 }
 
 #endif /* !WIN32 */
-

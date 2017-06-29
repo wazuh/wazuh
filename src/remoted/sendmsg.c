@@ -30,14 +30,14 @@ void keyupdate_init()
 void key_lock()
 {
     if (pthread_mutex_lock(&keyupdate_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
     }
 }
 
 void key_unlock()
 {
     if (pthread_mutex_unlock(&keyupdate_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
     }
 }
 
@@ -54,20 +54,20 @@ int check_keyupdate()
     /* Lock before using */
     if (pthread_mutex_lock(&sendmsg_mutex) != 0) {
         key_unlock();
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
         return (0);
     }
 
     if (OS_UpdateKeys(&keys)) {
         if (pthread_mutex_unlock(&sendmsg_mutex) != 0) {
-            merror(MUTEX_ERROR, ARGV0);
+            merror(MUTEX_ERROR);
         }
         key_unlock();
         return (1);
     }
 
     if (pthread_mutex_unlock(&sendmsg_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
     }
     key_unlock();
 
@@ -93,19 +93,19 @@ int send_msg(unsigned int agentid, const char *msg)
 
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[agentid]->rcvd < (time(0) - (2 * NOTIFY_TIME))) {
-        merror(SEND_DISCON, ARGV0, keys.keyentries[agentid]->id);
+        merror(SEND_DISCON, keys.keyentries[agentid]->id);
         return (-1);
     }
 
     msg_size = CreateSecMSG(&keys, msg, crypt_msg, agentid);
     if (msg_size == 0) {
-        merror(SEC_ERROR, ARGV0);
+        merror(SEC_ERROR);
         return (-1);
     }
 
     /* Lock before using */
     if (pthread_mutex_lock(&sendmsg_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
         return (-1);
     }
 
@@ -121,12 +121,12 @@ int send_msg(unsigned int agentid, const char *msg)
     }
 
     if (send_b < 0) {
-        merror(SEND_ERROR, ARGV0, keys.keyentries[agentid]->id);
+        merror(SEND_ERROR, keys.keyentries[agentid]->id);
     }
 
     /* Unlock mutex */
     if (pthread_mutex_unlock(&sendmsg_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
         return (-1);
     }
 

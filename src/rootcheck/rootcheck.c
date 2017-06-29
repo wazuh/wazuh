@@ -122,13 +122,13 @@ int rootcheck_init(int test_config)
                 break;
             case 'D':
                 if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
+                    mterror_exit(ARGV0, "-D needs an argument");
                 }
                 rootcheck.workdir = optarg;
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument", ARGV0);
+                    mterror_exit(ARGV0, "-c needs an argument");
                 }
                 cfg = optarg;
                 break;
@@ -151,7 +151,7 @@ int rootcheck_init(int test_config)
     {
         WSADATA wsaData;
         if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
-            ErrorExit("%s: WSAStartup() failed", ARGV0);
+            mterror_exit(ARGV0, "WSAStartup() failed");
         }
     }
 #endif /* WIN32 */
@@ -159,17 +159,17 @@ int rootcheck_init(int test_config)
 #endif /* OSSECHIDS */
 
     /* Start up message */
-    debug1(STARTED_MSG, ARGV0);
+    mtdebug1(ARGV0, STARTED_MSG);
 
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {
-        merror("%s: Configuration file '%s' not found", ARGV0, cfg);
+        mterror(ARGV0, "Configuration file '%s' not found", cfg);
         return (-1);
     }
 
     /* Read configuration  --function specified twice (check makefile) */
     if (Read_Rootcheck_Config(cfg) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        mterror_exit(ARGV0, CONFIG_ERROR, cfg);
     }
 
     /* If testing config, exit here */
@@ -179,14 +179,14 @@ int rootcheck_init(int test_config)
 
     /* Return 1 disables rootcheck */
     if (rootcheck.disabled == 1) {
-        verbose("%s: Rootcheck disabled. Exiting.", ARGV0);
+        mtinfo(ARGV0, "Rootcheck disabled. Exiting.");
         return (1);
     }
 
     /* Check if Unix audit file is configured */
     if (!rootcheck.unixaudit) {
 #ifndef WIN32
-        log2file("%s: System audit file not configured.", ARGV0);
+        mtferror(ARGV0, "System audit file not configured.");
 #endif
     }
 
@@ -198,25 +198,25 @@ int rootcheck_init(int test_config)
 #ifdef OSSECHIDS
     /* Start up message */
 #ifdef WIN32
-    verbose(STARTUP_MSG, "ossec-rootcheck", getpid());
+    mtinfo(ARGV0, STARTUP_MSG, getpid());
 #else
 
     /* Connect to the queue if configured to do so */
     if (rootcheck.notify == QUEUE) {
-        debug1("%s: Starting queue ...", ARGV0);
+        mtdebug1(ARGV0, "Starting queue ...");
 
         /* Start the queue */
         if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            merror(QUEUE_ERROR, ARGV0, DEFAULTQPATH, strerror(errno));
+            mterror(ARGV0, QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
 
             /* 5 seconds to see if the agent starts */
             sleep(5);
             if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                 /* Wait 10 more seconds */
-                merror(QUEUE_ERROR, ARGV0, DEFAULTQPATH, strerror(errno));
+                mterror(ARGV0, QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
                 sleep(10);
                 if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                    mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
                 }
             }
         }
@@ -230,7 +230,7 @@ int rootcheck_init(int test_config)
     rk_sys_name = (char **) calloc(MAX_RK_SYS + 2, sizeof(char *));
     rk_sys_file = (char **) calloc(MAX_RK_SYS + 2, sizeof(char *));
     if (!rk_sys_name || !rk_sys_file) {
-        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+        mterror_exit(ARGV0, MEM_ERROR, errno, strerror(errno));
     }
     rk_sys_name[0] = NULL;
     rk_sys_file[0] = NULL;
@@ -240,11 +240,10 @@ int rootcheck_init(int test_config)
     /* Start signal handling */
     StartSIG(ARGV0);
 #endif
-    debug1("%s: DEBUG: Running run_rk_check", ARGV0);
+    mtdebug1(ARGV0, "Running run_rk_check");
     run_rk_check();
 
-    debug1("%s: DEBUG: Leaving...", ARGV0);
+    mtdebug1(ARGV0, "Leaving...");
 #endif /* OSSECHIDS */
     return (0);
 }
-

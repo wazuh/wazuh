@@ -155,25 +155,25 @@ int main_analysisd(int argc, char **argv)
                 break;
             case 'u':
                 if (!optarg) {
-                    ErrorExit("%s: -u needs an argument", ARGV0);
+                    merror_exit("-u needs an argument");
                 }
                 user = optarg;
                 break;
             case 'g':
                 if (!optarg) {
-                    ErrorExit("%s: -g needs an argument", ARGV0);
+                    merror_exit("-g needs an argument");
                 }
                 group = optarg;
                 break;
             case 'D':
                 if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
+                    merror_exit("-D needs an argument");
                 }
                 dir = optarg;
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument", ARGV0);
+                    merror_exit("-c needs an argument");
                 }
                 cfg = optarg;
                 break;
@@ -200,7 +200,7 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Start daemon */
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
 
     srandom_init();
@@ -209,28 +209,28 @@ int main_analysisd(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Found user */
-    debug1(FOUND_USER, ARGV0);
+    mdebug1(FOUND_USER);
 
     /* Initialize Active response */
     AR_Init();
     if (AR_ReadConfig(cfg) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
-    debug1(ASINIT, ARGV0);
+    mdebug1(ASINIT);
 
     /* Read configuration file */
     if (GlobalConf(cfg) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
-    debug1(READ_CONFIG, ARGV0);
+    mdebug1(READ_CONFIG);
 
     if (!(Config.alerts_log || Config.jsonout_output)) {
-        ErrorExit(ARGV0 ": ERROR: All alert formats are disabled.");
+        merror_exit("All alert formats are disabled.");
     }
 
 
@@ -242,7 +242,7 @@ int main_analysisd(int argc, char **argv)
         geoipdb = GeoIP_open(Config.geoipdb_file, GEOIP_INDEX_CACHE);
         if (geoipdb == NULL)
         {
-            merror("%s: ERROR: Unable to open GeoIP database from: %s (disabling GeoIP).", ARGV0, Config.geoipdb_file);
+            merror("Unable to open GeoIP database from: %s (disabling GeoIP).", Config.geoipdb_file);
         }
     }
 #endif
@@ -299,19 +299,19 @@ int main_analysisd(int argc, char **argv)
         OS_PicvizOpen(Config.picviz_socket);
 
         if (chown(Config.picviz_socket, uid, gid) == -1) {
-            ErrorExit(CHOWN_ERROR, ARGV0, Config.picviz_socket, errno, strerror(errno));
+            merror_exit(CHOWN_ERROR, Config.picviz_socket, errno, strerror(errno));
         }
     }
 #endif
 
     /* Set the group */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Chroot */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
     nowChroot();
 
@@ -333,18 +333,18 @@ int main_analysisd(int argc, char **argv)
                 /* Legacy loading */
                 /* Read decoders */
                 if (!ReadDecodeXML(XML_DECODER)) {
-                    ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
+                    merror_exit(CONFIG_ERROR,  XML_DECODER);
                 }
 
                 /* Read local ones */
                 c = ReadDecodeXML(XML_LDECODER);
                 if (!c) {
                     if ((c != -2)) {
-                        ErrorExit(CONFIG_ERROR, ARGV0,  XML_LDECODER);
+                        merror_exit(CONFIG_ERROR,  XML_LDECODER);
                     }
                 } else {
                     if (!test_config) {
-                        verbose("%s: INFO: Reading local decoder file.", ARGV0);
+                        minfo("Reading local decoder file.");
                     }
                 }
             } else {
@@ -353,10 +353,10 @@ int main_analysisd(int argc, char **argv)
                 decodersfiles = Config.decoders;
                 while ( decodersfiles && *decodersfiles) {
                     if (!test_config) {
-                        verbose("%s: INFO: Reading decoder file %s.", ARGV0, *decodersfiles);
+                        minfo("Reading decoder file %s.", *decodersfiles);
                     }
                     if (!ReadDecodeXML(*decodersfiles)) {
-                        ErrorExit(CONFIG_ERROR, ARGV0, *decodersfiles);
+                        merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
 
                     free(*decodersfiles);
@@ -377,10 +377,10 @@ int main_analysisd(int argc, char **argv)
                 listfiles = Config.lists;
                 while (listfiles && *listfiles) {
                     if (!test_config) {
-                        verbose("%s: INFO: Reading loading the lists file: '%s'", ARGV0, *listfiles);
+                        minfo("Reading loading the lists file: '%s'", *listfiles);
                     }
                     if (Lists_OP_LoadList(*listfiles) < 0) {
-                        ErrorExit(LISTS_ERROR, ARGV0, *listfiles);
+                        merror_exit(LISTS_ERROR, *listfiles);
                     }
                     free(*listfiles);
                     listfiles++;
@@ -401,10 +401,10 @@ int main_analysisd(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     if (!test_config) {
-                        verbose("%s: INFO: Reading rules file: '%s'", ARGV0, *rulesfiles);
+                        minfo("Reading rules file: '%s'", *rulesfiles);
                     }
                     if (Rules_OP_ReadRules(*rulesfiles) < 0) {
-                        ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
+                        merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
                     free(*rulesfiles);
@@ -431,7 +431,7 @@ int main_analysisd(int argc, char **argv)
 
         total_rules = _setlevels(tmp_node, 0);
         if (!test_config) {
-            verbose("%s: INFO: Total rules enabled: '%d'", ARGV0, total_rules);
+            minfo("Total rules enabled: '%d'", total_rules);
         }
     }
 
@@ -440,7 +440,7 @@ int main_analysisd(int argc, char **argv)
         RuleNode *tmp_node = OS_GetFirstRule();
         Config.g_rules_hash = OSHash_Create();
         if (!Config.g_rules_hash) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
         AddHash_Rule(tmp_node);
     }
@@ -451,7 +451,7 @@ int main_analysisd(int argc, char **argv)
         files = Config.syscheck_ignore;
         while (files && *files) {
             if (!test_config) {
-                verbose("%s: INFO: Ignoring file: '%s'", ARGV0, *files);
+                minfo("Ignoring file: '%s'", *files);
             }
             files++;
         }
@@ -468,30 +468,30 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Verbose message */
-    debug1(PRIVSEP_MSG, ARGV0, dir, user);
+    mdebug1(PRIVSEP_MSG, dir, user);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
 
     /* Set the user */
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* Create the PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     /* Set the queue */
     if ((m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0) {
-        ErrorExit(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
+        merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
     /* Whitelist */
     if (Config.white_list == NULL) {
         if (Config.ar) {
-            verbose("%s: INFO: No IP in the white list for active reponse.", ARGV0);
+            minfo("No IP in the white list for active reponse.");
         }
     } else {
         if (Config.ar) {
@@ -499,20 +499,18 @@ int main_analysisd(int argc, char **argv)
             int wlc = 0;
             wl = Config.white_list;
             while (*wl) {
-                verbose("%s: INFO: White listing IP: '%s'", ARGV0, (*wl)->ip);
+                minfo("White listing IP: '%s'", (*wl)->ip);
                 wl++;
                 wlc++;
             }
-            verbose("%s: INFO: %d IPs in the white list for active response.",
-                    ARGV0, wlc);
+            minfo("%d IPs in the white list for active response.", wlc);
         }
     }
 
     /* Hostname whitelist */
     if (Config.hostname_white_list == NULL) {
         if (Config.ar)
-            verbose("%s: INFO: No Hostname in the white list for active reponse.",
-                    ARGV0);
+            minfo("No Hostname in the white list for active reponse.");
     } else {
         if (Config.ar) {
             int wlc = 0;
@@ -522,19 +520,18 @@ int main_analysisd(int argc, char **argv)
             while (*wl) {
                 char **tmp_pts = (*wl)->patterns;
                 while (*tmp_pts) {
-                    verbose("%s: INFO: White listing Hostname: '%s'", ARGV0, *tmp_pts);
+                    minfo("White listing Hostname: '%s'", *tmp_pts);
                     wlc++;
                     tmp_pts++;
                 }
                 wl++;
             }
-            verbose("%s: INFO: %d Hostname(s) in the white list for active response.",
-                    ARGV0, wlc);
+            minfo("%d Hostname(s) in the white list for active response.",wlc);
         }
     }
 
     /* Startup message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* Going to main loop */
     OS_ReadMSG(m_queue);
@@ -583,7 +580,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initiate the FTS list */
     if (!FTS_Init()) {
-        ErrorExit(FTS_LIST_ERROR, ARGV0);
+        merror_exit(FTS_LIST_ERROR);
     }
 
     /* Initialize the Accumulator */
@@ -600,7 +597,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 #ifndef LOCAL
         if (Config.ar & REMOTE_AR) {
             if ((arq = StartMQ(ARQUEUE, WRITE)) < 0) {
-                merror(ARQ_ERROR, ARGV0);
+                merror(ARQ_ERROR);
 
                 /* If LOCAL_AR is set, keep it there */
                 if (Config.ar & LOCAL_AR) {
@@ -610,7 +607,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                     Config.ar = 0;
                 }
             } else {
-                verbose(CONN_TO, ARGV0, ARQUEUE, "active-response");
+                minfo(CONN_TO, ARQUEUE, "active-response");
             }
         }
 #else
@@ -627,7 +624,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
         if (Config.ar & LOCAL_AR) {
             if ((execdq = StartMQ(EXECQUEUE, WRITE)) < 0) {
-                merror(ARQ_ERROR, ARGV0);
+                merror(ARQ_ERROR);
 
                 /* If REMOTE_AR is set, keep it there */
                 if (Config.ar & REMOTE_AR) {
@@ -637,11 +634,11 @@ void OS_ReadMSG_analysisd(int m_queue)
                     Config.ar = 0;
                 }
             } else {
-                verbose(CONN_TO, ARGV0, EXECQUEUE, "exec");
+                minfo(CONN_TO, EXECQUEUE, "exec");
             }
         }
     }
-    debug1("%s: DEBUG: Active response Init completed.", ARGV0);
+    mdebug1("Active response Init completed.");
 
     /* Get current time before starting */
     c_time = time(NULL);
@@ -657,7 +654,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                          0, 0, 0, 0, 0, 0);
 
         if (!stats_rule) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
         stats_rule->group = "stats,";
         stats_rule->comment = "Excessive number of events (above normal).";
@@ -675,7 +672,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         lf->day = today;
 
         if (OS_GetLogLocation(lf) < 0) {
-            ErrorExit("%s: Error allocating log files", ARGV0);
+            merror_exit("Error allocating log files");
         }
 
         Free_Eventinfo(lf);
@@ -686,10 +683,10 @@ void OS_ReadMSG_analysisd(int m_queue)
     Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 1);
     Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
 
-    debug1("%s: DEBUG: Startup completed. Waiting for new messages..", ARGV0);
+    mdebug1("Startup completed. Waiting for new messages..");
 
     if (Config.custom_alert_output) {
-        debug1("%s: INFO: Custom output found.!", ARGV0);
+        mdebug1("Custom output found.!");
     }
 
     /* Daemon loop */
@@ -711,7 +708,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
             /* Check for a valid message */
             if (i < 4) {
-                merror(IMSG_ERROR, ARGV0, msg);
+                merror(IMSG_ERROR, msg);
                 Free_Eventinfo(lf);
                 continue;
             }
@@ -721,7 +718,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
             /* Clean the msg appropriately */
             if (OS_CleanMSG(msg, lf) < 0) {
-                merror(IMSG_ERROR, ARGV0, msg);
+                merror(IMSG_ERROR, msg);
                 Free_Eventinfo(lf);
                 continue;
             }
@@ -750,7 +747,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                     }
 
                     if (OS_GetLogLocation(lf) < 0) {
-                        ErrorExit("%s: Error allocating log files", ARGV0);
+                        merror_exit("Error allocating log files");
                     }
 
                     today = lf->day;
@@ -862,8 +859,7 @@ void OS_ReadMSG_analysisd(int m_queue)
             /* Loop over all the rules */
             rulenode_pt = OS_GetFirstRule();
             if (!rulenode_pt) {
-                ErrorExit("%s: Rules in an inconsistent state. Exiting.",
-                          ARGV0);
+                merror_exit("Rules in an inconsistent state. Exiting.");
             }
 
             do {
@@ -979,7 +975,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                             if (!lf->dstuser ||
                                     !OS_PRegex(lf->dstuser, "^[a-zA-Z._0-9@?-]*$")) {
                                 if (lf->dstuser) {
-                                    merror(CRAFTED_USER, ARGV0, lf->dstuser);
+                                    mwarn(CRAFTED_USER, lf->dstuser);
                                 }
                                 do_ar = 0;
                             }
@@ -988,7 +984,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                             if (!lf->srcip ||
                                     !OS_PRegex(lf->srcip, "^[a-zA-Z.:_0-9-]*$")) {
                                 if (lf->srcip) {
-                                    merror(CRAFTED_IP, ARGV0, lf->srcip);
+                                    mwarn(CRAFTED_IP, lf->srcip);
                                 }
                                 do_ar = 0;
                             }
@@ -1009,7 +1005,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 /* Copy the structure to the state memory of if_matched_sid */
                 if (currently_rule->sid_prev_matched) {
                     if (!OSList_AddData(currently_rule->sid_prev_matched, lf)) {
-                        merror("%s: Unable to add data to sig list.", ARGV0);
+                        merror("Unable to add data to sig list.");
                     } else {
                         lf->sid_node_to_delete =
                             currently_rule->sid_prev_matched->last_node;
@@ -1023,7 +1019,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                         if (!OSList_AddData(
                                     currently_rule->group_prev_matched[j],
                                     lf)) {
-                            merror("%s: Unable to add data to grp list.", ARGV0);
+                            merror("Unable to add data to grp list.");
                         }
                         j++;
                     }
@@ -1086,7 +1082,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 
     /* Can't be null */
     if (!rule) {
-        merror("%s: Inconsistent state. currently rule NULL", ARGV0);
+        merror("Inconsistent state. currently rule NULL");
         return (NULL);
     }
 
@@ -1554,7 +1550,7 @@ static void DumpLogstats()
     snprintf(logfile, OS_FLSIZE, "%s/%d/", STATSAVED, prev_year);
     if (IsDir(logfile) == -1)
         if (mkdir(logfile, 0770) == -1) {
-            merror(MKDIR_ERROR, ARGV0, logfile, errno, strerror(errno));
+            merror(MKDIR_ERROR, logfile, errno, strerror(errno));
             return;
         }
 
@@ -1562,7 +1558,7 @@ static void DumpLogstats()
 
     if (IsDir(logfile) == -1)
         if (mkdir(logfile, 0770) == -1) {
-            merror(MKDIR_ERROR, ARGV0, logfile, errno, strerror(errno));
+            merror(MKDIR_ERROR, logfile, errno, strerror(errno));
             return;
         }
 
@@ -1577,15 +1573,14 @@ static void DumpLogstats()
 
     flog = fopen(logfile, "a");
     if (!flog) {
-        merror(FOPEN_ERROR, ARGV0, logfile, errno, strerror(errno));
+        merror(FOPEN_ERROR, logfile, errno, strerror(errno));
         return;
     }
 
     rulenode_pt = OS_GetFirstRule();
 
     if (!rulenode_pt) {
-        ErrorExit("%s: Rules in an inconsistent state. Exiting.",
-                  ARGV0);
+        merror_exit("Rules in an inconsistent state. Exiting.");
     }
 
     /* Loop over all the rules and print their stats */
