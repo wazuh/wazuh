@@ -39,13 +39,14 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
     if ((rcv_args = strchr(rcv_comm, ' '))){
         *rcv_args = '\0';
         rcv_args++;
-    } else {
-        merror("WCOM bad command.");
-        strcpy(output, "err Bad command");
-        return strlen(output);
     }
 
     if (strcmp(rcv_comm, "open") == 0){
+        if (!rcv_args){
+            merror("WCOM open needs arguments.");
+            strcpy(output, "err WCOM open needs arguments");
+            return strlen(output);
+        }
         // open [rw file_path]
         mode = rcv_args;
         if (path = strchr(mode, ' '), path){
@@ -59,6 +60,11 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         }
 
     }else if (strcmp(rcv_comm, "write") == 0){
+        if (!rcv_args){
+            merror("WCOM write needs arguments.");
+            strcpy(output, "err WCOM write needs arguments");
+            return strlen(output);
+        }
         // write [length file_path data]
         ssize_t data_length = (ssize_t)strtol(rcv_args, &path, 10);
 
@@ -89,18 +95,42 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         return wcom_write(path, data, (size_t)data_length, output);
 
     }else if (strcmp(rcv_comm, "close") == 0){
+        if (!rcv_args){
+            merror("WCOM close needs arguments.");
+            strcpy(output, "err WCOM close needs arguments");
+            return strlen(output);
+        }
         // close [file_path]
         return wcom_close(rcv_args, output);
 
     }else if (strcmp(rcv_comm, "sha1") == 0){
+        if (!rcv_args){
+            merror("WCOM sha1 needs arguments.");
+            strcpy(output, "err WCOM sha1 needs arguments");
+            return strlen(output);
+        }
         // sha1 [file_path]
         return wcom_sha1(rcv_args, output);
 
     }else if (strcmp(rcv_comm, "unmerge") == 0){
+        if (!rcv_args){
+            merror("WCOM unmerge needs arguments.");
+            strcpy(output, "err WCOM unmerge needs arguments");
+            return strlen(output);
+        }
         // unmerge [file_path]
         return wcom_unmerge(rcv_args, output);
 
+    }else if (strcmp(rcv_comm, "upgrade_result") == 0){
+        // upgrade_result
+        return wcom_upgrade_result(output);
+
     } else if (strcmp(rcv_comm, "uncompress") == 0){
+        if (!rcv_args){
+            merror("WCOM uncompress needs arguments.");
+            strcpy(output, "err WCOM uncompress needs arguments");
+            return strlen(output);
+        }
         // uncompress [file_path]
         source = rcv_args;
 
@@ -114,11 +144,16 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         }
 
     }else if (strcmp(rcv_comm, "exec") == 0){
+        if (!rcv_args){
+            merror("WCOM exec needs arguments.");
+            strcpy(output, "err WCOM exec needs arguments");
+            return strlen(output);
+        }
         // exec [command]
         return wcom_exec(rcv_args, output);
 
     }else {
-        merror("WCOM Unrecognized command.");
+        merror("WCOM Unrecognized command '%s'.", rcv_comm);
         strcpy(output, "err Unrecognized command");
         return strlen(output);
     }
@@ -333,6 +368,21 @@ size_t wcom_exec(char *command, char *output){
         free(out);
         return strlen(output);
     }
+}
+
+size_t wcom_upgrade_result(char *output){
+    char buffer[20];
+    FILE * result_file;
+    result_file = fopen(DEFAULTDIR "/var/run/upgrade_result", "r");
+    if (result_file) {
+        if (fgets(buffer,20,result_file)){
+            snprintf(output, OS_MAXSTR, "ok %s", buffer);
+            return strlen(output);
+        }
+        fclose(result_file);
+    }
+    strcpy(output, "err Cannot read upgrade_result file.");
+    return strlen(output);
 }
 
 #ifndef WIN32

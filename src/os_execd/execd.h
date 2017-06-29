@@ -48,6 +48,7 @@ size_t wcom_sha1(const char *file_path, char *output);
 size_t wcom_unmerge(const char *file_path, char *output);
 size_t wcom_uncompress(const char * source, const char * target, char * output);
 size_t wcom_exec(char *command, char *output);
+size_t wcom_upgrade_result(char *output);
 size_t wcom_dispatch(char *command, size_t length, char *output);
 
 #ifndef WIN32
