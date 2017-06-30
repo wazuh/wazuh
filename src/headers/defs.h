@@ -31,11 +31,11 @@
 #define OS_SIZE_128     128
 
 /* Level of log messages */
-#define LOGLEVEL_CRITICAL 0
-#define LOGLEVEL_ERROR 1
+#define LOGLEVEL_CRITICAL 4
+#define LOGLEVEL_ERROR 3
 #define LOGLEVEL_WARNING 2
-#define LOGLEVEL_INFO 3
-#define LOGLEVEL_DEBUG 4
+#define LOGLEVEL_INFO 1
+#define LOGLEVEL_DEBUG 0
 
 #define OS_MAXSTR       OS_SIZE_6144    /* Size for logs, sockets, etc  */
 #define OS_BUFFER_SIZE  OS_SIZE_2048    /* Size of general buffers      */

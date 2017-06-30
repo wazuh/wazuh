@@ -49,6 +49,9 @@ void mtferror(const char *tag, const char *msg, ...) __attribute__((format(print
 void merror_exit(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull)) __attribute__ ((noreturn));
 void mterror_exit(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull)) __attribute__ ((noreturn));
 
+/* Function to read the logging format configuration */
+void os_logging_config(void);
+
 /* Use these three functions to set when you
  * enter in debug, chroot or daemon mode
  */

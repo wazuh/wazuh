@@ -10,6 +10,8 @@
     <ossec_config>
         global.template
 
+        logging.template
+
         alerts.template
 
         remote-secure.template
@@ -44,6 +46,8 @@
           <server-ip>192.168.10.100</server-ip>
           <config-profile>distribution, distributionVersion</config-profile>
         </client>
+
+        logging.template
 
         rootcheck.template
 

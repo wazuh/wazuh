@@ -13,7 +13,12 @@
 static int dbg_flag = 0;
 static int chroot_flag = 0;
 static int daemon_flag = 0;
-static int enabled_json = 0;
+//static int read_flag = 0;
+struct{
+  unsigned int log_plain:1;
+  unsigned int log_json:1;
+  unsigned int read:1;
+} flags;
 
 static void _log(int level, const char *tag, const char *msg, va_list args) __attribute__((format(printf, 2, 0))) __attribute__((nonnull));
 
@@ -33,18 +38,18 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
     char jsonstr[OS_MAXSTR];
     char *output;
     const char *strlevel[5]={
-      "CRITICAL",
-      "ERROR",
-      "WARNING",
+      "DEBUG",
       "INFO",
-      "DEBUG"
+      "WARNING",
+      "ERROR",
+      "CRITICAL",
     };
     const char *strleveljson[5]={
-      "critical",
-      "error",
-      "warning",
+      "debug",
       "info",
-      "debug"
+      "warning",
+      "error",
+      "critical"
     };
 
     tm = time(NULL);
@@ -53,9 +58,11 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
     va_copy(args2, args);
     va_copy(args3, args);
 
-    enabled_json = getDefine_Int("shared", "enabled_log_json", 0, 1);
+    if (!flags.read){
+      os_logging_config();
+    }
 
-    if (enabled_json){
+    if (flags.log_json){
 
       /* If under chroot, log directly to /logs/ossec.log */
       if (chroot_flag == 1) {
@@ -96,8 +103,9 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
           fflush(fp2);
           fclose(fp2);
       }
+    }
 
-    }else{
+    if(flags.log_plain){
       /* If under chroot, log directly to /logs/ossec.log */
       if (chroot_flag == 1) {
           fp = fopen(LOGFILE, "a");
@@ -149,6 +157,42 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
     /* args must be ended here */
     va_end(args2);
     va_end(args3);
+}
+
+void os_logging_config(){
+  OS_XML xml;
+  const char * xmlf[] = {"ossec_config", "logging", "log-format", NULL};
+  char * logformat;
+  char ** parts;
+
+  if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
+    merror_exit(XML_ERROR, "/etc/ossec.conf", xml.err, xml.err_line);
+  }
+
+  logformat = OS_GetOneContentforElement(&xml, xmlf);
+
+  if (!logformat || logformat[0] == '\0'){
+    flags.log_plain = 1;
+    flags.log_json = 0;
+  }else{
+    parts = OS_StrBreak(',', logformat, 2);
+    int i;
+    for (i=0; parts[i]; i++){
+      if (!strcmp(parts[i], "plain")){
+        flags.log_plain = 1;
+      }
+      if (!strcmp(parts[i], "json")){
+        flags.log_json = 1;
+      }
+    }
+    if (flags.log_json == 0 && flags.log_plain == 0){
+      flags.log_plain = 1;
+    }
+  }
+
+  free(logformat);
+  OS_ClearXML(&xml);
+  flags.read = 1;
 }
 
 void mdebug1(const char *msg, ...)

@@ -40,9 +40,7 @@ int ExecdConfig(const char *cfgfile)
         } else if (strcmp(disable_entry, "no") == 0) {
             is_disabled = 0;
         } else {
-            merror(XML_VALUEERR,
-                   "disabled",
-                   disable_entry);
+            merror(XML_VALUEERR, "disabled", disable_entry);
             return (-1);
         }
     }
@@ -53,9 +51,7 @@ int ExecdConfig(const char *cfgfile)
         int j = 0;
         repeated_a = OS_StrBreak(',', repeated_t, 5);
         if (!repeated_a) {
-            merror(XML_VALUEERR,
-                   "repeated_offenders",
-                   disable_entry);
+            merror(XML_VALUEERR, "repeated_offenders", disable_entry);
             return (-1);
         }
 
