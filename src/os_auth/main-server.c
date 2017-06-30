@@ -34,9 +34,9 @@ int main()
 
 #else
 
+#include "auth.h"
 #include <pthread.h>
 #include <sys/wait.h>
-#include "auth.h"
 #include "check_cert.h"
 #include "os_crypto/md5/md5_op.h"
 
