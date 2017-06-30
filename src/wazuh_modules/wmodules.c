@@ -94,18 +94,6 @@ int wm_strcat(char **str1, const char *str2, char sep) {
         return -1;
 }
 
-// Compare two strings, trimming whitespaces of s1
-
-char* wm_strtrim(char *string) {
-    char *c;
-    char *d;
-
-    string = &string[strspn(string, " ")];
-    for (c = string + strcspn(string, " "); *(d = c + strspn(c, " ")); c = d + strcspn(d, " "));
-    *c = '\0';
-    return string;
-}
-
 // Tokenize string separated by spaces, respecting double-quotes
 
 char** wm_strtok(char *string) {
