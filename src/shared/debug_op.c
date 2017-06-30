@@ -86,18 +86,17 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
                         p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
 
           vsnprintf(jsonstr, OS_MAXSTR, msg, args3);
+
           cJSON_AddStringToObject(json_log, "timestamp", timestamp);
           cJSON_AddStringToObject(json_log, "tag", tag);
           cJSON_AddStringToObject(json_log, "level", strleveljson[level]);
           cJSON_AddStringToObject(json_log, "description", jsonstr);
-          output = cJSON_PrintUnformatted(json_log);
-          (void)fprintf(fp2, "%s", output);
 
-  #ifdef WIN32
-          (void)fprintf(fp2, "\r\n");
-  #else
+          output = cJSON_PrintUnformatted(json_log);
+
+          (void)fprintf(fp2, "%s", output);
           (void)fprintf(fp2, "\n");
-  #endif
+
           cJSON_Delete(json_log);
           free(output);
           fflush(fp2);
@@ -163,7 +162,8 @@ void os_logging_config(){
   OS_XML xml;
   const char * xmlf[] = {"ossec_config", "logging", "log-format", NULL};
   char * logformat;
-  char ** parts;
+  char ** parts = NULL;
+  int i, j;
 
   if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
     merror_exit(XML_ERROR, "/etc/ossec.conf", xml.err, xml.err_line);
@@ -172,27 +172,52 @@ void os_logging_config(){
   logformat = OS_GetOneContentforElement(&xml, xmlf);
 
   if (!logformat || logformat[0] == '\0'){
+
     flags.log_plain = 1;
     flags.log_json = 0;
-  }else{
-    parts = OS_StrBreak(',', logformat, 2);
-    int i;
+    flags.read = 1;
     for (i=0; parts[i]; i++){
-      if (!strcmp(parts[i], "plain")){
-        flags.log_plain = 1;
-      }
-      if (!strcmp(parts[i], "json")){
-        flags.log_json = 1;
-      }
+      free(parts[i]);
     }
-    if (flags.log_json == 0 && flags.log_plain == 0){
-      flags.log_plain = 1;
-    }
-  }
+    free(parts);
+    free(logformat);
+    OS_ClearXML(&xml);
+    mdebug1(XML_NO_ELEM, "log-format");
 
-  free(logformat);
-  OS_ClearXML(&xml);
-  flags.read = 1;
+  }else{
+
+    parts = OS_StrBreak(',', logformat, 2);
+    char * part;
+    if (parts){
+      for (i=0; parts[i]; i++){
+        part = w_strtrim(parts[i]);
+        if (!strcmp(part, "plain")){
+          flags.log_plain = 1;
+        }else if(!strcmp(part, "json")){
+          flags.log_json = 1;
+        }else{
+          flags.log_plain = 1;
+          flags.log_json = 0;
+          flags.read = 1;
+          for (j=0; parts[j]; j++){
+            free(parts[j]);
+          }
+          free(parts);
+          free(logformat);
+          OS_ClearXML(&xml);
+          merror(CONFIG_ERROR, DEFAULTCPATH);
+        }
+      }
+      for (i=0; parts[i]; i++){
+        free(parts[i]);
+      }
+      free(parts);
+    }
+
+    free(logformat);
+    OS_ClearXML(&xml);
+    flags.read = 1;
+  }
 }
 
 void mdebug1(const char *msg, ...)

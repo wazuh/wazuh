@@ -266,6 +266,10 @@ WriteAgent()
         echo "" >> $NEWCONFIG
     fi
 
+    # Logging format
+    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     echo "</ossec_config>" >> $NEWCONFIG
 }
 
