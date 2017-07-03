@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r
+from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, get_md5
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -50,7 +50,7 @@ class Agent:
         self.status = None
         self.key = None
         self.configSum = None
-        self.mergedSum = None
+        self.merged = {}
         self.group = None
 
         if args:
@@ -84,7 +84,7 @@ class Agent:
         return str(self.to_dict())
 
     def to_dict(self):
-        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os, 'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive, 'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum, 'group': self.group }
+        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os, 'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive, 'status': self.status, 'key': self.key, 'configSum': self.configSum, 'merged.mg': self.merged, 'group': self.group }
 
         return dictionary
 
@@ -127,6 +127,7 @@ class Agent:
         no_result = True
         for tuple in conn:
             no_result = False
+            merged = False
             data_tuple = {}
 
             if tuple[0] != None:
@@ -148,7 +149,7 @@ class Agent:
             if tuple[7] != None:
                 self.configSum = tuple[7]
             if tuple[8] != None:
-                self.mergedSum = tuple[8]
+                merged = tuple[8]
             if tuple[9] != None:
                 self.group = tuple[9]
             if tuple[10] != None:
@@ -170,6 +171,16 @@ class Agent:
 
             if self.id != "000":
                 self.status = Agent.calculate_status(self.lastKeepAlive)
+
+                if merged:
+                    self.merged['agent'] = merged
+                    self.merged['pushed'] = False
+                    if self.group:
+                        group_path = '{0}/{1}/merged.mg'.format(common.shared_path, self.group)
+                        if path.exists(group_path):
+                            self.merged['manager'] = get_md5(group_path)
+                            if self.merged['manager'] == self.merged['agent']:
+                                self.merged['pushed'] = True
             else:
                 self.status = 'Active'
                 self.ip = '127.0.0.1'
@@ -207,8 +218,8 @@ class Agent:
             info['status'] = self.status
         if self.configSum:
             info['configSum'] = self.configSum
-        if self.mergedSum:
-            info['mergedSum'] = self.mergedSum
+        if self.merged:
+            info['merged.mg'] = self.merged
         #if self.key:
         #    info['key'] = self.key
         if self.group:
