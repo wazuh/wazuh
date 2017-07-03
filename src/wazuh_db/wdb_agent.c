@@ -53,7 +53,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, 
     else
         sqlite3_bind_null(stmt, 4);
 
-    sqlite3_bind_text(stmt, 5, group ? group : DEFAULT_GROUP, -1, NULL);
+    sqlite3_bind_text(stmt, 5, group, -1, NULL);
 
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
     sqlite3_finalize(stmt);

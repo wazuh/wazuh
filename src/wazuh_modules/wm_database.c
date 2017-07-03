@@ -374,9 +374,10 @@ void wm_sync_agents() {
             continue;
         }
 
+        group[0] = '\0';
         get_agent_group(entry->id, group, KEYSIZE);
 
-        if (!(wdb_insert_agent(id, entry->name, entry->ip->ip, entry->key, group) || module->full_sync)) {
+        if (!(wdb_insert_agent(id, entry->name, entry->ip->ip, entry->key, *group ? group : NULL) || module->full_sync)) {
             // Find files
 
             snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
@@ -580,7 +581,7 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
 
     get_agent_group(fname, group, KEYSIZE);
 
-    switch (wdb_update_agent_group(id_agent, group)) {
+    switch (wdb_update_agent_group(id_agent, *group ? group : NULL)) {
     case -1:
         merror("%s: ERROR: Couldn't sync agent '%s' group.", WM_DATABASE_LOGTAG, fname);
         result = -1;
