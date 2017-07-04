@@ -355,7 +355,7 @@ int run_cmd(char *cmd, HWND hwnd)
     snprintf(finalcmd, cmdlen, "%s /c %s", COMSPEC, cmd);
 
     /* Log command being run */
-    log2file("%s: INFO: Running the following command (%s)", ARGV0, finalcmd);
+    mferror("Running the following command (%s)", finalcmd);
 
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);

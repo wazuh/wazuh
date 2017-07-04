@@ -25,4 +25,7 @@ char *os_shell_escape(const char *src);
 /* Count the number of repetitions of needle at haystack */
 size_t os_strcnt(const char *haystack, char needle);
 
+// Trim whitespaces from string
+char * w_strtrim(char * string);
+
 #endif

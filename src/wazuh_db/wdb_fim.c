@@ -24,7 +24,7 @@ int wdb_insert_file(sqlite3 *db, const char *path, int type) {
     int result;
 
     if (wdb_prepare(db, SQL_INSERT_FILE, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         return -1;
     }
 
@@ -34,7 +34,7 @@ int wdb_insert_file(sqlite3 *db, const char *path, int type) {
     if (wdb_step(stmt) == SQLITE_DONE)
         result = (int)sqlite3_last_insert_rowid(db);
     else {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         result = -1;
     }
 
@@ -48,7 +48,7 @@ int wdb_find_file(sqlite3 *db, const char *path, int type) {
     int result;
 
     if (wdb_prepare(db, SQL_FIND_FILE, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         return -1;
     }
 
@@ -63,7 +63,7 @@ int wdb_find_file(sqlite3 *db, const char *path, int type) {
         result = 0;
         break;
     default:
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         result = -1;
     }
 
@@ -78,7 +78,7 @@ int wdb_get_last_fim(sqlite3 *db, const char *path, int type) {
     int result;
 
     if (wdb_prepare(db, SQL_SELECT_LAST_EVENT, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         return -1;
     }
 
@@ -94,7 +94,7 @@ int wdb_get_last_fim(sqlite3 *db, const char *path, int type) {
         result = WDB_FIM_NOT_FOUND;
         break;
     default:
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         result = -1;
     }
 
@@ -109,7 +109,7 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
     int result;
 
     if (wdb_prepare(db, SQL_INSERT_EVENT, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         return -1;
     }
 
@@ -196,7 +196,7 @@ int wdb_delete_fim(int id) {
     // Delete files first to maintain reference integrity on insertion
 
     if (wdb_prepare(db, SQL_DELETE_FILE, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         sqlite3_close_v2(db);
         return -1;
     }
@@ -212,7 +212,7 @@ int wdb_delete_fim(int id) {
     // Delete events
 
     if (wdb_prepare(db, SQL_DELETE_EVENT, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         sqlite3_close_v2(db);
         return -1;
     }

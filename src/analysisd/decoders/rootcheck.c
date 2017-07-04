@@ -51,7 +51,7 @@ void RootcheckInit()
     rootcheck_dec->fields[RK_TITLE] = "title";
     rootcheck_dec->fields[RK_FILE] = "file";
 
-    debug1("%s: RootcheckInit completed.", ARGV0);
+    mdebug1("RootcheckInit completed.");
 
     return;
 }
@@ -90,7 +90,7 @@ static FILE *RK_File(const char *agent, int *agent_id)
             }
         }
         if (!rk_agent_fps[i]) {
-            merror(FOPEN_ERROR, ARGV0, rk_buf, errno, strerror(errno));
+            merror(FOPEN_ERROR, rk_buf, errno, strerror(errno));
 
             free(rk_agent_ips[i]);
             rk_agent_ips[i] = NULL;
@@ -105,7 +105,7 @@ static FILE *RK_File(const char *agent, int *agent_id)
     }
 
     else {
-        merror(MEM_ERROR, ARGV0, errno, strerror(errno));
+        merror(MEM_ERROR, errno, strerror(errno));
         return (NULL);
     }
 
@@ -134,7 +134,7 @@ int DecodeRootcheck(Eventinfo *lf)
     fp = RK_File(lf->location, &agent_id);
 
     if (!fp) {
-        merror("%s: Error handling rootcheck database.", ARGV0);
+        merror("Error handling rootcheck database.");
         rk_err++;
 
         return (0);
@@ -142,7 +142,7 @@ int DecodeRootcheck(Eventinfo *lf)
 
     /* Get initial position */
     if (fgetpos(fp, &fp_pos) == -1) {
-        merror("%s: Error handling rootcheck database (fgetpos).", ARGV0);
+        merror("Error handling rootcheck database (fgetpos).");
         return (0);
     }
 
@@ -152,8 +152,7 @@ int DecodeRootcheck(Eventinfo *lf)
         /* Ignore blank lines and lines with a comment */
         if (rk_buf[0] == '\n' || rk_buf[0] == '#') {
             if (fgetpos(fp, &fp_pos) == -1) {
-                merror("%s: Error handling rootcheck database "
-                       "(fgetpos2).", ARGV0);
+                merror("Error handling rootcheck database (fgetpos2).");
                 return (0);
             }
             continue;
@@ -187,8 +186,7 @@ int DecodeRootcheck(Eventinfo *lf)
             /* Matches, we need to upgrade last time saw */
             if (strcmp(lf->log, tmpstr) == 0) {
                 if(fsetpos(fp, &fp_pos)) {
-                    merror("%s: Error handling rootcheck database "
-                           "(fsetpos).", ARGV0);
+                    merror("Error handling rootcheck database (fsetpos).");
                     return (0);
                 }
                 fprintf(fp, "!%ld", (long int)lf->time);
@@ -205,7 +203,7 @@ int DecodeRootcheck(Eventinfo *lf)
 
         /* Get current position */
         if (fgetpos(fp, &fp_pos) == -1) {
-            merror("%s: Error handling rootcheck database (fgetpos3).", ARGV0);
+            merror("Error handling rootcheck database (fgetpos3).");
             return (0);
         }
     }

@@ -151,13 +151,13 @@ int OS_AddChild(RuleInfo *read_rule)
                 if (val == 0) {
                     rule_id = atoi(sid);
                     if (!_AddtoRule(rule_id, 0, 0, NULL, NULL, read_rule)) {
-                        ErrorExit("rules_list: Signature ID '%d' not "
+                        merror_exit("rules_list: Signature ID '%d' not "
                                   "found. Invalid 'if_sid'.", rule_id);
                     }
                     val = 1;
                 }
             } else {
-                ErrorExit("rules_list: Signature ID must be an integer. "
+                merror_exit("rules_list: Signature ID must be an integer. "
                           "Exiting...");
             }
         } while (*sid++ != '\0');
@@ -169,14 +169,14 @@ int OS_AddChild(RuleInfo *read_rule)
 
         ilevel = atoi(read_rule->if_level);
         if (ilevel == 0) {
-            merror("%s: Invalid level (atoi)", ARGV0);
+            merror("Invalid level (atoi)");
             return (1);
         }
 
         ilevel *= 100;
 
         if (!_AddtoRule(0, ilevel, 0, NULL, NULL, read_rule)) {
-            ErrorExit("rules_list: Level ID '%d' not "
+            merror_exit("rules_list: Level ID '%d' not "
                       "found. Invalid 'if_level'.", ilevel);
         }
     }
@@ -184,7 +184,7 @@ int OS_AddChild(RuleInfo *read_rule)
     /* Adding for if_group */
     else if (read_rule->if_group) {
         if (!_AddtoRule(0, 0, 0, read_rule->if_group, NULL, read_rule)) {
-            ErrorExit("rules_list: Group '%s' not "
+            merror_exit("rules_list: Group '%s' not "
                       "found. Invalid 'if_group'.", read_rule->if_group);
         }
     }
@@ -192,7 +192,7 @@ int OS_AddChild(RuleInfo *read_rule)
     /* Just add based on the category */
     else {
         if (!_AddtoRule(0, 0, 0, NULL, NULL, read_rule)) {
-            ErrorExit("rules_list: Category '%d' not "
+            merror_exit("rules_list: Category '%d' not "
                       "found. Invalid 'category'.", read_rule->category);
         }
     }
@@ -223,7 +223,7 @@ static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
         new_rulenode = (RuleNode *)calloc(1, sizeof(RuleNode));
 
         if (!new_rulenode) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
 
         if (middle_insertion == 1) {
@@ -245,7 +245,7 @@ static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
     } else {
         _rulenode = (RuleNode *)calloc(1, sizeof(RuleNode));
         if (_rulenode == NULL) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
 
         _rulenode->ruleinfo = read_rule;
@@ -349,7 +349,7 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
             if (!r_node->ruleinfo->sid_prev_matched) {
                 r_node->ruleinfo->sid_prev_matched = OSList_Create();
                 if (!r_node->ruleinfo->sid_prev_matched) {
-                    ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+                    merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
             }
 

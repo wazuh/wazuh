@@ -31,7 +31,7 @@ int Lists_OP_LoadList(char *listfile)
 
     tmp_listnode_pt = (ListNode *)calloc(1, sizeof(ListNode));
     if (tmp_listnode_pt == NULL) {
-        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+        merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
     snprintf(a_filename, OS_MAXSTR - 1, "%s", listfile);

@@ -30,7 +30,7 @@ int StartMQ(const char *path, short int type)
                 if (File_DateofChange(path) < 0) {
                     sleep(15);
                     if (File_DateofChange(path) < 0) {
-                        merror(QUEUE_ERROR, __local_name, path, "Queue not found");
+                        merror(QUEUE_ERROR, path, "Queue not found");
                         return (-1);
                     }
                 }
@@ -45,14 +45,13 @@ int StartMQ(const char *path, short int type)
             if ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)) < 0) {
                 sleep(2);
                 if ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)) < 0) {
-                    merror(QUEUE_ERROR, __local_name, path,
-                           strerror(errno));
+                    merror(QUEUE_ERROR, path, strerror(errno));
                     return (-1);
                 }
             }
         }
 
-        debug1(MSG_SOCKET_SIZE, __local_name, OS_getsocketsize(rc));
+        mdebug1(MSG_SOCKET_SIZE, OS_getsocketsize(rc));
         return (rc);
     }
 }
@@ -73,7 +72,7 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
         message++;
 
         if (message[0] != ':') {
-            merror(FORMAT_ERROR, __local_name);
+            merror(FORMAT_ERROR);
             return (0);
         }
         message++; /* Pointing now to the location */
@@ -104,7 +103,7 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
     if ((__mq_rcode = OS_SendUnix(queue, tmpstr, 0)) < 0) {
         /* Error on the socket */
         if (__mq_rcode == OS_SOCKTERR) {
-            merror("%s: socketerr (not available).", __local_name);
+            merror("socketerr (not available).");
             close(queue);
             return (-1);
         }
@@ -117,13 +116,13 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
              * again.
              */
             sleep(3);
-            /* merror("%s: socket busy", __local_name); */
+            /* merror("socket busy"); */
             if (OS_SendUnix(queue, tmpstr, 0) < 0) {
                 sleep(5);
-                merror("%s: socket busy ..", __local_name);
+                merror("socket busy ..");
                 if (OS_SendUnix(queue, tmpstr, 0) < 0) {
                     sleep(10);
-                    merror("%s: socket busy ..", __local_name);
+                    merror("socket busy ..");
                     if (OS_SendUnix(queue, tmpstr, 0) < 0) {
                         /* Message is going to be lost
                          * if the application does not care

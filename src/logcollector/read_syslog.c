@@ -41,7 +41,7 @@ void *read_syslog(int pos, int *rc, int drop_it)
             __ms = 1;
         } else {
             /* Message not complete. Return. */
-            debug1("%s: Message not complete. Trying again: '%s'", ARGV0, str);
+            mdebug1("Message not complete. Trying again: '%s'", str);
             fsetpos(logff[pos].fp, &fp_pos);
             break;
         }
@@ -64,15 +64,15 @@ void *read_syslog(int pos, int *rc, int drop_it)
         }
 #endif
 
-        debug2("%s: DEBUG: Reading syslog message: '%s'", ARGV0, str);
+        mdebug2("Reading syslog message: '%s'", str);
 
         /* Send message to queue */
         if (drop_it == 0) {
             if (SendMSG(logr_queue, str, logff[pos].file,
                         LOCALFILE_MQ) < 0) {
-                merror(QUEUE_SEND, ARGV0);
+                merror(QUEUE_SEND);
                 if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
                 }
             }
         }
@@ -85,7 +85,7 @@ void *read_syslog(int pos, int *rc, int drop_it)
             char buf[OUTSIZE + 1];
             buf[OUTSIZE] = '\0';
             snprintf(buf, OUTSIZE, "%s", str);
-            merror("%s: Large message size(length=%d): '%s...'", ARGV0, (int)strlen(str), buf);
+            merror("Large message size(length=%d): '%s...'", (int)strlen(str), buf);
             while (fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL) {
                 /* Get the last occurence of \n */
                 if (strrchr(str, '\n') != NULL) {

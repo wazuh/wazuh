@@ -27,7 +27,7 @@ void OS_CreateEventList(int maxsize)
     _memorymaxsize = maxsize;
     _memoryused = 0;
 
-    debug1("%s: OS_CreateEventList completed.", ARGV0);
+    mdebug1("OS_CreateEventList completed.");
     return;
 }
 
@@ -49,7 +49,7 @@ void OS_AddEvent(Eventinfo *lf)
         new_node = (EventNode *)calloc(1, sizeof(EventNode));
 
         if (new_node == NULL) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
 
         /* Always add to the beginning of the list
@@ -95,7 +95,7 @@ void OS_AddEvent(Eventinfo *lf)
         /* Add first node */
         eventnode = (EventNode *)calloc(1, sizeof(EventNode));
         if (eventnode == NULL) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
 
         eventnode->prev = NULL;

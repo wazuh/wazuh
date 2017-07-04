@@ -56,7 +56,7 @@ static int __Groups_InsertGroup(const char *group, const DBConfig *db_config)
              group);
 
     if (!osdb_query_insert(db_config->conn, sql_query)) {
-        merror(DB_GENERROR, ARGV0);
+        merror(DB_GENERROR);
     }
 
     return (0);
@@ -94,7 +94,7 @@ static int __Groups_InsertGroupMapping(int cat_id, int rule_id, const DBConfig *
              cat_id, rule_id);
 
     if (!osdb_query_insert(db_config->conn, sql_query)) {
-        merror(DB_GENERROR, ARGV0);
+        merror(DB_GENERROR);
     }
 
     return (0);
@@ -107,7 +107,7 @@ static void _Groups_ReadInsertDB(RuleInfo *rule, const DBConfig *db_config)
     char *tmp_group;
     char *tmp_str;
 
-    debug1("%s: DEBUG: entering _Groups_ReadInsertDB", ARGV0);
+    mdebug1("Entering _Groups_ReadInsertDB");
 
     /* If group is null, just return */
     if (rule->group == NULL) {
@@ -185,18 +185,18 @@ static void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
         rule->level = 0;
     }
 
-    debug1("%s: DEBUG: entering _Rules_ReadInsertDB()", ARGV0);
+    mdebug1("Entering _Rules_ReadInsertDB()");
 
     /* Check rule limit */
     if (rule->sigid < 0 || rule->sigid > 9999999) {
-        merror("%s: Invalid rule id: %u", ARGV0, rule->sigid);
+        merror("Invalid rule id: %u", rule->sigid);
         return (NULL);
     }
 
     /* Insert group into the signature mapping */
     _Groups_ReadInsertDB(rule, (DBConfig *) db_config);
 
-    debug2("%s: DEBUG: Inserting: %d", ARGV0, rule->sigid);
+    mdebug2("Inserting: %d", rule->sigid);
 
     /* Generate SQL */
     snprintf(sql_query, OS_SIZE_1024 - 1,
@@ -208,7 +208,7 @@ static void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
     /* XXX We don't actually insert!?
     if(!osdb_query_insert(dbc->conn, sql_query))
     {
-        merror(DB_GENERROR, ARGV0);
+        merror(DB_GENERROR);
     }
     */
 
@@ -221,10 +221,10 @@ int OS_InsertRulesDB(DBConfig *db_config)
 
     rulesfiles = db_config->includes;
     while (rulesfiles && *rulesfiles) {
-        debug1("%s: Reading rules file: '%s'", ARGV0, *rulesfiles);
+        mdebug1("Reading rules file: '%s'", *rulesfiles);
 
         if (OS_ReadXMLRules(*rulesfiles, _Rules_ReadInsertDB, db_config) < 0) {
-            merror(RULES_ERROR, ARGV0, *rulesfiles);
+            merror(RULES_ERROR, *rulesfiles);
             return (-1);
         }
 

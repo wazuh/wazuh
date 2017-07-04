@@ -45,7 +45,7 @@ SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const 
 
     /* If a CA certificate has been specified then load it and verify the peer */
     if (ca_cert) {
-        debug1("%s: DEBUG: Peer verification requested.", ARGV0);
+        mdebug1("Peer verification requested.");
 
         if (!load_ca_cert(ctx, ca_cert)) {
             goto SSL_ERROR;
@@ -73,7 +73,7 @@ SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const 
             goto SSL_ERROR;
         }
 
-        debug1("%s: DEBUG: Returning CTX for server.", ARGV0);
+        mdebug1("Returning CTX for server.");
     } else {
         if (cert && key) {
             if (!load_cert_and_key(ctx, cert, key)) {
@@ -81,7 +81,7 @@ SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const 
             }
         }
 
-        debug1("%s: DEBUG: Returning CTX for client.", ARGV0);
+        mdebug1("Returning CTX for client.");
     }
 
     return ctx;
@@ -137,24 +137,24 @@ CONTEXT_ERR:
 int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key)
 {
     if (File_DateofChange(cert) <= 0) {
-        merror("%s: ERROR: Unable to read certificate file (not found): %s", ARGV0, cert);
+        merror("Unable to read certificate file (not found): %s", cert);
         return 0;
     }
 
     if (!(SSL_CTX_use_certificate_chain_file(ctx, cert))) {
-        merror("%s: ERROR: Unable to read certificate file: %s", ARGV0, cert);
+        merror("Unable to read certificate file: %s", cert);
         ERR_print_errors_fp(stderr);
         return 0;
     }
 
     if (!(SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM))) {
-        merror("%s: ERROR: Unable to read private key file: %s", ARGV0, key);
+        merror("Unable to read private key file: %s", key);
         ERR_print_errors_fp(stderr);
         return 0;
     }
 
     if (!SSL_CTX_check_private_key(ctx)) {
-        merror("%s: ERROR: Unable to verify private key file", ARGV0);
+        merror("Unable to verify private key file");
         ERR_print_errors_fp(stderr);
         return 0;
     }
@@ -169,12 +169,12 @@ int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key)
 int load_ca_cert(SSL_CTX *ctx, const char *ca_cert)
 {
     if (!ca_cert) {
-        merror("%s: ERROR: Verification requested but no CA certificate file specified", ARGV0);
+        merror("Verification requested but no CA certificate file specified");
         return 0;
     }
 
     if (SSL_CTX_load_verify_locations(ctx, ca_cert, NULL) != 1) {
-        merror("%s: ERROR: Unable to read CA certificate file \"%s\"", ARGV0, ca_cert);
+        merror("Unable to read CA certificate file \"%s\"", ca_cert);
         return 0;
     }
 
@@ -194,15 +194,15 @@ int verify_callback(int ok, X509_STORE_CTX *store)
         int depth = X509_STORE_CTX_get_error_depth(store);
         int err = X509_STORE_CTX_get_error(store);
 
-        merror("%s: ERROR: Problem with certificate at depth %i", ARGV0, depth);
+        merror("Problem with certificate at depth %i", depth);
 
         X509_NAME_oneline(X509_get_issuer_name(cert), data, 256);
-        merror("%s: ERROR: issuer =  %s", ARGV0, data);
+        merror("issuer =  %s", data);
 
         X509_NAME_oneline(X509_get_subject_name(cert), data, 256);
-        merror("%s: ERROR: subject =  %s", ARGV0, data);
+        merror("subject =  %s", data);
 
-        merror("%s: ERROR: %i:%s", ARGV0, err, X509_verify_cert_error_string(err));
+        merror("%i:%s", err, X509_verify_cert_error_string(err));
     }
 
     return ok;

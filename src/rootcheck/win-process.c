@@ -74,27 +74,25 @@ OSList *os_get_process_list()
                          TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, FALSE, &hpriv)) {
         if (GetLastError() == ERROR_NO_TOKEN) {
             if (!ImpersonateSelf(SecurityImpersonation)) {
-                merror("%s: ERROR: os_get_win32_process_list -> "
-                       "ImpersonateSelf", ARGV0);
+                mterror(ARGV0, "os_get_win32_process_list -> ImpersonateSelf");
                 return (NULL);
             }
 
             if (!OpenThreadToken(GetCurrentThread(),
                                  TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
                                  FALSE, &hpriv)) {
-                merror("%s: ERROR: os_get_win32_process_list -> "
-                       "OpenThread", ARGV0);
+                mterror(ARGV0, "os_get_win32_process_list -> OpenThread");
                 return (NULL) ;
             }
         } else {
-            merror("%s: ERROR: os_get_win32_process_list -> OpenThread", ARGV0);
+            mterror(ARGV0, "os_get_win32_process_list -> OpenThread");
             return (NULL);
         }
     }
 
     /* Enable debug privilege */
     if (!os_win32_setdebugpriv(hpriv, 1)) {
-        merror("%s: ERROR: os_win32_setdebugpriv", ARGV0);
+        mterror(ARGV0, "os_win32_setdebugpriv");
         CloseHandle(hpriv);
         return (NULL);
     }
@@ -102,13 +100,13 @@ OSList *os_get_process_list()
     /* Make a snapshot of every process */
     hsnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hsnap == INVALID_HANDLE_VALUE) {
-        merror("%s: ERROR: CreateToolhelp32Snapshot", ARGV0);
+        mterror(ARGV0, "CreateToolhelp32Snapshot");
         return (NULL);
     }
 
     /* Get first and second processes -- system entries */
     if (!Process32First(hsnap, &p_entry) && !Process32Next(hsnap, &p_entry )) {
-        merror("%s: ERROR: Process32First", ARGV0);
+        mterror(ARGV0, "Process32First");
         CloseHandle(hsnap);
         return (NULL);
     }
@@ -117,7 +115,7 @@ OSList *os_get_process_list()
     p_list = OSList_Create();
     if (!p_list) {
         CloseHandle(hsnap);
-        merror(LIST_ERROR, ARGV0);
+        mterror(ARGV0, LIST_ERROR);
         return (0);
     }
 
@@ -163,4 +161,3 @@ OSList *os_get_process_list()
 }
 
 #endif /* WIN32 */
-

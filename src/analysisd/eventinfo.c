@@ -34,7 +34,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
-        merror("%s: ERROR: No sid search.", ARGV0);
+        merror("No sid search.");
         return (NULL);
     }
 
@@ -188,7 +188,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
 
     /* Check if sid search is valid */
     if (!rule->group_search) {
-        merror("%s: No group search!", ARGV0);
+        merror("No group search!");
         return (NULL);
     }
 
@@ -535,7 +535,7 @@ void Zero_Eventinfo(Eventinfo *lf)
 void Free_Eventinfo(Eventinfo *lf)
 {
     if (!lf) {
-        merror("%s: Trying to free NULL event. Inconsistent..", ARGV0);
+        merror("Trying to free NULL event. Inconsistent..");
         return;
     }
 

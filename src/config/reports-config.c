@@ -92,10 +92,10 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
     /* Reading the XML */
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL, __local_name);
+            merror(XML_ELEMNULL);
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, __local_name, node[i]->element);
+            merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_title) == 0) {
             if (!mon_config->reports[s]->title) {
@@ -107,7 +107,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                     os_strdup(node[i]->content, mon_config->reports[s]->type);
                 }
             } else {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_frequency) == 0) {
         } else if (strcmp(node[i]->element, xml_showlogs) == 0) {
@@ -122,7 +122,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
 
             if (os_report_configfilter("group", ncat,
                                        &mon_config->reports[s]->r_filter, REPORT_FILTER) < 0) {
-                merror(CONFIG_ERROR, __local_name, "user argument");
+                merror(CONFIG_ERROR, "user argument");
             }
         } else if ((strcmp(node[i]->element, xml_group) == 0) ||
                    (strcmp(node[i]->element, xml_rule) == 0) ||
@@ -140,12 +140,12 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                         if (strcmp(node[i]->values[0], "relation") == 0) {
                             reportf = REPORT_RELATED;
                         } else {
-                            merror("%s: WARN: Invalid value for 'relation' attribute: '%s'. (ignored).", __local_name, node[i]->values[0]);
+                            mwarn("Invalid value for 'relation' attribute: '%s'. (ignored).", node[i]->values[0]);
                             i++;
                             continue;
                         }
                     } else {
-                        merror("%s: WARN: Invalid attribute: %s (ignored). ", __local_name, node[i]->attributes[0]);
+                        mwarn("Invalid attribute: %s (ignored). ", node[i]->attributes[0]);
                         i++;
                         continue;
                     }
@@ -156,12 +156,12 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
 
             if (os_report_configfilter(node[i]->element, ncat,
                                        &mon_config->reports[s]->r_filter, reportf) < 0) {
-                merror("%s: Invalid filter: %s:%s (ignored).", __local_name, node[i]->element, node[i]->content);
+                merror("Invalid filter: %s:%s (ignored).", node[i]->element, node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_email) == 0) {
             mon_config->reports[s]->emailto = os_AddStrArray(node[i]->content, mon_config->reports[s]->emailto);
         } else {
-            merror(XML_INVELEM, __local_name, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
         i++;
@@ -172,9 +172,9 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
 
     if (mon_config->reports[s]->emailto == NULL) {
         if (mon_config->reports[s]->title) {
-            merror("%s: No \"email to\" configured for the report '%s'. Ignoring it.", __local_name, mon_config->reports[s]->title);
+            merror("No \"email to\" configured for the report '%s'. Ignoring it.", mon_config->reports[s]->title);
         } else {
-            merror("%s: No \"email to\" and title configured for report. Ignoring it.", __local_name);
+            merror("No \"email to\" and title configured for report. Ignoring it.");
         }
     }
 
@@ -185,4 +185,3 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
 
     return (0);
 }
-

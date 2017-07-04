@@ -70,25 +70,25 @@ int main(int argc, char **argv)
                 break;
             case 'u':
                 if (!optarg) {
-                    ErrorExit("%s: -u needs an argument", ARGV0);
+                    merror_exit("-u needs an argument");
                 }
                 user = optarg;
                 break;
             case 'g':
                 if (!optarg) {
-                    ErrorExit("%s: -g needs an argument", ARGV0);
+                    merror_exit("-g needs an argument");
                 }
                 group = optarg;
                 break;
             case 'D':
                 if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
+                    merror_exit("-D needs an argument");
                 }
                 dir = optarg;
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument", ARGV0);
+                    merror_exit("-c needs an argument");
                 }
                 cfg = optarg;
                 break;
@@ -106,13 +106,13 @@ int main(int argc, char **argv)
     }
 
     /* Start daemon */
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
     /*Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Get config options */
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
     c = 0;
     c |= CREPORTS;
     if (ReadConfig(c, cfg, &mond, NULL) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* If we have any reports configured, read smtp/emailfrom */
@@ -143,7 +143,7 @@ int main(int argc, char **argv)
         const char *(xml_idsname[]) = {"ossec_config", "global", "email_idsname", NULL};
 
         if (OS_ReadXML(cfg, &xml) < 0) {
-            ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+            merror_exit(CONFIG_ERROR, cfg);
         }
 
         tmpsmtp = OS_GetOneContentforElement(&xml, xml_smtp);
@@ -153,12 +153,12 @@ int main(int argc, char **argv)
         if (tmpsmtp && mond.emailfrom) {
             mond.smtpserver = OS_GetHost(tmpsmtp, 5);
             if (!mond.smtpserver) {
-                merror(INVALID_SMTP, ARGV0, tmpsmtp);
+                merror(INVALID_SMTP, tmpsmtp);
                 if (mond.emailfrom) {
                     free(mond.emailfrom);
                 }
                 mond.emailfrom = NULL;
-                merror("%s: Invalid SMTP server.  Disabling email reports.", ARGV0);
+                merror("Invalid SMTP server.  Disabling email reports.");
             }
         } else {
             if (tmpsmtp) {
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
             }
 
             mond.emailfrom = NULL;
-            merror("%s: SMTP server or 'email from' missing. Disabling email reports.", ARGV0);
+            merror("SMTP server or 'email from' missing. Disabling email reports.");
         }
 
         OS_ClearXML(&xml);
@@ -188,33 +188,33 @@ int main(int argc, char **argv)
 
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* chroot */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
 
     nowChroot();
 
     /* Change user */
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
-    debug1(PRIVSEP_MSG, ARGV0, dir, user);
+    mdebug1(PRIVSEP_MSG, dir, user);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
 
     /* Create PID files */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* The real daemon now */
     Monitord();

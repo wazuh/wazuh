@@ -80,13 +80,13 @@ int Read_Rootcheck_Config(const char *cfgfile)
 #endif
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
-        merror("config_op: XML error: %s", xml.err);
+        mterror(ARGV0, "config_op: XML error: %s", xml.err);
         return (OS_INVALID);
     }
 
     if (!OS_RootElementExist(&xml, xml_rootcheck)) {
         OS_ClearXML(&xml);
-        merror("%s: Rootcheck configuration not found. ", ARGV0);
+        mterror(ARGV0, "Rootcheck configuration not found.");
         return (-1);
     }
 
@@ -96,8 +96,7 @@ int Read_Rootcheck_Config(const char *cfgfile)
     str = OS_GetOneContentforElement(&xml, xml_time);
     if (str) {
         if (!OS_StrIsNum(str)) {
-            merror("Invalid frequency time '%s' for the rootkit "
-                   "detection (must be int).", str);
+            mterror(ARGV0, "Invalid frequency time '%s' for the rootkit detection (must be int).", str);
             return (OS_INVALID);
         }
 
@@ -155,4 +154,3 @@ int Read_Rootcheck_Config(const char *cfgfile)
     return (0);
 }
 #endif
-

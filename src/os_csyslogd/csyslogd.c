@@ -37,14 +37,14 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     while ( (Init_FileQueue(fileq, p, 0) ) < 0 ) {
         tries++;
         if ( tries > OS_CSYSLOGD_MAX_TRIES ) {
-            merror("%s: ERROR: Could not open queue after %d tries, exiting!",
-                   ARGV0, tries
+            merror("Could not open queue after %d tries, exiting!",
+                  tries
                   );
             exit(1);
         }
         sleep(1);
     }
-    debug1("%s: INFO: File queue connected.", ARGV0 );
+    mdebug1("File queue connected.");
 
     /* Connect to syslog */
     s = 0;
@@ -52,10 +52,10 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
         syslog_config[s]->socket = OS_ConnectUDP(syslog_config[s]->port,
                                    syslog_config[s]->server, 0);
         if (syslog_config[s]->socket < 0) {
-            merror(CONNS_ERROR, ARGV0, syslog_config[s]->server);
+            merror(CONNS_ERROR, syslog_config[s]->server);
         } else {
-            merror("%s: INFO: Forwarding alerts via syslog to: '%s:%d'.",
-                   ARGV0, syslog_config[s]->server, syslog_config[s]->port);
+            minfo("Forwarding alerts via syslog to: '%s:%d'.",
+                   syslog_config[s]->server, syslog_config[s]->port);
         }
 
         s++;
@@ -175,4 +175,3 @@ int field_add_int(char *dest, size_t size, const char *format, const int value )
 
     return len;
 }
-

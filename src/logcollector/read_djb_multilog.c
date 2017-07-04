@@ -70,8 +70,8 @@ int init_djbmultilog(int pos)
     os_strdup(djbp_name + 1, logff[pos].djb_program_name);
     tmp_str[0] = '/';
 
-    verbose("%s: INFO: Using program name '%s' for DJB multilog file: '%s'.",
-            ARGV0, logff[pos].djb_program_name, logff[pos].file);
+    minfo("Using program name '%s' for DJB multilog file: '%s'.",
+            logff[pos].djb_program_name, logff[pos].file);
 
     return (1);
 }
@@ -157,18 +157,18 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
         }
 
         else {
-            debug2("%s: DEBUG: Invalid DJB log: '%s'", ARGV0, str);
+            mdebug2("Invalid DJB log: '%s'", str);
             continue;
         }
 
-        debug2("%s: DEBUG: Reading DJB multilog message: '%s'", ARGV0, buffer);
+        mdebug2("Reading DJB multilog message: '%s'", buffer);
 
         /* Send message to queue */
         if (drop_it == 0) {
             if (SendMSG(logr_queue, buffer, logff[pos].file, MYSQL_MQ) < 0) {
-                merror(QUEUE_SEND, ARGV0);
+                merror(QUEUE_SEND);
                 if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
                 }
             }
         }
@@ -178,4 +178,3 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
 
     return (NULL);
 }
-

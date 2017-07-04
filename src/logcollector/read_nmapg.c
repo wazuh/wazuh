@@ -217,7 +217,7 @@ void *read_nmapg(int pos, int *rc, int drop_it)
 
             p = __get_port(p, proto, port, 9);
             if (!p) {
-                debug1("%s: Bad formated nmap grepable file (port).", ARGV0);
+                mdebug1("Bad formated nmap grepable file (port).");
                 break;
             }
 
@@ -237,9 +237,9 @@ void *read_nmapg(int pos, int *rc, int drop_it)
             /* Send message to queue */
             if (SendMSG(logr_queue, final_msg, logff[pos].file,
                         HOSTINFO_MQ) < 0) {
-                merror(QUEUE_SEND, ARGV0);
+                merror(QUEUE_SEND);
                 if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
                 }
             }
         }
@@ -250,7 +250,7 @@ void *read_nmapg(int pos, int *rc, int drop_it)
         /* Handle errors */
 file_error:
 
-        merror("%s: Bad formated nmap grepable file.", ARGV0);
+        merror("Bad formated nmap grepable file.");
         *rc = -1;
         return (NULL);
 

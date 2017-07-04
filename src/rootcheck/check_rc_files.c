@@ -26,7 +26,7 @@ void check_rc_files(const char *basedir, FILE *fp)
     int _errors = 0;
     int _total = 0;
 
-    debug1("%s: DEBUG: Starting on check_rc_files", ARGV0);
+    mtdebug1(ARGV0, "Starting on check_rc_files");
 
     while (fgets(buf, OS_SIZE_1024, fp) != NULL) {
         char *nbuf;
@@ -122,7 +122,7 @@ void check_rc_files(const char *basedir, FILE *fp)
         if (*file == '*') {
             /* Maximum number of global files reached */
             if (rk_sys_count >= MAX_RK_SYS) {
-                merror(MAX_RK_MSG, ARGV0, MAX_RK_SYS);
+                mterror(ARGV0, MAX_RK_MSG, MAX_RK_SYS);
             }
 
             else {
@@ -137,7 +137,7 @@ void check_rc_files(const char *basedir, FILE *fp)
 
                 if (!rk_sys_name[rk_sys_count] ||
                         !rk_sys_file[rk_sys_count] ) {
-                    merror(MEM_ERROR, ARGV0, errno, strerror(errno));
+                    mterror(ARGV0, MEM_ERROR, errno, strerror(errno));
 
                     if (rk_sys_file[rk_sys_count]) {
                         free(rk_sys_file[rk_sys_count]);
@@ -182,4 +182,3 @@ newline:
         notify_rk(ALERT_OK, op_msg);
     }
 }
-

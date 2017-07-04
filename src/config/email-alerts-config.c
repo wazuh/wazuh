@@ -84,16 +84,16 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
 
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL, __local_name);
+            merror(XML_ELEMNULL);
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, __local_name, node[i]->element);
+            merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         }
         /* Mail notification */
         else if (strcmp(node[i]->element, xml_email_level) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 
@@ -118,8 +118,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                     unsigned int id_i = 0;
 
                     r_id = atoi(str_pt);
-                    debug1("%s: DEBUG: Adding '%d' to granular e-mail",
-                           __local_name, r_id);
+                    mdebug1("Adding '%d' to granular e-mail", r_id);
 
                     if (!Mail->gran_id[granto_size]) {
                         os_calloc(2, sizeof(unsigned int), Mail->gran_id[granto_size]);
@@ -162,7 +161,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             } else if (strcmp(node[i]->content, "default") == 0) {
                 /* Default is full format */
             } else {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_email_donotdelay) == 0) {
@@ -178,7 +177,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             os_calloc(1, sizeof(OSMatch), Mail->gran_location[granto_size]);
             if (!OSMatch_Compile(node[i]->content,
                                  Mail->gran_location[granto_size], 0)) {
-                merror(REGEX_COMPILE, __local_name, node[i]->content,
+                merror(REGEX_COMPILE, node[i]->content,
                        Mail->gran_location[granto_size]->error);
                 return (-1);
             }
@@ -186,12 +185,12 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             os_calloc(1, sizeof(OSMatch), Mail->gran_group[granto_size]);
             if (!OSMatch_Compile(node[i]->content,
                                  Mail->gran_group[granto_size], 0)) {
-                merror(REGEX_COMPILE, __local_name, node[i]->content,
+                merror(REGEX_COMPILE, node[i]->content,
                        Mail->gran_group[granto_size]->error);
                 return (-1);
             }
         } else {
-            merror(XML_INVELEM, __local_name, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
         i++;
@@ -204,10 +203,9 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             Mail->gran_id[granto_size] == NULL &&
             Mail->gran_format[granto_size] == FULL_FORMAT) ||
             Mail->gran_to[granto_size] == NULL) {
-        merror(XML_INV_GRAN_MAIL, __local_name);
+        merror(XML_INV_GRAN_MAIL);
         return (OS_INVALID);
     }
 
     return (0);
 }
-

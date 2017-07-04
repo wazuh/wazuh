@@ -40,7 +40,7 @@ int ReadExecConfig()
     /* Open file */
     fp = fopen(DEFAULTARPATH, "r");
     if (!fp) {
-        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH, errno, strerror(errno));
+        merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
         return (0);
     }
 
@@ -54,7 +54,7 @@ int ReadExecConfig()
         /* Clean up the buffer */
         tmp_str = strchr(buffer, ' ');
         if (!tmp_str) {
-            merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
+            merror(EXEC_INV_CONF, DEFAULTARPATH);
             continue;
         }
         *tmp_str = '\0';
@@ -64,7 +64,7 @@ int ReadExecConfig()
         if (*tmp_str == '-') {
             tmp_str += 2;
         } else {
-            merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
+            merror(EXEC_INV_CONF, DEFAULTARPATH);
             continue;
         }
 
@@ -76,7 +76,7 @@ int ReadExecConfig()
 
         tmp_str = strchr(tmp_str, ' ');
         if (!tmp_str) {
-            merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
+            merror(EXEC_INV_CONF, DEFAULTARPATH);
             continue;
         }
         *tmp_str = '\0';
@@ -89,9 +89,9 @@ int ReadExecConfig()
         process_file = fopen(exec_cmd[exec_size], "r");
         if (!process_file) {
             if (f_time_reading) {
-                verbose("%s: INFO: Active response command not present: '%s'. "
+                minfo("Active response command not present: '%s'. "
                         "Not using it on this system.",
-                        ARGV0, exec_cmd[exec_size]);
+                        exec_cmd[exec_size]);
             }
 
             exec_cmd[exec_size][0] = '\0';
@@ -104,7 +104,7 @@ int ReadExecConfig()
         if (*tmp_str == '-') {
             tmp_str += 2;
         } else {
-            merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
+            merror(EXEC_INV_CONF, DEFAULTARPATH);
             continue;
         }
 
@@ -179,7 +179,7 @@ void ExecCmd(char *const *cmd)
     pid = fork();
     if (pid == 0) {
         if (execv(*cmd, cmd) < 0) {
-            merror(EXEC_CMDERROR, ARGV0, *cmd, strerror(errno));
+            merror(EXEC_CMDERROR, *cmd, strerror(errno));
             exit(1);
         }
 
@@ -202,7 +202,7 @@ void ExecCmd_Win32(char *cmd)
 
     if (!CreateProcess(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL,
                        &si, &pi)) {
-        merror("%s: ERROR: Unable to create active response process. ", ARGV0);
+        merror("Unable to create active response process. ");
         return;
     }
 
@@ -216,4 +216,3 @@ void ExecCmd_Win32(char *cmd)
     return;
 }
 #endif
-

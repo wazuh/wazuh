@@ -43,21 +43,21 @@ int startEL(char *app, os_el *el)
     /* Open the event log */
     el->h = OpenEventLog(NULL, app);
     if (!el->h) {
-        merror(EVTLOG_OPEN, ARGV0, app);
+        merror(EVTLOG_OPEN, app);
         return (-1);
     }
 
     el->name = app;
     if (GetOldestEventLogRecord(el->h, &el->record) == 0) {
         /* Unable to read oldest event log record */
-        merror(EVTLOG_GETLAST, ARGV0, app);
+        merror(EVTLOG_GETLAST, app);
         CloseEventLog(el->h);
         el->h = NULL;
         return (-1);
     }
 
     if (GetNumberOfEventLogRecords(el->h, &NumberOfRecords) == 0) {
-        merror(EVTLOG_GETLAST, ARGV0, app);
+        merror(EVTLOG_GETLAST, app);
         CloseEventLog(el->h);
         el->h = NULL;
         return (-1);
@@ -152,7 +152,7 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
         if (skey && sval) {
             OSHash_Add(dll_hash, skey, sval);
         } else {
-            merror(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror(MEM_ERROR, errno, strerror(errno));
         }
     }
 
@@ -359,8 +359,7 @@ void readel(os_el *el, int printit)
                         tmp_str++;
                         *tmp_str = '\0';
                     } else {
-                        merror("%s: Invalid application string (size+)",
-                               ARGV0);
+                        merror("Invalid application string (size+)");
                     }
                     size_left -= str_size + 2;
 
@@ -468,7 +467,7 @@ void readel(os_el *el, int printit)
 
                 if (SendMSG(logr_queue, final_msg, "WinEvtLog",
                             LOCALFILE_MQ) < 0) {
-                    merror(QUEUE_SEND, ARGV0);
+                    merror(QUEUE_SEND);
                 }
             }
 
@@ -494,7 +493,7 @@ void readel(os_el *el, int printit)
     else if (id == ERROR_EVENTLOG_FILE_CHANGED) {
         char msg_alert[512 + 1];
         msg_alert[512] = '\0';
-        merror("%s: WARN: Event log cleared: '%s'", ARGV0, el->name);
+        mwarn("Event log cleared: '%s'", el->name);
 
         /* Send message about cleared */
         snprintf(msg_alert, 512, "ossec: Event log cleared: '%s'", el->name);
@@ -506,13 +505,12 @@ void readel(os_el *el, int printit)
 
         /* Reopen */
         if (startEL(el->name, el) < 0) {
-            merror("%s: ERROR: Unable to reopen event log '%s'",
-                   ARGV0, el->name);
+            merror("Unable to reopen event log '%s'", el->name);
         }
     }
 
     else {
-        debug1("%s: WARN: Error reading event log: %d", ARGV0, id);
+        mdebug1("Error reading event log: %d", id);
     }
 }
 
@@ -526,16 +524,14 @@ void win_read_vista_sec()
     /* Vista security */
     fp = fopen("vista_sec.txt", "r");
     if (!fp) {
-        merror("%s: ERROR: Unable to read vista security descriptions.",
-               ARGV0);
+        merror("Unable to read vista security descriptions.");
         exit(1);
     }
 
     /* Creating the hash */
     vista_sec_id_hash = OSHash_Create();
     if (!vista_sec_id_hash) {
-        merror("%s: ERROR: Unable to read vista security descriptions.",
-               ARGV0);
+        merror("Unable to read vista security descriptions.");
         exit(1);
     }
 
@@ -551,8 +547,8 @@ void win_read_vista_sec()
 
         p = strchr(buf, ',');
         if (!p) {
-            merror("%s: ERROR: Invalid entry on the Vista security "
-                   "description.", ARGV0);
+            merror("Invalid entry on the Vista security "
+                   "description.");
             continue;
         }
 
@@ -568,8 +564,8 @@ void win_read_vista_sec()
         desc = strdup(p);
         key = strdup(buf);
         if (!key || !desc) {
-            merror("%s: ERROR: Invalid entry on the Vista security "
-                   "description.", ARGV0);
+            merror("Invalid entry on the Vista security "
+                   "description.");
             continue;
         }
 
@@ -587,7 +583,7 @@ void win_startel(char *evt_log)
 
     /* Maximum size */
     if (el_last == 9) {
-        merror(EVTLOG_DUP, ARGV0, evt_log);
+        merror(EVTLOG_DUP, evt_log);
         return;
     }
 
@@ -595,14 +591,13 @@ void win_startel(char *evt_log)
     if (!dll_hash) {
         dll_hash = OSHash_Create();
         if (!dll_hash) {
-            merror("%s: ERROR: Unable to create DLL hash.",
-                   ARGV0);
+            merror("Unable to create DLL hash.");
         }
     }
 
     /* Start event log -- going to last available record */
     if ((entries_count = startEL(evt_log, &el[el_last])) < 0) {
-        merror(INV_EVTLOG, ARGV0, evt_log);
+        merror(INV_EVTLOG, evt_log);
         return;
     } else {
         readel(&el[el_last], 0);
@@ -624,4 +619,3 @@ void win_readel()
 }
 
 #endif
-

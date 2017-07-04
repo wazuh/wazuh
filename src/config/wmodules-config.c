@@ -22,12 +22,12 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, __attribute__((unu
     xml_node **children = NULL;
 
     if (!node->attributes[0]) {
-        merror("%s: ERROR: No such attribute '%s' at module.", __local_name, XML_NAME);
+        merror("No such attribute '%s' at module.", XML_NAME);
         return OS_INVALID;
     }
 
     if (strcmp(node->attributes[0], XML_NAME)) {
-        merror("%s: ERROR: Module attribute is not '%s'.", __local_name, XML_NAME);
+        merror("Module attribute is not '%s'.", XML_NAME);
         return OS_INVALID;
     }
 
@@ -43,14 +43,14 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, __attribute__((unu
         *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
 
     if (!cur_wmodule) {
-        merror(MEM_ERROR, __local_name, errno, strerror(errno));
+        merror(MEM_ERROR, errno, strerror(errno));
         return (OS_INVALID);
     }
 
     // Get children
 
     if (!(children = OS_GetElementsbyNode(xml, node))) {
-        merror(XML_INVELEM, __local_name, node->element);
+        merror(XML_INVELEM, node->element);
         return OS_INVALID;
     }
 
@@ -62,7 +62,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, __attribute__((unu
             return OS_INVALID;
         }
     } else
-        merror("%s: ERROR: Unknown module '%s'", __local_name, node->values[0]);
+        merror("Unknown module '%s'", node->values[0]);
 
     OS_ClearNode(children);
     return 0;

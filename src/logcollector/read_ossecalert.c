@@ -101,9 +101,9 @@ void *read_ossecalert(int pos, __attribute__((unused)) int *rc, int drop_it)
     /* Send message to queue */
     if (drop_it == 0) {
         if (SendMSG(logr_queue, syslog_msg, logff[pos].file, LOCALFILE_MQ) < 0) {
-            merror(QUEUE_SEND, ARGV0);
+            merror(QUEUE_SEND);
             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
             }
         }
     }

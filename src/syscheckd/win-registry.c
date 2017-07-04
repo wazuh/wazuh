@@ -89,10 +89,10 @@ int notify_registry(char *msg, __attribute__((unused)) int send_now)
 {
     if (SendMSG(syscheck.queue, msg,
                 SYSCHECK_REG, SYSCHECK_MQ) < 0) {
-        merror(QUEUE_SEND, ARGV0);
+        merror(QUEUE_SEND);
 
         if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
         /* If we reach here, we can try to send it again */
@@ -234,7 +234,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch)
         data_buffer[MAX_VALUE_NAME] = '\0';
         checksum_fp = fopen(SYS_REG_TMP, "w");
         if (!checksum_fp) {
-            printf(FOPEN_ERROR, ARGV0, SYS_REG_TMP, errno, strerror(errno));
+            printf("%s: (1103): Could not open file '%s' due to [(%d)-(%s)].", ARGV0, SYS_REG_TMP, errno, strerror(errno));
             return;
         }
 
@@ -294,7 +294,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch)
         fclose(checksum_fp);
 
         if (OS_MD5_SHA1_File(SYS_REG_TMP, syscheck.prefilter_cmd, mf_sum, sf_sum, OS_TEXT) == -1) {
-            merror(FOPEN_ERROR, ARGV0, SYS_REG_TMP, errno, strerror(errno));
+            merror(FOPEN_ERROR, SYS_REG_TMP, errno, strerror(errno));
             return;
         }
 
@@ -346,7 +346,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch)
     }
 
     if (RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ | (arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &oshkey) != ERROR_SUCCESS) {
-        merror(SK_REG_OPEN, ARGV0, subkey);
+        merror(SK_REG_OPEN, subkey);
         return;
     }
 
@@ -362,7 +362,7 @@ void os_winreg_check()
     char *rk;
 
     /* Debug entries */
-    debug1("%s: DEBUG: Starting os_winreg_check", ARGV0);
+    mdebug1("Starting os_winreg_check");
 
     /* Zero ig_count before checking */
     ig_count = 1;
@@ -371,7 +371,7 @@ void os_winreg_check()
     if (syscheck.reg_fp == NULL) {
         syscheck.reg_fp = fopen(SYS_WIN_REG, "w+");
         if (!syscheck.reg_fp) {
-            merror(FOPEN_ERROR, ARGV0, SYS_WIN_REG, errno, strerror(errno));
+            merror(FOPEN_ERROR, SYS_WIN_REG, errno, strerror(errno));
             return;
         }
     }
@@ -388,11 +388,11 @@ void os_winreg_check()
         }
 
         /* Read syscheck registry entry */
-        debug1("%s: DEBUG: Attempt to read: %s%s", ARGV0, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "", syscheck.registry[i].entry);
+        mdebug1("Attempt to read: %s%s", syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "", syscheck.registry[i].entry);
 
         rk = os_winreg_sethkey(syscheck.registry[i].entry);
         if (sub_tree == NULL) {
-            merror(SK_INV_REG, ARGV0, syscheck.registry[i].entry);
+            merror(SK_INV_REG, syscheck.registry[i].entry);
             *syscheck.registry[i].entry = '\0';
             i++;
             continue;

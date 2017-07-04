@@ -46,7 +46,7 @@ int read_proc_dir(const char *dir_name, const char *pid, int position)
     struct dirent *entry;
 
     if ((dir_name == NULL) || (strlen(dir_name) > PATH_MAX)) {
-        merror("%s: Invalid directory given", ARGV0);
+        mterror(ARGV0, "Invalid directory given");
         return (-1);
     }
 
@@ -125,4 +125,3 @@ int check_rc_readproc(int pid)
 }
 
 #endif
-

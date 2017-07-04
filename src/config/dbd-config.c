@@ -34,10 +34,10 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
     /* Read the xml */
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL, __local_name);
+            merror(XML_ELEMNULL);
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, __local_name, node[i]->element);
+            merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         }
         /* Mail notification */
@@ -59,11 +59,11 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
             } else if (strcmp(node[i]->content, "postgresql") == 0) {
                 db_config->db_type = POSTGDB;
             } else {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         } else {
-            merror(XML_INVELEM, __local_name, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
         i++;

@@ -50,14 +50,14 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     fp = fopen(def_file, "r");
     if (!fp) {
         if (strcmp(defines_file, OSSEC_LDEFINES) != 0) {
-            merror(FOPEN_ERROR, __local_name, def_file, errno, strerror(errno));
+            merror(FOPEN_ERROR, def_file, errno, strerror(errno));
         }
         return (NULL);
     }
 
     /* Invalid call */
     if (!high_name || !low_name) {
-        merror(NULL_ERROR, __local_name);
+        merror(NULL_ERROR);
         fclose(fp);
         return (NULL);
     }
@@ -73,7 +73,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         /* Messages not formatted correctly */
         buf_pt = strchr(buf, '.');
         if (!buf_pt) {
-            merror(FGETS_ERROR, __local_name, def_file, buf);
+            merror(FGETS_ERROR, def_file, buf);
             continue;
         }
 
@@ -89,7 +89,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         /* Get the equal */
         buf_pt = strchr(buf_pt, '=');
         if (!buf_pt) {
-            merror(FGETS_ERROR, __local_name, def_file, buf);
+            merror(FGETS_ERROR, def_file, buf);
             continue;
         }
 
@@ -194,21 +194,21 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
     if (!value) {
         value = _read_file(high_name, low_name, OSSEC_DEFINES);
         if (!value) {
-            ErrorExit(DEF_NOT_FOUND, __local_name, high_name, low_name);
+            merror_exit(DEF_NOT_FOUND, high_name, low_name);
         }
     }
 
     pt = value;
     while (*pt != '\0') {
         if (!isdigit((int)*pt)) {
-            ErrorExit(INV_DEF, __local_name, high_name, low_name, value);
+            merror_exit(INV_DEF, high_name, low_name, value);
         }
         pt++;
     }
 
     ret = atoi(value);
     if ((ret < min) || (ret > max)) {
-        ErrorExit(INV_DEF, __local_name, high_name, low_name, value);
+        merror_exit(INV_DEF, high_name, low_name, value);
     }
 
     /* Clear memory */
@@ -459,7 +459,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
 
     /* Invalid time format */
     if (!isdigit((int)*str)) {
-        merror(INVALID_TIME, __local_name, str);
+        merror(INVALID_TIME, str);
     }
 
     /* Hour */
@@ -467,7 +467,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
 
     /* Get a valid hour */
     if (chour < 0 || chour >= 24) {
-        merror(INVALID_TIME, __local_name, str);
+        merror(INVALID_TIME, str);
         return (NULL);
     }
 
@@ -479,7 +479,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
 
     /* Invalid hour */
     if (_size > 2) {
-        merror(INVALID_TIME, __local_name, str);
+        merror(INVALID_TIME, str);
         return (NULL);
     }
 
@@ -488,7 +488,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
         str++;
         if ((!isdigit((int)*str) ||
                 !isdigit((int) * (str + 1))) && isdigit((int) * (str + 2))) {
-            merror(INVALID_TIME, __local_name, str);
+            merror(INVALID_TIME, str);
             return (NULL);
         }
 
@@ -513,7 +513,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
 
             /* New hour must be valid */
             if (chour < 0 || chour >= 24) {
-                merror(INVALID_TIME, __local_name, str);
+                merror(INVALID_TIME, str);
                 return (NULL);
             }
 
@@ -528,7 +528,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
     }
 
     /* Here is error */
-    merror(INVALID_TIME, __local_name, str);
+    merror(INVALID_TIME, str);
     return (NULL);
 }
 
@@ -719,7 +719,7 @@ char *OS_IsValidDay(const char *day_str)
         }
 
         if (!days[i]) {
-            merror(INVALID_DAY, __local_name, day_str);
+            merror(INVALID_DAY, day_str);
             return (NULL);
         }
 
@@ -731,7 +731,7 @@ char *OS_IsValidDay(const char *day_str)
         } else if (*day_str == '\0') {
             break;
         } else {
-            merror(INVALID_DAY, __local_name, day_str);
+            merror(INVALID_DAY, day_str);
             return (NULL);
         }
     }
@@ -755,7 +755,7 @@ char *OS_IsValidDay(const char *day_str)
     /* At least one day must be checked */
     if (ng == 0) {
         free(ret);
-        merror(INVALID_DAY, __local_name, day_str);
+        merror(INVALID_DAY, day_str);
         return (NULL);
     }
 

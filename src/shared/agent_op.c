@@ -37,7 +37,7 @@ int os_set_restart_syscheck()
 
     fp = fopen(SYSCHECK_RESTART, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, __local_name, SYSCHECK_RESTART, errno, strerror(errno));
+        merror(FOPEN_ERROR, SYSCHECK_RESTART, errno, strerror(errno));
         return (0);
     }
 
@@ -55,7 +55,7 @@ char *os_read_agent_name()
     char buf[1024 + 1];
     FILE *fp = NULL;
 
-    debug2("%s: calling os_read_agent_name().", __local_name);
+    mdebug2("Calling os_read_agent_name().");
 
     if (isChroot()) {
         fp = fopen(AGENT_INFO_FILE, "r");
@@ -75,7 +75,7 @@ char *os_read_agent_name()
     }
 
     if (!fp) {
-        debug1(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
+        mdebug1(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
 
@@ -94,7 +94,7 @@ char *os_read_agent_name()
         os_strdup(buf, ret);
         fclose(fp);
 
-        debug2("%s: os_read_agent_name returned (%s).", __local_name, ret);
+        mdebug2("os_read_agent_name returned (%s).", ret);
 
         return (ret);
     }
@@ -111,11 +111,11 @@ char *os_read_agent_ip()
     char buf[1024 + 1];
     FILE *fp;
 
-    debug2("%s: calling os_read_agent_ip().", __local_name);
+    mdebug2("Calling os_read_agent_ip().");
 
     fp = fopen(AGENT_INFO_FILE, "r");
     if (!fp) {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
+        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
 
@@ -142,11 +142,11 @@ char *os_read_agent_id()
     char buf[1024 + 1];
     FILE *fp;
 
-    debug2("%s: calling os_read_agent_id().", __local_name);
+    mdebug2("Calling os_read_agent_id().");
 
     fp = fopen(AGENT_INFO_FILE, "r");
     if (!fp) {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
+        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
 
@@ -180,7 +180,7 @@ char *os_read_agent_profile()
     char buf[1024 + 1];
     FILE *fp;
 
-    debug2("%s: calling os_read_agent_profile().", __local_name);
+    mdebug2("Calling os_read_agent_profile().");
 
     if (isChroot()) {
         fp = fopen(AGENT_INFO_FILE, "r");
@@ -189,8 +189,8 @@ char *os_read_agent_profile()
     }
 
     if (!fp) {
-        debug2("%s: Failed to open file. Errno=%d.", __local_name, errno);
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
+        mdebug2("Failed to open file. Errno=%d.", errno);
+        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
 
@@ -205,7 +205,7 @@ char *os_read_agent_profile()
         os_trimcrlf(buf);
 
         os_strdup(buf, ret);
-        debug2("%s: os_read_agent_profile() = [%s]", __local_name, ret);
+        mdebug2("os_read_agent_profile() = [%s]", ret);
 
         fclose(fp);
 
@@ -226,7 +226,7 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 
     fp = fopen(AGENT_INFO_FILE, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
+        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (0);
     }
 
@@ -248,12 +248,12 @@ int get_agent_group(const char *id, char *group, size_t size) {
     FILE *fp;
 
     if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", id) >= PATH_MAX) {
-        merror("%s: ERROR: At get_agent_group(): file path too large for agent '%s'.", __local_name, id);
+        merror("At get_agent_group(): file path too large for agent '%s'.", id);
         return -1;
     }
 
     if (!(fp = fopen(path, "r"))) {
-        debug1("%s: DEBUG: At get_agent_group(): file '%s' not found.", __local_name, path);
+        mdebug1("At get_agent_group(): file '%s' not found.", path);
         return -1;
     }
 
@@ -264,7 +264,7 @@ int get_agent_group(const char *id, char *group, size_t size) {
             *endl = '\0';
         }
     } else {
-        merror("%s: WARN: Empty group for agent ID '%s'.", __local_name, id);
+        mwarn("Empty group for agent ID '%s'.", id);
         result = -1;
     }
 
@@ -278,12 +278,12 @@ int set_agent_group(const char * id, const char * group) {
     FILE *fp;
 
     if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", id) >= PATH_MAX) {
-        merror("%s: ERROR: At set_agent_group(): file path too large for agent '%s'.", __local_name, id);
+        merror("At set_agent_group(): file path too large for agent '%s'.", id);
         return -1;
     }
 
     if (!(fp = fopen(path, "w"))) {
-        debug1("%s: DEBUG: At get_agent_group(): file '%s' not found.", __local_name, path);
+        mdebug1("At get_agent_group(): file '%s' not found.", path);
         return -1;
     }
 

@@ -70,9 +70,9 @@ void *read_snortfull(int pos, int *rc, int drop_it)
                     if (drop_it == 0) {
                         if (SendMSG(logr_queue, f_msg, logff[pos].file,
                                     LOCALFILE_MQ) < 0) {
-                            merror(QUEUE_SEND, ARGV0);
+                            merror(QUEUE_SEND);
                             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
                             }
                         }
                     }
@@ -94,9 +94,9 @@ void *read_snortfull(int pos, int *rc, int drop_it)
                     if (drop_it == 0) {
                         if (SendMSG(logr_queue, f_msg, logff[pos].file,
                                     LOCALFILE_MQ) < 0) {
-                            merror(QUEUE_SEND, ARGV0);
+                            merror(QUEUE_SEND);
                             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
                             }
                         }
                     }
@@ -115,7 +115,7 @@ void *read_snortfull(int pos, int *rc, int drop_it)
 
 file_error:
 
-        merror("%s: Bad formated snort full file.", ARGV0);
+        merror("Bad formated snort full file.");
         *rc = -1;
         return (NULL);
 

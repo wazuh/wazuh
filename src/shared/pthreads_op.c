@@ -22,12 +22,12 @@ int CreateThread(void *function_pointer(void *data), void *data)
 
     ret = pthread_create(&lthread, NULL, function_pointer, (void *)data);
     if (ret != 0) {
-        merror(THREAD_ERROR, __local_name);
+        merror(THREAD_ERROR);
         return (-1);
     }
 
     if (pthread_detach(lthread) != 0) {
-        merror(THREAD_ERROR, __local_name);
+        merror(THREAD_ERROR);
         return (-1);
     }
 

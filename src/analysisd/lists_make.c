@@ -49,7 +49,7 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
         tmp_fd = fopen(tmp_filename, "w+");
         cdb_make_start(&cdbm, tmp_fd);
         if (!(txt_fd = fopen(txt_filename, "r"))) {
-            merror(FOPEN_ERROR, ARGV0, txt_filename, errno, strerror(errno));
+            merror(FOPEN_ERROR, txt_filename, errno, strerror(errno));
             return;
         }
         while ((fgets(str, OS_MAXSTR - 1, txt_fd)) != NULL) {
@@ -79,7 +79,7 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
 
         cdb_make_finish(&cdbm);
         if (rename(tmp_filename, cdb_filename) == -1) {
-            merror(RENAME_ERROR, ARGV0, tmp_filename, cdb_filename, errno, strerror(errno));
+            merror(RENAME_ERROR, tmp_filename, cdb_filename, errno, strerror(errno));
             return;
         }
     } else {

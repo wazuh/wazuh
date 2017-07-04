@@ -51,7 +51,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
     }
 
     if (snprintf(path, PATH_MAX, AGENTINFO_DIR "/%s-%s", hostname, ip) >= PATH_MAX) {
-        merror("%s: ERROR: at labels_find(): path too long.", __local_name);
+        merror("at labels_find(): path too long.");
         return NULL;
     }
 
@@ -64,7 +64,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         data->labels = labels_parse(path);
 
         if (!data->labels) {
-            debug1("%s: INFO: labels for agent %s (%s) not yet available.", __local_name, hostname, ip);
+            mdebug1("labels for agent %s (%s) not yet available.", hostname, ip);
             free(data);
             return NULL;
         }
@@ -72,14 +72,14 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         data->mtime = File_DateofChange(path);
 
         if (data->mtime == -1) {
-            merror("%s: ERROR: getting stats for agent %s (%s). Getting old data.", __local_name, hostname, ip);
+            merror("Getting stats for agent %s (%s). Getting old data.", hostname, ip);
             labels_free(data->labels);
             free(data);
             return NULL;
         }
 
         if (OSHash_Add(label_cache, path, data) < 2) {
-            merror("%s: ERROR: couldn't store labels for agent %s (%s) on cache.", __local_name, hostname, ip);
+            merror("Couldn't store labels for agent %s (%s) on cache.", hostname, ip);
             labels_free(data->labels);
             free(data);
             return NULL;
@@ -91,7 +91,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         time_t mtime = File_DateofChange(path);;
 
         if (mtime == -1) {
-            merror("%s: ERROR: getting stats for agent %s (%s). Getting old data.", __local_name, hostname, ip);
+            merror("Getting stats for agent %s (%s). Getting old data.", hostname, ip);
         } else if (mtime > data->mtime + Config.label_cache_maxage) {
             // Update file, keep old to return in case of error
 
@@ -100,7 +100,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
             new_data->mtime = mtime;
 
             if (!OSHash_Update(label_cache, path, new_data)) {
-                merror("%s: ERROR: couldn't update labels for agent %s (%s) on cache.", __local_name, hostname, ip);
+                merror("Couldn't update labels for agent %s (%s) on cache.", hostname, ip);
                 labels_free(new_data->labels);
                 free(new_data);
                 return NULL;

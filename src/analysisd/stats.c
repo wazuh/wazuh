@@ -59,7 +59,7 @@ static void print_totals(void)
     snprintf(logfile, OS_FLSIZE, "%s/%d/", STATSAVED, prev_year);
     if (IsDir(logfile) == -1)
         if (mkdir(logfile, 0770) == -1) {
-            merror(MKDIR_ERROR, ARGV0, logfile, errno, strerror(errno));
+            merror(MKDIR_ERROR, logfile, errno, strerror(errno));
             return;
         }
 
@@ -67,7 +67,7 @@ static void print_totals(void)
 
     if (IsDir(logfile) == -1)
         if (mkdir(logfile, 0770) == -1) {
-            merror(MKDIR_ERROR, ARGV0, logfile, errno, strerror(errno));
+            merror(MKDIR_ERROR, logfile, errno, strerror(errno));
             return;
         }
 
@@ -81,7 +81,7 @@ static void print_totals(void)
 
     flog = fopen(logfile, "a");
     if (!flog) {
-        merror(FOPEN_ERROR, ARGV0, logfile, errno, strerror(errno));
+        merror(FOPEN_ERROR, logfile, errno, strerror(errno));
         return;
     }
 
@@ -168,7 +168,7 @@ void Update_Hour()
         }
 
         else {
-            merror(FOPEN_ERROR, "logstats", _hourly, errno, strerror(errno));
+            mterror("logstats", FOPEN_ERROR, _hourly, errno, strerror(errno));
         }
 
         _CHour[i] = 0; /* Zero the current hour */
@@ -210,7 +210,7 @@ void Update_Hour()
                 fprintf(fp, "%d", _RWHour[i][j]);
                 fclose(fp);
             } else {
-                merror(FOPEN_ERROR, "logstats", _weekly, errno, strerror(errno));
+                mterror("logstats", FOPEN_ERROR, _weekly, errno, strerror(errno));
             }
 
             _CWHour[i][j] = 0;
@@ -339,16 +339,14 @@ int Start_Hour()
     /* Create the stat queue directories */
     if (IsDir(STATWQUEUE) == -1) {
         if (mkdir(STATWQUEUE, 0770) == -1) {
-            merror("%s: logstat: Unable to create stat queue: %s",
-                   ARGV0, STATWQUEUE);
+            mterror("logstats", "Unable to create stat queue: %s", STATWQUEUE);
             return (-1);
         }
     }
 
     if (IsDir(STATQUEUE) == -1) {
         if (mkdir(STATQUEUE, 0770) == -1) {
-            merror("%s: logstat: Unable to create stat queue: %s",
-                   ARGV0, STATQUEUE);
+            mterror("logstats", "Unable to create stat queue: %s", STATQUEUE);
             return (-1);
         }
     }
@@ -356,8 +354,7 @@ int Start_Hour()
     /* Create store dir */
     if (IsDir(STATSAVED) == -1) {
         if (mkdir(STATSAVED, 0770) == -1) {
-            merror("%s: logstat: Unable to create stat directory: %s",
-                   ARGV0, STATSAVED);
+            mterror("logstats", "Unable to create stat directory: %s", STATSAVED);
             return (-1);
         }
     }
@@ -396,8 +393,7 @@ int Start_Hour()
         snprintf(_weekly, 128, "%s/%d", STATWQUEUE, i);
         if (IsDir(_weekly) == -1)
             if (mkdir(_weekly, 0770) == -1) {
-                merror("%s: logstat: Unable to create stat queue: %s",
-                       ARGV0, _weekly);
+                mterror("logstats", "Unable to create stat queue: %s", _weekly);
                 return (-1);
             }
 
@@ -462,4 +458,3 @@ void LastMsg_Change(const char *log)
     os_strdup(log, _lastmsg);
     return;
 }
-

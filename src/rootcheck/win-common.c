@@ -329,7 +329,7 @@ int is_registry(char *entry_name, char *reg_option, char *reg_value)
 
     rk = __os_winreg_getkey(entry_name);
     if (rk_sub_tree == NULL || rk == NULL) {
-        merror(SK_INV_REG, ARGV0, entry_name);
+        mterror(ARGV0, SK_INV_REG, entry_name);
         return (0);
     }
 

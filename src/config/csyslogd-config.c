@@ -53,21 +53,21 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
 
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL, __local_name);
+            merror(XML_ELEMNULL);
             goto fail;
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, __local_name, node[i]->element);
+            merror(XML_VALUENULL, node[i]->element);
             goto fail;
         } else if (strcmp(node[i]->element, xml_syslog_level) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 goto fail;
             }
 
             syslog_config[s]->level = (unsigned int) atoi(node[i]->content);
         } else if (strcmp(node[i]->element, xml_syslog_port) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 goto fail;
             }
 
@@ -93,8 +93,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
                     unsigned int id_i = 0;
 
                     r_id = (unsigned int) atoi(str_pt);
-                    debug1("%s: DEBUG: Adding '%d' to syslog alerting",
-                           __local_name, r_id);
+                    mdebug1("Adding '%d' to syslog alerting", r_id);
 
                     if (syslog_config[s]->rule_id) {
                         while (syslog_config[s]->rule_id[id_i]) {
@@ -141,14 +140,14 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
                 /* Enable the Splunk Key/Value format */
                 syslog_config[s]->format = SPLUNK_CSYSLOG;
             } else {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 goto fail;
             }
         } else if (strcmp(node[i]->element, xml_syslog_location) == 0) {
             os_calloc(1, sizeof(OSMatch), syslog_config[s]->location);
             if (!OSMatch_Compile(node[i]->content,
                                  syslog_config[s]->location, 0)) {
-                merror(REGEX_COMPILE, __local_name, node[i]->content,
+                merror(REGEX_COMPILE, node[i]->content,
                        syslog_config[s]->location->error);
                 goto fail;
             }
@@ -158,19 +157,19 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
             } else if (strcmp(node[i]->content, "no") == 0) {
                 syslog_config[s]->use_fqdn = 0;
             } else {
-                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 goto fail;
             }
         } else if (strcmp(node[i]->element, xml_syslog_group) == 0) {
             os_calloc(1, sizeof(OSMatch), syslog_config[s]->group);
             if (!OSMatch_Compile(node[i]->content,
                                  syslog_config[s]->group, 0)) {
-                merror(REGEX_COMPILE, __local_name, node[i]->content,
+                merror(REGEX_COMPILE, node[i]->content,
                        syslog_config[s]->group->error);
                 goto fail;
             }
         } else {
-            merror(XML_INVELEM, __local_name, node[i]->element);
+            merror(XML_INVELEM, node[i]->element);
             goto fail;
         }
         i++;
@@ -178,7 +177,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
 
     /* We must have at least one entry set */
     if (!syslog_config[s]->server) {
-        merror(XML_INV_CSYSLOG, __local_name);
+        merror(XML_INV_CSYSLOG);
         goto fail;
     }
 
@@ -205,4 +204,3 @@ fail:
     free(syslog_config);
     return (OS_INVALID);
 }
-

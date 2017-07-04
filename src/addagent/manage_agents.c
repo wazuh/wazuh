@@ -120,7 +120,7 @@ int add_agent(int json_output)
                 printf("%s", cJSON_PrintUnformatted(json_root));
                 exit(1);
             } else
-                ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+                merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
         }
         fclose(fp);
 
@@ -321,7 +321,7 @@ int add_agent(int json_output)
                         printf("%s", cJSON_PrintUnformatted(json_root));
                         exit(1);
                     } else
-                        ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
+                        merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
                 }
 
                 /* Random 1: Time took to write the agent information
@@ -355,7 +355,7 @@ int add_agent(int json_output)
                         printf("%s", cJSON_PrintUnformatted(json_root));
                         exit(1);
                     } else
-                        ErrorExit("%s: Could not write file '%s'", ARGV0, AUTH_FILE);
+                        merror_exit("Could not write file '%s'", AUTH_FILE);
                 }
 
                 free(file.name);
@@ -497,7 +497,7 @@ int remove_agent(int json_output)
                         printf("%s", cJSON_PrintUnformatted(json_root));
                         exit(1);
                     } else
-                        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+                        merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
                 }
 
                 free(full_name);

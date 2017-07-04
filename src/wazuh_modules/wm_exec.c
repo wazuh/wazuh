@@ -52,14 +52,14 @@ int wm_exec(char *command, char **output, int *status, int secs) {
     // Create stdout pipe and make it inheritable
 
     if (!CreatePipe(&tinfo.pipe, &sinfo.hStdOutput, NULL, 0)) {
-        merror("%s: ERROR: CreatePipe()", ARGV0);
+        merror("CreatePipe()");
         return -1;
     }
 
     sinfo.hStdError = sinfo.hStdOutput;
 
     if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
-        merror("%s: ERROR: SetHandleInformation()", ARGV0);
+        merror("SetHandleInformation()");
         return -1;
     }
 
@@ -72,7 +72,7 @@ int wm_exec(char *command, char **output, int *status, int secs) {
                       IDLE_PRIORITY_CLASS;
 
     if (!CreateProcess(NULL, command, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
-        merror("%s: ERROR: CreateProcess(): %ld", ARGV0, GetLastError());
+        merror("CreateProcess(): %ld", GetLastError());
         return -1;
     }
 
@@ -83,7 +83,7 @@ int wm_exec(char *command, char **output, int *status, int secs) {
     hThread = CreateThread(NULL, 0, Reader, &tinfo, 0, NULL);
 
     if (!hThread) {
-        merror("%s: ERROR: CreateThread(): %ld", ARGV0, GetLastError());
+        merror("CreateThread(): %ld", GetLastError());
         return -1;
     }
 
@@ -105,7 +105,7 @@ int wm_exec(char *command, char **output, int *status, int secs) {
         break;
 
     default:
-        merror("%s: ERROR: WaitForSingleObject()", ARGV0);
+        merror("WaitForSingleObject()");
         TerminateProcess(pinfo.hProcess, 1);
         retval = -1;
     }
@@ -145,7 +145,7 @@ DWORD WINAPI Reader(LPVOID args) {
                 memcpy(tinfo->output + length, buffer, nbytes);
                 length = nextsize;
             } else {
-                merror("%s: WARN: String limit reached.", ARGV0);
+                mwarn("String limit reached.");
                 break;
             }
         }
@@ -213,7 +213,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         // Error
 
-        merror("%s: ERROR: fork()", ARGV0);
+        merror("fork()");
         return -1;
 
     case 0:
@@ -247,7 +247,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         pthread_mutex_lock(&tinfo.mutex);
 
         if (pthread_create(&thread, NULL, reader, &tinfo)) {
-            merror("%s: ERROR: Couldn't create reading thread.", ARGV0);
+            merror("Couldn't create reading thread.");
             pthread_mutex_unlock(&tinfo.mutex);
             return -1;
         }
@@ -283,7 +283,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         switch (waitpid(pid, &status, 0)) {
         case -1:
-            merror("%s: ERROR: waitpid()", ARGV0);
+            merror("waitpid()");
             retval = -1;
             break;
 
@@ -326,7 +326,7 @@ void* reader(void *args) {
             memcpy(tinfo->output + length, buffer, nbytes);
             length = nextsize;
         } else {
-            merror("%s: WARN: String limit reached.", ARGV0);
+            mwarn("String limit reached.");
             break;
         }
     }
@@ -359,7 +359,7 @@ void wm_append_sid(pid_t sid) {
     pthread_mutex_unlock(&wm_children_mutex);
 
     if (i == WM_POOL_SIZE)
-        merror("%s: ERROR: Child process pool is full. Couldn't register sid %d.", ARGV0, (int)sid);
+        merror("Child process pool is full. Couldn't register sid %d.", (int)sid);
 }
 
 // Remove process group from pool
@@ -377,7 +377,7 @@ void wm_remove_sid(pid_t sid) {
     }
 
     if (i == WM_POOL_SIZE)
-        merror("%s: ERROR: Child process %d not found.", ARGV0, (int)sid);
+        merror("Child process %d not found.", (int)sid);
 
     pthread_mutex_unlock(&wm_children_mutex);
 }

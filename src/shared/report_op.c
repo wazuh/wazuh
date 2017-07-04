@@ -193,7 +193,7 @@ static int _report_filter_value(const char *filter_by, int prev_filter)
         }
         return (prev_filter);
     } else {
-        merror("%s: ERROR: Invalid relation '%s'.", __local_name, filter_by);
+        merror("Invalid relation '%s'.", filter_by);
         return (-1);
     }
 }
@@ -300,7 +300,7 @@ static int _os_report_add_tostore(const char *key, OSStore *top, void *data)
     } else {
         top_list = OSList_Create();
         if (!top_list) {
-            merror(MEM_ERROR, __local_name, errno, strerror(errno));
+            merror(MEM_ERROR, errno, strerror(errno));
             return (0);
         }
         OSList_AddData(top_list, data);
@@ -402,7 +402,7 @@ void os_ReportdStart(report_filter *r_filter)
     if (r_filter->report_type == REPORT_TYPE_DAILY && r_filter->filename) {
         fileq->fp = fopen(r_filter->filename, "r");
         if (!fileq->fp) {
-            merror("%s: ERROR: Unable to open alerts file to generate report.", __local_name);
+            merror("Unable to open alerts file to generate report.");
             goto cleanup;
         }
         if (r_filter->fp) {
@@ -423,7 +423,7 @@ void os_ReportdStart(report_filter *r_filter)
 
     if (!r_filter->top_user || !r_filter->top_srcip || !r_filter->top_level || !r_filter->top_rule
             || !r_filter->top_group || !r_filter->top_location || !r_filter->top_files) {
-        merror(MEM_ERROR, __local_name, errno, strerror((errno)));
+        merror(MEM_ERROR, errno, strerror((errno)));
 
         if (r_filter->top_user) {
             OSStore_Free(r_filter->top_user);
@@ -557,18 +557,18 @@ void os_ReportdStart(report_filter *r_filter)
     /* No report available */
     if (alerts_filtered == 0) {
         if (!r_filter->report_name) {
-            merror("%s: INFO: Report completed and zero alerts post-filter.", __local_name);
+            minfo("Report completed and zero alerts post-filter.");
         } else {
-            merror("%s: INFO: Report '%s' completed and zero alerts post-filter.", __local_name, r_filter->report_name);
+            minfo("Report '%s' completed and zero alerts post-filter.", r_filter->report_name);
         }
 
         goto cleanup;
     }
 
     if (r_filter->report_name) {
-        verbose("%s: INFO: Report '%s' completed. Creating output...", __local_name, r_filter->report_name);
+        minfo("Report '%s' completed. Creating output...", r_filter->report_name);
     } else {
-        verbose("%s: INFO: Report completed. Creating output...", __local_name);
+        minfo("Report completed. Creating output...");
     }
 
     l_print_out(" ");
@@ -683,7 +683,7 @@ int os_report_configfilter(const char *filter_by, const char *filter_value,
         } else if (strcmp(filter_by, "filename") == 0) {
             r_filter->files = filter_value;
         } else {
-            merror("%s: ERROR: Invalid filter '%s'.", __local_name, filter_by);
+            merror("Invalid filter '%s'.", filter_by);
             return (-1);
         }
     } else {
@@ -737,11 +737,10 @@ int os_report_configfilter(const char *filter_by, const char *filter_value,
                 return (-1);
             }
         } else {
-            merror("%s: ERROR: Invalid related entry '%s'.", __local_name, filter_by);
+            merror("Invalid related entry '%s'.", filter_by);
             return (-1);
         }
     }
 
     return (0);
 }
-

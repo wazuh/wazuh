@@ -76,7 +76,7 @@ static int __DBInsertLocation(const char *location, const DBConfig *db_config)
              db_config->server_id, location);
 
     if (!osdb_query_insert(db_config->conn, sql_query)) {
-        merror(DB_GENERROR, ARGV0);
+        merror(DB_GENERROR);
     }
 
     return (0);
@@ -128,7 +128,7 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
     /* Escape strings */
     osdb_escapestr(al_data->user);
     osdb_escapestr(al_data->location);
-    
+
     /* We first need to insert the location */
     loc_id = (int *) OSHash_Get(db_config->location_hash, al_data->location);
 
@@ -142,8 +142,7 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
         }
 
         if (!location_id) {
-            merror("%s: Unable to insert location: '%s'.",
-                   ARGV0, al_data->location);
+            merror("Unable to insert location: '%s'.", al_data->location);
             return (0);
         }
 
@@ -167,7 +166,7 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
     }
 
     if (fulllog == NULL) {
-        merror("%s: Unable to process log.", ARGV0);
+        merror("Unable to process log.");
         return (0);
     }
 
@@ -214,7 +213,7 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
 
     /* Insert into the db */
     if (!osdb_query_insert(db_config->conn, sql_query)) {
-        merror(DB_GENERROR, ARGV0);
+        merror(DB_GENERROR);
     }
 
     db_config->alert_id++;

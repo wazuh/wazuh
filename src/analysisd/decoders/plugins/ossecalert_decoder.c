@@ -14,7 +14,7 @@
 /* OSSECAlert decoder init */
 void *OSSECAlert_Decoder_Init()
 {
-    debug1("%s: Initializing OSSECAlert decoder.", ARGV0);
+    mdebug1("Initializing OSSECAlert decoder.");
 
 
     /* There is nothing else to do over here */
@@ -69,7 +69,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
     /* Get rule structure */
     rule_pointer = (RuleInfo *) OSHash_Get(Config.g_rules_hash, oa_id);
     if (!rule_pointer) {
-        merror("%s: WARN: Rule id '%s' not found internally: %s", ARGV0, oa_id, lf->log);
+        mwarn("Rule id '%s' not found internally: %s", oa_id, lf->log);
         *tmp_str = ' ';
         return (NULL);
     }

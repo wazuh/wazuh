@@ -53,7 +53,7 @@ int receive_msg()
             recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
             if (recv_b != length) {
-                merror(RECV_ERROR, ARGV0);
+                merror(RECV_ERROR);
                 continue;
             }
 
@@ -69,7 +69,7 @@ int receive_msg()
 
         tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, agt->rip[agt->rip_id]);
         if (tmp_msg == NULL) {
-            merror(MSG_ERROR, ARGV0, agt->rip[agt->rip_id]);
+            mwarn(MSG_ERROR, agt->rip[agt->rip_id]);
             continue;
         }
 
@@ -90,8 +90,7 @@ int receive_msg()
 #ifndef WIN32
                 if (agt->execdq >= 0) {
                     if (OS_SendUnix(agt->execdq, tmp_msg, 0) < 0) {
-                        merror("%s: Error communicating with execd",
-                               ARGV0);
+                        merror("Error communicating with execd");
                     }
                 }
 #else
@@ -161,7 +160,7 @@ int receive_msg()
 
                 fp = fopen(file, "w");
                 if (!fp) {
-                    merror(FOPEN_ERROR, ARGV0, file, errno, strerror(errno));
+                    merror(FOPEN_ERROR, file, errno, strerror(errno));
                 }
             }
 
@@ -186,8 +185,8 @@ int receive_msg()
                     file[0] = '\0';
                 } else {
                     if (strcmp(currently_md5, file_sum) != 0) {
-                        debug1("%s: ERROR: Failed md5 for: %s -- deleting.",
-                               ARGV0, file);
+                        mdebug1("Failed md5 for: %s -- deleting.",
+                               file);
                         unlink(file);
                     } else {
                         char *final_file;
@@ -209,7 +208,7 @@ int receive_msg()
             }
 
             else {
-                merror("%s: WARN: Unknown message received from server.", ARGV0);
+                mwarn("Unknown message received from server.");
             }
         }
 
@@ -219,8 +218,7 @@ int receive_msg()
         }
 
         else {
-            merror("%s: WARN: Unknown message received. No action defined.",
-                   ARGV0);
+            mwarn("Unknown message received. No action defined.");
         }
     }
 

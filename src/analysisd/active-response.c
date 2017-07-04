@@ -27,7 +27,7 @@ void AR_Init()
     ar_flag = 0;
 
     if (!ar_commands || !active_responses) {
-        ErrorExit(LIST_ERROR, ARGV0);
+        merror_exit(LIST_ERROR);
     }
 }
 
@@ -44,7 +44,7 @@ int AR_ReadConfig(const char *cfgfile)
     /* Clean ar file */
     fp = fopen(DEFAULTARPATH, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH, errno, strerror(errno));
+        merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
         return (OS_INVALID);
     }
     fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\n");
@@ -66,7 +66,7 @@ int AR_ReadConfig(const char *cfgfile)
 
     /* Set right permission */
     if (chmod(DEFAULTARPATH, 0640) == -1) {
-        merror(CHMOD_ERROR, ARGV0, DEFAULTARPATH, errno, strerror(errno));
+        merror(CHMOD_ERROR, DEFAULTARPATH, errno, strerror(errno));
         return (OS_INVALID);
     }
 

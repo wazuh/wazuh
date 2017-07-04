@@ -29,7 +29,7 @@ int wdb_insert_pm(sqlite3 *db, const rk_event_t *event) {
     char *cis;
 
     if (wdb_prepare(db, SQL_INSERT_PM, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         return -1;
     }
 
@@ -55,7 +55,7 @@ int wdb_update_pm(sqlite3 *db, const rk_event_t *event) {
     int result;
 
     if (wdb_prepare(db, SQL_UPDATE_PM, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         return -1;
     }
 
@@ -84,7 +84,7 @@ int wdb_delete_pm(int id) {
         return -1;
 
     if (wdb_prepare(db, SQL_DELETE_PM, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         sqlite3_close_v2(db);
         return -1;
     }

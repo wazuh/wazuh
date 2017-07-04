@@ -36,7 +36,7 @@ void OS_DBD(DBConfig *db_config)
     /* Create location hash */
     db_config->location_hash = OSHash_Create();
     if (!db_config->location_hash) {
-        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+        merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
     /* Get maximum ID */

@@ -70,7 +70,7 @@ void SyscheckInit()
     sdb.idn = getDecoderfromlist(SYSCHECK_NEW);
     sdb.idd = getDecoderfromlist(SYSCHECK_DEL);
 
-    debug1("%s: SyscheckInit completed.", ARGV0);
+    mdebug1("SyscheckInit completed.");
 }
 
 /* Check if the db is completed for that specific agent */
@@ -149,7 +149,7 @@ static FILE *DB_File(const char *agent, int *agent_id)
 
     /* If here, our agent wasn't found */
     if (i == MAX_AGENTS) {
-        merror("%s: Unable to open integrity file. Increase MAX_AGENTS.", ARGV0);
+        merror("Unable to open integrity file. Increase MAX_AGENTS.");
         return (NULL);
     }
 
@@ -171,7 +171,7 @@ static FILE *DB_File(const char *agent, int *agent_id)
 
     /* Check again */
     if (!sdb.agent_fps[i]) {
-        merror("%s: Unable to open '%s'", ARGV0, sdb.buf);
+        merror("Unable to open '%s'", sdb.buf);
 
         free(sdb.agent_ips[i]);
         sdb.agent_ips[i] = NULL;
@@ -208,7 +208,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
     /* Get db pointer */
     fp = DB_File(lf->location, &agent_id);
     if (!fp) {
-        merror("%s: Error handling integrity database.", ARGV0);
+        merror("Error handling integrity database.");
         sdb.db_err++;
         lf->data = NULL;
         return (0);
@@ -216,7 +216,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
     /* Read the integrity file and search for a possible entry */
     if (fgetpos(fp, &sdb.init_pos) == -1) {
-        merror("%s: Error handling integrity database (fgetpos).", ARGV0);
+        merror("Error handling integrity database (fgetpos).");
         return (0);
     }
 
@@ -231,7 +231,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
         /* Get name */
         saved_name = strchr(sdb.buf, ' ');
         if (saved_name == NULL) {
-            merror("%s: Invalid integrity message in the database.", ARGV0);
+            merror("Invalid integrity message in the database.");
             fgetpos(fp, &sdb.init_pos); /* Get next location */
             continue;
         }
@@ -242,7 +242,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
         if (*saved_name == '!') {
             saved_name = strchr(saved_name, ' ');
             if (saved_name == NULL) {
-                merror("%s: Invalid integrity message in the database", ARGV0);
+                merror("Invalid integrity message in the database");
                 fgetpos(fp, &sdb.init_pos); /* Get next location */
                 continue;
             }
@@ -274,7 +274,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
             return (0);
         }
 
-        debug2("Agent: %d, location: <%s>, file: <%s>, sum: <%s>, saved: <%s>", agent_id, lf->location, f_name, c_sum, saved_sum);
+        mdebug2("Agent: %d, location: <%s>, file: <%s>, sum: <%s>, saved: <%s>", agent_id, lf->location, f_name, c_sum, saved_sum);
 
         /* If we reached here, the checksum of the file has changed */
         if (saved_sum[-3] == '!') {
@@ -316,7 +316,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
         /* Add new checksum to the database */
         /* Commenting the file entry and adding a new one later */
         if (fsetpos(fp, &sdb.init_pos)) {
-            merror("%s: Error handling integrity database (fsetpos).", ARGV0);
+            merror("Error handling integrity database (fsetpos).");
             return (0);
         }
         fputc('#', fp);
@@ -334,14 +334,14 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
         switch (sk_decode_sum(&newsum, c_sum)) {
         case -1:
-            merror("%s: ERROR: Couldn't decode syscheck sum from log.", ARGV0);
+            merror("Couldn't decode syscheck sum from log.");
             lf->data = NULL;
             return 0;
 
         case 0:
             switch (sk_decode_sum(&oldsum, saved_sum)) {
             case -1:
-                merror("%s: ERROR: Couldn't decode syscheck sum from database.", ARGV0);
+                merror("Couldn't decode syscheck sum from database.");
                 lf->data = NULL;
                 return 0;
 
@@ -518,7 +518,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
     switch (sk_decode_sum(&newsum, c_sum)) {
         case -1:
-            merror("%s: ERROR: Couldn't decode syscheck sum from log.", ARGV0);
+            merror("Couldn't decode syscheck sum from log.");
             break;
 
         case 0:
@@ -549,7 +549,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
             break;
 
         case 1:
-            merror("%s: WARN: Missing file entry.", ARGV0);
+            mwarn("Missing file entry.");
             break;
     }
 
@@ -579,7 +579,7 @@ int DecodeSyscheck(Eventinfo *lf)
             return (0);
         }
 
-        merror(SK_INV_MSG, ARGV0);
+        merror(SK_INV_MSG);
         return (0);
     }
 

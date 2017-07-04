@@ -52,7 +52,7 @@ char *getsharedfiles()
     /* We control these files, max size is m_size */
     ret = (char *)calloc(m_size + 1, sizeof(char));
     if (!ret) {
-        merror(MEM_ERROR, ARGV0, errno, strerror(errno));
+        merror(MEM_ERROR, errno, strerror(errno));
         return (NULL);
     }
 
@@ -80,13 +80,13 @@ void run_notify()
     /* Check if the server has responded */
     if ((curr_time - available_server) > agt->max_time_reconnect_try) {
         /* If response is not available, set lock and wait for it */
-        verbose(SERVER_UNAV, ARGV0);
+        mwarn(SERVER_UNAV);
         os_setwait();
 
         /* Send sync message */
         start_agent(0);
 
-        verbose(SERVER_UP, ARGV0);
+        minfo(SERVER_UP);
         os_delwait();
     }
 #endif
@@ -97,7 +97,7 @@ void run_notify()
     }
     g_saved_time = curr_time;
 
-    debug1("%s: DEBUG: Sending agent notification.", ARGV0);
+    mdebug1("Sending agent notification.");
 
     /* Send the message
      * Message is going to be the uname\n checksum file\n checksum file\n
@@ -105,13 +105,13 @@ void run_notify()
 
     /* Get uname */
     if (!getuname()) {
-        merror(MEM_ERROR, ARGV0, errno, strerror(errno));
+        merror(MEM_ERROR, errno, strerror(errno));
     }
 
     /* Format labeled data */
 
     if (!tmp_labels[0] && labels_format(agt->labels, tmp_labels, OS_MAXSTR - OS_HEADER_SIZE) < 0) {
-        merror("%s: ERROR: too large labeled data.", ARGV0);
+        merror("Too large labeled data.");
         tmp_labels[0] = '\0';
     }
 
@@ -120,7 +120,7 @@ void run_notify()
     if (!shared_files) {
         shared_files = strdup("\0");
         if (!shared_files) {
-            merror(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror(MEM_ERROR, errno, strerror(errno));
             return;
         }
     }
@@ -138,7 +138,7 @@ void run_notify()
     }
 
     /* Send status message */
-    debug2("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
+    mdebug2("Sending keep alive: %s", tmp_msg);
     send_msg(0, tmp_msg);
 
     free(shared_files);

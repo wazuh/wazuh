@@ -36,7 +36,7 @@ void wm_check() {
     // Check that a configuration exists
 
     if (!wmodules)
-        ErrorExit("%s: WARN: No configuration defined. Exiting...", ARGV0);
+        merror_exit("No configuration defined. Exiting...");
 
     // Get the last module of the same type
 
@@ -92,18 +92,6 @@ int wm_strcat(char **str1, const char *str2, char sep) {
         return 0;
     } else
         return -1;
-}
-
-// Compare two strings, trimming whitespaces of s1
-
-char* wm_strtrim(char *string) {
-    char *c;
-    char *d;
-
-    string = &string[strspn(string, " ")];
-    for (c = string + strcspn(string, " "); *(d = c + strspn(c, " ")); c = d + strcspn(d, " "));
-    *c = '\0';
-    return string;
 }
 
 // Tokenize string separated by spaces, respecting double-quotes

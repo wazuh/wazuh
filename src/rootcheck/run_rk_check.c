@@ -38,14 +38,14 @@ int notify_rk(int rk_type, const char *msg)
 #ifdef OSSECHIDS
     /* When running in context of OSSEC-HIDS, send problem to the rootcheck queue */
     if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
-        merror(QUEUE_SEND, ARGV0);
+        mterror(ARGV0, QUEUE_SEND);
 
         if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
         }
 
         if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
         }
     }
 #endif
@@ -104,7 +104,7 @@ void run_rk_check()
     /* Send scan start message */
     notify_rk(ALERT_POLICY_VIOLATION, "Starting rootcheck scan.");
     if (rootcheck.notify == QUEUE) {
-        merror("%s: INFO: Starting rootcheck scan.", ARGV0);
+        mtinfo(ARGV0, "Starting rootcheck scan.");
     }
 
     /* Check for Rootkits */
@@ -112,13 +112,12 @@ void run_rk_check()
     if (rootcheck.checks.rc_files) {
         if (!rootcheck.rootkit_files) {
 #ifndef WIN32
-            merror("%s: No rootcheck_files file configured.", ARGV0);
+            mterror(ARGV0, "No rootcheck_files file configured.");
 #endif
         } else {
             fp = fopen(rootcheck.rootkit_files, "r");
             if (!fp) {
-                merror("%s: No rootcheck_files file: '%s'", ARGV0,
-                       rootcheck.rootkit_files);
+                mterror(ARGV0, "No rootcheck_files file: '%s'", rootcheck.rootkit_files);
             }
 
             else {
@@ -133,13 +132,12 @@ void run_rk_check()
     if (rootcheck.checks.rc_trojans) {
         if (!rootcheck.rootkit_trojans) {
 #ifndef WIN32
-            merror("%s: No rootcheck_trojans file configured.", ARGV0);
+            mterror(ARGV0, "No rootcheck_trojans file configured.");
 #endif
         } else {
             fp = fopen(rootcheck.rootkit_trojans, "r");
             if (!fp) {
-                merror("%s: No rootcheck_trojans file: '%s'", ARGV0,
-                       rootcheck.rootkit_trojans);
+                mterror(ARGV0, "No rootcheck_trojans file: '%s'", rootcheck.rootkit_trojans);
             } else {
 #ifndef HPUX
                 check_rc_trojans(rootcheck.basedir, fp);
@@ -156,12 +154,11 @@ void run_rk_check()
     /* Windows audit check */
     if (rootcheck.checks.rc_winaudit) {
         if (!rootcheck.winaudit) {
-            merror("%s: No winaudit file configured.", ARGV0);
+            mterror(ARGV0, "No winaudit file configured.");
         } else {
             fp = fopen(rootcheck.winaudit, "r");
             if (!fp) {
-                merror("%s: No winaudit file: '%s'", ARGV0,
-                       rootcheck.winaudit);
+                mterror(ARGV0, "No winaudit file: '%s'", rootcheck.winaudit);
             } else {
                 check_rc_winaudit(fp, plist);
                 fclose(fp);
@@ -172,12 +169,11 @@ void run_rk_check()
     /* Windows malware */
     if (rootcheck.checks.rc_winmalware) {
         if (!rootcheck.winmalware) {
-            merror("%s: No winmalware file configured.", ARGV0);
+            mterror(ARGV0, "No winmalware file configured.");
         } else {
             fp = fopen(rootcheck.winmalware, "r");
             if (!fp) {
-                merror("%s: No winmalware file: '%s'", ARGV0,
-                       rootcheck.winmalware);
+                mterror(ARGV0, "No winmalware file: '%s'", rootcheck.winmalware);
             } else {
                 check_rc_winmalware(fp, plist);
                 fclose(fp);
@@ -188,12 +184,11 @@ void run_rk_check()
     /* Windows Apps */
     if (rootcheck.checks.rc_winapps) {
         if (!rootcheck.winapps) {
-            merror("%s: No winapps file configured.", ARGV0);
+            mterror(ARGV0, "No winapps file configured.");
         } else {
             fp = fopen(rootcheck.winapps, "r");
             if (!fp) {
-                merror("%s: No winapps file: '%s'", ARGV0,
-                       rootcheck.winapps);
+                mterror(ARGV0, "No winapps file: '%s'", rootcheck.winapps);
             } else {
                 check_rc_winapps(fp, plist);
                 fclose(fp);
@@ -217,8 +212,7 @@ void run_rk_check()
             while (rootcheck.unixaudit[i]) {
                 fp = fopen(rootcheck.unixaudit[i], "r");
                 if (!fp) {
-                    merror("%s: No unixaudit file: '%s'", ARGV0,
-                           rootcheck.unixaudit[i]);
+                    mterror(ARGV0, "No unixaudit file: '%s'", rootcheck.unixaudit[i]);
                 } else {
                     /* Run unix audit */
                     check_rc_unixaudit(fp, plist);
@@ -237,39 +231,39 @@ void run_rk_check()
 
     /* Check for files in the /dev filesystem */
     if (rootcheck.checks.rc_dev) {
-        debug1("%s: DEBUG: Going into check_rc_dev", ARGV0);
+        mtdebug1(ARGV0, "Going into check_rc_dev");
         check_rc_dev(rootcheck.basedir);
     }
 
     /* Scan the whole system for additional issues */
     if (rootcheck.checks.rc_sys) {
-        debug1("%s: DEBUG: Going into check_rc_sys", ARGV0);
+        mtdebug1(ARGV0, "Going into check_rc_sys");
         check_rc_sys(rootcheck.basedir);
     }
 
     /* Check processes */
     if (rootcheck.checks.rc_pids) {
-        debug1("%s: DEBUG: Going into check_rc_pids", ARGV0);
+        mtdebug1(ARGV0, "Going into check_rc_pids");
         check_rc_pids();
     }
 
     /* Check all ports */
     if (rootcheck.checks.rc_ports) {
-        debug1("%s: DEBUG: Going into check_rc_ports", ARGV0);
+        mtdebug1(ARGV0, "Going into check_rc_ports");
         check_rc_ports();
 
         /* Check open ports */
-        debug1("%s: DEBUG: Going into check_open_ports", ARGV0);
+        mtdebug1(ARGV0, "Going into check_open_ports");
         check_open_ports();
     }
 
     /* Check interfaces */
     if (rootcheck.checks.rc_if) {
-        debug1("%s: DEBUG: Going into check_rc_if", ARGV0);
+        mtdebug1(ARGV0, "Going into check_rc_if");
         check_rc_if();
     }
 
-    debug1("%s: DEBUG: Completed with all checks.", ARGV0);
+    mtdebug1(ARGV0, "Completed with all checks.");
 
     /* Clean the global memory */
     {
@@ -298,10 +292,9 @@ void run_rk_check()
     /* Send scan ending message */
     notify_rk(ALERT_POLICY_VIOLATION, "Ending rootcheck scan.");
     if (rootcheck.notify == QUEUE) {
-        merror("%s: INFO: Ending rootcheck scan.", ARGV0);
+        mtinfo(ARGV0, "Ending rootcheck scan.");
     }
 
-    debug1("%s: DEBUG: Leaving run_rk_check", ARGV0);
+    mtdebug1(ARGV0, "Leaving run_rk_check");
     return;
 }
-

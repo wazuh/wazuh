@@ -50,7 +50,7 @@ static void help_execd()
 static void execd_shutdown(int sig)
 {
     /* Remove pending active responses */
-    merror(EXEC_SHUTDOWN, ARGV0);
+    minfo(EXEC_SHUTDOWN);
 
     timeout_node = OSList_GetFirstNode(timeout_list);
     while (timeout_node) {
@@ -97,13 +97,13 @@ int main(int argc, char **argv)
                 break;
             case 'g':
                 if (!optarg) {
-                    ErrorExit("%s: -g needs an argument.", ARGV0);
+                    merror_exit("-g needs an argument.");
                 }
                 group = optarg;
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument.", ARGV0);
+                    merror_exit("-c needs an argument.");
                 }
                 cfg = optarg;
                 break;
@@ -119,17 +119,17 @@ int main(int argc, char **argv)
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, "", group);
+        merror_exit(USER_ERROR, "", group);
     }
 
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Read config */
     if ((c = ExecdConfig(cfg)) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* Exit if test_config */
@@ -148,22 +148,22 @@ int main(int argc, char **argv)
 
     /* Active response disabled */
     if (c == 1) {
-        verbose(EXEC_DISABLED, ARGV0);
+        minfo(EXEC_DISABLED);
         exit(0);
     }
 
     /* Create the PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     /* Start exec queue */
     if ((m_queue = StartMQ(EXECQUEUEPATH, READ)) < 0) {
-        ErrorExit(QUEUE_ERROR, ARGV0, EXECQUEUEPATH, strerror(errno));
+        merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
     }
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* The real daemon Now */
     ExecdStart(m_queue);
@@ -229,7 +229,7 @@ static void ExecdStart(int q)
     /* Create list for timeout */
     timeout_list = OSList_Create();
     if (!timeout_list) {
-        ErrorExit(LIST_ERROR, ARGV0);
+        merror_exit(LIST_ERROR);
     }
 
     if (repeated_offenders_timeout[0] != 0) {
@@ -250,7 +250,7 @@ static void ExecdStart(int q)
             int wp;
             wp = waitpid((pid_t) - 1, NULL, WNOHANG);
             if (wp < 0) {
-                merror(WAITPID_ERROR, ARGV0, errno, strerror(errno));
+                merror(WAITPID_ERROR, errno, strerror(errno));
                 break;
             }
 
@@ -308,13 +308,13 @@ static void ExecdStart(int q)
 
         /* Check for error */
         if (!FD_ISSET(q, &fdset)) {
-            merror(SELECT_ERROR, ARGV0, errno, strerror(errno));
+            merror(SELECT_ERROR, errno, strerror(errno));
             continue;
         }
 
         /* Receive the message */
         if (OS_RecvUnix(q, OS_MAXSTR, buffer) == 0) {
-            merror(QUEUE_ERROR, ARGV0, EXECQUEUEPATH, strerror(errno));
+            merror(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
             continue;
         }
 
@@ -327,7 +327,7 @@ static void ExecdStart(int q)
         /* Zero the name */
         tmp_msg = strchr(buffer, ' ');
         if (!tmp_msg) {
-            merror(EXECD_INV_MSG, ARGV0, buffer);
+            mwarn(EXECD_INV_MSG, buffer);
             continue;
         }
         *tmp_msg = '\0';
@@ -339,7 +339,7 @@ static void ExecdStart(int q)
             ReadExecConfig();
             command = GetCommandbyName(name, &timeout_value);
             if (!command) {
-                merror(EXEC_INV_NAME, ARGV0, name);
+                merror(EXEC_INV_NAME, name);
                 continue;
             }
         }
@@ -389,7 +389,7 @@ static void ExecdStart(int q)
         /* Check for the username and IP argument */
         if (!timeout_args[2] || !timeout_args[3]) {
             added_before = 1;
-            merror("%s: Invalid number of arguments.", ARGV0);
+            merror("Invalid number of arguments.");
         }
 
         while (timeout_node) {
@@ -491,7 +491,7 @@ static void ExecdStart(int q)
 
                 /* Add command to the timeout list */
                 if (!OSList_AddData(timeout_list, timeout_entry)) {
-                    merror(LIST_ADD_ERROR, ARGV0);
+                    merror(LIST_ADD_ERROR);
                     FreeTimeoutEntry(timeout_entry);
                 }
             }

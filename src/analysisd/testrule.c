@@ -109,19 +109,19 @@ int main(int argc, char **argv)
                 break;
             case 'U':
                 if (!optarg) {
-                    ErrorExit("%s: -U needs an argument", ARGV0);
+                    merror_exit("-U needs an argument");
                 }
                 ut_str = optarg;
                 break;
             case 'D':
                 if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
+                    merror_exit("-D needs an argument");
                 }
                 dir = optarg;
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument", ARGV0);
+                    merror_exit("-c needs an argument");
                 }
                 cfg = optarg;
                 break;
@@ -142,10 +142,10 @@ int main(int argc, char **argv)
 
     /* Read configuration file */
     if (GlobalConf(cfg) < 0) {
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        merror_exit(CONFIG_ERROR, cfg);
     }
 
-    debug1(READ_CONFIG, ARGV0);
+    mdebug1(READ_CONFIG);
 
 #ifdef LIBGEOIP_ENABLED
     Config.geoip_jsonout = getDefine_Int("analysisd", "geoip_jsonout", 0, 1);
@@ -155,7 +155,7 @@ int main(int argc, char **argv)
         geoipdb = GeoIP_open(Config.geoipdb_file, GEOIP_INDEX_CACHE);
         if (geoipdb == NULL)
         {
-            merror("%s: ERROR: Unable to open GeoIP database from: %s (disabling GeoIP).", ARGV0, Config.geoipdb_file);
+            merror("Unable to open GeoIP database from: %s (disabling GeoIP).", Config.geoipdb_file);
         }
     }
 #endif
@@ -180,17 +180,17 @@ int main(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Set the group */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Chroot */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
     nowChroot();
 
@@ -213,17 +213,17 @@ int main(int argc, char **argv)
                 /* Legacy loading */
                 /* Read decoders */
                 if (!ReadDecodeXML("etc/decoder.xml")) {
-                    ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
+                    merror_exit(CONFIG_ERROR,  XML_DECODER);
                 }
 
                 /* Read local ones */
                 c = ReadDecodeXML("etc/local_decoder.xml");
                 if (!c) {
                     if ((c != -2)) {
-                        ErrorExit(CONFIG_ERROR, ARGV0,  XML_LDECODER);
+                        merror_exit(CONFIG_ERROR,  XML_LDECODER);
                     }
                 } else {
-                    verbose("%s: INFO: Reading local decoder file.", ARGV0);
+                    minfo("Reading local decoder file.");
                 }
             } else {
                 /* New loaded based on file specified in ossec.conf */
@@ -232,10 +232,10 @@ int main(int argc, char **argv)
                 while ( decodersfiles && *decodersfiles) {
 
                     if(!quiet) {
-                        verbose("%s: INFO: Reading decoder file %s.", ARGV0, *decodersfiles);
+                        minfo("Reading decoder file %s.", *decodersfiles);
                     }
                     if (!ReadDecodeXML(*decodersfiles)) {
-                        ErrorExit(CONFIG_ERROR, ARGV0, *decodersfiles);
+                        merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
 
                     free(*decodersfiles);
@@ -255,9 +255,9 @@ int main(int argc, char **argv)
                 char **listfiles;
                 listfiles = Config.lists;
                 while (listfiles && *listfiles) {
-                    verbose("%s: INFO: Reading the lists file: '%s'", ARGV0, *listfiles);
+                    minfo("Reading the lists file: '%s'", *listfiles);
                     if (Lists_OP_LoadList(*listfiles) < 0) {
-                        ErrorExit(LISTS_ERROR, ARGV0, *listfiles);
+                        merror_exit(LISTS_ERROR, *listfiles);
                     }
                     free(*listfiles);
                     listfiles++;
@@ -276,9 +276,9 @@ int main(int argc, char **argv)
                 char **rulesfiles;
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
-                    debug1("%s: INFO: Reading rules file: '%s'", ARGV0, *rulesfiles);
+                    mdebug1("Reading rules file: '%s'", *rulesfiles);
                     if (Rules_OP_ReadRules(*rulesfiles) < 0) {
-                        ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
+                        merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
                     free(*rulesfiles);
@@ -304,7 +304,7 @@ int main(int argc, char **argv)
         RuleNode *tmp_node = OS_GetFirstRule();
 
         total_rules = _setlevels(tmp_node, 0);
-        debug1("%s: INFO: Total rules enabled: '%d'", ARGV0, total_rules);
+        mdebug1("Total rules enabled: '%d'", total_rules);
     }
 
     /* Creating a rules hash (for reading alerts from other servers) */
@@ -312,7 +312,7 @@ int main(int argc, char **argv)
         RuleNode *tmp_node = OS_GetFirstRule();
         Config.g_rules_hash = OSHash_Create();
         if (!Config.g_rules_hash) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
         AddHash_Rule(tmp_node);
     }
@@ -323,7 +323,7 @@ int main(int argc, char **argv)
 
     /* Set the user */
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* Signal handling */
@@ -334,7 +334,7 @@ int main(int argc, char **argv)
     sigaction(SIGINT, &action, NULL);
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* Going to main loop */
     OS_ReadMSG(ut_str);
@@ -357,16 +357,16 @@ void OS_ReadMSG(char *ut_str)
         ut_rulelevel = ut_str;
         ut_alertlevel =  strchr(ut_rulelevel, ':');
         if (!ut_alertlevel) {
-            ErrorExit("%s: -U requires the matching format to be "
-                      "\"<rule_id>:<alert_level>:<decoder_name>\"", ARGV0);
+            merror_exit("-U requires the matching format to be "
+                      "\"<rule_id>:<alert_level>:<decoder_name>\"");
         } else {
             *ut_alertlevel = '\0';
             ut_alertlevel++;
         }
         ut_decoder_name = strchr(ut_alertlevel, ':');
         if (!ut_decoder_name) {
-            ErrorExit("%s: -U requires the matching format to be "
-                      "\"<rule_id>:<alert_level>:<decoder_name>\"", ARGV0);
+            merror_exit("-U requires the matching format to be "
+                      "\"<rule_id>:<alert_level>:<decoder_name>\"");
         } else {
             *ut_decoder_name = '\0';
             ut_decoder_name++;
@@ -384,7 +384,7 @@ void OS_ReadMSG(char *ut_str)
 
     /* Initiate the FTS list */
     if (!FTS_Init()) {
-        ErrorExit(FTS_LIST_ERROR, ARGV0);
+        merror_exit(FTS_LIST_ERROR);
     }
 
     /* Initialize the Accumulator */
@@ -440,7 +440,7 @@ void OS_ReadMSG(char *ut_str)
 
             /* Clean the msg appropriately */
             if (OS_CleanMSG(msg, lf) < 0) {
-                merror(IMSG_ERROR, ARGV0, msg);
+                merror(IMSG_ERROR, msg);
 
                 Free_Eventinfo(lf);
 
@@ -466,8 +466,7 @@ void OS_ReadMSG(char *ut_str)
             /* Loop over all the rules */
             rulenode_pt = OS_GetFirstRule();
             if (!rulenode_pt) {
-                ErrorExit("%s: Rules in an inconsistent state. Exiting.",
-                          ARGV0);
+                merror_exit("Rules in an inconsistent state. Exiting.");
             }
 
 #ifdef TESTRULE
@@ -561,7 +560,7 @@ void OS_ReadMSG(char *ut_str)
                 /* Copy the structure to the state memory of if_matched_sid */
                 if (currently_rule->sid_prev_matched) {
                     if (!OSList_AddData(currently_rule->sid_prev_matched, lf)) {
-                        merror("%s: Unable to add data to sig list.", ARGV0);
+                        merror("Unable to add data to sig list.");
                     } else {
                         lf->sid_node_to_delete =
                             currently_rule->sid_prev_matched->last_node;
@@ -576,7 +575,7 @@ void OS_ReadMSG(char *ut_str)
                         if (!OSList_AddData(
                                     currently_rule->group_prev_matched[i],
                                     lf)) {
-                            merror("%s: Unable to add data to grp list.", ARGV0);
+                            merror("Unable to add data to grp list.");
                         }
                         i++;
                     }
@@ -598,7 +597,7 @@ void OS_ReadMSG(char *ut_str)
                     exit_code--;
 
                     if (!currently_rule) {
-                        merror("%s: currently_rule not set!", ARGV0);
+                        merror("currently_rule not set!");
                         exit(-1);
                     }
                     snprintf(holder, 1023, "%d", currently_rule->sigid);

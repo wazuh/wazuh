@@ -32,8 +32,7 @@ int connect_server(int initial_id)
         agt->sock = -1;
 
         if (agt->rip[1]) {
-            verbose("%s: INFO: Closing connection to server (%s:%d).",
-                    ARGV0,
+            minfo("Closing connection to server (%s:%d).",
                     agt->rip[rc],
                     agt->port);
         }
@@ -61,14 +60,14 @@ int connect_server(int initial_id)
                 os_strdup(ip_str, agt->rip[rc]);
                 tmp_str = strchr(agt->rip[rc], '/');
                 if (!tmp_str) {
-                    merror("%s: WARN: Invalid hostname format: '%s'.", ARGV0, agt->rip[rc]);
+                    mwarn("Invalid hostname format: '%s'.", agt->rip[rc]);
                     return 0;
                 }
 
                 tmp_str++;
             } else {
-                merror("%s: WARN: Unable to get hostname for '%s'.",
-                       ARGV0, agt->rip[rc]);
+                mwarn("Unable to get hostname for '%s'.",
+                       agt->rip[rc]);
                 *tmp_str = '/';
                 tmp_str++;
             }
@@ -76,7 +75,7 @@ int connect_server(int initial_id)
             tmp_str = agt->rip[rc];
         }
 
-        verbose("%s: INFO: Trying to connect to server (%s:%d).", ARGV0,
+        minfo("Trying to connect to server (%s:%d).",
                 agt->rip[rc],
                 agt->port);
 
@@ -92,7 +91,7 @@ int connect_server(int initial_id)
 
         if (agt->sock < 0) {
             agt->sock = -1;
-            merror(CONNS_ERROR, ARGV0, tmp_str);
+            merror(CONNS_ERROR, tmp_str);
             rc++;
 
             if (agt->rip[rc] == NULL) {
@@ -100,7 +99,7 @@ int connect_server(int initial_id)
 
                 /* Only log that if we have more than 1 server configured */
                 if (agt->rip[1]) {
-                    merror("%s: ERROR: Unable to connect to any server.", ARGV0);
+                    merror("Unable to connect to any server.");
                 }
 
                 sleep(attempts < agt->notify_time ? attempts : agt->notify_time);
@@ -166,7 +165,7 @@ void start_agent(int is_startup)
                     recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
                     if (recv_b != length) {
-                        merror(RECV_ERROR, ARGV0);
+                        merror(RECV_ERROR);
                         recv_b = 0;
                     }
                 }
@@ -198,7 +197,7 @@ void start_agent(int is_startup)
             /* Id of zero -- only one key allowed */
             tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, agt->rip[agt->rip_id]);
             if (tmp_msg == NULL) {
-                merror(MSG_ERROR, ARGV0, agt->rip[agt->rip_id]);
+                mwarn(MSG_ERROR, agt->rip[agt->rip_id]);
                 continue;
             }
 
@@ -208,7 +207,7 @@ void start_agent(int is_startup)
                 if (strcmp(tmp_msg, HC_ACK) == 0) {
                     available_server = time(0);
 
-                    verbose(AG_CONNECTED, ARGV0, agt->rip[agt->rip_id],
+                    minfo(AG_CONNECTED, agt->rip[agt->rip_id],
                             agt->port);
 
                     if (is_startup) {
@@ -226,12 +225,12 @@ void start_agent(int is_startup)
         }
 
         /* Wait for server reply */
-        merror(AG_WAIT_SERVER, ARGV0, agt->rip[agt->rip_id]);
+        mwarn(AG_WAIT_SERVER, agt->rip[agt->rip_id]);
 
         /* If we have more than one server, try all */
         if (agt->rip[1]) {
             int curr_rip = agt->rip_id;
-            verbose("%s: INFO: Trying next server ip in the line: '%s'.", ARGV0,
+            minfo("Trying next server ip in the line: '%s'.",
                    agt->rip[agt->rip_id + 1] != NULL ? agt->rip[agt->rip_id + 1] : agt->rip[0]);
             connect_server(agt->rip_id + 1);
 

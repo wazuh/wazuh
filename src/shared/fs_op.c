@@ -55,15 +55,12 @@ short IsNFS(const char *dir_name)
         /* If the file exists, throw an error and retreat! If the file does not exist, there
 	 * is no reason to spam the log with these errors. */
 	if(errno != ENOENT) {
-            merror("ERROR: statfs('%s') produced error: %s", dir_name, strerror(errno));
+            merror("statfs('%s') produced error: %s", dir_name, strerror(errno));
 	}
         return(-1);
     }
 #else
-    verbose(
-        "INFO: Attempted to check NFS status for '%s', but we don't know how on this OS.",
-        dir_name
-    );
+    minfo("Attempted to check NFS status for '%s', but we don't know how on this OS.", dir_name);
 #endif
     return(0);
 }
@@ -78,7 +75,7 @@ short skipFS(const char *dir_name)
         int i;
         for ( i=0; skip_file_systems[i].name != NULL; i++ ) {
             if(skip_file_systems[i].f_type == stfs.f_type ) {
-                debug1("%s: Skipping dir (FS %s): %s ", ARGV0, skip_file_systems[i].name, dir_name);
+                mdebug1("Skipping dir (FS %s): %s ", skip_file_systems[i].name, dir_name);
                 return skip_file_systems[i].flag;
             }
         }
@@ -89,15 +86,12 @@ short skipFS(const char *dir_name)
         /* If the file exists, throw an error and retreat! If the file does not exist, there
          * is no reason to spam the log with these errors. */
         if(errno != ENOENT) {
-            merror("ERROR: statfs('%s') produced error: %s", dir_name, strerror(errno));
+            merror("statfs('%s') produced error: %s", dir_name, strerror(errno));
         }
         return(-1);
     }
 #else
-    verbose(
-        "INFO: Attempted to check FS status for '%s', but we don't know how on this OS.",
-        dir_name
-    );
+    minfo("Attempted to check FS status for '%s', but we don't know how on this OS.", dir_name);
 #endif
     return(0);
 }

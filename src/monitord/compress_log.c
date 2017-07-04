@@ -44,7 +44,7 @@ void OS_CompressLog(const char *logfile)
     zlog = gzopen(logfileGZ, "w");
     if (!zlog) {
         fclose(log);
-        merror(FOPEN_ERROR, ARGV0, logfileGZ, errno, strerror(errno));
+        merror(FOPEN_ERROR, logfileGZ, errno, strerror(errno));
         return;
     }
 
@@ -54,7 +54,7 @@ void OS_CompressLog(const char *logfile)
             break;
         }
         if (gzwrite(zlog, buf, (unsigned)len) != len) {
-            merror("%s: Compression error: %s", ARGV0, gzerror(zlog, &err));
+            merror("Compression error: %s", gzerror(zlog, &err));
         }
     }
 

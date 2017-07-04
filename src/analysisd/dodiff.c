@@ -23,16 +23,14 @@ static int _add2last(const char *str, size_t strsize, const char *file)
 
         dirrule = strrchr(file, '/');
         if (!dirrule) {
-            merror("%s: ERROR: Invalid file name to diff: %s",
-                   ARGV0, file);
+            merror("Invalid file name to diff: %s", file);
             return (0);
         }
         *dirrule = '\0';
 
         diragent = strrchr(file, '/');
         if (!diragent) {
-            merror("%s: ERROR: Invalid file name to diff (2): %s",
-                   ARGV0, file);
+            merror("Invalid file name to diff (2): %s", file);
             return (0);
         }
         *diragent = '\0';
@@ -40,7 +38,7 @@ static int _add2last(const char *str, size_t strsize, const char *file)
         /* Check if the diragent exists */
         if (IsDir(file) != 0) {
             if (mkdir(file, 0770) == -1) {
-                merror(MKDIR_ERROR, ARGV0, file, errno, strerror(errno));
+                merror(MKDIR_ERROR, file, errno, strerror(errno));
                 return (0);
             }
         }
@@ -48,7 +46,7 @@ static int _add2last(const char *str, size_t strsize, const char *file)
 
         if (IsDir(file) != 0) {
             if (mkdir(file, 0770) == -1) {
-                merror(MKDIR_ERROR, ARGV0, file, errno, strerror(errno));
+                merror(MKDIR_ERROR, file, errno, strerror(errno));
                 return (0);
             }
         }
@@ -56,7 +54,7 @@ static int _add2last(const char *str, size_t strsize, const char *file)
 
         fp = fopen(file, "w");
         if (!fp) {
-            merror(FOPEN_ERROR, ARGV0, file, errno, strerror(errno));
+            merror(FOPEN_ERROR, file, errno, strerror(errno));
             return (0);
         }
     }
@@ -103,7 +101,7 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
 
     /* lf->size can't be too long */
     if (lf->size >= OS_SIZE_8192) {
-        merror("%s: ERROR: event size (%zd) too long for diff.", ARGV0, lf->size);
+        merror("Event size (%zd) too long for diff.", lf->size);
         return (0);
     }
 
@@ -111,7 +109,7 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
     date_of_change = File_DateofChange(flastfile);
     if (date_of_change <= 0) {
         if (!_add2last(lf->log, lf->size, flastfile)) {
-            merror("%s: ERROR: unable to create last file: %s", ARGV0, flastfile);
+            merror("Unable to create last file: %s", flastfile);
             return (0);
         }
         return (0);
@@ -120,7 +118,7 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
         size_t n;
         fp = fopen(flastfile, "r");
         if (!fp) {
-            merror(FOPEN_ERROR, ARGV0, flastfile, errno, strerror(errno));
+            merror(FOPEN_ERROR, flastfile, errno, strerror(errno));
             return (0);
         }
 
@@ -128,7 +126,7 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
         if (n > 0) {
             flastcontent[n] = '\0';
         } else {
-            merror("%s: ERROR: read error on %s", ARGV0, flastfile);
+            merror("Read error on %s", flastfile);
             fclose(fp);
             return (0);
         }
@@ -141,7 +139,7 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
     }
 
     if (!_add2last(lf->log, lf->size, flastfile)) {
-        merror("%s: ERROR: unable to create last file: %s", ARGV0, flastfile);
+        merror("Unable to create last file: %s", flastfile);
     }
 
     rule->last_events[0] = "Previous output:";

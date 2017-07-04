@@ -62,7 +62,7 @@ void check_rc_if()
 
     _fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (_fd < 0) {
-        merror("%s: Error checking interfaces (socket)", ARGV0);
+        mterror(ARGV0, "Error checking interfaces (socket)");
         return;
     }
 
@@ -72,7 +72,7 @@ void check_rc_if()
 
     if (ioctl(_fd, SIOCGIFCONF, &_if) < 0) {
         close(_fd);
-        merror("%s: Error checking interfaces (ioctl)", ARGV0);
+        mterror(ARGV0, "Error checking interfaces (ioctl)");
         return;
     }
 
@@ -126,4 +126,3 @@ void check_rc_if()
 }
 
 #endif /* WIN32 */
-

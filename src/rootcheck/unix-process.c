@@ -77,7 +77,7 @@ OSList *os_get_process_list()
     if (!is_file(ps)) {
         strncpy(ps, "/usr/bin/ps", OS_SIZE_1024);
         if (!is_file(ps)) {
-            merror("%s: ERROR: 'ps' not found.", ARGV0);
+            mterror(ARGV0, "'ps' not found.");
             return (NULL);
         }
     }
@@ -85,7 +85,7 @@ OSList *os_get_process_list()
     /* Create process list */
     p_list = OSList_Create();
     if (!p_list) {
-        merror(LIST_ERROR, ARGV0);
+        mterror(ARGV0, LIST_ERROR);
         return (NULL);
     }
 
@@ -112,4 +112,3 @@ OSList *os_get_process_list()
 }
 
 #endif /* WIN32 */
-

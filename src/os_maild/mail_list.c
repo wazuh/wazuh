@@ -104,7 +104,7 @@ void OS_AddMailtoList(MailMsg *ml)
         new_node = (MailNode *)calloc(1, sizeof(MailNode));
 
         if (new_node == NULL) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
 
         /* Always add to the beginning of the list
@@ -140,7 +140,7 @@ void OS_AddMailtoList(MailMsg *ml)
         /* Add first node */
         n_node = (MailNode *)calloc(1, sizeof(MailNode));
         if (n_node == NULL) {
-            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
 
         n_node->prev = NULL;

@@ -50,7 +50,7 @@ int W_isRootcheck(cJSON* root)
     rule = cJSON_GetObjectItem(root, "rule");
 
     if (!rule) {
-        merror(ARGV0 ": ERROR: at W_JSON_ParseGroups(): No rule object found.");
+        merror("at W_JSON_ParseGroups(): No rule object found.");
         return 0;
     }
 
@@ -94,7 +94,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf)
     rule = cJSON_GetObjectItem(root, "rule");
 
     if (!rule) {
-        merror(ARGV0 ": ERROR: at W_JSON_ParseGroups(): No rule object found.");
+        merror("at W_JSON_ParseGroups(): No rule object found.");
         return;
     }
 
@@ -160,7 +160,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
     rule = cJSON_GetObjectItem(root, "rule");
 
     if (!rule) {
-        merror(ARGV0 ": ERROR: at W_JSON_ParseGroups(): No rule object found.");
+        merror("at W_JSON_ParseGroups(): No rule object found.");
         return;
     }
 
@@ -271,12 +271,12 @@ void W_JSON_AddTimestamp(cJSON* root, const Eventinfo* lf)
         memcpy(&tm, localtime(&timestamp), sizeof(struct tm));
 
         if (!(end = strptime(lf->hour, "%T", &tm)) || *end) {
-            merror("%s: ERROR: Could not parse hour '%s'.", ARGV0, lf->hour);
+            merror("Could not parse hour '%s'.", lf->hour);
             return;
         }
 
         if (!(end = strptime(lf->mon, "%b", &tm)) || *end) {
-            merror("%s: ERROR: Could not parse month '%s'.", ARGV0, lf->mon);
+            merror("Could not parse month '%s'.", lf->mon);
             return;
         }
 
@@ -406,7 +406,7 @@ regex_t* compile_regex(const char* regex_text)
     if (status != 0) {
         char error_message[MAX_ERROR_MSG];
         regerror(status, regex, error_message, MAX_ERROR_MSG);
-        merror(ARGV0 ": ERROR: Regex error compiling '%s': %s", regex_text, error_message);
+        merror("Regex error compiling '%s': %s", regex_text, error_message);
         free(regex);
         return NULL;
     }

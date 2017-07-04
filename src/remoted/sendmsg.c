@@ -28,14 +28,14 @@ void keyupdate_init()
 void key_lock()
 {
     if (pthread_mutex_lock(&keyupdate_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
     }
 }
 
 void key_unlock()
 {
     if (pthread_mutex_unlock(&keyupdate_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
     }
 }
 
@@ -77,14 +77,14 @@ int send_msg(const char *agent_id, const char *msg)
 
     if (key_id < 0) {
         key_unlock();
-        merror(AR_NOAGENT_ERROR, ARGV0, agent_id);
+        merror(AR_NOAGENT_ERROR, agent_id);
         return (-1);
     }
 
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[key_id]->rcvd < (time(0) - (3 * NOTIFY_TIME))) {
         key_unlock();
-        merror(SEND_DISCON, ARGV0, keys.keyentries[key_id]->id);
+        merror(SEND_DISCON, keys.keyentries[key_id]->id);
         return (-1);
     }
 
@@ -99,7 +99,7 @@ int send_msg(const char *agent_id, const char *msg)
     key_unlock();
 
     if (msg_size == 0) {
-        merror(SEC_ERROR, ARGV0);
+        merror(SEC_ERROR);
         return (-1);
     }
 
@@ -115,7 +115,7 @@ int send_msg(const char *agent_id, const char *msg)
     }
 
     if (send_b < 0) {
-        merror(SEND_ERROR, ARGV0, agent_id);
+        merror(SEND_ERROR, agent_id);
     }
 
     return (0);

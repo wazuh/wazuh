@@ -32,7 +32,7 @@ int wdb_open_global() {
         // Connect to the database
 
         if (sqlite3_open_v2(dir, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
-            debug1("%s: Global database not found, creating.", ARGV0);
+            mdebug1("Global database not found, creating.");
             sqlite3_close_v2(wdb_global);
             wdb_global = NULL;
 
@@ -44,7 +44,7 @@ int wdb_open_global() {
             // Retry to open
 
             if (sqlite3_open_v2(dir, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
-                merror("%s: ERROR: Can't open SQLite database '%s': %s", ARGV0, dir, sqlite3_errmsg(wdb_global));
+                merror("Can't open SQLite database '%s': %s", dir, sqlite3_errmsg(wdb_global));
                 sqlite3_close_v2(wdb_global);
                 wdb_global = NULL;
                 return -1;
@@ -70,11 +70,11 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
     snprintf(dir, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id_agent, name);
 
     if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
-        debug1("%s: No SQLite database found for agent '%s', creating.", ARGV0, name);
+        mdebug1("No SQLite database found for agent '%s', creating.", name);
         sqlite3_close_v2(db);
 
         if (wdb_create_agent_db(id_agent, name) < 0) {
-            merror("%s: ERROR: Couldn't create SQLite database '%s'", ARGV0, dir);
+            merror("Couldn't create SQLite database '%s'", dir);
             sqlite3_close_v2(db);
             return NULL;
         }
@@ -82,7 +82,7 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
         // Retry to open
 
         if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
-            merror("%s: ERROR: Can't open SQLite database '%s': %s", ARGV0, dir, sqlite3_errmsg(db));
+            merror("Can't open SQLite database '%s': %s", dir, sqlite3_errmsg(db));
             sqlite3_close_v2(db);
             return NULL;
         }
@@ -131,7 +131,7 @@ int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, c
 
     for (attempts = 0; (result = sqlite3_prepare_v2(db, zSql, nByte, stmt, pzTail)) == SQLITE_BUSY; attempts++) {
         if (attempts == MAX_ATTEMPTS) {
-            debug1("%s: DEBUG: Maximum attempts exceeded for sqlite3_prepare_v2()", ARGV0);
+            mdebug1("Maximum attempts exceeded for sqlite3_prepare_v2()");
             return -1;
         }
     }
@@ -146,7 +146,7 @@ int wdb_step(sqlite3_stmt *stmt) {
 
     for (attempts = 0; (result = sqlite3_step(stmt)) == SQLITE_BUSY; attempts++) {
         if (attempts == MAX_ATTEMPTS) {
-            debug1("%s: DEBUG: Maximum attempts exceeded for sqlite3_step()", ARGV0);
+            mdebug1("Maximum attempts exceeded for sqlite3_step()");
             return -1;
         }
     }
@@ -160,7 +160,7 @@ int wdb_begin(sqlite3 *db) {
     int result;
 
     if (wdb_prepare(db, SQL_BEGIN, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         return -1;
     }
 
@@ -175,7 +175,7 @@ int wdb_commit(sqlite3 *db) {
     int result;
 
     if (wdb_prepare(db, SQL_COMMIT, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         return -1;
     }
 
@@ -222,14 +222,14 @@ int wdb_create_file(const char *path, const char *source) {
     gid_t gid;
 
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
-        debug1("%s: ERROR: Couldn't create SQLite database '%s': %s", ARGV0, path, sqlite3_errmsg(db));
+        mdebug1("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
         sqlite3_close_v2(db);
         return -1;
     }
 
     for (sql = source; sql && *sql; sql = tail) {
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
-            debug1("%s: ERROR: Preparing statement: %s", ARGV0, sqlite3_errmsg(db));
+            mdebug1("Preparing statement: %s", sqlite3_errmsg(db));
             sqlite3_close_v2(db);
             return -1;
         }
@@ -242,7 +242,7 @@ int wdb_create_file(const char *path, const char *source) {
         case SQLITE_DONE:
             break;
         default:
-            debug1("%s: ERROR: Stepping statement: %s", ARGV0, sqlite3_errmsg(db));
+            mdebug1("Stepping statement: %s", sqlite3_errmsg(db));
             sqlite3_finalize(stmt);
             sqlite3_close_v2(db);
             return -1;
@@ -258,17 +258,17 @@ int wdb_create_file(const char *path, const char *source) {
     gid = Privsep_GetGroup(GROUPGLOBAL);
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, ARGV0, ROOT, GROUPGLOBAL);
+        merror(USER_ERROR, ROOT, GROUPGLOBAL);
         return -1;
     }
 
     if (chown(path, uid, gid) < 0) {
-        merror(CHOWN_ERROR, ARGV0, path, errno, strerror(errno));
+        merror(CHOWN_ERROR, path, errno, strerror(errno));
         return -1;
     }
 
     if (chmod(path, 0660) < 0) {
-        merror(CHMOD_ERROR, ARGV0, path, errno, strerror(errno));
+        merror(CHMOD_ERROR, path, errno, strerror(errno));
         return -1;
     }
 
@@ -284,7 +284,7 @@ int wdb_vacuum(sqlite3 *db) {
         result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
         sqlite3_finalize(stmt);
     } else {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(db));
         result = -1;
     }
 
@@ -301,7 +301,7 @@ int wdb_insert_info(const char *key, const char *value) {
         return -1;
 
     if (wdb_prepare(wdb_global, SQL_INSERT_INFO, -1, &stmt, NULL)) {
-        debug1("%s: SQLite: %s", ARGV0, sqlite3_errmsg(wdb_global));
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
         return -1;
     }
 

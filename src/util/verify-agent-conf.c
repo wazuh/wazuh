@@ -66,12 +66,12 @@ int main(int argc, char **argv)
                     break;
                 case 'f':
                     if (!optarg) {
-                        merror("%s: -f needs an argument", ARGV0);
+                        merror("-f needs an argument");
                         helpmsg();
                     }
                     else{
                         if (IsFile(optarg) < 0){
-                            merror(ARGV0 ": ERROR: [%s] is not a valid file.\n", optarg);
+                            merror("[%s] is not a valid file.\n", optarg);
                             error = 1;
                             break;
                         }
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     else{
         gdir = opendir(ar);
         if (!gdir) {
-            merror("%s: Error opening directory: '%s'", ARGV0, ar);
+            merror("Opening directory: '%s'", ar);
             return 1;
         }
 
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
             }
 
             if (snprintf(path, PATH_MAX + 1, "%s/%s", ar, entry->d_name) > PATH_MAX) {
-                merror(ARGV0 ": ERROR: path too long.");
+                merror("Path too long.");
                 error = 1;
                 break;
             }
@@ -113,14 +113,14 @@ int main(int argc, char **argv)
 
             if (!subdir) {
                 if (errno != ENOTDIR) {
-                    merror(ARGV0 ": ERROR: could not open directory '%s'", path);
+                    merror("Could not open directory '%s'", path);
                     error = 1;
                 }
                 continue;
             }
 
             if (snprintf(path_f, PATH_MAX + 1, "%s/%s", path, AGENT_CONF_FILE) > PATH_MAX) {
-                merror(ARGV0 ": ERROR: path too long.");
+                merror("Path too long.");
                 error = 1;
                 break;
             }

@@ -189,7 +189,7 @@ void DecodeEvent(Eventinfo *lf)
 
                 for (i = 0; nnode->regex->sub_strings[i]; i++) {
                     if (lf->nfields >= Config.decoder_order_size) {
-                        merror("%s: ERROR: Regex has too many groups.", ARGV0);
+                        merror("Regex has too many groups.");
                         return;
                     }
 

@@ -158,7 +158,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
 #endif
 
     if ((dir_name == NULL) || (strlen(dir_name) > PATH_MAX)) {
-        merror("%s: Invalid directory given.", ARGV0);
+        mterror(ARGV0, "Invalid directory given.");
         return (-1);
     }
 
@@ -348,7 +348,7 @@ void check_rc_sys(const char *basedir)
 {
     char file_path[OS_SIZE_1024 + 1];
 
-    debug1("%s: DEBUG: Starting on check_rc_sys", ARGV0);
+    mtdebug1(ARGV0, "Starting on check_rc_sys");
 
     _sys_errors = 0;
     _sys_total = 0;
@@ -450,4 +450,3 @@ void check_rc_sys(const char *basedir)
 
     return;
 }
-

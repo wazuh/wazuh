@@ -92,7 +92,7 @@ void OS_Exec(int execq, int arq, const Eventinfo *lf, const active_response *ar)
                  filename ? filename : "-");
 
         if (OS_SendUnix(execq, exec_msg, 0) < 0) {
-            merror("%s: Error communicating with execd.", ARGV0);
+            merror("Error communicating with execd.");
         }
     }
 
@@ -138,11 +138,11 @@ void OS_Exec(int execq, int arq, const Eventinfo *lf, const active_response *ar)
 
         if ((rc = OS_SendUnix(arq, exec_msg, 0)) < 0) {
             if (rc == OS_SOCKBUSY) {
-                merror("%s: AR socket busy.", ARGV0);
+                merror("AR socket busy.");
             } else {
-                merror("%s: AR socket error (shutdown?).", ARGV0);
+                merror("AR socket error (shutdown?).");
             }
-            merror("%s: Error communicating with ar queue (%d).", ARGV0, rc);
+            merror("Error communicating with ar queue (%d).", rc);
         }
     }
 

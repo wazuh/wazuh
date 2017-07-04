@@ -69,10 +69,10 @@ void* run_local_server(__attribute__((unused)) void *arg) {
     fd_set fdset;
     struct timeval timeout;
 
-    debug1("%s: DEBUG: local server thread ready", ARGV0);
+    mdebug1("Local server thread ready.");
 
     if (sock = OS_BindUnixDomain(AUTH_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror(ARGV0 ": Unable to bind to socket '%s'. Closing local server.", AUTH_LOCAL_SOCK);
+        merror("Unable to bind to socket '%s'. Closing local server.", AUTH_LOCAL_SOCK);
         return NULL;
     }
 
@@ -87,7 +87,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         switch (select(sock + 1, &fdset, NULL, NULL, &timeout)) {
         case -1:
             if (errno != EINTR) {
-                ErrorExit(ARGV0 ": ERROR: at run_local_server(): select(): %s", strerror(errno));
+                merror_exit("at run_local_server(): select(): %s", strerror(errno));
             }
 
             continue;
@@ -98,7 +98,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR)) {
-                merror(ARGV0 ": ERROR: at run_local_server(): accept(): %s", strerror(errno));
+                merror("at run_local_server(): accept(): %s", strerror(errno));
             }
 
             continue;
@@ -106,11 +106,11 @@ void* run_local_server(__attribute__((unused)) void *arg) {
 
         switch (length = recv(peer, buffer, OS_MAXSTR, 0), length) {
         case -1:
-            merror(ARGV0 ": ERROR: recv(): %s", strerror(errno));
+            merror("recv(): %s", strerror(errno));
             break;
 
         case 0:
-            debug1(ARGV0 ": DEBUG: empty message from local client.");
+            mdebug1("Empty message from local client.");
             close(peer);
             break;
 
@@ -126,7 +126,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         }
     }
 
-    debug1("%s: DEBUG: local server thread finished", ARGV0);
+    mdebug1("Local server thread finished");
 
     close(sock);
     return NULL;
@@ -213,7 +213,7 @@ char* local_dispatch(const char *input) {
     }
 
     if (!response) {
-        merror(ARGV0 ": CRITICAL: at local_dispatch(): response is null.");
+        merror("at local_dispatch(): response is null.");
         ierror = EINTERNAL;
         goto fail;
     }
@@ -227,7 +227,7 @@ char* local_dispatch(const char *input) {
     return output;
 
 fail:
-    merror(ARGV0 ": ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
+    merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", ERRORS[ierror].code);
     cJSON_AddStringToObject(response, "message", ERRORS[ierror].message);
@@ -245,7 +245,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     int ierror;
     double antiquity;
 
-    debug2(ARGV0 ": add(%s)", name);
+    mdebug2("add(%s)", name);
     pthread_mutex_lock(&mutex_keys);
 
     // Check for duplicated ID
@@ -261,7 +261,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
         if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
             if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
                 id_exist = keys.keyentries[index]->id;
-                verbose(ARGV0 ": INFO: Duplicated IP '%s' (%s). Saving backup.", ip, id_exist);
+                minfo("Duplicated IP '%s' (%s). Saving backup.", ip, id_exist);
                 add_backup(keys.keyentries[index]);
                 OS_DeleteKey(&keys, id_exist);
             } else {
@@ -276,7 +276,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
         if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
             id_exist = keys.keyentries[index]->id;
-            verbose(ARGV0 ": INFO: Duplicated name '%s' (%s). Saving backup.", name, id_exist);
+            minfo("Duplicated name '%s' (%s). Saving backup.", name, id_exist);
             add_backup(keys.keyentries[index]);
             OS_DeleteKey(&keys, id_exist);
         } else {
@@ -304,12 +304,12 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     cJSON_AddStringToObject(data, "key", keys.keyentries[index]->key);
     pthread_mutex_unlock(&mutex_keys);
 
-    verbose("%s: INFO: Agent key generated for agent '%s' (requested locally)", ARGV0, name);
+    minfo("Agent key generated for agent '%s' (requested locally)", name);
     return response;
 
 fail:
     pthread_mutex_unlock(&mutex_keys);
-    merror(ARGV0 ": ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
+    merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", ERRORS[ierror].code);
     cJSON_AddStringToObject(response, "message", ERRORS[ierror].message);
@@ -321,16 +321,16 @@ cJSON* local_remove(const char *id) {
     int index;
     cJSON *response = cJSON_CreateObject();
 
-    debug2(ARGV0 ": local_remove(%s)", id);
+    mdebug2("local_remove(%s)", id);
 
     pthread_mutex_lock(&mutex_keys);
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
-        merror(ARGV0 ": ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
+        merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
         cJSON_AddNumberToObject(response, "error", ERRORS[ENOAGENT].code);
         cJSON_AddStringToObject(response, "message", ERRORS[ENOAGENT].message);
     } else {
-        verbose("%s: INFO: Agent '%s' (%s) deleted (requested locally)", ARGV0, id, keys.keyentries[index]->name);
+        minfo("Agent '%s' (%s) deleted (requested locally)", id, keys.keyentries[index]->name);
         /* Add pending key to write */
         add_remove(keys.keyentries[index]);
         OS_DeleteKey(&keys, id);
@@ -351,11 +351,11 @@ cJSON* local_get(const char *id) {
     cJSON *data;
     cJSON *response = cJSON_CreateObject();
 
-    debug2(ARGV0 ": local_get(%s)", id);
+    mdebug2("local_get(%s)", id);
     pthread_mutex_lock(&mutex_keys);
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
-        merror(ARGV0 ": ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
+        merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
         cJSON_AddNumberToObject(response, "error", ERRORS[ENOAGENT].code);
         cJSON_AddStringToObject(response, "message", ERRORS[ENOAGENT].message);
     } else {

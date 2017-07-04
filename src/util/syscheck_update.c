@@ -52,17 +52,17 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Set the group */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Chroot to the default directory */
     if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
 
     /* Inside chroot now */
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 
     /* Set the user */
     if (Privsep_SetUser(uid) < 0) {
-        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* User options */
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 
         sys_dir = opendir(SYSCHECK_DIR);
         if (!sys_dir) {
-            ErrorExit("%s: Unable to open: '%s'", ARGV0, SYSCHECK_DIR);
+            merror_exit("Unable to open: '%s'", SYSCHECK_DIR);
         }
 
         while ((entry = readdir(sys_dir)) != NULL) {

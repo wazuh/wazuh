@@ -41,7 +41,7 @@ static int save_agentless_entry(const char *host, const char *script, const char
         fprintf(fp, "type: %s\n", agttype);
         fclose(fp);
     } else {
-        merror(FOPEN_ERROR, ARGV0, sys_location, errno, strerror(errno));
+        merror(FOPEN_ERROR, sys_location, errno, strerror(errno));
     }
 
     return (0);
@@ -56,10 +56,10 @@ static int send_intcheck_msg(const char *script, const char *host, const char *m
     snprintf(sys_location, 1024, "(%s) %s->%s", script, host, SYSCHECK);
 
     if (SendMSG(lessdc.queue, msg, sys_location, SYSCHECK_MQ) < 0) {
-        merror(QUEUE_SEND, ARGV0);
+        merror(QUEUE_SEND);
 
         if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
         /* If we reach here, we can try to send it again */
@@ -78,9 +78,9 @@ static int send_log_msg(const char *script, const char *host, const char *msg)
     snprintf(sys_location, 1024, "(%s) %s->%s", script, host, SYSCHECK);
 
     if (SendMSG(lessdc.queue, msg, sys_location, LOCALFILE_MQ) < 0) {
-        merror(QUEUE_SEND, ARGV0);
+        merror(QUEUE_SEND);
         if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
         /* If we reach here, we can try to send it again */
@@ -105,7 +105,7 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
 
     fp = fopen(buf, "r");
     if (!fp) {
-        merror("%s: ERROR: Unable to generate diff alert.", ARGV0);
+        merror("Unable to generate diff alert.");
         return (0);
     }
 
@@ -113,7 +113,7 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
 
     switch (n) {
     case 0:
-        merror("%s: ERROR: Unable to generate diff alert (fread).", ARGV0);
+        merror("Unable to generate diff alert (fread).");
         fclose(fp);
         return (0);
     case 2047:
@@ -133,10 +133,10 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
     snprintf(buf, 1024, "(%s) %s->agentless", script, host);
 
     if (SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ) < 0) {
-        merror(QUEUE_SEND, ARGV0);
+        merror(QUEUE_SEND);
 
         if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
         /* If we reach here, we can try to send it again */
@@ -174,15 +174,14 @@ static int check_diff_file(const char *host, const char *script)
     /* If the file is not there, rename new location to last location */
     if (OS_MD5_File(old_location, md5sum_old, OS_TEXT) != 0) {
         if (rename(new_location, old_location) != 0) {
-            merror(RENAME_ERROR, ARGV0, new_location, old_location, errno, strerror(errno));
+            merror(RENAME_ERROR, new_location, old_location, errno, strerror(errno));
         }
         return (0);
     }
 
     /* Get md5sum of the new file */
     if (OS_MD5_File(new_location, md5sum_new, OS_TEXT) != 0) {
-        merror("%s: ERROR: Invalid internal state (missing '%s').",
-               ARGV0, new_location);
+        merror("Invalid internal state (missing '%s').", new_location);
         return (0);
     }
 
@@ -198,11 +197,11 @@ static int check_diff_file(const char *host, const char *script)
              (int)date_of_change);
 
     if (rename(old_location, tmp_location) != 0) {
-        merror(RENAME_ERROR, ARGV0, old_location, tmp_location, errno, strerror(errno));
+        merror(RENAME_ERROR, old_location, tmp_location, errno, strerror(errno));
         return (0);
     }
     if (rename(new_location, old_location) != 0) {
-        merror(RENAME_ERROR, ARGV0, new_location, old_location, errno, strerror(errno));
+        merror(RENAME_ERROR, new_location, old_location, errno, strerror(errno));
         return (0);
     }
 
@@ -213,8 +212,8 @@ static int check_diff_file(const char *host, const char *script)
              tmp_location, old_location,
              DIFF_DIR_PATH, host, script, (int)date_of_change);
     if (system(diff_cmd) != 256) {
-        merror("%s: ERROR: Unable to run diff for %s->%s",
-               ARGV0,  host, script);
+        merror("Unable to run diff for %s->%s",
+               host, script);
         return (0);
     }
 
@@ -241,7 +240,7 @@ static FILE *open_diff_file(const char *host, const char *script)
         snprintf(sys_location, 1024, "%s/%s->%s", DIFF_DIR_PATH, host, script);
         if (IsDir(sys_location) == -1) {
             if (mkdir(sys_location, 0770) == -1) {
-                merror(MKDIR_ERROR, ARGV0, sys_location, errno, strerror(errno));
+                merror(MKDIR_ERROR, sys_location, errno, strerror(errno));
                 return (NULL);
             }
         }
@@ -250,7 +249,7 @@ static FILE *open_diff_file(const char *host, const char *script)
                  script, DIFF_NEW_FILE);
         fp = fopen(sys_location, "w");
         if (!fp) {
-            merror(FOPEN_ERROR, ARGV0, sys_location, errno, strerror(errno));
+            merror(FOPEN_ERROR, sys_location, errno, strerror(errno));
             return (NULL);
         }
     }
@@ -290,17 +289,17 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
             /* Check if the test worked */
             if (ret_code != 0) {
                 if (ret_code == 32512) {
-                    merror("%s: ERROR: Expect command not found (or bad "
+                    merror("Expect command not found (or bad "
                            "arguments) for '%s'.",
-                           ARGV0, entry->type);
+                           entry->type);
                 }
-                merror("%s: ERROR: Test failed for '%s' (%d). Ignoring.",
-                       ARGV0, entry->type, ret_code / 256);
+                merror("Test failed for '%s' (%d). Ignoring.",
+                       entry->type, ret_code / 256);
                 entry->error_flag = 99;
                 return (-1);
             }
 
-            verbose("%s: INFO: Test passed for '%s'.", ARGV0, entry->type);
+            minfo("Test passed for '%s'.", entry->type);
             return (0);
         }
 
@@ -332,12 +331,12 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 }
 
                 if (strncmp(buf, "ERROR: ", 7) == 0) {
-                    merror("%s: ERROR: %s: %s: %s", ARGV0,
+                    merror("%s: %s: %s",
                            entry->type, entry->server[i] + 1, buf + 7);
                     entry->error_flag++;
                     break;
                 } else if (strncmp(buf, "INFO: ", 6) == 0) {
-                    verbose("%s: INFO: %s: %s: %s", ARGV0,
+                    minfo("%s: %s: %s",
                             entry->type, entry->server[i] + 1, buf + 6);
                 } else if (strncmp(buf, "FWD: ", 4) == 0) {
                     tmp_str = buf + 5;
@@ -357,7 +356,7 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 } else if (fp_store) {
                     fprintf(fp_store, "%s\n", buf);
                 } else {
-                    debug1("%s: DEBUG: buffer: %s", ARGV0, buf);
+                    mdebug1("Buffer: %s", buf);
                 }
             }
 
@@ -372,7 +371,7 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
             }
             pclose(fp);
         } else {
-            merror("%s: ERROR: popen failed on '%s' for '%s'.", ARGV0,
+            merror("Popen failed on '%s' for '%s'.",
                    entry->type, entry->server[i] + 1);
             entry->error_flag++;
         }
@@ -406,7 +405,7 @@ void Agentlessd()
 
     /* Connect to the message queue. Exit if it fails. */
     if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     /* Main monitor loop */
@@ -423,8 +422,8 @@ void Agentlessd()
         while (lessdc.entries[i]) {
             if (lessdc.entries[i]->error_flag >= 10) {
                 if (lessdc.entries[i]->error_flag != 99) {
-                    merror("%s: ERROR: Too many failures for '%s'. Ignoring it.",
-                           ARGV0, lessdc.entries[i]->type);
+                    merror("Too many failures for '%s'. Ignoring it.",
+                           lessdc.entries[i]->type);
                     lessdc.entries[i]->error_flag = 99;
                 }
 

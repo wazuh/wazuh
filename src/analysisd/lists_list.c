@@ -109,7 +109,7 @@ ListRule *OS_AddListRule(ListRule *first_rule_list,
         new_rulelist_pt->loaded = 1;
     }
     if (first_rule_list == NULL) {
-        debug1("Adding First rulelist item: filename: %s field: %d lookup_type: %d",
+        mdebug1("Adding First rulelist item: filename: %s field: %d lookup_type: %d",
                new_rulelist_pt->filename,
                new_rulelist_pt->field,
                new_rulelist_pt->lookup_type);
@@ -118,7 +118,7 @@ ListRule *OS_AddListRule(ListRule *first_rule_list,
         while (first_rule_list->next) {
             first_rule_list = first_rule_list->next;
         }
-        debug1("Adding rulelist item: filename: %s field: %d lookup_type: %d",
+        mdebug1("Adding rulelist item: filename: %s field: %d lookup_type: %d",
                new_rulelist_pt->filename,
                new_rulelist_pt->field,
                new_rulelist_pt->lookup_type);
@@ -132,7 +132,7 @@ static int _OS_CDBOpen(ListNode *lnode)
     int fd;
     if (lnode->loaded != 1) {
         if ((fd = open(lnode->cdb_filename, O_RDONLY)) == -1) {
-            merror(OPEN_ERROR, ARGV0, lnode->cdb_filename, errno, strerror (errno));
+            merror(OPEN_ERROR, lnode->cdb_filename, errno, strerror (errno));
             return -1;
         }
         cdb_init(&lnode->cdb, fd);
@@ -263,40 +263,40 @@ int OS_DBSearch(ListRule *lrule, char *key)
     }
     switch (lrule->lookup_type) {
         case LR_STRING_MATCH:
-            //debug1("LR_STRING_MATCH");
+            //mdebug1("LR_STRING_MATCH");
             if (OS_DBSeachKey(lrule, key) == 1) {
                 return 1;
             }
             return 0;
         case LR_STRING_NOT_MATCH:
-            //debug1("LR_STRING_NOT_MATCH");
+            //mdebug1("LR_STRING_NOT_MATCH");
             if (OS_DBSeachKey(lrule, key) == 1) {
                 return 0;
             }
             return 1;
         case LR_STRING_MATCH_VALUE:
-            //debug1("LR_STRING_MATCH_VALUE");
+            //mdebug1("LR_STRING_MATCH_VALUE");
             if (OS_DBSearchKeyValue(lrule, key) == 1) {
                 return 1;
             }
             return 0;
         case LR_ADDRESS_MATCH:
-            //debug1("LR_ADDRESS_MATCH");
+            //mdebug1("LR_ADDRESS_MATCH");
             return OS_DBSeachKeyAddress(lrule, key);
         case LR_ADDRESS_NOT_MATCH:
-            //debug1("LR_ADDRESS_NOT_MATCH");
+            //mdebug1("LR_ADDRESS_NOT_MATCH");
             if (OS_DBSeachKeyAddress(lrule, key) == 0) {
                 return 1;
             }
             return 0;
         case LR_ADDRESS_MATCH_VALUE:
-            //debug1("LR_ADDRESS_MATCH_VALUE");
+            //mdebug1("LR_ADDRESS_MATCH_VALUE");
             if (OS_DBSearchKeyAddressValue(lrule, key) == 0) {
                 return 1;
             }
             return 0;
         default:
-            debug1("lists_list.c::OS_DBSearch should never hit default");
+            mdebug1("lists_list.c::OS_DBSearch should never hit default");
             return 0;
     }
 }

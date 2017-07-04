@@ -16,7 +16,7 @@
  */
 void check_rc_unixaudit(FILE *fp, OSList *p_list)
 {
-    debug1("%s: DEBUG: Starting on check_rc_unixaudit", ARGV0);
+    mtdebug1(ARGV0, "Starting on check_rc_unixaudit");
     rkcl_get_entry(fp, "System Audit:", p_list);
 }
 
@@ -25,7 +25,7 @@ void check_rc_unixaudit(FILE *fp, OSList *p_list)
  */
 void check_rc_winaudit(FILE *fp, OSList *p_list)
 {
-    debug1("%s: DEBUG: Starting on check_rc_winaudit", ARGV0);
+    mtdebug1(ARGV0, "Starting on check_rc_winaudit");
     rkcl_get_entry(fp, "Windows Audit:", p_list);
 }
 
@@ -34,7 +34,7 @@ void check_rc_winaudit(FILE *fp, OSList *p_list)
  */
 void check_rc_winmalware(FILE *fp, OSList *p_list)
 {
-    debug1("%s: DEBUG: Starting on check_rc_winmalware", ARGV0);
+    mtdebug1(ARGV0, "Starting on check_rc_winmalware");
     rkcl_get_entry(fp, "Windows Malware:", p_list);
 }
 
@@ -43,7 +43,6 @@ void check_rc_winmalware(FILE *fp, OSList *p_list)
  */
 void check_rc_winapps(FILE *fp, OSList *p_list)
 {
-    debug1("%s: DEBUG: Starting on check_rc_winapps", ARGV0);
+    mtdebug1(ARGV0, "Starting on check_rc_winapps");
     rkcl_get_entry(fp, "Application Found:", p_list);
 }
-

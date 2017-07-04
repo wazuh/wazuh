@@ -76,13 +76,13 @@ int main(int argc, char **argv)
                 break;
             case 'u':
                 if (!optarg) {
-                    ErrorExit("%s: -u needs an argument", ARGV0);
+                    merror_exit("-u needs an argument");
                 }
                 user = optarg;
                 break;
             case 'g':
                 if (!optarg) {
-                    ErrorExit("%s: -g needs an argument", ARGV0);
+                    merror_exit("-g needs an argument");
                 }
                 group = optarg;
                 break;
@@ -91,13 +91,13 @@ int main(int argc, char **argv)
                 break;
             case 'D':
                 if (!optarg) {
-                    ErrorExit("%s: -D needs an argument", ARGV0);
+                    merror_exit("-D needs an argument");
                 }
                 dir = optarg;
                 break;
             case 'c':
                 if (!optarg) {
-                    ErrorExit("%s: -c needs an argument.", ARGV0);
+                    merror_exit("-c needs an argument.");
                 }
                 cfg = optarg;
                 break;
@@ -107,11 +107,11 @@ int main(int argc, char **argv)
         }
     }
 
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
     agt = (agent *)calloc(1, sizeof(agent));
     if (!agt) {
-        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
+        merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
     /* Check current debug_level
@@ -128,12 +128,12 @@ int main(int argc, char **argv)
 
     /* Read config */
     if (ClientConf(cfg) < 0) {
-        ErrorExit(CLIENT_ERROR, ARGV0);
+        merror_exit(CLIENT_ERROR);
     }
 
     if (!agt->rip) {
-        merror(AG_INV_IP, ARGV0);
-        ErrorExit(CLIENT_ERROR, ARGV0);
+        merror(AG_INV_IP);
+        merror_exit(CLIENT_ERROR);
     }
 
     if (agt->notify_time == 0) {
@@ -144,20 +144,20 @@ int main(int argc, char **argv)
     }
     if (agt->max_time_reconnect_try <= agt->notify_time) {
         agt->max_time_reconnect_try = (agt->notify_time * 3);
-        verbose("%s: INFO: Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", ARGV0, agt->notify_time, agt->max_time_reconnect_try);
+        minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
-    verbose("%s: INFO: Using notify time: %d and max time to reconnect: %d", ARGV0, agt->notify_time, agt->max_time_reconnect_try);
+    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
 
     /* Check auth keys */
     if (!OS_CheckKeys()) {
-        ErrorExit(AG_NOKEYS_EXIT, ARGV0);
+        merror_exit(AG_NOKEYS_EXIT);
     }
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, user, group);
+        merror_exit(USER_ERROR, user, group);
     }
 
     /* Exit if test config */

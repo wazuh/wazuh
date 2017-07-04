@@ -149,7 +149,7 @@ static int ssl_error(const SSL *ssl, int ret)
                 usleep(100 * 1000);
                 return (0);
             default:
-                merror("%s: ERROR: SSL Error (%d)", ARGV0, ret);
+                merror("SSL Error (%d)", ret);
                 ERR_print_errors_fp(stderr);
                 return (1);
         }
@@ -220,14 +220,14 @@ int main(int argc, char **argv)
 
                 case 'g':
                     if (!optarg) {
-                        ErrorExit("%s: -g needs an argument", ARGV0);
+                        merror_exit("-g needs an argument");
                     }
                     group = optarg;
                     break;
 
                 case 'D':
                     if (!optarg) {
-                        ErrorExit("%s: -D needs an argument", ARGV0);
+                        merror_exit("-D needs an argument");
                     }
                     dir = optarg;
                     break;
@@ -246,17 +246,17 @@ int main(int argc, char **argv)
 
                 case 'p':
                     if (!optarg) {
-                        ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                        merror_exit("-%c needs an argument", c);
                     }
 
                     if (port = (unsigned short)atoi(optarg), port == 0) {
-                        ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
+                        merror_exit("Invalid port: %s", optarg);
                     }
                     break;
 
                 case 'v':
                     if (!optarg) {
-                        ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                        merror_exit("-%c needs an argument", c);
                     }
                     ca_cert = optarg;
                     break;
@@ -267,21 +267,21 @@ int main(int argc, char **argv)
 
                 case 'x':
                     if (!optarg) {
-                        ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                        merror_exit("-%c needs an argument", c);
                     }
                     server_cert = optarg;
                     break;
 
                 case 'k':
                     if (!optarg) {
-                        ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                        merror_exit("-%c needs an argument", c);
                     }
                     server_key = optarg;
                     break;
 
                 case 'F':
                     if (!optarg) {
-                        ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                        merror_exit("-%c needs an argument", c);
                     }
 
                     if (!strcmp(optarg, "no")) {
@@ -290,7 +290,7 @@ int main(int argc, char **argv)
                         force_insert = strtol(optarg, &end, 10);
 
                         if (*end != '\0' || force_insert < 0) {
-                            ErrorExit("%s: Invalid value for -%c", ARGV0, c);
+                            merror_exit("Invalid value for -%c", c);
                         }
                     }
 
@@ -312,7 +312,7 @@ int main(int argc, char **argv)
 
         // Return -1 if not configured
         if (authd_read_config(DEFAULTCPATH) < 0) {
-            ErrorExit(CONFIG_ERROR, ARGV0, DEFAULTCPATH);
+            merror_exit(CONFIG_ERROR, DEFAULTCPATH);
         }
 
         // Overwrite arguments
@@ -377,12 +377,12 @@ int main(int argc, char **argv)
     }
 
     /* Start daemon -- NB: need to double fork and setsid */
-    debug1(STARTED_MSG, ARGV0);
+    mdebug1(STARTED_MSG);
 
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        ErrorExit(USER_ERROR, ARGV0, "", group);
+        merror_exit(USER_ERROR, "", group);
     }
 
     if (!run_foreground) {
@@ -392,14 +392,14 @@ int main(int argc, char **argv)
 
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
-        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* chroot -- TODO: this isn't a chroot. Should also close
      * unneeded open file descriptors (like stdin/stdout)
      */
     if (chdir(dir) == -1) {
-        ErrorExit(CHDIR_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHDIR_ERROR, dir, errno, strerror(errno));
     }
 
     /* Signal manipulation */
@@ -412,11 +412,11 @@ int main(int argc, char **argv)
     }
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
+    minfo(STARTUP_MSG, (int)getpid());
 
 #ifdef LEGACY_SSL
     config.flags.auto_negotiate = 1;
-    merror("WARN: TLS v1.2 method-forcing disabled. This program was compiled to use SSL/TLS auto-negotiation.");
+    mwarn("TLS v1.2 method-forcing disabled. This program was compiled to use SSL/TLS auto-negotiation.");
 #endif
 
     if (config.flags.use_password) {
@@ -440,20 +440,20 @@ int main(int argc, char **argv)
         }
 
         if (buf[0] != '\0')
-            verbose("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHDPASS_PATH);
+            minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHDPASS_PATH);
         else {
             /* Getting temporary pass. */
             authpass = __generatetmppass();
-            verbose("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+            minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
         }
     } else
-        verbose("Accepting connections on port %hu. No password required.", config.port);
+        minfo("Accepting connections on port %hu. No password required.", config.port);
 
     /* Getting SSL cert. */
 
     fp = fopen(KEYSFILE_PATH, "a");
     if (!fp) {
-        merror("%s: ERROR: Unable to open %s (key file)", ARGV0, KEYSFILE_PATH);
+        merror("Unable to open %s (key file)", KEYSFILE_PATH);
         exit(1);
     }
     fclose(fp);
@@ -461,14 +461,14 @@ int main(int argc, char **argv)
     /* Start SSL */
     ctx = os_ssl_keys(1, dir, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
     if (!ctx) {
-        merror("%s: ERROR: SSL error. Exiting.", ARGV0);
+        merror("SSL error. Exiting.");
         exit(1);
     }
 
     /* Connect via TCP */
     remote_sock = OS_Bindporttcp(config.port, NULL, 0);
     if (remote_sock <= 0) {
-        merror("%s: Unable to bind to port %d", ARGV0, config.port);
+        merror("Unable to bind to port %d", config.port);
         exit(1);
     }
 
@@ -478,12 +478,12 @@ int main(int argc, char **argv)
 
     /* Load ossec uid and gid for creating backups */
     if (OS_LoadUid() < 0) {
-        ErrorExit("%s: ERROR: Couldn't get user and group id.", ARGV0);
+        merror_exit("Couldn't get user and group id.");
     }
 
     /* Chroot */
     if (Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
 
     nowChroot();
 
@@ -498,25 +498,25 @@ int main(int argc, char **argv)
     status = pthread_create(&thread_dispatcher, NULL, run_dispatcher, NULL);
 
     if (status != 0) {
-        merror("%s: ERROR: Couldn't create thread: %s", ARGV0, strerror(status));
+        merror("Couldn't create thread: %s", strerror(status));
         return EXIT_FAILURE;
     }
 
     status = pthread_create(&thread_writer, NULL, run_writer, NULL);
 
     if (status != 0) {
-        merror("%s: ERROR: Couldn't create thread: %s", ARGV0, strerror(status));
+        merror("Couldn't create thread: %s", strerror(status));
         return EXIT_FAILURE;
     }
 
     if (status = pthread_create(&thread_local_server, NULL, run_local_server, NULL), status != 0) {
-        merror("%s: ERROR: Couldn't create thread: %s", ARGV0, strerror(status));
+        merror("Couldn't create thread: %s", strerror(status));
         return EXIT_FAILURE;
     }
 
     /* Create PID files */
     if (CreatePID(ARGV0, getpid()) < 0) {
-        ErrorExit(PID_ERROR, ARGV0);
+        merror_exit(PID_ERROR);
     }
 
     atexit(cleanup);
@@ -536,7 +536,7 @@ int main(int argc, char **argv)
         switch (select(remote_sock + 1, &fdset, NULL, NULL, &timeout)) {
         case -1:
             if (errno != EINTR) {
-                ErrorExit(ARGV0 ": ERROR: at main(): select(): %s", strerror(errno));
+                merror_exit("at main(): select(): %s", strerror(errno));
             }
 
             continue;
@@ -549,7 +549,7 @@ int main(int argc, char **argv)
             pthread_mutex_lock(&mutex_pool);
 
             if (full(pool_i, pool_j)) {
-                merror("%s: ERROR: Too many connections. Rejecting.", ARGV0);
+                merror("Too many connections. Rejecting.");
                 close(client_sock);
             } else {
                 pool[pool_i].socket = client_sock;
@@ -560,7 +560,7 @@ int main(int argc, char **argv)
 
             pthread_mutex_unlock(&mutex_pool);
         } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
-            merror("%s: ERROR: at run_local_server(): accept(): %s", ARGV0, strerror(errno));
+            merror("at run_local_server(): accept(): %s", strerror(errno));
     }
 
     close(remote_sock);
@@ -578,7 +578,7 @@ int main(int argc, char **argv)
     pthread_join(thread_writer, NULL);
     pthread_join(thread_local_server, NULL);
 
-    verbose("%s: Exiting...", ARGV0);
+    minfo("Exiting...");
     return (0);
 }
 
@@ -604,7 +604,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
-    debug1("%s: DEBUG: Dispatch thread ready", ARGV0);
+    mdebug1("Dispatch thread ready");
 
     while (running) {
         pthread_mutex_lock(&mutex_pool);
@@ -630,13 +630,13 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             continue;
         }
 
-        verbose("%s: INFO: New connection from %s", ARGV0, srcip);
+        minfo("New connection from %s", srcip);
 
         /* Additional verification of the agent's certificate. */
 
         if (config.flags.verify_host && config.agent_ca) {
             if (check_x509_cert(ssl, srcip) != VERIFY_TRUE) {
-                merror("%s: DEBUG: Unable to verify server certificate.", ARGV0);
+                merror("Unable to verify server certificate.");
                 SSL_free(ssl);
                 close(client.socket);
                 continue;
@@ -672,7 +672,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
 
             if (parseok == 0) {
-                merror("%s: ERROR: Invalid password provided by %s. Closing connection.", ARGV0, srcip);
+                merror("Invalid password provided by %s. Closing connection.", srcip);
                 SSL_free(ssl);
                 close(client.socket);
                 continue;
@@ -687,7 +687,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             while (*tmpstr != '\0') {
                 if (*tmpstr == '\'') {
                     *tmpstr = '\0';
-                    verbose("%s: INFO: Received request for a new agent (%s) from: %s", ARGV0, agentname, srcip);
+                    minfo("Received request for a new agent (%s) from: %s", agentname, srcip);
                     parseok = 1;
                     break;
                 }
@@ -696,14 +696,14 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
 
         if (parseok == 0) {
-            merror("%s: ERROR: Invalid request for new agent from: %s", ARGV0, srcip);
+            merror("Invalid request for new agent from: %s", srcip);
         } else {
             acount = 2;
             response[2047] = '\0';
             fname[2047] = '\0';
 
             if (!OS_IsValidName(agentname)) {
-                merror("%s: ERROR: Invalid agent name: %s from %s", ARGV0, agentname, srcip);
+                merror("Invalid agent name: %s from %s", agentname, srcip);
                 snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
                 SSL_write(ssl, response, strlen(response));
                 snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
@@ -721,12 +721,12 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
                     if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
-                        verbose(ARGV0 ": INFO: Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
+                        minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
                         add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist);
                     } else {
                         pthread_mutex_unlock(&mutex_keys);
-                        merror("%s: ERROR: Duplicated IP %s", ARGV0, srcip);
+                        merror("Duplicated IP %s", srcip);
                         snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
                         SSL_write(ssl, response, strlen(response));
                         snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
@@ -743,7 +743,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
                 if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                     id_exist = keys.keyentries[index]->id;
-                    verbose(ARGV0 ": INFO: Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
+                    minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
                     add_backup(keys.keyentries[index]);
                     OS_DeleteKey(&keys, id_exist);
                 } else {
@@ -758,7 +758,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
                     if (acount > MAX_TAG_COUNTER) {
                         pthread_mutex_unlock(&mutex_keys);
-                        merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
+                        merror("Invalid agent name %s (duplicated)", agentname);
                         snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
                         SSL_write(ssl, response, strlen(response));
                         snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
@@ -776,7 +776,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             if (index = OS_AddNewAgent(&keys, NULL, agentname, config.flags.use_source_ip ? srcip : NULL, NULL), index < 0) {
                 pthread_mutex_unlock(&mutex_keys);
-                merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
+                merror("Unable to add agent: %s (internal error)", agentname);
                 snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
                 SSL_write(ssl, response, strlen(response));
                 snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
@@ -787,12 +787,12 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
 
             snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, config.flags.use_source_ip ? srcip : "any", keys.keyentries[index]->key);
-            verbose("%s: INFO: Agent key generated for '%s' (requested by %s)", ARGV0, agentname, srcip);
+            minfo("Agent key generated for '%s' (requested by %s)", agentname, srcip);
             ret = SSL_write(ssl, response, strlen(response));
 
             if (ret < 0) {
-                merror("%s: ERROR: SSL write error (%d)", ARGV0, ret);
-                merror("%s: ERROR: Agent key not saved for %s", ARGV0, agentname);
+                merror("SSL write error (%d)", ret);
+                merror("Agent key not saved for %s", agentname);
                 ERR_print_errors_fp(stderr);
                 OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id);
             } else {
@@ -810,7 +810,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     }
 
     SSL_CTX_free(ctx);
-    debug1("%s: DEBUG: Dispatch thread finished", ARGV0);
+    mdebug1("Dispatch thread finished");
     return NULL;
 }
 
@@ -844,7 +844,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
         pthread_mutex_unlock(&mutex_keys);
 
         if (OS_WriteKeys(copy_keys) < 0)
-            merror("%s: ERROR: Could't write file client.keys", ARGV0);
+            merror("Could't write file client.keys");
 
         OS_FreeKeys(copy_keys);
         free(copy_keys);
@@ -926,11 +926,11 @@ static void handler(int signum) {
     case SIGHUP:
     case SIGINT:
     case SIGTERM:
-        merror(SIGNAL_RECV, ARGV0, signum, strsignal(signum));
+        minfo(SIGNAL_RECV, signum, strsignal(signum));
         running = 0;
         break;
     default:
-        merror("%s: ERROR: unknown signal (%d)", ARGV0, signum);
+        merror("unknown signal (%d)", signum);
     }
 }
 

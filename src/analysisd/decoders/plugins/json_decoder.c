@@ -163,7 +163,7 @@ static void fillData(Eventinfo *lf, const char *key, const char *value)
 
     // Dynamic fields
     if (lf->nfields >= Config.decoder_order_size) {
-        merror(ARGV0 ": ERROR: too many fields for JSON decoder.");
+        merror("Too many fields for JSON decoder.");
         return;
     }
 #ifdef TESTRULE
@@ -330,7 +330,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
 
 void *JSON_Decoder_Init()
 {
-    debug1 ("%s: Initializing JSON decoder.", ARGV0);
+    mdebug1 ("Initializing JSON decoder.");
     return (NULL);
 }
 
@@ -339,7 +339,7 @@ void *JSON_Decoder_Exec(Eventinfo *lf)
     cJSON *logJSON;
     logJSON = cJSON_Parse(lf->log);
     if (!logJSON)
-        debug2 ("%s: ERROR: Error parsing JSON string. %s", ARGV0, cJSON_GetErrorPtr());
+        mdebug2 ("Error parsing JSON string. %s", cJSON_GetErrorPtr());
     else
     {
         readJSON (logJSON, NULL, lf);

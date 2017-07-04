@@ -27,10 +27,10 @@ static void log_realtime_status(int);
 int send_syscheck_msg(const char *msg)
 {
     if (SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ) < 0) {
-        merror(QUEUE_SEND, ARGV0);
+        merror(QUEUE_SEND);
 
         if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
         /* Try to send it again */
@@ -43,10 +43,10 @@ int send_syscheck_msg(const char *msg)
 int send_rootcheck_msg(const char *msg)
 {
     if (SendMSG(syscheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
-        merror(QUEUE_SEND, ARGV0);
+        merror(QUEUE_SEND);
 
         if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
         }
 
         /* Try to send it again */
@@ -61,7 +61,7 @@ static void send_sk_db()
     /* Send scan start message */
     if (syscheck.dir[0]) {
         log_realtime_status(2);
-        merror("%s: INFO: Starting syscheck scan (forwarding database).", ARGV0);
+        minfo("Starting syscheck scan (forwarding database).");
         send_rootcheck_msg("Starting syscheck scan.");
     } else {
         return;
@@ -73,7 +73,7 @@ static void send_sk_db()
     sleep(syscheck.tsleep * 5);
 
     if (syscheck.dir[0]) {
-        merror("%s: INFO: Ending syscheck scan (forwarding database).", ARGV0);
+        minfo("Ending syscheck scan (forwarding database).");
         send_rootcheck_msg("Ending syscheck scan.");
     }
 }
@@ -107,11 +107,11 @@ void start_daemon()
     pri.sched_priority = 0;
     status = sched_setscheduler(0, SCHED_BATCH, &pri);
 
-    debug1("%s: Setting SCHED_BATCH returned: %d", ARGV0, status);
+    mdebug1("Setting SCHED_BATCH returned: %d", status);
 #endif
 
 #ifdef DEBUG
-    verbose("%s: Starting daemon ..", ARGV0);
+    minfo("Starting daemon ..");
 #endif
 
     /* Some time to settle */
@@ -129,7 +129,7 @@ void start_daemon()
     /* Printing syscheck propierties */
 
     if (!syscheck.disabled)
-        merror("%s: INFO: Syscheck scan frequency: %d seconds", ARGV0, syscheck.time);
+        minfo("Syscheck scan frequency: %d seconds", syscheck.time);
 
     /* Will create the db to store syscheck data */
     if (syscheck.scan_on_start) {
@@ -143,7 +143,7 @@ void start_daemon()
 
         /* Send database completed message */
         send_syscheck_msg(HC_SK_DB_COMPLETED);
-        debug2("%s: DEBUG: Sending database completed message.", ARGV0);
+        mdebug2("Sending database completed message.");
     } else {
         prev_time_rk = time(0);
     }
@@ -252,7 +252,7 @@ void start_daemon()
                 /* Send scan start message */
                 if (syscheck.dir[0]) {
                     log_realtime_status(2);
-                    merror("%s: INFO: Starting syscheck scan.", ARGV0);
+                    minfo("Starting syscheck scan.");
                     send_rootcheck_msg("Starting syscheck scan.");
                 }
 #ifdef WIN32
@@ -266,13 +266,13 @@ void start_daemon()
             /* Send scan ending message */
             sleep(syscheck.tsleep * 15);
             if (syscheck.dir[0]) {
-                merror("%s: INFO: Ending syscheck scan.", ARGV0);
+                minfo("Ending syscheck scan.");
                 send_rootcheck_msg("Ending syscheck scan.");
             }
 
             /* Send database completed message */
             send_syscheck_msg(HC_SK_DB_COMPLETED);
-            debug2("%s: DEBUG: Sending database completed message.", ARGV0);
+            mdebug2("Sending database completed message.");
 
             prev_time_sk = time(0);
         }
@@ -290,7 +290,7 @@ void start_daemon()
             run_now = select(syscheck.realtime->fd + 1, &rfds,
                              NULL, NULL, &selecttime);
             if (run_now < 0) {
-                merror("%s: ERROR: Select failed (for realtime fim).", ARGV0);
+                merror("Select failed (for realtime fim).");
                 sleep(SYSCHECK_WAIT);
             } else if (run_now == 0) {
                 /* Timeout */
@@ -304,7 +304,7 @@ void start_daemon()
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
             log_realtime_status(1);
             if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
-                merror("%s: ERROR: WaitForSingleObjectEx failed (for realtime fim).", ARGV0);
+                merror("WaitForSingleObjectEx failed (for realtime fim).");
                 sleep(SYSCHECK_WAIT);
             } else {
                 sleep(syscheck.tsleep);
@@ -448,19 +448,19 @@ void log_realtime_status(int next) {
     switch (status) {
     case 0:
         if (next == 1) {
-            verbose("%s: INFO: Starting syscheck real-time monitoring.", ARGV0);
+            minfo("Starting syscheck real-time monitoring.");
             status = next;
         }
         break;
     case 1:
         if (next == 2) {
-            verbose("%s: INFO: Pausing syscheck real-time monitoring.", ARGV0);
+            minfo("Pausing syscheck real-time monitoring.");
             status = next;
         }
         break;
     case 2:
         if (next == 1) {
-            verbose("%s: INFO: Resuming syscheck real-time monitoring.", ARGV0);
+            minfo("Resuming syscheck real-time monitoring.");
             status = next;
         }
     }

@@ -50,8 +50,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         else
         {
             integrator_config[s]->enabled = 0;
-            merror("%s: ERROR: Unable to enable integration for: '%s'. File not found inside '%s'.",
-                   ARGV0, integrator_config[s]->name, INTEGRATORDIRPATH);
+            merror("Unable to enable integration for: '%s'. File not found inside '%s'.", integrator_config[s]->name, INTEGRATORDIRPATH);
             s++;
             continue;
         }
@@ -61,8 +60,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(!integrator_config[s]->hookurl)
             {
                 integrator_config[s]->enabled = 0;
-                merror("%s: ERROR: Unable to enable integration for: '%s'. Missing hookurl URL.",
-                   ARGV0, integrator_config[s]->name);
+                merror("Unable to enable integration for: '%s'. Missing hookurl URL.", integrator_config[s]->name);
                 s++;
                 continue;
             }
@@ -73,8 +71,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(!integrator_config[s]->apikey)
             {
                 integrator_config[s]->enabled = 0;
-                merror("%s: ERROR: Unable to enable integration for: '%s'. Missing API Key.",
-                   ARGV0, integrator_config[s]->name);
+                merror("Unable to enable integration for: '%s'. Missing API Key.", integrator_config[s]->name);
                 s++;
                 continue;
             }
@@ -87,13 +84,13 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         else
         {
             integrator_config[s]->enabled = 0;
-            merror("%s: ERROR: Invalid integration: '%s'. Not currently supported.", ARGV0, integrator_config[s]->name);
+            merror("Invalid integration: '%s'. Not currently supported.", integrator_config[s]->name);
         }
 
         if(integrator_config[s]->enabled == 1)
         {
-            merror("%s: INFO: Enabling integration for: '%s'.",
-                   ARGV0, integrator_config[s]->name);
+            minfo("Enabling integration for: '%s'.",
+                   integrator_config[s]->name);
         }
 
         s++;
@@ -107,14 +104,14 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
 
 
         /* Get message if available (timeout of 5 seconds) */
-        debug2("%s: DEBUG: waiting for available alerts...", ARGV0);
+        mdebug2("waiting for available alerts...");
         al_data = Read_FileMon(fileq, p, 5);
         if(!al_data)
         {
             continue;
         }
 
-        debug1("%s: DEBUG: sending new alert.", ARGV0);
+        mdebug1("sending new alert.");
         temp_file_created = 0;
 
         /* Sending to the configured integrations */
@@ -124,7 +121,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(integrator_config[s]->enabled == 0)
             {
                 s++;
-                debug2("%s: DEBUG: skipping: integration disabled", ARGV0);
+                mdebug2("skipping: integration disabled");
                 continue;
             }
 
@@ -135,7 +132,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                                    strlen(al_data->location),
                                    integrator_config[s]->location))
                 {
-                    debug2("%s: DEBUG: skipping: location doesn't match", ARGV0);
+                    mdebug2("skipping: location doesn't match");
                     s++; continue;
                 }
             }
@@ -145,7 +142,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             {
                 if(al_data->level < integrator_config[s]->level)
                 {
-                    debug2("%s: DEBUG: skipping: alert level is too low", ARGV0);
+                    mdebug2("skipping: alert level is too low");
                     s++; continue;
                 }
             }
@@ -157,7 +154,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                             strlen(al_data->group),
                             integrator_config[s]->group))
                 {
-                    debug2("%s: DEBUG: skipping: group doesn't match", ARGV0);
+                    mdebug2("skipping: group doesn't match");
                     s++; continue;
                 }
             }
@@ -183,7 +180,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 /* skip integration if none are matched */
                 if(rule_match == -1)
                 {
-                    debug2("%s: DEBUG: skipping: rule doesn't match", ARGV0);
+                    mdebug2("skipping: rule doesn't match");
                     s++; continue;
                 }
             }
@@ -197,7 +194,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 fp = fopen(exec_tmp_file, "w");
                 if(!fp)
                 {
-                    debug2("%s: ERROR: file %s couldn't be created.", ARGV0, exec_tmp_file);
+                    mdebug2("File %s couldn't be created.", exec_tmp_file);
                     exec_tmp_file[0] = '\0';
                 }
                 else
@@ -281,7 +278,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                     }
                     fprintf(fp, "alertdate='%s'\nalertlocation='%s'\nruleid='%d'\nalertlevel='%d'\nruledescription='%s'\nalertlog='%s'\nsrcip='%s'", al_data->date, al_data->location, al_data->rule, al_data->level, al_data->comment, al_data->log[0], al_data->srcip == NULL?"":al_data->srcip);
                     temp_file_created = 1;
-                    debug2("%s: DEBUG: file %s was written.", ARGV0, exec_tmp_file);
+                    mdebug2("file %s was written.", exec_tmp_file);
                     fclose(fp);
                 }
             }
@@ -289,15 +286,15 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(temp_file_created == 1)
             {
                 snprintf(exec_full_cmd, 4095, "%s '%s' '%s' '%s' > /dev/null 2>&1", integrator_config[s]->path, exec_tmp_file, integrator_config[s]->apikey == NULL?"":integrator_config[s]->apikey, integrator_config[s]->hookurl==NULL?"":integrator_config[s]->hookurl);
-                debug2("%s: DEBUG: Running: %s", ARGV0, exec_full_cmd);
+                mdebug2("Running: %s", exec_full_cmd);
                 if(system(exec_full_cmd) != 0)
                 {
                     integrator_config[s]->enabled = 0;
-                    merror("%s: ERROR: Unable to run integration for %s -> %s", ARGV0,  integrator_config[s]->name, integrator_config[s]->path);
+                    merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, integrator_config[s]->path);
                     s++;
                     continue;
                 }
-                debug1("%s: DEBUG: Command run succesfully", ARGV0);
+                mdebug1("Command run succesfully");
             }
             s++;
         }

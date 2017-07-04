@@ -29,7 +29,7 @@ int ExecdConfig(const char *cfgfile)
 
     /* Read XML file */
     if (OS_ReadXML(cfgfile, &xml) < 0) {
-        ErrorExit(XML_ERROR, ARGV0, cfgfile, xml.err, xml.err_line);
+        merror_exit(XML_ERROR, cfgfile, xml.err, xml.err_line);
     }
 
     /* We do not validate the xml in here. It is done by other processes. */
@@ -40,9 +40,7 @@ int ExecdConfig(const char *cfgfile)
         } else if (strcmp(disable_entry, "no") == 0) {
             is_disabled = 0;
         } else {
-            merror(XML_VALUEERR, ARGV0,
-                   "disabled",
-                   disable_entry);
+            merror(XML_VALUEERR, "disabled", disable_entry);
             return (-1);
         }
     }
@@ -53,9 +51,7 @@ int ExecdConfig(const char *cfgfile)
         int j = 0;
         repeated_a = OS_StrBreak(',', repeated_t, 5);
         if (!repeated_a) {
-            merror(XML_VALUEERR, ARGV0,
-                   "repeated_offenders",
-                   disable_entry);
+            merror(XML_VALUEERR, "repeated_offenders", disable_entry);
             return (-1);
         }
 
@@ -75,8 +71,8 @@ int ExecdConfig(const char *cfgfile)
             }
 
             repeated_offenders_timeout[j] = atoi(tmpt);
-            verbose("%s: INFO: Adding offenders timeout: %d (for #%d)",
-                    ARGV0, repeated_offenders_timeout[j], j + 1);
+            minfo("Adding offenders timeout: %d (for #%d)",
+                    repeated_offenders_timeout[j], j + 1);
             j++;
             repeated_offenders_timeout[j] = 0;
             if (j >= 6) {
@@ -90,4 +86,3 @@ int ExecdConfig(const char *cfgfile)
 
     return (is_disabled);
 }
-

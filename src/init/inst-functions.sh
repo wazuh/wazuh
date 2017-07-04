@@ -24,6 +24,7 @@ RULES_TEMPLATE="./etc/templates/config/generic/rules.template"
 AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
 AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
+LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
 REMOTE_SYS_TEMPLATE="./etc/templates/config/generic/remote-syslog.template"
 
@@ -265,6 +266,10 @@ WriteAgent()
         echo "" >> $NEWCONFIG
     fi
 
+    # Logging format
+    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     echo "</ossec_config>" >> $NEWCONFIG
 }
 
@@ -294,6 +299,10 @@ WriteManager()
 
     # Alerts level
     cat ${ALERTS_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Logging format
+    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Remote connection secure

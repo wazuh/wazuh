@@ -93,9 +93,6 @@ void wm_kill_children();
  */
 int wm_strcat(char **str1, const char *str2, char sep);
 
-// Trim whitespaces from string
-char* wm_strtrim(char *string);
-
 // Tokenize string separated by spaces, respecting double-quotes
 char** wm_strtok(char *string);
 

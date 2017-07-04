@@ -89,9 +89,9 @@ wlabel_t* labels_parse(const char *path) {
 
     if (!(fp = fopen(path, "r"))) {
         if (errno == ENOENT) {
-            debug1(FOPEN_ERROR, ARGV0, path, errno, strerror(errno));
+            mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
         } else {
-            merror(FOPEN_ERROR, ARGV0, path, errno, strerror(errno));
+            merror(FOPEN_ERROR, path, errno, strerror(errno));
         }
 
         return NULL;

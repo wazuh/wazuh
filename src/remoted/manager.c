@@ -65,7 +65,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
     send_msg(keys.keyentries[agentid]->id, msg_ack);
 
     if (strcmp(r_msg, HC_STARTUP) == 0) {
-        debug1("%s: DEBUG: Agent %s sent HC_STARTUP from %s.", ARGV0, keys.keyentries[agentid]->name, inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr));
+        mdebug1("Agent %s sent HC_STARTUP from %s.", keys.keyentries[agentid]->name, inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr));
         return;
     } else {
         uname = r_msg;
@@ -77,7 +77,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             for (r_msg++; (end = strchr(r_msg, '\n')); r_msg = end + 1);
             *r_msg = '\0';
         } else {
-            merror("%s: WARN: Invalid message from agent id: '%d'(uname)", ARGV0, agentid);
+            mwarn("Invalid message from agent id: '%d'(uname)", agentid);
             return;
         }
 
@@ -87,7 +87,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
         } else {
             /* Lock mutex */
             if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
-                merror(MUTEX_ERROR, ARGV0);
+                merror(MUTEX_ERROR);
                 return;
             }
 
@@ -97,11 +97,11 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
                 os_calloc(1, sizeof(pending_data_t), data);
 
                 if (OSHash_Add(pending_data, keys.keyentries[agentid]->id, data) != 2) {
-                    merror("%s: ERROR: Couldn't add pending data into hash table.", ARGV0);
+                    merror("Couldn't add pending data into hash table.");
 
                     /* Unlock mutex */
                     if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
-                        merror(MUTEX_ERROR, ARGV0);
+                        merror(MUTEX_ERROR);
                     }
 
                     free(data);
@@ -110,14 +110,14 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
             }
 
             /* Update message */
-            debug2("%s: DEBUG: save_controlmsg(): inserting '%s'", ARGV0, uname);
+            mdebug2("save_controlmsg(): inserting '%s'", uname);
             os_strdup(uname, data->message);
 
             /* Mark data as changed and insert into queue */
 
             if (!data->changed) {
                 if (full(queue_i, queue_j)) {
-                    merror("%s: ERROR: Pending message queue full.", ARGV0);
+                    merror("Pending message queue full.");
                 } else {
                     strncpy(pending_queue[queue_i], keys.keyentries[agentid]->id, 8);
                     forward(queue_i);
@@ -131,7 +131,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
 
             /* Unlock mutex */
             if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
-                merror(MUTEX_ERROR, ARGV0);
+                merror(MUTEX_ERROR);
 
                 return;
             }
@@ -156,7 +156,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg)
                 fprintf(fp, "%s\n", uname);
                 fclose(fp);
             } else {
-                merror(FOPEN_ERROR, ARGV0, data->keep_alive, errno, strerror(errno));
+                merror(FOPEN_ERROR, data->keep_alive, errno, strerror(errno));
             }
         }
     }
@@ -211,7 +211,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         snprintf(file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, entry->d_name);
 
         if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
-            merror("%s: ERROR: Accessing file '%s'", ARGV0, file);
+            merror("Accessing file '%s'", file);
             continue;
         }
 
@@ -228,7 +228,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     OS_MoveFile(merged_tmp, merged);
 
     if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-        merror("%s: ERROR: Accessing file '%s'", ARGV0, merged);
+        merror("Accessing file '%s'", merged);
         f_sum[0]->sum[0] = '\0';
     }
 
@@ -245,11 +245,11 @@ static void c_files()
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
 
-    debug1(ARGV0 ": DEBUG: Updating shared files sums.");
+    mdebug1("Updating shared files sums.");
 
     /* Lock mutex */
     if (pthread_mutex_lock(&files_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
         return;
     }
 
@@ -287,13 +287,10 @@ static void c_files()
     if (!dp) {
         /* Unlock mutex */
         if (pthread_mutex_unlock(&files_mutex) != 0) {
-            merror(MUTEX_ERROR, ARGV0);
+            merror(MUTEX_ERROR);
         }
 
-        merror("%s: ERROR: Opening directory: '%s': %s",
-               ARGV0,
-               SHAREDCFG_DIR,
-               strerror(errno));
+        merror("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
         return;
     }
 
@@ -304,7 +301,7 @@ static void c_files()
         }
 
         if (snprintf(path, PATH_MAX + 1, SHAREDCFG_DIR "/%s", entry->d_name) > PATH_MAX) {
-            merror(ARGV0 ": ERROR: at c_files(): path too long.");
+            merror("At c_files(): path too long.");
             break;
         }
 
@@ -314,7 +311,7 @@ static void c_files()
 
         if (!subdir) {
             if (errno != ENOTDIR) {
-                merror(ARGV0 ": ERROR: could not open directory '%s'", path);
+                merror("Could not open directory '%s'", path);
             }
 
             continue;
@@ -331,11 +328,11 @@ static void c_files()
 
     /* Unlock mutex */
     if (pthread_mutex_unlock(&files_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
     }
 
     closedir(dp);
-    debug2(ARGV0 ": DEBUG: End updating shared files sums.");
+    mdebug2("End updating shared files sums.");
 }
 
 file_sum** find_sum(const char *group) {
@@ -384,7 +381,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     snprintf(file, OS_SIZE_1024, "%s/%s/%s", SHAREDCFG_DIR, group, name);
     fp = fopen(file, "r");
     if (!fp) {
-        merror(FOPEN_ERROR, ARGV0, file, errno, strerror(errno));
+        merror(FOPEN_ERROR, file, errno, strerror(errno));
         return (-1);
     }
 
@@ -393,7 +390,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
 
     if (send_msg(agent_id, buf) == -1) {
-        merror(SEC_ERROR, ARGV0);
+        merror(SEC_ERROR);
         fclose(fp);
         return (-1);
     }
@@ -403,7 +400,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
         buf[n] = '\0';
 
         if (send_msg(agent_id, buf) == -1) {
-            merror(SEC_ERROR, ARGV0);
+            merror(SEC_ERROR);
             fclose(fp);
             return (-1);
         }
@@ -422,7 +419,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
 
     if (send_msg(agent_id, buf) == -1) {
-        merror(SEC_ERROR, ARGV0);
+        merror(SEC_ERROR);
         fclose(fp);
         return (-1);
     }
@@ -446,12 +443,12 @@ static void read_controlmsg(const char *agent_id, char *msg)
         return;
     }
 
-    debug2("%s: DEBUG: read_controlmsg(): reading '%s'", ARGV0, msg);
+    mdebug2("read_controlmsg(): reading '%s'", msg);
 
     // Skip agent-info and label data
 
     if (msg = strchr(msg, '\n'), !msg) {
-        merror("%s: ERROR: Invalid message from agent ID '%s' (strchr \\n)", ARGV0, agent_id);
+        merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
         return;
     }
 
@@ -465,7 +462,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
     /* Lock mutex */
     if (pthread_mutex_lock(&files_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
         return;
     }
 
@@ -475,10 +472,10 @@ static void read_controlmsg(const char *agent_id, char *msg)
         if (f_sum = find_sum(group), !f_sum) {
             /* Unlock mutex */
             if (pthread_mutex_unlock(&files_mutex) != 0) {
-                merror(MUTEX_ERROR, ARGV0);
+                merror(MUTEX_ERROR);
             }
 
-            merror("%s: ERROR: No such group '%s' for agent '%s'", __local_name, group, agent_id);
+            merror("No such group '%s' for agent '%s'", group, agent_id);
             return;
         }
     }
@@ -493,9 +490,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         msg = strchr(msg, '\n');
         if (!msg) {
-            merror("%s: ERROR: Invalid message from agent ID '%s' (strchr \\n)",
-                   ARGV0,
-                   agent_id);
+            merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
             break;
         }
 
@@ -510,9 +505,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         file = strchr(file, ' ');
         if (!file) {
-            merror("%s: ERROR: Invalid message from agent ID '%s' (strchr ' ')",
-                   ARGV0,
-                   agent_id);
+            merror("Invalid message from agent ID '%s' (strchr ' ')", agent_id);
             break;
         }
 
@@ -529,10 +522,10 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 if (f_sum = find_sum(group), !f_sum) {
                     /* Unlock mutex */
                     if (pthread_mutex_unlock(&files_mutex) != 0) {
-                        merror(MUTEX_ERROR, ARGV0);
+                        merror(MUTEX_ERROR);
                     }
 
-                    merror("%s: ERROR: No such group '%s' for agent '%s'", __local_name, group, agent_id);
+                    merror("No such group '%s' for agent '%s'", group, agent_id);
                     return;
                 }
             }
@@ -551,17 +544,17 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
             /* Unlock mutex */
             if (pthread_mutex_unlock(&files_mutex) != 0) {
-                merror(MUTEX_ERROR, ARGV0);
+                merror(MUTEX_ERROR);
             }
 
             if (strcmp(tmp_sum, md5) != 0) {
-                debug1("%s: DEBUG: Sending file '%s/%s' to agent '%s'.", ARGV0, group, SHAREDCFG_FILENAME, agent_id);
+                mdebug1("Sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
 
                 if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum) < 0) {
-                    merror(SHARED_ERROR, ARGV0, SHAREDCFG_FILENAME, agent_id);
+                    merror(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
                 }
 
-                debug2("%s: DEBUG: End sending file '%s/%s' to agent '%s'.", ARGV0, group, SHAREDCFG_FILENAME, agent_id);
+                mdebug2("End sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
             }
 
             return;
@@ -596,9 +589,9 @@ static void read_controlmsg(const char *agent_id, char *msg)
         if ((f_sum[i]->mark == 1) ||
                 (f_sum[i]->mark == 0)) {
 
-            debug1("%s: DEBUG: Sending file '%s/%s' to agent '%s'.", ARGV0, group, f_sum[i]->name, agent_id);
+            mdebug1("Sending file '%s/%s' to agent '%s'.", group, f_sum[i]->name, agent_id);
             if (send_file_toagent(agent_id, group, f_sum[i]->name, f_sum[i]->sum) < 0) {
-                merror(SHARED_ERROR, ARGV0, f_sum[i]->name, agent_id);
+                merror(SHARED_ERROR, f_sum[i]->name, agent_id);
             }
         }
 
@@ -607,7 +600,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
     /* Unlock mutex */
     if (pthread_mutex_unlock(&files_mutex) != 0) {
-        merror(MUTEX_ERROR, ARGV0);
+        merror(MUTEX_ERROR);
     }
 
     return;
@@ -629,7 +622,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
     while (1) {
         /* Lock mutex */
         if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
-            merror(MUTEX_ERROR, ARGV0);
+            merror(MUTEX_ERROR);
             return (NULL);
         }
 
@@ -644,7 +637,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
             strncpy(msg, data->message, OS_SIZE_1024);
             data->changed = 0;
         } else {
-            merror("%s: CRITICAL: Couldn't get pending data from hash table for agent ID '%s'.", ARGV0, pending_queue[queue_j]);
+            merror("Couldn't get pending data from hash table for agent ID '%s'.", pending_queue[queue_j]);
             *agent_id = '\0';
             *msg = '\0';
         }
@@ -653,7 +646,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         /* Unlock mutex */
         if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
-            merror(MUTEX_ERROR, ARGV0);
+            merror(MUTEX_ERROR);
             break;
         }
 
@@ -688,7 +681,7 @@ void *update_shared_files(__attribute__((unused)) void *none) {
 void manager_init()
 {
     _stime = time(0);
-    debug1("%s: DEBUG: Running manager_init", ARGV0);
+    mdebug1("Running manager_init");
     c_files();
     memset(pending_queue, 0, MAX_AGENTS * 9);
     pending_data = OSHash_Create();
