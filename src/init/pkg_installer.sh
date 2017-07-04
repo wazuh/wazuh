@@ -18,8 +18,9 @@ rm -rf ${DIRECTORY}/tmp_bkp
 
 # Installing upgrade
 
-echo "UPGRADE DATE: ${BDATE}" > ${DIRECTORY}/var/incoming/upgrade.log
-${DIRECTORY}/var/incoming/wazuh_pkg/install.sh >> ${DIRECTORY}/var/incoming/upgrade.log
+echo "UPGRADE DATE: ${BDATE}" > ${DIRECTORY}/logs/upgrade.log
+chmod +x ${DIRECTORY}/var/upgrade/install.sh
+${DIRECTORY}/var/upgrade/install.sh >> ${DIRECTORY}/logs/upgrade.log
 
 STATUS=$?
 echo -ne $STATUS > ${DIRECTORY}/var/run/upgrade_result
