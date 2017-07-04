@@ -398,8 +398,13 @@ size_t wcom_upgrade(const char * package, const char * installer, char * output)
     char installer_j[PATH_MAX + 1];
     char compressed[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
+    static int timeout = 0;
     int status;
     char *out;
+
+    if (timeout == 0) {
+        timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
+    }
 
     // Unsign
 
@@ -460,7 +465,7 @@ size_t wcom_upgrade(const char * package, const char * installer, char * output)
     }
 #endif
 
-    if (wm_exec(installer_j, &out, &status, 0) < 0) {
+    if (wm_exec(installer_j, &out, &status, timeout) < 0) {
         merror("At WCOM upgrade: Error executing command [%s]", installer_j);
         strcpy(output, "err Cannot execute installer");
         return strlen(output);
