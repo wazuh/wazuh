@@ -56,7 +56,6 @@ int req_push(char * buffer, size_t length) {
     char * target;
     char * payload;
     char response[REQ_RESPONSE_LENGTH];
-    char sockname[PATH_MAX];
     int sock = -1;
     int error;
     req_node_t * node;
@@ -93,6 +92,7 @@ int req_push(char * buffer, size_t length) {
 
 #ifndef WIN32
 
+        char sockname[PATH_MAX];
         snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
 
         if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {

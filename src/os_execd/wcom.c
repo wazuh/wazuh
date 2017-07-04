@@ -557,23 +557,21 @@ void * wcom_main(__attribute__((unused)) void * arg) {
 #endif
 
 int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
-    const char * begin;
 
-    // Find last '/' or '\'
+    if (w_ref_parent_folder(filename)) {
+        return -1;
+    }
 
 #ifndef WIN32
-    begin = (begin = strrchr(filename, '/'), begin) ? begin + 1 : filename;
-    return snprintf(finalpath, PATH_MAX + 1, "%s/%s/%s", isChroot() ? "" : DEFAULTDIR, basedir, begin) > PATH_MAX ? -1 : 0;
+    return snprintf(finalpath, PATH_MAX + 1, "%s/%s/%s", isChroot() ? "" : DEFAULTDIR, basedir, filename) > PATH_MAX ? -1 : 0;
 #else
-    begin = (begin = strrchr(filename, '/'), begin || (begin = strrchr(filename, '\\'), begin)) ? begin + 1 : filename;
-    return snprintf(finalpath, PATH_MAX + 1, "%s/%s", basedir, begin) > PATH_MAX ? -1 : 0;
+    return snprintf(finalpath, PATH_MAX + 1, "%s\\%s", basedir, filename) > PATH_MAX ? -1 : 0;
 #endif
 }
 
 int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     const char TEMPLATE[] = ".gz.XXXXXX";
     char source_j[PATH_MAX + 1];
-    int fd;
     size_t length;
 
     if (_jailfile(source_j, INCOMING_DIR, source) > PATH_MAX) {
@@ -594,6 +592,8 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     memcpy(dest + length, TEMPLATE, sizeof(TEMPLATE));
 
 #ifndef WIN32
+    int fd;
+
     if (fd = mkstemp(dest), fd >= 0) {
         close(fd);
 
@@ -604,7 +604,7 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
         }
     } else {
 #else
-    if (!mktemp(dest))
+    if (!_mktemp(dest)) {
 #endif
         merror("At unsign(): Couldn't create temporary compressed file");
         return -1;

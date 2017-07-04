@@ -13,7 +13,6 @@
 #include "shared.h"
 
 #ifndef WIN32
-#include <libgen.h>
 #include <regex.h>
 #else
 #include <aclapi.h>
@@ -545,14 +544,11 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
             snprintf(final_name, 2048, "%s/%s", optdir, files);
 
             // Check that final_name is inside optdir
-            copy = strdup(final_name);
 
-            if (strncmp(dirname(copy), optdir, strlen(optdir))) {
-                merror("Unmerging '%s': unable to unmerge '%s'", finalpath, final_name);
+            if (w_ref_parent_folder(final_name)) {
+                merror("Unmerging '%s': unable to unmerge '%s' (it contains '..')", finalpath, final_name);
                 state_ok = 0;
             }
-
-            free(copy);
         } else {
             strncpy(final_name, files, 2048);
             final_name[2048] = '\0';
@@ -2166,6 +2162,47 @@ int mkdir_ex(const char * path) {
         default:
             merror("Couldn't make dir '%s': %s", path, strerror(errno));
             return -1;
+        }
+    }
+
+    return 0;
+}
+
+int w_ref_parent_folder(const char * path) {
+    const char * str;
+    char * ptr;
+
+    switch (path[0]) {
+    case '\0':
+        return 0;
+
+    case '.':
+        switch (path[1]) {
+        case '\0':
+            return 0;
+
+        case '.':
+            switch (path[2]) {
+            case '\0':
+                return 1;
+
+            case '/':
+#ifdef WIN32
+            case '\\':
+#endif
+                return 1;
+            }
+        }
+    }
+
+#ifdef WIN32
+    for (str = path; ptr = strstr(str, "/.."), ptr || (ptr = strstr(str, "\\.."), ptr); str = ptr + 3) {
+        if (ptr[3] == '\0' || ptr[3] == '/' || ptr[3] == '\\') {
+#else
+    for (str = path; ptr = strstr(str, "/.."), ptr; str = ptr + 3) {
+        if (ptr[3] == '\0' || ptr[3] == '/') {
+#endif
+            return 1;
         }
     }
 

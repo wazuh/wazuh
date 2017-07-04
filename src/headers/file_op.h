@@ -82,4 +82,6 @@ int cldir_ex(const char *name);
 // Make directory recursively
 int mkdir_ex(const char * path);
 
+int w_ref_parent_folder(const char * path);
+
 #endif /* __FILE_H */

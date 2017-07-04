@@ -91,6 +91,7 @@
 
 #include <time.h>
 #include <errno.h>
+#include <libgen.h>
 
 #include "defs.h"
 #include "help.h"
