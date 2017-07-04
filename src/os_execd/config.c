@@ -10,6 +10,7 @@
 #include "shared.h"
 #include "execd.h"
 
+char ** wcom_public_keys;
 
 /* Read the config file */
 int ExecdConfig(const char *cfgfile)
@@ -21,9 +22,11 @@ int ExecdConfig(const char *cfgfile)
 #endif
     const char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
     const char *(blocks[]) = {"ossec_config", "active-response", "repeated_offenders", NULL};
+    const char *(publickeys[]) = {"ossec_config", "active-response", "public-key", NULL};
     char *disable_entry;
     char *repeated_t;
     char **repeated_a;
+    int i;
 
     OS_XML xml;
 
@@ -80,6 +83,19 @@ int ExecdConfig(const char *cfgfile)
             }
             i++;
         }
+    }
+
+    if (wcom_public_keys = OS_GetContents(&xml, publickeys), wcom_public_keys) {
+        for (i = 0; wcom_public_keys[i]; i++) {
+            if (IsFile(wcom_public_keys[i])) {
+                merror("Public key file '%s' not found.", wcom_public_keys[i]);
+                wcom_public_keys[i][0] = '\0';
+            } else {
+                mdebug1("Using public key '%s'.", wcom_public_keys[i]);
+            }
+        }
+    } else {
+        mdebug1("No public keys defined.");
     }
 
     OS_ClearXML(&xml);

@@ -692,13 +692,20 @@ crypto_shared_o := $(crypto_shared_c:.c=.o)
 os_crypto/shared/%.o: os_crypto/shared/%.c ${ZLIB_LIB}
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
 
+crypto_signature_c := $(wildcard os_crypto/signature/*.c)
+crypto_signature_o := $(crypto_signature_c:.c=.o)
+
+os_crypto/signature/%.o: os_crypto/signature/%.c ${ZLIB_LIB}
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
+
 
 crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_o} \
 					 ${crypto_sha1_o} \
 					 ${crypto_shared_o} \
 					 ${crypto_md5_sha1_o}\
-					 ${crypto_hmac_o}
+					 ${crypto_hmac_o} \
+					 ${crypto_signature_o}
 
 os_crypto.a: ${crypto_o}
 	${OSSEC_LINK} $@ $^

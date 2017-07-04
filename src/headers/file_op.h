@@ -73,8 +73,11 @@ int checkVista();
 int isVista;
 #endif
 
-/* Delete directory recorsively */
+/* Delete directory recursively */
 int rmdir_ex(const char *path);
+
+// Delete directory content
+int cldir_ex(const char *name);
 
 // Make directory recursively
 int mkdir_ex(const char * path);

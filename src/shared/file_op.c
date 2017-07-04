@@ -1923,19 +1923,14 @@ const char *getuname()
     strncat(ret, os_v, ret_size - 1);
 
     return (ret);
-
 }
 
 
 #endif /* WIN32 */
 
-// Delete directory recorsively
+// Delete directory recursively
 
 int rmdir_ex(const char *name) {
-    DIR *dir;
-    struct dirent *dirent;
-    char path[PATH_MAX + 1];
-
     if (rmdir(name) == 0) {
         return 0;
     }
@@ -1945,41 +1940,47 @@ int rmdir_ex(const char *name) {
         return unlink(name);
 
     case ENOTEMPTY: // Directory not empty
-
-        // Erase content
-
-        dir = opendir(name);
-
-        if (!dir) {
-            return -1;
-        }
-
-        while (dirent = readdir(dir), dirent) {
-            // Skip "." and ".."
-            if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
-                continue;
-            }
-
-            if (snprintf(path, PATH_MAX + 1, "%s/%s", name, dirent->d_name) > PATH_MAX) {
-                closedir(dir);
-                return -1;
-            }
-
-            if (rmdir_ex(path) < 0) {
-                closedir(dir);
-                return -1;
-            }
-        }
-
-        closedir(dir);
-
-        // Try to erase again
-
-        return rmdir(name);
+        // Erase content and try to erase again
+        return cldir_ex(name) || rmdir(name) ? -1 : 0;
 
     default:
         return -1;
     }
+}
+
+// Delete directory content
+
+int cldir_ex(const char *name) {
+    DIR *dir;
+    struct dirent *dirent;
+    char path[PATH_MAX + 1];
+
+    // Erase content
+
+    dir = opendir(name);
+
+    if (!dir) {
+        return -1;
+    }
+
+    while (dirent = readdir(dir), dirent) {
+        // Skip "." and ".."
+        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+            continue;
+        }
+
+        if (snprintf(path, PATH_MAX + 1, "%s/%s", name, dirent->d_name) > PATH_MAX) {
+            closedir(dir);
+            return -1;
+        }
+
+        if (rmdir_ex(path) < 0) {
+            closedir(dir);
+            return -1;
+        }
+    }
+
+    return closedir(dir);
 }
 
 int TempFile(File *file, const char *source, int copy) {

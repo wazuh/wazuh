@@ -277,6 +277,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define INCOMING_DIR   "incoming"
 #endif
 
+// Upgrade directory
+#ifndef WIN32
+#define UPGRADE_DIR   "/var/upgrade"
+#else
+#define UPGRADE_DIR   "upgrade"
+#endif
+
 /* Built-in defines */
 #define DEFAULTQPATH    DEFAULTDIR DEFAULTQUEUE
 
