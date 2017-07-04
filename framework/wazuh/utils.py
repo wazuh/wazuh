@@ -325,7 +325,7 @@ def chown_r(filepath, uid, gid):
 
 def get_md5(fname):
     hash_md5 = md5()
-    with open(fname, "rb") as f:
+    with open(fname, "r") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
