@@ -3,19 +3,30 @@
 . /etc/ossec-init.conf
 
 # Generating Backup
-bdate=$(date +"%m-%d-%Y_%H-%M-%S")
+BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
 
-mkdir ${DIRECTORY}/ossec
-if [ ! -d ${DIRECTORY}/backup ]; then
-    mkdir ${DIRECTORY}/backup
-fi
-cp -R ${DIRECTORY}/bin ${DIRECTORY}/ossec
-cp -R ${DIRECTORY}/etc ${DIRECTORY}/ossec
-tar -zcf ${DIRECTORY}/backup/backup_${VERSION}_[${bdate}].tar.gz ${DIRECTORY}/ossec
-rm -rf ${DIRECTORY}/ossec
+mkdir -p ${DIRECTORY}/tmp_bkp/${DIRECTORY}/bin
+mkdir -p ${DIRECTORY}/tmp_bkp/${DIRECTORY}/etc
+mkdir -p ${DIRECTORY}/tmp_bkp/etc
+
+cp -R ${DIRECTORY}/bin ${DIRECTORY}/tmp_bkp/${DIRECTORY}
+cp -R ${DIRECTORY}/etc ${DIRECTORY}/tmp_bkp/${DIRECTORY}
+cp /etc/ossec-init.conf ${DIRECTORY}/tmp_bkp/etc
+
+tar -zcpf ${DIRECTORY}/backup/backup_${VERSION}_[${BDATE}].tar.gz -C ${DIRECTORY}/tmp_bkp .
+rm -rf ${DIRECTORY}/tmp_bkp
 
 # Installing upgrade
 
-echo "UPGRADE DATE: ${bdate}" > ${DIRECTORY}/var/incoming/upgrade.log
+echo "UPGRADE DATE: ${BDATE}" > ${DIRECTORY}/var/incoming/upgrade.log
 ${DIRECTORY}/var/incoming/wazuh_pkg/install.sh >> ${DIRECTORY}/var/incoming/upgrade.log
-echo $? > ${DIRECTORY}/var/run/upgrade_result
+
+STATUS=$?
+echo -ne $STATUS > ${DIRECTORY}/var/run/upgrade_result
+
+if [ ! $STATUS = 0 ]; then
+    ${DIRECTORY}/bin/ossec-control stop
+    tar --same-owner zxf ${DIRECTORY}/backup/backup_${VERSION}_[${BDATE}].tar.gz -C /
+    echo -ne " 2" >> ${DIRECTORY}/var/run/upgrade_result
+    ${DIRECTORY}/bin/ossec-control start
+fi
