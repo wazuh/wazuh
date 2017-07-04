@@ -49,8 +49,7 @@ class Agent:
         self.lastKeepAlive = None
         self.status = None
         self.key = None
-        self.configSum = None
-        self.merged = {}
+        self.sharedConf = {}
         self.group = None
 
         if args:
@@ -84,7 +83,7 @@ class Agent:
         return str(self.to_dict())
 
     def to_dict(self):
-        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os, 'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive, 'status': self.status, 'key': self.key, 'configSum': self.configSum, 'merged.mg': self.merged, 'group': self.group }
+        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os, 'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive, 'status': self.status, 'key': self.key, 'sharedConf': self.sharedConf, 'group': self.group }
 
         return dictionary
 
@@ -147,7 +146,7 @@ class Agent:
             else:
                 self.lastKeepAlive = 0
             if tuple[7] != None:
-                self.configSum = tuple[7]
+                self.sharedConf['agent.conf'] = tuple[7]
             if tuple[8] != None:
                 merged = tuple[8]
             if tuple[9] != None:
@@ -173,14 +172,15 @@ class Agent:
                 self.status = Agent.calculate_status(self.lastKeepAlive)
 
                 if merged:
-                    self.merged['agent'] = merged
-                    self.merged['pushed'] = False
+                    self.sharedConf['merged.mg'] = {}
+                    self.sharedConf['merged.mg']['agent'] = merged
+                    self.sharedConf['merged.mg']['pushed'] = False
                     if self.group:
                         group_path = '{0}/{1}/merged.mg'.format(common.shared_path, self.group)
                         if path.exists(group_path):
-                            self.merged['manager'] = get_md5(group_path)
-                            if self.merged['manager'] == self.merged['agent']:
-                                self.merged['pushed'] = True
+                            self.sharedConf['merged.mg']['manager'] = get_md5(group_path)
+                            if self.sharedConf['merged.mg']['manager'] == self.sharedConf['merged.mg']['agent']:
+                                self.sharedConf['merged.mg']['pushed'] = True
             else:
                 self.status = 'Active'
                 self.ip = '127.0.0.1'
@@ -216,10 +216,8 @@ class Agent:
             info['lastKeepAlive'] = self.lastKeepAlive
         if self.status:
             info['status'] = self.status
-        if self.configSum:
-            info['configSum'] = self.configSum
-        if self.merged:
-            info['merged.mg'] = self.merged
+        if self.sharedConf:
+            info['sharedConf'] = self.sharedConf
         #if self.key:
         #    info['key'] = self.key
         if self.group:
