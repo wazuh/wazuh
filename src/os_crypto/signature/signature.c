@@ -136,7 +136,7 @@ cleanup:
 }
 
 RSA * w_rsa_readpem(const char * path) {
-    RSA * rsa;
+    RSA * rsa = NULL;
     FILE * filekey;
 
     if (filekey = fopen(path, "rb"), !filekey) {
