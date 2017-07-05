@@ -166,17 +166,7 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
             strcpy(output, "err Too few commands");
             return strlen(output);
         }
-
-    } else if (strcmp(rcv_comm, "exec") == 0){
-        if (!rcv_args){
-            merror("WCOM exec needs arguments.");
-            strcpy(output, "err WCOM exec needs arguments");
-            return strlen(output);
-        }
-        // exec [command]
-        return wcom_exec(rcv_args, output);
-
-    }else {
+    } else {
         merror("WCOM Unrecognized command '%s'.", rcv_comm);
         strcpy(output, "err Unrecognized command");
         return strlen(output);
@@ -371,27 +361,6 @@ size_t wcom_uncompress(const char * source, const char * target, char * output) 
     gzclose(fsource);
     fclose(ftarget);
     return strlen(output);
-}
-
-size_t wcom_exec(char *command, char *output){
-    static int timeout = 0;
-    int status;
-    char *out;
-
-    if (timeout == 0) {
-        timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
-    }
-
-    if (wm_exec(command, &out, &status, timeout) < 0) {
-        merror("At WCOM exec: Error executing command [%s]", command);
-        strcpy(output, "err Cannot execute command");
-        return strlen(output);
-    } else {
-        int offset = snprintf(output, OS_MAXSTR, "ok %d ", status);
-        strncpy(output + offset, out, OS_MAXSTR - offset + 1);
-        free(out);
-        return strlen(output);
-    }
 }
 
 size_t wcom_upgrade(const char * package, const char * installer, char * output) {
