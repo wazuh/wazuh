@@ -44,8 +44,11 @@ int ExecdConfig(const char *cfgfile)
             is_disabled = 0;
         } else {
             merror(XML_VALUEERR, "disabled", disable_entry);
+            free(disable_entry);
             return (-1);
         }
+
+        free(disable_entry);
     }
 
     repeated_t = OS_GetOneContentforElement(&xml, blocks);
@@ -54,7 +57,8 @@ int ExecdConfig(const char *cfgfile)
         int j = 0;
         repeated_a = OS_StrBreak(',', repeated_t, 5);
         if (!repeated_a) {
-            merror(XML_VALUEERR, "repeated_offenders", disable_entry);
+            merror(XML_VALUEERR, "repeated_offenders", repeated_t);
+            free(repeated_t);
             return (-1);
         }
 
@@ -83,6 +87,14 @@ int ExecdConfig(const char *cfgfile)
             }
             i++;
         }
+
+        free(repeated_t);
+
+        for (i = 0; repeated_a[i]; i++) {
+            free(repeated_a[i]);
+        }
+
+        free(repeated_a);
     }
 
     if (wcom_public_keys = OS_GetContents(&xml, publickeys), wcom_public_keys) {
