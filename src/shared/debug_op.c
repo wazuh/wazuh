@@ -176,10 +176,7 @@ void os_logging_config(){
     flags.log_plain = 1;
     flags.log_json = 0;
     flags.read = 1;
-    for (i=0; parts[i]; i++){
-      free(parts[i]);
-    }
-    free(parts);
+
     free(logformat);
     OS_ClearXML(&xml);
     mdebug1(XML_NO_ELEM, "log-format");
