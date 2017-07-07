@@ -58,7 +58,7 @@ f:/etc/fstab -> !r:^# && r:/tmp && !r:nosuid;
 
 # 1.1.4 /tmp: noexec
 [CIS - RHEL7 - 1.1.4 - Partition /tmp without 'noexec' set {CIS: 1.1.4 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;
+f:/etc/fstab -> !r:^# && r:/tmp && !r:noexec;
 
 # 1.1.5 Build considerations - Partition scheme.
 [CIS - RHEL7 - Build considerations - Robust partition scheme - /var is not on its own partition {CIS: 1.1.5 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
@@ -158,16 +158,16 @@ f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;
 
 # 1.4.1 enable selinux in /etc/grub.conf
 [CIS - RHEL7 - 1.4.1 - SELinux Disabled in /etc/grub.conf {CIS: 1.4.1 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/etc/grub.conf -> !r:selinux=0;
-f:/etc/grub2.cfg -> !r:selinux=0;
+f:/etc/grub.conf -> r:selinux=0;
+f:/etc/grub2.cfg -> r:selinux=0;
 
 # 1.4.2 Set selinux state
 [CIS - RHEL7 - 1.4.2 - SELinux not set to enforcing {CIS: 1.4.2 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/etc/selinux/config -> r:SELINUX=enforcing;
+f:/etc/selinux/config -> !r:SELINUX=enforcing;
 
 # 1.4.3 Set seliux policy
 [CIS - RHEL7 - 1.4.3 - SELinux policy not set to targeted {CIS: 1.4.3 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/etc/selinux/config -> r:SELINUXTYPE=targeted;
+f:/etc/selinux/config -> !r:SELINUXTYPE=targeted;
 
 # 1.4.4 Remove SETroubleshoot
 [CIS - RHEL7 - 1.4.4 - SELinux setroubleshoot enabld {CIS: 1.4.4 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]

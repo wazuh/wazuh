@@ -64,8 +64,8 @@ date=2016-06-15 time=09:41:35 devname=Device_Name devid=FGTXXXX9999999999 logid=
 <decoder name="fortigate-firewall-v5-utm-ips">
     <parent>fortigate-firewall-v5</parent>
     <prematch offset="after_parent">type=utm subtype=ips</prematch>
-    <regex offset="after_prematch">level=(\S+) \.+ srcip=(\S+) dstip=(\S+) \.*srcport=(\d+) dstport=(\d+) \.*msg=(\.*)</regex>
-    <order>action,srcip,dstip,srcport,dstport,extra_data</order>
+    <regex offset="after_prematch">severity=(\S+) srcip=(\S+) dstip=(\S+) \.*action=(\S+) proto\.+srcport=(\d+) dstport=(\d+) \.*msg=(\.*)</regex>
+    <order>status,srcip,dstip,action,srcport,dstport,extra_data</order>
 </decoder>
 
 <!--
