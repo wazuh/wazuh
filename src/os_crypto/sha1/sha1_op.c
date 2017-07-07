@@ -23,7 +23,7 @@
 #endif
 */
 
-#include "sha_locl.h"
+#include <openssl/sha.h>
 
 
 int OS_SHA1_File(const char *fname, os_sha1 output, int mode)

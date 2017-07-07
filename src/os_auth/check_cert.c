@@ -22,8 +22,6 @@
  *
  */
 
-#ifdef LIBOPENSSL_ENABLED
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -323,5 +321,3 @@ char *asn1_to_cstr(ASN1_STRING *astr)
 
     return cstr;
 }
-
-#endif /* LIBOPENSSL_ENABLED */

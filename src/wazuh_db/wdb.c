@@ -193,13 +193,7 @@ int wdb_create_global(const char *path) {
         return -1;
     else if (wdb_insert_info("max_agents", max_agents) < 0)
         return -1;
-    else if (wdb_insert_info("openssl_support",
-#ifdef LIBOPENSSL_ENABLED
-        "yes"
-#else
-        "no"
-#endif
-    ) < 0)
+    else if (wdb_insert_info("openssl_support", "yes") < 0)
         return -1;
     else
         return 0;

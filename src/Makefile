@@ -6,6 +6,7 @@ EXTERNAL_JSON=external/cJSON/
 EXTERNAL_LUA=external/lua-5.2.3/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
+EXTERNAL_OPENSSL=external/openssl/
 LUA_PLAT=posix
 MAXAGENTS?=8000
 REUSE_ID?=no
@@ -26,10 +27,8 @@ USE_INOTIFY=no
 
 ifneq (${TARGET},winagent)
 	USE_PICVIZ?=yes
-	USE_OPENSSL?=auto
 else
 	USE_PICVIZ?=no
-	USE_OPENSSL?=no
 endif
 
 ONEWAY?=no
@@ -47,7 +46,7 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 	DEFINES+=-DREUSE_ID
 endif
 
-OSSEC_LDFLAGS=${LDFLAGS} -lm
+OSSEC_LDFLAGS=${LDFLAGS} -L${EXTERNAL_OPENSSL} -lm -lssl -lcrypto
 INSTALL=install
 
 ifneq (${TARGET},winagent)
@@ -141,7 +140,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra
-OSSEC_CFLAGS+=-I./ -I./headers/
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include
 
 
 CCCOLOR="\033[34m"
@@ -163,6 +162,9 @@ endif
 
 MING_BASE:=
 ifeq (${TARGET}, winagent)
+# Avoid passing environment variables such CFLAGS to external Makefiles
+MAKEOVERRIDES=
+
 CC=gcc
 ifneq (,$(shell which amd64-mingw32msvc-gcc))
 	MING_BASE:=amd64-mingw32msvc-
@@ -294,37 +296,6 @@ ifdef DATABASE
 	endif # mysql
 endif # DATABASE
 
-
-# openssl ###########
-ifeq (${USE_OPENSSL},auto)
-	ifneq (,$(wildcard /usr/include/openssl/ssl.h))
-		DEFINES+=-DLIBOPENSSL_ENABLED
-		OSSEC_LDFLAGS+=-lssl -lcrypto
-	else
-		ifneq (,$(wildcard /usr/local/include/openssl/ssl.h))
-			DEFINES+=-DLIBOPENSSL_ENABLED
-			OSSEC_LDFLAGS+=-lssl -lcrypto
-		endif
-	endif
-endif # USE_OPENSSL
-
-ifneq (,$(filter ${USE_OPENSSL},yes y Y 1))
-	DEFINES+=-DLIBOPENSSL_ENABLED
-	ifeq (${OPENSSL_LIBS},)
-		OSSEC_LDFLAGS+=-lssl -lcrypto
-	else
-		OSSEC_LDFLAGS+=${OPENSSL_LIBS}
-	endif
-
-	ifneq (${OPENSSL_CFLAGS},)
-		OSSEC_CFLAGS+=${OPENSSL_CFLAGS}
-	endif
-endif
-
-ifneq (,$(filter ${USE_LEGACY_SSL},yes y Y 1))
-	DEFINES+=-DLEGACY_SSL
-endif
-
 ####################
 #### Target ########
 ####################
@@ -412,7 +383,6 @@ settings:
 	@echo "    USE_ZEROMQ:       ${USE_ZEROMQ}"
 	@echo "    USE_GEOIP:        ${USE_GEOIP}"
 	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
-	@echo "    USE_OPENSSL:      ${USE_OPENSSL}"
 	@echo "    USE_LEGACY_SSL:   ${USE_LEGACY_SSL}"
 	@echo "    USE_PICVIZ:       ${USE_PICVIZ}"
 	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
@@ -431,7 +401,6 @@ settings:
 	@echo "    MAKE            ${MAKE}"
 
 
-BUILD_SERVER+=external
 BUILD_SERVER+=ossec-maild
 BUILD_SERVER+=ossec-csyslogd
 BUILD_SERVER+=ossec-agentlessd
@@ -444,9 +413,7 @@ BUILD_SERVER+=utils
 BUILD_SERVER+=ossec-syscheckd
 BUILD_SERVER+=ossec-monitord
 BUILD_SERVER+=ossec-reportd
-ifneq (,$(filter ${USE_OPENSSL},auto yes))
 BUILD_SERVER+=ossec-authd
-endif
 BUILD_SERVER+=ossec-analysisd
 BUILD_SERVER+=ossec-logtest
 BUILD_SERVER+=ossec-makelists
@@ -454,11 +421,8 @@ BUILD_SERVER+=ossec-dbd
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
 
-BUILD_AGENT+=external
 BUILD_AGENT+=ossec-agentd
-ifneq (,$(filter ${USE_OPENSSL},auto yes))
 BUILD_AGENT+=agent-auth
-endif
 BUILD_AGENT+=ossec-logcollector
 BUILD_AGENT+=ossec-syscheckd
 BUILD_AGENT+=ossec-execd
@@ -469,22 +433,22 @@ BUILD_AGENT+=wazuh-modulesd
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
-server: ${BUILD_SERVER}
+server: | external ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
 endif
-local: ${BUILD_SERVER}
+local: | external ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
 endif
-hybrid: ${BUILD_SERVER}
+hybrid: | external ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
-agent: ${BUILD_AGENT}
+agent: | external ${BUILD_AGENT}
 
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
@@ -493,8 +457,8 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent:
-	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32"
+winagent: ${EXTERNAL_OPENSSL}libssl.a
+	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32"
 	cd ${EXTERNAL_LUA}src/ && ${MAKE} CC=${MING_BASE}${CC} -f Makefile.mingw mingw
 	cp ${EXTERNAL_LUA}src/ossec-lua.exe win32/
 	cp ${EXTERNAL_LUA}src/ossec-luac.exe win32/
@@ -513,10 +477,30 @@ winagent:
 ####################
 
 .PHONY: external lua
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua
+external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
 
 lua:
 	cd ${EXTERNAL_LUA} && ${MAKE} ${LUA_PLAT}
+
+#### OpenSSL ##########
+
+OPENSSL_LIB=${EXTERNAL_OPENSSL}libssl.a
+CRYPTO_LIB=${EXTERNAL_OPENSSL}libcrypto.a
+
+${CRYPTO_LIB}: ${OPENSSL_LIB}
+
+${OPENSSL_LIB}:
+ifeq (${TARGET},winagent)
+	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} ./Configure mingw && ${MAKE} build_libs
+else
+ifeq (${uname_S},Darwin)
+	cd ${EXTERNAL_OPENSSL} && ./Configure darwin64-x86_64-cc && ${MAKE} build_libs
+else
+	cd ${EXTERNAL_OPENSSL} && ./config && ${MAKE} build_libs
+endif
+endif
+
+#### zlib ##########
 
 ${EXTERNAL_ZLIB}libz.a:
 ifeq (${TARGET},winagent)
@@ -524,8 +508,6 @@ ifeq (${TARGET},winagent)
 else
 	cd ${EXTERNAL_ZLIB} && ./configure && ${MAKE} libz.a
 endif
-
-#### zlib ##########
 
 ZLIB_LIB=os_zlib.a ${EXTERNAL_ZLIB}libz.a
 ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
@@ -561,7 +543,7 @@ libcJSON.a: ${cjson_o}
 #### OSSEC Libs ####
 ####################
 
-ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a
+ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a ${OPENSSL_LIB} ${CRYPTO_LIB}
 
 #### os_xml ########
 
@@ -653,16 +635,13 @@ config.a: ${config_o}
 
 #### crypto ##########
 
-crypto_blowfish_c := os_crypto/blowfish/bf_op.c \
-										os_crypto/blowfish/bf_skey.c \
-										os_crypto/blowfish/bf_enc.c
+crypto_blowfish_c := os_crypto/blowfish/bf_op.c
 crypto_blowfish_o := $(crypto_blowfish_c:.c=.o)
 
 os_crypto/blowfish/%.o: os_crypto/blowfish/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-crypto_md5_c := os_crypto/md5/md5.c \
-							 os_crypto/md5/md5_op.c
+crypto_md5_c := os_crypto/md5/md5_op.c
 crypto_md5_o := $(crypto_md5_c:.c=.o)
 
 os_crypto/md5/%.o: os_crypto/md5/%.c
@@ -1202,7 +1181,9 @@ clean-external:
 	rm -f ${cjson_o} libcJSON.a
 	cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
 	cd ${EXTERNAL_LUA} && ${MAKE} clean
-
+	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
+	rm -f ${OPENSSL_LIB}
+	rm -f ${CRYPTO_LIB}
 
 clean-internals:
 	rm -f ${os_zlib_o} os_zlib.a

@@ -29,8 +29,6 @@
 #define ARGV0 "ossec-authd"
 #endif
 
-#ifdef LIBOPENSSL_ENABLED
-
 #include "addagent/manage_agents.h"
 #include "os_net/os_net.h"
 #include "config/authd-config.h"
@@ -88,5 +86,4 @@ extern pthread_mutex_t mutex_keys;
 extern pthread_cond_t cond_pending;
 extern authd_config_t config;
 
-#endif /* LIBOPENSSL_ENABLED */
 #endif /* _AUTHD_H */

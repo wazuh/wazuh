@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "md5_op.h"
-#include "md5.h"
+#include <openssl/md5.h>
 #include "headers/defs.h"
 
 int OS_MD5_File(const char *fname, os_md5 output, int mode)
@@ -34,13 +34,13 @@ int OS_MD5_File(const char *fname, os_md5 output, int mode)
         return (-1);
     }
 
-    MD5Init(&ctx);
+    MD5_Init(&ctx);
     while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
         buf[n] = '\0';
-        MD5Update(&ctx, buf, (unsigned)n);
+        MD5_Update(&ctx, buf, (unsigned)n);
     }
 
-    MD5Final(digest, &ctx);
+    MD5_Final(digest, &ctx);
 
     for (n = 0; n < 16; n++) {
         snprintf(output, 3, "%02x", digest[n]);
@@ -59,9 +59,9 @@ int OS_MD5_Str(const char *str, ssize_t length, os_md5 output)
     int n;
 
     MD5_CTX ctx;
-    MD5Init(&ctx);
-    MD5Update(&ctx, (const unsigned char *)str, length < 0 ? (unsigned)strlen(str) : (unsigned)length);
-    MD5Final(digest, &ctx);
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, (const unsigned char *)str, length < 0 ? (unsigned)strlen(str) : (unsigned)length);
+    MD5_Final(digest, &ctx);
 
     output[32] = '\0';
     for (n = 0; n < 16; n++) {

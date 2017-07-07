@@ -25,8 +25,6 @@
 #ifndef _CHECK_CERT_H
 #define _CHECK_CERT_H
 
-#ifdef LIBOPENSSL_ENABLED
-
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 
@@ -53,5 +51,4 @@ int label_valid(const label *label);
 int label_match(const label *label1, const label *label2);
 char *asn1_to_cstr(ASN1_STRING *astr);
 
-#endif /* LIBOPENSSL_ENABLED */
 #endif /* _CHECK_CERT_H */

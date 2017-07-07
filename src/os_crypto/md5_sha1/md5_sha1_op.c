@@ -11,8 +11,8 @@
 #include <string.h>
 
 #include "md5_sha1_op.h"
-#include "../md5/md5.h"
-#include "../sha1/sha.h"
+#include <openssl/md5.h>
+#include <openssl/sha.h>
 #include "headers/defs.h"
 
 int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, int mode)
@@ -51,18 +51,18 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
     }
 
     /* Initialize both hashes */
-    MD5Init(&md5_ctx);
+    MD5_Init(&md5_ctx);
     SHA1_Init(&sha1_ctx);
 
     /* Update for each one */
     while ((n = fread(buf, 1, 2048, fp)) > 0) {
         buf[n] = '\0';
         SHA1_Update(&sha1_ctx, buf, n);
-        MD5Update(&md5_ctx, buf, (unsigned)n);
+        MD5_Update(&md5_ctx, buf, (unsigned)n);
     }
 
     SHA1_Final(&(sha1_digest[0]), &sha1_ctx);
-    MD5Final(md5_digest, &md5_ctx);
+    MD5_Final(md5_digest, &md5_ctx);
 
     /* Set output for MD5 */
     for (n = 0; n < 16; n++) {

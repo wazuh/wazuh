@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "blowfish.h"
+#include <openssl/blowfish.h>
 #include "bf_op.h"
 
 typedef unsigned char uchar;
@@ -37,4 +37,3 @@ int OS_BF_Str(const char *input, char *output, const char *charkey,
 
     return (1);
 }
-

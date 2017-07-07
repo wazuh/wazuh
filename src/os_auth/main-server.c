@@ -22,18 +22,6 @@
  *
  */
 
-#ifndef LIBOPENSSL_ENABLED
-
-#include <stdlib.h>
-#include <stdio.h>
-int main()
-{
-    printf("ERROR: Not compiled. Missing OpenSSL support.\n");
-    exit(0);
-}
-
-#else
-
 #include "auth.h"
 #include <pthread.h>
 #include <sys/wait.h>
@@ -948,5 +936,3 @@ static void handler(int signum) {
 static void cleanup() {
     DeletePID(ARGV0);
 }
-
-#endif /* LIBOPENSSL_ENABLED */
