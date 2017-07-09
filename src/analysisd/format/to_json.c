@@ -83,6 +83,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->firedtimes);
         }
         cJSON_AddItemToObject(rule, "mail", cJSON_CreateBool(lf->generated_rule->alert_opts & DO_MAILALERT));
+
+        if (lf->generated_rule->last_events[1]) {
+            cJSON_AddStringToObject(root, "previous_output", lf->generated_rule->last_events[1]);
+        }
     }
 
     if(lf->protocol) {
