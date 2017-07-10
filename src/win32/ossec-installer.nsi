@@ -147,6 +147,15 @@ Section "Wazuh Agent (required)" MainSec
     ; overwrite existing files
     SetOverwrite on
 
+    ; remove diff and state files when upgrading
+
+    Push "$INSTDIR\queue\diff\local"
+    Push "last-entry"
+    Push $0
+    GetFunctionAddress $0 "RmFiles"
+    Exch $0
+    Call FindFiles
+
     ; create necessary directories
     CreateDirectory "$INSTDIR\bookmarks"
     CreateDirectory "$INSTDIR\rids"
@@ -464,3 +473,90 @@ Section "Uninstall"
 	RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR"
 SectionEnd
+
+Function FindFiles
+  Exch $R5 # callback function
+  Exch
+  Exch $R4 # file name
+  Exch 2
+  Exch $R0 # directory
+  Push $R1
+  Push $R2
+  Push $R3
+  Push $R6
+
+  Push $R0 # first dir to search
+
+  StrCpy $R3 1
+
+  nextDir:
+    Pop $R0
+    IntOp $R3 $R3 - 1
+    ClearErrors
+    FindFirst $R1 $R2 "$R0\*.*"
+    nextFile:
+      StrCmp $R2 "." gotoNextFile
+      StrCmp $R2 ".." gotoNextFile
+
+      StrCmp $R2 $R4 0 isDir
+        Call $R5
+        Pop $R6
+        StrCmp $R6 "stop" 0 isDir
+          loop:
+            StrCmp $R3 0 done
+            Pop $R0
+            IntOp $R3 $R3 - 1
+            Goto loop
+
+      isDir:
+        IfFileExists "$R0\$R2\*.*" 0 gotoNextFile
+          IntOp $R3 $R3 + 1
+          Push "$R0\$R2"
+
+  gotoNextFile:
+    FindNext $R1 $R2
+    IfErrors 0 nextFile
+
+  done:
+    FindClose $R1
+    StrCmp $R3 0 0 nextDir
+
+  Pop $R6
+  Pop $R3
+  Pop $R2
+  Pop $R1
+  Pop $R0
+  Pop $R5
+  Pop $R4
+FunctionEnd
+
+Function RmFiles
+ StrCpy $1 $R0
+ Push $1 ; route dir
+ Push $2
+ Push $2
+
+  FindFirst $3 $2 "$1\*.*"
+  IfErrors Exit
+
+  Top:
+   StrCmp $2 "." Next
+   StrCmp $2 ".." Next
+   StrCmp $2 "last-entry" Next
+   IfFileExists "$1\$2\*.*" Next
+    Delete "$1\$2"
+
+   Next:
+    ClearErrors
+    FindNext $3 $2
+    IfErrors Exit
+   Goto Top
+
+  Exit:
+  FindClose $2
+
+ Pop $3
+ Pop $2
+ Pop $1
+ Push "go"
+FunctionEnd
