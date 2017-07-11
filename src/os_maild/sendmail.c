@@ -35,13 +35,13 @@
 #define XHEADER             "X-IDS-OSSEC: %s\r\n"
 
 /* Error messages - Can be translated */
-#define INTERNAL_ERROR  "os_maild (1760): ERROR: Memory/configuration error"
-#define BANNER_ERROR    "os_sendmail(1762): WARN: Banner not received from server"
-#define HELO_ERROR      "os_sendmail(1763): WARN: Hello not accepted by server"
-#define FROM_ERROR      "os_sendmail(1764): WARN: Mail from not accepted by server"
-#define TO_ERROR        "os_sendmail(1765): WARN: RCPT TO not accepted by server - '%s'."
-#define DATA_ERROR      "os_sendmail(1766): WARN: DATA not accepted by server"
-#define END_DATA_ERROR  "os_sendmail(1767): WARN: End of DATA not accepted by server"
+#define INTERNAL_ERROR  "(1760): Memory/configuration error"
+#define BANNER_ERROR    "(1762): Banner not received from server"
+#define HELO_ERROR      "(1763): Hello not accepted by server"
+#define FROM_ERROR      "(1764): Mail from not accepted by server"
+#define TO_ERROR        "(1765): RCPT TO not accepted by server - '%s'."
+#define DATA_ERROR      "(1766): DATA not accepted by server"
+#define END_DATA_ERROR  "(1767): End of DATA not accepted by server"
 
 #define MAIL_DEBUG_FLAG     0
 #define MAIL_DEBUG(x,y,z) if(MAIL_DEBUG_FLAG) merror(x,y,z)
