@@ -1,0 +1,98 @@
+policy_module(ossec_agent, 1.0.2)
+# selinux module for OSSEC (tm) agent
+# (C) Ivan Agarkov, 2017
+# exec file types
+type ossec_agent_exec_t;
+type ossec_exec_exec_t;
+type ossec_logcollector_exec_t;
+type ossec_syscheck_exec_t;
+type ossec_admin_exec_t;
+# data file types
+type ossec_log_t; # logs/
+type ossec_conf_t; # /etc
+type ossec_queue_t; # /queue
+type ossec_tmp_t; # /tmp
+type ossec_var_t; # /var
+# process attributes
+attribute ossec_process;
+# process types
+type ossec_agent_t, ossec_process;
+type ossec_exec_t, ossec_process;
+type ossec_logcollector_t, ossec_process;
+type ossec_syscheck_t, ossec_process;
+type ossec_admin_t;
+
+# types definitions
+init_daemon_domain(ossec_agent_t, ossec_agent_exec_t)
+init_daemon_domain(ossec_logcollector_t, ossec_logcollector_exec_t)
+init_daemon_domain(ossec_syscheck_t, ossec_syscheck_exec_t)
+init_daemon_domain(ossec_exec_t, ossec_exec_exec_t)
+application_domain(ossec_admin_t, ossec_admin_exec_t)
+
+files_type(ossec_queue_t)
+files_type(ossec_var_t)
+logging_log_file(ossec_log_t)
+files_config_file(ossec_conf_t)
+files_tmp_file(ossec_tmp_t)
+# type transition for all
+files_tmp_filetrans(ossec_process, ossec_tmp_t, {file dir lnk_file})
+filetrans_pattern(ossec_process, ossec_queue_t, ossec_queue_t, {file dir lnk_file sock_file})
+filetrans_pattern(ossec_process, ossec_var_t, ossec_var_t, {file dir lnk_file })
+filetrans_pattern(ossec_process, ossec_conf_t, ossec_conf_t, {file dir lnk_file })
+filetrans_pattern(ossec_process, ossec_tmp_t, ossec_tmp_t, {file dir lnk_file })
+# allow ossec agent to read & edit all
+read_files_pattern(ossec_process, ossec_conf_t, ossec_conf_t)
+manage_files_pattern(ossec_process, ossec_queue_t, ossec_queue_t)
+manage_files_pattern(ossec_process, ossec_log_t, ossec_log_t)
+manage_files_pattern(ossec_process, ossec_var_t, ossec_var_t)
+optional_policy(`
+  gen_require(`
+    type passwd_file_t, etc_t;
+  ')
+  read_files_pattern(ossec_process, etc_t, passwd_file_t)
+')
+allow ossec_process ossec_process:unix_dgram_socket all_unix_dgram_socket_perms;
+sysnet_dns_name_resolve(ossec_process)
+allow ossec_process self:capability { dac_override setgid setuid sys_chroot };
+# for agent
+manage_files_pattern(ossec_agent_t, ossec_conf_t, ossec_conf_t)
+manage_files_pattern(ossec_agent_t, ossec_tmp_t, ossec_tmp_t)
+
+# logcollector read all logs
+logging_read_all_logs(ossec_logcollector_t)
+logging_read_audit_log(ossec_logcollector_t)
+# syscheck read all file
+files_read_all_files(ossec_syscheck_t)
+allow ossec_syscheck_t self:process setsched;
+# admin policy
+manage_files_pattern(ossec_admin_t, ossec_conf_t, ossec_conf_t)
+manage_files_pattern(ossec_admin_t, ossec_queue_t, ossec_queue_t)
+manage_files_pattern(ossec_admin_t, ossec_var_t, ossec_var_t)
+# allow to kill
+allow ossec_admin_t ossec_process:process { signal sigkill ptrace sigstop getattr setrlimit noatsecure };
+# for different roles
+optional_policy(`
+  gen_require(`
+    type unconfined_t;
+    role unconfined_r;
+  ')
+  role unconfined_r types ossec_admin_t;
+  domtrans_pattern(unconfined_t, ossec_admin_exec_t, ossec_admin_t)
+')
+optional_policy(`
+  gen_require(`
+    type sysadm_t;
+    role sysadm_r;
+  ')
+  role sysadm_r types ossec_admin_t;
+  domtrans_pattern(sysadm_t, ossec_admin_exec_t, ossec_admin_t)
+')
+optional_policy(`
+  gen_require(`
+    type staff_t;
+    role staff_r;
+  ')
+  role staff_r types ossec_admin_t;
+  domtrans_pattern(staff_t, ossec_admin_exec_t, ossec_admin_t)
+')
+

@@ -1,0 +1,23 @@
+/var/ossec/bin/agent-auth      -- system_u:object_r:ossec_admin_exec_t:s0
+/var/ossec/bin/manage_client   -- system_u:object_r:ossec_admin_exec_t:s0
+/var/ossec/bin/ossec-client.sh -- system_u:object_r:ossec_admin_exec_t:s0
+/var/ossec/bin/ossec-configure -- system_u:object_r:ossec_admin_exec_t:s0
+/var/ossec/bin/ossec-control      system_u:object_r:ossec_admin_exec_t:s0
+/var/ossec/bin/ossec-fix-id.sh -- system_u:object_r:ossec_admin_exec_t:s0
+
+/var/ossec/bin/ossec-logcollector    system_u:object_r:ossec_logcollector_exec_t:s0
+/var/ossec/bin/client-logcollector   system_u:object_r:ossec_logcollector_exec_t:s0
+/var/ossec/bin/client-syscheckd      system_u:object_r:ossec_syscheck_exec_t:s0
+/var/ossec/bin/ossec-agentd       -- system_u:object_r:ossec_agent_exec_t:s0
+/var/ossec/bin/ossec-syscheckd       system_u:object_r:ossec_syscheck_exec_t:s0
+/var/ossec/bin/ossec-execd        -- system_u:object_r:ossec_exec_exec_t:s0
+
+/var/ossec                       system_u:object_r:usr_t:s0
+/var/ossec/bin                   system_u:object_r:bin_t:s0
+/var/ossec/agentless(/.*)?       system_u:object_r:bin_t:s0
+/var/ossec/active-response(/.*)? system_u:object_r:bin_t:s0
+/var/ossec/etc(/.*)?             system_u:object_r:ossec_conf_t:s0
+/var/ossec/queue(/.*)?           system_u:object_r:ossec_queue_t:s0
+/var/ossec/logs(/.*)?            system_u:object_r:ossec_log_t:s0
+/var/ossec/tmp(/.*)?             system_u:object_r:ossec_tmp_t:s0
+/var/ossec/var(/.*)?             system_u:object_r:ossec_var_t:s0
