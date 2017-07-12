@@ -1,4 +1,4 @@
-policy_module(ossec_agent, 1.0.2)
+policy_module(ossec_agent, 1.0.4)
 # selinux module for OSSEC (tm) agent
 # (C) Ivan Agarkov, 2017
 # exec file types
@@ -42,9 +42,10 @@ filetrans_pattern(ossec_process, ossec_conf_t, ossec_conf_t, {file dir lnk_file 
 filetrans_pattern(ossec_process, ossec_tmp_t, ossec_tmp_t, {file dir lnk_file })
 # allow ossec agent to read & edit all
 read_files_pattern(ossec_process, ossec_conf_t, ossec_conf_t)
-manage_files_pattern(ossec_process, ossec_queue_t, ossec_queue_t)
-manage_files_pattern(ossec_process, ossec_log_t, ossec_log_t)
-manage_files_pattern(ossec_process, ossec_var_t, ossec_var_t)
+admin_pattern(ossec_process, ossec_queue_t, ossec_queue_t)
+
+admin_pattern(ossec_process, ossec_log_t, ossec_log_t)
+admin_pattern(ossec_process, ossec_var_t, ossec_var_t)
 optional_policy(`
   gen_require(`
     type passwd_file_t, etc_t;
@@ -55,8 +56,8 @@ allow ossec_process ossec_process:unix_dgram_socket all_unix_dgram_socket_perms;
 sysnet_dns_name_resolve(ossec_process)
 allow ossec_process self:capability { dac_override setgid setuid sys_chroot };
 # for agent
-manage_files_pattern(ossec_agent_t, ossec_conf_t, ossec_conf_t)
-manage_files_pattern(ossec_agent_t, ossec_tmp_t, ossec_tmp_t)
+admin_pattern(ossec_agent_t, ossec_conf_t, ossec_conf_t)
+admin_pattern(ossec_agent_t, ossec_tmp_t, ossec_tmp_t)
 
 # logcollector read all logs
 logging_read_all_logs(ossec_logcollector_t)
@@ -64,10 +65,11 @@ logging_read_audit_log(ossec_logcollector_t)
 # syscheck read all file
 files_read_all_files(ossec_syscheck_t)
 allow ossec_syscheck_t self:process setsched;
+allow ossec_syscheck_t self:capability sys_nice;
 # admin policy
-manage_files_pattern(ossec_admin_t, ossec_conf_t, ossec_conf_t)
-manage_files_pattern(ossec_admin_t, ossec_queue_t, ossec_queue_t)
-manage_files_pattern(ossec_admin_t, ossec_var_t, ossec_var_t)
+admin_pattern(ossec_admin_t, ossec_conf_t, ossec_conf_t)
+admin_pattern(ossec_admin_t, ossec_queue_t, ossec_queue_t)
+admin_pattern(ossec_admin_t, ossec_var_t, ossec_var_t)
 # allow to kill
 allow ossec_admin_t ossec_process:process { signal sigkill ptrace sigstop getattr setrlimit noatsecure };
 # for different roles
