@@ -259,17 +259,15 @@ WriteAgent()
 
     echo "  <!-- Active response -->" >> $NEWCONFIG
 
+    echo "  <active-response>" >> $NEWCONFIG
     if [ "X$ACTIVERESPONSE" = "Xyes" ]; then
-        echo "  <active-response>" >> $NEWCONFIG
         echo "    <disabled>no</disabled>" >> $NEWCONFIG
-        echo "  </active-response>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
     else
-        echo "  <active-response>" >> $NEWCONFIG
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-        echo "  </active-response>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
     fi
+    echo "    <public-key>${INSTALLDIR}/etc/wpkey-pub.pem</public-key>" >> $NEWCONFIG
+    echo "  </active-response>" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # Logging format
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
@@ -612,6 +610,7 @@ InstallAgent(){
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/incoming
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/wpkey-pub.pem ${PREFIX}/etc/
 
 }
 
