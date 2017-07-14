@@ -32,7 +32,7 @@ __attribute__((noreturn)) static void helpmsg()
     print_out("    -a <ip>     Add new agent");
     print_out("    -e <id>     Extracts key for an agent (Manager only)");
     print_out("    -r <id>     Remove an agent (Manager only)");
-    print_out("    -i <id>     Import authentication key (Agent only)");
+    print_out("    -i <key>    Import authentication key (Agent only)");
     print_out("    -n <name>   Name for new agent");
     print_out("    -d <sec>    Remove agents with duplicated IP if disconnected since <sec> seconds");
     print_out("    -f <file>   Bulk generate client keys from file (Manager only)");
