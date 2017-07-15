@@ -49,7 +49,7 @@ rm -rf $RPM_BUILD_ROOT
 # Create OSSEC group
 #
 if ! grep "^ossec" /etc/group > /dev/null ; then
-  /usr/sbin/groupadd ossec
+  /usr/sbin/groupadd --system ossec
 fi
 
 
@@ -58,7 +58,7 @@ fi
 #
 for USER in ossec ; do
   if ! grep "^${USER}" /etc/passwd > /dev/null ; then
-    /usr/sbin/useradd -d /var/ossec -s /bin/false -g ossec ${USER}
+    /usr/sbin/useradd --system -d /var/ossec -s /bin/false -g ossec ${USER}
   fi
 done
 
