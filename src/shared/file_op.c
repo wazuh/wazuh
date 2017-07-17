@@ -1933,6 +1933,10 @@ int rmdir_ex(const char *name) {
 
     switch (errno) {
     case ENOTDIR:   // Not a directory
+
+#ifdef WIN32
+    case EINVAL:    // Not a directory
+#endif
         return unlink(name);
 
     case ENOTEMPTY: // Directory not empty

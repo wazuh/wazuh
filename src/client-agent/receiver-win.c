@@ -107,6 +107,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 continue;
             }
 
+            mdebug2("Received message: '%s'", tmp_msg);
+
             /* Check for commands */
             if (IsValidHeader(tmp_msg)) {
                 /* This is the only thread that modifies it */
@@ -137,6 +139,12 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                 /* Ack from server */
                 else if (strcmp(tmp_msg, HC_ACK) == 0) {
+                    continue;
+                }
+
+                // Request from manager (or request ack)
+                else if (IS_REQ(tmp_msg)) {
+                    req_push(tmp_msg + strlen(HC_REQUEST), msg_length - strlen(HC_REQUEST) - 3);
                     continue;
                 }
 

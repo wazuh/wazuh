@@ -173,6 +173,8 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\tmp"
 	CreateDirectory "$INSTDIR\queue"
 	CreateDirectory "$INSTDIR\queue\diff"
+    CreateDirectory "$INSTDIR\incoming"
+    CreateDirectory "$INSTDIR\upgrade"
 
     ; install files
     File ossec-lua.exe
@@ -203,6 +205,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
     File /oname=libwinpthread-1.dll /usr/i686-w64-mingw32/lib/libwinpthread-1.dll
 	File agent-auth.exe
+    File /oname=wpkey-pub.pem ../../etc/wpkey-pub.pem
 
     ; Create empty file active-responses.log
     FileOpen $0 "$INSTDIR\active-response\active-responses.log" w

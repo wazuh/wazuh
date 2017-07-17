@@ -448,16 +448,19 @@ size_t wcom_upgrade(const char * package, const char * installer, char * output)
 
 size_t wcom_upgrade_result(char *output){
     char buffer[20];
+    const char * PATH = UPGRADE_DIR "/upgrade_result";
     FILE * result_file;
-    result_file = fopen(DEFAULTDIR "/var/run/upgrade_result", "r");
-    if (result_file) {
+
+    if (result_file = fopen(PATH, "r"), result_file) {
         if (fgets(buffer,20,result_file)){
             snprintf(output, OS_MAXSTR, "ok %s", buffer);
+            fclose(result_file);
             return strlen(output);
         }
         fclose(result_file);
     }
     strcpy(output, "err Cannot read upgrade_result file.");
+    merror("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
     return strlen(output);
 }
 

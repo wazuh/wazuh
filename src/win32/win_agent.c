@@ -264,6 +264,8 @@ int local_start()
     intcheck_file(cfg, "");
     intcheck_file(OSSEC_DEFINES, "");
 
+    req_init();
+
     /* Start receiver thread */
     if (CreateThread(NULL,
                      0,
@@ -281,7 +283,7 @@ int local_start()
                      NULL,
                      0,
                      (LPDWORD)&threadID2) == NULL) {
-        merror(THREAD_ERROR, ARGV0);
+        merror(THREAD_ERROR);
     }
 
     /* Send agent information message */

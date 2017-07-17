@@ -112,7 +112,10 @@ int wm_exec(char *command, char **output, int *status, int secs) {
 
     // Output
 
-    WaitForSingleObject(hThread, INFINITE);
+    if (WaitForSingleObject(hThread, 1000) == WAIT_TIMEOUT) {
+		TerminateThread(hThread, 1);
+		WaitForSingleObject(hThread, INFINITE);
+	}
 
     if (retval >= 0)
         *output = tinfo.output ? tinfo.output : strdup("");
@@ -122,6 +125,7 @@ int wm_exec(char *command, char **output, int *status, int secs) {
     // Cleanup
 
     CloseHandle(hThread);
+	CloseHandle(tinfo.pipe);
     CloseHandle(pinfo.hProcess);
     CloseHandle(pinfo.hThread);
 
@@ -136,27 +140,20 @@ DWORD WINAPI Reader(LPVOID args) {
     DWORD length = 0;
     DWORD nbytes;
 
-    while (ReadFile(tinfo->pipe, buffer, 1024, &nbytes, NULL)) {
-        if (nbytes > 0) {
-            int nextsize = length + nbytes;
+    while (ReadFile(tinfo->pipe, buffer, 1024, &nbytes, NULL), nbytes > 0) {
+		int nextsize = length + nbytes;
 
-            if (nextsize <= WM_STRING_MAX) {
-                tinfo->output = (char*)realloc(tinfo->output, nextsize + 1);
-                memcpy(tinfo->output + length, buffer, nbytes);
-                length = nextsize;
-            } else {
-                mwarn("String limit reached.");
-                break;
-            }
-        }
-        else
-            break;
+		if (nextsize <= WM_STRING_MAX) {
+			tinfo->output = (char*)realloc(tinfo->output, nextsize + 1);
+			memcpy(tinfo->output + length, buffer, nbytes);
+			length = nextsize;
+			tinfo->output[length] = '\0';
+		} else {
+			mwarn("String limit reached.");
+			break;
+		}
     }
 
-    if (tinfo->output)
-        tinfo->output[length] = '\0';
-
-    CloseHandle(tinfo->pipe);
     return 0;
 }
 
