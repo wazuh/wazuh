@@ -32,7 +32,7 @@
 -->
 
 <decoder name="apache-errorlog">
-    <program_name>^httpd</program_name>
+    <program_name>^apache2|^httpd</program_name>
 </decoder>
 
 <decoder name="apache-errorlog">
