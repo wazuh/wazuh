@@ -30,6 +30,8 @@
     !define OutFile "wazuh-agent-${VERSION}.exe"
 !endif
 
+Var is_upgrade
+
 Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2017 Wazuh Inc."
 OutFile "${OutFile}"
@@ -90,6 +92,8 @@ ShowUninstDetails show
 
 ; function to stop OSSEC service if running
 Function .onInit
+    StrCpy $is_upgrade "no"
+
     ; stop service
     SimpleSC::ExistsService "${SERVICE}"
     Pop $0
@@ -116,6 +120,8 @@ Function .onInit
 
                         SetErrorLevel 2
                         Abort
+                    ${Else}
+                        StrCpy $is_upgrade "yes"
                     ${EndIf}
             ${EndIf}
         ${Else}
@@ -364,7 +370,38 @@ Section "Wazuh Agent (required)" MainSec
             SetErrorLevel 2
             Abort
         ${EndIf}
+
+
+    ${If} $is_upgrade == "yes"
+        Goto StartService
+    ${Else}
+        Goto SetupComplete
+    ${EndIf}
+
+    StartService:
+        SimpleSC::ExistsService "${SERVICE}"
+        Pop $0
+        ${If} $0 = 0
+            ; StartService [name_of_service] [arguments] [timeout]
+            SimpleSC::StartService "${SERVICE}" "" 30
+            Pop $0
+            ${If} $0 <> 0
+                MessageBox MB_RETRYCANCEL  "$\r$\n\
+                    Failure starting the ${SERVICE} ($0).$\r$\n$\r$\n\
+                    Click Cancel to finish the installation without starting the service,$\r$\n\
+                    Click Retry to try again." /SD IDABORT IDCANCEL SetupComplete IDRETRY StartService
+            ${EndIf}
+        ${Else}
+            MessageBox MB_OK  "$\r$\n\
+                Service not found ${SERVICE} ($0).$\r$\n$\r$\n\
+                Click Cancel to stop the installation,$\r$\n\
+                Click Retry to try again." /SD IDABORT IDCANCEL SetupComplete IDRETRY StartService
+            SetErrorLevel 2
+            Abort
+        ${EndIf}
+
     SetupComplete:
+
 SectionEnd
 
 ; add IIS logs
