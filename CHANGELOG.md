@@ -44,7 +44,7 @@ All notable changes to this project will be documented in this file.
 - Fixed false error by Syscheck when creating diff snapshots of empty files.
 - Fixed segmentation fault in Authd on i386 platform.
 - Fixed agent-auth exit code for controlled server's errors.
-
+- Fix incorrect OVAL patch results classification.
 
 ## [v2.0]
 
