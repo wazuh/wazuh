@@ -166,6 +166,10 @@ void os_logging_config(){
   int i, j;
 
   if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
+    flags.log_plain = 1;
+    flags.log_json = 0;
+    flags.read = 1;
+    OS_ClearXML(&xml);
     merror_exit(XML_ERROR, "/etc/ossec.conf", xml.err, xml.err_line);
   }
 
