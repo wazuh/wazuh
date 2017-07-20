@@ -115,7 +115,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
             }
         }
 
-        MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", HELOMSG, msg);
+        MAIL_DEBUG("Sent '%s', received: '%s'", HELOMSG, msg);
         free(msg);
 
         /* Build "Mail from" msg */
@@ -131,7 +131,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
             close(socket);
             return (OS_INVALID);
         }
-        MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
+        MAIL_DEBUG("Sent '%s', received: '%s'", snd_msg, msg);
         free(msg);
 
         /* Build "RCPT TO" msg */

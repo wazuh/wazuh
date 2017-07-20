@@ -72,6 +72,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
             merror("Couldn't set receiving timeout for socket.");
         }
 
+
         /* Receive the banner */
         msg = OS_RecvTCP(socket, OS_SIZE_1024);
         if ((msg == NULL) || (!OS_Match(VALIDBANNER, msg))) {
@@ -171,6 +172,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
                 MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
                 free(msg);
 
+
                 /* Create header for to */
                 memset(snd_msg, '\0', 128);
                 snprintf(snd_msg, 127, TO, mail->gran_to[i]);
@@ -190,8 +192,10 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
             if (msg) {
                 free(msg);
             }
+
             close(socket);
             return (OS_INVALID);
+
         }
         MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", DATAMSG, msg);
         free(msg);
@@ -369,7 +373,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
             }
         }
 
-        MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
+        MAIL_DEBUG("Sent '%s', received: '%s'", snd_msg, msg);
         free(msg);
 
         /* Build "Mail from" msg */
@@ -385,7 +389,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
             close(socket);
             return (OS_INVALID);
         }
-        MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
+        MAIL_DEBUG("Sent '%s', received: '%s'", snd_msg, msg);
         free(msg);
 
         /* Build "RCPT TO" msg */

@@ -64,7 +64,7 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
 
     if (flags.log_json){
 
-      /* If under chroot, log directly to /logs/ossec.log */
+      /* If under chroot, log directly to /logs/ossec.json */
       if (chroot_flag == 1) {
           fp2 = fopen(LOGJSONFILE, "a");
       } else {
