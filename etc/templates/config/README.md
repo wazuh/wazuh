@@ -45,6 +45,11 @@
         <client>
           <server-ip>192.168.10.100</server-ip>
           <config-profile>distribution, distributionVersion</config-profile>
+
+          <!-- Agent buffer options -->
+          <disable-buffer>no</disable-buffer>
+          <buffer-length>5000</buffer-length>
+          <events-per-second>500</events-per-second>
         </client>
 
         logging.template
