@@ -134,7 +134,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             logr->port[pl] = atoi(node[i]->content);
 
             if (logr->port[pl] <= 0 || logr->port[pl] > 65535) {
-                minfo(PORT_ERROR, logr->port[pl]);
+                merror(PORT_ERROR, logr->port[pl]);
                 return (OS_INVALID);
             }
         } else if (strcasecmp(node[i]->element, xml_remote_proto) == 0) {

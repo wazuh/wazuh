@@ -27,6 +27,9 @@ int Read_Client(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_max_time_reconnect_try = "time-reconnect";
     const char *xml_profile_name = "config-profile";
     const char *xml_protocol = "protocol";
+    const char *xml_buffer_disabled = "disable-buffer";
+    const char *xml_buffer_length = "buffer-length";
+    const char *xml_events_per_second = "events-per-second";
 
     agent *logr;
 
@@ -111,7 +114,7 @@ int Read_Client(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             logr->port = atoi(node[i]->content);
 
             if (logr->port <= 0 || logr->port > 65535) {
-                minfo(PORT_ERROR, logr->port);
+                merror(PORT_ERROR, logr->port);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_notify_time) == 0) {
@@ -120,12 +123,21 @@ int Read_Client(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return (OS_INVALID);
             }
             logr->notify_time = atoi(node[i]->content);
+
+            if (logr->notify_time < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
         } else if (strcmp(node[i]->element, xml_max_time_reconnect_try) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
             logr->max_time_reconnect_try = atoi(node[i]->content);
+            if (logr->max_time_reconnect_try < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
         } else if (strcmp(node[i]->element, xml_ar_disabled) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 logr->execdq = -1;
@@ -147,6 +159,37 @@ int Read_Client(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcmp(node[i]->element, xml_buffer_disabled) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                logr->buffer = 0;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                logr->buffer = 1;
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+        } else if (strcmp(node[i]->element, xml_buffer_length) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            logr->buflength = atoi(node[i]->content);
+            if (logr->buflength <= 0 || logr->buflength > 100000) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+        } else if (strcmp(node[i]->element, xml_events_per_second) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            logr->events_persec = atoi(node[i]->content);
+            if (logr->events_persec <= 0 || logr->events_persec > 1000) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

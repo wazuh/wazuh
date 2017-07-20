@@ -89,6 +89,17 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         merror_exit(THREAD_ERROR);
     }
 
+    /* Launch dispatch thread */
+    if (agt->buffer){
+
+        buffer_init();
+
+        if (CreateThread(dispatch_buffer, (void *)NULL) != 0) {
+            merror_exit(THREAD_ERROR);
+        }
+    }else{
+        minfo(DISABLED_BUFFER);
+    }
     /* Connect remote */
     rc = 0;
     while (rc < agt->rip_id) {

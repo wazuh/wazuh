@@ -31,6 +31,9 @@ int ClientConf(const char *cfgfile)
     agt->execdq = 0;
     agt->profile = NULL;
     agt->protocol = UDP_PROTO;
+    agt->buffer = 1;
+    agt->buflength = 5000;
+    agt->events_persec = 500;
 
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;

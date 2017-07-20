@@ -59,7 +59,7 @@
 #define CONFIG_ERROR    "(1202): Configuration error at '%s'. Exiting."
 #define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR  "(1204): Invalid connection type: '%s'."
-#define PORT_ERROR      "(1205): No port specified. Using default: '%d'."
+#define PORT_ERROR      "(1205): Invalid port number: '%d'."
 #define BIND_ERROR      "(1206): Unable to Bind port '%d'"
 #define QUEUE_ERROR     "(1210): Queue '%s' not accessible: '%s'."
 #define QUEUE_FATAL     "(1211): Unable to access queue: '%s'. Giving up.."
@@ -293,9 +293,21 @@
 #define SERVER_UNAV     "Server unavailable. Setting lock."
 #define SERVER_UP       "Server responded. Releasing lock."
 
+/* Buffer alerts */
+#define DISABLED_BUFFER "Agent buffer disabled."
+#define WARN_BUFFER     "Agent buffer at %d %%."
+#define FULL_BUFFER     "Agent buffer is full: Events may be lost."
+#define FLOODED_BUFFER  "Agent buffer is flooded: Producing too many events."
+#define NORMAL_BUFFER "Agent buffer is under %d %%. Working properly again."
+#define TOLERANCE_TIME  "Tolerance time set to Zero, defined flooding condition when buffer is full."
+
 /* OSSEC alert messages */
 #define OS_AD_STARTED   "ossec: Ossec started."
 #define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
+#define OS_NORMAL_BUFFER  "ossec: Agent buffer: 'normal'."
+#define OS_WARN_BUFFER  "ossec: Agent buffer: '%d%%'."
+#define OS_FULL_BUFFER  "ossec: Agent buffer: 'full'."
+#define OS_FLOOD_BUFFER "ossec: Agent buffer: 'flooded'."
 
 #endif /* _ERROR_MESSAGES__H */

@@ -23,6 +23,9 @@ typedef struct _agent {
     int max_time_reconnect_try;
     char *profile;
     int protocol;
+    int buffer;
+    int buflength;
+    int events_persec;
     wlabel_t *labels; /* null-ended label set */
 } agent;
 

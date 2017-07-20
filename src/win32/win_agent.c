@@ -27,6 +27,7 @@ const char *__win32_uname = NULL;
 char *__win32_shared = NULL;
 HANDLE hMutex;
 
+
 /** Prototypes **/
 int Start_win32_Syscheck();
 void send_win32_info(time_t curr_time);
@@ -220,7 +221,20 @@ int local_start()
     if (hMutex == NULL) {
         merror_exit("Error creating mutex.");
     }
-
+    /* Start buffer thread */
+    if (agt->buffer){
+        buffer_init();
+        if (CreateThread(NULL,
+                         0,
+                         (LPTHREAD_START_ROUTINE)dispatch_buffer,
+                         NULL,
+                         0,
+                         (LPDWORD)&threadID) == NULL) {
+            merror(THREAD_ERROR);
+        }
+    }else{
+        minfo(DISABLED_BUFFER);
+    }
     /* Start syscheck thread */
     if (CreateThread(NULL,
                      0,
@@ -273,15 +287,12 @@ int local_start()
 /* SendMSG for Windows */
 int SendMSG(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc)
 {
-    int _ssize;
     time_t cu_time;
     const char *pl;
     char tmpstr[OS_MAXSTR + 2];
-    char crypt_msg[OS_MAXSTR + 2];
     DWORD dwWaitResult;
 
     tmpstr[OS_MAXSTR + 1] = '\0';
-    crypt_msg[OS_MAXSTR + 1] = '\0';
 
     mdebug2("Attempting to send message to server.");
 
@@ -417,38 +428,15 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
         pl = locmsg;
     }
 
-
     mdebug2("Sending message to server: '%s'", message);
 
     snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, pl, message);
-    _ssize = CreateSecMSG(&keys, tmpstr, crypt_msg, 0);
 
-    /* Returns NULL if can't create encrypted message */
-    if (_ssize == 0) {
-        merror(SEC_ERROR);
-        if (!ReleaseMutex(hMutex)) {
-            merror("Error releasing mutex.");
-        }
-
-        return (-1);
-    }
-
-    /* Send _ssize of crypt_msg */
-    if (agt->protocol == UDP_PROTO) {
-        if (OS_SendUDPbySize(agt->sock, _ssize, crypt_msg) < 0) {
-            merror(SEND_ERROR, "server");
-            sleep(1);
-        }
-    } else {
-        netsize_t length = _ssize;
-
-        if (OS_SendTCPbySize(agt->sock, sizeof(length), (void*)&length) < 0) {
-            merror(SEND_ERROR, "server");
-            sleep(1);
-        } else if (OS_SendTCPbySize(agt->sock, _ssize, crypt_msg) < 0) {
-            merror(SEND_ERROR, "server");
-            sleep(1);
-        }
+    /* Send events to the manager across the buffer */
+    if (!agt->buffer){
+        send_msg(0, tmpstr);
+    }else{
+        buffer_append(tmpstr);
     }
 
     if (!ReleaseMutex(hMutex)) {
