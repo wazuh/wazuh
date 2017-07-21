@@ -79,5 +79,6 @@ extern int logr_queue;
 extern int open_file_attempts;
 extern logreader *logff;
 extern int vcheck_files;
+extern int maximum_lines;
 
 #endif /* __LOGREADER_H */

@@ -22,6 +22,7 @@ void *read_multiline(int pos, int *rc, int drop_it)
     char str[OS_MAXSTR + 1];
     char buffer[OS_MAXSTR + 1];
     fpos_t fp_pos;
+    int lines = 0;
 
     buffer[0] = '\0';
     buffer[OS_MAXSTR] = '\0';
@@ -33,7 +34,9 @@ void *read_multiline(int pos, int *rc, int drop_it)
     /* Get initial file location */
     fgetpos(logff[pos].fp, &fp_pos);
 
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL) {
+    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL && lines < maximum_lines) {
+
+        lines++;
         linesgot++;
 
         /* Get the last occurence of \n */
@@ -105,6 +108,6 @@ void *read_multiline(int pos, int *rc, int drop_it)
         continue;
     }
 
+    mdebug2("Read %d lines from %s", lines, logff[pos].file);
     return (NULL);
 }
-

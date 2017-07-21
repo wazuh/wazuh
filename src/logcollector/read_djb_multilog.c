@@ -83,7 +83,7 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
     char *p;
     char str[OS_MAXSTR + 1];
     char buffer[OS_MAXSTR + 1];
-
+    int lines = 0;
     str[OS_MAXSTR] = '\0';
     *rc = 0;
 
@@ -93,7 +93,9 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
     }
 
     /* Get new entry */
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL) {
+    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL && lines < maximum_lines) {
+
+        lines++;
         /* Get buffer size */
         str_len = strlen(str);
 
@@ -176,5 +178,6 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
         continue;
     }
 
+    mdebug2("Read %d lines from %s", lines, logff[pos].file);
     return (NULL);
 }

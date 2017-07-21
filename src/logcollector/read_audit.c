@@ -56,6 +56,7 @@ void *read_audit(int pos, int *rc, int drop_it) {
     char *p;
     size_t z;
     long offset = ftell(logff[pos].fp);
+    int lines = 0;
 
     if (offset < 0) {
         merror(FTELL_ERROR, logff[pos].file, errno, strerror(errno));
@@ -64,7 +65,9 @@ void *read_audit(int pos, int *rc, int drop_it) {
 
     *rc = 0;
 
-    while (fgets(buffer, OS_MAXSTR, logff[pos].fp)) {
+    while (fgets(buffer, OS_MAXSTR, logff[pos].fp) && lines < maximum_lines){
+
+        lines++;
         if ((p = strchr(buffer, '\n')))
             *p = '\0';
         else {
@@ -113,5 +116,6 @@ void *read_audit(int pos, int *rc, int drop_it) {
     if (icache > 0)
         audit_send_msg(cache, icache, logff[pos].file, drop_it);
 
+    mdebug2("Read %d lines from %s", lines, logff[pos].file);
     return NULL;
 }

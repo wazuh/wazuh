@@ -19,6 +19,7 @@ int logr_queue;
 int open_file_attempts;
 logreader *logff;
 int vcheck_files;
+int maximum_lines;
 static int _cday = 0;
 
 
@@ -298,7 +299,6 @@ void LogCollectorStart()
 
             /* Finally, send to the function pointer to read it */
             logff[i].read(i, &r, 0);
-
             /* Check for error */
             if (!ferror(logff[i].fp)) {
                 /* Clear EOF */

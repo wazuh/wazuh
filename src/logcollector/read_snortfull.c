@@ -21,12 +21,15 @@ void *read_snortfull(int pos, int *rc, int drop_it)
     char *q;
     char str[OS_MAXSTR + 1];
     char f_msg[OS_MAXSTR + 1];
+    int lines = 0;
 
     *rc = 0;
     str[OS_MAXSTR] = '\0';
     f_msg[OS_MAXSTR] = '\0';
 
-    while (fgets(str, OS_MAXSTR, logff[pos].fp) != NULL) {
+    while (fgets(str, OS_MAXSTR, logff[pos].fp) != NULL && lines < maximum_lines) {
+
+        lines++;
         /* Remove \n at the end of the string */
         if ((q = strrchr(str, '\n')) != NULL) {
             *q = '\0';
@@ -121,6 +124,6 @@ file_error:
 
     }
 
+    mdebug2("Read %d lines from %s", lines, logff[pos].file);
     return (NULL);
 }
-
