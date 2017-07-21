@@ -17,11 +17,11 @@ tar -zcpf ${DIRECTORY}/backup/backup_${VERSION}_[${BDATE}].tar.gz -C ${DIRECTORY
 rm -rf ${DIRECTORY}/tmp_bkp
 
 # Installing upgrade
-
 echo "UPGRADE DATE: ${BDATE}" > ${DIRECTORY}/logs/upgrade.log
 chmod +x ${DIRECTORY}/var/upgrade/install.sh
-${DIRECTORY}/var/upgrade/install.sh >> ${DIRECTORY}/logs/upgrade.log
+${DIRECTORY}/var/upgrade/install.sh >> ${DIRECTORY}/logs/upgrade.log 2>&1
 
+# Check upgrade result
 STATUS=$?
 echo -ne $STATUS > ${DIRECTORY}/upgrade/upgrade_result
 
