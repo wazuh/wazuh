@@ -381,7 +381,7 @@ int main(int argc, char **argv)
                     printf("ERROR: Unable to create key. Either wrong password or connection not accepted by the manager.\n");
                 }
                 printf("INFO: Connection closed.\n");
-                exit(0);
+                exit(!key_added);
                 break;
             default:
                 printf("ERROR: SSL read (unable to receive message)\n");

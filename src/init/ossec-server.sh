@@ -204,7 +204,6 @@ status()
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     fi
-    exit $RETVAL
 }
 
 testconfig()
@@ -437,3 +436,5 @@ disable)
 *)
     help
 esac
+
+exit $RETVAL

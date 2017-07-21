@@ -30,6 +30,8 @@
     !define OutFile "wazuh-agent-${VERSION}.exe"
 !endif
 
+Var is_upgrade
+
 Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2017 Wazuh Inc."
 OutFile "${OutFile}"
@@ -90,6 +92,8 @@ ShowUninstDetails show
 
 ; function to stop OSSEC service if running
 Function .onInit
+    StrCpy $is_upgrade "no"
+
     ; stop service
     SimpleSC::ExistsService "${SERVICE}"
     Pop $0
@@ -116,6 +120,8 @@ Function .onInit
 
                         SetErrorLevel 2
                         Abort
+                    ${Else}
+                        StrCpy $is_upgrade "yes"
                     ${EndIf}
             ${EndIf}
         ${Else}
@@ -146,6 +152,15 @@ Section "Wazuh Agent (required)" MainSec
 
     ; overwrite existing files
     SetOverwrite on
+
+    ; remove diff and state files when upgrading
+
+    Push "$INSTDIR\queue\diff\local"
+    Push "last-entry"
+    Push $0
+    GetFunctionAddress $0 "RmFiles"
+    Exch $0
+    Call FindFiles
 
     ; create necessary directories
     CreateDirectory "$INSTDIR\bookmarks"
@@ -356,7 +371,38 @@ Section "Wazuh Agent (required)" MainSec
             SetErrorLevel 2
             Abort
         ${EndIf}
+
+
+    ${If} $is_upgrade == "yes"
+        Goto StartService
+    ${Else}
+        Goto SetupComplete
+    ${EndIf}
+
+    StartService:
+        SimpleSC::ExistsService "${SERVICE}"
+        Pop $0
+        ${If} $0 = 0
+            ; StartService [name_of_service] [arguments] [timeout]
+            SimpleSC::StartService "${SERVICE}" "" 30
+            Pop $0
+            ${If} $0 <> 0
+                MessageBox MB_RETRYCANCEL  "$\r$\n\
+                    Failure starting the ${SERVICE} ($0).$\r$\n$\r$\n\
+                    Click Cancel to finish the installation without starting the service,$\r$\n\
+                    Click Retry to try again." /SD IDABORT IDCANCEL SetupComplete IDRETRY StartService
+            ${EndIf}
+        ${Else}
+            MessageBox MB_OK  "$\r$\n\
+                Service not found ${SERVICE} ($0).$\r$\n$\r$\n\
+                Click Cancel to stop the installation,$\r$\n\
+                Click Retry to try again." /SD IDABORT IDCANCEL SetupComplete IDRETRY StartService
+            SetErrorLevel 2
+            Abort
+        ${EndIf}
+
     SetupComplete:
+
 SectionEnd
 
 ; add IIS logs
@@ -467,3 +513,90 @@ Section "Uninstall"
 	RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR"
 SectionEnd
+
+Function FindFiles
+  Exch $R5 # callback function
+  Exch
+  Exch $R4 # file name
+  Exch 2
+  Exch $R0 # directory
+  Push $R1
+  Push $R2
+  Push $R3
+  Push $R6
+
+  Push $R0 # first dir to search
+
+  StrCpy $R3 1
+
+  nextDir:
+    Pop $R0
+    IntOp $R3 $R3 - 1
+    ClearErrors
+    FindFirst $R1 $R2 "$R0\*.*"
+    nextFile:
+      StrCmp $R2 "." gotoNextFile
+      StrCmp $R2 ".." gotoNextFile
+
+      StrCmp $R2 $R4 0 isDir
+        Call $R5
+        Pop $R6
+        StrCmp $R6 "stop" 0 isDir
+          loop:
+            StrCmp $R3 0 done
+            Pop $R0
+            IntOp $R3 $R3 - 1
+            Goto loop
+
+      isDir:
+        IfFileExists "$R0\$R2\*.*" 0 gotoNextFile
+          IntOp $R3 $R3 + 1
+          Push "$R0\$R2"
+
+  gotoNextFile:
+    FindNext $R1 $R2
+    IfErrors 0 nextFile
+
+  done:
+    FindClose $R1
+    StrCmp $R3 0 0 nextDir
+
+  Pop $R6
+  Pop $R3
+  Pop $R2
+  Pop $R1
+  Pop $R0
+  Pop $R5
+  Pop $R4
+FunctionEnd
+
+Function RmFiles
+ StrCpy $1 $R0
+ Push $1 ; route dir
+ Push $2
+ Push $2
+
+  FindFirst $3 $2 "$1\*.*"
+  IfErrors Exit
+
+  Top:
+   StrCmp $2 "." Next
+   StrCmp $2 ".." Next
+   StrCmp $2 "last-entry" Next
+   IfFileExists "$1\$2\*.*" Next
+    Delete "$1\$2"
+
+   Next:
+    ClearErrors
+    FindNext $3 $2
+    IfErrors Exit
+   Goto Top
+
+  Exit:
+  FindClose $2
+
+ Pop $3
+ Pop $2
+ Pop $1
+ Push "go"
+FunctionEnd

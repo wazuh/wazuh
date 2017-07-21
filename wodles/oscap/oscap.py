@@ -183,8 +183,8 @@ def oscap(profile=None):
                 # Adding file
                 new_line = line.replace('oscap: msg: "oval-result"', 'oscap: msg: "oval-result", scan-id: "{0}", content: "{1}"'.format(scan_id, content_filename))
 
-                class1 = ['class: "compliance"', 'class: "patch"', 'class: "inventory"']
-                class2 = ['class: "vulnerability"']
+                class1 = ['class: "compliance"', 'class: "inventory"']
+                class2 = ['class: "vulnerability"', 'class: "patch"']
 
                 if any(x in line for x in class1):
                     if 'result: "false"' in line:
