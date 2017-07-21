@@ -62,23 +62,6 @@ All notable changes to this project will be documented in this file.
  - Remove unused message queue to send alerts from Authd.
 
 
-
-## [v2.0.2]
-
-### Changed
-
- - Remove temporary files created by Syscheck changes reports.
-
-
-### Fixed
-
- - Fixed segmentation fault bug when stopping on CentOS 5.
- - Fixed compatibility with AIX.
- - Fixed race conditions in ossec-control script.
- - Fixed compiling issue on Windows.
- - Fixed compatibility with Solaris.
-
-
 ## [v2.0.1]
 
 ### Changed
@@ -93,6 +76,7 @@ All notable changes to this project will be documented in this file.
 - Show agent ID when possible on logs about incorrectly formatted messages.
 - Use default maximum inotify event queue size.
 - Show remote IP on encoding format errors when unencrypting messages.
+- Remove temporary files created by Syscheck changes reports.
 
 ### Fixed
 
@@ -112,7 +96,16 @@ All notable changes to this project will be documented in this file.
 - Fixed daemon list for service reloading at ossec-control.
 - Fixed socket waiting issue on Windows agents.
 - Fixed PCI_DSS definitions grouping issue at Rootcheck controls.
-
+- Fixed segmentation fault bug when stopping on CentOS 5.
+- Fixed compatibility with AIX.
+- Fixed race conditions in ossec-control script.
+- Fixed compiling issue on Windows.
+- Fixed compatibility with Solaris.
+- Fixed XML parsing error due to byte stashing issue.
+- Fixed false error by Syscheck when creating diff snapshots of empty files.
+- Fixed segmentation fault in Authd on i386 platform.
+- Fixed agent-auth exit code for controlled server's errors.
+- Fix incorrect OVAL patch results classification.
 
 ## [v2.0]
 

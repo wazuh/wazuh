@@ -102,7 +102,6 @@ status()
             echo "${i} is running..."
         fi
     done
-    exit $RETVAL
 }
 
 testconfig()
@@ -237,3 +236,5 @@ help)
 *)
     help
 esac
+
+exit $RETVAL

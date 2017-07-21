@@ -43,6 +43,8 @@ class RulesetLogger:
         self.debug_mode = debug
         try:
             self.logger = open(filename, 'a')
+            chown(filename, root_uid, ossec_gid)
+            chmod(filename, 0o660)
         except:
             print("Error opening log '{0}'".format(filename))
             sys.exit(1)
@@ -93,30 +95,31 @@ def chmod(path, mode):
                 chmod(itempath, mode)
 
 
-def mkdir(path):
+def mkdir(path, perm=0o640):
     if not os.path.exists(path):
         os.makedirs(path)
         chown(path, root_uid, ossec_gid)
-        chmod(path, file_permissions)
+        chmod(path, perm)
 
 
-def rename(src, dst):
+def rename(src, dst, perm=0o640):
     os.rename(src, dst)
     chown(dst, root_uid, ossec_gid)
-    chmod(dst, file_permissions)
+    chmod(dst, perm)
 
 
-def copy(src, dst, executable=False):
+def copy(src, dst, perm=0o640):
     if os.path.isfile(src):
         copyfile(src, dst)
     else:
         copytree(src, dst)
 
-    chown(dst, root_uid, ossec_gid)
-    if executable:
-        chmod(dst, file_permissions_x)
+    if perm == 0o750:
+        chown(dst, root_uid, root_uid)
+        chmod(dst, perm)
     else:
-        chmod(dst, file_permissions)
+        chown(dst, root_uid, ossec_gid)
+        chmod(dst, perm)
 
 
 def rm(path):
@@ -237,14 +240,19 @@ def get_ruleset_version():
     return rs_version
 
 
-def get_new_ruleset(source):
+def get_new_ruleset(source, url):
     mkdir(update_downloads)
     rm(update_ruleset)
 
     if source == 'download':
         branch = get_branch()  # 'stable' 'master' 'development'
-        url_ruleset = "https://github.com/wazuh/wazuh-ruleset/archive/{0}.zip".format(branch)
+        if url:
+            url_ruleset = url
+        else:
+            url_ruleset = "https://github.com/wazuh/wazuh-ruleset/archive/{0}.zip".format(branch)
         ruleset_zip = "{0}/ruleset.zip".format(update_downloads)
+
+        logger.debug("Downloading ruleset from {0}.".format(url_ruleset,))
 
         # Download
         try:
@@ -284,7 +292,7 @@ def get_new_ruleset(source):
 
     # Update main directory
     copy("{0}/VERSION".format(update_ruleset), ossec_ruleset_version_path)
-    copy("{0}/update_ruleset.py".format(update_ruleset), ossec_update_script, executable=True)
+    copy("{0}/update_ruleset.py".format(update_ruleset), ossec_update_script, 0o750)
 
     return get_ruleset_version()
 
@@ -348,6 +356,7 @@ def upgrade_ruleset(ruleset):
             logger.log("You already have the latest version of {0}.".format(item))
             continue
 
+        perm = 0o640
         if item == 'rules':
             src = update_rules
             dst = ossec_rules
@@ -360,6 +369,7 @@ def upgrade_ruleset(ruleset):
             src = update_rootchecks
             dst = ossec_rootchecks
             backup = update_backups_rootchecks
+            perm = 0o660
 
         logger.log("\nThe following {0} will be updated:".format(item))
         for filename in ruleset[item]:
@@ -368,8 +378,8 @@ def upgrade_ruleset(ruleset):
             dst_file = "{0}/{1}".format(dst, filename)
             dst_backup = "{0}/{1}".format(backup, filename)
             if os.path.exists(dst_file):
-                copy(dst_file, dst_backup)
-            copy(src_file, dst_file)
+                copy(dst_file, dst_backup, perm)
+            copy(src_file, dst_file, perm)
 
 
     msg = ""
@@ -440,7 +450,7 @@ def main():
     else:
         # Get ruleset
         status['old_version'] = get_ruleset_version()
-        status['new_version'] = get_new_ruleset(arguments['source'])
+        status['new_version'] = get_new_ruleset(arguments['source'], arguments['url'])
         ruleset_to_update, status['restart_required'] = get_ruleset_to_update(arguments['force'])
 
         # Update
@@ -484,6 +494,7 @@ def main():
 
 
 def usage():
+    branch = get_branch()  # 'stable' 'master' 'development'
     msg = """
     Update ruleset v3.0.0
     Github repository: https://github.com/wazuh/wazuh-ruleset
@@ -505,7 +516,8 @@ def usage():
     \t-s, --source        Select ruleset source path (instead of download it).
     \t-j, --json          JSON output. It should be used with '-s' or '-S' argument.
     \t-d, --debug         Debug mode.
-    """
+    \t-u, --url           URL of ruleset zip (default: https://github.com/wazuh/wazuh-ruleset/archive/{0}.zip)
+    """.format(branch)
     print(msg)
 
 
@@ -515,8 +527,6 @@ if __name__ == "__main__":
         print("You need root privileges to run this script. Please try again, using 'sudo'. Exiting.")
         sys.exit(1)
 
-    file_permissions = 0o640
-    file_permissions_x = 0o740
     try:
         root_uid = getpwnam("root").pw_uid
         ossec_gid = getgrnam("ossec").gr_gid
@@ -524,11 +534,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Arguments
-    arguments = {'ossec_path': '/var/ossec', 'source': 'download', 'restart': 'ask', 'backups': False, 'force': False, 'debug': False, 'json': False}
+    arguments = {'ossec_path': '/var/ossec', 'source': 'download', 'restart': 'ask', 'backups': False, 'force': False, 'debug': False, 'json': False, 'url': False}
     restart_args = 0
 
     try:
-        opts, args = getopt(sys.argv[1:], "s:o:brRfdjh", ["backups", "source=", "ossec_path=", "restart", "no-restart", "force-update", "debug", "json", "help"])
+        opts, args = getopt(sys.argv[1:], "s:o:u:brRfdjh", ["backups", "source=", "ossec_path=", "restart", "no-restart", "force-update", "debug", "json", "help", "url="])
         if len(opts) > 6:
             print("Incorrect number of arguments.\nTry './update_ruleset.py --help' for more information.")
             sys.exit(1)
@@ -558,6 +568,8 @@ if __name__ == "__main__":
             arguments['debug'] = True
         elif o in ("-j", "--json"):
             arguments['json'] = True
+        elif o in ("-u", "--url"):
+            arguments['url'] = a
         elif o in ("-h", "--help"):
             usage()
             sys.exit(0)

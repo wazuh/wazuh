@@ -578,7 +578,7 @@ Tabs:
 <decoder name="windows_fields">
   <type>windows</type>
   <parent>windows</parent>
-  <regex>File\s+Object Name:\s+(\w\.+)\s+|File\t+Object Name:\t+(\w\.+)\t+</regex>
+  <regex>File\s+Object Name:\s+(\w\.+)\s+Handle ID:|File\t+Object Name:\t+(\w\.+)\t+Handle ID:</regex>
   <order>target_file</order>
 </decoder>
 

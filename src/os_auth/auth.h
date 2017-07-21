@@ -29,19 +29,15 @@
 #define ARGV0 "ossec-authd"
 #endif
 
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-
 #ifdef LIBOPENSSL_ENABLED
+
+#include "addagent/manage_agents.h"
+#include "os_net/os_net.h"
+#include "config/authd-config.h"
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
-
-#include "os_net/os_net.h"
-#include "addagent/manage_agents.h"
-#include "config/authd-config.h"
 
 extern BIO *bio_err;
 #define KEYFILE  "/etc/sslmanager.key"

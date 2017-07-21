@@ -349,7 +349,7 @@
   <rule id="5750" level="0">
     <decoded_as>sshd</decoded_as>
     <if_sid>5700</if_sid>
-    <match>Unable to negotiate with |Unable to negotiate a key</match>
+    <match>Unable to negotiate with |Unable to negotiate a key|fatal: no matching</match>
     <description>sshd: could not negotiate with client.</description>
   </rule>
 
@@ -368,7 +368,7 @@
 
   <rule id="5753" level="2">
     <if_sid>5750</if_sid>
-    <match>no matching cipher found.</match>
+    <match>no matching cipher found</match>
     <description>sshd: could not negotiate with client, no matching cipher.</description>
   </rule>
 
@@ -402,6 +402,12 @@
     <match>^error: maximum authentication attempts exceeded </match>
     <description>Maximum authentication attempts exceeded.</description>
     <group>authentication_failed,</group>
+  </rule>
+
+  <rule id="5759" level="2">
+    <if_sid>5750</if_sid>
+    <match>no matching mac found</match>
+    <description>sshd: could not negotiate with client, no matching mac.</description>
   </rule>
 
 </group>

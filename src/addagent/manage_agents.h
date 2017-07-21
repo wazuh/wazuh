@@ -111,7 +111,7 @@ extern fpos_t fp_pos;
 #define ADDED           "Added.\n"
 #define ADD_NOT         "Not Adding.\n"
 #define PRESS_ENTER     "** Press ENTER to return to the main menu.\n"
-#define MUST_RESTART    "\n** You must restart OSSEC for your changes" \
+#define MUST_RESTART    "\n** You must restart Wazuh for your changes" \
                         " to take effect.\n\n"
 
 /* Add errors */
