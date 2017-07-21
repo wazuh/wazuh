@@ -224,6 +224,11 @@ WriteAgent()
       fi
     fi
     echo "    <protocol>udp</protocol>" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+    echo "    <!-- Agent buffer options -->" >> $NEWCONFIG
+    echo "    <disable-buffer>no</disable-buffer>" >> $NEWCONFIG
+    echo "    <buffer-length>5000</buffer-length>" >> $NEWCONFIG
+    echo "    <events-per-second>500</events-per-second>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
