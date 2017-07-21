@@ -26,7 +26,7 @@ int main(int argc, char **argv)
     int debug = 0;
     int test_config = 0;
     wmodule *cur_module;
-    
+
     /* Set the name */
     OS_SetName(ARGV0);
 
@@ -118,6 +118,8 @@ void wm_setup()
     // Get defined values from internal_options
 
     wm_task_nice = getDefine_Int("wazuh_modules", "task_nice", -20, 19);
+
+    wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 100, 1000);
 
     // Read configuration: ossec.conf
 

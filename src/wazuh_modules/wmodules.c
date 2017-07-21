@@ -13,6 +13,7 @@
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
+int wm_max_eps;
 
 // Add module to the global list
 

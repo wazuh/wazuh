@@ -138,6 +138,11 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     char *arg_profiles = NULL;
     wm_oscap_profile *profile;
 
+    // Define time to sleep between messages sent
+
+    int usec = 1000000 / wm_max_eps;
+    struct timeval timeout = {0, usec};
+
     // Create arguments
 
     wm_strcat(&command, WM_OSCAP_SCRIPT_PATH, '\0');
@@ -210,8 +215,10 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         pthread_exit(NULL);
     }
 
-    for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n"))
-        SendMSG(queue_fd, line, WM_OSCAP_LOCATION, WODLE_MQ);
+    for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
+        select(0 , NULL, NULL, NULL, &timeout);
+        SendMSG(queue_fd, line, WM_OSCAP_LOCATION, WODLE_MQ);        
+    }
 
     free(output);
     free(command);
