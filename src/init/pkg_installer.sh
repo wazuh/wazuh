@@ -23,11 +23,11 @@ ${DIRECTORY}/var/upgrade/install.sh >> ${DIRECTORY}/logs/upgrade.log 2>&1
 
 # Check upgrade result
 STATUS=$?
-echo -ne $STATUS > ${DIRECTORY}/upgrade/upgrade_result
+echo -ne $STATUS > ${DIRECTORY}/var/upgrade/upgrade_result
 
 if [ ! $STATUS = 0 ]; then
     ${DIRECTORY}/bin/ossec-control stop
     tar --same-owner zxf ${DIRECTORY}/backup/backup_${VERSION}_[${BDATE}].tar.gz -C /
-    echo -ne " 2" >> ${DIRECTORY}/upgrade/upgrade_result
+    echo -ne " 2" >> ${DIRECTORY}/var/upgrade/upgrade_result
     ${DIRECTORY}/bin/ossec-control start
 fi

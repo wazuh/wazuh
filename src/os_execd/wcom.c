@@ -448,7 +448,7 @@ size_t wcom_upgrade(const char * package, const char * installer, char * output)
 
 size_t wcom_upgrade_result(char *output){
     char buffer[20];
-    const char * PATH = UPGRADE_DIR "/upgrade_result";
+    const char * PATH = isChroot() ? UPGRADE_DIR "/upgrade_result" : DEFAULTDIR UPGRADE_DIR "/upgrade_result";
     FILE * result_file;
 
     if (result_file = fopen(PATH, "r"), result_file) {
