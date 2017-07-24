@@ -94,7 +94,7 @@ static void help_authd()
     print_out("    -i          Use client's source IP address instead of any.");
     print_out("    -F <time>   Force insertion: remove old agent with same name or IP if its keepalive has more than <time> seconds.");
     print_out("    -F no       Disable force insertion.");
-    print_out("    -r          Do not keep removed agents (delete).");
+    print_out("    -r          Do not keep removed agents (purge).");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
