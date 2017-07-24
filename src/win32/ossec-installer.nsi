@@ -496,6 +496,7 @@ Section "Uninstall"
     Delete "$INSTDIR\active-response\bin\*"
     Delete "$INSTDIR\active-response\*"
     Delete "$INSTDIR\tmp\*"
+    Delete "$INSTDIR\incoming\*"
 
     ; remove shortcuts
     SetShellVarContext all
@@ -513,6 +514,8 @@ Section "Uninstall"
     RMDir "$INSTDIR\active-response"
     RMDir "$INSTDIR\tmp"
 	RMDir /r "$INSTDIR\queue\diff"
+    RMDir "$INSTDIR\incoming"
+    RMDir /r "$INSTDIR\upgrade"
 	RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR"
 SectionEnd
