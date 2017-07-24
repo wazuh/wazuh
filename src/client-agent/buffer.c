@@ -45,9 +45,9 @@ void buffer_init(){
     if (!buffer)
         os_calloc(agt->buflength+1, sizeof(char *), buffer);
 
-    warn_level = getDefine_Int("agentd", "warn_level", 1, 100);
-    normal_level = getDefine_Int("agentd", "normal_level", 0, warn_level-1);
-    tolerance = getDefine_Int("agentd", "tolerance", 0, 600);
+    warn_level = getDefine_Int("agent", "warn_level", 1, 100);
+    normal_level = getDefine_Int("agent", "normal_level", 0, warn_level-1);
+    tolerance = getDefine_Int("agent", "tolerance", 0, 600);
 
     if (tolerance == 0)
         mwarn(TOLERANCE_TIME);

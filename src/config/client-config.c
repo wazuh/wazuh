@@ -27,9 +27,9 @@ int Read_Client(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_max_time_reconnect_try = "time-reconnect";
     const char *xml_profile_name = "config-profile";
     const char *xml_protocol = "protocol";
-    const char *xml_buffer_disabled = "disable-buffer";
-    const char *xml_buffer_length = "buffer-length";
-    const char *xml_events_per_second = "events-per-second";
+    const char *xml_buffer_disabled = "disable_buffer";
+    const char *xml_buffer_length = "buffer_length";
+    const char *xml_events_per_second = "events_per_second";
 
     agent *logr;
 

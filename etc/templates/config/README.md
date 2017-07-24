@@ -47,9 +47,9 @@
           <config-profile>distribution, distributionVersion</config-profile>
 
           <!-- Agent buffer options -->
-          <disable-buffer>no</disable-buffer>
-          <buffer-length>5000</buffer-length>
-          <events-per-second>500</events-per-second>
+          <disable_buffer>no</disable_buffer>
+          <buffer_length>5000</buffer_length>
+          <events_per_second>500</events_per_second>
         </client>
 
         logging.template

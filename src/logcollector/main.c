@@ -120,7 +120,7 @@ int main(int argc, char **argv)
 
     vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
 
-    maximum_lines = getDefine_Int("logcollector", "maximum_lines", 100, 100000);
+    maximum_lines = getDefine_Int("logcollector", "max_lines", 100, 100000);
 
     /* Exit if test config */
     if (test_config) {

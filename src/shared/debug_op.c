@@ -160,7 +160,7 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
 
 void os_logging_config(){
   OS_XML xml;
-  const char * xmlf[] = {"ossec_config", "logging", "log-format", NULL};
+  const char * xmlf[] = {"ossec_config", "logging", "log_format", NULL};
   char * logformat;
   char ** parts = NULL;
   int i, j;
@@ -183,7 +183,7 @@ void os_logging_config(){
 
     free(logformat);
     OS_ClearXML(&xml);
-    mdebug1(XML_NO_ELEM, "log-format");
+    mdebug1(XML_NO_ELEM, "log_format");
 
   }else{
 
