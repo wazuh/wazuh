@@ -181,10 +181,13 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     f_sum[f_size]->sum[0] = '\0';
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
-    snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
 
-    // First call, truncate merged file
-    MergeAppendFile(merged_tmp, NULL, group);
+    if (!logr.nocmerged) {
+        snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
+        // First call, truncate merged file
+        MergeAppendFile(merged_tmp, NULL, group);
+    }
+
     f_size++;
 
     // Merge ar.conf always
@@ -195,7 +198,11 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         os_calloc(1, sizeof(file_sum), f_sum[f_size]);
         strncpy(f_sum[f_size]->sum, md5sum, 32);
         os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
-        MergeAppendFile(merged_tmp, DEFAULTAR, NULL);
+
+        if (!logr.nocmerged) {
+            MergeAppendFile(merged_tmp, DEFAULTAR, NULL);
+        }
+
         f_size++;
     }
 
@@ -220,12 +227,19 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         os_calloc(1, sizeof(file_sum), f_sum[f_size]);
         strncpy(f_sum[f_size]->sum, md5sum, 32);
         os_strdup(entry->d_name, f_sum[f_size]->name);
-        MergeAppendFile(merged_tmp, file, NULL);
+
+        if (!logr.nocmerged) {
+            MergeAppendFile(merged_tmp, file, NULL);
+        }
+
         f_size++;
     }
 
     f_sum[f_size] = NULL;
-    OS_MoveFile(merged_tmp, merged);
+
+    if (!logr.nocmerged) {
+        OS_MoveFile(merged_tmp, merged);
+    }
 
     if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
         merror("%s: ERROR: Accessing file '%s'", ARGV0, merged);
@@ -554,7 +568,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 merror(MUTEX_ERROR, ARGV0);
             }
 
-            if (strcmp(tmp_sum, md5) != 0) {
+            if (tmp_sum[0] && strcmp(tmp_sum, md5) != 0) {
                 debug1("%s: DEBUG: Sending file '%s/%s' to agent '%s'.", ARGV0, group, SHAREDCFG_FILENAME, agent_id);
 
                 if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum) < 0) {
