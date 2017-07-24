@@ -72,7 +72,7 @@ pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 static void help_authd()
 {
     print_header();
-    print_out("  %s: -[Vhdtfi] [-F <time>] [-g group] [-D dir] [-p port] [-P] [-v path [-s]] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[Vhdtfi] [-F <time>] [-g group] [-D dir] [-p port] [-P] [-c ciphers] [-v path [-s]] [-x path] [-k path]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
@@ -86,6 +86,7 @@ static void help_authd()
     print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
     print_out("    -P          Enable shared password authentication, at %s or random.", AUTHDPASS_PATH);
+    print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
     print_out("    -x <path>   Full path to server certificate. Default: %s%s.", DEFAULTDIR, CERTFILE);
@@ -154,6 +155,7 @@ int main(int argc, char **argv)
     int run_foreground = 0;
     gid_t gid;
     int client_sock = 0;
+    char *ciphers = DEFAULT_CIPHERS;
     const char *dir  = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     char buf[4096 + 1];
@@ -187,7 +189,7 @@ int main(int argc, char **argv)
         const char *server_key = NULL;
         unsigned short port = 0;  // TODO: config.port
 
-        while (c = getopt(argc, argv, "Vdhtfig:D:p:v:sx:k:PF:ar"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfig:D:p:c:v:sx:k:PF:ar"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -239,6 +241,13 @@ int main(int argc, char **argv)
                     if (port = (unsigned short)atoi(optarg), port == 0) {
                         merror_exit("Invalid port: %s", optarg);
                     }
+                    break;
+
+                case 'c':
+                    if (!optarg) {
+                        merror_exit("-%c needs an argument", c);
+                    }
+                    ciphers = optarg;
                     break;
 
                 case 'v':
@@ -456,7 +465,7 @@ int main(int argc, char **argv)
     fclose(fp);
 
     /* Start SSL */
-    ctx = os_ssl_keys(1, dir, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
+    ctx = os_ssl_keys(1, dir, ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
     if (!ctx) {
         merror("SSL error. Exiting.");
         exit(1);

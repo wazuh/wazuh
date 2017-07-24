@@ -36,7 +36,7 @@ static void help_agent_auth(void) __attribute__((noreturn));
 static void help_agent_auth()
 {
     print_header();
-    print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-v path] [-x path] [-k path] [-P pass]", ARGV0);
+    print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -48,6 +48,7 @@ static void help_agent_auth()
     print_out("    -m <addr>   Manager IP address");
     print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
     print_out("    -A <name>   Agent name (default: hostname)");
+    print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify the server");
     print_out("    -x <path>   Full path to agent certificate");
     print_out("    -k <path>   Full path to agent key");
@@ -68,6 +69,7 @@ int main(int argc, char **argv)
 #endif
 
     int sock = 0, port = DEFAULT_PORT, ret = 0;
+    char *ciphers = DEFAULT_CIPHERS;
     const char *dir = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     char *authpass = NULL;
@@ -92,7 +94,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtg:m:p:A:v:x:k:D:P:a")) != -1) {
+    while ((c = getopt(argc, argv, "Vdhtg:m:p:A:c:v:x:k:D:P:a")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -138,6 +140,12 @@ int main(int argc, char **argv)
                 if (port <= 0 || port >= 65536) {
                     merror_exit("Invalid port: %s", optarg);
                 }
+                break;
+            case 'c':
+                if (!optarg) {
+                    merror_exit("-%c needs an argument", c);
+                }
+                ciphers = optarg;
                 break;
             case 'v':
                 if (!optarg) {
@@ -224,7 +232,7 @@ int main(int argc, char **argv)
 #endif
 
     /* Start SSL */
-    ctx = os_ssl_keys(0, dir, agent_cert, agent_key, ca_cert, auto_method);
+    ctx = os_ssl_keys(0, dir, ciphers, agent_cert, agent_key, ca_cert, auto_method);
     if (!ctx) {
         merror("SSL error. Exiting.");
         exit(1);
