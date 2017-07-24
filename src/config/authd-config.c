@@ -17,6 +17,7 @@ static short eval_bool(const char *str);
 
 int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     /* XML Definitions */
+    static const char *xml_disabled = "disabled";
     static const char *xml_port = "port";
     static const char *xml_use_source_ip = "use_source_ip";
     static const char *xml_force_insert = "force_insert";
@@ -39,6 +40,15 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return OS_INVALID;
+        } else if (!strcmp(node[i]->element, xml_disabled)) {
+            short b = eval_bool(node[i]->content);
+
+            if (b < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+
+            config->flags.disabled = b;
         } else if (!strcmp(node[i]->element, xml_port)) {
             config->port = (unsigned short)atoi(node[i]->content);
 

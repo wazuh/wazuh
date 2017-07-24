@@ -338,6 +338,10 @@ int main(int argc, char **argv)
             config.flags.clear_removed = 1;
         }
 
+        if (run_foreground) {
+            config.flags.disabled = 0;
+        }
+
         switch (force_insert) {
         case -2:
             break;
@@ -374,6 +378,12 @@ int main(int argc, char **argv)
 
     /* Exit here if test config is set */
     if (test_config) {
+        exit(0);
+    }
+
+    /* Exit here if disabled */
+    if (config.flags.disabled) {
+        minfo("Daemon is disabled. Closing.");
         exit(0);
     }
 

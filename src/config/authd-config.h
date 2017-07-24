@@ -10,6 +10,7 @@
  */
 
 typedef struct authd_flags_t {
+    unsigned short disabled:1;
     unsigned short use_source_ip:1;
     unsigned short force_insert:1;
     unsigned short clear_removed:1;
