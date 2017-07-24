@@ -79,7 +79,7 @@ then
         exit 1
     fi
 
-    sed -E -i '' "s/^(#define __ossec_version +)\"v.*\"/\1\"$version\"/" $DEFS_FILE
+    sed -E -i'' "s/^(#define __ossec_version +)\"v.*\"/\1\"$version\"/" $DEFS_FILE
 
     # File help.txt
 
@@ -91,7 +91,7 @@ then
         exit 1
     fi
 
-    sed -E -i '' "s/^(\*\* .+ )v.+ \*\*/\1$version \*\*/g" $HELP_FILE
+    sed -E -i'' "s/^(\*\* .+ )v.+ \*\*/\1$version \*\*/g" $HELP_FILE
 
     # File ossec-installer.nsi
 
@@ -103,7 +103,7 @@ then
         exit 1
     fi
 
-    sed -E -i '' "s/^(\!define VERSION \").+\"/\1${version:1}\"/g" $NSIS_FILE
+    sed -E -i'' "s/^(\!define VERSION \").+\"/\1${version:1}\"/g" $NSIS_FILE
 fi
 
 if [ -n "$revision" ]
@@ -123,7 +123,7 @@ then
         exit 1
     fi
 
-    sed -E -i '' "s/^(\!define REVISION \").+\"/\1$revision\"/g" $NSIS_FILE
+    sed -E -i'' "s/^(\!define REVISION \").+\"/\1$revision\"/g" $NSIS_FILE
 fi
 
 if [ -n "$product" ]
@@ -139,5 +139,5 @@ then
         exit 1
     fi
 
-    sed -E -i '' "s/^(VIProductVersion \").+\"/\1$product\"/g" $NSIS_FILE
+    sed -E -i'' "s/^(VIProductVersion \").+\"/\1$product\"/g" $NSIS_FILE
 fi
