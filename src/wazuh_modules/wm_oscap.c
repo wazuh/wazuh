@@ -136,6 +136,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     char *output = NULL;
     char *line;
     char *arg_profiles = NULL;
+    char msg[OS_MAXSTR];
     wm_oscap_profile *profile;
 
     // Define time to sleep between messages sent
@@ -189,6 +190,11 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         wm_strcat(&command, eval->cpe, ' ');
     }
 
+    // Send rootcheck message
+
+    snprintf(msg, OS_MAXSTR, "Starting OpenSCAP scan. File: %s. ", eval->path);
+    SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
+
     // Execute
 
     mtdebug1(WM_OSCAP_LOGTAG, "Launching command: %s", command);
@@ -220,6 +226,11 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         select(0 , NULL, NULL, NULL, &timeout);
         SendMSG(queue_fd, line, WM_OSCAP_LOCATION, WODLE_MQ);
     }
+
+    snprintf(msg, OS_MAXSTR, "Ending OpenSCAP scan. File: %s. ", eval->path);
+    timeout.tv_usec = usec;
+    select(0 , NULL, NULL, NULL, &timeout);
+    SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
 
     free(output);
     free(command);
