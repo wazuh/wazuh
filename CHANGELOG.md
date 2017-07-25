@@ -5,36 +5,42 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
- - Rotate and compress log feature.
- - Labeling data for agents to be shown in alerts.
- - New 'auth' configuration template.
- - Make manage_agents capable of add and remove agents via Authd.
- - Implemented XML configuration for Authd.
- - Option -F for Authd to force insertion if it finds duplicated name.
- - Local auth client to manage agent keys.
- - Added OS name and version into global.db.
+- Rotate and compress log feature.
+- Labeling data for agents to be shown in alerts.
+- New 'auth' configuration template.
+- Make manage_agents capable of add and remove agents via Authd.
+- Implemented XML configuration for Authd.
+- Option -F for Authd to force insertion if it finds duplicated name.
+- Local auth client to manage agent keys.
+- Added OS name and version into global.db.
+- Option for logging in JSON format.
+- Allow maild to send through a sendmail-like executable (by James Le Cuirot).
+- Leaky bucket-like buffer for agents to prevent network flooding.
 
 ### Changed
 
- - Updated SQLite library to 3.19.2.
- - Updated zlib to 1.2.11.
- - Updated cJSON library to 1.4.7.
- - Change some manage_agents option parameters.
- - Run Auth in backgroud by default.
+- Updated SQLite library to 3.19.2.
+- Updated zlib to 1.2.11.
+- Updated cJSON library to 1.4.7.
+- Change some manage_agents option parameters.
+- Run Auth in background by default.
+- Log classification as debug, info, warning, error and critical.
+- Limit number of reads per cycle by Logcollector to prevent log starvation.
+- Limit OpenSCAP module's event forwarding speed.
 
 ### Fixed
 
- - Fixed compiling error on systems with no OpenSSL.
- - Fixed compiling warning at manage_agents.
- - Fixed ossec-control enable/disable help message.
- - Fixed unique aperture of random device on Unix.
- - Fixed file sum comparison bug at Syscheck realtime engine. (Thanks to Arshad Khan)
- - Close analysisd if alert outputs are disabled for all formats.
- - Read Windows version name for versions newer than Windows 8 / Windows Server 2012.
+- Fixed compiling error on systems with no OpenSSL.
+- Fixed compiling warning at manage_agents.
+- Fixed ossec-control enable/disable help message.
+- Fixed unique aperture of random device on Unix.
+- Fixed file sum comparison bug at Syscheck realtime engine. (Thanks to Arshad Khan)
+- Close analysisd if alert outputs are disabled for all formats.
+- Read Windows version name for versions newer than Windows 8 / Windows Server 2012.
 
 ### Removed
 
- - Remove unused message queue to send alerts from Authd.
+- Remove unused message queue to send alerts from Authd.
 
 
 ## [v2.0.1]
@@ -52,6 +58,7 @@ All notable changes to this project will be documented in this file.
 - Use default maximum inotify event queue size.
 - Show remote IP on encoding format errors when unencrypting messages.
 - Remove temporary files created by Syscheck changes reports.
+- Remove temporary Syscheck files for changes reporting by Windows installer when upgrading.
 
 ### Fixed
 
@@ -80,7 +87,7 @@ All notable changes to this project will be documented in this file.
 - Fixed false error by Syscheck when creating diff snapshots of empty files.
 - Fixed segmentation fault in Authd on i386 platform.
 - Fixed agent-auth exit code for controlled server's errors.
-- Fix incorrect OVAL patch results classification.
+- Fixed incorrect OVAL patch results classification.
 
 ## [v2.0]
 
