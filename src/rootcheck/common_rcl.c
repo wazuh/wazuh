@@ -387,7 +387,7 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
 
                 mtdebug2(ARGV0, "Checking file: '%s'.", f_value);
                 if (rk_check_file(f_value, pattern)) {
-                    mtdebug1(ARGV0, "Found file.");
+                    mtdebug2(ARGV0, "Found file.");
                     found = 1;
                 }
             }
