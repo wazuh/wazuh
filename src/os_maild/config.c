@@ -66,7 +66,7 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
     } else if (global.jsonout_output) {
         Mail->source = MAIL_SOURCE_JSON;
     } else {
-        merror(ARGV0 ": ERROR: All alert formats are disabled.");
+        merror("All alert formats are disabled.");
         return OS_INVALID;
     }
 

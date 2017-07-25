@@ -506,7 +506,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
              "",
              logs);
 
-    debug2("OS_RecvMailQ: mail->body[%s]", mail->body);
+    mdebug2("OS_RecvMailQ: mail->body[%s]", mail->body);
 
     /* Check for granular email configs */
     if (Mail->gran_to) {

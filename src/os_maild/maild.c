@@ -222,18 +222,18 @@ static void OS_Run(MailConfig *mail)
 
     switch (mail->source) {
     case MAIL_SOURCE_LOGS:
-        verbose(ARGV0 ": INFO: Getting alerts in log format.");
+        minfo("Getting alerts in log format.");
         Init_FileQueue(fileq, p, CRALERT_MAIL_SET);
         break;
 
     case MAIL_SOURCE_JSON:
-        verbose(ARGV0 ": INFO: Getting alerts in JSON format.");
+        minfo("Getting alerts in JSON format.");
         jqueue_init(fileq);
         jqueue_open(fileq);
         break;
 
     default:
-        ErrorExit(ARGV0 ": CRITICAL: at OS_Run(): invalid source.");
+        merror_exit("At OS_Run(): invalid source.");
     }
 
     /* Create the list */
