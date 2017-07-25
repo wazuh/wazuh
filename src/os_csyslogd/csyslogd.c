@@ -32,7 +32,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     struct tm *p;
     int tries = 0;
     alert_source_t sources = get_alert_sources(syslog_config);
-    file_queue *fileq;
+    file_queue *fileq = NULL;
     file_queue jfileq;
     alert_data *al_data = NULL;
     cJSON *json_data = NULL;
