@@ -31,6 +31,7 @@ typedef struct _rkconfig {
     int readall;
     int disabled;
     short skip_nfs;
+    int tsleep;
 
     int time;
     int queue;
@@ -57,4 +58,3 @@ typedef struct _rkconfig {
 } rkconfig;
 
 #endif /* __CROOTCHECK_H */
-

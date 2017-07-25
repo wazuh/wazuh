@@ -172,6 +172,8 @@ int rootcheck_init(int test_config)
         mterror_exit(ARGV0, CONFIG_ERROR, cfg);
     }
 
+    rootcheck.tsleep = getDefine_Int("rootcheck", "sleep", 0, 1000);
+
     /* If testing config, exit here */
     if (test_config) {
         return (0);

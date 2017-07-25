@@ -173,7 +173,12 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
 
         /* If we are run in the context of OSSEC-HIDS, sleep here (no rush) */
 #ifdef OSSECHIDS
-        sleep(2);
+#ifdef WIN32
+        Sleep(rootcheck.tsleep);
+#else
+        struct timeval timeout = {0, rootcheck.tsleep * 1000};
+        select(0, NULL, NULL, NULL, &timeout);
+#endif
 #endif
 
         /* Everything fine, move on */
@@ -325,4 +330,3 @@ void check_rc_pids()
     return;
 }
 #endif
-
