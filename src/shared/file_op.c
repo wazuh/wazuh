@@ -337,6 +337,13 @@ int IsDir(const char *file)
     return (-1);
 }
 
+int IsFile(const char *file)
+{
+    struct stat buf;
+	return (!stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
+}
+
+
 int CreatePID(const char *name, int pid)
 {
     char file[256];
