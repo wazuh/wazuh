@@ -147,7 +147,6 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     char buf[OS_MAXSTR + 1];
 
     path[PATH_MAX] = '\0';
-    buf[OS_MAXSTR] = '\0';
 
     snprintf(path, PATH_MAX, "%s/local/%s/diff.%d",
              DIFF_DIR_PATH, filename + PATH_OFFSET, (int)alert_diff_time);
@@ -167,6 +166,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
         merror("Unable to generate diff alert (fread).");
         return (NULL);
     case 4095:
+        buf[n] = '\0';
         n -= strlen(STR_MORE_CHANGES);
 
         while (n > 0 && buf[n - 1] != '\n')

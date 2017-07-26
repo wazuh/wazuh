@@ -24,12 +24,15 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     size_t labels_z = 0;
     wlabel_t **labels = (wlabel_t **)d1;
 
+    if (!*labels) {
+        merror("Labels pointer is null.");
+        return OS_INVALID;
+    }
+
     /* Get label size */
 
-    if (*labels) {
-        while ((*labels)[labels_z].key) {
-            labels_z++;
-        }
+    while ((*labels)[labels_z].key) {
+        labels_z++;
     }
 
     for (i = 0; node[i]; i++) {

@@ -332,8 +332,13 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     int i = 0, sms_set = 0, donotgroup = 0;
     size_t body_size = OS_MAXSTR - 3, log_size;
     char logs[OS_MAXSTR + 1] = "";
-    char *subject_host;
+    char *subject_host = NULL;
     char *json_str;
+    int end_ok = 0;
+    unsigned int alert_level = 0;
+    char *alert_desc = NULL;
+    char *timestamp = NULL;
+    unsigned int rule_id = 0;
 
     MailMsg *mail;
     cJSON *al_json;
@@ -349,9 +354,12 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     Mail->priority = 0;
 
     /* Get message if available */
-    al_json = jqueue_next(fileq);
-    if (!(al_json && (rule = cJSON_GetObjectItem(al_json, "rule"), rule && (mail_flag = cJSON_GetObjectItem(rule, "mail"), mail_flag && cJSON_IsTrue(mail_flag)))))
-        return 0;
+    if (al_json = jqueue_next(fileq), !al_json) {
+        return NULL;
+    }
+
+    if (!(rule = cJSON_GetObjectItem(al_json, "rule"), rule && (mail_flag = cJSON_GetObjectItem(rule, "mail"), mail_flag && cJSON_IsTrue(mail_flag))))
+        return NULL;
 
     /* If e-mail came correctly, generate the e-mail body/subject */
     os_calloc(1, sizeof(MailMsg), mail);
@@ -362,14 +370,14 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     // Get full_log field content
     json_field = cJSON_GetObjectItem(al_json,"full_log");
     if (!json_field) {
-        return (NULL);
+        goto end;
     }
 
     log_size = strlen(json_field->valuestring) + 4;
 
     /* If size left is small than the size of the log, stop it */
     if (body_size <= log_size) {
-        return (NULL);
+        goto end;
     }
 
     strncpy(logs, json_field->valuestring, body_size);
@@ -429,15 +437,15 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     /* Subject */
 
     if (location = cJSON_GetObjectItem(al_json, "location"), !location) {
-        return (NULL);
+        goto end;
     }
 
     if (agent = cJSON_GetObjectItem(al_json, "agent"), !agent) {
-        return (NULL);
+        goto end;
     }
 
     if (agent_name = cJSON_GetObjectItem(agent, "name"), !agent_name) {
-        return NULL;
+        goto end;
     }
 
     if (agent_ip = cJSON_GetObjectItem(agent, "ip"), agent_ip) {
@@ -448,25 +456,18 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         sprintf(subject_host, "%s->%s", agent_name->valuestring, location->valuestring);
     }
 
-
-
-    unsigned int alert_level = 0;
-    char *alert_desc = NULL;
-    char *timestamp = NULL;
-    unsigned int rule_id = 0;
-
     if (json_field = cJSON_GetObjectItem(rule,"level"), !json_field) {
-        return NULL;
+        goto end;
     }
     alert_level = json_field->valueint;
 
     if (json_field = cJSON_GetObjectItem(rule,"description"), !json_field) {
-        return NULL;
+        goto end;
     }
     alert_desc = strdup(json_field->valuestring);
 
     if (json_field = cJSON_GetObjectItem(rule,"id"), !json_field) {
-        return NULL;
+        goto end;
     }
     rule_id = atoi(json_field->valuestring);
 
@@ -492,7 +493,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
     json_field = cJSON_GetObjectItem(al_json,"timestamp");
     if (!json_field) {
-        return (NULL);
+        goto end;
     }
     timestamp = strdup(json_field->valuestring);
 
@@ -635,7 +636,22 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         *msg_sms = msg_sms_tmp;
     }
 
+    end_ok = 1;
+
+end:
+
     /* Clear the memory */
     cJSON_Delete(al_json);
-    return (mail);
+    free(alert_desc);
+    free(timestamp);
+    free(subject_host);
+
+    if (end_ok) {
+        return mail;
+    } else {
+        free(mail->body);
+        free(mail->subject);
+        free(mail);
+        return NULL;
+    }
 }
