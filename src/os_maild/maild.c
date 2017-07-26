@@ -218,10 +218,23 @@ static void OS_Run(MailConfig *mail)
     thishour = p->tm_hour;
 
     /* Initialize file queue */
-    i = 0;
-    i |= CRALERT_MAIL_SET;
     os_calloc(1, sizeof(file_queue), fileq);
-    Init_FileQueue(fileq, p, i);
+
+    switch (mail->source) {
+    case MAIL_SOURCE_LOGS:
+        minfo("Getting alerts in log format.");
+        Init_FileQueue(fileq, p, CRALERT_MAIL_SET);
+        break;
+
+    case MAIL_SOURCE_JSON:
+        minfo("Getting alerts in JSON format.");
+        jqueue_init(fileq);
+        jqueue_open(fileq);
+        break;
+
+    default:
+        merror_exit("At OS_Run(): invalid source.");
+    }
 
     /* Create the list */
     OS_CreateMailList(MAIL_LIST_SIZE);
@@ -354,7 +367,7 @@ snd_check_hour:
         }
 
         /* Receive message from queue */
-        if ((msg = OS_RecvMailQ(fileq, p, mail, &msg_sms)) != NULL) {
+        if (msg = mail->source == MAIL_SOURCE_LOGS ? OS_RecvMailQ(fileq, p, mail, &msg_sms) : OS_RecvMailQ_JSON(fileq, mail, &msg_sms), msg) {
             /* If the e-mail priority is do_not_group,
              * flush all previous entries and then send it.
              * Use s_msg to hold the pointer to the message while we flush it.

@@ -133,18 +133,27 @@ static void DB_SetCompleted(const Eventinfo *lf)
 /* Return the file pointer to be used to verify the integrity */
 static FILE *DB_File(const char *agent, int *agent_id)
 {
-    int i = 0;
+    int i;
 
     /* Find file pointer */
-    while (sdb.agent_ips[i] != NULL  &&  i < MAX_AGENTS) {
+    for (i = 0; sdb.agent_ips[i] && i < MAX_AGENTS; i++) {
         if (strcmp(sdb.agent_ips[i], agent) == 0) {
-            /* Point to the beginning of the file */
-            fseek(sdb.agent_fps[i], 0, SEEK_SET);
-            *agent_id = i;
-            return (sdb.agent_fps[i]);
-        }
+            snprintf(sdb.buf, OS_FLSIZE , "%s/%s", SYSCHECK_DIR, agent);
 
-        i++;
+            if (!IsFile(sdb.buf)) {
+                /* Point to the beginning of the file */
+                fseek(sdb.agent_fps[i], 0, SEEK_SET);
+                *agent_id = i;
+                return (sdb.agent_fps[i]);
+            } else {
+                // File was deleted. Close and let reopen.
+                mwarn("Syscheck database '%s' has been deleted. Recreating.", agent);
+                fclose(sdb.agent_fps[i]);
+                free(sdb.agent_ips[i]);
+                sdb.agent_ips[i] = NULL;
+                break;
+            }
+        }
     }
 
     /* If here, our agent wasn't found */

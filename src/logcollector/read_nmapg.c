@@ -136,6 +136,8 @@ void *read_nmapg(int pos, int *rc, int drop_it)
     char *p;
     char *q;
 
+    int lines = 0;
+
     *rc = 0;
     str[OS_MAXSTR] = '\0';
     final_msg[OS_MAXSTR] = '\0';
@@ -144,7 +146,9 @@ void *read_nmapg(int pos, int *rc, int drop_it)
     port[16] = '\0';
     proto[16] = '\0';
 
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL) {
+    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL && lines < maximum_lines) {
+
+        lines++;
         /* If need clear is set, we need to clear the line */
         if (need_clear) {
             if ((q = strchr(str, '\n')) != NULL) {
@@ -256,6 +260,6 @@ file_error:
 
     }
 
+    mdebug2("Read %d lines from %s", lines, logff[pos].file);
     return (NULL);
 }
-

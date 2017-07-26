@@ -115,7 +115,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
             }
         }
 
-        MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", HELOMSG, msg);
+        MAIL_DEBUG("Sent '%s', received: '%s'", HELOMSG, msg);
         free(msg);
 
         /* Build "Mail from" msg */
@@ -131,7 +131,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
             close(socket);
             return (OS_INVALID);
         }
-        MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
+        MAIL_DEBUG("Sent '%s', received: '%s'", snd_msg, msg);
         free(msg);
 
         /* Build "RCPT TO" msg */
@@ -191,7 +191,12 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
     if (replyto) {
         memset(snd_msg, '\0', 128);
         snprintf(snd_msg, 127, REPLYTO, replyto);
-        OS_SendTCP(socket, snd_msg);
+
+        if (sendmail) {
+            fprintf(sendmail, "%s", snd_msg);
+        } else {
+            OS_SendTCP(socket, snd_msg);
+        }
     }
 
     /* Add CCs */

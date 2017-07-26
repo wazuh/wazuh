@@ -15,6 +15,7 @@
 typedef struct wlabel_data_t {
     wlabel_t *labels;
     time_t mtime;
+    unsigned int error_flag;
 } wlabel_data_t;
 
 /* Initialize label cache */

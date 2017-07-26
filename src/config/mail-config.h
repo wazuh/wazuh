@@ -12,6 +12,9 @@
 
 #include "shared.h"
 
+#define MAIL_SOURCE_LOGS 0
+#define MAIL_SOURCE_JSON 1
+
 /* Mail config structure */
 typedef struct _MailConfig {
     int mn;
@@ -26,6 +29,7 @@ typedef struct _MailConfig {
     char *idsname;
     char *smtpserver;
     char *heloserver;
+    int source;
 
     /* Granular e-mail options */
     unsigned int *gran_level;
@@ -50,4 +54,3 @@ typedef struct _MailConfig {
 #define DONOTGROUP      5
 
 #endif /* _MCCONFIG__H */
-

@@ -11,10 +11,16 @@
 #include "csyslogd.h"
 #include "os_net/os_net.h"
 
+typedef struct alert_source_t {
+    int alert_log:1;
+    int alert_json:1;
+} alert_source_t;
+
 /* Global variables */
 char __shost[512];
 char __shost_long[512];
 
+static alert_source_t get_alert_sources(SyslogConfig **syslog_config);
 
 /* Monitor the alerts and send them via syslog
  * Only return in case of error
@@ -25,40 +31,64 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     time_t tm;
     struct tm *p;
     int tries = 0;
-    file_queue *fileq;
-    alert_data *al_data;
+    alert_source_t sources = get_alert_sources(syslog_config);
+    file_queue *fileq = NULL;
+    file_queue jfileq;
+    alert_data *al_data = NULL;
+    cJSON *json_data = NULL;
 
-    /* Get current time before starting */
-    tm = time(NULL);
-    p = localtime(&tm);
+    if (sources.alert_log) {
 
-    /* Initialize file queue to read the alerts */
-    os_calloc(1, sizeof(file_queue), fileq);
-    while ( (Init_FileQueue(fileq, p, 0) ) < 0 ) {
-        tries++;
-        if ( tries > OS_CSYSLOGD_MAX_TRIES ) {
-            merror("Could not open queue after %d tries, exiting!",
-                  tries
-                  );
-            exit(1);
+        /* Get current time before starting */
+        tm = time(NULL);
+        p = localtime(&tm);
+
+        /* Initialize file queue to read the alerts */
+        os_calloc(1, sizeof(file_queue), fileq);
+
+        for (tries = 0; tries < OS_CSYSLOGD_MAX_TRIES && Init_FileQueue(fileq, p, 0) < 0; tries++) {
+            sleep(1);
         }
-        sleep(1);
+
+        if (tries == OS_CSYSLOGD_MAX_TRIES) {
+            merror("Could not open queue after %d tries.", tries);
+            sources.alert_log = 0;
+        } else {
+            mdebug1("File queue connected.");
+        }
     }
-    mdebug1("File queue connected.");
+
+    if (sources.alert_json) {
+        jqueue_init(&jfileq);
+
+        for (tries = 1; tries < OS_CSYSLOGD_MAX_TRIES && jqueue_open(&jfileq) < 0; tries++) {
+            sleep(1);
+        }
+
+        if (tries == OS_CSYSLOGD_MAX_TRIES) {
+            merror("Could not open JSON queue after %d tries.", tries);
+            sources.alert_json = 0;
+        } else {
+            mdebug1("JSON file queue connected.");
+        }
+    }
+
+    if (!(sources.alert_log || sources.alert_json)) {
+        merror("No configurations available. Exiting.");
+        exit(EXIT_FAILURE);
+    }
 
     /* Connect to syslog */
-    s = 0;
-    while (syslog_config[s]) {
-        syslog_config[s]->socket = OS_ConnectUDP(syslog_config[s]->port,
-                                   syslog_config[s]->server, 0);
+
+    for (s = 0; syslog_config[s]; s++) {
+        syslog_config[s]->socket = OS_ConnectUDP(syslog_config[s]->port, syslog_config[s]->server, 0);
+
         if (syslog_config[s]->socket < 0) {
             merror(CONNS_ERROR, syslog_config[s]->server);
         } else {
             minfo("Forwarding alerts via syslog to: '%s:%d'.",
                    syslog_config[s]->server, syslog_config[s]->port);
         }
-
-        s++;
     }
 
     /* Infinite loop reading the alerts and inserting them */
@@ -66,21 +96,38 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
         tm = time(NULL);
         p = localtime(&tm);
 
-        /* Get message if available (timeout of 5 seconds) */
-        al_data = Read_FileMon(fileq, p, 5);
-        if (!al_data) {
-            continue;
+        if (sources.alert_log) {
+            /* Get message if available (timeout of 5 seconds) */
+            mdebug2("Read_FileMon()");
+            al_data = Read_FileMon(fileq, p, 1);
+        }
+
+        if (sources.alert_json) {
+            mdebug2("jqueue_next()");
+            json_data = jqueue_next(&jfileq);
         }
 
         /* Send via syslog */
-        s = 0;
-        while (syslog_config[s]) {
-            OS_Alert_SendSyslog(al_data, syslog_config[s]);
-            s++;
+
+        for (s = 0; syslog_config[s]; s++) {
+            if (syslog_config[s]->format == JSON_CSYSLOG) {
+                if (json_data) {
+                    OS_Alert_SendSyslog_JSON(json_data, syslog_config[s]);
+                }
+            } else if (al_data) {
+                OS_Alert_SendSyslog(al_data, syslog_config[s]);
+            }
         }
 
         /* Clear the memory */
-        FreeAlertData(al_data);
+
+        if (al_data) {
+            FreeAlertData(al_data);
+        }
+
+        if (json_data) {
+            cJSON_Delete(json_data);
+        }
     }
 }
 
@@ -174,4 +221,19 @@ int field_add_int(char *dest, size_t size, const char *format, const int value )
     }
 
     return len;
+}
+
+alert_source_t get_alert_sources(SyslogConfig **syslog_config) {
+    alert_source_t sources = { 0, 0 };
+    int i;
+
+    for (i = 0; syslog_config[i]; i++) {
+        if (syslog_config[i]->format == JSON_CSYSLOG) {
+            sources.alert_json = 1;
+        } else {
+            sources.alert_log = 1;
+        }
+    }
+
+    return sources;
 }

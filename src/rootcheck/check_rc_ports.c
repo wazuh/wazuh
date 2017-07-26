@@ -106,7 +106,12 @@ static void test_ports(int proto, int *_errors, int *_total)
 
 #ifdef OSSECHIDS
             /* If we are in the context of OSSEC-HIDS, sleep here (no rush) */
-            sleep(2);
+#ifdef WIN32
+        Sleep(rootcheck.tsleep);
+#else
+        struct timeval timeout = {0, rootcheck.tsleep * 1000};
+        select(0, NULL, NULL, NULL, &timeout);
+#endif
 #endif
 
             if (!run_netstat(proto, i) && conn_port(proto, i)) {

@@ -15,7 +15,20 @@
 #include "config/config.h"
 #include "config/client-config.h"
 
-/*** Function Prototypes ***/
+/* Buffer functions */
+#define full(i, j) ((i + 1) % (agt->buflength + 1) == j)
+#define warn(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength >= ((float)warn_level/100.0))
+#define nowarn(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength <= ((float)warn_level/100.0))
+#define normal(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength <= ((float)normal_level/100.0))
+#define capacity(i, j) (float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength
+#define empty(i, j) (i == j)
+#define forward(x) x = (x + 1) % (agt->buflength + 1)
+
+/* Buffer statuses */
+#define NORMAL 0
+#define WARNING 1
+#define FULL 2
+#define FLOOD 3
 
 /* Client configuration */
 int ClientConf(const char *cfgfile);
@@ -34,6 +47,15 @@ void *receiver_thread(void *none);
 
 /* Send integrity checking information about a file to the server */
 int intcheck_file(const char *file_name, const char *dir);
+
+/* Initialize agent buffer */
+void buffer_init();
+
+/* Send message to a buffer with the aim to avoid flooding issues */
+int buffer_append(const char *msg);
+
+/* Thread to dispatch messages from the buffer */
+void *dispatch_buffer(void * arg);
 
 /* Send message to server */
 int send_msg(int agentid, const char *msg);

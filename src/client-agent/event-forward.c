@@ -16,6 +16,7 @@
 /* Receive a message locally on the agent and forward it to the manager */
 void *EventForward()
 {
+
     ssize_t recv_b;
     char msg[OS_MAXSTR + 1];
 
@@ -25,12 +26,17 @@ void *EventForward()
 
     while ((recv_b = recv(agt->m_queue, msg, OS_MAXSTR, MSG_DONTWAIT)) > 0) {
         msg[recv_b] = '\0';
-
-        if (send_msg(0, msg) < 0) {
-            break;
+        if (agt->buffer){
+            if (buffer_append(msg) < 0) {
+                break;
+            }
+        }else{
+            if (send_msg(0, msg) < 0) {
+                break;
+            }
         }
+
     }
 
     return (NULL);
 }
-

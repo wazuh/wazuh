@@ -59,18 +59,27 @@ void RootcheckInit()
 /* Return the file pointer to be used */
 static FILE *RK_File(const char *agent, int *agent_id)
 {
-    int i = 0;
+    int i;
     char rk_buf[OS_SIZE_1024 + 1];
 
-    while (rk_agent_ips[i] != NULL) {
+    for (i = 0; rk_agent_ips[i]; i++) {
         if (strcmp(rk_agent_ips[i], agent) == 0) {
-            /* Pointing to the beginning of the file */
-            fseek(rk_agent_fps[i], 0, SEEK_SET);
-            *agent_id = i;
-            return (rk_agent_fps[i]);
-        }
+            snprintf(rk_buf, OS_SIZE_1024, "%s/%s", ROOTCHECK_DIR, agent);
 
-        i++;
+            if (!IsFile(rk_buf)) {
+                /* Pointing to the beginning of the file */
+                fseek(rk_agent_fps[i], 0, SEEK_SET);
+                *agent_id = i;
+                return (rk_agent_fps[i]);
+            } else {
+                // File was deleted. Close and let reopen.
+                mwarn("Rootcheck database '%s' has been deleted. Recreating.", agent);
+                fclose(rk_agent_fps[i]);
+                free(rk_agent_ips[i]);
+                rk_agent_ips[i] = NULL;
+                break;
+            }
+        }
     }
 
     /* If here, our agent wasn't found */

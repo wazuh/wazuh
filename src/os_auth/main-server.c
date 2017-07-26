@@ -93,7 +93,7 @@ static void help_authd()
     print_out("    -i          Use client's source IP address instead of any.");
     print_out("    -F <time>   Force insertion: remove old agent with same name or IP if its keepalive has more than <time> seconds.");
     print_out("    -F no       Disable force insertion.");
-    print_out("    -r          Do not keep removed agents (delete).");
+    print_out("    -r          Do not keep removed agents (purge).");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
@@ -337,6 +337,10 @@ int main(int argc, char **argv)
             config.flags.clear_removed = 1;
         }
 
+        if (run_foreground) {
+            config.flags.disabled = 0;
+        }
+
         switch (force_insert) {
         case -2:
             break;
@@ -373,6 +377,12 @@ int main(int argc, char **argv)
 
     /* Exit here if test config is set */
     if (test_config) {
+        exit(0);
+    }
+
+    /* Exit here if disabled */
+    if (config.flags.disabled) {
+        minfo("Daemon is disabled. Closing.");
         exit(0);
     }
 

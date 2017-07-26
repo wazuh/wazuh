@@ -3,15 +3,16 @@
     ossec-control enable auth
   -->
   <auth>
+    <disabled>no</disabled>
     <port>1515</port>
-    <use-source-ip>no</use-source-ip>
-    <force-insert>no</force-insert>
-    <force-time>0</force-time>
-    <clear-removed>no</clear-removed>
-    <use-password>no</use-password>
-    <!-- <ssl-agent-ca></ssl-agent-ca> -->
-    <ssl-verify-host>no</ssl-verify-host>
-    <ssl-manager-cert>/var/ossec/etc/sslmanager.cert</ssl-manager-cert>
-    <ssl-manager-key>/var/ossec/etc/sslmanager.key</ssl-manager-key>
-    <ssl-auto-negotiate>no</ssl-auto-negotiate>
+    <use_source_ip>no</use_source_ip>
+    <force_insert>no</force_insert>
+    <force_time>0</force_time>
+    <purge>no</purge>
+    <use_password>no</use_password>
+    <!-- <ssl_agent_ca></ssl_agent_ca> -->
+    <ssl_verify_host>no</ssl_verify_host>
+    <ssl_manager_cert>/var/ossec/etc/sslmanager.cert</ssl_manager_cert>
+    <ssl_manager_key>/var/ossec/etc/sslmanager.key</ssl_manager_key>
+    <ssl_auto_negotiate>no</ssl_auto_negotiate>
   </auth>

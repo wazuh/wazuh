@@ -37,7 +37,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         return NULL;
     }
 
-    strncpy(hostname, lf->hostname + 1, OS_MAXSTR);
+    strncpy(hostname, lf->hostname + 1, OS_MAXSTR - 1);
     hostname[OS_MAXSTR - 1] = '\0';
 
     if (!(ip = strstr(hostname, ") "))) {
@@ -55,16 +55,14 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         return NULL;
     }
 
-    data = (wlabel_data_t*)OSHash_Get(label_cache, path);
-
-    if (!data) {
+    if (data = (wlabel_data_t*)OSHash_Get(label_cache, path), !data) {
         // Data not cached
 
         os_calloc(1, sizeof(wlabel_data_t), data);
         data->labels = labels_parse(path);
 
         if (!data->labels) {
-            mdebug1("labels for agent %s (%s) not yet available.", hostname, ip);
+            mdebug1("Couldn't parse labels for agent %s (%s). Info file may not exist.", hostname, ip);
             free(data);
             return NULL;
         }
@@ -72,7 +70,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         data->mtime = File_DateofChange(path);
 
         if (data->mtime == -1) {
-            merror("Getting stats for agent %s (%s). Getting old data.", hostname, ip);
+            merror("Getting stats for agent %s (%s). Cannot parse labels.", hostname, ip);
             labels_free(data->labels);
             free(data);
             return NULL;
@@ -91,7 +89,10 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         time_t mtime = File_DateofChange(path);;
 
         if (mtime == -1) {
-            merror("Getting stats for agent %s (%s). Getting old data.", hostname, ip);
+            if (!data->error_flag) {
+                merror("Getting stats for agent %s (%s). Getting old data.", hostname, ip);
+                data->error_flag = 1;
+            }
         } else if (mtime > data->mtime + Config.label_cache_maxage) {
             // Update file, keep old to return in case of error
 
@@ -109,6 +110,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
             labels_free(data->labels);
             free(data);
             data = new_data;
+            data->error_flag = 0;
         }
     }
 

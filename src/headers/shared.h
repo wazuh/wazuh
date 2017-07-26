@@ -204,6 +204,7 @@ extern const char *__local_name;
 #include "ar.h"
 #include "validate_op.h"
 #include "file-queue.h"
+#include "json-queue.h"
 #include "read-agents.h"
 #include "report_op.h"
 #include "string_op.h"

@@ -18,6 +18,7 @@ void *read_command(int pos, int *rc, int drop_it)
     char *p;
     char str[OS_MAXSTR + 1];
     FILE *cmd_output;
+    int lines = 0;
 
     str[OS_MAXSTR] = '\0';
     *rc = 0;
@@ -39,7 +40,9 @@ void *read_command(int pos, int *rc, int drop_it)
              : logff[pos].command);
     cmd_size = strlen(str);
 
-    while (fgets(str + cmd_size, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output) != NULL) {
+    while (fgets(str + cmd_size, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output) != NULL && lines < maximum_lines) {
+
+        lines++;
         /* Get the last occurence of \n */
         if ((p = strrchr(str, '\n')) != NULL) {
             *p = '\0';
@@ -74,5 +77,6 @@ void *read_command(int pos, int *rc, int drop_it)
 
     pclose(cmd_output);
 
+    mdebug2("Read %d lines from command '%s'", lines, logff[pos].command);
     return (NULL);
 }

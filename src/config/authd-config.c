@@ -17,17 +17,18 @@ static short eval_bool(const char *str);
 
 int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     /* XML Definitions */
+    static const char *xml_disabled = "disabled";
     static const char *xml_port = "port";
-    static const char *xml_use_source_ip = "use-source-ip";
-    static const char *xml_force_insert = "force-insert";
-    static const char *xml_force_time = "force-time";
-    static const char *xml_clear_removed = "clear-removed";
-    static const char *xml_use_password = "use-password";
-    static const char *xml_ssl_agent_ca = "ssl-agent-ca";
-    static const char *xml_ssl_verify_host = "ssl-verify-host";
-    static const char *xml_ssl_manager_cert = "ssl-manager-cert";
-    static const char *xml_ssl_manager_key = "ssl-manager-key";
-    static const char *xml_ssl_auto_negotiate = "ssl-auto-negotiate";
+    static const char *xml_use_source_ip = "use_source_ip";
+    static const char *xml_force_insert = "force_insert";
+    static const char *xml_force_time = "force_time";
+    static const char *xml_purge = "purge";
+    static const char *xml_use_password = "use_password";
+    static const char *xml_ssl_agent_ca = "ssl_agent_ca";
+    static const char *xml_ssl_verify_host = "ssl_verify_host";
+    static const char *xml_ssl_manager_cert = "ssl_manager_cert";
+    static const char *xml_ssl_manager_key = "ssl_manager_key";
+    static const char *xml_ssl_auto_negotiate = "ssl_auto_negotiate";
 
     authd_config_t *config = (authd_config_t *)d1;
     int i;
@@ -39,6 +40,15 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return OS_INVALID;
+        } else if (!strcmp(node[i]->element, xml_disabled)) {
+            short b = eval_bool(node[i]->content);
+
+            if (b < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+
+            config->flags.disabled = b;
         } else if (!strcmp(node[i]->element, xml_port)) {
             config->port = (unsigned short)atoi(node[i]->content);
 
@@ -72,7 +82,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
-        } else if (!strcmp(node[i]->element, xml_clear_removed)) {
+        } else if (!strcmp(node[i]->element, xml_purge)) {
             short b = eval_bool(node[i]->content);
 
             if (b < 0) {

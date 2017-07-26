@@ -20,6 +20,7 @@ void *read_syslog(int pos, int *rc, int drop_it)
     char *p;
     char str[OS_MAXSTR + 1];
     fpos_t fp_pos;
+    int lines = 0;
 
     str[OS_MAXSTR] = '\0';
     *rc = 0;
@@ -27,7 +28,9 @@ void *read_syslog(int pos, int *rc, int drop_it)
     /* Get initial file location */
     fgetpos(logff[pos].fp, &fp_pos);
 
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL) {
+    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL && lines < maximum_lines){
+
+        lines++;
         /* Get the last occurence of \n */
         if ((p = strrchr(str, '\n')) != NULL) {
             *p = '\0';
@@ -76,7 +79,6 @@ void *read_syslog(int pos, int *rc, int drop_it)
                 }
             }
         }
-
         /* Incorrect message size */
         if (__ms) {
             // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
@@ -94,11 +96,10 @@ void *read_syslog(int pos, int *rc, int drop_it)
             }
             __ms = 0;
         }
-
         fgetpos(logff[pos].fp, &fp_pos);
         continue;
     }
 
+    mdebug2("Read %d lines from %s", lines, logff[pos].file);
     return (NULL);
 }
-
