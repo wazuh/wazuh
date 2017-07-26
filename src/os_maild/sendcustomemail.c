@@ -191,7 +191,12 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
     if (replyto) {
         memset(snd_msg, '\0', 128);
         snprintf(snd_msg, 127, REPLYTO, replyto);
-        OS_SendTCP(socket, snd_msg);
+
+        if (sendmail) {
+            fprintf(sendmail, "%s", snd_msg);
+        } else {
+            OS_SendTCP(socket, snd_msg);
+        }
     }
 
     /* Add CCs */

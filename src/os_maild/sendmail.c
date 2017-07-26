@@ -217,7 +217,12 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     if (mail->reply_to){
         memset(snd_msg, '\0', 128);
         snprintf(snd_msg, 127, REPLYTO, mail->reply_to);
-        OS_SendTCP(socket, snd_msg);
+
+        if (sendmail) {
+            fprintf(sendmail, "%s", snd_msg);
+        } else {
+            OS_SendTCP(socket, snd_msg);
+        }
     }
 
     /* Send date */
