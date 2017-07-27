@@ -26,6 +26,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->conn = NULL;
     cfg->allowips = NULL;
     cfg->denyips = NULL;
+    cfg->nocmerged = 0;
 
     if (ReadConfig(modules, cfgfile, cfg, NULL) < 0) {
         return (OS_INVALID);
@@ -33,4 +34,3 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     return (1);
 }
-
