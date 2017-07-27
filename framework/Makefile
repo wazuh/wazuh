@@ -31,7 +31,7 @@ install: build
 	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib
 
 #	Install scripts/%.py on $(PREFIX)/bin/%
-	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) $(script) $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script)))
+	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) $(script) $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
 
 examples: install
 	$(INSTALL_DIR) $(PREFIX)/framework/examples
