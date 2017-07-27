@@ -255,7 +255,11 @@ int main(int argc, char **argv)
             char *ret = fgets(buf, 4095, fp);
 
             if (ret && strlen(buf) > 2) {
-                authpass = buf;
+                /* Remove newline */
+                if (buf[strlen(buf) - 1] == '\n')
+                    buf[strlen(buf) - 1] = '\0';
+
+                authpass = strdup(buf);
             }
 
             fclose(fp);
