@@ -9,7 +9,6 @@ from tempfile import mkstemp
 from subprocess import call, CalledProcessError
 from os import remove, chmod, chown, path, listdir, close as close
 from datetime import datetime, timedelta
-from hashlib import md5
 import json
 import stat
 
@@ -322,10 +321,3 @@ def chown_r(filepath, uid, gid):
                 chown(itempath, uid, gid)
             elif path.isdir(itempath):
                 chown_r(itempath, uid, gid)
-
-def get_md5(fname):
-    hash_md5 = md5()
-    with open(fname, "r") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()

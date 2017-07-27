@@ -57,6 +57,8 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global AUTHD_SOCKET
     AUTHD_SOCKET = "{0}/queue/agents/auth".format(ossec_path)
 
+# WPK repository URL
+wpk_repo_url = "https://packages.wazuh.com/wpk/"
 
 # Common variables
 database_limit = 500

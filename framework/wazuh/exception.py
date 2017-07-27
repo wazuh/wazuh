@@ -76,6 +76,16 @@ class WazuhException(Exception):
         1710: 'The group does not exist',
         1711: 'The group already exists',
         1712: 'Default group is not removable',
+        1713: 'Error accessing repository',
+        1714: 'Error downloading WPK file',
+        1715: 'Error sending WPK file',
+        1716: 'Error upgrading agent',
+        1717: 'Cannot upgrade to a version higher than the manager',
+        1718: 'Version not available',
+        1719: 'Remote upgrade is not available for this agent version',
+        1720: 'Agent disconnected',
+        1721: 'Remote upgrade is not available for this agent OS version',
+
         # Manager:
 
         # Database:
