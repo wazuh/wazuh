@@ -6,6 +6,7 @@
 from sys import exit, path, argv, stdout
 from os.path import dirname
 from signal import signal, SIGINT
+from time import sleep
 import argparse
 import os
 
@@ -62,6 +63,11 @@ def main():
     myWazuh = Wazuh(get_init=True)
 
     agent = Agent(id=args.agent)
+    agent._load_info_from_DB()
+
+    timeout = 60
+    agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.ip)
+    agent_info_stat = os.stat(agent_info).st_mtime
 
     # Custom WPK file
     if args.file:
@@ -69,7 +75,10 @@ def main():
             upgrade_command_result = agent.upgrade_custom(file_path=args.file, installer=args.execute, debug=args.debug, show_progress=print_progress if not args.silent else None)
             if not args.silent:
                 print(upgrade_command_result)
-
+            counter = 0
+            while agent_info_stat == os.stat(agent_info).st_mtime and counter < timeout:
+                sleep(1)
+                counter = counter + 1
             upgrade_result = agent.upgrade_result(debug=args.debug)
             if not args.silent:
                 print(upgrade_result)
@@ -81,7 +90,10 @@ def main():
         upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=args.version, force=args.force, show_progress=print_progress if not args.silent else None)
         if not args.silent:
             print(upgrade_command_result)
-
+        counter = 0
+        while agent_info_stat == os.stat(agent_info).st_mtime and counter < timeout:
+            sleep(1)
+            counter = counter + 1
         upgrade_result = agent.upgrade_result(debug=args.debug)
         if not args.silent:
             print(upgrade_result)
