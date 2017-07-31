@@ -30,7 +30,7 @@ def signal_handler(n_signal, frame):
     exit(1)
 
 def print_progress(value):
-    stdout.write("Sending WPK: %d%%   \r" % value)
+    stdout.write("Sending WPK: [%-25s] %d%%   \r" % ('='*int(value/4), value))
     stdout.flush()
 
 def list_outdated():
@@ -38,9 +38,9 @@ def list_outdated():
     if agents['totalItems'] == 0:
         print("All agents are updated.")
     else:
-        print("%-6s%-35s%-25s" % ("ID", "Name", "Version"))
+        print("%-6s%-35s %-25s" % ("ID", "Name", "Version"))
         for agent in agents['items']:
-            print("%-6s%-35s%-25s" % (agent['id'], agent['name'], agent['version']))
+            print("%-6s%-35s %-25s" % (agent['id'], agent['name'], agent['version']))
         print("\nTotal outdated agents: {0}".format(agents['totalItems']))
 
 def main():
@@ -74,7 +74,10 @@ def main():
         if args.execute:
             upgrade_command_result = agent.upgrade_custom(file_path=args.file, installer=args.execute, debug=args.debug, show_progress=print_progress if not args.silent else None)
             if not args.silent:
-                print(upgrade_command_result)
+                if not args.debug:
+                    print("\n{0}... Please wait.".format(upgrade_command_result))
+                else:
+                    print(upgrade_command_result)
             counter = 0
             while agent_info_stat == os.stat(agent_info).st_mtime and counter < timeout:
                 sleep(1)
@@ -87,16 +90,25 @@ def main():
 
     # WPK upgrade file
     else:
+        prev_ver = agent.version
         upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=args.version, force=args.force, show_progress=print_progress if not args.silent else None)
         if not args.silent:
-            print(upgrade_command_result)
+            if not args.debug:
+                print("\n{0}... Please wait.".format(upgrade_command_result))
+            else:
+                print(upgrade_command_result)
         counter = 0
         while agent_info_stat == os.stat(agent_info).st_mtime and counter < timeout:
             sleep(1)
             counter = counter + 1
         upgrade_result = agent.upgrade_result(debug=args.debug)
         if not args.silent:
-            print(upgrade_result)
+            if not args.debug:
+                agent._load_info_from_DB()
+                print("Agent upgraded: {0} -> {1}".format(prev_ver, agent.version))
+            else:
+                print(upgrade_result)
+
 
 
 if __name__ == "__main__":
@@ -110,7 +122,7 @@ if __name__ == "__main__":
     arg_parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     arg_parser.add_argument("-l", "--list_outdated", action="store_true", help="Generates a list with all outdated agents.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
-    arg_parser.add_argument("-x", "--execute", type=str, help="Executable filename on the WPK custom file.")
+    arg_parser.add_argument("-x", "--execute", type=str, help="Executable filename in the WPK custom file.")
     args = arg_parser.parse_args()
 
     try:
