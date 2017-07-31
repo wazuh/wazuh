@@ -81,6 +81,9 @@ void add_remove(const keyentry *entry);
 // Read configuration
 int authd_read_config(const char *path);
 
+// Block signals
+void authd_sigblock();
+
 extern keystore keys;
 extern volatile int write_pending;
 extern volatile int running;

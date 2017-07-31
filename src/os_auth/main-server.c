@@ -416,7 +416,7 @@ int main(int argc, char **argv)
     /* Signal manipulation */
 
     {
-        struct sigaction action = { .sa_handler = handler };
+        struct sigaction action = { .sa_handler = handler, .sa_flags = SA_RESTART };
         sigaction(SIGTERM, &action, NULL);
         sigaction(SIGHUP, &action, NULL);
         sigaction(SIGINT, &action, NULL);
@@ -609,6 +609,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *id_exist = NULL;
     char buf[4096 + 1];
     int index;
+
+    authd_sigblock();
 
     /* Initialize some variables */
     memset(srcip, '\0', IPSIZE + 1);
@@ -835,6 +837,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
     struct keynode *next;
     time_t cur_time;
 
+    authd_sigblock();
+
     while (running) {
         pthread_mutex_lock(&mutex_keys);
 
@@ -932,7 +936,7 @@ void add_remove(const keyentry *entry) {
 }
 
 /* Signal handler */
-static void handler(int signum) {
+void handler(int signum) {
     switch (signum) {
     case SIGHUP:
     case SIGINT:
@@ -946,8 +950,17 @@ static void handler(int signum) {
 }
 
 /* Exit handler */
-static void cleanup() {
+void cleanup() {
     DeletePID(ARGV0);
+}
+
+void authd_sigblock() {
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGTERM);
+    sigaddset(&sigset, SIGHUP);
+    sigaddset(&sigset, SIGINT);
+    pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 }
 
 #endif /* LIBOPENSSL_ENABLED */
