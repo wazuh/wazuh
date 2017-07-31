@@ -67,6 +67,8 @@ void* run_local_server(__attribute__((unused)) void *arg) {
     fd_set fdset;
     struct timeval timeout;
 
+    authd_sigblock();
+
     mdebug1("Local server thread ready.");
 
     if (sock = OS_BindUnixDomain(AUTH_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {

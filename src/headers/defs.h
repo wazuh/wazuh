@@ -109,7 +109,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DEFAULTQUEUE    "/queue/ossec/queue"
 
 // Authd local socket
-#define AUTH_LOCAL_SOCK "/queue/agents/auth"
+#define AUTH_LOCAL_SOCK "/queue/ossec/auth"
 
 // Remote requests socket
 #define REMOTE_REQ_SOCK "/queue/ossec/request"
