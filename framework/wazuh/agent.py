@@ -1670,10 +1670,15 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok'):
+            s.sendto(("1:wazuh-upgrade:Upgrade procedure on agent {0} ({1}) started.".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
             return "Upgrade procedure started"
         else:
+            s.sendto(("1:wazuh-upgrade:Upgrade procedure on agent {0} ({1}) failed: {2}".format(str(self.id).zfill(3), self.name), data.replace("err ","")).encode(), common.ossec_path + "/queue/ossec/queue")
             raise WazuhException(1716, data.replace("err ",""))
+        s.close()
+
 
     @staticmethod
     def upgrade_agent(agent_id, wpk_repo=None, version=None, force=False):
@@ -1691,6 +1696,7 @@ class Agent:
         """
         Read upgrade result output from agent.
         """
+        sleep(1)
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(common.ossec_path + "/queue/ossec/request")
         msg = "{0} com upgrade_result".format(str(self.id).zfill(3))
@@ -1715,11 +1721,15 @@ class Agent:
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
-
-        if data.startswith('ok 0'):
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        if data.startswith('ok'):
+            s.sendto(("1:wazuh-upgrade:Upgrade procedure on agent {0} ({1}) finished successfully.".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
             return "Agent upgraded successfully"
         else:
+            s.sendto(("1:wazuh-upgrade:Upgrade procedure on agent {0} ({1}) finished with error: {2}.".format(str(self.id).zfill(3), self.name), data.replace("err ","")).encode(), common.ossec_path + "/queue/ossec/queue")
             raise WazuhException(1716, data.replace("err ",""))
+        s.close()
+
 
     @staticmethod
     def get_upgrade_result(agent_id, timeout=3):
@@ -1846,10 +1856,15 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok'):
+            s.sendto(("1:wazuh-upgrade:Custom installation on agent {0} ({1}) started.".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
             return "Installation started"
         else:
+            s.sendto(("1:wazuh-upgrade:Custom installation on agent {0} ({1}) failed: {2}".format(str(self.id).zfill(3), self.name), data.replace("err ","")).encode(), common.ossec_path + "/queue/ossec/queue")
             raise WazuhException(1716, data.replace("err ",""))
+        s.close()
+
 
     @staticmethod
     def upgrade_agent_custom(agent_id, file_path=None, installer=None):
