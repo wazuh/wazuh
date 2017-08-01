@@ -230,7 +230,7 @@ int main_analysisd(int argc, char **argv)
     mdebug1(READ_CONFIG);
 
     if (!(Config.alerts_log || Config.jsonout_output)) {
-        merror_exit("All alert formats are disabled.");
+        mwarn("All alert formats are disabled. Mail reporting, Syslog client and Integrator won't work properly.");
     }
 
 
