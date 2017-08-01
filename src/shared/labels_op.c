@@ -12,15 +12,31 @@
 #include "shared.h"
 
 /* Append a new label into an array of (size) labels at the moment of inserting. Returns the new pointer. */
-wlabel_t* labels_add(wlabel_t *labels, size_t size, const char *key, const char *value, unsigned int hidden) {
-    os_realloc(labels, (size + 2) * sizeof(wlabel_t), labels);
-    labels[size].key = strdup(key);
-    labels[size].value = strdup(value);
-    labels[size].flags.hidden = hidden;
-    memset(labels + size + 1, 0, sizeof(wlabel_t));
+wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const char *value, unsigned int hidden, int overwrite) {
+    size_t i;
+
+    if (overwrite) {
+        for (i = 0; labels[i].key; i++) {
+            if (!strcmp(labels[i].key, key)) {
+                break;
+            }
+        }
+    } else {
+        i = *size;
+    }
+
+    if (i == *size) {
+        os_realloc(labels, (*size + 2) * sizeof(wlabel_t), labels);
+        labels[(*size)++].key = strdup(key);
+        memset(labels + *size, 0, sizeof(wlabel_t));
+    } else {
+        free(labels[i].value);
+    }
+
+    labels[i].value = strdup(value);
+    labels[i].flags.hidden = hidden;
     return labels;
 }
-
 
 /* Search for a key at a label array and get the value, or NULL if no such key found. */
 const char* labels_get(const wlabel_t *labels, const char *key) {
@@ -135,7 +151,7 @@ wlabel_t* labels_parse(const char *path) {
         }
 
         *end = '\0';
-        labels = labels_add(labels, size++, key, value, hidden);
+        labels = labels_add(labels, &size, key, value, hidden, 0);
     }
 
     fclose(fp);

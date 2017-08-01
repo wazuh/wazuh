@@ -41,13 +41,12 @@ int ClientConf(const char *cfgfile)
     modules |= CCLIENT;
 
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
-        ReadConfig(CLABELS, cfgfile, &agt->labels, NULL) < 0 ||
-        ReadConfig(CBUFFER, cfgfile, agt, NULL) < 0) {
+        ReadConfig(CLABELS | CBUFFER, cfgfile, &agt->labels, agt) < 0) {
         return (OS_INVALID);
     }
 
 #ifdef CLIENT
-    ReadConfig(CBUFFER | CAGENT_CONFIG, AGENTCONFIG, agt, NULL);
+    ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
 #endif
 
     if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps) {
