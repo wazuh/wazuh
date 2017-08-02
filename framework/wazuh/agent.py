@@ -1722,11 +1722,11 @@ class Agent:
             if debug:
                 print("RESPONSE: {0}".format(data))
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        if data.startswith('ok'):
+        if data.startswith('ok 0'):
             s.sendto(("1:wazuh-upgrade:ossec: Upgrade procedure on agent {0} ({1}) finished successfully.".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
             return "Agent upgraded successfully"
         else:
-            s.sendto(("1:wazuh-upgrade:ossec: Upgrade procedure on agent {0} ({1}) finished with error: {2}.".format(str(self.id).zfill(3), self.name), data.replace("err ","")).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.sendto(("1:wazuh-upgrade:ossec: Upgrade procedure on agent {0} ({1}) aborted: {2}".format(str(self.id).zfill(3), self.name), data.replace("err ","")).encode(), common.ossec_path + "/queue/ossec/queue")
             raise WazuhException(1716, data.replace("err ",""))
         s.close()
 
