@@ -2,3 +2,4 @@ decoders/0020-amazon_decoders.xml
 rules/0355-amazon-ec2_rules.xml
 rules/0370-amazon-iam_rules.xml
 rules/0465-amazon-s3_rules.xml
+rules/0470-suricata_rules.xml
