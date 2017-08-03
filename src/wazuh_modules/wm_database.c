@@ -340,6 +340,7 @@ void wm_check_agents() {
 void wm_sync_agents() {
     unsigned int i;
     char path[PATH_MAX] = "";
+    char cidr[20];
     keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
     int *agents;
@@ -363,7 +364,7 @@ void wm_sync_agents() {
             continue;
         }
 
-        if (!(wdb_insert_agent(id, entry->name, entry->ip->ip, entry->key) || module->full_sync)) {
+        if (!(wdb_insert_agent(id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key) || module->full_sync)) {
             // Find files
 
             snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
