@@ -298,16 +298,17 @@
 #define WARN_BUFFER     "Agent buffer at %d %%."
 #define FULL_BUFFER     "Agent buffer is full: Events may be lost."
 #define FLOODED_BUFFER  "Agent buffer is flooded: Producing too many events."
-#define NORMAL_BUFFER "Agent buffer is under %d %%. Working properly again."
+#define NORMAL_BUFFER   "Agent buffer is under %d %%. Working properly again."
 #define TOLERANCE_TIME  "Tolerance time set to Zero, defined flooding condition when buffer is full."
 
 /* OSSEC alert messages */
 #define OS_AD_STARTED   "ossec: Ossec started."
 #define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
-#define OS_NORMAL_BUFFER  "ossec: Agent buffer: 'normal'."
-#define OS_WARN_BUFFER  "ossec: Agent buffer: '%d%%'."
-#define OS_FULL_BUFFER  "ossec: Agent buffer: 'full'."
-#define OS_FLOOD_BUFFER "ossec: Agent buffer: 'flooded'."
+
+#define OS_NORMAL_BUFFER  "wazuh: Agent buffer: 'normal'."
+#define OS_WARN_BUFFER  "wazuh: Agent buffer: '%d%%'."
+#define OS_FULL_BUFFER  "wazuh: Agent buffer: 'full'."
+#define OS_FLOOD_BUFFER "wazuh: Agent buffer: 'flooded'."
 
 #endif /* _ERROR_MESSAGES__H */
