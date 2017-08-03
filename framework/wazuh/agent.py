@@ -1569,12 +1569,12 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if data.startswith('err'):
-            raise WazuhException(1715, data)
+            raise WazuhException(1715, data.replace("err ",""))
 
         # Sending file to agent
         file = open(common.ossec_path + "/var/upgrade/" + wpk_file, "rb")
         if not file:
-            raise WazuhException(1715, data)
+            raise WazuhException(1715, data.replace("err ",""))
         if debug:
             print("Sending: {0}".format(common.ossec_path + "/var/upgrade/" + wpk_file))
         try:
@@ -1588,6 +1588,8 @@ class Agent:
                 s.send(msg.encode() + bytes_read)
                 data = s.recv(1024).decode()
                 s.close()
+                if data.startswith('err'):
+                    raise WazuhException(1715, data.replace("err ",""))
                 bytes_read = file.read(512)
                 if show_progress:
                     bytes_read_acum = bytes_read_acum + len(bytes_read)
@@ -1608,7 +1610,7 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if data.startswith('err'):
-            raise WazuhException(1715, data)
+            raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -1625,7 +1627,7 @@ class Agent:
         if rcv_sha1 == file_sha1:
             return ["WPK file sent", wpk_file]
         else:
-            raise WazuhException(1715, data)
+            raise WazuhException(1715, data.replace("err ",""))
 
 
     def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None):
@@ -1672,10 +1674,10 @@ class Agent:
             print("RESPONSE: {0}".format(data))
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok'):
-            s.sendto(("1:wazuh-upgrade:ossec: Upgrade procedure on agent {0} ({1}) started.".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): started. Current version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(), common.ossec_path + "/queue/ossec/queue")
             return "Upgrade procedure started"
         else:
-            s.sendto(("1:wazuh-upgrade:ossec: Upgrade procedure on agent {0} ({1}) failed: {2}".format(str(self.id).zfill(3), self.name), data.replace("err ","")).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name), data.replace("err ","")).encode(), common.ossec_path + "/queue/ossec/queue")
             raise WazuhException(1716, data.replace("err ",""))
         s.close()
 
@@ -1697,6 +1699,7 @@ class Agent:
         Read upgrade result output from agent.
         """
         sleep(1)
+        self._load_info_from_DB()
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(common.ossec_path + "/queue/ossec/request")
         msg = "{0} com upgrade_result".format(str(self.id).zfill(3))
@@ -1723,10 +1726,13 @@ class Agent:
                 print("RESPONSE: {0}".format(data))
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok 0'):
-            s.sendto(("1:wazuh-upgrade:ossec: Upgrade procedure on agent {0} ({1}) finished successfully.".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): succeeded. New version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(), common.ossec_path + "/queue/ossec/queue")
             return "Agent upgraded successfully"
+        elif data.startswith('ok 2'):
+            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): failed: restored to previous version".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
+            raise WazuhException(1716, "Agent restored to previous version")
         else:
-            s.sendto(("1:wazuh-upgrade:ossec: Upgrade procedure on agent {0} ({1}) aborted: {2}".format(str(self.id).zfill(3), self.name), data.replace("err ","")).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): lost: {2}".format(str(self.id).zfill(3), self.name), data.replace("err ","")).encode(), common.ossec_path + "/queue/ossec/queue")
             raise WazuhException(1716, data.replace("err ",""))
         s.close()
 
@@ -1768,12 +1774,12 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if data.startswith('err'):
-            raise WazuhException(1715, data)
+            raise WazuhException(1715, data.replace("err ",""))
 
         # Sending file to agent
         file = open(common.ossec_path + "/var/upgrade/" + wpk_file, "rb")
         if not file:
-            raise WazuhException(1715, data)
+            raise WazuhException(1715, data.replace("err ",""))
         try:
             start_time = time()
             bytes_read = file.read(512)
@@ -1810,7 +1816,7 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if data.startswith('err'):
-            raise WazuhException(1715, data)
+            raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -1827,7 +1833,7 @@ class Agent:
         if calc_sha1 == rcv_sha1:
             return ["WPK file sent", wpk_file]
         else:
-            raise WazuhException(1715, data)
+            raise WazuhException(1715, data.replace("err ",""))
 
 
     def upgrade_custom(self, file_path, installer, debug=False, show_progress=None):
@@ -1858,10 +1864,10 @@ class Agent:
             print("RESPONSE: {0}".format(data))
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok'):
-            s.sendto(("1:wazuh-upgrade:ossec: Custom installation on agent {0} ({1}) started.".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.sendto(("1:wazuh-upgrade:wazuh: Custom installation on agent {0} ({1}) started.".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
             return "Installation started"
         else:
-            s.sendto(("1:wazuh-upgrade:ossec: Custom installation on agent {0} ({1}) failed: {2}".format(str(self.id).zfill(3), self.name), data.replace("err ","")).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.sendto(("1:wazuh-upgrade:wazuh: Custom installation on agent {0} ({1}) aborted: {2}".format(str(self.id).zfill(3), self.name), data.replace("err ","")).encode(), common.ossec_path + "/queue/ossec/queue")
             raise WazuhException(1716, data.replace("err ",""))
         s.close()
 
