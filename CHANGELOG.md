@@ -41,6 +41,9 @@ All notable changes to this project will be documented in this file.
 - Option for logging in JSON format.
 - Allow maild to send through a sendmail-like executable (by James Le Cuirot).
 - Leaky bucket-like buffer for agents to prevent network flooding.
+- Allow Syslog client to read JSON alerts.
+- Allow Mail reporter to read JSON alerts.
+- Added internal option to tune Rootcheck sleep time.
 
 ### Changed
 
@@ -52,6 +55,8 @@ All notable changes to this project will be documented in this file.
 - Log classification as debug, info, warning, error and critical.
 - Limit number of reads per cycle by Logcollector to prevent log starvation.
 - Limit OpenSCAP module's event forwarding speed.
+- Increased debug level of repeated Rootcheck messages.
+- Send events when OpenSCAP starts and finishes scans.
 
 ### Fixed
 
@@ -62,6 +67,10 @@ All notable changes to this project will be documented in this file.
 - Fixed file sum comparison bug at Syscheck realtime engine. (Thanks to Arshad Khan)
 - Close analysisd if alert outputs are disabled for all formats.
 - Read Windows version name for versions newer than Windows 8 / Windows Server 2012.
+- Fixed error in Analysisd that wrote Syscheck and Rootcheck databases of re-added agents on deleted files.
+- Fixed internal option to configure the maximum labels' cache time.
+- Fixed Auth password parsing on client side.
+- Fix bad agent ID assignation in Authd on i686 architecture.
 
 ### Removed
 

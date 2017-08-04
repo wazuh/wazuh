@@ -39,6 +39,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslocalfile = "localfile";              /* Agent Config  */
     const char *osremote = "remote";                    /* Agent Config  */
     const char *osclient = "client";                    /* Agent Config  */
+    const char *osbuffer = "client_buffer";             /* Agent Buffer Config  */
     const char *oscommand = "command";                  /* ? Config      */
     const char *osreports = "reports";                  /* Server Config */
     const char *osintegratord = "integration";          /* Server Config */
@@ -111,6 +112,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, osclient) == 0) {
             if ((modules & CCLIENT) && (Read_Client(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (strcmp(node[i]->element, osbuffer) == 0) {
+            if ((modules & CBUFFER) && (Read_ClientBuffer(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oscommand) == 0) {

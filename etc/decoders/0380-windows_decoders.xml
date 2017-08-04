@@ -531,9 +531,9 @@ fts:
   <type>windows</type>
   <parent>windows</parent>
   <prematch>\s</prematch>
-  <regex offset="after_parent">^\.+: (\w+)\((\d+)\): (\.+): </regex>
+  <regex offset="after_parent">^(\.+): (\w+)\((\d+)\): (\.+): </regex>
   <regex>(\.+): \.+: (\S+): </regex>
-  <order>status, id, extra_data, user, system_name</order>
+  <order>type, status, id, extra_data, user, system_name</order>
   <fts>name, location, user, system_name</fts>
 </decoder>
 
@@ -546,26 +546,53 @@ General with '-':
 
 Tabs:
 2016 Oct 14 11:44:25 WinEvtLog: Security: AUDIT_SUCCESS(4656): Microsoft-Windows-Security-Auditing: (no user): no domain: my.domain.com: A handle to an object was requested. Subject:	Security ID:	S-1-5-21-4109284664-1754905691-1510191782-1615	Account Name:	snaowpc	Account Domain:	DEV	Logon ID:	0x2054e3a2	Object:	Object Server:	Security	Object Type:	File	Object Name:	C:\ossec_test\test_file.txt	Handle ID:	0x15d4	Process Information: Process ID:	0	Process Name:	0xbd0	Access Request Information:	Transaction ID:	{00000000-0000-0000-0000-000000000000}	Accesses:	%%1541			%%4423			 Access Mask:	%%1541: %%1801		 D:(A;ID;FA;;;S-1-5-21-4109284664-1754905691-1510191782-1615)			%%4423: %%1801 D:(A;ID;FA;;;S-1-5-21-4109284664-1754905691-1510191782-1615)			 Privileges Used for Access Check: 0x100080	Restricted SID Count: -
+
+Subject:
+2017 Apr 18 17:30:52 WinEvtLog: Security: AUDIT_FAILURE(4625): Microsoft-Windows-Security-Auditing: (no user): no domain: WIN-1: An account failed to log on. Subject: Security ID: S-1-5-10 Account Name: WIN-1$ Account Domain: WORKGROUP Logon ID: 0x3E7 Logon Type: 10 Account For Which Logon Failed: Security ID: S-1-0-0 Account Name: Santiago Account Domain: test2 Failure Information: Failure Reason: Unknown user name or bad password. Status: 0xC000006D Sub Status: 0xC0000064 Process Information: Caller Process ID: 0xb50 Caller Process Name: C:\Windows\System32\winlogon.exe Network Information: Workstation Name: WIN-1 Source Network Address: 17.217.25.247 Source Port: 0 Detailed Authentication Information: Logon Process: User32 Authentication Package: Negotiate Transited Services: - Package Name (NTLM only): - Key Length: 0 This event is generated when a logon request fails. It.
+
+2017 Jun 10 12:34:01 WinEvtLog: Security: AUDIT_SUCCESS(4740): Microsoft-Windows-Security-Auditing: (no user): no domain: SERVER.mydomain.local: 0x8000000000000000    message: A user account was locked out.  Subject:  Security ID:  S-1-5-18  Account Name:  SERVER$  Account Domain:  MYDOMAIN  Logon ID:  0x3e7  Account That Was Locked Out:  Security ID:  S-1-5-21-1634102539-605432415-635521153-12345  Account Name:  user_account_name  Additional Information:  Caller Computer Name: OTHERSERVER
 -->
+
 <decoder name="windows_fields">
   <type>windows</type>
   <parent>windows</parent>
-  <regex>Account Name:\t*\s*(\S\S+)\t*\s*</regex>
+  <regex>Subject:\t*\s*Security ID:\t*\s*(\S\S+)\t*\s*Account Name:\t*\s*(\S\S+)\t*\s*Account Domain:\t*\s*(\S\S+)\t*\s*Logon ID:\t*\s*(\S\S+)</regex>
+  <order>subject.security_id, subject.account_name, subject.account_domain, subject.logon_id</order>
+</decoder>
+
+<decoder name="windows_fields">
+  <type>windows</type>
+  <parent>windows</parent>
+  <regex offset="after_regex">Security ID:\t*\s*(\S\S+)</regex>
+  <order>security_id</order>
+</decoder>
+
+<decoder name="windows_fields">
+  <type>windows</type>
+  <parent>windows</parent>
+  <regex offset="after_regex">Account Name:\t*\s*(\S\S+)</regex>
   <order>account_name</order>
 </decoder>
 
 <decoder name="windows_fields">
   <type>windows</type>
   <parent>windows</parent>
-  <regex>Account Domain:\t*\s*(\S\S+)\t*\s*</regex>
+  <regex offset="after_regex">Account Domain:\t*\s*(\S\S+)\t*\s*</regex>
   <order>account_domain</order>
 </decoder>
 
 <decoder name="windows_fields">
   <type>windows</type>
   <parent>windows</parent>
-  <regex>Logon ID:\t*\s*(\S+)\t*\s*</regex>
-  <order>logon_id</order>
+  <regex>Logon Type:\t*\s*(\S+)</regex>
+  <order>logon_type</order>
+</decoder>
+
+<decoder name="windows_fields">
+  <type>windows</type>
+  <parent>windows</parent>
+  <regex>Caller Computer Name:\t*\s*(\S+)</regex>
+  <order>caller_computer</order>
 </decoder>
 
 <decoder name="windows_fields">

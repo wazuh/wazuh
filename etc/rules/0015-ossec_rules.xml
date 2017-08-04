@@ -126,39 +126,6 @@
     <group>pci_dss_10.6.1,</group>
   </rule>
  
-  <!-- Agent buffer rules -->
-  <rule id="521" level="7">
-    <if_sid>500</if_sid>
-    <match>^ossec: Agent buffer: </match>
-    <status>%</status>
-    <description>Agent buffer is close to overflow.</description>
-    <group>agent_flooding,</group>
-  </rule>
-
-  <rule id="522" level="9">
-    <if_sid>500</if_sid>
-    <match>^ossec: Agent buffer: </match>
-    <status>full</status>
-    <description>Agent buffer is full. Events may be lost.</description>
-    <group>agent_flooding,</group> 
-  </rule>
-
-  <rule id="523" level="12">
-    <if_sid>500</if_sid>
-    <match>^ossec: Agent buffer: </match>
-    <status>flooded</status>
-    <description>Agent buffer is flooded. Check the agent status.</description>
-    <group>agent_flooding,</group>
-  </rule>
-
-  <rule id="524" level="3">
-    <if_sid>500</if_sid>
-    <match>^ossec: Agent buffer: </match>
-    <status>normal</status>
-    <description>Agent buffer is back to normal load.</description>
-    <group>agent_flooding,</group>
-  </rule>
-
   
   <!-- Process monitoring rules -->
   <rule id="530" level="0">

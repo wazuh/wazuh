@@ -1180,6 +1180,7 @@ clean-test:
 clean-external:
 	rm -f ${cjson_o} libcJSON.a
 	cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
+	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
 	cd ${EXTERNAL_LUA} && ${MAKE} clean
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
 	rm -f ${OPENSSL_LIB}

@@ -82,10 +82,12 @@ int OS_IsonDay(int week_day, const char *ossec_day) __attribute__((nonnull));
  */
 char *OS_IsValidDay(const char *day_str);
 
+// Convert a CIDR into string: aaa.bbb.ccc.ddd[/ee]
+int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size);
+
 /* Macros */
 
 /* Check if the IP is a single host, not a network with a netmask */
 #define isSingleHost(x) (x->netmask == 0xFFFFFFFF)
 
 #endif
-

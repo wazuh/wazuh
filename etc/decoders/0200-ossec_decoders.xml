@@ -29,14 +29,6 @@
   <fts>name, location, extra_data</fts>
 </decoder>
 
-<decoder name="agent-buffer">
-  <parent>ossec</parent>
-  <type>ossec</type>
-  <prematch offset="after_parent">^Agent buffer:</prematch>
-  <regex offset="after_prematch">^ '(\S+)'.</regex>
-  <order>status</order>
-</decoder>
-
 <decoder name="ossec-alert1">
    <parent>ossec</parent>
    <prematch>^ossec: Alert Level:</prematch>

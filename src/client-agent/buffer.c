@@ -45,6 +45,7 @@ void buffer_init(){
     if (!buffer)
         os_calloc(agt->buflength+1, sizeof(char *), buffer);
 
+    /* Read internal configuration */
     warn_level = getDefine_Int("agent", "warn_level", 1, 100);
     normal_level = getDefine_Int("agent", "normal_level", 0, warn_level-1);
     tolerance = getDefine_Int("agent", "tolerance", 0, 600);
@@ -52,6 +53,7 @@ void buffer_init(){
     if (tolerance == 0)
         mwarn(TOLERANCE_TIME);
 
+    mdebug1("Agent buffer created.");
 }
 
 /* Send messages to buffer. */
@@ -59,6 +61,7 @@ int buffer_append(const char *msg){
 
     pthread_mutex_lock(&mutex_lock);
 
+    /* Check if buffer usage reaches any higher level */
     switch (state) {
 
         case NORMAL:
@@ -92,6 +95,7 @@ int buffer_append(const char *msg){
             break;
     }
 
+    /* When buffer is full, event is dropped */
     if (full(i, j, agt->buflength + 1)){
 
         pthread_mutex_unlock(&mutex_lock);
@@ -134,7 +138,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             mdebug2("Agent buffer empty.");
             pthread_cond_wait(&cond_no_empty, &mutex_lock);
         }
-
+        /* Check if buffer usage reaches any lower level */
         switch (state) {
 
             case NORMAL:
@@ -177,7 +181,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             buff.warn = 0;
             mwarn(WARN_BUFFER, warn_level);
             snprintf(warn_str, OS_MAXSTR, OS_WARN_BUFFER, warn_level);
-            snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec", warn_str);
+            snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", warn_str);
     #ifdef WIN32
             Sleep(time_wait);
     #else
@@ -190,7 +194,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
             buff.full = 0;
             mwarn(FULL_BUFFER);
-            snprintf(full_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec", OS_FULL_BUFFER);
+            snprintf(full_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", OS_FULL_BUFFER);
     #ifdef WIN32
             Sleep(time_wait);
     #else
@@ -203,7 +207,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
             buff.flood = 0;
             mwarn(FLOODED_BUFFER);
-            snprintf(flood_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec", OS_FLOOD_BUFFER);
+            snprintf(flood_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", OS_FLOOD_BUFFER);
     #ifdef WIN32
             Sleep(time_wait);
     #else
@@ -216,7 +220,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
             buff.normal = 0;
             minfo(NORMAL_BUFFER, normal_level);
-            snprintf(normal_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec", OS_NORMAL_BUFFER);
+            snprintf(normal_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", OS_NORMAL_BUFFER);
     #ifdef WIN32
             Sleep(time_wait);
     #else

@@ -762,3 +762,22 @@ char *OS_IsValidDay(const char *day_str)
     return (ret);
 }
 
+// Convert a CIDR into string: aaa.bbb.ccc.ddd[/ee]
+int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
+    int imask;
+    uint32_t hmask;
+
+    if (ip->netmask != 0xFFFFFFFF && strcmp(ip->ip, "any")) {
+        if (_mask_inited) {
+            _init_masks();
+        }
+
+        hmask = ntohl(ip->netmask);
+        for (imask = 0; imask < 32 && _netmasks[imask] != hmask; imask++);
+        return (imask < 32) ? ((snprintf(string, size, "%s/%u", ip->ip, imask) < (int)size) - 1) : -1;
+    } else {
+        strncpy(string, ip->ip, size - 1);
+        string[size - 1] = '\0';
+        return 0;
+    }
+}

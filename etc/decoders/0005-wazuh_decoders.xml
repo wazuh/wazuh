@@ -1,0 +1,16 @@
+<!--
+  -  Wazuh decoders
+  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<decoder name="wazuh">
+  <prematch>^wazuh: </prematch>
+</decoder>
+
+<decoder name="agent-buffer">
+  <parent>wazuh</parent>
+  <prematch offset="after_parent">^Agent buffer:</prematch>
+  <regex offset="after_prematch">^ '(\S+)'.</regex>
+  <order>status</order>
+</decoder>

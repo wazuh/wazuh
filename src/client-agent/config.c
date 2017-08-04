@@ -24,6 +24,8 @@ agent *agt;
 int ClientConf(const char *cfgfile)
 {
     int modules = 0;
+    int min_eps;
+
     agt->port = DEFAULT_SECURE;
     agt->rip = NULL;
     agt->lip = NULL;
@@ -39,8 +41,17 @@ int ClientConf(const char *cfgfile)
     modules |= CCLIENT;
 
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
-        ReadConfig(CLABELS, cfgfile, &agt->labels, NULL) < 0) {
+        ReadConfig(CLABELS | CBUFFER, cfgfile, &agt->labels, agt) < 0) {
         return (OS_INVALID);
+    }
+
+#ifdef CLIENT
+    ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
+#endif
+
+    if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps) {
+        mwarn("Client buffer throughput too low: set to %d eps", min_eps);
+        agt->events_persec = min_eps;
     }
 
     return (1);

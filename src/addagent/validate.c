@@ -7,7 +7,6 @@
  * Foundation
  */
 
-#include <time.h>
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 
