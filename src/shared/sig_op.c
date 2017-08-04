@@ -16,6 +16,7 @@
 #include <signal.h>
 #include <string.h>
 
+#include "shared.h"
 #include "sig_op.h"
 #include "file_op.h"
 #include "debug_op.h"
@@ -29,6 +30,10 @@ void HandleSIG(int sig)
     minfo(SIGNAL_RECV, sig, strsignal(sig));
 
     DeletePID(pidfile);
+
+    if (strcmp(__local_name, "unset")) {
+        DeleteState();
+    }
 
     exit(1);
 }

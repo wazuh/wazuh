@@ -105,6 +105,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         rc++;
     }
 
+    write_state();
+
     /* Try to connect to the server */
     if (!connect_server(0)) {
         merror_exit(UNABLE_CONN);
@@ -130,6 +132,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     start_agent(1);
 
     os_delwait();
+    update_status(ST_CONNECTED);
 
     /* Send integrity message for agent configs */
     intcheck_file(OSSECCONF, dir);
@@ -174,8 +177,10 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         /* For the receiver */
         if (FD_ISSET(agt->sock, &fdset)) {
             if (receive_msg() < 0) {
+                update_status(ST_DISCONNECTED);
                 merror(LOST_ERROR);
                 start_agent(0);
+                update_status(ST_CONNECTED);
             }
         }
 

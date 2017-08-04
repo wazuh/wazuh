@@ -41,5 +41,6 @@ int send_msg(const char *msg, ssize_t msg_length)
         return (-1);
     }
 
+    agent_state.msg_sent++;
     return (0);
 }

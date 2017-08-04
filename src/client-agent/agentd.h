@@ -30,6 +30,18 @@
 #define FULL 2
 #define FLOOD 3
 
+/* Agent status structure */
+
+typedef enum agent_status_t { ST_PENDING, ST_CONNECTED, ST_DISCONNECTED } agent_status_t;
+
+typedef struct agent_state_t {
+    agent_status_t status;
+    time_t last_keepalive;
+    time_t last_ack;
+    unsigned int msg_count;
+    unsigned int msg_sent;
+} agent_state_t;
+
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
@@ -87,6 +99,12 @@ int req_push(char * buffer, size_t length);
 // Request receiver thread start
 void * req_receiver(void * arg);
 
+// Agent status functions
+int update_status(agent_status_t status);
+int update_keepalive(time_t curr_time);
+int update_ack(time_t curr_time);
+int write_state();
+
 /*** Global variables ***/
 
 /* Global variables. Only modified during startup. */
@@ -95,5 +113,6 @@ extern time_t available_server;
 extern int run_foreground;
 extern keystore keys;
 extern agent *agt;
+extern agent_state_t agent_state;
 
 #endif /* __AGENTD_H */

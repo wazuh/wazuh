@@ -40,6 +40,8 @@ char *GetRandomNoise();
 
 int DeletePID(const char *name) __attribute__((nonnull));
 
+void DeleteState();
+
 int MergeFiles(const char *finalpath, char **files, const char *tag) __attribute__((nonnull(1, 2)));
 
 int MergeAppendFile(const char *finalpath, const char *files, const char *tag) __attribute__((nonnull(1)));

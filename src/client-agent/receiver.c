@@ -80,6 +80,7 @@ int receive_msg()
         /* Check for commands */
         if (IsValidHeader(tmp_msg)) {
             available_server = (int)time(NULL);
+            update_ack(available_server);
 
 #ifdef WIN32
             /* Run timeout commands */
@@ -224,6 +225,7 @@ int receive_msg()
 
         else if (fp) {
             available_server = (int)time(NULL);
+            update_ack(available_server);
             fprintf(fp, "%s", tmp_msg);
         }
 

@@ -495,6 +495,21 @@ int DeletePID(const char *name)
     return (0);
 }
 
+void DeleteState() {
+    char path[PATH_MAX + 1];
+
+    if (strcmp(__local_name, "unset")) {
+#ifdef WIN32
+        snprintf(path, sizeof(path), "%s.state", __local_name);
+#else
+        snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
+#endif
+        unlink(path);
+    } else {
+        merror("At DeleteState(): __local_name is unset.");
+    }
+}
+
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
 {
     int ret = 1;
