@@ -45,6 +45,7 @@ All notable changes to this project will be documented in this file.
 - Fixed error in Analysisd that wrote Syscheck and Rootcheck databases of re-added agents on deleted files.
 - Fixed internal option to configure the maximum labels' cache time.
 - Fixed Auth password parsing on client side.
+- Fix bad agent ID assignation in Authd on i686 architecture.
 
 ### Removed
 
