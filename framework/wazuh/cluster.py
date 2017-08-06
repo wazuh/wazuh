@@ -251,4 +251,27 @@ class Node:
                             file_output["md5"] = response["data"][local_file["name"]]["md5"]
                             output.append(file_output)
 
+                            # Downloading files from each node and update
+                            for file in output:
+                                # Configuration
+                                auth = requests.auth.HTTPBasicAuth(node["user"], node["password"])
+                                verify = False
+                                # Request
+                                url = '{0}{1}'.format(node["ip"], "/manager/files?download="+file_output["file_name"])
+                                try:
+                                    r = requests.get(url, auth=auth, params=None, verify=verify)
+                                except requests.exceptions.Timeout as e:
+                                    error = str(e)
+                                    continue
+                                except requests.exceptions.TooManyRedirects as e:
+                                    error =  str(e)
+                                    continue 
+                                except requests.exceptions.RequestException as e:
+                                    error =  str(e)
+                                    continue
+
+                                dest_file = open(common.ossec_path+file_output["file_name"],"w")
+                                dest_file.write(r.text)
+                                dest_file.close()
+
         return output
