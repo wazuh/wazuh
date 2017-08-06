@@ -203,6 +203,10 @@ class Node:
         Sync this node with others
         :return: Files synced.
         """
+
+        #Get its own files status
+        own_files = manager.get_files()
+
         cluster = Node()
         #Get other nodes files
         nodes_list = cluster.cluster_nodes()
@@ -229,12 +233,22 @@ class Node:
                     continue
 
                 response = json.loads(r.text)
-                for file in response["data"]:
-                    file["node"] = node["node"];
-                    output.append(file)
-                #print(json.dumps(r.json(), indent=4, sort_keys=True))
-                #print("Status: {0}".format(r.status_code))
 
-
+                #Compare each file with node own files
+                for local_file_item in own_files:
+                    local_file = {}
+                    local_file["name"] = local_file_item
+                    local_file["md5"] = own_files[local_file_item]["md5"]
+                    local_file["modification_time"] = own_files[local_file_item]["modification_time"]
+                    local_file_time = datetime.strptime(local_file["modification_time"], "%Y-%m-%d %H:%M:%S.%f")
+                    remote_file_time = datetime.strptime(response["data"][local_file["name"]]["modification_time"], "%Y-%m-%d %H:%M:%S.%f")
+                    if response["data"][local_file["name"]]["md5"] != local_file["md5"] and remote_file_time > local_file_time:
+                            file_output = {}
+                            file_output["node"] = node["node"]
+                            file_output["file_name"] = local_file["name"]
+                            file_output["modification_time"] = response["data"][local_file["name"]]["modification_time"]
+                            file_output["format"] = response["data"][local_file["name"]]["format"]
+                            file_output["md5"] = response["data"][local_file["name"]]["md5"]
+                            output.append(file_output)
 
         return output

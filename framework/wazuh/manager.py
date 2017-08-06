@@ -186,7 +186,7 @@ def get_files(*args, **kwargs):
             raise WazuhException(1700)
 
     files_list = [{"file_name":"/etc/client.keys", "format":"plain"},{"file_name":"/etc/ossec.conf", "format":"xml"}]
-    files_output = []
+    files_output = {}
     for file in files_list:
         file_name = common.ossec_path + file["file_name"]
         file['modification_time'] = '{0}'.format(datetime.utcfromtimestamp(os.path.getmtime(file_name)))
@@ -196,6 +196,6 @@ def get_files(*args, **kwargs):
             file_output = {file["file_name"] : {"md5": file['md5'], "modification_time" : file['modification_time'], "format" : file['format']}}
             return file_output
         file_output = {file["file_name"] : {"md5": file['md5'], "modification_time" : file['modification_time'], "format" : file['format']}}
-        files_output.append(file_output)
+        files_output.update(file_output)
 
     return files_output
