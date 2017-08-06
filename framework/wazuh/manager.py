@@ -193,7 +193,9 @@ def get_files(*args, **kwargs):
         file['md5'] = md5(file_name)
         if file_download != "" and file_download == file["file_name"]:
             file['wazuh_path'] = common.ossec_path
-            return file
+            file_output = {file["file_name"] : {"md5": file['md5'], "modification_time" : file['modification_time'], "format" : file['format']}}
+            return file_output
+        file_output = {file["file_name"] : {"md5": file['md5'], "modification_time" : file['modification_time'], "format" : file['format']}}
+        files_output.append(file_output)
 
-        files_output.append(file)
     return files_output

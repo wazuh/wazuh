@@ -21,6 +21,8 @@ from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, s
 from pwd import getpwnam
 from grp import getgrnam
 from time import time, sleep
+import requests
+import json
 import socket
 from distutils.version import StrictVersion
 try:
@@ -99,11 +101,8 @@ class Node:
         """
 
         conn = Connection(common.database_path_cluster)
-        # Check if cluster DB exists
-        if not path.exists(common.database_path_cluster):
-            # Create DB
-            conn.execute('''CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY,node TEXT NOT NULL,ip TEXT,user TEXT,password TEXT,status TEXT,last_check TEXT)''')
-            conn.commit()
+        conn.execute('''CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY,node TEXT NOT NULL,ip TEXT,user TEXT,password TEXT,status TEXT,last_check TEXT)''')
+        conn.commit()
 
         db_cluster = glob(common.database_path_cluster)
         if not db_cluster:
@@ -120,11 +119,8 @@ class Node:
     def cluster_nodes(id="all", node="all", ip="all", offset=0, limit=common.database_limit, sort=None, search=None):
 
         conn = Connection(common.database_path_cluster)
-        # Check if cluster DB exists
-        if not path.exists(common.database_path_cluster):
-            # Create DB
-            conn.execute('''CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY,node TEXT NOT NULL,ip TEXT,user TEXT,password TEXT,status TEXT,last_check TEXT)''')
-            conn.commit()
+        conn.execute('''CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY,node TEXT NOT NULL,ip TEXT,user TEXT,password TEXT,status TEXT,last_check TEXT)''')
+        conn.commit()
 
         db_cluster = glob(common.database_path_cluster)
         if not db_cluster:
@@ -133,7 +129,7 @@ class Node:
         # Query
         query = "SELECT {0} FROM nodes"
         fields = {'id': 'id', 'node': 'node', 'ip': 'ip', 'user': 'user', 'password': 'password', 'status': 'status', 'last_check': 'last_check' }
-        select = ["id", "node", "ip", "user", "status", "last_check"]
+        select = ["id", "node", "ip", "user", "password", "status", "last_check"]
         search_fields = ["id", "node", "ip", "user", "status", "last_check"]
         request = {}
 
@@ -191,131 +187,54 @@ class Node:
             if tuple[3] != None:
                 data_tuple['user'] = tuple[3]
             if tuple[4] != None:
-                data_tuple['status'] = tuple[4]
+                data_tuple['password'] = tuple[4]
             if tuple[5] != None:
-                data_tuple['last_check'] = tuple[5]
+                data_tuple['status'] = tuple[5]
+            if tuple[6] != None:
+                data_tuple['last_check'] = tuple[6]
 
             data['items'].append(data_tuple)
 
         return data
 
-    def _load_info_from_DB(self):
+    @staticmethod
+    def sync():
         """
-        Gets attributes of existing agent.
+        Sync this node with others
+        :return: Files synced.
         """
+        cluster = Node()
+        #Get other nodes files
+        nodes_list = cluster.cluster_nodes()
+        output = []
+        for node in nodes_list["items"]:
+                # Configuration
+                base_url = node["ip"]
+                auth = requests.auth.HTTPBasicAuth(node["user"], node["password"])
+                verify = False
 
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
 
-        conn = Connection(db_global[0])
+                # Request
+                url = '{0}{1}'.format(base_url, "/manager/files")
+                try:
+                    r = requests.get(url, auth=auth, params=None, verify=verify)
+                except requests.exceptions.Timeout as e:
+                    error = str(e)
+                    continue
+                except requests.exceptions.TooManyRedirects as e:
+                    error =  str(e)
+                    continue
+                except requests.exceptions.RequestException as e:
+                    error =  str(e)
+                    continue
 
-        # Query
-        query = "SELECT {0} FROM agent WHERE id = :id"
-        request = {'id': self.id}
+                response = json.loads(r.text)
+                for file in response["data"]:
+                    file["node"] = node["node"];
+                    output.append(file)
+                #print(json.dumps(r.json(), indent=4, sort_keys=True))
+                #print("Status: {0}".format(r.status_code))
 
-        select = ["id", "name", "ip", "key", "version", "date_add", "last_keepalive", "config_sum", "merged_sum", "`group`", "os_name", "os_version", "os_major", "os_minor", "os_codename", "os_build", "os_platform", "os_uname"]
 
-        conn.execute(query.format(','.join(select)), request)
 
-        no_result = True
-        for tuple in conn:
-            no_result = False
-            data_tuple = {}
-
-            if tuple[0] != None:
-                self.id = str(tuple[0]).zfill(3)
-            if tuple[1] != None:
-                self.name = tuple[1]
-            if tuple[2] != None:
-                self.ip = tuple[2]
-            if tuple[3] != None:
-                self.internal_key = tuple[3]
-            if tuple[4] != None:
-                self.version = tuple[4]
-            if tuple[5] != None:
-                self.dateAdd = tuple[5]
-            if tuple[6] != None:
-                self.lastKeepAlive = tuple[6]
-            else:
-                self.lastKeepAlive = 0
-            if tuple[7] != None:
-                self.configSum = tuple[7]
-            if tuple[8] != None:
-                self.mergedSum = tuple[8]
-            if tuple[9] != None:
-                self.group = tuple[9]
-            if tuple[10] != None:
-                self.os['name'] = tuple[10]
-            if tuple[11] != None:
-                self.os['version'] = tuple[11]
-            if tuple[12] != None:
-                self.os['major'] = tuple[12]
-            if tuple[13] != None:
-                self.os['minor'] = tuple[13]
-            if tuple[14] != None:
-                self.os['codename'] = tuple[14]
-            if tuple[15] != None:
-                self.os['build'] = tuple[15]
-            if tuple[16] != None:
-                self.os['platform'] = tuple[16]
-            if tuple[17] != None:
-                self.os['uname'] = tuple[17]
-                if "x86_64" in self.os['uname']:
-                    self.os['arch'] = "x86_64"
-                elif "i386" in self.os['uname']:
-                    self.os['arch'] = "i386"
-                elif "sparc" in self.os['uname']:
-                    self.os['arch'] = "sparc"
-                elif "amd64" in self.os['uname']:
-                    self.os['arch'] = "amd64"
-                elif "AIX" in self.os['uname']:
-                    self.os['arch'] = "AIX"
-
-            if self.id != "000":
-                self.status = Agent.calculate_status(self.lastKeepAlive)
-            else:
-                self.status = 'Active'
-                self.ip = '127.0.0.1'
-
-        if no_result:
-            raise WazuhException(1701, self.id)
-
-    def get_basic_information(self):
-        """
-        Gets public attributes of existing agent.
-        """
-        self._load_info_from_DB()
-
-        info = {}
-
-        if self.id:
-            info['id'] = self.id
-        if self.name:
-            info['name'] = self.name
-        if self.ip:
-            info['ip'] = self.ip
-        #if self.internal_key:
-        #    info['internal_key'] = self.internal_key
-        if self.os:
-            os_no_empty = dict((k, v) for k, v in self.os.iteritems() if v)
-            if os_no_empty:
-                info['os'] = os_no_empty
-        if self.version:
-            info['version'] = self.version
-        if self.dateAdd:
-            info['dateAdd'] = self.dateAdd
-        if self.lastKeepAlive:
-            info['lastKeepAlive'] = self.lastKeepAlive
-        if self.status:
-            info['status'] = self.status
-        if self.configSum:
-            info['configSum'] = self.configSum
-        if self.mergedSum:
-            info['mergedSum'] = self.mergedSum
-        #if self.key:
-        #    info['key'] = self.key
-        if self.group:
-            info['group'] = self.group
-
-        return info
+        return output
