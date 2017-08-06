@@ -124,7 +124,6 @@ class Node:
         if not path.exists(common.database_path_cluster):
             # Create DB
             conn.execute('''CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY,node TEXT NOT NULL,ip TEXT,user TEXT,password TEXT,status TEXT,last_check TEXT)''')
-            conn.execute('''INSERT INTO nodes VALUES("1","node2","https://172.0.0.16:55000","foo","bar","inservice","")''')
             conn.commit()
 
         db_cluster = glob(common.database_path_cluster)
