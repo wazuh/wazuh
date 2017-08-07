@@ -150,7 +150,6 @@ static int ssl_error(const SSL *ssl, int ret)
                 usleep(100 * 1000);
                 return (0);
             default:
-                merror("SSL Error (%d)", ret);
                 ERR_print_errors_fp(stderr);
                 return (1);
         }
@@ -638,6 +637,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         ret = SSL_accept(ssl);
 
         if (ssl_error(ssl, ret)) {
+            mdebug1("SSL Error (%d)", ret);
             SSL_free(ssl);
             close(client.socket);
             continue;
@@ -660,6 +660,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         ret = SSL_read(ssl, buf, sizeof(buf));
 
         if (ssl_error(ssl, ret)) {
+            merror("SSL Error (%d)", ret);
             SSL_free(ssl);
             close(client.socket);
             continue;
