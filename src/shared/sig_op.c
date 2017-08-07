@@ -23,12 +23,13 @@
 
 static const char *pidfile = NULL;
 
+void HandleExit() {
+    DeletePID(pidfile);
+}
 
 void HandleSIG(int sig)
 {
     minfo(SIGNAL_RECV, sig, strsignal(sig));
-
-    DeletePID(pidfile);
 
     exit(1);
 }
@@ -50,6 +51,8 @@ void StartSIG(const char *process_name)
     signal(SIGTERM, HandleSIG);
     signal(SIGALRM, HandleSIG);
     signal(SIGPIPE, HandleSIGPIPE);
+
+    atexit(HandleExit);
 }
 
 void StartSIG2(const char *process_name, void (*func)(int))
@@ -62,6 +65,8 @@ void StartSIG2(const char *process_name, void (*func)(int))
     signal(SIGTERM, func);
     signal(SIGALRM, func);
     signal(SIGPIPE, HandleSIGPIPE);
+
+    atexit(HandleExit);
 }
 
 #endif /* !WIN32 */

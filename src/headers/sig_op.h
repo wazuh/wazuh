@@ -14,6 +14,7 @@
 
 void HandleSIG(int sig) __attribute__((noreturn));
 void HandleSIGPIPE(int sig);
+void HandleExit();
 
 /* Start signal manipulation */
 void StartSIG(const char *process_name) __attribute__((nonnull));
@@ -22,4 +23,3 @@ void StartSIG(const char *process_name) __attribute__((nonnull));
 void StartSIG2(const char *process_name, void (*func)(int)) __attribute__((nonnull));
 
 #endif
-
