@@ -32,7 +32,7 @@
 
 /* Agent status structure */
 
-typedef enum agent_status_t { ST_PENDING, ST_CONNECTED, ST_DISCONNECTED } agent_status_t;
+typedef enum agent_status_t { AGN_PENDING, AGN_CONNECTED, AGN_DISCONNECTED } agent_status_t;
 
 typedef struct agent_state_t {
     agent_status_t status;

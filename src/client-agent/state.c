@@ -34,7 +34,6 @@ int write_state() {
     struct tm tm;
     const char * status;
     char path[PATH_MAX + 1];
-    char path_temp[PATH_MAX + 1];
     char last_keepalive[1024] = "";
     char last_ack[1024] = "";
 
@@ -43,27 +42,34 @@ int write_state() {
         return -1;
     }
 
+    mdebug2("Updating state file.");
+
 #ifdef WIN32
     snprintf(path, sizeof(path), "%s.state", __local_name);
-#else
-    snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
-#endif
 
+    if (fp = fopen(path, "w"), !fp) {
+        merror(FOPEN_ERROR, path, errno, strerror(errno));
+        return -1;
+    }
+#else
+    char path_temp[PATH_MAX + 1];
+    snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
     if (fp = fopen(path_temp, "w"), !fp) {
         merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
         return -1;
     }
+#endif
 
     switch (agent_state.status) {
-    case ST_PENDING:
+    case AGN_PENDING:
         status = "pending";
         break;
-    case ST_CONNECTED:
+    case AGN_CONNECTED:
         status = "connected";
         break;
-    case ST_DISCONNECTED:
+    case AGN_DISCONNECTED:
         status = "disconnected";
         break;
     default:
@@ -73,17 +79,12 @@ int write_state() {
 
     if (agent_state.last_keepalive) {
         localtime_r(&agent_state.last_keepalive, &tm);
-        strftime(last_keepalive, sizeof(last_keepalive), "%F %T", &tm);
+        strftime(last_keepalive, sizeof(last_keepalive), "%Y-%m-%d %H:%M:%S", &tm);
     }
 
     if (agent_state.last_ack) {
         localtime_r(&agent_state.last_ack, &tm);
-        strftime(last_ack, sizeof(last_ack), "%F %T", &tm);
-    }
-
-    if (fp = fopen(path_temp, "w"), !fp) {
-        merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
-        return -1;
+        strftime(last_ack, sizeof(last_ack), "%Y-%m-%d %H:%M:%S", &tm);
     }
 
     fprintf(fp,
@@ -110,11 +111,17 @@ int write_state() {
 
     fclose(fp);
 
+#ifndef WIN32
     if (rename(path_temp, path) < 0) {
         merror("Renaming %s to %s: %s", path_temp, path, strerror(errno));
-        unlink(path_temp);
+
+        if (unlink(path_temp) < 0) {
+            merror("Deleting %s: %s", path_temp, strerror(errno));
+        }
+
         return -1;
-    } else {
-        return 0;
     }
+#endif
+
+    return 0;
 }

@@ -82,14 +82,14 @@ void run_notify()
         /* If response is not available, set lock and wait for it */
         mwarn(SERVER_UNAV);
         os_setwait();
-        update_status(ST_DISCONNECTED);
+        update_status(AGN_DISCONNECTED);
 
         /* Send sync message */
         start_agent(0);
 
         minfo(SERVER_UP);
         os_delwait();
-        update_status(ST_CONNECTED);
+        update_status(AGN_CONNECTED);
     }
 #endif
 

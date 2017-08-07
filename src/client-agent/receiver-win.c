@@ -81,8 +81,10 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
 
                 if (recv_b <= 0) {
+                    update_status(AGN_DISCONNECTED);
                     merror(LOST_ERROR);
                     start_agent(0);
+                    update_status(AGN_CONNECTED);
                     break;
                 }
 
@@ -113,6 +115,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
             if (IsValidHeader(tmp_msg)) {
                 /* This is the only thread that modifies it */
                 available_server = (int)time(NULL);
+                update_ack(available_server);
 
                 /* Run timeout commands */
                 if (agt->execdq >= 0) {
@@ -246,6 +249,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
             else if (fp) {
                 available_server = (int)time(NULL);
+                update_ack(available_server);
                 fprintf(fp, "%s", tmp_msg);
             }
 

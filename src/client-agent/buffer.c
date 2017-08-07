@@ -98,8 +98,9 @@ int buffer_append(const char *msg){
             break;
     }
 
-    /* When buffer is full, event is dropped */
     agent_state.msg_count++;
+
+    /* When buffer is full, event is dropped */
 
     if (full(i, j, agt->buflength + 1)){
 
@@ -131,6 +132,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
     while(1){
         pthread_mutex_lock(&mutex_lock);
+        write_state();
 
         while(empty(i, j)){
             mdebug2("Agent buffer empty.");
@@ -215,7 +217,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         send_msg(msg_output, -1);
         free(msg_output);
 
-        // TODO: the time does not increase when waiting condition
         if (ms_slept >= 1000) {
             write_state();
             ms_slept %= 1000;

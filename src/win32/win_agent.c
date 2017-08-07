@@ -211,6 +211,8 @@ int local_start()
     srandom(time(0));
     os_random();
 
+    write_state();
+
     /* Socket connection */
     agt->sock = -1;
     StartMQ("", 0);
@@ -259,6 +261,7 @@ int local_start()
     os_setwait();
     start_agent(1);
     os_delwait();
+    update_status(AGN_CONNECTED);
 
     /* Send integrity message for agent configs */
     intcheck_file(cfg, "");
@@ -373,6 +376,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
                 /* If response is not available, set lock and wait for it */
                 mwarn(SERVER_UNAV);
+                update_status(AGN_DISCONNECTED);
 
                 /* Go into reconnect mode */
                 while ((cu_time - available_server) > agt->max_time_reconnect_try) {
@@ -417,6 +421,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
                 minfo(AG_CONNECTED, agt->rip[agt->rip_id], agt->port);
                 minfo(SERVER_UP);
+                update_status(AGN_CONNECTED);
             }
         }
     }
@@ -446,6 +451,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
     /* Send events to the manager across the buffer */
     if (!agt->buffer){
+        agent_state.msg_count++;
         send_msg(tmpstr, -1);
     }else{
         buffer_append(tmpstr);
@@ -558,6 +564,8 @@ void send_win32_info(time_t curr_time)
             sleep(1);
         }
     }
+
+    update_keepalive(curr_time);
 
     return;
 }

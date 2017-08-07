@@ -31,6 +31,8 @@ void *EventForward()
                 break;
             }
         }else{
+            agent_state.msg_count++;
+
             if (send_msg(msg, -1) < 0) {
                 break;
             }
