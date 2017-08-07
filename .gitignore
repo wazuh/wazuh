@@ -13,6 +13,7 @@ src/external/zlib/configure.log
 src/external/zlib/Makefile
 src/external/zlib/zconf.h
 src/external/zlib/zlib.pc
+src/external/zlib/zlib.3.pdf
 src/isbigendian.c
 src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
