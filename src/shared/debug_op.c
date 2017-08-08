@@ -13,7 +13,7 @@
 static int dbg_flag = 0;
 static int chroot_flag = 0;
 static int daemon_flag = 0;
-//static int read_flag = 0;
+
 struct{
   unsigned int log_plain:1;
   unsigned int log_json:1;
@@ -66,7 +66,9 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
 
       /* If under chroot, log directly to /logs/ossec.json */
       if (chroot_flag == 1) {
+          int old = umask(0006);
           fp2 = fopen(LOGJSONFILE, "a");
+          umask(old);
       } else {
           char _logjsonfile[256];
   #ifndef WIN32
@@ -74,7 +76,9 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
   #else
           snprintf(_logjsonfile, 256, "%s", LOGJSONFILE);
   #endif
+          int old = umask(0006);
           fp2 = fopen(_logjsonfile, "a");
+          umask(old);
       }
 
       if (fp2) {
@@ -107,7 +111,9 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
     if(flags.log_plain){
       /* If under chroot, log directly to /logs/ossec.log */
       if (chroot_flag == 1) {
+          int old = umask(0006);
           fp = fopen(LOGFILE, "a");
+          umask(old);
       } else {
           char _logfile[256];
   #ifndef WIN32
@@ -115,7 +121,9 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
   #else
           snprintf(_logfile, 256, "%s", LOGFILE);
   #endif
+          int old = umask(0006);
           fp = fopen(_logfile, "a");
+          umask(old);
       }
 
       /* Maybe log to syslog if the log file is not available */
