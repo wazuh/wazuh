@@ -177,12 +177,20 @@ class Agent:
                     self.os['arch'] = "x86_64"
                 elif "i386" in self.os['uname']:
                     self.os['arch'] = "i386"
+                elif "i686" in self.os['uname']:
+                    self.os['arch'] = "i686"
                 elif "sparc" in self.os['uname']:
                     self.os['arch'] = "sparc"
                 elif "amd64" in self.os['uname']:
                     self.os['arch'] = "amd64"
+                elif "ia64" in self.os['uname']:
+                    self.os['arch'] = "ia64"
                 elif "AIX" in self.os['uname']:
                     self.os['arch'] = "AIX"
+                elif "armv6" in self.os['uname']:
+                    self.os['arch'] = "armv6"
+                elif "armv7" in self.os['uname']:
+                    self.os['arch'] = "armv7"
 
             if self.id != "000":
                 self.status = Agent.calculate_status(self.lastKeepAlive)
