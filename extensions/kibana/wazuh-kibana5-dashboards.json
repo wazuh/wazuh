@@ -78,7 +78,7 @@
         "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}}}]}"
       },
       "optionsJSON": "{\"darkTheme\":false}",
-      "panelsJSON": "[{\"id\":\"Audit:-Rule-groups\",\"type\":\"visualization\",\"panelIndex\":1,\"size_x\":3,\"size_y\":2,\"col\":1,\"row\":1},{\"id\":\"Audit:-Agents\",\"type\":\"visualization\",\"panelIndex\":2,\"size_x\":3,\"size_y\":2,\"col\":4,\"row\":1},{\"id\":\"Audit:-Commands\",\"type\":\"visualization\",\"panelIndex\":4,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":6},{\"id\":\"Audit:-Directories\",\"type\":\"visualization\",\"panelIndex\":5,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":1},{\"id\":\"Audit:-Effective-group-ID\",\"type\":\"visualization\",\"panelIndex\":6,\"size_x\":3,\"size_y\":2,\"col\":4,\"row\":6},{\"id\":\"Audit:-Effective-user-ID\",\"type\":\"visualization\",\"panelIndex\":7,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":6},{\"id\":\"Audit:-Last-alerts\",\"type\":\"search\",\"panelIndex\":14,\"size_x\":12,\"size_y\":10,\"col\":1,\"row\":13,\"columns\":[\"agent.name\",\"rule.description\",\"audit.exe\",\"audit.file.mode\",\"audit.egid\",\"audit.euid\"],\"sort\":[\"@timestamp\",\"desc\"]},{\"id\":\"Audit:-File-attributes-modified\",\"type\":\"visualization\",\"panelIndex\":17,\"size_x\":3,\"size_y\":2,\"col\":1,\"row\":6},{\"id\":\"Audit:-File-read-access\",\"type\":\"visualization\",\"panelIndex\":18,\"size_x\":3,\"size_y\":2,\"col\":1,\"row\":11},{\"id\":\"Audit:-File-write-access\",\"type\":\"visualization\",\"panelIndex\":19,\"size_x\":3,\"size_y\":2,\"col\":4,\"row\":11},{\"id\":\"Audit:-Files-created\",\"type\":\"visualization\",\"panelIndex\":20,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":11},{\"id\":\"Audit:-Files-deleted\",\"type\":\"visualization\",\"panelIndex\":21,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":11},{\"id\":\"Audit:-Alerts-group-over-time\",\"type\":\"visualization\",\"panelIndex\":23,\"size_x\":12,\"size_y\":3,\"col\":1,\"row\":3},{\"id\":\"Audit:-Alerts-over-time\",\"type\":\"visualization\",\"panelIndex\":24,\"size_x\":12,\"size_y\":3,\"col\":1,\"row\":8},{\"id\":\"Audit:-Files\",\"type\":\"visualization\",\"panelIndex\":25,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":1}]",
+      "panelsJSON": "[{\"id\":\"Audit:-Rule-groups\",\"type\":\"visualization\",\"panelIndex\":1,\"size_x\":3,\"size_y\":2,\"col\":1,\"row\":1},{\"id\":\"Audit:-Agents\",\"type\":\"visualization\",\"panelIndex\":2,\"size_x\":3,\"size_y\":2,\"col\":4,\"row\":1},{\"id\":\"Audit:-Commands\",\"type\":\"visualization\",\"panelIndex\":4,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":6},{\"id\":\"Audit:-Directories\",\"type\":\"visualization\",\"panelIndex\":5,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":1},{\"id\":\"Audit:-Effective-group-ID\",\"type\":\"visualization\",\"panelIndex\":6,\"size_x\":3,\"size_y\":2,\"col\":4,\"row\":6},{\"id\":\"Audit:-Effective-user-ID\",\"type\":\"visualization\",\"panelIndex\":7,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":6},{\"id\":\"Audit:-Last-alerts\",\"type\":\"search\",\"panelIndex\":14,\"size_x\":12,\"size_y\":10,\"col\":1,\"row\":13,\"columns\":[\"agent.name\",\"rule.description\",\"audit.exe\",\"audit.file.mode\",\"data.audit.egid\",\"data.audit.euid\"],\"sort\":[\"@timestamp\",\"desc\"]},{\"id\":\"Audit:-File-attributes-modified\",\"type\":\"visualization\",\"panelIndex\":17,\"size_x\":3,\"size_y\":2,\"col\":1,\"row\":6},{\"id\":\"Audit:-File-read-access\",\"type\":\"visualization\",\"panelIndex\":18,\"size_x\":3,\"size_y\":2,\"col\":1,\"row\":11},{\"id\":\"Audit:-File-write-access\",\"type\":\"visualization\",\"panelIndex\":19,\"size_x\":3,\"size_y\":2,\"col\":4,\"row\":11},{\"id\":\"Audit:-Files-created\",\"type\":\"visualization\",\"panelIndex\":20,\"size_x\":3,\"size_y\":2,\"col\":7,\"row\":11},{\"id\":\"Audit:-Files-deleted\",\"type\":\"visualization\",\"panelIndex\":21,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":11},{\"id\":\"Audit:-Alerts-group-over-time\",\"type\":\"visualization\",\"panelIndex\":23,\"size_x\":12,\"size_y\":3,\"col\":1,\"row\":3},{\"id\":\"Audit:-Alerts-over-time\",\"type\":\"visualization\",\"panelIndex\":24,\"size_x\":12,\"size_y\":3,\"col\":1,\"row\":8},{\"id\":\"Audit:-Files\",\"type\":\"visualization\",\"panelIndex\":25,\"size_x\":3,\"size_y\":2,\"col\":10,\"row\":1}]",
       "timeRestore": false,
       "title": "Audit",
       "uiStateJSON": "{}",
@@ -95,7 +95,7 @@
         "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}}}]}"
       },
       "optionsJSON": "{\"darkTheme\":false}",
-      "panelsJSON": "[{\"col\":4,\"id\":\"OSCAP-Profiles\",\"panelIndex\":33,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Agents\",\"panelIndex\":34,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Scans:-Score-average\",\"panelIndex\":38,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Content\",\"panelIndex\":46,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Checks:-Result\",\"panelIndex\":49,\"row\":5,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Checks:-Severity\",\"panelIndex\":50,\"row\":7,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":10,\"id\":\"OSCAP-Errors\",\"panelIndex\":51,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":10,\"id\":\"OSCAP-Errors:-History\",\"panelIndex\":52,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Scans:-History\",\"panelIndex\":53,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Scans:-Score-ranges\",\"panelIndex\":54,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Top-20-failed-checks\",\"panelIndex\":55,\"row\":5,\"size_x\":9,\"size_y\":4,\"type\":\"visualization\"},{\"id\":\"OSCAP-Checks\",\"type\":\"search\",\"panelIndex\":59,\"size_x\":12,\"size_y\":7,\"col\":1,\"row\":13,\"columns\":[\"agent.name\",\"oscap.check.title\",\"oscap.check.result\",\"oscap.check.severity\",\"oscap.scan.id\",\"oscap.scan.content\",\"oscap.scan.profile.title\"],\"sort\":[\"@timestamp\",\"desc\"]},{\"id\":\"OSCAP-Scans\",\"type\":\"search\",\"panelIndex\":60,\"size_x\":12,\"size_y\":4,\"col\":1,\"row\":9,\"columns\":[\"agent.name\",\"oscap.scan.id\",\"oscap.scan.content\",\"oscap.scan.profile.title\",\"oscap.scan.score\"],\"sort\":[\"@timestamp\",\"desc\"]}]",
+      "panelsJSON": "[{\"col\":4,\"id\":\"OSCAP-Profiles\",\"panelIndex\":33,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Agents\",\"panelIndex\":34,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Scans:-Score-average\",\"panelIndex\":38,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Content\",\"panelIndex\":46,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Checks:-Result\",\"panelIndex\":49,\"row\":5,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Checks:-Severity\",\"panelIndex\":50,\"row\":7,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":10,\"id\":\"OSCAP-Errors\",\"panelIndex\":51,\"row\":1,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":10,\"id\":\"OSCAP-Errors:-History\",\"panelIndex\":52,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":7,\"id\":\"OSCAP-Scans:-History\",\"panelIndex\":53,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"OSCAP-Scans:-Score-ranges\",\"panelIndex\":54,\"row\":3,\"size_x\":3,\"size_y\":2,\"type\":\"visualization\"},{\"col\":4,\"id\":\"OSCAP-Top-20-failed-checks\",\"panelIndex\":55,\"row\":5,\"size_x\":9,\"size_y\":4,\"type\":\"visualization\"},{\"id\":\"OSCAP-Checks\",\"type\":\"search\",\"panelIndex\":59,\"size_x\":12,\"size_y\":7,\"col\":1,\"row\":13,\"columns\":[\"agent.name\",\"oscap.check.title\",\"oscap.check.result\",\"oscap.check.severity\",\"oscap.scan.id\",\"oscap.scan.content\",\"oscap.scan.profile.title\"],\"sort\":[\"@timestamp\",\"desc\"]},{\"id\":\"OSCAP-Scans\",\"type\":\"search\",\"panelIndex\":60,\"size_x\":12,\"size_y\":4,\"col\":1,\"row\":9,\"columns\":[\"agent.name\",\"oscap.scan.id\",\"oscap.scan.content\",\"oscap.scan.profile.title\",\"data.oscap.scan.score\"],\"sort\":[\"@timestamp\",\"desc\"]}]",
       "timeRestore": false,
       "title": "OpenSCAP",
       "uiStateJSON": "{\"P-38\":{\"vis\":{\"legendOpen\":false}},\"P-49\":{\"vis\":{\"legendOpen\":false}},\"P-50\":{\"vis\":{\"legendOpen\":false}},\"P-53\":{\"vis\":{\"legendOpen\":false}},\"P-54\":{\"vis\":{\"legendOpen\":false}},\"P-34\":{\"vis\":{\"colors\":{\"Redhat6.4\":\"#6ED0E0\"}}}}",
@@ -293,10 +293,10 @@
     "_source": {
       "columns": [
         "agent.name",
-        "oscap.scan.id",
-        "oscap.scan.content",
-        "oscap.scan.profile.title",
-        "oscap.scan.score"
+        "data.oscap.scan.id",
+        "data.oscap.scan.content",
+        "data.oscap.scan.profile.title",
+        "data.oscap.scan.score"
       ],
       "description": "",
       "hits": 0,
@@ -318,10 +318,10 @@
       "columns": [
         "agent.name",
         "rule.description",
-        "audit.exe",
-        "audit.file.mode",
-        "audit.egid",
-        "audit.euid"
+        "data.audit.exe",
+        "data.audit.file.mode",
+        "data.audit.egid",
+        "data.audit.euid"
       ],
       "description": "",
       "hits": 0,
@@ -342,12 +342,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"data.data.rule.groups:syscheck\"}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"rule.groups:syscheck\"}},\"filter\":[]}"
       },
       "title": "FIM Top 15 Agents",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 Agents\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 Agents\"}"
     },
     "_type": "visualization"
   },
@@ -356,12 +356,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\" AND full_log:\\\"Group ownership was\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\" AND full_log:\\\"Group ownership was\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Top 15 new groups",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.gname_after\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 new groups\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.gname_after\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 new groups\"}"
     },
     "_type": "visualization"
   },
@@ -370,12 +370,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\" AND full_log:\\\"Ownership was\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\" AND full_log:\\\"Ownership was\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Top 15 changed users",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.uname_before\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 changed users\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.uname_before\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 changed users\"}"
     },
     "_type": "visualization"
   },
@@ -389,7 +389,7 @@
       "title": "PCI Requirements / Agent",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"mode\": \"grouped\", \"addLegend\": true}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"PCI Requirements / Agent\"}"
+      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"mode\": \"grouped\", \"addLegend\": true}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"PCI Requirements / Agent\"}"
     },
     "_type": "visualization"
   },
@@ -403,7 +403,7 @@
       "title": "Signature: Area Chart",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"setYExtents\": false, \"smoothLines\": false, \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"stacked\", \"defaultYExtents\": false, \"times\": [], \"addTooltip\": true}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}, {\"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"h\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Signature: Area Chart\"}"
+      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"setYExtents\": false, \"smoothLines\": false, \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"stacked\", \"defaultYExtents\": false, \"times\": [], \"addTooltip\": true}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}, {\"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"h\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Signature: Area Chart\"}"
     },
     "_type": "visualization"
   },
@@ -412,12 +412,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\" AND full_log:\\\"Permissions changed from\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\" AND full_log:\\\"Permissions changed from\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Top 15 changed permissions",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.perm_before\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 changed permissions\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.perm_before\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 changed permissions\"}"
     },
     "_type": "visualization"
   },
@@ -431,7 +431,7 @@
       "title": "CIS: Requirements by agent",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"4\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"5\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"6\", \"schema\": \"bucket\"}], \"title\": \"CIS: Requirements by agent\"}"
+      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"4\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"5\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"6\", \"schema\": \"bucket\"}], \"title\": \"CIS: Requirements by agent\"}"
     },
     "_type": "visualization"
   },
@@ -440,12 +440,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "PM Top 10 monitored files",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.AlertsFile\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"PM Top 10 monitored files\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"AlertsFile\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"PM Top 10 monitored files\"}"
     },
     "_type": "visualization"
   },
@@ -454,12 +454,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\" AND full_log:\\\"Permissions changed from\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\" AND full_log:\\\"Permissions changed from\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Top 15 new permissions",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.perm_after\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 new permissions\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.perm_after\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 new permissions\"}"
     },
     "_type": "visualization"
   },
@@ -473,7 +473,7 @@
       "title": "Groups and Benchmarks",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.groups\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"segment\"}], \"title\": \"Groups and Benchmarks\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.groups\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"segment\"}], \"title\": \"Groups and Benchmarks\"}"
     },
     "_type": "visualization"
   },
@@ -482,12 +482,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "PM Top 15 Agents",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"PM Top 15 Agents\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"PM Top 15 Agents\"}"
     },
     "_type": "visualization"
   },
@@ -501,7 +501,7 @@
       "title": "Agents and Benchmarks",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"mode\": \"stacked\", \"addLegend\": true}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}], \"title\": \"Agents and Benchmarks\"}"
+      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"mode\": \"stacked\", \"addLegend\": true}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}], \"title\": \"Agents and Benchmarks\"}"
     },
     "_type": "visualization"
   },
@@ -515,7 +515,7 @@
       "title": "Integrity checksum changed",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Integrity checksum changed\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Integrity checksum changed\"}"
     },
     "_type": "visualization"
   },
@@ -524,7 +524,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "PM Top 10 Alerts",
       "uiStateJSON": "{}",
@@ -543,7 +543,7 @@
       "title": "Alerts: By country",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.GeoLocation.country_name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Alerts: By country\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"GeoLocation.country_name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Alerts: By country\"}"
     },
     "_type": "visualization"
   },
@@ -557,7 +557,7 @@
       "title": "Pie Chart: Signature",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Pie Chart: Signature\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Pie Chart: Signature\"}"
     },
     "_type": "visualization"
   },
@@ -571,7 +571,7 @@
       "title": "Alerts: Geolocation",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDesaturated\": false, \"mapType\": \"Shaded Circle Markers\"}, \"listeners\": {}, \"type\": \"tile_map\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"field\": \"GeoLocation.data.data.location\", \"precision\": 3}, \"type\": \"geohash_grid\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Alerts: Geolocation\"}"
+      "visState": "{\"params\": {\"isDesaturated\": false, \"mapType\": \"Shaded Circle Markers\"}, \"listeners\": {}, \"type\": \"tile_map\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"field\": \"GeoLocation.location\", \"precision\": 3}, \"type\": \"geohash_grid\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Alerts: Geolocation\"}"
     },
     "_type": "visualization"
   },
@@ -599,7 +599,7 @@
       "title": "Requirements by agent",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"4\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"5\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"6\", \"schema\": \"bucket\"}], \"title\": \"Requirements by agent\"}"
+      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"4\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"5\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"6\", \"schema\": \"bucket\"}], \"title\": \"Requirements by agent\"}"
     },
     "_type": "visualization"
   },
@@ -613,7 +613,7 @@
       "title": "Stacked Groups",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"mode\": \"stacked\", \"addLegend\": true}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.groups\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}], \"title\": \"Stacked Groups\"}"
+      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"mode\": \"stacked\", \"addLegend\": true}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.groups\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}], \"title\": \"Stacked Groups\"}"
     },
     "_type": "visualization"
   },
@@ -622,12 +622,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "PM Top 10 Type of alerts",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"PM Top 10 Type of alerts\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"PM Top 10 Type of alerts\"}"
     },
     "_type": "visualization"
   },
@@ -655,7 +655,7 @@
       "title": "CIS: Evolution by agent",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"line\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"row\": true, \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"split\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"4\", \"schema\": \"group\"}], \"title\": \"CIS: Evolution by agent\"}"
+      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"line\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"row\": true, \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"split\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"4\", \"schema\": \"group\"}], \"title\": \"CIS: Evolution by agent\"}"
     },
     "_type": "visualization"
   },
@@ -697,7 +697,7 @@
       "title": "Alerts: Top 5 Groups",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.groups\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Alerts: Top 5 Groups\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.groups\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Alerts: Top 5 Groups\"}"
     },
     "_type": "visualization"
   },
@@ -711,7 +711,7 @@
       "title": "PCI Requirements by time",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"line\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}], \"title\": \"PCI Requirements by time\"}"
+      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"line\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}], \"title\": \"PCI Requirements by time\"}"
     },
     "_type": "visualization"
   },
@@ -720,12 +720,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "PM Alerts over time",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"smoothLines\": true, \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"overlap\", \"defaultYExtents\": false, \"setYExtents\": false, \"addTooltip\": true, \"times\": []}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 100}, \"schema\": \"group\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"3\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}], \"title\": \"PM Alerts over time\"}"
+      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"smoothLines\": true, \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"overlap\", \"defaultYExtents\": false, \"setYExtents\": false, \"addTooltip\": true, \"times\": []}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 100}, \"schema\": \"group\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"3\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}], \"title\": \"PM Alerts over time\"}"
     },
     "_type": "visualization"
   },
@@ -734,12 +734,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\" AND (data.data.syscheck.udata.data.id_after:\\\"0\\\" OR data.data.syscheck.udata.data.id_before:\\\"0\\\" or syscheck.gudata.data.id_after:\\\"root\\\" or syscheck.gudata.data.id_before:\\\"0\\\")\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\" AND (syscheck.udata.id_after:\\\"0\\\" OR syscheck.udata.id_before:\\\"0\\\" or syscheck.gudata.id_after:\\\"root\\\" or syscheck.gudata.id_before:\\\"0\\\")\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Top 10 files with Root/Admin owner",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"FIM Top 10 files with Root/Admin owner\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"FIM Top 10 files with Root/Admin owner\"}"
     },
     "_type": "visualization"
   },
@@ -762,12 +762,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "PM Top 10 CIS Requirements",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.cis\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"PM Top 10 CIS Requirements\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"rule.cis\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"PM Top 10 CIS Requirements\"}"
     },
     "_type": "visualization"
   },
@@ -776,12 +776,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND NOT data.data.rule.groups:\\\"syslog\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND NOT rule.groups:\\\"syslog\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Agents",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"order\": \"desc\", \"size\": 10000}, \"schema\": \"segment\"}], \"title\": \"OSCAP Agents\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"order\": \"desc\", \"size\": 10000}, \"schema\": \"segment\"}], \"title\": \"OSCAP Agents\"}"
     },
     "_type": "visualization"
   },
@@ -795,7 +795,7 @@
       "title": "Location Bar Alerts",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"mode\": \"stacked\", \"addLegend\": false}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.location\", \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Location Bar Alerts\"}"
+      "visState": "{\"params\": {\"defaultYExtents\": false, \"shareYAxis\": true, \"addTooltip\": true, \"mode\": \"stacked\", \"addLegend\": false}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.location\", \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Location Bar Alerts\"}"
     },
     "_type": "visualization"
   },
@@ -809,7 +809,7 @@
       "title": "Requirements",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Requirements\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Requirements\"}"
     },
     "_type": "visualization"
   },
@@ -818,7 +818,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND NOT data.data.rule.groups:\\\"syslog\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND NOT rule.groups:\\\"syslog\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Content",
       "uiStateJSON": "{}",
@@ -851,7 +851,7 @@
       "title": "File table integrity checksum changed",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.md5_before\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.md5_after\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"4\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"5\", \"schema\": \"bucket\"}], \"title\": \"File table integrity checksum changed\"}"
+      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.md5_before\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.md5_after\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"4\", \"schema\": \"bucket\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"5\", \"schema\": \"bucket\"}], \"title\": \"File table integrity checksum changed\"}"
     },
     "_type": "visualization"
   },
@@ -860,12 +860,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND data.data.rule.groups:\\\"oscap-result\\\" AND data.oscap.check.result:\\\"fail\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-result\\\" AND data.oscap.check.result:\\\"fail\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Top 20 failed checks",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.oscap.check.data.title\", \"order\": \"desc\", \"size\": 20}, \"schema\": \"segment\"}], \"title\": \"OSCAP Top 20 failed checks\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.oscap.check.title\", \"order\": \"desc\", \"size\": 20}, \"schema\": \"segment\"}], \"title\": \"OSCAP Top 20 failed checks\"}"
     },
     "_type": "visualization"
   },
@@ -874,12 +874,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND data.data.rule.groups:\\\"oscap-report\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-report\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Scans: Score average",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"scale\": \"linear\", \"showCircles\": true, \"yAxis\": {}, \"setYExtents\": false, \"smoothLines\": false, \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"radiusRatio\": 9, \"drawLinesBetweenPoints\": true, \"defaultYExtents\": false, \"times\": [], \"addTooltip\": true}, \"listeners\": {}, \"type\": \"line\", \"aggs\": [{\"type\": \"avg\", \"enabled\": true, \"id\": \"1\", \"params\": {\"field\": \"oscap.scan.score\"}, \"schema\": \"metric\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"2\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}], \"title\": \"OSCAP Scans: Score average\"}"
+      "visState": "{\"params\": {\"scale\": \"linear\", \"showCircles\": true, \"yAxis\": {}, \"setYExtents\": false, \"smoothLines\": false, \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"radiusRatio\": 9, \"drawLinesBetweenPoints\": true, \"defaultYExtents\": false, \"times\": [], \"addTooltip\": true}, \"listeners\": {}, \"type\": \"line\", \"aggs\": [{\"type\": \"avg\", \"enabled\": true, \"id\": \"1\", \"params\": {\"field\": \"data.oscap.scan.score\"}, \"schema\": \"metric\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"2\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}], \"title\": \"OSCAP Scans: Score average\"}"
     },
     "_type": "visualization"
   },
@@ -893,7 +893,7 @@
       "title": "Signature counts",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 100}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"bucket\"}], \"title\": \"Signature counts\"}"
+      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 100}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"bucket\"}], \"title\": \"Signature counts\"}"
     },
     "_type": "visualization"
   },
@@ -902,7 +902,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit AND data.data.rule.data.data.id: 80781\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit AND rule.data.id: 80781\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: File write access",
       "uiStateJSON": "{}",
@@ -921,7 +921,7 @@
       "title": "Agents total alerts",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"addTooltip\": true, \"shareYAxis\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Agents total alerts\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"addTooltip\": true, \"shareYAxis\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"Agents total alerts\"}"
     },
     "_type": "visualization"
   },
@@ -930,12 +930,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Rule groups",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.groups\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Rule groups\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"rule.groups\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Rule groups\"}"
     },
     "_type": "visualization"
   },
@@ -944,7 +944,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit AND data.data.rule.data.data.id: 80782\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit AND rule.data.id: 80782\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Directory write access",
       "uiStateJSON": "{}",
@@ -972,7 +972,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Binaries",
       "uiStateJSON": "{}",
@@ -986,7 +986,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit AND data.data.rule.data.data.id: 80784\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit AND rule.data.id: 80784\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: File read access",
       "uiStateJSON": "{}",
@@ -1014,12 +1014,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Commands",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"audit.data.data.command\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Commands\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.audit.command\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Commands\"}"
     },
     "_type": "visualization"
   },
@@ -1028,12 +1028,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Alerts over time",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"smoothLines\": true, \"setYExtents\": false, \"legendPosition\": \"right\", \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"overlap\", \"defaultYExtents\": false, \"times\": [], \"addTooltip\": true}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"2\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"group\"}], \"title\": \"Audit: Alerts over time\"}"
+      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"smoothLines\": true, \"setYExtents\": false, \"legendPosition\": \"right\", \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"overlap\", \"defaultYExtents\": false, \"times\": [], \"addTooltip\": true}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"2\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"group\"}], \"title\": \"Audit: Alerts over time\"}"
     },
     "_type": "visualization"
   },
@@ -1042,12 +1042,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND data.data.rule.groups:\\\"oscap-report\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-report\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Scans: Score ranges",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"setYExtents\": false, \"legendPosition\": \"right\", \"addTimeMarker\": false, \"times\": [], \"shareYAxis\": true, \"mode\": \"stacked\", \"defaultYExtents\": false, \"addLegend\": true, \"addTooltip\": true}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"range\", \"enabled\": true, \"id\": \"2\", \"params\": {\"ranges\": [{\"to\": 15, \"from\": 0}, {\"to\": 30, \"from\": 15.01}, {\"to\": 50, \"from\": 30.01}, {\"to\": 70, \"from\": 50.01}, {\"to\": 90, \"from\": 70.01}, {\"to\": 100, \"from\": 90.01}], \"field\": \"oscap.scan.score\"}, \"schema\": \"segment\"}], \"title\": \"OSCAP Scans: Score ranges\"}"
+      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"setYExtents\": false, \"legendPosition\": \"right\", \"addTimeMarker\": false, \"times\": [], \"shareYAxis\": true, \"mode\": \"stacked\", \"defaultYExtents\": false, \"addLegend\": true, \"addTooltip\": true}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"range\", \"enabled\": true, \"id\": \"2\", \"params\": {\"ranges\": [{\"to\": 15, \"from\": 0}, {\"to\": 30, \"from\": 15.01}, {\"to\": 50, \"from\": 30.01}, {\"to\": 70, \"from\": 50.01}, {\"to\": 90, \"from\": 70.01}, {\"to\": 100, \"from\": 90.01}], \"field\": \"data.oscap.scan.score\"}, \"schema\": \"segment\"}], \"title\": \"OSCAP Scans: Score ranges\"}"
     },
     "_type": "visualization"
   },
@@ -1056,12 +1056,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Group ID",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"audit.gdata.data.id\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Group ID\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"audit.gdata.id\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Group ID\"}"
     },
     "_type": "visualization"
   },
@@ -1070,12 +1070,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Effective group ID",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"audit.egdata.data.id\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Effective group ID\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.audit.egid\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Effective group ID\"}"
     },
     "_type": "visualization"
   },
@@ -1084,7 +1084,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit AND data.data.rule.data.data.id: 80787\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit AND rule.data.id: 80787\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: File attributes modified",
       "uiStateJSON": "{}",
@@ -1098,12 +1098,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Alerts group over time",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"smoothLines\": true, \"setYExtents\": false, \"legendPosition\": \"right\", \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"overlap\", \"defaultYExtents\": false, \"times\": [], \"addTooltip\": true}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"2\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.groups\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"group\"}], \"title\": \"Audit: Alerts group over time\"}"
+      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"smoothLines\": true, \"setYExtents\": false, \"legendPosition\": \"right\", \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"overlap\", \"defaultYExtents\": false, \"times\": [], \"addTooltip\": true}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"2\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"rule.groups\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"group\"}], \"title\": \"Audit: Alerts group over time\"}"
     },
     "_type": "visualization"
   },
@@ -1112,12 +1112,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\" AND full_log:\\\"Group ownership was\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\" AND full_log:\\\"Group ownership was\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Top 15 changed groups",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.gname_before\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 changed groups\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.gname_before\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 changed groups\"}"
     },
     "_type": "visualization"
   },
@@ -1140,12 +1140,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"_exists_:data.data.rule.cis\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"_exists_:rule.cis\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "CIS: Security breaches by agent",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"bucket\"}], \"title\": \"CIS: Security breaches by agent\"}"
+      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"bucket\"}], \"title\": \"CIS: Security breaches by agent\"}"
     },
     "_type": "visualization"
   },
@@ -1154,12 +1154,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"_exists_:data.data.rule.pci_dss\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"_exists_:rule.pci_dss\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "PCI DSS: Signature Area Chart",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"setYExtents\": false, \"smoothLines\": false, \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"stacked\", \"defaultYExtents\": false, \"times\": [], \"addTooltip\": true}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"filters\": [{\"input\": {\"query\": {\"query_string\": {\"query\": \"_exists_:rule.pci_dss\", \"analyze_wildcard\": true}}}}], \"row\": true}, \"type\": \"filters\", \"id\": \"4\", \"schema\": \"split\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}, {\"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"PCI DSS: Signature Area Chart\"}"
+      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"setYExtents\": false, \"smoothLines\": false, \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"stacked\", \"defaultYExtents\": false, \"times\": [], \"addTooltip\": true}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"filters\": [{\"input\": {\"query\": {\"query_string\": {\"query\": \"_exists_:rule.pci_dss\", \"analyze_wildcard\": true}}}}], \"row\": true}, \"type\": \"filters\", \"id\": \"4\", \"schema\": \"split\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 10}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}, {\"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"PCI DSS: Signature Area Chart\"}"
     },
     "_type": "visualization"
   },
@@ -1168,12 +1168,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"rootcheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "PM Top 10 PCI DSS Requirements",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.pci_dss\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"PM Top 10 PCI DSS Requirements\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"rule.pci_dss\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"PM Top 10 PCI DSS Requirements\"}"
     },
     "_type": "visualization"
   },
@@ -1182,12 +1182,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\" AND full_log:\\\"Ownership was\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\" AND full_log:\\\"Ownership was\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Top 15 new users",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.uname_after\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 new users\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.uname_after\", \"order\": \"desc\", \"size\": 15}, \"schema\": \"segment\"}], \"title\": \"FIM Top 15 new users\"}"
     },
     "_type": "visualization"
   },
@@ -1196,12 +1196,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Alerts over time",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"smoothLines\": true, \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"overlap\", \"defaultYExtents\": false, \"setYExtents\": false, \"addTooltip\": true, \"times\": []}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 100}, \"schema\": \"group\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"3\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}], \"title\": \"FIM Alerts over time\"}"
+      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"smoothLines\": true, \"addTimeMarker\": false, \"interpolate\": \"linear\", \"addLegend\": true, \"shareYAxis\": true, \"mode\": \"overlap\", \"defaultYExtents\": false, \"setYExtents\": false, \"addTooltip\": true, \"times\": []}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 100}, \"schema\": \"group\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"3\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}], \"title\": \"FIM Alerts over time\"}"
     },
     "_type": "visualization"
   },
@@ -1210,12 +1210,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"data.data.rule.groups:syscheck\"}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"rule.groups:syscheck\"}},\"filter\":[]}"
       },
       "title": "FIM Top 5 files changed at the same time",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"setYExtents\": false, \"addTimeMarker\": false, \"times\": [], \"shareYAxis\": true, \"mode\": \"stacked\", \"defaultYExtents\": false, \"addLegend\": true, \"addTooltip\": true}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"2\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.path\", \"order\": \"desc\", \"size\": 5}, \"schema\": \"group\"}], \"title\": \"FIM Top 5 files changed at the same time\"}"
+      "visState": "{\"params\": {\"scale\": \"linear\", \"yAxis\": {}, \"setYExtents\": false, \"addTimeMarker\": false, \"times\": [], \"shareYAxis\": true, \"mode\": \"stacked\", \"defaultYExtents\": false, \"addLegend\": true, \"addTooltip\": true}, \"listeners\": {}, \"type\": \"histogram\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"date_histogram\", \"enabled\": true, \"id\": \"2\", \"params\": {\"customInterval\": \"2h\", \"field\": \"@timestamp\", \"interval\": \"auto\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"schema\": \"segment\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.path\", \"order\": \"desc\", \"size\": 5}, \"schema\": \"group\"}], \"title\": \"FIM Top 5 files changed at the same time\"}"
     },
     "_type": "visualization"
   },
@@ -1243,7 +1243,7 @@
       "title": "Top CIS Breaches",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.cis\", \"json\": \"\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"bucket\"}], \"title\": \"Top CIS Breaches\"}"
+      "visState": "{\"params\": {\"perPage\": 10, \"showMeticsAtAllLevels\": false, \"showPartialRows\": false}, \"listeners\": {}, \"type\": \"table\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.cis\", \"json\": \"\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"bucket\"}], \"title\": \"Top CIS Breaches\"}"
     },
     "_type": "visualization"
   },
@@ -1257,7 +1257,7 @@
       "title": "CIS: Sections",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"addTooltip\": true, \"shareYAxis\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"segment\"}], \"title\": \"CIS: Sections\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"addTooltip\": true, \"shareYAxis\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"segment\"}], \"title\": \"CIS: Sections\"}"
     },
     "_type": "visualization"
   },
@@ -1271,7 +1271,7 @@
       "title": "Requirements / Groups",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.groups\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"segment\"}], \"title\": \"Requirements / Groups\"}"
+      "visState": "{\"params\": {\"isDonut\": true, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.pci_dss\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.groups\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"segment\"}], \"title\": \"Requirements / Groups\"}"
     },
     "_type": "visualization"
   },
@@ -1285,7 +1285,7 @@
       "title": "CIS: Sections",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"addTooltip\": true, \"shareYAxis\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"CIS: Sections\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"addTooltip\": true, \"shareYAxis\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"CIS: Sections\"}"
     },
     "_type": "visualization"
   },
@@ -1299,7 +1299,7 @@
       "title": "CIS: Requirements by time",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"defaultYExtents\": true, \"shareYAxis\": true, \"addTooltip\": true, \"mode\": \"stacked\", \"addLegend\": true}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}, {\"params\": {\"field\": \"@timestamp\", \"interval\": \"hour\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"CIS: Requirements by time\"}"
+      "visState": "{\"params\": {\"defaultYExtents\": true, \"shareYAxis\": true, \"addTooltip\": true, \"mode\": \"stacked\", \"addLegend\": true}, \"listeners\": {}, \"type\": \"area\", \"aggs\": [{\"params\": {}, \"type\": \"count\", \"id\": \"1\", \"schema\": \"metric\"}, {\"params\": {\"orderBy\": \"1\", \"field\": \"rule.cis\", \"order\": \"desc\", \"size\": 5}, \"type\": \"terms\", \"id\": \"3\", \"schema\": \"group\"}, {\"params\": {\"field\": \"@timestamp\", \"interval\": \"hour\", \"extended_bounds\": {}, \"min_doc_count\": 1}, \"type\": \"date_histogram\", \"id\": \"2\", \"schema\": \"segment\"}], \"title\": \"CIS: Requirements by time\"}"
     },
     "_type": "visualization"
   },
@@ -1308,12 +1308,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Alerts",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 100}, \"schema\": \"segment\"}], \"title\": \"FIM Alerts\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 100}, \"schema\": \"segment\"}], \"title\": \"FIM Alerts\"}"
     },
     "_type": "visualization"
   },
@@ -1336,12 +1336,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\" AND full_log:\\\"Integrity checksum changed\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\" AND full_log:\\\"Integrity checksum changed\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Top 10 Changed",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"FIM Top 10 Changed\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"FIM Top 10 Changed\"}"
     },
     "_type": "visualization"
   },
@@ -1350,7 +1350,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND data.data.rule.groups:\\\"oscap-report\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-report\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Scans: History",
       "uiStateJSON": "{}",
@@ -1364,12 +1364,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\" AND full_log:\\\"added\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\" AND full_log:\\\"added\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Top 10 Added",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"FIM Top 10 Added\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"FIM Top 10 Added\"}"
     },
     "_type": "visualization"
   },
@@ -1378,12 +1378,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND data.data.rule.groups:\\\"errors\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"errors\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Errors",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"order\": \"desc\", \"size\": 10000}, \"schema\": \"segment\"}], \"title\": \"OSCAP Errors\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"order\": \"desc\", \"size\": 10000}, \"schema\": \"segment\"}], \"title\": \"OSCAP Errors\"}"
     },
     "_type": "visualization"
   },
@@ -1392,7 +1392,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND data.data.rule.groups:\\\"oscap-result\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-result\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Checks: Severity",
       "uiStateJSON": "{}",
@@ -1406,7 +1406,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND data.data.rule.groups:\\\"errors\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"errors\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Errors: History",
       "uiStateJSON": "{}",
@@ -1420,7 +1420,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Files",
       "uiStateJSON": "{}",
@@ -1434,7 +1434,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND data.data.rule.groups:\\\"oscap-result\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND rule.groups:\\\"oscap-result\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Checks: Result",
       "uiStateJSON": "{}",
@@ -1448,12 +1448,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Agents",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.agent.name\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Agents\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"agent.name\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Agents\"}"
     },
     "_type": "visualization"
   },
@@ -1462,12 +1462,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\" AND _exists_:data.data.syscheck.perm_before AND  (data.data.syscheck.perm_after:/[0-7]{3}([1357]|[0-7]([1357]|[0-7][1357])).*/) AND NOT (data.data.syscheck.perm_before:/[0-7]{3}([1357]|[0-7]([1357]|[0-7][1357])).*/)\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\" AND _exists_:syscheck.perm_before AND  (syscheck.perm_after:/[0-7]{3}([1357]|[0-7]([1357]|[0-7][1357])).*/) AND NOT (syscheck.perm_before:/[0-7]{3}([1357]|[0-7]([1357]|[0-7][1357])).*/)\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Top 10 Files converted to executable",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"FIM Top 10 Files converted to executable\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"FIM Top 10 Files converted to executable\"}"
     },
     "_type": "visualization"
   },
@@ -1476,7 +1476,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Files mode",
       "uiStateJSON": "{}",
@@ -1490,12 +1490,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"syscheck\\\" AND full_log:\\\"was deleted\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"syscheck\\\" AND full_log:\\\"was deleted\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "FIM Top 10 Deleted",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"FIM Top 10 Deleted\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"syscheck.path\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"FIM Top 10 Deleted\"}"
     },
     "_type": "visualization"
   },
@@ -1504,7 +1504,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit AND data.data.rule.data.data.id: 80791\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit AND rule.data.id: 80791\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Files deleted",
       "uiStateJSON": "{}",
@@ -1518,12 +1518,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND NOT data.data.rule.groups:\\\"syslog\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND NOT rule.groups:\\\"syslog\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Profiles",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.oscap.scan.profile.data.title\", \"order\": \"desc\", \"size\": 10000}, \"schema\": \"segment\"}], \"title\": \"OSCAP Profiles\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"3\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.oscap.scan.profile.title\", \"order\": \"desc\", \"size\": 10000}, \"schema\": \"segment\"}], \"title\": \"OSCAP Profiles\"}"
     },
     "_type": "visualization"
   },
@@ -1532,7 +1532,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups:\\\"oscap\\\" AND NOT data.data.rule.groups:\\\"syslog\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups:\\\"oscap\\\" AND NOT rule.groups:\\\"syslog\\\"\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "OSCAP Benchmarks",
       "uiStateJSON": "{}",
@@ -1546,7 +1546,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Directories",
       "uiStateJSON": "{}",
@@ -1560,12 +1560,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Effective user ID",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"audit.eudata.data.id\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Effective user ID\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.audit.euid\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Effective user ID\"}"
     },
     "_type": "visualization"
   },
@@ -1574,12 +1574,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Events",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"data.data.rule.description\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Events\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"rule.description\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: Events\"}"
     },
     "_type": "visualization"
   },
@@ -1588,12 +1588,12 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: User ID",
       "uiStateJSON": "{}",
       "version": 1,
-      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"audit.udata.data.id\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: User ID\"}"
+      "visState": "{\"params\": {\"isDonut\": false, \"legendPosition\": \"right\", \"shareYAxis\": true, \"addTooltip\": true, \"addLegend\": true}, \"listeners\": {}, \"type\": \"pie\", \"aggs\": [{\"type\": \"count\", \"enabled\": true, \"id\": \"1\", \"params\": {}, \"schema\": \"metric\"}, {\"type\": \"terms\", \"enabled\": true, \"id\": \"2\", \"params\": {\"orderBy\": \"1\", \"field\": \"audit.udata.id\", \"customLabel\": \"\", \"order\": \"desc\", \"size\": 10}, \"schema\": \"segment\"}], \"title\": \"Audit: User ID\"}"
     },
     "_type": "visualization"
   },
@@ -1602,7 +1602,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit AND data.data.rule.data.data.id: 80790\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit AND rule.data.id: 80790\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Files created",
       "uiStateJSON": "{}",
@@ -1616,7 +1616,7 @@
     "_source": {
       "description": "",
       "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"data.data.rule.groups: audit AND data.data.rule.data.data.id: 80785\",\"analyze_wildcard\":true}},\"filter\":[]}"
+        "searchSourceJSON": "{\"index\":\"wazuh-alerts-*\",\"query\":{\"query_string\":{\"query\":\"rule.groups: audit AND rule.data.id: 80785\",\"analyze_wildcard\":true}},\"filter\":[]}"
       },
       "title": "Audit: Directory read access",
       "uiStateJSON": "{}",
