@@ -164,8 +164,8 @@ def files(agent_id=None, event=None, filename=None, filetype='file', md5=None, s
     conn = Connection(db_agent)
 
     agent_info = Agent(agent_id).get_basic_information()
-    if 'os' in agent_info:
-        if 'windows' in agent_info['os'].lower():
+    if 'os' in agent_info and 'platform' in agent_info['os']:
+        if agent_info['os']['platform'].lower() == 'windows':
             windows_agent = True
         else:
             windows_agent = False

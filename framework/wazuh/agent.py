@@ -493,6 +493,9 @@ class Agent:
         last_id = 0
         with open(common.client_keys) as f_k:
             for line in f_k.readlines():
+                if not line.strip():  # ignore empty lines
+                    continue
+
                 if line[0] in ('# '):  # starts with # or ' '
                     continue
 
@@ -826,7 +829,7 @@ class Agent:
                 try:
                     Agent(agent_id).restart()
                 except Exception as e:
-                    ids.append(id)
+                    ids.append(agent_id)
             else:
                 for id in agent_id:
                     try:
@@ -838,7 +841,13 @@ class Agent:
             else:
                 message = 'Some agents were not restarted'
 
-            return {'msg':message, 'ids':ids}
+            final_dict = {}
+            if ids:
+                final_dict = {'msg': message, 'ids': ids}
+            else:
+                final_dict = {'msg': message}
+
+            return final_dict
 
     @staticmethod
     def get_agent(agent_id):
@@ -876,7 +885,7 @@ class Agent:
             try:
                 Agent(agent_id).remove(backup)
             except Exception as e:
-                ids.append(id)
+                ids.append(agent_id)
         else:
             for id in agent_id:
                 try:
@@ -889,8 +898,13 @@ class Agent:
         else:
             message = 'Some agents were not removed'
 
-        return {'msg':message, 'ids':ids}
+        final_dict = {}
+        if ids:
+            final_dict = {'msg': message, 'ids': ids}
+        else:
+            final_dict = {'msg': message}
 
+        return final_dict
 
     @staticmethod
     def add_agent(name, ip='any', force=-1):
