@@ -348,11 +348,6 @@ uninstall:
 	cd $(DESTDIR)$(man3dir) && rm -f zlib.3
 	cd $(DESTDIR)$(pkgconfigdir) && rm -f zlib.pc
 
-docs: zlib.3.pdf
-
-zlib.3.pdf: $(SRCDIR)zlib.3
-	groff -mandoc -f H -T ps $(SRCDIR)zlib.3 | ps2pdf - $@
-
 zconf.h.cmakein: $(SRCDIR)zconf.h.in
 	-@ TEMPFILE=zconfh_$$; \
 	echo "/#define ZCONF_H/ a\\\\\n#cmakedefine Z_PREFIX\\\\\n#cmakedefine Z_HAVE_UNISTD_H\n" >> $$TEMPFILE &&\
@@ -376,7 +371,7 @@ clean:
 	rm -f contrib/infback9/*.gcda contrib/infback9/*.gcno contrib/infback9/*.gcov
 
 maintainer-clean: distclean
-distclean: clean zconf zconf.h.cmakein docs
+distclean: clean zconf zconf.h.cmakein
 	rm -f Makefile zlib.pc configure.log
 	-@rm -f .DS_Store
 	@if [ -f Makefile.in ]; then \
@@ -384,7 +379,6 @@ distclean: clean zconf zconf.h.cmakein docs
 	printf '\ndistclean:\n\tmake -f Makefile.in distclean\n' >> Makefile ; \
 	touch -r $(SRCDIR)Makefile.in Makefile ; fi
 	@if [ ! -f zconf.h.in ]; then rm -f zconf.h zconf.h.cmakein ; fi
-	@if [ ! -f zlib.3 ]; then rm -f zlib.3.pdf ; fi
 
 tags:
 	etags $(SRCDIR)*.[ch]

@@ -46,7 +46,7 @@ void w_rotate_log(int compress, int keep_log_days) {
     time_t now = time(NULL) - 86400;
     struct tm tm;
 
-    mdebug1("DEBUG: Rotating log files");
+    mdebug1("Rotating log files");
 
     localtime_r(&now, &tm);
 

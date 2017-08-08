@@ -57,6 +57,8 @@ All notable changes to this project will be documented in this file.
 - Limit OpenSCAP module's event forwarding speed.
 - Increased debug level of repeated Rootcheck messages.
 - Send events when OpenSCAP starts and finishes scans.
+- Delete PID files when a process exits not due to a signal.
+- Change error messages due to SSL handshake failure to debug messages.
 
 ### Fixed
 
