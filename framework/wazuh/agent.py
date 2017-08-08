@@ -1532,7 +1532,7 @@ class Agent:
             raise WazuhException(1714, result.getcode())
 
         # Get SHA1 file sum
-        sha1hash = sha1(open(wpk_file_path).read()).hexdigest()
+        sha1hash = sha1(open(wpk_file_path, 'rb').read()).hexdigest()
 
         # Comparing SHA1 hash
         if not sha1hash == agent_new_shasum:
