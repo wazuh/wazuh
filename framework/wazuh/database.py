@@ -28,7 +28,7 @@ class Connection:
         """
         self.db_path = db_path
 
-        if not isfile(db_path):
+        if not isfile(db_path) and db_path != "/var/ossec/var/db/cluster.db":
             raise WazuhException(2000)
 
         self.__conn = sqlite3.connect(db_path)
@@ -61,6 +61,7 @@ class Connection:
         """
         if args:
             self.__cur.execute(query, *args)
+            return self.__cur.lastrowid
         else:
             self.__cur.execute(query)
 

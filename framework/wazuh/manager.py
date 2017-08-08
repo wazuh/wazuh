@@ -6,9 +6,12 @@
 from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
 from wazuh import common
 from datetime import datetime
+import time
+import os
 from os.path import exists
 from glob import glob
 import re
+import hashlib
 
 
 def status():
@@ -149,3 +152,50 @@ def ossec_log_summary(months=3):
             else:
                 continue
     return categories
+
+def md5(fname):
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+def get_files(*args, **kwargs):
+
+    """
+    Get files
+
+    :param file: Filters by log type: all, error or info.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param search: Looks for items with the specified string.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+
+    file_download = ""
+    if args:
+        if len(args) == 1:
+            file = args[0]
+        else:
+            raise WazuhException(1700)
+    elif kwargs:
+        if len(kwargs) == 1:
+            file_download = kwargs['download']
+        else:
+            raise WazuhException(1700)
+
+    files_list = [{"file_name":"/etc/client.keys", "format":"plain"},{"file_name":"/etc/ossec.conf", "format":"xml"}]
+    files_output = {}
+    for file in files_list:
+        file_name = common.ossec_path + file["file_name"]
+        file['modification_time'] = '{0}'.format(datetime.utcfromtimestamp(os.path.getmtime(file_name)))
+        file['md5'] = md5(file_name)
+        if file_download != "" and file_download == file["file_name"]:
+            file['wazuh_path'] = common.ossec_path
+            file_output = {file["file_name"] : {"md5": file['md5'], "modification_time" : file['modification_time'], "format" : file['format']}}
+            return file_output
+        file_output = {file["file_name"] : {"md5": file['md5'], "modification_time" : file['modification_time'], "format" : file['format']}}
+        files_output.update(file_output)
+
+    return files_output
