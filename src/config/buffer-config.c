@@ -26,9 +26,6 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
 
     logr = (agent *)d2;
 
-    logr->notify_time = 0;
-    logr->max_time_reconnect_try = 0;
-
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
