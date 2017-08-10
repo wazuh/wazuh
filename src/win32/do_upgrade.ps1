@@ -23,14 +23,14 @@ function restore
 # Get current version
 $current_version = (Get-Content VERSION.txt).split(" ")[1] -replace "^."
 $current_file_date = (Get-Item ".\ossec-agent.exe").LastWriteTime
-echo "$(Get-Date -format u) - Current version: $($current_version)" > .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Current version: $($current_version)" > .\upgrade\upgrade.log
 
 # Generating backup
-echo "$(Get-Date -format u) - Generating backup." >> .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Generating backup." >> .\upgrade\upgrade.log
 backup
 
 # Install
-echo "$(Get-Date -format u) - Installing" >> .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Installing" >> .\upgrade\upgrade.log
 install
 
 # Wait for installation completion
@@ -43,7 +43,7 @@ while($current_file_date -ne $new_file_date -And $counter -gt 0)
     Start-Sleep 2
     $new_file_date = (Get-Item ".\ossec-agent.exe").LastWriteTime
 }
-echo "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
 
 # Check process status
 $process_id = (Get-Process ossec-agent -ErrorAction SilentlyContinue).id
@@ -55,7 +55,7 @@ while($process_id -eq $null -And $counter -gt 0)
     Start-Sleep 2
     $process_id = (Get-Process ossec-agent -ErrorAction SilentlyContinue).id
 }
-echo "$(Get-Date -format u) - Process ID: $($process_id)" >> .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Process ID: $($process_id)" >> .\upgrade\upgrade.log
 
 # Check status file
 $status = Get-Content .\ossec-agent.state | select-string "status='connected'" -SimpleMatch
@@ -66,20 +66,20 @@ while($status -eq $null -And $counter -gt 0)
     Start-Sleep 2
     $status = Get-Content .\ossec-agent.state | select-string "status='connected'" -SimpleMatch
 }
-echo "$(Get-Date -format u) - Reading status file: $($status)" >> .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Reading status file: $($status)" >> .\upgrade\upgrade.log
 
 If ($status -eq $null)
 {
-    echo "2" > .\upgrade\upgrade_result
+    write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
     restore
-    echo "$(Get-Date -format u) - Upgrade failed: Restoring." >> .\upgrade\upgrade.log
+    write-output "$(Get-Date -format u) - Upgrade failed: Restoring." >> .\upgrade\upgrade.log
     .\ossec-agent.exe install-service >> .\upgrade\upgrade.log
     Start-Service -Name "ossec-agent" -ErrorAction SilentlyContinue
 }
 Else
 {
-    echo "0" > .\upgrade\upgrade_result
-    echo "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
+    write-output "0" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
     $new_version = (Get-Content VERSION.txt).split(" ")[1] -replace "^."
-    echo "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade\upgrade.log
+    write-output "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade\upgrade.log
 }
