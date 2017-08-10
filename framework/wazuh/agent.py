@@ -589,8 +589,8 @@ class Agent:
 
         # Query
         query = "SELECT {0} FROM agent"
-        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive', 'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform' }
-        select = ["id", "name", "ip", "last_keepalive", "os_name", "os_version", "os_platform"]
+        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive', 'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform', 'version': 'version' }
+        select = ["id", "name", "ip", "last_keepalive", "os_name", "os_version", "os_platform", "version"]
         search_fields = ["id", "name", "ip", "os_name", "os_version", "os_platform"]
         request = {}
 
@@ -686,6 +686,9 @@ class Agent:
                 os['version'] = tuple[5]
             if tuple[6] != None:
                 os['platform'] = tuple[6]
+
+            if tuple[7] != None:
+                data_tuple['version'] = tuple[7]
 
             if os:
                 os_no_empty = dict((k, v) for k, v in os.iteritems() if v)
