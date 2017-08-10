@@ -52,7 +52,7 @@ else
 	sys_acct_chk () {
 	    $1 --help 2>&1 | grep -e " *-r.*system account" >/dev/null 2>&1 && echo "$1 -r" || echo "$1"
 	  }
-	GROUPADD=$(sys_acct_chk "/usr/sbin/groupadd")
+	GROUPADD=$(sys_acct_chk "/usr/sbin/groupadd -f")
 	USERADD=$(sys_acct_chk "/usr/sbin/useradd")
         OSMYSHELL="/sbin/nologin"
     fi
