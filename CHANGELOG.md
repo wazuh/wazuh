@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Allow Syslog client to read JSON alerts.
 - Allow Mail reporter to read JSON alerts.
 - Added internal option to tune Rootcheck sleep time.
+- Added route-null Active Response script for Windows 2012 (by @CrazyLlama).
 
 ### Changed
 
@@ -34,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - Send events when OpenSCAP starts and finishes scans.
 - Delete PID files when a process exits not due to a signal.
 - Change error messages due to SSL handshake failure to debug messages.
+- Force group addition on installation for compatibility with LDAP (thanks to Gary Feltham).
 
 ### Fixed
 
