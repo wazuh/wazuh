@@ -32,14 +32,14 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
 
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL, __local_name);
+            merror(XML_ELEMNULL);
             return OS_INVALID;
         } else if (!strcmp(node[i]->element, XML_INTERVAL)) {
             char *endptr;
             syscollector->interval = strtoul(node[i]->content, &endptr, 0);
 
             if (syscollector->interval == 0 || syscollector->interval == UINT_MAX) {
-                merror("%s: ERROR: Invalid interval at module '%s'", __local_name, WM_SYS_CONTEXT.name);
+                merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
 
@@ -57,7 +57,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
             case '\0':
                 break;
             default:
-                merror("%s: ERROR: Invalid interval at module '%s'", __local_name, WM_SYS_CONTEXT.name);
+                merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_SCAN_ON_START)) {
@@ -66,7 +66,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.scan_on_start = 0;
             else {
-                merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_SCAN_ON_START, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_SCAN_ON_START, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_DISABLED)) {
@@ -75,7 +75,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.enabled = 1;
             else {
-                merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_DISABLED, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_NETWORK)) {
@@ -84,11 +84,11 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.network = 0;
             else {
-                merror("%s: ERROR: Invalid content for tag '%s' at module '%s'.", __local_name, XML_SCAN_ON_START, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_SCAN_ON_START, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {
-            merror("%s: ERROR: No such tag '%s' at module '%s'.", __local_name, node[i]->element, WM_SYS_CONTEXT.name);
+            merror("No such tag '%s' at module '%s'.", node[i]->element, WM_SYS_CONTEXT.name);
             return OS_INVALID;
         }
     }

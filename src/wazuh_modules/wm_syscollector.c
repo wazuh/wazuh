@@ -25,9 +25,8 @@ static void wm_sys_cleanup();                   // Cleanup function, doesn't ove
 static void wm_sys_check();                     // Check configuration, disable flag
 static void wm_sys_network();                   // Get network inventory
 
-// Find an interface from a network list
-static cJSON* wm_sys_find_interface(cJSON *array, const char *name);
 
+char* check_dhcp(char *ifa_name, int family);   // Check DHCP status for network interfaces
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 
 // Syscollector module context definition
@@ -153,10 +152,9 @@ void wm_sys_check() {
 // Get network inventory
 
 void wm_sys_network() {
-    cJSON *object;
-    cJSON *interfaces;
-    cJSON *interface;
-    char *string;
+
+    char *ifaces_list[256];
+    int i = 0, j = 0, found;
     char *key;
     int family;
     struct ifaddrs *ifaddr, *ifa;
@@ -166,89 +164,162 @@ void wm_sys_network() {
         return;
     }
 
-    object = cJSON_CreateObject();
-    interfaces = cJSON_CreateArray();
+    /* Create interfaces list */
+    for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
+        found = 0;
+        for (i=0; i<=j; i++){
+            if (!ifaces_list[i]){
+                if (!strcmp(ifa->ifa_name, "lo"))
+                    found = 1;
 
-    cJSON_AddStringToObject(object, "type", "network");
-    cJSON_AddItemToObject(object, "data", interfaces);
-
-    for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
-
-        // Discard null addresses and loopback interface
-
-        if (!ifa->ifa_addr || !strcmp(ifa->ifa_name, "lo")) {
-            continue;
-        }
-
-        if (!(interface = wm_sys_find_interface(interfaces, ifa->ifa_name))) {
-            interface = cJSON_CreateObject();
-            cJSON_AddStringToObject(interface, "name", ifa->ifa_name);
-            cJSON_AddItemToArray(interfaces, interface);
-        }
-
-        family = ifa->ifa_addr->sa_family;
-
-        switch (family) {
-            case AF_INET:
-                key = "IPv4";
                 break;
-            case AF_INET6:
-                key = "IPv6";
-                break;
-            case AF_PACKET:
-                key = "MAC";
-            default:
-                mtdebug1(WM_SYS_LOGTAG, "Unknown family (%d).", family);
-                continue;
-        }
 
-        if (family == AF_INET || family == AF_INET6) {
-            char host[NI_MAXHOST];
-            int result = getnameinfo(ifa->ifa_addr,
-                    (family == AF_INET) ? sizeof(struct sockaddr_in) :
-                                         sizeof(struct sockaddr_in6),
-                    host, NI_MAXHOST,
-                    NULL, 0, NI_NUMERICHOST);
-            if (result == 0) {
-                cJSON_AddStringToObject(interface, key, host);
-            } else {
-                mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+            }else if (!strncmp(ifaces_list[i], ifa->ifa_name, strlen(ifa->ifa_name))){
+                    found = 1;
+                    break;
             }
-        } else if (family == AF_PACKET && ifa->ifa_data != NULL) {
-            char mac[18];
-            struct rtnl_link_stats *stats = ifa->ifa_data;
-            struct sockaddr_ll *addr = (struct sockaddr_ll*)ifa->ifa_addr;
-            snprintf(mac, 18, "%02X:%02X:%02X:%02X:%02X:%02X", addr->sll_addr[0], addr->sll_addr[1], addr->sll_addr[2], addr->sll_addr[3], addr->sll_addr[4], addr->sll_addr[5]);
-            cJSON_AddStringToObject(interface, key, mac);
-            cJSON_AddNumberToObject(interface, "tx_packets", stats->tx_packets);
-            cJSON_AddNumberToObject(interface, "rx_packets", stats->rx_packets);
-            cJSON_AddNumberToObject(interface, "tx_bytes", stats->tx_bytes);
-            cJSON_AddNumberToObject(interface, "tx_packets", stats->rx_bytes);
+        }
+        if (!found){
+        ifaces_list[j] = malloc(strlen(ifa->ifa_name) + 1);
+        strncpy(ifaces_list[j], ifa->ifa_name, strlen(ifa->ifa_name));
+        j++;
         }
     }
 
-    string = cJSON_PrintBuffered(object, WM_BUFFER_MIN, 0);
-    mtdebug2(WM_SYS_LOGTAG, "wm_sys_network() sending '%s'", string);
-    SendMSG(queue_fd, string, WM_SYS_LOCATION, WODLE_MQ);
-    cJSON_Delete(object);
+    /* Collect all data for each interface */
+    for (i=0; i<j; i++){
+
+        char *string;
+
+        cJSON *object = cJSON_CreateObject();
+        cJSON *interface = cJSON_CreateObject();
+        cJSON_AddStringToObject(object, "type", "network");
+        cJSON_AddItemToObject(object, "iface", interface);
+        cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
+
+        for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
+
+            if (strncmp(ifaces_list[i], ifa->ifa_name, strlen(ifaces_list[i]))){
+                continue;
+            }
+            if (!ifa->ifa_addr || !strcmp(ifa->ifa_name, "lo")) {
+                continue;
+            }
+            family = ifa->ifa_addr->sa_family;
+
+            switch (family) {
+                case AF_INET:
+                    key = "IPv4";
+                    break;
+                case AF_INET6:
+                    key = "IPv6";
+                    break;
+                case AF_PACKET:
+                    key = "MAC";
+                    break;
+                default:
+                    mtdebug1(WM_SYS_LOGTAG, "Unknown family (%d).", family);
+                    continue;
+            }
+
+            if (family == AF_INET || family == AF_INET6) {
+                char host[NI_MAXHOST];
+                int result = getnameinfo(ifa->ifa_addr,
+                        (family == AF_INET) ? sizeof(struct sockaddr_in) :
+                                             sizeof(struct sockaddr_in6),
+                        host, NI_MAXHOST,
+                        NULL, 0, NI_NUMERICHOST);
+                if (result == 0) {
+                    cJSON_AddStringToObject(interface, key, host);
+                    char *dhcp_status;
+                    dhcp_status = check_dhcp(ifaces_list[i], family);
+                    if (family == AF_INET){
+                        cJSON_AddStringToObject(interface, "DHCP IPv4", dhcp_status);
+
+                    }else if (family == AF_INET6){
+                        cJSON_AddStringToObject(interface, "DHCP IPv6", dhcp_status);
+                    }
+                    free(dhcp_status);
+
+                } else {
+                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                }
+            } else if (family == AF_PACKET && ifa->ifa_data != NULL) {
+                char mac[18];
+                struct rtnl_link_stats *stats = ifa->ifa_data;
+                struct sockaddr_ll *addr = (struct sockaddr_ll*)ifa->ifa_addr;
+                snprintf(mac, 18, "%02X:%02X:%02X:%02X:%02X:%02X", addr->sll_addr[0], addr->sll_addr[1], addr->sll_addr[2], addr->sll_addr[3], addr->sll_addr[4], addr->sll_addr[5]);
+                cJSON_AddStringToObject(interface, key, mac);
+                cJSON_AddNumberToObject(interface, "tx_packets", stats->tx_packets);
+                cJSON_AddNumberToObject(interface, "rx_packets", stats->rx_packets);
+                cJSON_AddNumberToObject(interface, "tx_bytes", stats->tx_bytes);
+                cJSON_AddNumberToObject(interface, "rx_bytes", stats->rx_bytes);
+            }
+        }
+
+        /* Send interface data in JSON format */
+        string = cJSON_PrintUnformatted(object);
+        mtdebug2(WM_SYS_LOGTAG, "wm_sys_network() sending '%s'", string);
+        SendMSG(queue_fd, string, WM_SYS_LOCATION, WODLE_MQ);
+        cJSON_Delete(object);
+
+        free(string);
+    }
+
     freeifaddrs(ifaddr);
-    free(string);
+    free(ifaces_list[i]);
+
 }
 
-// Find an interface from a network list
+/* Check DHCP status for IPv4 and IPv6 addresses in each interface */
+char* check_dhcp(char *ifa_name, int family){
 
-cJSON* wm_sys_find_interface(cJSON *array, const char *name) {
-    int i;
-    cJSON *item;
-    int size = cJSON_GetArraySize(array);
+    char file_location[256];
+    FILE *fp;
+    char string[OS_MAXSTR];
+    char start_string[256];
+    char *dhcp = (char*)malloc(10);
 
-    for (i = 0; i < size; i++) {
-        item = cJSON_GetArrayItem(array, i);
+    snprintf(dhcp, 256, "%s", "unknown");
+    snprintf(file_location, 256, "%s", WM_SYS_IF_FILE);
+    snprintf(start_string, 256, "%s%s", "iface ", ifa_name);
 
+    if((fp=fopen(file_location, "r"))){
 
-        if (!strcmp(cJSON_GetObjectItem(item, "name")->valuestring, name))
-            return item;
+        while(fgets(string, OS_MAXSTR, fp) != NULL){
+
+            if(strstr(string, start_string) != NULL){
+
+                switch (family){
+                    case AF_INET:
+                        if(strstr(string, "inet static") || strstr(string, "inet manual")){
+                            snprintf(dhcp, 256, "%s", "disabled");
+                            return dhcp;
+                        }else if(strstr(string, "inet dhcp")){
+                            snprintf(dhcp, 256, "%s", "enabled");
+                            return dhcp;
+                        }else{
+                            snprintf(dhcp, 256, "%s", "enabled");
+                            return dhcp;
+                        }
+                        break;
+                    case AF_INET6:
+                        if(strstr(string, "inet6 static") || strstr(string, "inet6 manual")){
+                            snprintf(dhcp, 256, "%s", "disabled");
+                            return dhcp;
+                        }else if(strstr(string, "inet6 dhcp")){
+                            snprintf(dhcp, 256, "%s", "enabled");
+                            return dhcp;
+                        }else{
+                            snprintf(dhcp, 256, "%s", "enabled");
+                            return dhcp;
+                        }
+                        break;
+                }
+            }
+        }
+        snprintf(dhcp, 256, "%s", "enabled");
+        fclose(fp);
     }
-
-    return NULL;
+    return dhcp;
 }
