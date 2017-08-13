@@ -31,6 +31,6 @@ extern char __shost[512];
 extern OSDecoderInfo *NULL_Decoder;
 
 #define OSSEC_SERVER    "ossec-server"
-#define MAX_DECODER_ORDER_SIZE  64
+#define MAX_DECODER_ORDER_SIZE  1024
 
 #endif /* _LOGAUDIT__H */
