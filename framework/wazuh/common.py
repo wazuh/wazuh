@@ -46,8 +46,8 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global database_path_global
     database_path_global = database_path + '/global.db'
 
-    global database_path_cluster
-    database_path_cluster = database_path + '/cluster.db'
+    global api_config_path
+    api_config_path = "{0}/api/configuration/config.js".format(ossec_path)
 
     global database_path_agents
     database_path_agents = database_path + '/agents'

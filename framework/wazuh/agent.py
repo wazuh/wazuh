@@ -1665,7 +1665,11 @@ class Agent:
         self._load_info_from_DB()
 
         ver = self.version.split(" ")[1].replace("v","").replace("-","").replace("alpha","a").replace("beta","b")
-        if not StrictVersion(ver) >= '3.0.0a4':
+
+        try:
+            if not StrictVersion(ver) >= '3.0.0a4':
+                raise WazuhException(1719, self.version)
+        except ValueError:
             raise WazuhException(1719, self.version)
 
         if self.os['platform']=="windows" and int(self.os['major']) < 6:

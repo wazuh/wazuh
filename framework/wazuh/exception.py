@@ -92,6 +92,9 @@ class WazuhException(Exception):
         2000: 'No such database file',
         2001: 'Incompatible version of SQLite',
 
+        # Cluster
+        3000: 'Cluster'
+
         # > 9000: Authd
     }
 

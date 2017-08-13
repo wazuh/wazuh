@@ -185,17 +185,82 @@ def get_files(*args, **kwargs):
         else:
             raise WazuhException(1700)
 
-    files_list = [{"file_name":"/etc/client.keys", "format":"plain"},{"file_name":"/etc/ossec.conf", "format":"xml"}]
+    items = [
+                {
+                    "file_name":"/etc/client.keys",
+                    "mode": 0o640,
+                    "user": "root",
+                    "group": "ossec",
+                    "format":"plain",
+                    "type": "file",
+                    "write_mode": "atomic",
+                    "conditions": {
+                        "remote_time_higher": True,
+                        "different_md5": True,
+                        "larger_file_size": True
+                    }
+                },
+                # {"file_name":"/etc/ossec.conf", "format":"xml"},
+                {
+                    "file_name":"/queue/agent-info",
+                    "mode": 0o644,
+                    "user": "ossecr",
+                    "group": "ossec",
+                    "format":"plain",
+                    "type": "directory",
+                    "write_mode": "normal",
+                    "conditions": {
+                        "remote_time_higher": True,
+                        "different_md5": False,
+                        "larger_file_size": False
+                    }
+                }
+        ]
+
+
+    # Expand directory
+    new_items = []
+    for item in items:
+        fullpath = common.ossec_path + item["file_name"]
+
+        if item["type"] == "file":
+            new_item = dict(item)
+            new_item["fullpath"] = fullpath
+            new_items.append(new_item)
+        else:
+            for entry in os.listdir(fullpath):
+                new_item = dict(item)
+                new_item["fullpath"] = os.path.join(fullpath, entry)
+                new_items.append(new_item)
+
     files_output = {}
-    for file in files_list:
-        file_name = common.ossec_path + file["file_name"]
-        file['modification_time'] = '{0}'.format(datetime.utcfromtimestamp(os.path.getmtime(file_name)))
-        file['md5'] = md5(file_name)
-        if file_download != "" and file_download == file["file_name"]:
-            file['wazuh_path'] = common.ossec_path
-            file_output = {file["file_name"] : {"md5": file['md5'], "modification_time" : file['modification_time'], "format" : file['format']}}
+    for new_item in new_items:
+        
+        #Check if file exists
+        if not os.path.isfile(new_item["fullpath"]):
+            continue
+
+        modification_time = '{0}'.format(datetime.utcfromtimestamp(int(os.path.getmtime(new_item["fullpath"]))))
+        size = os.path.getsize(new_item["fullpath"])
+        md5_hash = md5(new_item["fullpath"])
+
+        file_output = {
+            new_item["fullpath"] : {
+                "md5": md5_hash,
+                "modification_time" : modification_time,
+                "format" : new_item['format'],
+                "mode" : new_item['mode'],
+                "size" : size,
+                "user" : new_item['user'],
+                "group" : new_item['group'],
+                "write_mode" : new_item['write_mode'],
+                "conditions" : new_item['conditions']
+                }
+            }
+
+        if file_download != "" and file_download == new_item["fullpath"]:
             return file_output
-        file_output = {file["file_name"] : {"md5": file['md5'], "modification_time" : file['modification_time'], "format" : file['format']}}
+
         files_output.update(file_output)
 
     return files_output
