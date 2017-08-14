@@ -49,7 +49,7 @@
         <client_buffer>
           <!-- Agent buffer options -->
           <disable>no</disable>
-          <length>5000</length>
+          <queue_size>5000</queue_size>
           <events_per_second>500</events_per_second>
         </client_buffer>
 
