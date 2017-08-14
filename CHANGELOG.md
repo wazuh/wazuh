@@ -50,6 +50,7 @@ All notable changes to this project will be documented in this file.
 - Fixed internal option to configure the maximum labels' cache time.
 - Fixed Auth password parsing on client side.
 - Fix bad agent ID assignation in Authd on i686 architecture.
+- Fixed Logcollector misconfiguration in Windows agents.
 
 ### Removed
 

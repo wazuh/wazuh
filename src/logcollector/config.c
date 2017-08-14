@@ -12,7 +12,7 @@
 
 
 /* Read the config file (the localfiles) */
-int LogCollectorConfig(const char *cfgfile, int accept_remote)
+int LogCollectorConfig(const char *cfgfile)
 {
     int modules = 0;
     logreader_config log_config;
@@ -21,7 +21,13 @@ int LogCollectorConfig(const char *cfgfile, int accept_remote)
 
     log_config.config = NULL;
     log_config.agent_cfg = 0;
-    log_config.accept_remote = accept_remote;
+    log_config.accept_remote = getDefine_Int("logcollector", "remote_commands", 0, 1);
+
+    /* Get loop timeout */
+    loop_timeout = getDefine_Int("logcollector", "loop_timeout", 1, 120);
+    open_file_attempts = getDefine_Int("logcollector", "open_attempts", 2, 998);
+    vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
+    maximum_lines = getDefine_Int("logcollector", "max_lines", 100, 100000);
 
     if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
         return (OS_INVALID);
@@ -38,4 +44,3 @@ int LogCollectorConfig(const char *cfgfile, int accept_remote)
 
     return (1);
 }
-

@@ -120,7 +120,6 @@ int main(int argc, char **argv)
 int local_start()
 {
     int debug_level;
-    int accept_manager_commands = 0;
     char *cfg = DEFAULTCPATH;
     WSADATA wsaData;
     DWORD  threadID;
@@ -139,8 +138,6 @@ int local_start()
         nowDebug();
         debug_level--;
     }
-    accept_manager_commands = getDefine_Int("logcollector",
-                                            "remote_commands", 0, 1);
 
     /* Configuration file not present */
     if (File_DateofChange(cfg) < 0) {
@@ -171,7 +168,7 @@ int local_start()
 
     /* Read logcollector config file */
     mdebug1("Reading logcollector configuration.");
-    if (LogCollectorConfig(cfg, accept_manager_commands) < 0) {
+    if (LogCollectorConfig(cfg) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 
