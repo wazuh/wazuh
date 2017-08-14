@@ -235,7 +235,7 @@ def get_files(*args, **kwargs):
 
     files_output = {}
     for new_item in new_items:
-        
+
         #Check if file exists
         if not os.path.isfile(new_item["fullpath"]):
             continue

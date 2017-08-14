@@ -105,7 +105,7 @@ class Node:
     def send_request_api(url, auth, verify, type):
         error = 0
         try:
-            r = requests.get(url, auth=auth, params=None, verify=verify)
+            r = requests.get(url, auth=auth, params=None, timeout=2, verify=verify)
             if r.status_code == 401:
                   data = str(r.text)
                   error = 401
@@ -136,11 +136,17 @@ class Node:
     @staticmethod
     def update_file(fullpath, content, owner=None, group=None, mode=None, mtime=None, w_mode=None):
 
+        # Set atomic replaces
+        atomic = False
         # Set Timezone to epoch converter
         environ['TZ']='UTC'
 
         # Write
-        f_temp = '{0}.tmp.cluster'.format(fullpath)
+        if atomic:
+            f_temp = '{0}.tmp.cluster'.format(fullpath)
+        else:
+            f_temp = '{0}'.format(fullpath)
+
         dest_file = open(f_temp, "w")
         dest_file.write(content)
         dest_file.close()
@@ -162,7 +168,8 @@ class Node:
         utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
 
         # Atomic
-        rename(f_temp, fullpath)
+        if atomic:
+            rename(f_temp, fullpath)
 
     @staticmethod
     def get_token():
@@ -184,7 +191,7 @@ class Node:
             return False
 
     @staticmethod
-    def sync(output_file=False):
+    def sync(output_file=False, force=None):
         """
         Sync this node with others
         :return: Files synced.
@@ -277,26 +284,29 @@ class Node:
                 checked_conditions = []
                 conditions = {}
 
-                if remote_file["conditions"]["different_md5"]:
-                    checked_conditions.append("different_md5")
-                    if remote_file["md5"] != local_file["md5"]:
-                        conditions["different_md5"] = True
-                    else:
-                        conditions["different_md5"] = False
+                if not force:
+                    if remote_file["conditions"]["different_md5"]:
+                        checked_conditions.append("different_md5")
+                        if remote_file["md5"] != local_file["md5"]:
+                            conditions["different_md5"] = True
+                        else:
+                            conditions["different_md5"] = False
 
-                if remote_file["conditions"]["remote_time_higher"]:
-                    checked_conditions.append("remote_time_higher")
-                    if remote_file_time > local_file_time:
-                        conditions["remote_time_higher"] = True
-                    else:
-                        conditions["remote_time_higher"] = False
+                    if remote_file["conditions"]["remote_time_higher"]:
+                        checked_conditions.append("remote_time_higher")
+                        if remote_file_time > local_file_time:
+                            conditions["remote_time_higher"] = True
+                        else:
+                            conditions["remote_time_higher"] = False
 
-                if remote_file["conditions"]["larger_file_size"]:
-                    checked_conditions.append("larger_file_size")
-                    if remote_file_size > local_file_size:
-                        conditions["larger_file_size"] = True
-                    else:
-                        conditions["larger_file_size"] = False
+                    if remote_file["conditions"]["larger_file_size"]:
+                        checked_conditions.append("larger_file_size")
+                        if remote_file_size > local_file_size:
+                            conditions["larger_file_size"] = True
+                        else:
+                            conditions["larger_file_size"] = False
+                else:
+                    conditions["force"] = True
 
                 check_item = {
                     "file": remote_file,
@@ -335,7 +345,7 @@ class Node:
                     "file": remote_file,
                     "checked_conditions": { "missing": True},
                     "updated": False,
-                    "node": node["node"]
+                    "node": node
                 }
 
                 download_list.append(remote_item)

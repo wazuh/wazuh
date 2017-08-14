@@ -24,9 +24,9 @@ from time import time, sleep
 import socket
 from distutils.version import StrictVersion
 try:
-    from urllib import urlopen, urlretrieve
+    from urllib2 import urlopen, URLError, HTTPError
 except ImportError:
-    from urllib.request import urlopen, urlretrieve
+    from urllib.request import urlopen, URLError, HTTPError
 
 class Agent:
     """
@@ -1335,7 +1335,7 @@ class Agent:
 
                 if new_file:
                     chown(agent_group_path, ossec_uid, ossec_gid)
-                    chmod(agent_group_path, 0o640)
+                    chmod(agent_group_path, 0o660)
             except Exception as e:
                 raise WazuhException(1005, str(e))
 
@@ -1454,13 +1454,15 @@ class Agent:
             else:
                 versions_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
 
-        result = urlopen(versions_url)
-        if result.getcode() == 200:
-            lines = result.readlines()
-            lines = filter(None, lines)
-        else:
-            raise WazuhException(1713, versions_url)
+        try:
+            result = urlopen(versions_url)
+        except HTTPError as e:
+            raise WazuhException(1713, e.code)
+        except URLError as e:
+            raise WazuhException(1713, e.reason)
 
+        lines = result.readlines()
+        lines = filter(None, lines)
         versions = []
 
         for line in lines:
@@ -1550,11 +1552,14 @@ class Agent:
         else:
             print("Downloading WPK file...")
 
-        result = urlopen(wpk_url)
-        if result.getcode() == 200:
-            urlretrieve(wpk_url, wpk_file_path)
-        else:
-            raise WazuhException(1714, result.getcode())
+        try:
+            result = urlopen(wpk_url)
+            with open(wpk_file_path, "wb") as local_file:
+                local_file.write(result.read())
+        except HTTPError as e:
+            raise WazuhException(1714, e.code)
+        except URLError as e:
+            raise WazuhException(1714, e.reason)
 
         # Get SHA1 file sum
         sha1hash = sha1(open(wpk_file_path, 'rb').read()).hexdigest()
@@ -1677,6 +1682,9 @@ class Agent:
 
         if wpk_repo == None:
             wpk_repo = common.wpk_repo_url
+
+        if not wpk_repo.endswith('/'):
+            wpk_repo = wpk_repo + '/'
 
         # Check if agent is active.
         if not self.status == 'Active':
@@ -1806,7 +1814,7 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending file to agent
-        file = open(common.ossec_path + "/var/upgrade/" + wpk_file, "rb")
+        file = open(file_path, "rb")
         if not file:
             raise WazuhException(1715, data.replace("err ",""))
         try:
