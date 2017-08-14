@@ -14,35 +14,35 @@
   <rule id="201" level="0">
     <if_sid>200</if_sid>
     <match>^wazuh: Agent buffer: </match>
-    <description>Agent buffer rule</description>
+    <description>Agent event queue rule</description>
     <group>agent_flooding,</group>
   </rule>
 
   <rule id="202" level="7">
     <if_sid>201</if_sid>
-    <status>%</status>
-    <description>Agent buffer is close to an overflow state.</description>
+    <field name="level">%</field>
+    <description>Agent event queue is $(level) full.</description>
     <group>agent_flooding,</group>
   </rule>
 
   <rule id="203" level="9">
     <if_sid>201</if_sid>
-    <status>full</status>
-    <description>Agent buffer is full. Events may be lost.</description>
+    <field name="level">full</field>
+    <description>Agent event queue is full. Events may be lost.</description>
     <group>agent_flooding,</group>
   </rule>
 
   <rule id="204" level="12">
     <if_sid>201</if_sid>
-    <status>flooded</status>
-    <description>Agent buffer is flooded. Check the agent configuration.</description>
+    <field name="level">flooded</field>
+    <description>Agent event queue is flooded. Check the agent configuration.</description>
     <group>agent_flooding,</group>
   </rule>
 
   <rule id="205" level="3">
     <if_sid>201</if_sid>
-    <status>normal</status>
-    <description>Agent buffer is back to normal load.</description>
+    <field name="level">normal</field>
+    <description>Agent event queue is back to normal load.</description>
     <group>agent_flooding,</group>
   </rule>
 

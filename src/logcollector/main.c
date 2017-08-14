@@ -48,7 +48,6 @@ int main(int argc, char **argv)
     int c;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
-    int accept_manager_commands = 0;
     const char *cfg = DEFAULTCPATH;
 
     /* Setup random */
@@ -102,25 +101,10 @@ int main(int argc, char **argv)
 
     mdebug1(STARTED_MSG);
 
-    accept_manager_commands = getDefine_Int("logcollector", "remote_commands",
-                                            0, 1);
-
     /* Read config file */
-    if (LogCollectorConfig(cfg, accept_manager_commands) < 0) {
+    if (LogCollectorConfig(cfg) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
-
-    /* Get loop timeout */
-    loop_timeout = getDefine_Int("logcollector",
-                                 "loop_timeout",
-                                 1, 120);
-
-    open_file_attempts = getDefine_Int("logcollector", "open_attempts",
-                                       2, 998);
-
-    vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
-
-    maximum_lines = getDefine_Int("logcollector", "max_lines", 100, 100000);
 
     /* Exit if test config */
     if (test_config) {
