@@ -14,3 +14,28 @@
   <regex offset="after_prematch">^ '(\S+)'.</regex>
   <order>status</order>
 </decoder>
+
+<decoder name="agent-upgrade">
+  <parent>wazuh</parent>
+  <prematch offset="after_parent">^Upgrade procedure |^Custom installation </prematch>
+  <regex offset="after_prematch">on agent (\d\d\d)\s\((\S+)\):\s(\w+)</regex>
+  <order>agent.id, agent.name, status</order>
+</decoder>
+
+<decoder name="agent-upgrade">
+  <parent>wazuh</parent>
+  <regex>aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$</regex>
+  <order>error</order>
+</decoder>
+
+<decoder name="agent-upgrade">
+  <parent>wazuh</parent>
+  <regex>started.\sCurrent\sversion:\sWazuh\s(\.+)$</regex>
+  <order>agent.cur_version</order>
+</decoder>
+
+<decoder name="agent-upgrade">
+  <parent>wazuh</parent>
+  <regex>succeeded.\sNew\sversion:\sWazuh\s(\.+)$</regex>
+  <order>agent.new_version</order>
+</decoder>
