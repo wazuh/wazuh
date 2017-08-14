@@ -276,13 +276,18 @@ int get_agent_group(const char *id, char *group, size_t size) {
 int set_agent_group(const char * id, const char * group) {
     char path[PATH_MAX];
     FILE *fp;
+    mode_t oldmask;
 
     if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", id) >= PATH_MAX) {
         merror("At set_agent_group(): file path too large for agent '%s'.", id);
         return -1;
     }
 
-    if (!(fp = fopen(path, "w"))) {
+    oldmask = umask(0006);
+    fp = fopen(path, "w");
+    umask(oldmask);
+
+    if (!fp) {
         mdebug1("At get_agent_group(): file '%s' not found.", path);
         return -1;
     }
