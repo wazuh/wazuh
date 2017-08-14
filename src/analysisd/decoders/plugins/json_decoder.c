@@ -299,7 +299,6 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 }
 
                 fillData(lf, key, value);
-                cJSON_Delete(array);
                 free(value);
                 break;
 
@@ -324,7 +323,6 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
         free (key);
         key = NULL;
     } // while
-    cJSON_Delete(next);
 
 }
 
