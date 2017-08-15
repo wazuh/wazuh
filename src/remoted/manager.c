@@ -59,6 +59,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
     char *uname;
     pending_data_t *data;
     FILE * fp;
+    mode_t oldmask;
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
         char * counter = r_msg + strlen(HC_REQUEST);
@@ -168,7 +169,11 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
 
             /* Write uname to the file */
 
-            if ((fp = fopen(data->keep_alive, "w"))) {
+            oldmask = umask(0006);
+            fp = fopen(data->keep_alive, "w");
+            umask(oldmask);
+
+            if (fp) {
                 fprintf(fp, "%s\n", uname);
                 fclose(fp);
             } else {
