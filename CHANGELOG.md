@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
 - New decoder plugin for logs in JSON format with dynamic fields definition.
 - Brought framework from API to Wazuh project.
 - Show merged files MD5 checksum by agent_control and framework.
+- New reliable request protocol for manager-agent communication.
+- Remote agent upgrades with signed WPK packages.
+- Added option for Remoted to prevent it from writing shared merged file.
+- Added state for Agentd and Windows agent to notify connection state and metrics.
 
 ### Changed
 
@@ -19,12 +23,18 @@ All notable changes to this project will be documented in this file.
 - Changed Windows agent UI panel to show revision number instead of installation date.
 - Group every decoded field (static and dynamic fields) into a data object for JSON alerts.
 - Reload shared files by Remoted every 10 minutes.
+- Increased string size limit for XML reader to 4096 bytes.
+- Updated Logstash configuration and Elasticsearch mappings.
+- Changed template fields structure for Kibana dashboards.
+- Increased dynamic field limit to 1024, and default to 256.
+- Changed agent buffer 'length' parameter to 'queue_size'.
 
 ### Fixed
 
 - Fixed wrong queries to get last Syscheck and Rootcheck date.
 - Prevent Logcollector keep-alives from being stored on archives.json.
 - Fixed length of random message within keep-alives.
+- Fixed Windows version detection for Windows 8 and newer.
 
 ## [v2.1.0]
 
