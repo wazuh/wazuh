@@ -49,6 +49,16 @@ extern const struct file_system_type network_file_systems[];
 short IsNFS(const char *file)  __attribute__((nonnull));
 short skipFS(const char *file)  __attribute__((nonnull));
 
+typedef struct os_info {
+    char *os_name;
+    char *os_major;
+    char *os_minor;
+    char *os_build;
+    char *os_version;
+    char *os_codename;
+    char *os_platform;
+} os_info;
+
 #endif
 
 /* EOF */

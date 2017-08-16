@@ -811,7 +811,7 @@ int mkstemp_ex(char *tmp_path)
     return (0);
 }
 
-static const char *get_unix_version()
+static const char *get_unix_version(void *info)
 {
     FILE *os_release, *cmd_output, *version_release, *cmd_output_ver;
     char buff[256];
@@ -820,6 +820,9 @@ static const char *get_unix_version()
     char *name = NULL;
     char *id = NULL;
     char *version = NULL;
+    char *codename = NULL;
+    regmatch_t match[2];
+    int match_size;
 
     // Try to open /etc/os-release
     os_release = fopen("/etc/os-release", "r");
@@ -1111,6 +1114,38 @@ static const char *get_unix_version()
         merror("Getting UNIX version: string too large.");
     }
 
+    if (info) {
+        os_info *unix_info = (os_info *)info;
+
+        unix_info->os_name = strdup(name);
+
+        // os_major.os_minor (os_codename)
+        if (codename = strstr(version, " ("), codename){
+            *codename = '\0';
+            codename += 2;
+            *(codename + strlen(codename) - 1) = '\0';
+            unix_info->os_codename = strdup(codename);
+            free(codename);
+        }
+
+        // Get os_major
+        if (w_regexec("^([0-9]+)\\.*", version, 2, match)) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            unix_info->os_major = malloc(match_size +1);
+            snprintf(unix_info->os_major, match_size + 1, "%.*s", match_size, version + match[1].rm_so);
+        }
+
+        // Get os_minor
+        if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", version, 2, match)) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            unix_info->os_minor = malloc(match_size +1);
+            snprintf(unix_info->os_minor, match_size + 1, "%.*s", match_size, version + match[1].rm_so);
+        }
+
+        unix_info->os_build = NULL;
+        unix_info->os_platform = strdup(id);
+    }
+
     free(name);
     free(version);
     free(id);
@@ -1127,7 +1162,7 @@ const char *getuname()
 
     if (!muname[0]){
         if (uname(&uts_buf) >= 0) {
-            if (os_version = get_unix_version(), os_version){
+            if (os_version = get_unix_version(NULL), os_version){
                 snprintf(muname, 512, "%s %s %s %s %s [%s] - %s %s",
                          uts_buf.sysname,
                          uts_buf.nodename,
@@ -1153,6 +1188,34 @@ const char *getuname()
     }
 
     return muname;
+}
+
+cJSON* getunameJSON()
+{
+    os_info read_info;
+    const char *unix_info = NULL;
+    cJSON* root=cJSON_CreateObject();
+
+    if (unix_info = get_unix_version(&read_info), unix_info){
+        cJSON_AddStringToObject(root, "os_name", read_info.os_name);
+        cJSON_AddStringToObject(root, "os_major", read_info.os_major);
+        cJSON_AddStringToObject(root, "os_minor", read_info.os_minor);
+        cJSON_AddStringToObject(root, "os_build", read_info.os_build);
+        cJSON_AddStringToObject(root, "os_version", read_info.os_version);
+        cJSON_AddStringToObject(root, "os_codename", read_info.os_codename);
+        cJSON_AddStringToObject(root, "os_platform", read_info.os_platform);
+
+        free(read_info.os_name);
+        free(read_info.os_major);
+        free(read_info.os_minor);
+        free(read_info.os_build);
+        free(read_info.os_version);
+        free(read_info.os_codename);
+        free(read_info.os_platform);
+        return root;
+    }
+    else
+        return NULL;
 }
 
 /* Daemonize a process without closing stdin/stdout/stderr */
