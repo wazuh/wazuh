@@ -12,7 +12,9 @@
 #include "wmodules.h"
 
 #include <dirent.h>
+#include <sys/ioctl.h>
 #include <sys/types.h>
+#include <net/if.h>
 #include <ifaddrs.h>
 #include <linux/if_link.h>
 #include <linux/if_packet.h>
@@ -154,11 +156,12 @@ void wm_sys_check() {
 
 void wm_sys_network() {
 
-    char *ifaces_list[256];
-    int i = 0, j = 0, found;
-    char *key;
+    char ** ifaces_list;
+    int i = 0, j = 0, k = 0, found;
     int family;
     struct ifaddrs *ifaddr, *ifa;
+
+    os_calloc(256, sizeof(char *), ifaces_list);
 
     if (getifaddrs(&ifaddr) == -1) {
         mterror(WM_SYS_LOGTAG, "getifaddrs()");
@@ -187,7 +190,7 @@ void wm_sys_network() {
         }
     }
 
-    /* Collect all data for each interface */
+    /* Collect all information for each interface */
     for (i=0; i<j; i++){
 
         char *string;
@@ -206,55 +209,152 @@ void wm_sys_network() {
             if (!ifa->ifa_addr || !strcmp(ifa->ifa_name, "lo")) {
                 continue;
             }
+
             family = ifa->ifa_addr->sa_family;
 
-            switch (family) {
-                case AF_INET:
-                    key = "IPv4";
-                    break;
-                case AF_INET6:
-                    key = "IPv6";
-                    break;
-                case AF_PACKET:
-                    key = "MAC";
-                    break;
-                default:
-                    mtdebug1(WM_SYS_LOGTAG, "Unknown family (%d).", family);
-                    continue;
-            }
+            if (family == AF_INET) {
 
-            if (family == AF_INET || family == AF_INET6) {
+                cJSON *ipv4 = cJSON_CreateObject();
+                cJSON_AddItemToObject(interface, "IPv4", ipv4);
+
                 char host[NI_MAXHOST];
                 int result = getnameinfo(ifa->ifa_addr,
-                        (family == AF_INET) ? sizeof(struct sockaddr_in) :
-                                             sizeof(struct sockaddr_in6),
+                        sizeof(struct sockaddr_in),
                         host, NI_MAXHOST,
                         NULL, 0, NI_NUMERICHOST);
                 if (result == 0) {
-                    cJSON_AddStringToObject(interface, key, host);
+                    cJSON_AddStringToObject(ipv4, "address", host);
+                } else {
+                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                }
+
+                char netmask[NI_MAXHOST];
+                result = getnameinfo(ifa->ifa_netmask,
+                    sizeof(struct sockaddr_in),
+                    netmask, NI_MAXHOST,
+                    NULL, 0, NI_NUMERICHOST);
+
+                if (result == 0) {
+                    cJSON_AddStringToObject(ipv4, "netmask", netmask);
+                } else {
+                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                }
+
+                if (ifa->ifa_ifu.ifu_broadaddr != NULL){
+                    if (ifa->ifa_flags & IFF_POINTOPOINT){
+                        char dstaddr[NI_MAXHOST];
+                        result = getnameinfo(ifa->ifa_ifu.ifu_dstaddr,
+                            sizeof(struct sockaddr_in),
+                            dstaddr, NI_MAXHOST,
+                            NULL, 0, NI_NUMERICHOST);
+
+                        if (result == 0) {
+                            cJSON_AddStringToObject(ipv4, "dst_address", dstaddr);
+                        } else {
+                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        }
+                    }else{
+                        char broadaddr[NI_MAXHOST];
+                        result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
+                            sizeof(struct sockaddr_in),
+                            broadaddr, NI_MAXHOST,
+                            NULL, 0, NI_NUMERICHOST);
+
+                        if (result == 0) {
+                            cJSON_AddStringToObject(ipv4, "broadcast", broadaddr);
+                        } else {
+                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        }
+                    }
+                }
+
+                char *dhcp_status;
+                dhcp_status = check_dhcp(ifaces_list[i], family);
+                cJSON_AddStringToObject(ipv4, "DHCP", dhcp_status);
+                free(dhcp_status);
+
+            } else if (family == AF_INET6) {
+
+                cJSON *ipv6 = cJSON_CreateObject();
+                cJSON_AddItemToObject(interface, "IPv6", ipv6);
+
+                char host[NI_MAXHOST];
+                int result = getnameinfo(ifa->ifa_addr,
+                        sizeof(struct sockaddr_in6),
+                        host, NI_MAXHOST,
+                        NULL, 0, NI_NUMERICHOST);
+                if (result == 0) {
+                    char ** parts = NULL;
+                    char *ip_addrr;
+                    parts = OS_StrBreak('%', host, 2);
+                    ip_addrr = w_strtrim(parts[0]);
+                    cJSON_AddStringToObject(ipv6, "address", ip_addrr);
+                    for (k=0; parts[k]; k++){
+                        free(parts[k]);
+                    }
+                    free(parts);
+
+                    char netmask6[NI_MAXHOST];
+                    result = getnameinfo(ifa->ifa_netmask,
+                        sizeof(struct sockaddr_in6),
+                        netmask6, NI_MAXHOST,
+                        NULL, 0, NI_NUMERICHOST);
+
+                    if (result == 0) {
+                        cJSON_AddStringToObject(ipv6, "netmask", netmask6);
+                    } else {
+                        mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                    }
+
+                    if (ifa->ifa_ifu.ifu_broadaddr != NULL){
+                        if (ifa->ifa_flags & IFF_POINTOPOINT){
+                            char dstaddr6[NI_MAXHOST];
+                            result = getnameinfo(ifa->ifa_ifu.ifu_dstaddr,
+                                sizeof(struct sockaddr_in6),
+                                dstaddr6, NI_MAXHOST,
+                                NULL, 0, NI_NUMERICHOST);
+
+                            if (result == 0) {
+                                cJSON_AddStringToObject(ipv6, "dst_address", dstaddr6);
+                            } else {
+                                mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                            }
+                        }else{
+                            char broadaddr6[NI_MAXHOST];
+                            result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
+                                sizeof(struct sockaddr_in6),
+                                broadaddr6, NI_MAXHOST,
+                                NULL, 0, NI_NUMERICHOST);
+
+                            if (result == 0) {
+                                cJSON_AddStringToObject(ipv6, "broadcast", broadaddr6);
+                            } else {
+                                mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                            }
+                        }
+                    }
+
                     char *dhcp_status;
                     dhcp_status = check_dhcp(ifaces_list[i], family);
-                    if (family == AF_INET){
-                        cJSON_AddStringToObject(interface, "DHCP_IPv4", dhcp_status);
-
-                    }else if (family == AF_INET6){
-                        cJSON_AddStringToObject(interface, "DHCP_IPv6", dhcp_status);
-                    }
+                    cJSON_AddStringToObject(ipv6, "DHCP", dhcp_status);
                     free(dhcp_status);
 
                 } else {
                     mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                 }
-            } else if (family == AF_PACKET && ifa->ifa_data != NULL) {
+
+            } else if (family == AF_PACKET && ifa->ifa_data != NULL){
+
                 char mac[18];
                 struct rtnl_link_stats *stats = ifa->ifa_data;
                 struct sockaddr_ll *addr = (struct sockaddr_ll*)ifa->ifa_addr;
                 snprintf(mac, 18, "%02X:%02X:%02X:%02X:%02X:%02X", addr->sll_addr[0], addr->sll_addr[1], addr->sll_addr[2], addr->sll_addr[3], addr->sll_addr[4], addr->sll_addr[5]);
-                cJSON_AddStringToObject(interface, key, mac);
+                cJSON_AddStringToObject(interface, "MAC", mac);
                 cJSON_AddNumberToObject(interface, "tx_packets", stats->tx_packets);
                 cJSON_AddNumberToObject(interface, "rx_packets", stats->rx_packets);
                 cJSON_AddNumberToObject(interface, "tx_bytes", stats->tx_bytes);
                 cJSON_AddNumberToObject(interface, "rx_bytes", stats->rx_bytes);
+
             }
         }
 
@@ -281,9 +381,10 @@ char* check_dhcp(char *ifa_name, int family){
     DIR *dir;
     char string[OS_MAXSTR];
     char start_string[256];
-    char *dhcp = (char*)malloc(10);
+    char * dhcp;
+    os_calloc(10, sizeof(char), dhcp);
 
-    snprintf(dhcp, 256, "%s", "unknown");
+    snprintf(dhcp, 10, "%s", "unknown");
     snprintf(file_location, 256, "%s", WM_SYS_IF_FILE);
 
     /* Check DHCP configuration for Debian based systems */
@@ -297,36 +398,36 @@ char* check_dhcp(char *ifa_name, int family){
                 switch (family){
                     case AF_INET:
                         if (strstr(string, "inet static") || strstr(string, "inet manual")){
-                            snprintf(dhcp, 256, "%s", "disabled");
+                            snprintf(dhcp, 10, "%s", "disabled");
                             return dhcp;
                         }else if (strstr(string, "inet dhcp")){
-                            snprintf(dhcp, 256, "%s", "enabled");
+                            snprintf(dhcp, 10, "%s", "enabled");
                             return dhcp;
                         }else{
-                            snprintf(dhcp, 256, "%s", "unknown");
+                            snprintf(dhcp, 10, "%s", "unknown");
                             return dhcp;
                         }
                         break;
                     case AF_INET6:
                         if (strstr(string, "inet6 static") || strstr(string, "inet6 manual")){
-                            snprintf(dhcp, 256, "%s", "disabled");
+                            snprintf(dhcp, 10, "%s", "disabled");
                             return dhcp;
                         }else if (strstr(string, "inet6 dhcp")){
-                            snprintf(dhcp, 256, "%s", "enabled");
+                            snprintf(dhcp, 10, "%s", "enabled");
                             return dhcp;
                         }else{
-                            snprintf(dhcp, 256, "%s", "unknown");
+                            snprintf(dhcp, 10, "%s", "unknown");
                             return dhcp;
                         }
                         break;
 
                     default:
-                        mtdebug1(WM_SYS_LOGTAG, "Unknown dhcp configuration.");
+                        mtwarn(WM_SYS_LOGTAG, "Unknown DHCP configuration.");
                         break;
                 }
             }
         }
-        snprintf(dhcp, 256, "%s", "enabled");
+        snprintf(dhcp, 10, "%s", "enabled");
         fclose(fp);
     }
 
@@ -335,7 +436,7 @@ char* check_dhcp(char *ifa_name, int family){
     snprintf(file_location, 256, "%s%s", WM_SYS_IF_DIR, file);
 
     if ((dir=opendir(WM_SYS_IF_DIR))){
-        snprintf(dhcp, 256, "%s", "enabled");
+        snprintf(dhcp, 10, "%s", "enabled");
         closedir(dir);
     }
 
@@ -350,16 +451,16 @@ char* check_dhcp(char *ifa_name, int family){
                     if (strstr(string, start_string) != NULL){
 
                         if (strstr(string, "static") || strstr(string, "none")){
-                            snprintf(dhcp, 256, "%s", "disabled");
+                            snprintf(dhcp, 10, "%s", "disabled");
                             return dhcp;
                         }else if (strstr(string, "bootp")){
-                            snprintf(dhcp, 256, "%s", "using BOOTP protocol");
+                            snprintf(dhcp, 10, "%s", "BOOTP");
                             return dhcp;
                         }else if (strstr(string, "dhcp")){
-                            snprintf(dhcp, 256, "%s", "enabled");
+                            snprintf(dhcp, 10, "%s", "enabled");
                             return dhcp;
                         }else{
-                            snprintf(dhcp, 256, "%s", "unknown");
+                            snprintf(dhcp, 10, "%s", "unknown");
                             return dhcp;
                         }
                     }
@@ -373,13 +474,13 @@ char* check_dhcp(char *ifa_name, int family){
 
                     if (strstr(string, start_string) != NULL){
                         if (strstr(string, "no")){
-                            snprintf(dhcp, 256, "%s", "disabled");
+                            snprintf(dhcp, 10, "%s", "disabled");
                             return dhcp;
                         }else if (strstr(string, "yes")){
-                            snprintf(dhcp, 256, "%s", "enabled");
+                            snprintf(dhcp, 10, "%s", "enabled");
                             return dhcp;
                         }else {
-                            snprintf(dhcp, 256, "%s", "unknown");
+                            snprintf(dhcp, 10, "%s", "unknown");
                             return dhcp;
                         }
                     }
@@ -387,7 +488,7 @@ char* check_dhcp(char *ifa_name, int family){
                 break;
 
             default:
-                mtdebug1(WM_SYS_LOGTAG, "Unknown dhcp configuration.");
+                mtwarn(WM_SYS_LOGTAG, "Unknown DHCP configuration.");
                 break;
         }
         fclose(fp);
