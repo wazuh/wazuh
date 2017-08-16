@@ -514,6 +514,7 @@ setEnv()
 
         case $ANSWER in
             $yesmatch)
+                UpdateStopOSSEC > /dev/null 2>&1
                 rm -rf $INSTALLDIR
                 if [ ! $? = 0 ]; then
                     exit 2;
