@@ -11,8 +11,10 @@
  */
 
 #include "agentd.h"
+#include <pthread.h>
 
 agent_state_t agent_state;
+pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int update_status(agent_status_t status) {
     agent_state.status = status;
@@ -43,12 +45,14 @@ int write_state() {
     }
 
     mdebug2("Updating state file.");
+    w_mutex_lock(&state_mutex);
 
 #ifdef WIN32
     snprintf(path, sizeof(path), "%s.state", __local_name);
 
     if (fp = fopen(path, "w"), !fp) {
         merror(FOPEN_ERROR, path, errno, strerror(errno));
+        w_mutex_unlock(&state_mutex);
         return -1;
     }
 #else
@@ -58,6 +62,7 @@ int write_state() {
 
     if (fp = fopen(path_temp, "w"), !fp) {
         merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
+        w_mutex_unlock(&state_mutex);
         return -1;
     }
 #endif
@@ -119,9 +124,11 @@ int write_state() {
             merror("Deleting %s: %s", path_temp, strerror(errno));
         }
 
+        w_mutex_unlock(&state_mutex);
         return -1;
     }
 #endif
 
+    w_mutex_unlock(&state_mutex);
     return 0;
 }
