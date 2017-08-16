@@ -14,6 +14,8 @@
 #ifndef __MD5_OP_H
 #define __MD5_OP_H
 
+#include <sys/types.h>
+
 typedef char os_md5[33];
 
 int OS_MD5_File(const char *fname, os_md5 output, int mode) __attribute((nonnull));
