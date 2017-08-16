@@ -16,7 +16,6 @@
 #define WM_SYS_LOGTAG ARGV0 ":syscollector" // Tag for log messages
 #define WM_SYS_IF_FILE "/etc/network/interfaces"
 #define WM_SYS_IF_DIR "/etc/sysconfig/network-scripts/"
-#define WM_SYS_DIR_PID "/var/run/"
 
 typedef struct wm_sys_flags_t {
     unsigned int enabled:1;                 // Main switch

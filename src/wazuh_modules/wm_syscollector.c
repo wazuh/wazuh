@@ -11,10 +11,11 @@
 
 #include "wmodules.h"
 
- #include <sys/types.h>
- #include <ifaddrs.h>
- #include <linux/if_link.h>
- #include <linux/if_packet.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
+#include <linux/if_link.h>
+#include <linux/if_packet.h>
 
 static wm_sys_t *sys;                           // Pointer to configuration
 static int queue_fd;                            // Output queue file descriptor
@@ -180,9 +181,9 @@ void wm_sys_network() {
             }
         }
         if (!found){
-        ifaces_list[j] = malloc(strlen(ifa->ifa_name) + 1);
-        strncpy(ifaces_list[j], ifa->ifa_name, strlen(ifa->ifa_name));
-        j++;
+            ifaces_list[j] = malloc(strlen(ifa->ifa_name) + 1);
+            strncpy(ifaces_list[j], ifa->ifa_name, strlen(ifa->ifa_name));
+            j++;
         }
     }
 
@@ -234,10 +235,10 @@ void wm_sys_network() {
                     char *dhcp_status;
                     dhcp_status = check_dhcp(ifaces_list[i], family);
                     if (family == AF_INET){
-                        cJSON_AddStringToObject(interface, "DHCP IPv4", dhcp_status);
+                        cJSON_AddStringToObject(interface, "DHCP_IPv4", dhcp_status);
 
                     }else if (family == AF_INET6){
-                        cJSON_AddStringToObject(interface, "DHCP IPv6", dhcp_status);
+                        cJSON_AddStringToObject(interface, "DHCP_IPv6", dhcp_status);
                     }
                     free(dhcp_status);
 
@@ -274,46 +275,53 @@ void wm_sys_network() {
 /* Check DHCP status for IPv4 and IPv6 addresses in each interface */
 char* check_dhcp(char *ifa_name, int family){
 
+    char file[256];
     char file_location[256];
     FILE *fp;
+    DIR *dir;
     char string[OS_MAXSTR];
     char start_string[256];
     char *dhcp = (char*)malloc(10);
 
     snprintf(dhcp, 256, "%s", "unknown");
     snprintf(file_location, 256, "%s", WM_SYS_IF_FILE);
-    snprintf(start_string, 256, "%s%s", "iface ", ifa_name);
 
-    if((fp=fopen(file_location, "r"))){
+    /* Check DHCP configuration for Debian based systems */
+    if ((fp=fopen(file_location, "r"))){
 
-        while(fgets(string, OS_MAXSTR, fp) != NULL){
+        snprintf(start_string, 256, "%s%s", "iface ", ifa_name);
+        while (fgets(string, OS_MAXSTR, fp) != NULL){
 
-            if(strstr(string, start_string) != NULL){
+            if (strstr(string, start_string) != NULL){
 
                 switch (family){
                     case AF_INET:
-                        if(strstr(string, "inet static") || strstr(string, "inet manual")){
+                        if (strstr(string, "inet static") || strstr(string, "inet manual")){
                             snprintf(dhcp, 256, "%s", "disabled");
                             return dhcp;
-                        }else if(strstr(string, "inet dhcp")){
+                        }else if (strstr(string, "inet dhcp")){
                             snprintf(dhcp, 256, "%s", "enabled");
                             return dhcp;
                         }else{
-                            snprintf(dhcp, 256, "%s", "enabled");
+                            snprintf(dhcp, 256, "%s", "unknown");
                             return dhcp;
                         }
                         break;
                     case AF_INET6:
-                        if(strstr(string, "inet6 static") || strstr(string, "inet6 manual")){
+                        if (strstr(string, "inet6 static") || strstr(string, "inet6 manual")){
                             snprintf(dhcp, 256, "%s", "disabled");
                             return dhcp;
-                        }else if(strstr(string, "inet6 dhcp")){
+                        }else if (strstr(string, "inet6 dhcp")){
                             snprintf(dhcp, 256, "%s", "enabled");
                             return dhcp;
                         }else{
-                            snprintf(dhcp, 256, "%s", "enabled");
+                            snprintf(dhcp, 256, "%s", "unknown");
                             return dhcp;
                         }
+                        break;
+
+                    default:
+                        mtdebug1(WM_SYS_LOGTAG, "Unknown dhcp configuration.");
                         break;
                 }
             }
@@ -321,5 +329,69 @@ char* check_dhcp(char *ifa_name, int family){
         snprintf(dhcp, 256, "%s", "enabled");
         fclose(fp);
     }
+
+    /* Check DHCP configuration for Red Hat based systems */
+    snprintf(file, 256, "%s%s", "ifcfg-", ifa_name);
+    snprintf(file_location, 256, "%s%s", WM_SYS_IF_DIR, file);
+
+    if ((dir=opendir(WM_SYS_IF_DIR))){
+        snprintf(dhcp, 256, "%s", "enabled");
+        closedir(dir);
+    }
+
+    if ((fp=fopen(file_location, "r"))){
+
+        switch (family){
+            case AF_INET:
+
+                snprintf(start_string, 256, "%s", "BOOTPROTO");
+                while (fgets(string, OS_MAXSTR, fp) != NULL){
+
+                    if (strstr(string, start_string) != NULL){
+
+                        if (strstr(string, "static") || strstr(string, "none")){
+                            snprintf(dhcp, 256, "%s", "disabled");
+                            return dhcp;
+                        }else if (strstr(string, "bootp")){
+                            snprintf(dhcp, 256, "%s", "using BOOTP protocol");
+                            return dhcp;
+                        }else if (strstr(string, "dhcp")){
+                            snprintf(dhcp, 256, "%s", "enabled");
+                            return dhcp;
+                        }else{
+                            snprintf(dhcp, 256, "%s", "unknown");
+                            return dhcp;
+                        }
+                    }
+                }
+                break;
+
+            case AF_INET6:
+
+                snprintf(start_string, 256, "%s", "DHCPV6C");
+                while (fgets(string, OS_MAXSTR, fp) != NULL){
+
+                    if (strstr(string, start_string) != NULL){
+                        if (strstr(string, "no")){
+                            snprintf(dhcp, 256, "%s", "disabled");
+                            return dhcp;
+                        }else if (strstr(string, "yes")){
+                            snprintf(dhcp, 256, "%s", "enabled");
+                            return dhcp;
+                        }else {
+                            snprintf(dhcp, 256, "%s", "unknown");
+                            return dhcp;
+                        }
+                    }
+                }
+                break;
+
+            default:
+                mtdebug1(WM_SYS_LOGTAG, "Unknown dhcp configuration.");
+                break;
+        }
+        fclose(fp);
+    }
+
     return dhcp;
 }
