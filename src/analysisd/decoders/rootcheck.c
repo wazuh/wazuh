@@ -199,6 +199,7 @@ int DecodeRootcheck(Eventinfo *lf)
                     return (0);
                 }
                 fprintf(fp, "!%ld", (long int)lf->time);
+                fflush(fp);
                 rootcheck_dec->fts = 0;
                 lf->decoder_info = rootcheck_dec;
                 lf->nfields = RK_NFIELDS;
