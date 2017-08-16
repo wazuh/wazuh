@@ -41,6 +41,7 @@ typedef struct _logreader {
     char *alias;
     char future;
     char *query;
+    wlabel_t *labels;
 
     void *(*read)(int i, int *rc, int drop_it);
 

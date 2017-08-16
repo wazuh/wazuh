@@ -185,6 +185,8 @@ void LogCollectorStart()
 #endif
             else if (strcmp("nmapg", logff[i].logformat) == 0) {
                 logff[i].read = read_nmapg;
+            } else if (strcmp("json", logff[i].logformat) == 0) {
+                logff[i].read = read_json;
             } else if (strcmp("mysql_log", logff[i].logformat) == 0) {
                 logff[i].read = read_mysql_log;
             } else if (strcmp("mssql_log", logff[i].logformat) == 0) {

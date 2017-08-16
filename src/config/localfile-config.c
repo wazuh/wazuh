@@ -29,9 +29,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_alias = "alias";
     const char *xml_localfile_future = "only-future-events";
     const char *xml_localfile_query = "query";
+    const char *xml_localfile_label = "label";
 
     logreader *logf;
     logreader_config *log_config;
+    size_t labels_z=0;
 
     log_config = (logreader_config *)d1;
 
@@ -74,6 +76,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].logformat = NULL;
     logf[pl].future = 0;
     logf[pl].query = NULL;
+    os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
     logf[pl].fp = NULL;
     logf[pl].ffile = NULL;
     logf[pl].djb_program_name = NULL;
@@ -95,6 +98,25 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
         } else if (strcmp(node[i]->element, xml_localfile_query) == 0) {
             os_strdup(node[i]->content, logf[pl].query);
+        } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
+            char *key_value = 0;
+            int j;
+            for (j = 0; node[i]->attributes[j]; j++) {
+                if (strcmp(node[i]->attributes[j], "key") == 0) {
+                    if (strlen(node[i]->values[j]) > 0) {
+                        key_value = node[i]->values[j];
+                    } else {
+                        merror("Label with empty key.");
+                        return (OS_INVALID);
+                    }
+                }
+            }
+            if (!key_value) {
+                merror("Expected 'key' attribute for label.");
+                return (OS_INVALID);
+            }
+
+            logf[pl].labels = labels_add(logf[pl].labels, &labels_z, key_value, node[i]->content, 0, 1);
         } else if (strcmp(node[i]->element, xml_localfile_command) == 0) {
             /* We don't accept remote commands from the manager - just in case */
             if (log_config->agent_cfg == 1 && log_config->accept_remote == 0) {
@@ -264,6 +286,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             if (strcmp(logf[pl].logformat, "syslog") == 0) {
             } else if (strcmp(logf[pl].logformat, "generic") == 0) {
+            } else if (strcmp(logf[pl].logformat, "json") == 0) {
             } else if (strcmp(logf[pl].logformat, "snort-full") == 0) {
             } else if (strcmp(logf[pl].logformat, "snort-fast") == 0) {
             } else if (strcmp(logf[pl].logformat, "apache") == 0) {

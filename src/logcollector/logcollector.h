@@ -65,6 +65,9 @@ void *read_fullcommand(int pos, int *rc, int drop_it);
 /* Read auditd events */
 void *read_audit(int pos, int *rc, int drop_it);
 
+/* Read json events */
+void *read_json(int pos, int *rc, int drop_it);
+
 #ifdef WIN32
 void win_startel();
 void win_readel();
