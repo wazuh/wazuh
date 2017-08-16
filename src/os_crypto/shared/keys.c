@@ -532,13 +532,14 @@ int OS_DeleteKey(keystore *keys, const char *id) {
 int OS_WriteKeys(const keystore *keys) {
     unsigned int i;
     File file;
+    char cidr[20];
 
     if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0)
         return -1;
 
     for (i = 0; i < keys->keysize; i++) {
         keyentry *entry = keys->keyentries[i];
-        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, entry->ip->ip, entry->key);
+        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key);
     }
 
     /* Write saved removed keys */
@@ -592,6 +593,8 @@ keystore* OS_DupKeys(const keystore *keys) {
         if (keys->keyentries[i]->ip) {
             os_calloc(1, sizeof(os_ip), copy->keyentries[i]->ip);
             copy->keyentries[i]->ip->ip = strdup(keys->keyentries[i]->ip->ip);
+            copy->keyentries[i]->ip->ip_address = keys->keyentries[i]->ip->ip_address;
+            copy->keyentries[i]->ip->netmask = keys->keyentries[i]->ip->netmask;
         }
 
         copy->keyentries[i]->sock = keys->keyentries[i]->sock;
