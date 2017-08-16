@@ -223,12 +223,11 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 break;
 
             case cJSON_Array:
-                array = logJSON->child;
                 os_malloc(OS_MAXSTR, value);
                 *value = '\0';
                 size_t n = 0;
                 size_t z;
-                while (array){
+                for (array = logJSON->child; array; array = array->next){
                     if (array->type == cJSON_String) {
                         z = strlen(array->valuestring);
                         if (n + z < OS_MAXSTR) {
@@ -283,6 +282,8 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                             *value = '\0';
                             break;
                         }
+                    } else {
+                        continue;
                     }
 
                     z = strlen(VALUE_COMMA);
@@ -294,11 +295,12 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                         *value = '\0';
                         break;
                     }
-
-                    array = array->next;
                 }
 
-                fillData(lf, key, value);
+                if (*value) {
+                    fillData(lf, key, value);
+                }
+
                 free(value);
                 break;
 
