@@ -112,7 +112,7 @@ void run_rk_check()
     if (rootcheck.checks.rc_files) {
         if (!rootcheck.rootkit_files) {
 #ifndef WIN32
-            mterror(ARGV0, "No rootcheck_files file configured.");
+            mtinfo(ARGV0, "No rootcheck_files file configured.");
 #endif
         } else {
             fp = fopen(rootcheck.rootkit_files, "r");
@@ -132,7 +132,7 @@ void run_rk_check()
     if (rootcheck.checks.rc_trojans) {
         if (!rootcheck.rootkit_trojans) {
 #ifndef WIN32
-            mterror(ARGV0, "No rootcheck_trojans file configured.");
+            mtinfo(ARGV0, "No rootcheck_trojans file configured.");
 #endif
         } else {
             fp = fopen(rootcheck.rootkit_trojans, "r");
@@ -154,7 +154,7 @@ void run_rk_check()
     /* Windows audit check */
     if (rootcheck.checks.rc_winaudit) {
         if (!rootcheck.winaudit) {
-            mterror(ARGV0, "No winaudit file configured.");
+            mtinfo(ARGV0, "No winaudit file configured.");
         } else {
             fp = fopen(rootcheck.winaudit, "r");
             if (!fp) {
@@ -169,7 +169,7 @@ void run_rk_check()
     /* Windows malware */
     if (rootcheck.checks.rc_winmalware) {
         if (!rootcheck.winmalware) {
-            mterror(ARGV0, "No winmalware file configured.");
+            mtinfo(ARGV0, "No winmalware file configured.");
         } else {
             fp = fopen(rootcheck.winmalware, "r");
             if (!fp) {
@@ -184,7 +184,7 @@ void run_rk_check()
     /* Windows Apps */
     if (rootcheck.checks.rc_winapps) {
         if (!rootcheck.winapps) {
-            mterror(ARGV0, "No winapps file configured.");
+            mtinfo(ARGV0, "No winapps file configured.");
         } else {
             fp = fopen(rootcheck.winapps, "r");
             if (!fp) {
