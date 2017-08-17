@@ -184,7 +184,7 @@ void wm_sys_network() {
             }
         }
         if (!found){
-            ifaces_list[j] = malloc(strlen(ifa->ifa_name) + 1);
+            os_calloc(1, strlen(ifa->ifa_name), ifaces_list[j]);
             strncpy(ifaces_list[j], ifa->ifa_name, strlen(ifa->ifa_name));
             j++;
         }
@@ -431,11 +431,18 @@ char* check_dhcp(char *ifa_name, int family){
         fclose(fp);
     }
 
-    /* Check DHCP configuration for Red Hat based systems */
+    /* Check DHCP configuration for Red Hat based systems and SUSE distributions */
     snprintf(file, 256, "%s%s", "ifcfg-", ifa_name);
-    snprintf(file_location, 256, "%s%s", WM_SYS_IF_DIR, file);
 
     if ((dir=opendir(WM_SYS_IF_DIR))){
+        snprintf(file_location, 256, "%s%s", WM_SYS_IF_DIR, file);
+        snprintf(dhcp, 10, "%s", "enabled");
+        closedir(dir);
+    }
+
+    /* For SUSE Linux distributions */
+    if ((dir=opendir(WM_SYS_IF_DIR_SUSE))){
+        snprintf(file_location, 256, "%s%s", WM_SYS_IF_DIR_SUSE, file);
         snprintf(dhcp, 10, "%s", "enabled");
         closedir(dir);
     }
