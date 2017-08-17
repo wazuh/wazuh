@@ -1,0 +1,6 @@
+  <wodle name="syscollector">
+    <disabled>no</disabled>
+    <interval>1h</interval>
+    <scan_on_start>yes</scan_on_start>
+    <network>yes</network>
+  </wodle>

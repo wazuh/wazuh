@@ -19,7 +19,7 @@
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
 GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
-
+SYSCOLLECTOR_TEMPLATE="./etc/templates/config/generic/wodle-syscollector.template"
 RULES_TEMPLATE="./etc/templates/config/generic/rules.template"
 AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
 AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
@@ -244,6 +244,11 @@ WriteAgent()
     # OpenSCAP
     WriteOpenSCAP "agent"
 
+    # Syscollector
+
+    cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Syscheck
     WriteSyscheck "agent"
 
@@ -338,6 +343,11 @@ WriteManager()
     # Write OpenSCAP
     WriteOpenSCAP "manager"
 
+    # Syscollector
+
+    cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+    
     # Write syscheck
     WriteSyscheck "manager"
 

@@ -12,7 +12,7 @@
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_INTERVAL = "interval";
-static const char *XML_SCAN_ON_START = "scan-on-start";
+static const char *XML_SCAN_ON_START = "scan_on_start";
 static const char *XML_DISABLED = "disabled";
 static const char *XML_NETWORK = "network";
 
