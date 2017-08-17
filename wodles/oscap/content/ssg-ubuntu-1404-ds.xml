@@ -1,41 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ds:data-stream-collection xmlns:ds="http://scap.nist.gov/schema/scap/source/1.2" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:cat="urn:oasis:names:tc:entity:xmlns:xml:catalog" id="scap_org.open-scap_collection_from_xccdf_ssg-debian8-xccdf-1.2.xml" schematron-version="1.2">
-  <ds:data-stream id="scap_org.open-scap_datastream_from_xccdf_ssg-debian8-xccdf-1.2.xml" scap-version="1.2" use-case="OTHER">
+<ds:data-stream-collection xmlns:ds="http://scap.nist.gov/schema/scap/source/1.2" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:cat="urn:oasis:names:tc:entity:xmlns:xml:catalog" id="scap_org.open-scap_collection_from_xccdf_ssg-ubuntu1404-xccdf-1.2.xml" schematron-version="1.2">
+  <ds:data-stream id="scap_org.open-scap_datastream_from_xccdf_ssg-ubuntu1404-xccdf-1.2.xml" scap-version="1.2" use-case="OTHER">
     <ds:dictionaries>
-      <ds:component-ref id="scap_org.open-scap_cref_ssg-debian8-cpe-dictionary.xml" xlink:href="#scap_org.open-scap_comp_ssg-debian8-cpe-dictionary.xml">
+      <ds:component-ref id="scap_org.open-scap_cref_ssg-ubuntu1404-cpe-dictionary.xml" xlink:href="#scap_org.open-scap_comp_ssg-ubuntu1404-cpe-dictionary.xml">
         <cat:catalog>
-          <cat:uri name="ssg-debian8-cpe-oval.xml" uri="#scap_org.open-scap_cref_ssg-debian8-cpe-oval.xml"/>
+          <cat:uri name="ssg-ubuntu1404-cpe-oval.xml" uri="#scap_org.open-scap_cref_ssg-ubuntu1404-cpe-oval.xml"/>
         </cat:catalog>
       </ds:component-ref>
     </ds:dictionaries>
     <ds:checklists>
-      <ds:component-ref id="scap_org.open-scap_cref_ssg-debian8-xccdf-1.2.xml" xlink:href="#scap_org.open-scap_comp_ssg-debian8-xccdf-1.2.xml">
+      <ds:component-ref id="scap_org.open-scap_cref_ssg-ubuntu1404-xccdf-1.2.xml" xlink:href="#scap_org.open-scap_comp_ssg-ubuntu1404-xccdf-1.2.xml">
         <cat:catalog>
-          <cat:uri name="ssg-debian8-oval.xml" uri="#scap_org.open-scap_cref_ssg-debian8-oval.xml"/>
-          <cat:uri name="ssg-debian8-ocil.xml" uri="#scap_org.open-scap_cref_ssg-debian8-ocil.xml"/>
+          <cat:uri name="ssg-ubuntu1404-oval.xml" uri="#scap_org.open-scap_cref_ssg-ubuntu1404-oval.xml"/>
+          <cat:uri name="ssg-ubuntu1404-ocil.xml" uri="#scap_org.open-scap_cref_ssg-ubuntu1404-ocil.xml"/>
         </cat:catalog>
       </ds:component-ref>
     </ds:checklists>
     <ds:checks>
-      <ds:component-ref id="scap_org.open-scap_cref_ssg-debian8-oval.xml" xlink:href="#scap_org.open-scap_comp_ssg-debian8-oval.xml"/>
-      <ds:component-ref id="scap_org.open-scap_cref_ssg-debian8-ocil.xml" xlink:href="#scap_org.open-scap_comp_ssg-debian8-ocil.xml"/>
-      <ds:component-ref id="scap_org.open-scap_cref_ssg-debian8-cpe-oval.xml" xlink:href="#scap_org.open-scap_comp_ssg-debian8-cpe-oval.xml"/>
+      <ds:component-ref id="scap_org.open-scap_cref_ssg-ubuntu1404-oval.xml" xlink:href="#scap_org.open-scap_comp_ssg-ubuntu1404-oval.xml"/>
+      <ds:component-ref id="scap_org.open-scap_cref_ssg-ubuntu1404-ocil.xml" xlink:href="#scap_org.open-scap_comp_ssg-ubuntu1404-ocil.xml"/>
+      <ds:component-ref id="scap_org.open-scap_cref_ssg-ubuntu1404-cpe-oval.xml" xlink:href="#scap_org.open-scap_comp_ssg-ubuntu1404-cpe-oval.xml"/>
     </ds:checks>
   </ds:data-stream>
-  <ds:component id="scap_org.open-scap_comp_ssg-debian8-oval.xml" timestamp="2017-06-29T18:34:20">
+  <ds:component id="scap_org.open-scap_comp_ssg-ubuntu1404-oval.xml" timestamp="2017-06-29T18:41:55">
     <ns0:oval_definitions xmlns:ns0="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:ns2="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:ns3="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" xmlns:ns4="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" xmlns:ns5="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-common-5 oval-common-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5 oval-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#independent independent-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#unix unix-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#linux linux-definitions-schema.xsd">
       <ns0:generator>
         <ns2:product_name>python</ns2:product_name>
         <ns2:product_version>2.7.13</ns2:product_version>
         <ns2:schema_version>5.10</ns2:schema_version>
-        <ns2:timestamp>2017-06-29T18:34:11</ns2:timestamp>
+        <ns2:timestamp>2017-06-29T18:41:29</ns2:timestamp>
       </ns0:generator>
       <ns0:definitions>
         <ns0:definition class="compliance" id="oval:ssg-file_permissions_systemmap:def:1" version="1">
           <ns0:metadata>
             <ns0:title>Verify that System.map files are readable only by root</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_debian</ns0:platform>
+              <ns0:platform>multi_platform_ubuntu</ns0:platform>
             </ns0:affected>
             <ns0:description>
         Checks that /boot/System.map-* are only readable by root.
@@ -50,7 +50,7 @@
           <ns0:metadata>
             <ns0:title>Force IOMMU usage in GRUB2</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_debian</ns0:platform>
+              <ns0:platform>multi_platform_ubuntu</ns0:platform>
             </ns0:affected>
             <ns0:description>Look for argument iommu=force in the kernel line in /etc/default/grub.</ns0:description>
             <reference ref_id="grub2_enable_iommu_force" source="ssg"/>
@@ -63,27 +63,28 @@
             </ns0:criteria>
           </ns0:criteria>
         </ns0:definition>
-        <ns0:definition class="inventory" id="oval:ssg-installed_OS_is_debian8:def:1" version="3">
+        <ns0:definition class="inventory" id="oval:ssg-installed_OS_is_ubuntu1404:def:1" version="1">
           <ns0:metadata>
-            <ns0:title>Debian 8</ns0:title>
+            <ns0:title>Ubuntu 1404</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_debian</ns0:platform>
+              <ns0:platform>multi_platform_ubuntu</ns0:platform>
             </ns0:affected>
-            <ns0:reference ref_id="cpe:/o:debian:debian_linux:8" source="CPE"/>
-            <ns0:description>The operating system installed on the system is Debian 8</ns0:description>
-            <reference ref_id="installed_OS_is_debian8" source="ssg"/>
+            <ns0:reference ref_id="cpe:/o:canonical:ubuntu_linux:14.04" source="CPE"/>
+            <ns0:description>The operating system installed on the system is Ubuntu 1404</ns0:description>
+            <reference ref_id="installed_OS_is_ubuntu1404" source="ssg"/>
           </ns0:metadata>
-          <ns0:criteria comment="current Debian version is Debian jessie" operator="AND">
+          <ns0:criteria comment="current Ubuntu version is Trusty" operator="AND">
             <ns0:extend_definition comment="Installed OS is part of the Unix family" definition_ref="oval:ssg-installed_OS_is_part_of_Unix_family:def:1"/>
-            <ns0:criterion comment="Debian is installed" test_ref="oval:ssg-test_debian:tst:1"/>
-            <ns0:criterion comment="Debian8 is installed" test_ref="oval:ssg-test_debian_8:tst:1"/>
+            <ns0:criterion comment="lsb-based distrib" test_ref="oval:ssg-test_lsb:tst:1"/>
+            <ns0:criterion comment="Ubuntu is installed" test_ref="oval:ssg-test_ubuntu:tst:1"/>
+            <ns0:criterion comment="Trusty is installed" test_ref="oval:ssg-test_ubuntu_trusty:tst:1"/>
           </ns0:criteria>
         </ns0:definition>
         <ns0:definition class="compliance" id="oval:ssg-partition_for_home:def:1" version="1">
           <ns0:metadata>
             <ns0:title>Ensure /home Located On Separate Partition</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>If user home directories will be stored locally, create a
       separate partition for /home. If /home will be mounted from another
@@ -100,7 +101,7 @@
           <ns0:metadata>
             <ns0:title>Ensure /srv Located On Separate Partition</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>If a file server (FTP, TFTP...) is hosted locally, create a separate partition
       for /srv at installation time (or migrate it later using LVM). If
@@ -117,7 +118,7 @@
           <ns0:metadata>
             <ns0:title>Ensure /tmp Located On Separate Partition</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The /tmp directory is a world-writable directory used for
       temporary file storage. Verify that it has its own partition or logical
@@ -132,7 +133,7 @@
           <ns0:metadata>
             <ns0:title>Ensure /var Located On Separate Partition</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>Ensuring that /var is mounted on its own partition enables
       the setting of more restrictive mount options, which is used as temporary
@@ -149,7 +150,7 @@
           <ns0:metadata>
             <ns0:title>Ensure /var/log Located On Separate Partition</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>System logs are stored in the /var/log directory. Ensure
       that it has its own partition or logical volume.</ns0:description>
@@ -163,7 +164,7 @@
           <ns0:metadata>
             <ns0:title>Ensure /var/log/audit Located On Separate Partition</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>Audit logs are stored in the /var/log/audit directory.
       Ensure that it has its own partition or logical volume. Make absolutely
@@ -231,206 +232,11 @@
             <ns0:criterion test_ref="oval:ssg-test_etc_shadow:tst:1"/>
           </ns0:criteria>
         </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_home_nodev:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add nodev Option to /home</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/home should be mounted with mount option nodev.</ns0:description>
-            <reference ref_id="mount_option_home_nodev" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="nodev on /home" test_ref="oval:ssg-test_home_partition_nodev:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_home_nosuid:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add nosuid Option to /home</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/home should be mounted with mount option nosuid.</ns0:description>
-            <reference ref_id="mount_option_home_nosuid" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="nosuid on /home" test_ref="oval:ssg-test_home_partition_nosuid:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_tmp_nodev:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add nodev Option to /tmp</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/tmp should be mounted with mount option nodev.</ns0:description>
-            <reference ref_id="mount_option_tmp_nodev" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="nodev on /tmp" test_ref="oval:ssg-test_tmp_partition_nodev:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_tmp_nosuid:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add nosuid Option to /tmp</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/tmp should be mounted with mount option nosuid.</ns0:description>
-            <reference ref_id="mount_option_tmp_nosuid" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="nosuid on /tmp" test_ref="oval:ssg-test_tmp_partition_nosuid:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_usr_nodev:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add nodev Option to /usr</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/usr should be mounted with mount option nodev.</ns0:description>
-            <reference ref_id="mount_option_usr_nodev" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="nodev on /usr" test_ref="oval:ssg-test_usr_partition_nodev:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_var_lib_nodev:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add nodev Option to /var/lib</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/var/lib should be mounted with mount option nodev.</ns0:description>
-            <reference ref_id="mount_option_var_lib_nodev" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="nodev on /var/lib" test_ref="oval:ssg-test_var_lib_partition_nodev:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_var_lib_nosuid:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add nosuid Option to /var/lib</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/var/lib should be mounted with mount option nosuid.</ns0:description>
-            <reference ref_id="mount_option_var_lib_nosuid" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="nosuid on /var/lib" test_ref="oval:ssg-test_var_lib_partition_nosuid:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_var_log_nodev:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add nodev Option to /var/log</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/var/log should be mounted with mount option nodev.</ns0:description>
-            <reference ref_id="mount_option_var_log_nodev" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="nodev on /var/log" test_ref="oval:ssg-test_var_log_partition_nodev:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_var_log_noexec:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add noexec Option to /var/log</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/var/log should be mounted with mount option noexec.</ns0:description>
-            <reference ref_id="mount_option_var_log_noexec" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="noexec on /var/log" test_ref="oval:ssg-test_var_log_partition_noexec:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_var_log_nosuid:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add nosuid Option to /var/log</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/var/log should be mounted with mount option nosuid.</ns0:description>
-            <reference ref_id="mount_option_var_log_nosuid" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="nosuid on /var/log" test_ref="oval:ssg-test_var_log_partition_nosuid:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_var_nodev:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add nodev Option to /var</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/var should be mounted with mount option nodev.</ns0:description>
-            <reference ref_id="mount_option_var_nodev" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="nodev on /var" test_ref="oval:ssg-test_var_partition_nodev:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_var_noexec:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add noexec Option to /var</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/var should be mounted with mount option noexec.</ns0:description>
-            <reference ref_id="mount_option_var_noexec" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="noexec on /var" test_ref="oval:ssg-test_var_partition_noexec:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-mount_option_var_nosuid:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Add nosuid Option to /var</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:description>/var should be mounted with mount option nosuid.</ns0:description>
-            <reference ref_id="mount_option_var_nosuid" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="nosuid on /var" test_ref="oval:ssg-test_var_partition_nosuid:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-package_auditd_installed:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Package auditd Installed</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
-            </ns0:affected>
-            <ns0:description>The DEB package auditd should be installed.</ns0:description>
-            <reference ref_id="package_auditd_installed" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="package auditd is installed" test_ref="oval:ssg-test_package_auditd_installed:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-package_cron_installed:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Package cron Installed</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
-            </ns0:affected>
-            <ns0:description>The DEB package cron should be installed.</ns0:description>
-            <reference ref_id="package_cron_installed" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria>
-            <ns0:criterion comment="package cron is installed" test_ref="oval:ssg-test_package_cron_installed:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
         <ns0:definition class="compliance" id="oval:ssg-package_inetutils-telnetd_removed:def:1" version="1">
           <ns0:metadata>
             <ns0:title>Package inetutils-telnetd Removed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The DEB package inetutils-telnetd should be removed.</ns0:description>
             <reference ref_id="package_inetutils-telnetd_removed" source="ssg"/>
@@ -443,7 +249,7 @@
           <ns0:metadata>
             <ns0:title>Package nis Removed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The DEB package nis should be removed.</ns0:description>
             <reference ref_id="package_nis_removed" source="ssg"/>
@@ -456,7 +262,7 @@
           <ns0:metadata>
             <ns0:title>Package ntp Installed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The DEB package ntp should be installed.</ns0:description>
             <reference ref_id="package_ntp_installed" source="ssg"/>
@@ -469,7 +275,7 @@
           <ns0:metadata>
             <ns0:title>Package ntpdate Removed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The DEB package ntpdate should be removed.</ns0:description>
             <reference ref_id="package_ntpdate_removed" source="ssg"/>
@@ -482,7 +288,7 @@
           <ns0:metadata>
             <ns0:title>Package openssh-server Removed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The DEB package openssh-server should be removed.</ns0:description>
             <reference ref_id="package_openssh-server_removed" source="ssg"/>
@@ -495,7 +301,7 @@
           <ns0:metadata>
             <ns0:title>Package rsyslog Installed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The DEB package rsyslog should be installed.</ns0:description>
             <reference ref_id="package_rsyslog_installed" source="ssg"/>
@@ -504,24 +310,24 @@
             <ns0:criterion comment="package rsyslog is installed" test_ref="oval:ssg-test_package_rsyslog_installed:tst:1"/>
           </ns0:criteria>
         </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-package_syslog-ng-core_installed:def:1" version="1">
+        <ns0:definition class="compliance" id="oval:ssg-package_syslog-ng_installed:def:1" version="1">
           <ns0:metadata>
-            <ns0:title>Package syslog-ng-core Installed</ns0:title>
+            <ns0:title>Package syslog-ng Installed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
-            <ns0:description>The DEB package syslog-ng-core should be installed.</ns0:description>
-            <reference ref_id="package_syslog-ng-core_installed" source="ssg"/>
+            <ns0:description>The DEB package syslog-ng should be installed.</ns0:description>
+            <reference ref_id="package_syslog-ng_installed" source="ssg"/>
           </ns0:metadata>
           <ns0:criteria>
-            <ns0:criterion comment="package syslog-ng-core is installed" test_ref="oval:ssg-test_package_syslog-ng-core_installed:tst:1"/>
+            <ns0:criterion comment="package syslog-ng is installed" test_ref="oval:ssg-test_package_syslog-ng_installed:tst:1"/>
           </ns0:criteria>
         </ns0:definition>
         <ns0:definition class="compliance" id="oval:ssg-package_telnetd-ssl_removed:def:1" version="1">
           <ns0:metadata>
             <ns0:title>Package telnetd-ssl Removed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The DEB package telnetd-ssl should be removed.</ns0:description>
             <reference ref_id="package_telnetd-ssl_removed" source="ssg"/>
@@ -534,7 +340,7 @@
           <ns0:metadata>
             <ns0:title>Package telnetd Removed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The DEB package telnetd should be removed.</ns0:description>
             <reference ref_id="package_telnetd_removed" source="ssg"/>
@@ -547,7 +353,7 @@
           <ns0:metadata>
             <ns0:title>Service sshd Disabled</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The sshd service should be disabled if possible.</ns0:description>
             <reference ref_id="service_sshd_disabled" source="ssg"/>
@@ -561,7 +367,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "fs.protected_hardlinks" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "fs.protected_hardlinks" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_fs_protected_hardlinks" source="ssg"/>
@@ -575,7 +381,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "fs.protected_symlinks" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "fs.protected_symlinks" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_fs_protected_symlinks" source="ssg"/>
@@ -589,7 +395,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "fs.suid_dumpable" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "fs.suid_dumpable" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_fs_suid_dumpable" source="ssg"/>
@@ -603,7 +409,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.dmesg_restrict" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "kernel.dmesg_restrict" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_kernel_dmesg_restrict" source="ssg"/>
@@ -617,7 +423,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.kptr_restrict" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "kernel.kptr_restrict" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_kernel_kptr_restrict" source="ssg"/>
@@ -631,7 +437,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.perf_cpu_time_max_percent" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "kernel.perf_cpu_time_max_percent" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_kernel_perf_cpu_time_max_percent" source="ssg"/>
@@ -645,7 +451,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.perf_event_max_sample_rate" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "kernel.perf_event_max_sample_rate" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_kernel_perf_event_max_sample_rate" source="ssg"/>
@@ -659,7 +465,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.perf_event_paranoid" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "kernel.perf_event_paranoid" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_kernel_perf_event_paranoid" source="ssg"/>
@@ -673,7 +479,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.pid_max" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "kernel.pid_max" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_kernel_pid_max" source="ssg"/>
@@ -687,7 +493,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.randomize_va_space" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "kernel.randomize_va_space" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_kernel_randomize_va_space" source="ssg"/>
@@ -701,7 +507,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.sysrq" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "kernel.sysrq" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_kernel_sysrq" source="ssg"/>
@@ -715,7 +521,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "net.ipv4.ip_forward" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "net.ipv4.ip_forward" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_net_ipv4_ip_forward" source="ssg"/>
@@ -729,7 +535,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "fs.protected_hardlinks" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "fs.protected_hardlinks" parameter should be set to "1" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_fs_protected_hardlinks" source="ssg"/>
@@ -742,7 +548,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "fs.protected_symlinks" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "fs.protected_symlinks" parameter should be set to "1" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_fs_protected_symlinks" source="ssg"/>
@@ -755,7 +561,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "fs.suid_dumpable" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "fs.suid_dumpable" parameter should be set to "0" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_fs_suid_dumpable" source="ssg"/>
@@ -768,7 +574,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.dmesg_restrict" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.dmesg_restrict" parameter should be set to "1" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_kernel_dmesg_restrict" source="ssg"/>
@@ -781,7 +587,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.kptr_restrict" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.kptr_restrict" parameter should be set to "1" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_kernel_kptr_restrict" source="ssg"/>
@@ -794,7 +600,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.perf_cpu_time_max_percent" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.perf_cpu_time_max_percent" parameter should be set to "1" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_kernel_perf_cpu_time_max_percent" source="ssg"/>
@@ -807,7 +613,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.perf_event_max_sample_rate" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.perf_event_max_sample_rate" parameter should be set to "1" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_kernel_perf_event_max_sample_rate" source="ssg"/>
@@ -820,7 +626,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.perf_event_paranoid" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.perf_event_paranoid" parameter should be set to "2" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_kernel_perf_event_paranoid" source="ssg"/>
@@ -833,7 +639,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.pid_max" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.pid_max" parameter should be set to "65536" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_kernel_pid_max" source="ssg"/>
@@ -846,7 +652,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.randomize_va_space" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.randomize_va_space" parameter should be set to "2" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_kernel_randomize_va_space" source="ssg"/>
@@ -859,7 +665,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.sysrq" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.sysrq" parameter should be set to "0" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_kernel_sysrq" source="ssg"/>
@@ -872,7 +678,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "net.ipv4.ip_forward" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "net.ipv4.ip_forward" parameter should be set to the appropriate value in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_net_ipv4_ip_forward" source="ssg"/>
@@ -885,7 +691,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "vm.mmap_min_addr" Parameter Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "vm.mmap_min_addr" parameter should be set to "65536" in system runtime.</ns0:description>
             <reference ref_id="sysctl_runtime_vm_mmap_min_addr" source="ssg"/>
@@ -898,7 +704,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "fs.protected_hardlinks" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "fs.protected_hardlinks" parameter should be set to "1" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_fs_protected_hardlinks" source="ssg"/>
@@ -914,7 +720,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "fs.protected_symlinks" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "fs.protected_symlinks" parameter should be set to "1" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_fs_protected_symlinks" source="ssg"/>
@@ -930,7 +736,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "fs.suid_dumpable" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "fs.suid_dumpable" parameter should be set to "0" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_fs_suid_dumpable" source="ssg"/>
@@ -946,7 +752,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.dmesg_restrict" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.dmesg_restrict" parameter should be set to "1" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_kernel_dmesg_restrict" source="ssg"/>
@@ -962,7 +768,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.kptr_restrict" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.kptr_restrict" parameter should be set to "1" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_kernel_kptr_restrict" source="ssg"/>
@@ -978,7 +784,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.perf_cpu_time_max_percent" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.perf_cpu_time_max_percent" parameter should be set to "1" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_kernel_perf_cpu_time_max_percent" source="ssg"/>
@@ -994,7 +800,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.perf_event_max_sample_rate" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.perf_event_max_sample_rate" parameter should be set to "1" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_kernel_perf_event_max_sample_rate" source="ssg"/>
@@ -1010,7 +816,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.perf_event_paranoid" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.perf_event_paranoid" parameter should be set to "2" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_kernel_perf_event_paranoid" source="ssg"/>
@@ -1026,7 +832,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.pid_max" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.pid_max" parameter should be set to "65536" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_kernel_pid_max" source="ssg"/>
@@ -1042,7 +848,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.randomize_va_space" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.randomize_va_space" parameter should be set to "2" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_kernel_randomize_va_space" source="ssg"/>
@@ -1058,7 +864,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "kernel.sysrq" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "kernel.sysrq" parameter should be set to "0" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_kernel_sysrq" source="ssg"/>
@@ -1074,7 +880,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "net.ipv4.ip_forward" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "net.ipv4.ip_forward" parameter should be set to the appropriate value in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_net_ipv4_ip_forward" source="ssg"/>
@@ -1090,7 +896,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "vm.mmap_min_addr" Parameter Configuration Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The kernel "vm.mmap_min_addr" parameter should be set to "65536" in the system configuration.</ns0:description>
             <reference ref_id="sysctl_static_vm_mmap_min_addr" source="ssg"/>
@@ -1106,7 +912,7 @@
           <ns0:metadata>
             <ns0:title>Kernel "vm.mmap_min_addr" Parameter Configuration and Runtime Check</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
             </ns0:affected>
             <ns0:description>The "vm.mmap_min_addr" kernel parameter should be set to the appropriate value in both system configuration and system runtime.</ns0:description>
             <reference ref_id="sysctl_vm_mmap_min_addr" source="ssg"/>
@@ -1254,20 +1060,6 @@
           <ns0:criteria comment="Detect any usage of allow-ynauthenticated option" operator="OR">
             <ns0:criterion comment="Check /etc/apt/apt.conf file" test_ref="oval:ssg-test_unauthenticated_apt_conf:tst:1"/>
             <ns0:criterion comment="Check /etc/apt/apt.conf.d/* file" test_ref="oval:ssg-test_unauthenticated_apt_conf_d:tst:1"/>
-          </ns0:criteria>
-        </ns0:definition>
-        <ns0:definition class="compliance" id="oval:ssg-apt_sources_list_official:def:1" version="1">
-          <ns0:metadata>
-            <ns0:title>Only official, up-to-date distribution repositories should be used</ns0:title>
-            <ns0:affected family="unix">
-              <ns0:platform>multi_platform_debian</ns0:platform>
-            </ns0:affected>
-            <ns0:description>Official distribution repositories contain up-to-date distribution security and functional patches.</ns0:description>
-            <reference ref_id="apt_sources_list_official" source="ssg"/>
-          </ns0:metadata>
-          <ns0:criteria comment="Match sources.list distribution repositories usage" operator="AND">
-            <ns0:criterion comment="Check /etc/apt/sources(.d/.+).list file for base" test_ref="oval:ssg-test_apt_sources_list_base_official:tst:1"/>
-            <ns0:criterion comment="Check /etc/apt/sources(.d/.+).list file for security" test_ref="oval:ssg-test_apt_sources_list_security_official:tst:1"/>
           </ns0:criteria>
         </ns0:definition>
         <ns0:definition class="compliance" id="oval:ssg-auditd_audispd_syslog_plugin_activated:def:1" version="1">
@@ -2192,11 +1984,14 @@ This should be disabled.</ns0:description>
         <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="check for GRUB_CMDLINE_LINUX_DEFAULT in /etc/default/grub" id="oval:ssg-test_grub2_default_exists:tst:1" version="1">
           <ns4:object object_ref="oval:ssg-object_grub2_default_exists:obj:1"/>
         </ns4:textfilecontent54_test>
-        <ns3:file_test check="all" check_existence="all_exist" comment="/etc/debian_version exists" id="oval:ssg-test_debian:tst:1" version="1">
-          <ns3:object object_ref="oval:ssg-obj_debian:obj:1"/>
+        <ns3:file_test check="all" check_existence="all_exist" comment="/etc/lsb-release exists" id="oval:ssg-test_lsb:tst:1" version="1">
+          <ns3:object object_ref="oval:ssg-obj_lsb:obj:1"/>
         </ns3:file_test>
-        <ns4:textfilecontent54_test check="all" check_existence="at_least_one_exists" comment="Check Debian version" id="oval:ssg-test_debian_8:tst:1" version="1">
-          <ns4:object object_ref="oval:ssg-obj_debian_8:obj:1"/>
+        <ns4:textfilecontent54_test check="all" check_existence="at_least_one_exists" comment="Check Ubuntu" id="oval:ssg-test_ubuntu:tst:1" version="1">
+          <ns4:object object_ref="oval:ssg-obj_ubuntu:obj:1"/>
+        </ns4:textfilecontent54_test>
+        <ns4:textfilecontent54_test check="all" check_existence="at_least_one_exists" comment="Check Ubuntu version" id="oval:ssg-test_ubuntu_trusty:tst:1" version="1">
+          <ns4:object object_ref="oval:ssg-obj_ubuntu_trusty:obj:1"/>
         </ns4:textfilecontent54_test>
         <ns5:partition_test check="all" check_existence="all_exist" comment="/home on own partition" id="oval:ssg-test_home_partition:tst:1" version="1">
           <ns5:object object_ref="oval:ssg-object_mount_home_own_partition:obj:1"/>
@@ -2240,64 +2035,6 @@ This should be disabled.</ns0:description>
           <ns3:state state_ref="oval:ssg-_etc_shadow_state_gid_42:ste:1"/>
           <ns3:state state_ref="oval:ssg-_etc_shadow_state_mode_0640:ste:1"/>
         </ns3:file_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="nodev on /home" id="oval:ssg-test_home_partition_nodev:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_home_partition_nodev:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_home_partition_nodev:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="nosuid on /home" id="oval:ssg-test_home_partition_nosuid:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_home_partition_nosuid:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_home_partition_nosuid:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="nodev on /tmp" id="oval:ssg-test_tmp_partition_nodev:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_tmp_partition_nodev:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_tmp_partition_nodev:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="nosuid on /tmp" id="oval:ssg-test_tmp_partition_nosuid:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_tmp_partition_nosuid:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_tmp_partition_nosuid:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="nodev on /usr" id="oval:ssg-test_usr_partition_nodev:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_usr_partition_nodev:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_usr_partition_nodev:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="nodev on /var/lib" id="oval:ssg-test_var_lib_partition_nodev:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_var_lib_partition_nodev:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_var_lib_partition_nodev:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="nosuid on /var/lib" id="oval:ssg-test_var_lib_partition_nosuid:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_var_lib_partition_nosuid:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_var_lib_partition_nosuid:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="nodev on /var/log" id="oval:ssg-test_var_log_partition_nodev:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_var_log_partition_nodev:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_var_log_partition_nodev:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="noexec on /var/log" id="oval:ssg-test_var_log_partition_noexec:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_var_log_partition_noexec:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_var_log_partition_noexec:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="nosuid on /var/log" id="oval:ssg-test_var_log_partition_nosuid:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_var_log_partition_nosuid:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_var_log_partition_nosuid:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="nodev on /var" id="oval:ssg-test_var_partition_nodev:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_var_partition_nodev:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_var_partition_nodev:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="noexec on /var" id="oval:ssg-test_var_partition_noexec:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_var_partition_noexec:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_var_partition_noexec:ste:1"/>
-        </ns5:partition_test>
-        <ns5:partition_test check="all" check_existence="all_exist" comment="nosuid on /var" id="oval:ssg-test_var_partition_nosuid:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-object_var_partition_nosuid:obj:1"/>
-          <ns5:state state_ref="oval:ssg-state_var_partition_nosuid:ste:1"/>
-        </ns5:partition_test>
-        <ns5:dpkginfo_test check="all" check_existence="all_exist" comment="package auditd is installed" id="oval:ssg-test_package_auditd_installed:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-obj_package_auditd_installed:obj:1"/>
-        </ns5:dpkginfo_test>
-        <ns5:dpkginfo_test check="all" check_existence="all_exist" comment="package cron is installed" id="oval:ssg-test_package_cron_installed:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-obj_package_cron_installed:obj:1"/>
-        </ns5:dpkginfo_test>
         <ns5:dpkginfo_test check="all" check_existence="none_exist" comment="package inetutils-telnetd is removed" id="oval:ssg-test_package_inetutils-telnetd_removed:tst:1" version="1">
           <ns5:object object_ref="oval:ssg-obj_package_inetutils-telnetd_removed:obj:1"/>
         </ns5:dpkginfo_test>
@@ -2316,8 +2053,8 @@ This should be disabled.</ns0:description>
         <ns5:dpkginfo_test check="all" check_existence="all_exist" comment="package rsyslog is installed" id="oval:ssg-test_package_rsyslog_installed:tst:1" version="1">
           <ns5:object object_ref="oval:ssg-obj_package_rsyslog_installed:obj:1"/>
         </ns5:dpkginfo_test>
-        <ns5:dpkginfo_test check="all" check_existence="all_exist" comment="package syslog-ng-core is installed" id="oval:ssg-test_package_syslog-ng-core_installed:tst:1" version="1">
-          <ns5:object object_ref="oval:ssg-obj_package_syslog-ng-core_installed:obj:1"/>
+        <ns5:dpkginfo_test check="all" check_existence="all_exist" comment="package syslog-ng is installed" id="oval:ssg-test_package_syslog-ng_installed:tst:1" version="1">
+          <ns5:object object_ref="oval:ssg-obj_package_syslog-ng_installed:obj:1"/>
         </ns5:dpkginfo_test>
         <ns5:dpkginfo_test check="all" check_existence="none_exist" comment="package telnetd-ssl is removed" id="oval:ssg-test_package_telnetd-ssl_removed:tst:1" version="1">
           <ns5:object object_ref="oval:ssg-obj_package_telnetd-ssl_removed:obj:1"/>
@@ -2597,12 +2334,6 @@ This should be disabled.</ns0:description>
         </ns4:textfilecontent54_test>
         <ns4:textfilecontent54_test check="all" check_existence="none_exist" comment="Checks usage of unauthenticated in apt.conf.d/*" id="oval:ssg-test_unauthenticated_apt_conf_d:tst:1" version="1">
           <ns4:object object_ref="oval:ssg-obj_unauthenticated_apt_conf_d:obj:1"/>
-        </ns4:textfilecontent54_test>
-        <ns4:textfilecontent54_test check="all" check_existence="at_least_one_exists" comment="Checks usage of official distribution base repositories" id="oval:ssg-test_apt_sources_list_base_official:tst:1" version="1">
-          <ns4:object object_ref="oval:ssg-obj_apt_sources_list_base_official:obj:1"/>
-        </ns4:textfilecontent54_test>
-        <ns4:textfilecontent54_test check="all" check_existence="at_least_one_exists" comment="Checks usage of official distribution security repositories" id="oval:ssg-test_apt_sources_list_security_official:tst:1" version="1">
-          <ns4:object object_ref="oval:ssg-obj_apt_sources_list_security_official:obj:1"/>
         </ns4:textfilecontent54_test>
         <ns4:textfilecontent54_test check="all" comment="audispd syslog plugin activated" id="oval:ssg-test_auditd_audispd_syslog_plugin_activated:tst:1" version="1">
           <ns4:object object_ref="oval:ssg-object_auditd_audispd_syslog_plugin_activated:obj:1"/>
@@ -2909,12 +2640,17 @@ This should be disabled.</ns0:description>
           <ns4:pattern operation="pattern match">^\s*GRUB_CMDLINE_LINUX_DEFAULT=.*$</ns4:pattern>
           <ns4:instance datatype="int" operation="greater than or equal">1</ns4:instance>
         </ns4:textfilecontent54_object>
-        <ns3:file_object comment="check /etc/debian_version file" id="oval:ssg-obj_debian:obj:1" version="1">
-          <ns3:filepath>/etc/debian_version</ns3:filepath>
+        <ns3:file_object comment="check /etc/lsb-release file" id="oval:ssg-obj_lsb:obj:1" version="1">
+          <ns3:filepath>/etc/lsb-release</ns3:filepath>
         </ns3:file_object>
-        <ns4:textfilecontent54_object comment="Check Debian version" id="oval:ssg-obj_debian_8:obj:1" version="1">
-          <ns4:filepath>/etc/debian_version</ns4:filepath>
-          <ns4:pattern operation="pattern match">^8.[0-9]+$</ns4:pattern>
+        <ns4:textfilecontent54_object comment="Check Ubuntu" id="oval:ssg-obj_ubuntu:obj:1" version="1">
+          <ns4:filepath>/etc/lsb-release</ns4:filepath>
+          <ns4:pattern operation="pattern match">^DISTRIB_ID=Ubuntu$</ns4:pattern>
+          <ns4:instance datatype="int">1</ns4:instance>
+        </ns4:textfilecontent54_object>
+        <ns4:textfilecontent54_object comment="Check Ubuntu version" id="oval:ssg-obj_ubuntu_trusty:obj:1" version="1">
+          <ns4:filepath>/etc/lsb-release</ns4:filepath>
+          <ns4:pattern operation="pattern match">^DISTRIB_CODENAME=trusty$</ns4:pattern>
           <ns4:instance datatype="int">1</ns4:instance>
         </ns4:textfilecontent54_object>
         <ns5:partition_object id="oval:ssg-object_mount_home_own_partition:obj:1" version="1">
@@ -2951,51 +2687,6 @@ This should be disabled.</ns0:description>
           <ns3:path>/etc</ns3:path>
           <ns3:filename>shadow</ns3:filename>
         </ns3:file_object>
-        <ns5:partition_object id="oval:ssg-object_home_partition_nodev:obj:1" version="1">
-          <ns5:mount_point>/home</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_home_partition_nosuid:obj:1" version="1">
-          <ns5:mount_point>/home</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_tmp_partition_nodev:obj:1" version="1">
-          <ns5:mount_point>/tmp</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_tmp_partition_nosuid:obj:1" version="1">
-          <ns5:mount_point>/tmp</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_usr_partition_nodev:obj:1" version="1">
-          <ns5:mount_point>/usr</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_var_lib_partition_nodev:obj:1" version="1">
-          <ns5:mount_point>/var/lib</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_var_lib_partition_nosuid:obj:1" version="1">
-          <ns5:mount_point>/var/lib</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_var_log_partition_nodev:obj:1" version="1">
-          <ns5:mount_point>/var/log</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_var_log_partition_noexec:obj:1" version="1">
-          <ns5:mount_point>/var/log</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_var_log_partition_nosuid:obj:1" version="1">
-          <ns5:mount_point>/var/log</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_var_partition_nodev:obj:1" version="1">
-          <ns5:mount_point>/var</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_var_partition_noexec:obj:1" version="1">
-          <ns5:mount_point>/var</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:partition_object id="oval:ssg-object_var_partition_nosuid:obj:1" version="1">
-          <ns5:mount_point>/var</ns5:mount_point>
-        </ns5:partition_object>
-        <ns5:dpkginfo_object id="oval:ssg-obj_package_auditd_installed:obj:1" version="1">
-          <ns5:name>auditd</ns5:name>
-        </ns5:dpkginfo_object>
-        <ns5:dpkginfo_object id="oval:ssg-obj_package_cron_installed:obj:1" version="1">
-          <ns5:name>cron</ns5:name>
-        </ns5:dpkginfo_object>
         <ns5:dpkginfo_object id="oval:ssg-obj_package_inetutils-telnetd_removed:obj:1" version="1">
           <ns5:name>inetutils-telnetd</ns5:name>
         </ns5:dpkginfo_object>
@@ -3014,8 +2705,8 @@ This should be disabled.</ns0:description>
         <ns5:dpkginfo_object id="oval:ssg-obj_package_rsyslog_installed:obj:1" version="1">
           <ns5:name>rsyslog</ns5:name>
         </ns5:dpkginfo_object>
-        <ns5:dpkginfo_object id="oval:ssg-obj_package_syslog-ng-core_installed:obj:1" version="1">
-          <ns5:name>syslog-ng-core</ns5:name>
+        <ns5:dpkginfo_object id="oval:ssg-obj_package_syslog-ng_installed:obj:1" version="1">
+          <ns5:name>syslog-ng</ns5:name>
         </ns5:dpkginfo_object>
         <ns5:dpkginfo_object id="oval:ssg-obj_package_telnetd-ssl_removed:obj:1" version="1">
           <ns5:name>telnetd-ssl</ns5:name>
@@ -3471,16 +3162,6 @@ This should be disabled.</ns0:description>
         <ns4:textfilecontent54_object id="oval:ssg-obj_unauthenticated_apt_conf_d:obj:1" version="1">
           <ns4:filepath operation="pattern match">/etc/apt/apt.conf.d/\*</ns4:filepath>
           <ns4:pattern operation="pattern match">^[\s]*APT::Get::AllowUnauthenticated(=|[\s]+)(yes|true|True);.*$</ns4:pattern>
-          <ns4:instance datatype="int">1</ns4:instance>
-        </ns4:textfilecontent54_object>
-        <ns4:textfilecontent54_object id="oval:ssg-obj_apt_sources_list_base_official:obj:1" version="1">
-          <ns4:filepath operation="pattern match">/etc/apt/sources(.d\/[a-zA-Z0-9]+){0,1}.list</ns4:filepath>
-          <ns4:pattern operation="pattern match">^deb[\s]+http://[a-z\.]+\.debian\.org/debian[\s]+[a-z]+[\s]+main</ns4:pattern>
-          <ns4:instance datatype="int">1</ns4:instance>
-        </ns4:textfilecontent54_object>
-        <ns4:textfilecontent54_object id="oval:ssg-obj_apt_sources_list_security_official:obj:1" version="1">
-          <ns4:filepath operation="pattern match">/etc/apt/sources(.d\/[a-zA-Z0-9]+){0,1}.list</ns4:filepath>
-          <ns4:pattern operation="pattern match">^deb[\s]+http://security\.debian\.org[\s]+[a-z]+/updates[\s]+main</ns4:pattern>
           <ns4:instance datatype="int">1</ns4:instance>
         </ns4:textfilecontent54_object>
         <ns4:textfilecontent54_object id="oval:ssg-object_auditd_audispd_syslog_plugin_activated:obj:1" version="1">
@@ -3940,45 +3621,6 @@ This should be disabled.</ns0:description>
           <ns3:owrite datatype="boolean">false</ns3:owrite>
           <ns3:oexec datatype="boolean">false</ns3:oexec>
         </ns3:file_state>
-        <ns5:partition_state id="oval:ssg-state_home_partition_nodev:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">nodev</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_home_partition_nosuid:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">nosuid</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_tmp_partition_nodev:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">nodev</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_tmp_partition_nosuid:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">nosuid</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_usr_partition_nodev:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">nodev</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_var_lib_partition_nodev:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">nodev</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_var_lib_partition_nosuid:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">nosuid</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_var_log_partition_nodev:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">nodev</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_var_log_partition_noexec:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">noexec</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_var_log_partition_nosuid:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">nosuid</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_var_partition_nodev:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">nodev</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_var_partition_noexec:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">noexec</ns5:mount_options>
-        </ns5:partition_state>
-        <ns5:partition_state id="oval:ssg-state_var_partition_nosuid:ste:1" version="1">
-          <ns5:mount_options datatype="string" entity_check="at least one" operation="equals">nosuid</ns5:mount_options>
-        </ns5:partition_state>
         <ns3:sysctl_state id="oval:ssg-state_sysctl_fs_protected_hardlinks:ste:1" version="1">
           <ns3:value datatype="int" operation="equals">1</ns3:value>
         </ns3:sysctl_state>
@@ -4294,11 +3936,11 @@ This should be disabled.</ns0:description>
       </ns0:variables>
     </ns0:oval_definitions>
   </ds:component>
-  <ds:component id="scap_org.open-scap_comp_ssg-debian8-ocil.xml" timestamp="2017-06-29T18:34:20">
+  <ds:component id="scap_org.open-scap_comp_ssg-ubuntu1404-ocil.xml" timestamp="2017-06-29T18:41:54">
     <ns0:ocil xmlns:ns0="http://scap.nist.gov/schema/ocil/2.0">
       <ns0:generator>
         <ns0:schema_version>2.0</ns0:schema_version>
-        <ns0:timestamp>2017-06-29T18:34:00Z</ns0:timestamp>
+        <ns0:timestamp>2017-06-29T18:41:44Z</ns0:timestamp>
       </ns0:generator>
       <ns0:questionnaires>
         <ns0:questionnaire id="ocil:ssg-file_permissions_systemmap_ocil:questionnaire:1">
@@ -4469,10 +4111,10 @@ This should be disabled.</ns0:description>
             <ns0:test_action_ref>ocil:ssg-service_auditd_enabled_action:testaction:1</ns0:test_action_ref>
           </ns0:actions>
         </ns0:questionnaire>
-        <ns0:questionnaire id="ocil:ssg-service_ntp_enabled_ocil:questionnaire:1">
+        <ns0:questionnaire id="ocil:ssg-service_ntpd_enabled_ocil:questionnaire:1">
           <ns0:title>Enable the ntpd service</ns0:title>
           <ns0:actions>
-            <ns0:test_action_ref>ocil:ssg-service_ntp_enabled_action:testaction:1</ns0:test_action_ref>
+            <ns0:test_action_ref>ocil:ssg-service_ntpd_enabled_action:testaction:1</ns0:test_action_ref>
           </ns0:actions>
         </ns0:questionnaire>
         <ns0:questionnaire id="ocil:ssg-sshd_allow_only_protocol2_ocil:questionnaire:1">
@@ -4731,7 +4373,7 @@ This should be disabled.</ns0:description>
             <ns0:result>FAIL</ns0:result>
           </ns0:when_false>
         </ns0:boolean_question_test_action>
-        <ns0:boolean_question_test_action id="ocil:ssg-service_ntp_enabled_action:testaction:1" question_ref="ocil:ssg-service_ntp_enabled_question:question:1">
+        <ns0:boolean_question_test_action id="ocil:ssg-service_ntpd_enabled_action:testaction:1" question_ref="ocil:ssg-service_ntpd_enabled_question:question:1">
           <ns0:when_true>
             <ns0:result>PASS</ns0:result>
           </ns0:when_true>
@@ -5168,13 +4810,13 @@ auditd service:
 			Is it the case that ?
 			</ns0:question_text>
         </ns0:boolean_question>
-        <ns0:boolean_question id="ocil:ssg-service_ntp_enabled_question:question:1">
+        <ns0:boolean_question id="ocil:ssg-service_ntpd_enabled_question:question:1">
           <ns0:question_text>
           
         Run the following command to determine the current status of the
-ntp service:
-        $ sudo service ntp status
-        If the service is enabled, it should return the following: ntp is running...
+ntpd service:
+        $ sudo service ntpd status
+        If the service is enabled, it should return the following: ntpd is running...
         
 			Is it the case that ?
 			</ns0:question_text>
@@ -5238,12 +4880,12 @@ ClientAliveCountMax 0
       </ns0:questions>
     </ns0:ocil>
   </ds:component>
-  <ds:component id="scap_org.open-scap_comp_ssg-debian8-xccdf-1.2.xml" timestamp="2017-06-29T18:34:21">
-    <Benchmark xmlns="http://checklists.nist.gov/xccdf/1.2" id="xccdf_org.ssgproject.content_benchmark_DEBIAN-8" resolved="1" xml:lang="en-US" style="SCAP_1.2">
+  <ds:component id="scap_org.open-scap_comp_ssg-ubuntu1404-xccdf-1.2.xml" timestamp="2017-06-29T18:41:55">
+    <Benchmark xmlns="http://checklists.nist.gov/xccdf/1.2" id="xccdf_org.ssgproject.content_benchmark_UBUNTU-TRUSTY" resolved="1" xml:lang="en-US" style="SCAP_1.2">
       <status date="2017-06-29">draft</status>
-      <title xml:lang="en-US">Guide to the Secure Configuration of Debian 8</title>
+      <title xml:lang="en-US">Guide to the Secure Configuration of Ubuntu 1404</title>
       <description xml:lang="en-US">This guide presents a catalog of security-relevant
-configuration settings for Debian 8. It is a rendering of
+configuration settings for Ubuntu 1404. It is a rendering of
 content structured in the eXtensible Configuration Checklist Description Format (XCCDF)
 in order to support security automation.  The SCAP content is
 is available in the <html:code xmlns:html="http://www.w3.org/1999/xhtml">scap-security-guide</html:code> package which is developed at
@@ -5264,7 +4906,7 @@ providing baselines that meet a diverse set of policy objectives. Some example
 XCCDF <html:i xmlns:html="http://www.w3.org/1999/xhtml">Profiles</html:i>, which are selections of items that form checklists and
 can be used as baselines, are available with this guide. They can be
 processed, in an automated fashion, with tools that support the Security
-Content Automation Protocol (SCAP). The DISA STIG for Debian 8,
+Content Automation Protocol (SCAP). The DISA STIG for Ubuntu 1404,
 which provides required settings for US Department of Defense systems, is
 one example of a baseline created from this guidance.
 </description>
@@ -5310,7 +4952,7 @@ quality, reliability, or any other characteristic.</notice>
 trademarks or trademarks of Red Hat, Inc. in the United States and other
 countries. All other names are registered trademarks or trademarks of their
 respective companies.</rear-matter>
-      <platform idref="cpe:/o:debianproject:debian:8"/>
+      <platform idref="cpe:/o:canonical:ubuntu_linux:14.04"/>
       <version update="https://github.com/OpenSCAP/scap-security-guide/releases/latest">0.1.34</version>
       <metadata>
         <dc:publisher xmlns:dc="http://purl.org/dc/elements/1.1/">SCAP Security Guide Project</dc:publisher>
@@ -5399,8 +5041,8 @@ respective companies.</rear-matter>
       </metadata>
       <model system="urn:xccdf:scoring:default"/>
       <Profile id="xccdf_org.ssgproject.content_profile_common">
-        <title xml:lang="en-US">Common Profile for General-Purpose Debian Systems</title>
-        <description xml:lang="en-US">This profile contains items common to general-purpose Debian 8 installations.</description>
+        <title xml:lang="en-US">Common Profile for General-Purpose Ubuntu Systems</title>
+        <description xml:lang="en-US">This profile contains items common to general-purpose Ubuntu 1404 installations.</description>
         <select idref="xccdf_org.ssgproject.content_rule_partition_for_tmp" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_partition_for_var" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_partition_for_var_log" selected="true"/>
@@ -5417,7 +5059,7 @@ respective companies.</rear-matter>
         <select idref="xccdf_org.ssgproject.content_rule_package_ntpdate_removed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_service_auditd_enabled" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_service_cron_enabled" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_service_ntp_enabled" selected="true"/>
+        <select idref="xccdf_org.ssgproject.content_rule_service_ntpd_enabled" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_service_rsyslog_enabled" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_sshd_set_idle_timeout" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_sshd_disable_root_login" selected="true"/>
@@ -5471,12 +5113,7 @@ respective companies.</rear-matter>
         <select idref="xccdf_org.ssgproject.content_rule_package_inetutils-telnetd_removed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_package_telnetd-ssl_removed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_package_nis_removed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_package_rsyslog_installed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_service_rsyslog_enabled" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_package_syslogng_installed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_service_syslogng_enabled" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_apt_conf_disallow_unauthenticated" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_apt_sources_list_official" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_shadow" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_gshadow" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_passwd" selected="true"/>
@@ -5506,8 +5143,10 @@ respective companies.</rear-matter>
         <select idref="xccdf_org.ssgproject.content_group_fs-restrict" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_accounts" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_accounts-restrictions" selected="false"/>
+        <select idref="xccdf_org.ssgproject.content_group_logging" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_ensure_rsyslog_log_file_configuration" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_rsyslog_sending_messages" selected="false"/>
+        <select idref="xccdf_org.ssgproject.content_group_rsyslog_accepting_remote_messages" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_log_rotation" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_basics" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_ssh" selected="false"/>
@@ -5522,12 +5161,7 @@ respective companies.</rear-matter>
         <select idref="xccdf_org.ssgproject.content_rule_package_inetutils-telnetd_removed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_package_telnetd-ssl_removed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_package_nis_removed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_package_rsyslog_installed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_service_rsyslog_enabled" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_package_syslogng_installed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_service_syslogng_enabled" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_apt_conf_disallow_unauthenticated" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_apt_sources_list_official" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_shadow" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_gshadow" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_passwd" selected="true"/>
@@ -5573,6 +5207,7 @@ respective companies.</rear-matter>
         <select idref="xccdf_org.ssgproject.content_group_accounts" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_accounts-restrictions" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_rsyslog_sending_messages" selected="false"/>
+        <select idref="xccdf_org.ssgproject.content_group_rsyslog_accepting_remote_messages" selected="false"/>
         <refine-value idref="xccdf_org.ssgproject.content_value_sshd_idle_timeout_value" selector="5_minutes"/>
       </Profile>
       <Profile id="xccdf_org.ssgproject.content_profile_anssi_np_nt28_restrictive">
@@ -5584,12 +5219,7 @@ respective companies.</rear-matter>
         <select idref="xccdf_org.ssgproject.content_rule_package_inetutils-telnetd_removed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_package_telnetd-ssl_removed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_package_nis_removed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_package_rsyslog_installed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_service_rsyslog_enabled" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_package_syslogng_installed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_service_syslogng_enabled" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_apt_conf_disallow_unauthenticated" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_apt_sources_list_official" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_shadow" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_gshadow" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_passwd" selected="true"/>
@@ -5619,7 +5249,7 @@ respective companies.</rear-matter>
         <select idref="xccdf_org.ssgproject.content_rule_package_auditd_installed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_package_cron_installed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_service_auditd_enabled" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_service_ntp_enabled" selected="true"/>
+        <select idref="xccdf_org.ssgproject.content_rule_service_ntpd_enabled" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_group_remediation_functions" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_intro" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_general-principles" selected="false"/>
@@ -5639,6 +5269,7 @@ respective companies.</rear-matter>
         <select idref="xccdf_org.ssgproject.content_group_accounts" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_accounts-restrictions" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_rsyslog_sending_messages" selected="false"/>
+        <select idref="xccdf_org.ssgproject.content_group_rsyslog_accepting_remote_messages" selected="false"/>
         <refine-value idref="xccdf_org.ssgproject.content_value_sshd_idle_timeout_value" selector="5_minutes"/>
       </Profile>
       <Profile id="xccdf_org.ssgproject.content_profile_anssi_np_nt28_high">
@@ -5650,12 +5281,7 @@ respective companies.</rear-matter>
         <select idref="xccdf_org.ssgproject.content_rule_package_inetutils-telnetd_removed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_package_telnetd-ssl_removed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_package_nis_removed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_package_rsyslog_installed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_service_rsyslog_enabled" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_package_syslogng_installed" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_service_syslogng_enabled" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_apt_conf_disallow_unauthenticated" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_apt_sources_list_official" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_shadow" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_gshadow" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_file_permissions_etc_passwd" selected="true"/>
@@ -5685,7 +5311,7 @@ respective companies.</rear-matter>
         <select idref="xccdf_org.ssgproject.content_rule_package_auditd_installed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_package_cron_installed" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_service_auditd_enabled" selected="true"/>
-        <select idref="xccdf_org.ssgproject.content_rule_service_ntp_enabled" selected="true"/>
+        <select idref="xccdf_org.ssgproject.content_rule_service_ntpd_enabled" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_rule_grub2_enable_iommu_force" selected="true"/>
         <select idref="xccdf_org.ssgproject.content_group_remediation_functions" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_intro" selected="false"/>
@@ -5705,6 +5331,7 @@ respective companies.</rear-matter>
         <select idref="xccdf_org.ssgproject.content_group_accounts" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_accounts-restrictions" selected="false"/>
         <select idref="xccdf_org.ssgproject.content_group_rsyslog_sending_messages" selected="false"/>
+        <select idref="xccdf_org.ssgproject.content_group_rsyslog_accepting_remote_messages" selected="false"/>
         <refine-value idref="xccdf_org.ssgproject.content_value_sshd_idle_timeout_value" selector="5_minutes"/>
       </Profile>
       <Group id="xccdf_org.ssgproject.content_group_remediation_functions">
@@ -6851,7 +6478,7 @@ function firefox_js_setting {
         <title xml:lang="en-US">Introduction</title>
         <description xml:lang="en-US">
 The purpose of this guidance is to provide security configuration
-recommendations and baselines for the Debian 8 operating
+recommendations and baselines for the Ubuntu 1404 operating
 system. Recommended settings for the basic operating system are provided,
 as well as for many network services that the system can provide to other systems.
 The guide is intended for system administrators. Readers are assumed to
@@ -6877,7 +6504,7 @@ to passive monitoring. Whenever practical solutions for encrypting
 such data exist, they should be applied. Even if data is expected to
 be transmitted only over a local network, it should still be encrypted.
 Encrypting authentication data, such as passwords, is particularly
-important. Networks of Debian 8 machines can and should be configured
+important. Networks of Ubuntu 1404 machines can and should be configured
 so that no unencrypted authentication data is ever transmitted between
 machines.
 </description>
@@ -6886,10 +6513,8 @@ machines.
             <title xml:lang="en-US">Minimize Software to Minimize Vulnerability</title>
             <description xml:lang="en-US">
 The simplest way to avoid vulnerabilities in software is to avoid
-installing that software. On Debian 8,
+installing that software. On Ubuntu 1404,
 
-the Package Manager (originally
-<html:a xmlns:html="http://www.w3.org/1999/xhtml" href="https://www.debian.org/doc/manuals/debian-faq/ch-pkgtools.en.html">apt</html:a>)
 allows for careful management of
 the set of software packages installed on a system. Installed software
 contributes to system vulnerability in several ways. Packages that
@@ -7010,7 +6635,7 @@ reboot the system after applying a set of recommendations from this guide.
             <rationale xml:lang="en-US">On x86 architectures, activating the I/OMMU prevents the system from arbritrary accesses potentially made by
     hardware devices.</rationale>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-grub2_enable_iommu_force:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-grub2_enable_iommu_force:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
           </Rule>
         </Group>
@@ -7070,10 +6695,10 @@ give structural informations for local exploits.</description>
   can give some hints to generate local exploitation.
   </rationale>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                  <check-content-ref name="oval:ssg-file_permissions_systemmap:def:1" href="ssg-debian8-oval.xml"/>
+                  <check-content-ref name="oval:ssg-file_permissions_systemmap:def:1" href="ssg-ubuntu1404-oval.xml"/>
                 </check>
                 <check system="http://scap.nist.gov/schema/ocil/2">
-                  <check-content-ref name="ocil:ssg-file_permissions_systemmap_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                  <check-content-ref name="ocil:ssg-file_permissions_systemmap_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
                 </check>
               </Rule>
             </Group>
@@ -7121,10 +6746,10 @@ which could weaken the system security posture.</rationale>
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                  <check-content-ref name="oval:ssg-file_permissions_etc_shadow:def:1" href="ssg-debian8-oval.xml"/>
+                  <check-content-ref name="oval:ssg-file_permissions_etc_shadow:def:1" href="ssg-ubuntu1404-oval.xml"/>
                 </check>
                 <check system="http://scap.nist.gov/schema/ocil/2">
-                  <check-content-ref name="ocil:ssg-file_permissions_etc_shadow_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                  <check-content-ref name="ocil:ssg-file_permissions_etc_shadow_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
                 </check>
               </Rule>
               <Rule id="xccdf_org.ssgproject.content_rule_file_permissions_etc_gshadow" selected="false" severity="medium">
@@ -7159,10 +6784,10 @@ is critical for system security.</rationale>
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                  <check-content-ref name="oval:ssg-file_permissions_etc_gshadow:def:1" href="ssg-debian8-oval.xml"/>
+                  <check-content-ref name="oval:ssg-file_permissions_etc_gshadow:def:1" href="ssg-ubuntu1404-oval.xml"/>
                 </check>
                 <check system="http://scap.nist.gov/schema/ocil/2">
-                  <check-content-ref name="ocil:ssg-file_permissions_etc_gshadow_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                  <check-content-ref name="ocil:ssg-file_permissions_etc_gshadow_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
                 </check>
               </Rule>
               <Rule id="xccdf_org.ssgproject.content_rule_file_permissions_etc_passwd" selected="false" severity="medium">
@@ -7196,10 +6821,10 @@ the system. Protection of this file is critical for system security.</rationale>
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                  <check-content-ref name="oval:ssg-file_permissions_etc_passwd:def:1" href="ssg-debian8-oval.xml"/>
+                  <check-content-ref name="oval:ssg-file_permissions_etc_passwd:def:1" href="ssg-ubuntu1404-oval.xml"/>
                 </check>
                 <check system="http://scap.nist.gov/schema/ocil/2">
-                  <check-content-ref name="ocil:ssg-file_permissions_etc_passwd_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                  <check-content-ref name="ocil:ssg-file_permissions_etc_passwd_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
                 </check>
               </Rule>
               <Rule id="xccdf_org.ssgproject.content_rule_file_permissions_etc_group" selected="false" severity="medium">
@@ -7233,10 +6858,10 @@ the system. Protection of this file is critical for system security.</rationale>
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                  <check-content-ref name="oval:ssg-file_permissions_etc_group:def:1" href="ssg-debian8-oval.xml"/>
+                  <check-content-ref name="oval:ssg-file_permissions_etc_group:def:1" href="ssg-ubuntu1404-oval.xml"/>
                 </check>
                 <check system="http://scap.nist.gov/schema/ocil/2">
-                  <check-content-ref name="ocil:ssg-file_permissions_etc_group_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                  <check-content-ref name="ocil:ssg-file_permissions_etc_group_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
                 </check>
               </Rule>
             </Group>
@@ -7279,7 +6904,7 @@ value of 0 is recommended.</description>
     <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">fs.suid_dumpable = 0</html:pre>
             </description>
                 <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">SI-11</reference>
-                <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">1.6.1</reference>
+                <reference href="fixme">1.6.1</reference>
                 <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R23)</reference>
                 <rationale xml:lang="en-US">The core dump of a setuid program is more likely to contain
 wve data, as the program itself runs with greater privileges than the
@@ -7298,10 +6923,10 @@ of such data.</rationale>
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                  <check-content-ref name="oval:ssg-sysctl_fs_suid_dumpable:def:1" href="ssg-debian8-oval.xml"/>
+                  <check-content-ref name="oval:ssg-sysctl_fs_suid_dumpable:def:1" href="ssg-ubuntu1404-oval.xml"/>
                 </check>
                 <check system="http://scap.nist.gov/schema/ocil/2">
-                  <check-content-ref name="ocil:ssg-sysctl_fs_suid_dumpable_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                  <check-content-ref name="ocil:ssg-sysctl_fs_suid_dumpable_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
                 </check>
               </Rule>
             </Group>
@@ -7328,7 +6953,7 @@ on 32-bit systems and controlled through <html:code xmlns:html="http://www.w3.or
     <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">kernel.randomize_va_space = 2</html:pre>
             </description>
                 <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">SC-30(2)</reference>
-                <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">1.6.1</reference>
+                <reference href="fixme">1.6.1</reference>
                 <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R23)</reference>
                 <rationale xml:lang="en-US"> Address space layout randomization (ASLR) makes it more difficult
 for an attacker to predict the location of attack code they have introduced
@@ -7348,10 +6973,10 @@ in order to re-purpose it using return oriented programming (ROP) techniques.
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                  <check-content-ref name="oval:ssg-sysctl_kernel_randomize_va_space:def:1" href="ssg-debian8-oval.xml"/>
+                  <check-content-ref name="oval:ssg-sysctl_kernel_randomize_va_space:def:1" href="ssg-ubuntu1404-oval.xml"/>
                 </check>
                 <check system="http://scap.nist.gov/schema/ocil/2">
-                  <check-content-ref name="ocil:ssg-sysctl_kernel_randomize_va_space_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                  <check-content-ref name="ocil:ssg-sysctl_kernel_randomize_va_space_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
                 </check>
               </Rule>
               <Rule id="xccdf_org.ssgproject.content_rule_sysctl_kernel_kptr_restrict" selected="false" severity="low">
@@ -7383,10 +7008,10 @@ replacing them with 0.
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                  <check-content-ref name="oval:ssg-sysctl_kernel_kptr_restrict:def:1" href="ssg-debian8-oval.xml"/>
+                  <check-content-ref name="oval:ssg-sysctl_kernel_kptr_restrict:def:1" href="ssg-ubuntu1404-oval.xml"/>
                 </check>
                 <check system="http://scap.nist.gov/schema/ocil/2">
-                  <check-content-ref name="ocil:ssg-sysctl_kernel_kptr_restrict_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                  <check-content-ref name="ocil:ssg-sysctl_kernel_kptr_restrict_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
                 </check>
               </Rule>
             </Group>
@@ -7423,10 +7048,10 @@ Placing <html:code xmlns:html="http://www.w3.org/1999/xhtml">/tmp</html:code> in
 restrictive mount options, which can help protect programs which use it.
 </rationale>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-partition_for_tmp:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-partition_for_tmp:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-partition_for_tmp_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-partition_for_tmp_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_partition_for_var" selected="false" severity="low">
@@ -7445,10 +7070,10 @@ It is not uncommon for the <html:code xmlns:html="http://www.w3.org/1999/xhtml">
 world-writable directories installed by other software packages.
 </rationale>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-partition_for_var:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-partition_for_var:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-partition_for_var_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-partition_for_var_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_partition_for_var_log" selected="false" severity="low">
@@ -7469,10 +7094,10 @@ enables better separation between log files
 and other files in <html:code xmlns:html="http://www.w3.org/1999/xhtml">/var/</html:code>.
 </rationale>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-partition_for_var_log:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-partition_for_var_log:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-partition_for_var_log_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-partition_for_var_log_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_partition_for_var_log_audit" selected="false" severity="low">
@@ -7495,10 +7120,10 @@ auditing cannot be halted due to the partition running out
 of space.
 </rationale>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-partition_for_var_log_audit:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-partition_for_var_log_audit:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-partition_for_var_log_audit_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-partition_for_var_log_audit_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_partition_for_home" selected="false" severity="low">
@@ -7519,10 +7144,10 @@ setting of more restrictive mount options, and also helps ensure that
 users cannot trivially fill partitions used for log or audit data storage.
 </rationale>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-partition_for_home:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-partition_for_home:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-partition_for_home_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-partition_for_home_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_partition_for_srv" selected="false" severity="low">
@@ -7542,10 +7167,10 @@ more restrictive mount options, and also helps ensure that
 users cannot trivially fill partitions used for log or audit data storage.
 </rationale>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-partition_for_srv:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-partition_for_srv:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-partition_for_srv_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-partition_for_srv_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
           </Group>
@@ -7566,7 +7191,7 @@ partitioning.</description>
     <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">fs.protected_symlinks = 1</html:pre>
           </description>
               <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">SI-11</reference>
-              <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">1.6.1</reference>
+              <reference href="fixme">1.6.1</reference>
               <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R23)</reference>
               <rationale xml:lang="en-US">Disallowing such symlink mitigate vulnerabilities based on insecure file system
 accessed by privilegied programs, avoiding an exploitation vector exploiting unsafe use of
@@ -7583,10 +7208,10 @@ accessed by privilegied programs, avoiding an exploitation vector exploiting uns
 
 </fix>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-sysctl_fs_protected_symlinks:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-sysctl_fs_protected_symlinks:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-sysctl_fs_protected_symlinks_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-sysctl_fs_protected_symlinks_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_sysctl_fs_protected_hardlinks" selected="false" severity="low">
@@ -7600,7 +7225,7 @@ accessed by privilegied programs, avoiding an exploitation vector exploiting uns
     <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">fs.protected_hardlinks = 1</html:pre>
           </description>
               <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">SI-11</reference>
-              <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">1.6.1</reference>
+              <reference href="fixme">1.6.1</reference>
               <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R23)</reference>
               <rationale xml:lang="en-US">Disallowing such hardlink mitigate vulnerabilities based on insecure file system
 accessed by privilegied programs, avoiding an exploitation vector exploiting unsafe use of
@@ -7617,10 +7242,10 @@ accessed by privilegied programs, avoiding an exploitation vector exploiting uns
 
 </fix>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-sysctl_fs_protected_hardlinks:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-sysctl_fs_protected_hardlinks:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-sysctl_fs_protected_hardlinks_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-sysctl_fs_protected_hardlinks_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
           </Group>
@@ -7657,10 +7282,10 @@ When operating systems provide the capability to escalate a functional capabilit
 is critical that the user re-authenticate.
 </rationale>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-sudo_remove_nopasswd:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-sudo_remove_nopasswd:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
             <check system="http://scap.nist.gov/schema/ocil/2">
-              <check-content-ref name="ocil:ssg-sudo_remove_nopasswd_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+              <check-content-ref name="ocil:ssg-sudo_remove_nopasswd_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
             </check>
           </Rule>
           <Rule id="xccdf_org.ssgproject.content_rule_sudo_remove_no_authenticate" selected="false" severity="medium">
@@ -7685,10 +7310,10 @@ When operating systems provide the capability to escalate a functional capabilit
 is critical that the user re-authenticate.
 </rationale>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-sudo_remove_no_authenticate:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-sudo_remove_no_authenticate:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
             <check system="http://scap.nist.gov/schema/ocil/2">
-              <check-content-ref name="ocil:ssg-sudo_remove_no_authenticate_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+              <check-content-ref name="ocil:ssg-sudo_remove_no_authenticate_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
             </check>
           </Rule>
         </Group>
@@ -7701,7 +7326,7 @@ making it more difficult for unauthorized people to gain shell
 access to accounts, particularly to privileged accounts, is a
 necessary part of securing a system. This section introduces
 mechanisms for restricting access to accounts under
-Debian 8.</description>
+Ubuntu 1404.</description>
           <Group id="xccdf_org.ssgproject.content_group_accounts-restrictions">
             <title xml:lang="en-US">Protect Accounts by Restricting Password-Based Login</title>
             <description xml:lang="en-US">Conventionally, Unix shell accounts are accessed by
@@ -7725,7 +7350,7 @@ due to its long history, syslog is a de facto standard which is supported by
 almost all Unix applications.
 <html:br xmlns:html="http://www.w3.org/1999/xhtml"/>
 <html:br xmlns:html="http://www.w3.org/1999/xhtml"/>
-In Debian Jessie, rsyslog has replaced syslog as the syslog daemon of choice,
+In Ubuntu 1404, rsyslog has replaced syslog as the syslog daemon of choice,
 and it includes some additional security features such as reliable,
 connection-oriented (i.e. TCP) transmission of logs, the option to log to
 database formats, and the encryption of log data en route to
@@ -7745,7 +7370,7 @@ Rsyslog is installed by default.
             <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">AU-9(2)</reference>
             <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1311</reference>
             <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1312</reference>
-            <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">5.1.1</reference>
+            <reference href="fixme">5.1.1</reference>
             <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R46)</reference>
             <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R5)</reference>
             <rationale xml:lang="en-US">
@@ -7776,15 +7401,15 @@ class install_rsyslog {
 }
 </fix>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-package_rsyslog_installed:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-package_rsyslog_installed:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
             <check system="http://scap.nist.gov/schema/ocil/2">
-              <check-content-ref name="ocil:ssg-package_rsyslog_installed_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+              <check-content-ref name="ocil:ssg-package_rsyslog_installed_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
             </check>
           </Rule>
           <Rule id="xccdf_org.ssgproject.content_rule_service_rsyslog_enabled" selected="false" severity="medium">
             <title xml:lang="en-US">Enable rsyslog Service</title>
-            <description xml:lang="en-US">The <html:code xmlns:html="http://www.w3.org/1999/xhtml">rsyslog</html:code> service provides syslog-style logging by default on Debian 8.
+            <description xml:lang="en-US">The <html:code xmlns:html="http://www.w3.org/1999/xhtml">rsyslog</html:code> service provides syslog-style logging by default on Ubuntu 1404.
 
         The <html:code xmlns:html="http://www.w3.org/1999/xhtml">rsyslog</html:code> service can be enabled with the following command:
         <html:pre xmlns:html="http://www.w3.org/1999/xhtml">$ sudo chkconfig --level 2345 rsyslog on</html:pre>
@@ -7795,14 +7420,14 @@ class install_rsyslog {
             <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1312</reference>
             <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1557</reference>
             <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1851</reference>
-            <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">5.1.2</reference>
+            <reference href="fixme">5.1.2</reference>
             <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R46)</reference>
             <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R5)</reference>
             <rationale xml:lang="en-US">The <html:code xmlns:html="http://www.w3.org/1999/xhtml">rsyslog</html:code> service must be running in order to provide
 logging services, which are essential to system administration.
 </rationale>
             <check system="http://scap.nist.gov/schema/ocil/2">
-              <check-content-ref name="ocil:ssg-service_rsyslog_enabled_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+              <check-content-ref name="ocil:ssg-service_rsyslog_enabled_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
             </check>
           </Rule>
           <Group id="xccdf_org.ssgproject.content_group_ensure_rsyslog_log_file_configuration">
@@ -7814,7 +7439,7 @@ These are controlled by lines called <html:i xmlns:html="http://www.w3.org/1999/
 These rules are often customized depending on the role of the system, the
 requirements of the environment, and whatever may enable
 the administrator to most effectively make use of log data.
-The default rules in Debian 8 are:
+The default rules in Ubuntu 1404 are:
 <html:pre xmlns:html="http://www.w3.org/1999/xhtml">auth,authpriv.*			/var/log/auth.log
 *.*;auth,authpriv.none          -/var/log/syslog
 daemon.*                        -/var/log/daemon.log
@@ -7872,7 +7497,7 @@ correct this:
 configuration, user authentication, and other such information. Log files should be
 protected from unauthorized access.</rationale>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-rsyslog_files_ownership_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-rsyslog_files_ownership_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_rsyslog_files_groupownership" selected="false" severity="medium">
@@ -7899,7 +7524,7 @@ correct this:
 configuration, user authentication, and other such information. Log files should be
 protected from unauthorized access.</rationale>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-rsyslog_files_groupownership_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-rsyslog_files_groupownership_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_rsyslog_files_permissions" selected="false" severity="medium">
@@ -7919,14 +7544,14 @@ run the following command to correct this:
               <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1314</reference>
               <reference href="https://www.pcisecuritystandards.org/documents/PCI_DSS_v3-1.pdf">Req-10.5.1</reference>
               <reference href="https://www.pcisecuritystandards.org/documents/PCI_DSS_v3-1.pdf">Req-10.5.2</reference>
-              <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">5.1.4</reference>
+              <reference href="fixme">5.1.4</reference>
               <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R36)</reference>
               <rationale xml:lang="en-US">Log files can contain valuable information regarding system
 configuration. If the system log files are not protected unauthorized
 users could change the logged data, eliminating their forensic value.
 </rationale>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-rsyslog_files_permissions_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-rsyslog_files_permissions_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
           </Group>
@@ -7982,7 +7607,7 @@ To use RELP for log message delivery:
               <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1348</reference>
               <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">136</reference>
               <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1851</reference>
-              <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">5.1.5</reference>
+              <reference href="fixme">5.1.5</reference>
               <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R5)</reference>
               <rationale xml:lang="en-US">A log server (loghost) receives syslog messages from one or more
 systems. This data can be used as an additional log source in the event a
@@ -7991,10 +7616,10 @@ to a remote loghost also provides system administrators with a centralized
 place to view the status of multiple hosts within the enterprise.
 </rationale>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-rsyslog_remote_loghost:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-rsyslog_remote_loghost:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-rsyslog_remote_loghost_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-rsyslog_remote_loghost_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
           </Group>
@@ -8019,7 +7644,7 @@ If the system needs to act as a central log server, add the following lines to
 $InputTCPServerRun 514</html:pre>
 </description>
               <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">AU-9</reference>
-              <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">5.1.6</reference>
+              <reference href="fixme">5.1.6</reference>
               <rationale xml:lang="en-US">
 If the system needs to act as a log server, this ensures that it can receive
 messages over a reliable TCP connection.
@@ -8035,7 +7660,7 @@ If the system needs to act as a central log server, add the following lines to
 $UDPServerRun 514</html:pre>
 </description>
               <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">AU-9</reference>
-              <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">5.1.6</reference>
+              <reference href="fixme">5.1.6</reference>
               <rationale xml:lang="en-US">
 Many devices, such as switches, routers, and other Unix-like systems, may only support
 the traditional syslog transmission over UDP. If the system must act as a log server,
@@ -8053,7 +7678,7 @@ syslog-ng can be installed in replacement of rsyslog.
               <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">AU-9(2)</reference>
               <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1311</reference>
               <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1312</reference>
-              <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">5.1.1</reference>
+              <reference href="fixme">5.1.1</reference>
               <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R46)</reference>
               <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R5)</reference>
               <rationale xml:lang="en-US">
@@ -8061,7 +7686,7 @@ The syslog-ng-core package provides the syslog-ng daemon, which provides
 system logging services.
 </rationale>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-package_syslogng_installed_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-package_syslogng_installed_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_service_syslogng_enabled" selected="false" severity="medium">
@@ -8077,14 +7702,14 @@ system logging services.
               <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1312</reference>
               <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1557</reference>
               <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx">1851</reference>
-              <reference href="https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf">5.1.2</reference>
+              <reference href="fixme">5.1.2</reference>
               <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R46)</reference>
               <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R5)</reference>
               <rationale xml:lang="en-US">The <html:code xmlns:html="http://www.w3.org/1999/xhtml">syslog-ng</html:code> service must be running in order to provide
 logging services, which are essential to system administration.
 </rationale>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-service_syslogng_enabled_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-service_syslogng_enabled_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
           </Group>
@@ -8126,10 +7751,10 @@ daily</html:pre>
 that they fill up the /var/log partition. Valuable logging information could be lost
 if the /var/log partition becomes full.</rationale>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-ensure_logrotate_activated:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-ensure_logrotate_activated:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-ensure_logrotate_activated_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-ensure_logrotate_activated_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
           </Group>
@@ -8139,12 +7764,12 @@ if the /var/log partition becomes full.</rationale>
         <title xml:lang="en-US">Services</title>
         <description xml:lang="en-US">
 The best protection against vulnerable software is running less software. This section describes how to review
-the software which Debian 8 installs on a system and disable software which is not needed. It
-then enumerates the software packages installed on a default Debian 8 system and provides guidance about which
+the software which Ubuntu 1404 installs on a system and disable software which is not needed. It
+then enumerates the software packages installed on a default Ubuntu 1404 system and provides guidance about which
 ones can be safely disabled.
 <html:br xmlns:html="http://www.w3.org/1999/xhtml"/><html:br xmlns:html="http://www.w3.org/1999/xhtml"/>
-Debian 8 provides a convenient minimal install option that essentially installs the bare necessities for a functional
-system. When building Debian 8 systems, it is highly recommended to select the minimal packages and then build up
+Ubuntu 1404 provides a convenient minimal install option that essentially installs the bare necessities for a functional
+system. When building Ubuntu 1404 systems, it is highly recommended to select the minimal packages and then build up
 the system from there.
 </description>
         <Group id="xccdf_org.ssgproject.content_group_deprecated">
@@ -8195,7 +7820,7 @@ class remove_telnetd {
 }
 </fix>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-package_telnetd_removed:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-package_telnetd_removed:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
           </Rule>
           <Rule id="xccdf_org.ssgproject.content_rule_package_inetutils-telnetd_removed" selected="false" severity="high">
@@ -8240,7 +7865,7 @@ class remove_inetutils-telnetd {
 }
 </fix>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-package_inetutils-telnetd_removed:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-package_inetutils-telnetd_removed:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
           </Rule>
           <Rule id="xccdf_org.ssgproject.content_rule_package_telnetd-ssl_removed" selected="false" severity="high">
@@ -8284,7 +7909,7 @@ class remove_telnetd-ssl {
 }
 </fix>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-package_telnetd-ssl_removed:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-package_telnetd-ssl_removed:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
           </Rule>
           <Rule id="xccdf_org.ssgproject.content_rule_package_nis_removed" selected="false" severity="low">
@@ -8326,7 +7951,7 @@ class remove_nis {
 }
 </fix>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-package_nis_removed:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-package_nis_removed:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
           </Rule>
           <Rule id="xccdf_org.ssgproject.content_rule_package_ntpdate_removed" selected="false" severity="low">
@@ -8367,7 +7992,7 @@ class remove_ntpdate {
 }
 </fix>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-package_ntpdate_removed:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-package_ntpdate_removed:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
           </Rule>
         </Group>
@@ -8387,33 +8012,10 @@ The auditd service should be installed.
 The auditd service is an access monitoring and accounting daemon, watching system calls to audit any access, in comparision with potential local access control policy such as SELinux policy.
 </rationale>
             <ident system="https://nvd.nist.gov/cce/index.cfm">CCE-</ident>
-            <fix id="package_auditd_installed" system="urn:xccdf:fix:script:sh" complexity="low" disruption="low" strategy="enable"># Include source function library.
+            <fix id="package_auditd_installed" system="urn:xccdf:fix:script:sh"># Include source function library.
 
 apt-get install auditd
 </fix>
-            <fix id="package_auditd_installed" system="urn:xccdf:fix:script:ansible" complexity="low" disruption="low" strategy="enable">- name: "Ensure auditd is installed"
-  package:
-    name="{{item}}"
-    state=present
-  with_items:
-    - auditd
-  tags:
-    - package_auditd_installed
-    - medium
-    - CCE-
-
-</fix>
-            <fix id="package_auditd_installed" system="urn:xccdf:fix:script:puppet" complexity="low" disruption="low" strategy="enable">include install_auditd
-
-class install_auditd {
-  package { 'auditd':
-    ensure =&gt; 'installed',
-  }
-}
-</fix>
-            <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-package_auditd_installed:def:1" href="ssg-debian8-oval.xml"/>
-            </check>
           </Rule>
           <Rule id="xccdf_org.ssgproject.content_rule_service_auditd_enabled" selected="false" severity="medium">
             <title xml:lang="en-US">Enable the auditd service</title>
@@ -8451,7 +8053,7 @@ The auditd service is an access monitoring and accounting daemon, watching syste
 </rationale>
             <ident system="https://nvd.nist.gov/cce/index.cfm">CCE-</ident>
             <check system="http://scap.nist.gov/schema/ocil/2">
-              <check-content-ref name="ocil:ssg-service_auditd_enabled_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+              <check-content-ref name="ocil:ssg-service_auditd_enabled_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
             </check>
           </Rule>
           <Rule id="xccdf_org.ssgproject.content_rule_package_cron_installed" selected="false" severity="medium">
@@ -8465,33 +8067,10 @@ The Cron service should be installed.
 The cron service allow periodic job execution, needed for almost all administrative tasks and services (software update, log rotating, etc.). Access to cron service should be restricted to administrative accounts only.
 </rationale>
             <ident system="https://nvd.nist.gov/cce/index.cfm">CCE-</ident>
-            <fix id="package_cron_installed" system="urn:xccdf:fix:script:sh" complexity="low" disruption="low" strategy="enable"># Include source function library.
+            <fix id="package_cron_installed" system="urn:xccdf:fix:script:sh"># Include source function library.
 
 apt-get install cron
 </fix>
-            <fix id="package_cron_installed" system="urn:xccdf:fix:script:ansible" complexity="low" disruption="low" strategy="enable">- name: "Ensure cron is installed"
-  package:
-    name="{{item}}"
-    state=present
-  with_items:
-    - cron
-  tags:
-    - package_cron_installed
-    - medium
-    - CCE-
-
-</fix>
-            <fix id="package_cron_installed" system="urn:xccdf:fix:script:puppet" complexity="low" disruption="low" strategy="enable">include install_cron
-
-class install_cron {
-  package { 'cron':
-    ensure =&gt; 'installed',
-  }
-}
-</fix>
-            <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-package_cron_installed:def:1" href="ssg-debian8-oval.xml"/>
-            </check>
           </Rule>
           <Rule id="xccdf_org.ssgproject.content_rule_service_cron_enabled" selected="false" severity="medium">
             <title xml:lang="en-US">Enable the cron service</title>
@@ -8542,10 +8121,10 @@ class install_ntp {
 }
 </fix>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-package_ntp_installed:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-package_ntp_installed:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
           </Rule>
-          <Rule id="xccdf_org.ssgproject.content_rule_service_ntp_enabled" selected="false" severity="high">
+          <Rule id="xccdf_org.ssgproject.content_rule_service_ntpd_enabled" selected="false" severity="high">
             <title xml:lang="en-US">Enable the ntpd service</title>
             <description xml:lang="en-US">
 The ntpd service should be enabled.
@@ -8559,7 +8138,7 @@ Time synchronization (using NTP) is required by almost all network and administr
 </rationale>
             <ident system="https://nvd.nist.gov/cce/index.cfm">CCE-</ident>
             <check system="http://scap.nist.gov/schema/ocil/2">
-              <check-content-ref name="ocil:ssg-service_ntp_enabled_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+              <check-content-ref name="ocil:ssg-service_ntpd_enabled_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
             </check>
           </Rule>
         </Group>
@@ -8577,21 +8156,7 @@ Time synchronization (using NTP) is required by almost all network and administr
     and then should not be installed localy.
   </rationale>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-apt_conf_disallow_unauthenticated:def:1" href="ssg-debian8-oval.xml"/>
-            </check>
-          </Rule>
-          <Rule id="xccdf_org.ssgproject.content_rule_apt_sources_list_official" selected="false" severity="low">
-            <title xml:lang="en-US">Ensure that official distribution repositories are used</title>
-            <description xml:lang="en-US">Check that official Debian repositories, including security repository, are configured in apt.</description>
-            <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R15)</reference>
-            <rationale xml:lang="en-US">
-    The Debian distribution deliver DSA (Debian Security Announce), through the official
-    Debian security repository, to correct various vulnerabilities impacting the Debian
-    packages. Using the official repositories is the best way to ensure that the Debian
-    updates are integrated soon enough.
-  </rationale>
-            <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-apt_sources_list_official:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-apt_conf_disallow_unauthenticated:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
           </Rule>
         </Group>
@@ -8602,7 +8167,7 @@ SSH provides both confidentiality and integrity for exchanged data but needs to 
 Cryptography usage, according to the current CVEs associated to the various cryptographic modes<html:br xmlns:html="http://www.w3.org/1999/xhtml"/>
 Authentication and autorization, depending on your needs but requiring some specific initial generic security<html:br xmlns:html="http://www.w3.org/1999/xhtml"/>
 consideration in the OpenSSH configuration writing
-More detailed information is available from the OpenSSH project's website <html:a xmlns:html="http://www.w3.org/1999/xhtml" href="http://www.openssh.org">http://www.openssh.org</html:a>. The Debian package for
+More detailed information is available from the OpenSSH project's website <html:a xmlns:html="http://www.w3.org/1999/xhtml" href="http://www.openssh.org">http://www.openssh.org</html:a>. The Ubuntu package for
 server side implementation is called <html:code xmlns:html="http://www.w3.org/1999/xhtml">openssh-server</html:code>.
 </description>
           <Value id="xccdf_org.ssgproject.content_value_sshd_idle_timeout_value" operator="equals" type="number">
@@ -8637,7 +8202,7 @@ remote access.
 
 </fix>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-              <check-content-ref name="oval:ssg-service_sshd_disabled:def:1" href="ssg-debian8-oval.xml"/>
+              <check-content-ref name="oval:ssg-service_sshd_disabled:def:1" href="ssg-ubuntu1404-oval.xml"/>
             </check>
           </Rule>
           <Group id="xccdf_org.ssgproject.content_group_ssh_server">
@@ -8666,10 +8231,10 @@ should not be used.
 </rationale>
               <ident system="https://nvd.nist.gov/cce/index.cfm">CCE-</ident>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-sshd_allow_only_protocol2:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-sshd_allow_only_protocol2:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-sshd_allow_only_protocol2_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-sshd_allow_only_protocol2_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_sshd_set_idle_timeout" selected="false" severity="low">
@@ -8699,10 +8264,10 @@ to compromises on another.
               <ident system="https://nvd.nist.gov/cce/index.cfm">CCE-</ident>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
                 <check-export export-name="oval:ssg-sshd_idle_timeout_value:var:1" value-id="xccdf_org.ssgproject.content_value_sshd_idle_timeout_value"/>
-                <check-content-ref name="oval:ssg-sshd_set_idle_timeout:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-sshd_set_idle_timeout:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-sshd_set_idle_timeout_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-sshd_set_idle_timeout_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_sshd_set_keepalive" selected="false" severity="low">
@@ -8720,10 +8285,10 @@ is reached.
 </rationale>
               <ident system="https://nvd.nist.gov/cce/index.cfm">CCE-</ident>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-sshd_set_keepalive:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-sshd_set_keepalive:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-sshd_set_keepalive_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-sshd_set_keepalive_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_sshd_disable_root_login" selected="false" severity="medium">
@@ -8745,10 +8310,10 @@ and also allows direct attack attempts on root's password.
 </rationale>
               <ident system="https://nvd.nist.gov/cce/index.cfm">CCE-</ident>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-sshd_disable_root_login:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-sshd_disable_root_login:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-sshd_disable_root_login_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-sshd_disable_root_login_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
             <Rule id="xccdf_org.ssgproject.content_rule_sshd_disable_empty_passwords" selected="false" severity="high">
@@ -8769,10 +8334,10 @@ even in the event of misconfiguration elsewhere.
 </rationale>
               <ident system="https://nvd.nist.gov/cce/index.cfm">CCE-</ident>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
-                <check-content-ref name="oval:ssg-sshd_disable_empty_passwords:def:1" href="ssg-debian8-oval.xml"/>
+                <check-content-ref name="oval:ssg-sshd_disable_empty_passwords:def:1" href="ssg-ubuntu1404-oval.xml"/>
               </check>
               <check system="http://scap.nist.gov/schema/ocil/2">
-                <check-content-ref name="ocil:ssg-sshd_disable_empty_passwords_ocil:questionnaire:1" href="ssg-debian8-ocil.xml"/>
+                <check-content-ref name="ocil:ssg-sshd_disable_empty_passwords_ocil:questionnaire:1" href="ssg-ubuntu1404-ocil.xml"/>
               </check>
             </Rule>
           </Group>
@@ -8780,28 +8345,29 @@ even in the event of misconfiguration elsewhere.
       </Group>
     </Benchmark>
   </ds:component>
-  <ds:component id="scap_org.open-scap_comp_ssg-debian8-cpe-oval.xml" timestamp="2017-06-29T18:34:20">
+  <ds:component id="scap_org.open-scap_comp_ssg-ubuntu1404-cpe-oval.xml" timestamp="2017-06-29T18:41:54">
     <ns0:oval_definitions xmlns:ns0="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:ns2="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:ns3="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" xmlns:ns4="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" xmlns:ns5="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-common-5 oval-common-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5 oval-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#independent independent-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#unix unix-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#linux linux-definitions-schema.xsd">
       <ns0:generator>
         <ns2:product_name>python</ns2:product_name>
         <ns2:product_version>2.7.13</ns2:product_version>
         <ns2:schema_version>5.10</ns2:schema_version>
-        <ns2:timestamp>2017-06-29T18:34:11</ns2:timestamp>
+        <ns2:timestamp>2017-06-29T18:41:29</ns2:timestamp>
       </ns0:generator>
       <ns0:definitions>
-        <ns0:definition class="inventory" id="oval:ssg-installed_OS_is_debian8:def:1" version="3">
+        <ns0:definition class="inventory" id="oval:ssg-installed_OS_is_ubuntu1404:def:1" version="1">
           <ns0:metadata>
-            <ns0:title>Debian 8</ns0:title>
+            <ns0:title>Ubuntu 1404</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_debian</ns0:platform>
+              <ns0:platform>multi_platform_ubuntu</ns0:platform>
             </ns0:affected>
-            <ns0:reference ref_id="cpe:/o:debian:debian_linux:8" source="CPE"/>
-            <ns0:description>The operating system installed on the system is Debian 8</ns0:description>
+            <ns0:reference ref_id="cpe:/o:canonical:ubuntu_linux:14.04" source="CPE"/>
+            <ns0:description>The operating system installed on the system is Ubuntu 1404</ns0:description>
           </ns0:metadata>
-          <ns0:criteria comment="current Debian version is Debian jessie" operator="AND">
+          <ns0:criteria comment="current Ubuntu version is Trusty" operator="AND">
             <ns0:extend_definition comment="Installed OS is part of the Unix family" definition_ref="oval:ssg-installed_OS_is_part_of_Unix_family:def:1"/>
-            <ns0:criterion comment="Debian is installed" test_ref="oval:ssg-test_debian:tst:1"/>
-            <ns0:criterion comment="Debian8 is installed" test_ref="oval:ssg-test_debian_8:tst:1"/>
+            <ns0:criterion comment="lsb-based distrib" test_ref="oval:ssg-test_lsb:tst:1"/>
+            <ns0:criterion comment="Ubuntu is installed" test_ref="oval:ssg-test_ubuntu:tst:1"/>
+            <ns0:criterion comment="Trusty is installed" test_ref="oval:ssg-test_ubuntu_trusty:tst:1"/>
           </ns0:criteria>
         </ns0:definition>
         <ns0:definition class="inventory" id="oval:ssg-installed_OS_is_centos6:def:1" version="2">
@@ -8981,11 +8547,14 @@ even in the event of misconfiguration elsewhere.
         </ns0:definition>
       </ns0:definitions>
       <ns0:tests>
-        <ns3:file_test check="all" check_existence="all_exist" comment="/etc/debian_version exists" id="oval:ssg-test_debian:tst:1" version="1">
-          <ns3:object object_ref="oval:ssg-obj_debian:obj:1"/>
+        <ns3:file_test check="all" check_existence="all_exist" comment="/etc/lsb-release exists" id="oval:ssg-test_lsb:tst:1" version="1">
+          <ns3:object object_ref="oval:ssg-obj_lsb:obj:1"/>
         </ns3:file_test>
-        <ns4:textfilecontent54_test check="all" check_existence="at_least_one_exists" comment="Check Debian version" id="oval:ssg-test_debian_8:tst:1" version="1">
-          <ns4:object object_ref="oval:ssg-obj_debian_8:obj:1"/>
+        <ns4:textfilecontent54_test check="all" check_existence="at_least_one_exists" comment="Check Ubuntu" id="oval:ssg-test_ubuntu:tst:1" version="1">
+          <ns4:object object_ref="oval:ssg-obj_ubuntu:obj:1"/>
+        </ns4:textfilecontent54_test>
+        <ns4:textfilecontent54_test check="all" check_existence="at_least_one_exists" comment="Check Ubuntu version" id="oval:ssg-test_ubuntu_trusty:tst:1" version="1">
+          <ns4:object object_ref="oval:ssg-obj_ubuntu_trusty:obj:1"/>
         </ns4:textfilecontent54_test>
         <ns5:rpminfo_test check="all" check_existence="at_least_one_exists" comment="centos-release is version 6" id="oval:ssg-test_centos6:tst:1" version="1">
           <ns5:object object_ref="oval:ssg-obj_centos6:obj:1"/>
@@ -9071,12 +8640,17 @@ even in the event of misconfiguration elsewhere.
         </ns3:file_test>
       </ns0:tests>
       <ns0:objects>
-        <ns3:file_object comment="check /etc/debian_version file" id="oval:ssg-obj_debian:obj:1" version="1">
-          <ns3:filepath>/etc/debian_version</ns3:filepath>
+        <ns3:file_object comment="check /etc/lsb-release file" id="oval:ssg-obj_lsb:obj:1" version="1">
+          <ns3:filepath>/etc/lsb-release</ns3:filepath>
         </ns3:file_object>
-        <ns4:textfilecontent54_object comment="Check Debian version" id="oval:ssg-obj_debian_8:obj:1" version="1">
-          <ns4:filepath>/etc/debian_version</ns4:filepath>
-          <ns4:pattern operation="pattern match">^8.[0-9]+$</ns4:pattern>
+        <ns4:textfilecontent54_object comment="Check Ubuntu" id="oval:ssg-obj_ubuntu:obj:1" version="1">
+          <ns4:filepath>/etc/lsb-release</ns4:filepath>
+          <ns4:pattern operation="pattern match">^DISTRIB_ID=Ubuntu$</ns4:pattern>
+          <ns4:instance datatype="int">1</ns4:instance>
+        </ns4:textfilecontent54_object>
+        <ns4:textfilecontent54_object comment="Check Ubuntu version" id="oval:ssg-obj_ubuntu_trusty:obj:1" version="1">
+          <ns4:filepath>/etc/lsb-release</ns4:filepath>
+          <ns4:pattern operation="pattern match">^DISTRIB_CODENAME=trusty$</ns4:pattern>
           <ns4:instance datatype="int">1</ns4:instance>
         </ns4:textfilecontent54_object>
         <ns5:rpminfo_object id="oval:ssg-obj_centos6:obj:1" version="1">
@@ -9196,11 +8770,11 @@ even in the event of misconfiguration elsewhere.
       </ns0:states>
     </ns0:oval_definitions>
   </ds:component>
-  <ds:component id="scap_org.open-scap_comp_ssg-debian8-cpe-dictionary.xml" timestamp="2017-06-29T18:34:20">
+  <ds:component id="scap_org.open-scap_comp_ssg-ubuntu1404-cpe-dictionary.xml" timestamp="2017-06-29T18:41:54">
     <ns0:cpe-list xmlns:ns0="http://cpe.mitre.org/dictionary/2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cpe.mitre.org/dictionary/2.0 http://cpe.mitre.org/files/cpe-dictionary_2.1.xsd">
-      <ns0:cpe-item name="cpe:/o:debianproject:debian:8">
-        <ns0:title xml:lang="en-us">Debian release 8 (Jessie)</ns0:title>
-        <ns0:check href="ssg-debian8-cpe-oval.xml" system="http://oval.mitre.org/XMLSchema/oval-definitions-5">oval:ssg-installed_OS_is_debian8:def:1</ns0:check>
+      <ns0:cpe-item name="cpe:/o:canonical:ubuntu_linux:14.04">
+        <ns0:title xml:lang="en-us">Ubuntu release 14.04 (Trusty)</ns0:title>
+        <ns0:check href="ssg-ubuntu1404-cpe-oval.xml" system="http://oval.mitre.org/XMLSchema/oval-definitions-5">oval:ssg-installed_OS_is_ubuntu1404:def:1</ns0:check>
       </ns0:cpe-item>
     </ns0:cpe-list>
   </ds:component>
