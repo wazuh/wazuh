@@ -71,9 +71,9 @@ void *read_json(int pos, int *rc, int drop_it)
 
         if (obj = cJSON_Parse(str), obj && cJSON_IsObject(obj)) {
           for (i = 0; logff[pos].labels[i].key; i++) {
-              cJSON_AddStringToObject(obj, logff[pos].labels[i].key, logff[pos].labels[i].value);
+              W_JSON_AddField(obj, logff[pos].labels[i].key, logff[pos].labels[i].value);
           }
-          
+
           jsonParsed = cJSON_PrintUnformatted(obj);
           cJSON_Delete(obj);
         } else {
