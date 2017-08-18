@@ -75,7 +75,6 @@ int list_agents(int cmdlist);
 char *chomp(char *str);
 
 /* Shared variables */
-extern int restart_necessary;
 extern time_t time1;
 extern time_t time2;
 extern time_t time3;
@@ -111,8 +110,6 @@ extern fpos_t fp_pos;
 #define ADDED           "Added.\n"
 #define ADD_NOT         "Not Adding.\n"
 #define PRESS_ENTER     "** Press ENTER to return to the main menu.\n"
-#define MUST_RESTART    "\n** You must restart Wazuh for your changes" \
-                        " to take effect.\n\n"
 
 /* Add errors */
 #define ADD_ERROR_ID    "\n** ID '%s' already present. They must be unique.\n\n"

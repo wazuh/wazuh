@@ -162,8 +162,6 @@ int k_import(const char *cmdimport)
                     OS_RemoveCounter("sender");
 
                     printf(ADDED);
-                    restart_necessary = 1;
-
                     free(b64_dec);
                     return (1);
                 } else { /* if(user_input[0] == 'n' || user_input[0] == 'N') */
@@ -468,7 +466,6 @@ int k_bulkload(const char *cmdbulk)
         }
 
         printf(AGENT_ADD, id);
-        restart_necessary = 1;
 
 cleanup:
         free(c_ip.ip);

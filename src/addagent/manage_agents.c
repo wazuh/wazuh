@@ -28,7 +28,6 @@ static int setenv(const char *name, const char *val, __attribute__((unused)) int
 #endif
 
 /* Global variables */
-int restart_necessary;
 time_t time1;
 time_t time2;
 time_t time3;
@@ -377,7 +376,6 @@ int add_agent(int json_output)
             } else
                 printf(AGENT_ADD, id);
 
-            restart_necessary = 1;
             break;
         } else { /* if(user_input[0] == 'n' || user_input[0] == 'N') */
             printf(ADD_NOT);
@@ -517,7 +515,6 @@ int remove_agent(int json_output)
                 printf(REMOVE_DONE, u_id);
             }
 
-            restart_necessary = 1;
             break;
         } else { /* if(user_input[0] == 'n' || user_input[0] == 'N') */
             printf(REMOVE_NOT);

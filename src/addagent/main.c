@@ -58,12 +58,7 @@ static void print_banner()
 /* Clean shutdown on kill */
 __attribute__((noreturn)) void manage_shutdown(__attribute__((unused)) int sig)
 {
-    /* Checking if restart message is necessary */
-    if (restart_necessary) {
-        printf(MUST_RESTART);
-    } else {
-        printf("\n");
-    }
+    printf("\n");
     printf(EXIT);
 
     exit(0);
@@ -183,7 +178,6 @@ int main(int argc, char **argv)
 
     /* Get current time */
     time1 = time(0);
-    restart_necessary = 0;
 
     /* Before chroot */
     srandom_init();
@@ -342,12 +336,7 @@ int main(int argc, char **argv)
     }
 
     if (!json_output) {
-        if (restart_necessary) {
-            printf(MUST_RESTART);
-        } else {
-            printf("\n");
-        }
-
+        printf("\n");
         printf(EXIT);
     }
 
