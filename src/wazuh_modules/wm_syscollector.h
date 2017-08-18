@@ -15,8 +15,9 @@
 #define WM_SYS_DEF_INTERVAL 3600            // Default cycle interval (1 hour)
 #define WM_SYS_LOGTAG ARGV0 ":syscollector" // Tag for log messages
 #define WM_SYS_IF_FILE "/etc/network/interfaces"
-#define WM_SYS_IF_DIR "/etc/sysconfig/network-scripts/"
+#define WM_SYS_IF_DIR_RH "/etc/sysconfig/network-scripts/"
 #define WM_SYS_IF_DIR_SUSE "/etc/sysconfig/network/"
+#define WM_SYS_DGW_FILE "/proc/net/route"
 
 typedef struct wm_sys_flags_t {
     unsigned int enabled:1;                 // Main switch
