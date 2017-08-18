@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
 - Remote agent upgrades with signed WPK packages.
 - Added option for Remoted to prevent it from writing shared merged file.
 - Added state for Agentd and Windows agent to notify connection state and metrics.
+- Added new json log format for local file monitoring.
+- Added OpenSCAP SSG datastream content for Ubuntu Trusty Tahr.
 
 ### Changed
 
@@ -28,6 +30,8 @@ All notable changes to this project will be documented in this file.
 - Changed template fields structure for Kibana dashboards.
 - Increased dynamic field limit to 1024, and default to 256.
 - Changed agent buffer 'length' parameter to 'queue_size'.
+- Changed some Rootcheck error messages to verbose logs.
+- Removed unnecessary message by manage_agents advising to restart Wazuh manager.
 
 ### Fixed
 
@@ -35,6 +39,9 @@ All notable changes to this project will be documented in this file.
 - Prevent Logcollector keep-alives from being stored on archives.json.
 - Fixed length of random message within keep-alives.
 - Fixed Windows version detection for Windows 8 and newer.
+- Fixed incorrect CIDR writing on client.keys by Authd.
+- Fixed missing buffer flush by Analysisd when updating Rootcheck database.
+- Stop Wazuh service before removing folder to reinstall.
 
 ## [v2.1.0]
 
