@@ -593,7 +593,7 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
         return -1;
     }
 
-    if (w_wpk_unsign(source_j, dest, (const char **)wcom_public_keys) < 0) {
+    if (w_wpk_unsign(source_j, dest, (const char **)wcom_ca_store) < 0) {
         unlink(dest);
         merror("At unsign: Couldn't unsign package file '%s'", source_j);
         return -1;

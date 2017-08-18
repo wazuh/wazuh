@@ -268,7 +268,7 @@ WriteAgent()
     else
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG
     fi
-    echo "    <public-key>${INSTALLDIR}/etc/wpkey-pub.pem</public-key>" >> $NEWCONFIG
+    echo "    <ca_store>${INSTALLDIR}/etc/wpk_root.pem</ca_store>" >> $NEWCONFIG
     echo "  </active-response>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -615,7 +615,7 @@ InstallAgent(){
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/incoming
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/wpkey-pub.pem ${PREFIX}/etc/
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/wpk_root.pem ${PREFIX}/etc/
 
 }
 

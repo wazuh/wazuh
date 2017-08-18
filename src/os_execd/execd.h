@@ -28,7 +28,7 @@
 #define EXECD_TIMEOUT   90
 
 extern int repeated_offenders_timeout[];
-extern char ** wcom_public_keys;
+extern char ** wcom_ca_store;
 
 /** Function prototypes **/
 

@@ -10,7 +10,7 @@
 #include "shared.h"
 #include "execd.h"
 
-char ** wcom_public_keys;
+char ** wcom_ca_store;
 
 /* Read the config file */
 int ExecdConfig(const char *cfgfile)
@@ -22,7 +22,7 @@ int ExecdConfig(const char *cfgfile)
 #endif
     const char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
     const char *(blocks[]) = {"ossec_config", "active-response", "repeated_offenders", NULL};
-    const char *(publickeys[]) = {"ossec_config", "active-response", "public-key", NULL};
+    const char *(castore[]) = {"ossec_config", "active-response", "ca_store", NULL};
     char *disable_entry;
     char *repeated_t;
     char **repeated_a;
@@ -97,17 +97,12 @@ int ExecdConfig(const char *cfgfile)
         free(repeated_a);
     }
 
-    if (wcom_public_keys = OS_GetContents(&xml, publickeys), wcom_public_keys) {
-        for (i = 0; wcom_public_keys[i]; i++) {
-            if (IsFile(wcom_public_keys[i])) {
-                merror("Public key file '%s' not found.", wcom_public_keys[i]);
-                wcom_public_keys[i][0] = '\0';
-            } else {
-                mdebug1("Using public key '%s'.", wcom_public_keys[i]);
-            }
+    if (wcom_ca_store = OS_GetContents(&xml, castore), wcom_ca_store) {
+        for (i = 0; wcom_ca_store[i]; i++) {
+            mdebug1("Added CA store '%s'.", wcom_ca_store[i]);
         }
     } else {
-        mdebug1("No public keys defined.");
+        mdebug1("No CA store defined.");
     }
 
     OS_ClearXML(&xml);

@@ -43,7 +43,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     const char *xml_ar_timeout = "timeout";
     const char *xml_ar_disabled = "disabled";
     const char *xml_ar_repeated = "repeated_offenders";
-    const char *xml_public_key = "public-key";
+    const char *xml_ca_store = "ca_store";
 
     char *tmp_location;
 
@@ -150,7 +150,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         } else if (strcmp(node[i]->element, xml_ar_repeated) == 0) {
             /* Nothing - we deal with it on execd */
             rpt = 1;
-        } else if (strcmp(node[i]->element, xml_public_key) == 0) {
+        } else if (strcmp(node[i]->element, xml_ca_store) == 0) {
             // Nothing to do
         } else {
             merror(XML_INVELEM, node[i]->element);
