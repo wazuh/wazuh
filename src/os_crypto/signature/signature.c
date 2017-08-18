@@ -16,10 +16,13 @@
 #define BUFLEN 4096
 static const char MAGIC[] = "WPK256";
 
-static RSA * w_rsa_readpem(const char * path);
+static X509 * w_wpk_cert(FILE * fp);
+static int wpk_verify_cert(X509 * cert, const char ** ca_store);
 
 // Unsign a WPK256 file, using a key path array. Returns 0 on success or -1 on error.
-int w_rsa_unsign(const char * source, const char * target, const char ** keys) {
+int w_wpk_unsign(const char * source, const char * target, const char ** ca_store) {
+    X509 * cert = NULL;
+    EVP_PKEY * pkey = NULL;
     RSA * rsa = NULL;
     SHA256_CTX hash;
     FILE * filein = NULL;
@@ -29,13 +32,8 @@ int w_rsa_unsign(const char * source, const char * target, const char ** keys) {
     unsigned char digest[SHA256_DIGEST_LENGTH];
     unsigned char buffer[BUFLEN];
     int retval = -1;
-    int i;
+    long offset;
     ssize_t length;
-
-    if (!(keys && keys[0])) {
-        merror("No public keys to verify file '%s'.", source);
-        goto cleanup;
-    }
 
     // Read signed file
 
@@ -46,14 +44,32 @@ int w_rsa_unsign(const char * source, const char * target, const char ** keys) {
 
     // Check magic number
 
-    if (length = fread(buffer, 1, strlen(MAGIC), filein), length < (ssize_t)strlen(MAGIC)) {
+    if (length = fread(buffer, 1, sizeof(MAGIC), filein), length < (ssize_t)sizeof(MAGIC)) {
         merror("Invalid input file (reading magic number).");
         goto cleanup;
     }
 
-    if (memcmp(buffer, MAGIC, strlen(MAGIC))) {
+    if (memcmp(buffer, MAGIC, sizeof(MAGIC))) {
         merror("Invalid input file (bad magic number).");
         goto cleanup;
+    }
+
+    // Get certificate
+
+    if (cert = w_wpk_cert(filein), !cert) {
+        merror("Couldn't extract certificate at file '%s'.", source);
+        goto cleanup;
+    }
+
+    // Validate certificate
+
+    if (ca_store) {
+        if (wpk_verify_cert(cert, ca_store) < 0) {
+            merror("Error verifying WPK certificate.");
+            goto cleanup;
+        }
+    } else {
+        mwarn("No root CA defined to verify file '%s'.", source);
     }
 
     // Read signature
@@ -65,6 +81,7 @@ int w_rsa_unsign(const char * source, const char * target, const char ** keys) {
 
     // Hash of file content
 
+    offset = ftell(filein);
     SHA256_Init(&hash);
 
     while (length = fread(buffer, 1, BUFLEN, filein), length > 0) {
@@ -80,27 +97,30 @@ int w_rsa_unsign(const char * source, const char * target, const char ** keys) {
 
     // Verify signature (PKCS1)
 
-    for (i = 0; keys[i]; i++) {
-        if (*keys[i] && (rsa = w_rsa_readpem(keys[i]), rsa)) {
-            if (RSA_verify(NID_sha256, digest, SHA256_DIGEST_LENGTH, signature, SIGNLEN, rsa) == 1) {
-                RSA_free(rsa);
-                break;
-            } else {
-                ERR_load_crypto_strings();
-
-                while (err = ERR_get_error(), err) {
-                    if (ERR_GET_REASON(err) != RSA_R_BAD_SIGNATURE) {
-                        merror("At RSA_verify(): %s (%lu)", ERR_reason_error_string(err), err);
-                    }
-                }
-
-                RSA_free(rsa);
-            }
-        }
+    if (pkey = X509_get_pubkey(cert), !pkey) {
+        merror("Couldn't get public key from certificate.");
+        goto cleanup;
     }
 
-    if (!keys[i]) {
-        merror("Bad signature.");
+    if (rsa = EVP_PKEY_get1_RSA(pkey), !rsa) {
+        merror("Couldn't get public RSA key from certificate.");
+        goto cleanup;
+    }
+
+    if (RSA_verify(NID_sha256, digest, SHA256_DIGEST_LENGTH, signature, SIGNLEN, rsa) != 1) {
+        ERR_load_crypto_strings();
+
+        while (err = ERR_get_error(), err) {
+            switch (ERR_GET_REASON(err)) {
+            case RSA_R_BAD_SIGNATURE:
+                merror("Bad WPK signature.");
+                break;
+
+            default:
+                merror("At RSA_verify(): %s (%lu)", ERR_reason_error_string(err), err);
+            }
+        }
+
         goto cleanup;
     }
 
@@ -111,7 +131,7 @@ int w_rsa_unsign(const char * source, const char * target, const char ** keys) {
         goto cleanup;
     }
 
-    fseek(filein, strlen(MAGIC) + SIGNLEN, SEEK_SET);
+    fseek(filein, offset, SEEK_SET);
 
     while (length = fread(buffer, 1, BUFLEN, filein), length > 0) {
         if (fwrite(buffer, 1, length, fileout) != (size_t)length) {
@@ -129,29 +149,143 @@ int w_rsa_unsign(const char * source, const char * target, const char ** keys) {
 
 cleanup:
 
-    if (filein) fclose(filein);
-    if (fileout) fclose(fileout);
+    if (filein) {
+        fclose(filein);
+    }
+
+    if (fileout) {
+        fclose(fileout);
+    }
+
+    X509_free(cert);
+    EVP_PKEY_free(pkey);
+    RSA_free(rsa);
 
     return retval;
 }
 
-RSA * w_rsa_readpem(const char * path) {
-    RSA * rsa = NULL;
-    FILE * filekey;
+// Extract certificate in PEM format from opened WPK file
 
-    if (filekey = fopen(path, "rb"), !filekey) {
-        merror("Opening key file '%s': %s", path, strerror(errno));
+X509 * w_wpk_cert(FILE * fp) {
+    X509 * cert;
+    BIO * bio;
+    char * buffer = NULL;
+    size_t i = 0;
+    size_t size = 1024;
+
+    os_calloc(1, size * sizeof(char), buffer);
+
+    // Read until null character
+
+    while (1) {
+        if (!fread(buffer + i, sizeof(char), 1, fp)) {
+            // Write anything but \0
+            buffer[i] = '-';
+            break;
+        }
+
+        if (!buffer[i] || feof(fp)) {
+            break;
+        }
+
+        i++;
+
+        if (i == size) {
+            os_realloc(buffer, (size *= 2) * sizeof(char), buffer);
+        }
+    }
+
+    if (buffer[i]) {
+        merror("Couldn't get certificate from WPK file.");
+        free(buffer);
         return NULL;
     }
 
-    rsa = PEM_read_RSA_PUBKEY(filekey, &rsa, NULL, NULL);
-    fclose(filekey);
+    bio = BIO_new_mem_buf(buffer, (int)i);
 
-    if (!rsa) {
-        merror("Invalid RSA public key in file '%s'.", path);
-        RSA_free(rsa);
+    if (cert = PEM_read_bio_X509(bio, NULL, NULL, NULL), !cert) {
+        merror("Invalid certificate in WPK file.");
         return NULL;
     }
 
-    return rsa;
+    BIO_free_all(bio);
+    free(buffer);
+    return cert;
+}
+
+int wpk_verify_cert(X509 * cert, const char ** ca_store) {
+    X509_STORE * store = NULL;
+    X509_STORE_CTX * store_ctx = NULL;
+    struct stat statbuf;
+    unsigned long err;
+    int result = -1;
+    int i;
+
+    OpenSSL_add_all_algorithms();
+
+    if (store = X509_STORE_new(), !store) {
+        merror("Couldn't create new store.");
+        return -1;
+    }
+
+    store_ctx = X509_STORE_CTX_new();
+
+    for (i = 0; ca_store[i]; i++) {
+        int r;
+
+        if (stat(ca_store[i], &statbuf) < 0) {
+            merror(FSTAT_ERROR, ca_store[i], errno, strerror(errno));
+            continue;
+        }
+
+        switch (statbuf.st_mode & S_IFMT) {
+        case S_IFDIR:
+            r = X509_STORE_load_locations(store, NULL, ca_store[i]);
+            break;
+
+        case S_IFREG:
+            r = X509_STORE_load_locations(store, ca_store[i], NULL);
+            break;
+
+        default:
+            merror("Loading CA '%s': it's neither file nor directory.", ca_store[i]);
+            continue;
+        }
+
+        if (r < 0) {
+            merror("Couldn't add CA '%s'", ca_store[i]);
+            goto cleanup;
+        }
+    }
+
+    X509_STORE_CTX_init(store_ctx, store, cert, NULL);
+
+    switch (X509_verify_cert(store_ctx)) {
+    case -1:
+        ERR_load_crypto_strings();
+
+        while (err = ERR_get_error(), err) {
+            merror("At RSA_verify(): %s (%lu)", ERR_reason_error_string(err), err);
+        }
+
+        goto cleanup;
+
+    case 0:
+        merror("Certificate couldn't be verified by CA.");
+        break;
+
+    case 1:
+        result = 0;
+        break;
+
+    default:
+        merror("At RSA_verify(): unexpected result.");
+    }
+
+cleanup:
+
+    X509_STORE_CTX_free(store_ctx);
+    X509_STORE_free(store);
+
+    return result;
 }
