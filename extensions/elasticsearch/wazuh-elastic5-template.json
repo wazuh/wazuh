@@ -49,6 +49,14 @@
             }
           }
         },
+        "cluster": {
+          "properties": {
+            "name": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        },
         "AlertsFile": {
           "type": "keyword",
           "doc_values": "true"
