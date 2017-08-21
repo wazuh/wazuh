@@ -22,6 +22,20 @@ typedef struct File {
     FILE *fp;
 } File;
 
+typedef struct os_info {
+    char *os_name;
+    char *os_major;
+    char *os_minor;
+    char *os_build;
+    char *os_version;
+    char *os_codename;
+    char *os_platform;
+    char *sysname;
+    char *nodename;
+    char *release;
+    char *version;
+    char *machine;
+} os_info;
 
 /* Set the program name - must be done before *anything* else */
 void OS_SetName(const char *name) __attribute__((nonnull));
