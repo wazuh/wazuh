@@ -515,8 +515,11 @@ setEnv()
         case $ANSWER in
             $yesmatch)
                 UpdateStopOSSEC > /dev/null 2>&1
+                echo "      Stopping Wazuh..."
+                sleep 2
                 rm -rf $INSTALLDIR
                 if [ ! $? = 0 ]; then
+                    echo "Error deleting ${INSTALLDIR}"
                     exit 2;
                 fi
                 ;;
