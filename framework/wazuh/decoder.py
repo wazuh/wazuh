@@ -10,7 +10,7 @@ import wazuh.configuration as configuration
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.utils import cut_array, sort_array, search_array
-
+from sys import version_info
 
 class Decoder:
     """
@@ -207,7 +207,11 @@ class Decoder:
             position = 0
 
             # wrap the data
-            f = open("{0}/{1}".format(decoder_path, decoder_file))
+            if version_info.major == 2:
+                f = open("{0}/{1}".format(decoder_path, decoder_file))
+            else:
+                f = open("{0}/{1}".format(decoder_path, decoder_file), encoding="utf-8")
+
             data = f.read()
             data = data.replace(" -- ", " -INVALID_CHAR ").replace("\<;", "\INVALID_CHAR;")
             f.close()

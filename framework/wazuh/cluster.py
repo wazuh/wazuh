@@ -137,12 +137,13 @@ class Node:
     def update_file(fullpath, content, owner=None, group=None, mode=None, mtime=None, w_mode=None):
 
         # Set atomic replaces
-        atomic = False
+        # w_mode = "normal"
+
         # Set Timezone to epoch converter
         environ['TZ']='UTC'
 
         # Write
-        if atomic:
+        if w_mode == "atomic":
             f_temp = '{0}.tmp.cluster'.format(fullpath)
         else:
             f_temp = '{0}'.format(fullpath)
@@ -168,7 +169,7 @@ class Node:
         utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
 
         # Atomic
-        if atomic:
+        if w_mode == "atomic":
             rename(f_temp, fullpath)
 
     @staticmethod
@@ -363,7 +364,12 @@ class Node:
                         continue
 
                     # Fix me: wazuh path + file
-                    Node.update_file(item['file']['name'], content=downloaded_file, owner=item['file']['user'], group=item['file']['group'], mode=item['file']['mode'], mtime=item['file']['modification_time'], w_mode=item['file']['write_mode'])
+                    try:
+                        Node.update_file(item['file']['name'], content=downloaded_file, owner=item['file']['user'], group=item['file']['group'], mode=item['file']['mode'], mtime=item['file']['modification_time'], w_mode=item['file']['write_mode'])
+                    except Exception as e:
+                        error_list.append({'item': item, 'reason': str(e)})
+                        continue
+
                 except Exception as e:
                     error_list.append({'item': item, 'reason': str(e)})
                     raise
@@ -382,12 +388,25 @@ class Node:
 
         if output_file:
             f_o = open("{0}/logs/cluster.log".format(common.ossec_path), "a+")
-            f_o.write("### ")
-            f_o.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            f_o.write("\n")
-            f_o.write(json.dumps(final_output, indent=4))
-            f_o.write("\n")
-            f_o.close
+
+            f_o.write("### {0}\n".format(datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
+            try:
+                for key in final_output:
+                    f_o.write("\n{0}:\n".format(key))
+                    if key != "error":
+                        for final_item in final_output[key]:
+                            f_o.write("\tNode: {0}\n".format(final_item['node']))
+                            f_o.write("\t\tFile: {0}\n".format(final_item['file']['name']))
+                            f_o.write("\t\tChecked conditions: {0}\n".format(final_item['checked_conditions']))
+                    else:
+                        for final_item in final_output[key]:
+                            f_o.write("\t{0}\n".format(final_item))
+            except:
+                f_o.write("\tError logging\n")
+
+            f_o.write("\n###\n")
+            f_o.close()
 
         return final_output
 

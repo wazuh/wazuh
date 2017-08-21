@@ -65,9 +65,12 @@ def main():
     agent = Agent(id=args.agent)
     agent._load_info_from_DB()
 
-    timeout = 60
+    timeout = 10
     agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.ip)
-    agent_info_stat = os.stat(agent_info).st_mtime
+    if os.path.isfile(agent_info):
+        agent_info_stat = os.stat(agent_info).st_mtime
+    else:
+        raise WazuhException(1720)
 
     # Custom WPK file
     if args.file:
@@ -80,7 +83,7 @@ def main():
                     print(upgrade_command_result)
             counter = 0
             while agent_info_stat == os.stat(agent_info).st_mtime and counter < timeout:
-                sleep(1)
+                sleep(2)
                 counter = counter + 1
             upgrade_result = agent.upgrade_result(debug=args.debug)
             if not args.silent:
@@ -99,7 +102,7 @@ def main():
                 print(upgrade_command_result)
         counter = 0
         while agent_info_stat == os.stat(agent_info).st_mtime and counter < timeout:
-            sleep(1)
+            sleep(30)
             counter = counter + 1
         upgrade_result = agent.upgrade_result(debug=args.debug)
         if not args.silent:
