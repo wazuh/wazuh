@@ -127,8 +127,14 @@
 <decoder name="ssh-invalid-user">
   <parent>sshd</parent>
   <prematch>^Invalid user|^Illegal user</prematch>
-  <regex offset="after_prematch">(\S+) from (\S+)$</regex>
+  <regex offset="after_prematch">(\S+) from (\S+)</regex>
   <order>srcuser,srcip</order>
+</decoder>
+
+<decoder name="ssh-invalid-user">
+  <parent>sshd</parent>
+  <regex offset="after_regex">port (\S+)</regex>
+  <order>srcport</order>
 </decoder>
 
 <decoder name="ssh-scan">

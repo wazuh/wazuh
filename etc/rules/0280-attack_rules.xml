@@ -91,6 +91,7 @@
   <rule id="40501" level="15" timeframe="300" frequency="2">
     <if_group>adduser</if_group>
     <if_matched_group>attacks</if_matched_group>
+    <same_location/>
     <description>Attacks followed by the addition </description>
     <description>of an user.</description>
     <group>pci_dss_10.2.7,pci_dss_10.6.1,pci_dss_11.4,</group>
