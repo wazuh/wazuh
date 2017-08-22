@@ -92,11 +92,7 @@ SSL_ERROR:
     return (SSL_CTX *)NULL;
 }
 
-#ifndef LEGACY_SSL
 SSL_CTX *get_ssl_context(const char *ciphers, int auto_method)
-#else
-SSL_CTX *get_ssl_context(const char *ciphers, __attribute__((unused)) int auto_method)
-#endif
 {
     SSL_CTX *ctx = NULL;
 
@@ -106,15 +102,9 @@ SSL_CTX *get_ssl_context(const char *ciphers, __attribute__((unused)) int auto_m
 
     /* Create our context */
 
-#ifndef LEGACY_SSL
     if (!(ctx = auto_method ? SSL_CTX_new(SSLv23_method()) : SSL_CTX_new(TLSv1_2_method()))) {
         goto CONTEXT_ERR;
     }
-#else
-    if (!(ctx = SSL_CTX_new(SSLv23_method()))) {
-        goto CONTEXT_ERR;
-    }
-#endif
 
     /* Explicitly set options and cipher list */
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);

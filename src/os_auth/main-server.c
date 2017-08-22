@@ -420,11 +420,6 @@ int main(int argc, char **argv)
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 
-#ifdef LEGACY_SSL
-    config.flags.auto_negotiate = 1;
-    mwarn("TLS v1.2 method-forcing disabled. This program was compiled to use SSL/TLS auto-negotiation.");
-#endif
-
     if (config.flags.use_password) {
 
         /* Checking if there is a custom password file */
