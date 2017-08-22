@@ -66,19 +66,19 @@ f:/etc/fstab -> !r^# && !r:/var;
 
 # 1.1.6 bind mount /var/tmp to /tmp
 [CIS - RHEL7 - Build considerations - Robust partition scheme - /var/tmp is bound to /tmp {CIS: 1.1.6 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/etc/fstab -> r:^# && !r:/var/tmp && !r:bind;
+f:/etc/fstab -> !r:^# && !r:/var/tmp;
 
 # 1.1.7 /var/log: partition
 [CIS - RHEL7 - Build considerations - Robust partition scheme - /var/log is not on its own partition {CIS: 1.1.7 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/etc/fstab -> ^# && !r:/var/log;
+f:/etc/fstab -> !r:^# && !r:/var/log;
 
 # 1.1.8 /var/log/audit: partition
 [CIS - RHEL7 - Build considerations - Robust partition scheme - /var/log/audit is not on its own partition {CIS: 1.1.8 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/etc/fstab -> ^# && !r:/var/log/audit;
+f:/etc/fstab -> !r:^# && !r:/var/log/audit;
 
 # 1.1.9 /home: partition
 [CIS - RHEL7 - Build considerations - Robust partition scheme - /home is not on its own partition {CIS: 1.1.9 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/etc/fstab -> ^# && !r:/home;
+f:/etc/fstab -> !r:^# && !r:/home;
 
 # 1.1.10 /home: nodev
 [CIS - RHEL7 - 1.1.10 -  Partition /home without 'nodev' set {CIS: 1.1.10 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
@@ -321,7 +321,6 @@ f:/etc/sysconfig/init -> !r:^# && r:^umask && <:umask 027;
 
 # 3.2 Remove X Windows (Scored)
 [CIS - RHEL7 - 3.2 - X11 not disabled {CIS: 3.2 RHEL7} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/usr/lib/systemd/system/default.target -> r:Graphical;
 p:gdm-x-session;
 
 # 3.3 Disable Avahi Server (Scored)
@@ -396,8 +395,8 @@ f:/proc/sys/net/ipv6/ip_forward -> 1;
 
 # 4.1.2 Disable Send Packet Redirects (Scored)
 [CIS - RHEL7 - 4.1.2 - Network parameters - IP send redirects enabled {CIS: 4.1.2 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/proc/sys/net/ipv4/conf/all/send_redirects -> 0;
-f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;
+f:/proc/sys/net/ipv4/conf/all/send_redirects -> 1;
+f:/proc/sys/net/ipv4/conf/default/send_redirects -> 1;
 
 
 ###############################################
@@ -620,9 +619,7 @@ f:/etc/ssh/sshd_config -> !r:^# && !r:LogLevel\.+INFO;
 
 # 6.2.5 Set SSH MaxAuthTries to 4 or Less (Scored)
 [ CIS - RHEL7 - 6.2.5 - SSH Configuration - Set SSH MaxAuthTries to 4 or Less  {CIS - RHEL7 - 6.2.5} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:$sshd_file -> !r:^# && r:MaxAuthTries && !r:3\s*$;
-f:$sshd_file -> r:^#\s*MaxAuthTries;
-f:$sshd_file -> !r:MaxAuthTries;
+f:$sshd_file -> !r:^\s*MaxAuthTries\s+4\s*$;
 
 # 6.2.6 Set SSH IgnoreRhosts to Yes (Scored)
 [CIS - RHEL7 - 6.2.6 - SSH Configuration - IgnoreRHosts disabled {CIS: 6.2.6 RHEL7} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
@@ -634,13 +631,11 @@ f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;
 
 # 6.2.8 Disable SSH Root Login (Scored)
 [CIS - RHEL7 - 6.2.8 - SSH Configuration - Root login allowed {CIS: 6.2.8 RHEL7} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
-f:/etc/ssh/sshd_config -> r:^#\s*PermitRootLogin;
+f:$sshd_file -> !r:^\s*PermitRootLogin\.+no;
 
 # 6.2.9 Set SSH PermitEmptyPasswords to No (Scored)
 [CIS - RHEL7 - 6.2.9 - SSH Configuration - Empty passwords permitted {CIS: 6.2.9 RHEL7} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
-f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;
-f:/etc/ssh/sshd_config -> r:^#\s*PermitEmptyPasswords;
+f:$sshd_file -> !r:^\s*PermitEmptyPasswords\.+no;
 
 # 6.2.10 Do Not Allow Users to Set Environment Options (Scored)
 

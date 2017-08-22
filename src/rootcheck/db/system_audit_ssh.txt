@@ -64,8 +64,8 @@ f:$sshd_file -> !r:^\s*IgnoreRhosts\.+yes;
 f:$sshd_file -> !r:^\s*LoginGraceTime\s+30\s*$;
 
 
-# MaxAuthTries 3
+# MaxAuthTries 4
 # The MaxAuthTries parameter specifices the maximum number of authentication attempts permitted per connection. Once the number of failures reaches half this value, additional failures are logged.
-# This should be set to 3.
+# This should be set to 4.
 [SSH Hardening - 9: Wrong Maximum number of authentication attempts {PCI_DSS: 2.2.4}] [any] [9]
-f:$sshd_file -> !r:^\s*MaxAuthTries\s+3\s*$;
+f:$sshd_file -> !r:^\s*MaxAuthTries\s+4\s*$;
