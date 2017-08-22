@@ -11,6 +11,8 @@
 
 #include "wmodules.h"
 
+#ifndef WIN32
+
 #include <dirent.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -23,18 +25,11 @@
 
 #define DHCP_LENGTH 10
 
+#endif // !WIN32
+
 static wm_sys_t *sys;                           // Pointer to configuration
-static int queue_fd;                            // Output queue file descriptor
 
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
-static void wm_sys_setup(wm_sys_t *_sys);       // Setup module
-static void wm_sys_cleanup();                   // Cleanup function, doesn't overwrite wm_cleanup
-static void wm_sys_check();                     // Check configuration, disable flag
-static void wm_sys_network();                   // Get network inventory
-
-
-char* check_dhcp(char *ifa_name, int family);   // Check DHCP status for network interfaces
-char* get_default_gateway(char *ifa_name);
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 
 // Syscollector module context definition
@@ -44,6 +39,18 @@ const wm_context WM_SYS_CONTEXT = {
     (wm_routine)wm_sys_main,
     NULL
 };
+
+#ifndef WIN32
+
+static int queue_fd;                            // Output queue file descriptor
+
+static void wm_sys_setup(wm_sys_t *_sys);       // Setup module
+static void wm_sys_cleanup();                   // Cleanup function, doesn't overwrite wm_cleanup
+static void wm_sys_check();                     // Check configuration, disable flag
+static void wm_sys_network();                   // Get network inventory
+
+char* check_dhcp(char *ifa_name, int family);   // Check DHCP status for network interfaces
+char* get_default_gateway(char *ifa_name);
 
 // Module main function. It won't return
 
@@ -608,3 +615,12 @@ char* get_default_gateway(char *ifa_name){
     return def_gateway;
 
 }
+
+#else
+
+void * wm_sys_main(wm_sys_t * _sys) {
+    sys = _sys;
+    return NULL;
+}
+
+#endif // !WIN32

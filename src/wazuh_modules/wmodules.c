@@ -15,6 +15,35 @@ wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
 int wm_max_eps;
 
+// Read XML configuration and internal options
+
+int wm_config() {
+    wmodule * database;
+
+    // Get defined values from internal_options
+
+    wm_task_nice = getDefine_Int("wazuh_modules", "task_nice", -20, 19);
+    wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 100, 1000);
+
+    // Read configuration: ossec.conf
+
+    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, NULL) < 0){
+        return -1;
+    }
+
+#ifdef CLIENT
+    // Read configuration: agent.conf
+    ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, NULL);
+#else
+    // The database module won't be available on agents
+    if ((database = wm_database_read())) {
+        wm_add(database);
+    }
+#endif
+
+    return 0;
+}
+
 // Add module to the global list
 
 void wm_add(wmodule *module) {

@@ -10,6 +10,7 @@
 #ifdef WIN32
 
 #include "shared.h"
+#include "wazuh_modules/wmodules.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
 #include "os_win.h"
@@ -284,6 +285,23 @@ int local_start()
                      0,
                      (LPDWORD)&threadID2) == NULL) {
         merror(THREAD_ERROR);
+    }
+
+    // Read wodle configuration and start modules
+
+    if (!wm_config()) {
+        wmodule * cur_module;
+
+        for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+            if (CreateThread(NULL,
+                             0,
+                             (LPTHREAD_START_ROUTINE)cur_module->context->start,
+                             cur_module->data,
+                             0,
+                             (LPDWORD)&threadID2) == NULL) {
+                merror(THREAD_ERROR);
+            }
+        }
     }
 
     /* Send agent information message */
