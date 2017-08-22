@@ -28,5 +28,9 @@ int authd_read_config(const char *path) {
         config.force_time = -1;
     }
 
+    if (!config.ciphers) {
+        config.ciphers = strdup(DEFAULT_CIPHERS);
+    }
+
     return 0;
 }

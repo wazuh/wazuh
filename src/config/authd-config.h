@@ -23,6 +23,7 @@ typedef struct authd_config_t {
     unsigned short port;
     authd_flags_t flags;
     int force_time;
+    char *ciphers;
     char *agent_ca;
     char *manager_cert;
     char *manager_key;

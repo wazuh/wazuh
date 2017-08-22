@@ -155,7 +155,6 @@ int main(int argc, char **argv)
     int run_foreground = 0;
     gid_t gid;
     int client_sock = 0;
-    char *ciphers = DEFAULT_CIPHERS;
     const char *dir  = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     char buf[4096 + 1];
@@ -184,6 +183,7 @@ int main(int argc, char **argv)
         int use_ip_address = 0;
         int clear_removed = 0;
         int force_insert = -2;
+        const char *ciphers = NULL;
         const char *ca_cert = NULL;
         const char *server_cert = NULL;
         const char *server_key = NULL;
@@ -351,6 +351,11 @@ int main(int argc, char **argv)
             config.force_time = force_insert;
         }
 
+        if (ciphers) {
+            free(config.ciphers);
+            config.ciphers = strdup(ciphers);
+        }
+
         if (ca_cert) {
             free(config.agent_ca);
             config.agent_ca = strdup(ca_cert);
@@ -460,7 +465,7 @@ int main(int argc, char **argv)
     fclose(fp);
 
     /* Start SSL */
-    ctx = os_ssl_keys(1, dir, ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
+    ctx = os_ssl_keys(1, dir, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
     if (!ctx) {
         merror("SSL error. Exiting.");
         exit(1);
