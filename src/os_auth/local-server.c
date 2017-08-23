@@ -345,7 +345,7 @@ cJSON* local_remove(const char *id) {
         pthread_cond_signal(&cond_pending);
 
         cJSON_AddNumberToObject(response, "error", 0);
-        cJSON_AddStringToObject(response, "message", "Agent deleted successfully.");
+        cJSON_AddStringToObject(response, "data", "Agent deleted successfully.");
     }
 
     pthread_mutex_unlock(&mutex_keys);
