@@ -48,6 +48,7 @@ int receive_msg()
 
             /* Manager disconnected */
             if (recv_b <= 0) {
+                merror("Receiver: %s [%d]", strerror(errno), errno);
                 return -1;
             } else if (length <= 0)
                 continue;

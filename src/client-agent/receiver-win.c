@@ -82,6 +82,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                 if (recv_b <= 0) {
                     update_status(AGN_DISCONNECTED);
+                    merror("Receiver: %s [%d]", strerror(errno), errno);
                     merror(LOST_ERROR);
                     start_agent(0);
                     update_status(AGN_CONNECTED);
