@@ -271,6 +271,13 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
         }
     }
 
+    /* Check whether the agent name is the same as the manager */
+
+    if (!strcmp(name, shost)) {
+        ierror = EDUPNAME;
+        goto fail;
+    }
+
     /* Check for duplicated names */
 
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {

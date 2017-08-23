@@ -65,6 +65,8 @@ __attribute__((noreturn)) void manage_shutdown(__attribute__((unused)) int sig)
 }
 #endif
 
+char shost[512];
+
 int main(int argc, char **argv)
 {
     char *user_msg;
@@ -184,6 +186,11 @@ int main(int argc, char **argv)
     getuname();
 
 #ifndef WIN32
+    if (gethostname(shost, sizeof(shost) - 1) < 0) {
+        strncpy(shost, "localhost", sizeof(shost) - 1);
+        shost[sizeof(shost) - 1] = '\0';
+    }
+
     /* Get the group name */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {

@@ -81,6 +81,7 @@ extern time_t time3;
 extern long int rand1;
 extern long int rand2;
 extern fpos_t fp_pos;
+extern char shost[];
 
 /* Internal defines */
 #define USER_SIZE       514

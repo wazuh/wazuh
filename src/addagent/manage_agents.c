@@ -140,11 +140,11 @@ int add_agent(int json_output)
          * we should force user to provide a name from input device.
          */
         _name = getenv("OSSEC_AGENT_NAME");
-        if (_name == NULL || NameExist(_name) || !OS_IsValidName(_name)) {
+        if (_name == NULL || !strcmp(_name, shost) || NameExist(_name) || !OS_IsValidName(_name)) {
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
 
-                if (NameExist(_name)) {
+                if (!strcmp(_name, shost) || NameExist(_name)) {
                     cJSON_AddNumberToObject(json_root, "error", 75);
                     cJSON_AddStringToObject(json_root, "message", "Name already present");
                 } else {
@@ -170,10 +170,10 @@ int add_agent(int json_output)
         }
 
         /* Search for name  -- no duplicates (only if Authd is not running) */
-        if (sock < 0 && NameExist(name)) {
+        if (sock < 0 && (!strcmp(name, shost) || NameExist(name))) {
             printf(ADD_ERROR_NAME, name);
         }
-    } while ((sock < 0 && NameExist(name)) || !OS_IsValidName(name));
+    } while ((sock < 0 && (!strcmp(name, shost) || NameExist(name))) || !OS_IsValidName(name));
 
     /* Get IP */
     memset(ip, '\0', FILE_SIZE + 1);

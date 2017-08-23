@@ -49,6 +49,7 @@ static char *authpass = NULL;
 static SSL_CTX *ctx;
 static int remote_sock = -1;
 
+char shost[512];
 authd_config_t config;
 keystore keys;
 static struct client pool[AUTH_POOL];
@@ -482,6 +483,11 @@ int main(int argc, char **argv)
     srandom_init();
     getuname();
 
+    if (gethostname(shost, sizeof(shost) - 1) < 0) {
+        strncpy(shost, "localhost", sizeof(shost) - 1);
+        shost[sizeof(shost) - 1] = '\0';
+    }
+
     /* Load ossec uid and gid for creating backups */
     if (OS_LoadUid() < 0) {
         merror_exit("Couldn't get user and group id.");
@@ -746,6 +752,20 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         continue;
                     }
                 }
+            }
+
+            /* Check whether the agent name is the same as the manager */
+
+            if (!strcmp(agentname, shost)) {
+                pthread_mutex_unlock(&mutex_keys);
+                merror("Invalid agent name %s (same as manager)", agentname);
+                snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
+                SSL_write(ssl, response, strlen(response));
+                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                SSL_write(ssl, response, strlen(response));
+                SSL_free(ssl);
+                close(client.socket);
+                continue;
             }
 
             /* Check for duplicated names */

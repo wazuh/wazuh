@@ -83,6 +83,7 @@ int authd_read_config(const char *path);
 // Block signals
 void authd_sigblock();
 
+extern char shost[];
 extern keystore keys;
 extern volatile int write_pending;
 extern volatile int running;
