@@ -166,6 +166,8 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
             strcpy(output, "err Too few commands");
             return strlen(output);
         }
+    } else if (strcmp(rcv_comm, "restart") == 0) {
+        return wcom_restart(output);
     } else {
         merror("WCOM Unrecognized command '%s'.", rcv_comm);
         strcpy(output, "err Unrecognized command");
@@ -467,6 +469,31 @@ size_t wcom_upgrade_result(char *output){
     }
     strcpy(output, "err Cannot read upgrade_result file.");
     merror("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
+    return strlen(output);
+}
+
+size_t wcom_restart(char *output) {
+    char *exec_cmd[3] = {"/var/ossec/bin/ossec-control", "restart", NULL};
+    if (isChroot()) {
+        strcpy(exec_cmd[0], "/bin/ossec-control");
+    }
+
+    switch (fork()) {
+        case -1:
+            merror("At WCOM upgrade_result: Cannot fork");
+        break;
+        case 0:
+            sleep(1);
+            if (execv(exec_cmd[0], exec_cmd) < 0) {
+                merror(EXEC_CMDERROR, *exec_cmd, strerror(errno));
+                return strlen(output);
+            }
+        break;
+        default:
+            strcpy(output, "ok");
+        break;
+    }
+
     return strlen(output);
 }
 

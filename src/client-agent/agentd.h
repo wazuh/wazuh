@@ -99,6 +99,9 @@ int req_push(char * buffer, size_t length);
 // Request receiver thread start
 void * req_receiver(void * arg);
 
+// Restart agent
+int restartAgent();
+
 // Agent status functions
 int update_status(agent_status_t status);
 int update_keepalive(time_t curr_time);

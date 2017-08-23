@@ -226,6 +226,7 @@ int receive_msg()
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
                                 UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
+                                restartAgent(); 
                             }
                         } else {
                             /* Remove file */
