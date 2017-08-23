@@ -233,7 +233,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         if (execve(argv[0], argv, envp) < 0)
             exit(EXECVE_ERROR);
 
-        // Child won't return
+        break;
 
     default:
 
@@ -306,9 +306,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         pthread_mutex_destroy(&tinfo.mutex);
         pthread_cond_destroy(&tinfo.finished);
-
-        return retval;
     }
+
+    return retval;
 }
 
 // Reading thread's start point

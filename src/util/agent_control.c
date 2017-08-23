@@ -117,7 +117,12 @@ int main(int argc, char **argv)
                 break;
             case 'i':
                 info_agent++;
-            /* no break; */
+                if (!optarg) {
+                    merror("-i needs an argument");
+                    helpmsg();
+                }
+                agent_id = optarg;
+                break;
             case 'u':
                 if (!optarg) {
                     merror("-u needs an argument");

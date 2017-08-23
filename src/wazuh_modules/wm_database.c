@@ -942,7 +942,8 @@ int wm_fill_rootcheck(sqlite3 *db, const char *path) {
                     continue;
                 }
 
-                // Don't break
+                count++;
+                break;
 
             default:
                 count++;
