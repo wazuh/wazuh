@@ -15,7 +15,7 @@ All notable changes to this project will be documented in this file.
 - Fix bug in Authd that made it crash when removing keys.
 - Fix race condition in Remoted when writing logs.
 - Avoid repeated errors by Remoted when sending data to a disconnected agent.
-
+- Prevented Monitord from rotating unexisting logs.
 
 ## [v2.1.0] - 2017-08-14
 

@@ -81,20 +81,24 @@ void w_rotate_log(int compress, int keep_log_days) {
         merror_exit(MKDIR_ERROR, month_dir, errno, strerror(errno));
     }
 
-    if (rename(old_path, new_path) == 0) {
-        if (compress) {
-            OS_CompressLog(new_path);
+    if (!IsFile(old_path)) {
+        if (rename(old_path, new_path) == 0) {
+            if (compress) {
+                OS_CompressLog(new_path);
+            }
+        } else {
+            merror("Couldn't rename '%s' to '%s': %s", old_path, new_path, strerror(errno));
         }
-    } else {
-        merror("Couldn't rename '%s' to '%s'", old_path, new_path);
     }
 
-    if (rename(old_path_json, new_path_json) == 0) {
-        if (compress) {
-            OS_CompressLog(new_path_json);
+    if (!IsFile(old_path_json)) {
+        if (rename(old_path_json, new_path_json) == 0) {
+            if (compress) {
+                OS_CompressLog(new_path_json);
+            }
+        } else {
+            merror("Couldn't rename '%s' to '%s': %s", old_path_json, new_path_json, strerror(errno));
         }
-    } else {
-        merror("Couldn't rename '%s' to '%s'", old_path_json, new_path_json);
     }
 
     // Remove old compressed files
