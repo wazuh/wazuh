@@ -160,7 +160,14 @@ void HandleSecure()
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
 
                     if (getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size) < 0) {
-                        merror("Couldn't get the remote peer information: %s", strerror(errno));
+                        switch (errno) {
+                            case ENOTCONN:
+                                mdebug1("TCP peer was disconnected.");
+                                break;
+                            default:
+                                merror("Couldn't get the remote peer information: %s [%d]", strerror(errno), errno);
+                        }
+
                         close(sock_client);
                         continue;
                     }
