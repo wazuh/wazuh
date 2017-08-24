@@ -149,6 +149,7 @@ void HandleSecure()
                 } else {
                     sock_client = fd;
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
+                    length = wnet_order(length);
 
                     if (getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size) < 0) {
                         merror("Couldn't get the remote peer information: %s", strerror(errno));
