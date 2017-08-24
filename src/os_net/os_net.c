@@ -510,3 +510,13 @@ int OS_SetRecvTimeout(int socket, int seconds)
     struct timeval tv = { seconds, 0 };
     return setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
 }
+
+// Byte ordering
+
+netsize_t wnet_order(netsize_t value) {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    return (value >> 24) | (value << 24) | ((value & 0xFF0000) >> 8) | ((value & 0xFF00) << 8);
+#else
+    return value;
+#endif
+}
