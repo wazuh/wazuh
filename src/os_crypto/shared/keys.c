@@ -520,8 +520,7 @@ int OS_DeleteKey(keystore *keys, const char *id) {
 
     if (i < (int)keys->keysize) {
         keys->keyentries[i] = keys->keyentries[keys->keysize];
-        OSHash_Update(keys->keyhash_id, keys->keyentries[i]->id, keys->keyentries[i]);
-        OSHash_Update(keys->keyhash_ip, keys->keyentries[i]->ip->ip, keys->keyentries[i]);
+        keys->keyentries[i]->keyid = i;
     }
 
     keys->keyentries[keys->keysize] = keys->keyentries[keys->keysize + 1];
