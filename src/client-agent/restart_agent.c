@@ -10,7 +10,7 @@
 
 #include "shared.h"
 #include "headers/defs.h"
-#include "headers/request_op.h"
+#include "os_execd/execd.h"
 #include "os_net/os_net.h"
 #include "agentd.h"
 
@@ -18,11 +18,13 @@
 int restartAgent() {
 
 	char req[] = "restart";
-	int req_size;
-	int sock = -1;
+	size_t length;
+
+	length = strlen(req);
 
 	#ifndef WIN32
 
+	int sock = -1;
 	char sockname[PATH_MAX + 1];
 
 	if (isChroot()) {
@@ -36,15 +38,17 @@ int restartAgent() {
 		return -1;
 	}
 
-    req_size = strlen(req);
-	if (send(sock, req, req_size, 0) != req_size) {
+	if (send(sock, req, length, 0) != length) {
 		merror("send(): %s", strerror(errno));
 	}
 
 	close(sock);
 
 	#else
-	//Windows
+
+	char output[OS_MAXSTR + 1];
+	length = wcom_dispatch(req, length, output);
+
 	#endif
 
 	return 0;

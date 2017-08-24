@@ -473,7 +473,9 @@ size_t wcom_upgrade_result(char *output){
 }
 
 size_t wcom_restart(char *output) {
-    char *exec_cmd[3] = {"/var/ossec/bin/ossec-control", "restart", NULL};
+    #ifndef WIN32
+
+    char *exec_cmd[3] = { DEFAULTDIR "/bin/ossec-control", "restart", NULL};
     if (isChroot()) {
         strcpy(exec_cmd[0], "/bin/ossec-control");
     }
@@ -493,6 +495,13 @@ size_t wcom_restart(char *output) {
             strcpy(output, "ok");
         break;
     }
+
+    #else
+
+    char exec_cm[] = {"\"" AR_BINDIR "/restart-ossec.cmd\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
+    ExecCmd_Win32(exec_cm);
+
+    #endif
 
     return strlen(output);
 }
