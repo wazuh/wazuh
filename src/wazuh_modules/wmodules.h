@@ -55,7 +55,7 @@ typedef struct wmodule {
 
 #include "wm_oscap.h"
 #include "wm_database.h"
-#include "wm_syscollector.h"
+#include "syscollector/syscollector.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.

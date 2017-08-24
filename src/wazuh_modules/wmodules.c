@@ -18,7 +18,6 @@ int wm_max_eps;
 // Read XML configuration and internal options
 
 int wm_config() {
-    wmodule * database;
 
     // Get defined values from internal_options
 
@@ -35,6 +34,7 @@ int wm_config() {
     // Read configuration: agent.conf
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, NULL);
 #else
+    wmodule * database;
     // The database module won't be available on agents
     if ((database = wm_database_read())) {
         wm_add(database);

@@ -8,9 +8,15 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "../wmodules.h"
 
 #ifndef WM_SYSCOLLECTOR
 #define WM_SYSCOLLECTOR
+
+#define DHCP_LENGTH 10
+
+#define WORKING_BUFFER_SIZE 15000
+#define MAX_TRIES 3
 
 #define WM_SYS_DEF_INTERVAL 3600            // Default cycle interval (1 hour)
 #define WM_SYS_LOGTAG ARGV0 ":syscollector" // Tag for log messages
@@ -39,5 +45,11 @@ extern const wm_context WM_SYS_CONTEXT;     // Context
 
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module);
+
+// Network inventory for Linux
+void sys_network_linux(int queue_fd, const char* WM_SYS_LOCATION);
+
+// Network inventory for windows
+void sys_network_windows(const char* WM_SYS_LOCATION);
 
 #endif

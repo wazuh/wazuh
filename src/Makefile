@@ -459,7 +459,7 @@ $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
 winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a
-	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32"
+	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32 -liphlpapi -lws2_32"
 	cd ${EXTERNAL_LUA}src/ && ${MAKE} CC=${MING_BASE}${CC} -f Makefile.mingw mingw
 	cp ${EXTERNAL_LUA}src/ossec-lua.exe win32/
 	cp ${EXTERNAL_LUA}src/ossec-luac.exe win32/
@@ -601,10 +601,13 @@ shared.a: ${shared_o}
 
 #### Wazuh modules ##
 
-wmodules_c := $(wildcard wazuh_modules/wm*.c)
+wmodules_c := $(wildcard wazuh_modules/wm*.c wazuh_modules/syscollector/*.c)
 wmodules_o := $(wmodules_c:.c=.o)
 
 wazuh_modules/%.o: wazuh_modules/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
+
+wazuh_modules/syscollector/%.o: wazuh_modules/syscollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
 
 wmodules.a: ${wmodules_o}
