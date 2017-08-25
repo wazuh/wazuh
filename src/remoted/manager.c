@@ -662,14 +662,16 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 }
 /* Update shared files */
 void *update_shared_files(__attribute__((unused)) void *none) {
+    const int INTERVAL = getDefine_Int("remoted", "shared_reload", 1, 18000);
+
     while (1) {
         time_t _ctime = time(0);
 
-        /* Every NOTIFY seconds, re-read the files
+        /* Every INTERVAL seconds, re-read the files
          * If something changed, notify all agents
          */
 
-        if ((_ctime - _stime) > (NOTIFY_TIME)) {
+        if ((_ctime - _stime) >= INTERVAL) {
             c_files();
             _stime = _ctime;
         }
