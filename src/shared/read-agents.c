@@ -1264,7 +1264,7 @@ int get_agent_status(const char *agent_name, const char *agent_ip)
         return (GA_STATUS_INV);
     }
 
-    if (file_status.st_mtime > (time(0) - (3 * NOTIFY_TIME + 30))) {
+    if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
         return (GA_STATUS_ACTIVE);
     }
 
@@ -1307,7 +1307,7 @@ char **get_agents(int flag)
                 continue;
             }
 
-            if (file_status.st_mtime > (time(0) - (3 * NOTIFY_TIME + 30))) {
+            if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
                 status = 1;
                 if (flag == GA_NOTACTIVE) {
                     continue;

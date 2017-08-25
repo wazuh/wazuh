@@ -158,7 +158,7 @@ int local_start()
         agt->notify_time = NOTIFY_TIME;
     }
     if (agt->max_time_reconnect_try == 0 ) {
-        agt->max_time_reconnect_try = NOTIFY_TIME * 3;
+        agt->max_time_reconnect_try = RECONNECT_TIME;
     }
     if (agt->max_time_reconnect_try <= agt->notify_time) {
         agt->max_time_reconnect_try = (agt->notify_time * 3);
@@ -428,7 +428,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 #endif
 
     /* Send notification */
-    else if ((cu_time - __win32_curr_time) > (NOTIFY_TIME - 200)) {
+    else if ((cu_time - __win32_curr_time) > agt->notify_time) {
         mdebug1("Sending info to server (ctime2)...");
         send_win32_info(cu_time);
     }
@@ -500,8 +500,8 @@ void send_win32_info(time_t curr_time)
         tmp_labels[0] = '\0';
     }
 
-    /* Get shared files list -- every 30 seconds only */
-    if ((__win32_curr_time - __win32_shared_time) > 30) {
+    /* Get shared files list -- every notify_time seconds only */
+    if ((__win32_curr_time - __win32_shared_time) > agt->notify_time) {
         if (__win32_shared) {
             free(__win32_shared);
             __win32_shared = NULL;

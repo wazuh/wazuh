@@ -121,7 +121,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                 key_lock();
 
                 for (i = 0; i < keys.keysize; i++) {
-                    if (keys.keyentries[i]->rcvd >= (time(0) - (3 * NOTIFY_TIME))) {
+                    if (keys.keyentries[i]->rcvd >= (time(0) - DISCON_TIME)) {
                         strncpy(agent_id, keys.keyentries[i]->id, KEYSIZE);
                         key_unlock();
                         send_msg(agent_id, msg_to_send, -1);
