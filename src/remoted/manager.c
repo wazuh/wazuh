@@ -221,10 +221,10 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
 
     /* Read directory */
     while ((entry = readdir(dp)) != NULL) {
-        /* Ignore . and ..  */
+        /* Ignore hidden files  */
         /* Leave the shared config file for later */
         /* Also discard merged.mg.tmp */
-        if ((entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) || !strncmp(entry->d_name, SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
+        if (entry->d_name[0] == '.' || !strncmp(entry->d_name, SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
             continue;
         }
 
