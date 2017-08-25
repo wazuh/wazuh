@@ -10,6 +10,10 @@
 #include "headers/shared.h"
 #include <external/cJSON/cJSON.h>
 
+#ifdef WIN32
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
+
 static int dbg_flag = 0;
 static int chroot_flag = 0;
 static int daemon_flag = 0;
@@ -28,8 +32,8 @@ void WinSetError();
 
 static void _log(int level, const char *tag, const char *msg, va_list args)
 {
-    time_t tm;
-    struct tm *p;
+    time_t now;
+    struct tm localtm;
     va_list args2; /* For the stderr print */
     va_list args3; /* For the JSON output */
     FILE *fp;
@@ -52,8 +56,8 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
       "critical"
     };
 
-    tm = time(NULL);
-    p = localtime(&tm);
+    now = time(NULL);
+    localtime_r(&now, &localtm);
     /* Duplicate args */
     va_copy(args2, args);
     va_copy(args3, args);
@@ -86,8 +90,8 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
           cJSON *json_log = cJSON_CreateObject();
 
           snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
-                        p->tm_year + 1900, p->tm_mon + 1,
-                        p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
+                        localtm.tm_year + 1900, localtm.tm_mon + 1,
+                        localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
           vsnprintf(jsonstr, OS_MAXSTR, msg, args3);
 
@@ -129,8 +133,8 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
       /* Maybe log to syslog if the log file is not available */
       if (fp) {
           (void)fprintf(fp, "%d/%02d/%02d %02d:%02d:%02d ",
-                        p->tm_year + 1900, p->tm_mon + 1,
-                        p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
+                        localtm.tm_year + 1900, localtm.tm_mon + 1,
+                        localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
           (void)fprintf(fp, "%s: ", tag);
           (void)fprintf(fp, "%s: ", strlevel[level]);
           (void)vfprintf(fp, msg, args);
@@ -149,8 +153,8 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
     if (daemon_flag == 0) {
         /* Print to stderr */
         (void)fprintf(stderr, "%d/%02d/%02d %02d:%02d:%02d ",
-                      p->tm_year + 1900, p->tm_mon + 1 , p->tm_mday,
-                      p->tm_hour, p->tm_min, p->tm_sec);
+                      localtm.tm_year + 1900, localtm.tm_mon + 1 , localtm.tm_mday,
+                      localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
         (void)fprintf(stderr, "%s: ", tag);
         (void)fprintf(stderr, "%s: ", strlevel[level]);
         (void)vfprintf(stderr, msg, args2);
