@@ -121,6 +121,12 @@ void HandleSecure()
             n_events = epoll_wait(epoll_fd, events, MAX_EVENTS, EPOLL_MILLIS);
 #endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
 
+            if (n_events < 0) {
+                merror("Waiting for connection: %s (%d)", strerror(errno), errno);
+                sleep(1);
+                continue;
+            }
+
             int i;
             for (i = 0; i < n_events; i++) {
 #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
