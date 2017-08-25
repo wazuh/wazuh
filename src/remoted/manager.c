@@ -98,17 +98,15 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
             return;
         }
 
+        /* Lock mutex */
+        w_mutex_lock(&lastmsg_mutex)
+
         /* Check if there is a keep alive already for this agent */
-        if (data = OSHash_Get(pending_data, keys.keyentries[agentid]->id), data && data->message && strcmp(data->message, uname) == 0) {
+        if (data = OSHash_Get(pending_data, keys.keyentries[agentid]->id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
+            w_mutex_unlock(&lastmsg_mutex);
             utimes(data->keep_alive, NULL);
         } else {
-            /* Lock mutex */
-            if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
-                merror(MUTEX_ERROR);
-                return;
-            }
-
-            if (data || (data = OSHash_Get(pending_data, keys.keyentries[agentid]->id))) {
+            if (data) {
                 free(data->message);
             } else {
                 os_calloc(1, sizeof(pending_data_t), data);
@@ -117,9 +115,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
                     merror("Couldn't add pending data into hash table.");
 
                     /* Unlock mutex */
-                    if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
-                        merror(MUTEX_ERROR);
-                    }
+                    w_mutex_unlock(&lastmsg_mutex);
 
                     free(data);
                     return;
@@ -140,18 +136,14 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
                     forward(queue_i);
 
                     /* Signal that new data is available */
-                    pthread_cond_signal(&awake_mutex);
-                }
+                    w_cond_signal(&awake_mutex);
 
-                data->changed = 1;
+                    data->changed = 1;
+                }
             }
 
             /* Unlock mutex */
-            if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
-                merror(MUTEX_ERROR);
-
-                return;
-            }
+            w_mutex_unlock(&lastmsg_mutex);
 
             /* This is not critical section since is not used by another thread */
 
@@ -283,10 +275,7 @@ static void c_files()
     mdebug1("Updating shared files sums.");
 
     /* Lock mutex */
-    if (pthread_mutex_lock(&files_mutex) != 0) {
-        merror(MUTEX_ERROR);
-        return;
-    }
+    w_mutex_lock(&files_mutex);
 
     // Free groups set, and set to NULL
     {
@@ -321,9 +310,7 @@ static void c_files()
 
     if (!dp) {
         /* Unlock mutex */
-        if (pthread_mutex_unlock(&files_mutex) != 0) {
-            merror(MUTEX_ERROR);
-        }
+        w_mutex_unlock(&files_mutex);
 
         merror("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
         return;
@@ -362,9 +349,7 @@ static void c_files()
     }
 
     /* Unlock mutex */
-    if (pthread_mutex_unlock(&files_mutex) != 0) {
-        merror(MUTEX_ERROR);
-    }
+    w_mutex_unlock(&files_mutex);
 
     closedir(dp);
     mdebug2("End updating shared files sums.");
@@ -496,19 +481,14 @@ static void read_controlmsg(const char *agent_id, char *msg)
     }
 
     /* Lock mutex */
-    if (pthread_mutex_lock(&files_mutex) != 0) {
-        merror(MUTEX_ERROR);
-        return;
-    }
+    w_mutex_lock(&files_mutex);
 
     // If group was got, get file sum array
 
     if (group[0]) {
         if (f_sum = find_sum(group), !f_sum) {
             /* Unlock mutex */
-            if (pthread_mutex_unlock(&files_mutex) != 0) {
-                merror(MUTEX_ERROR);
-            }
+            w_mutex_unlock(&files_mutex);
 
             merror("No such group '%s' for agent '%s'", group, agent_id);
             return;
@@ -556,9 +536,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
                 if (f_sum = find_sum(group), !f_sum) {
                     /* Unlock mutex */
-                    if (pthread_mutex_unlock(&files_mutex) != 0) {
-                        merror(MUTEX_ERROR);
-                    }
+                    w_mutex_unlock(&files_mutex);
 
                     merror("No such group '%s' for agent '%s'", group, agent_id);
                     return;
@@ -578,9 +556,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
 
             /* Unlock mutex */
-            if (pthread_mutex_unlock(&files_mutex) != 0) {
-                merror(MUTEX_ERROR);
-            }
+            w_mutex_unlock(&files_mutex);
 
             if (tmp_sum[0] && strcmp(tmp_sum, md5) != 0) {
                 mdebug1("Sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
@@ -634,9 +610,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     }
 
     /* Unlock mutex */
-    if (pthread_mutex_unlock(&files_mutex) != 0) {
-        merror(MUTEX_ERROR);
-    }
+    w_mutex_unlock(&files_mutex);
 
     return;
 }
@@ -656,14 +630,11 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
     /* Should never leave this loop */
     while (1) {
         /* Lock mutex */
-        if (pthread_mutex_lock(&lastmsg_mutex) != 0) {
-            merror(MUTEX_ERROR);
-            return (NULL);
-        }
+        w_mutex_lock(&lastmsg_mutex);
 
         /* If no agent changed, wait for signal */
         while (empty(queue_i, queue_j)) {
-            pthread_cond_wait(&awake_mutex, &lastmsg_mutex);
+            w_cond_wait(&awake_mutex, &lastmsg_mutex);
         }
 
         /* Pop data from queue */
@@ -680,10 +651,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
         forward(queue_j);
 
         /* Unlock mutex */
-        if (pthread_mutex_unlock(&lastmsg_mutex) != 0) {
-            merror(MUTEX_ERROR);
-            break;
-        }
+        w_mutex_unlock(&lastmsg_mutex);
 
         if (*agent_id) {
             read_controlmsg(agent_id, msg);
