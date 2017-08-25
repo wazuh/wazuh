@@ -100,7 +100,7 @@ int req_push(char * buffer, size_t length);
 void * req_receiver(void * arg);
 
 // Restart agent
-int restartAgent();
+void * restartAgent();
 
 // Agent status functions
 int update_status(agent_status_t status);

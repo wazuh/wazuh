@@ -15,10 +15,10 @@
 #include "agentd.h"
 
 
-int restartAgent() {
+void * restartAgent() {
 
 	char req[] = "restart";
-	size_t length;
+	ssize_t length;
 
 	length = strlen(req);
 
@@ -35,10 +35,7 @@ int restartAgent() {
 
 	if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
 		merror("At restartAgent(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-		return -1;
-	}
-
-	if (send(sock, req, length, 0) != length) {
+	} else if (send(sock, req, length, 0) != length) {
 		merror("send(): %s", strerror(errno));
 	}
 
@@ -51,5 +48,5 @@ int restartAgent() {
 
 	#endif
 
-	return 0;
+	return NULL;
 }
