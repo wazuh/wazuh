@@ -94,7 +94,10 @@ void HandleSecure()
         }
 
         EV_SET(&request, logr.sock, EVFILT_READ, EV_ADD, 0, 0, 0);
-        kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO);
+
+        if (kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO) < 0) {
+            merror_exit("kevent when adding listening socket: %s (%d)", strerror(errno), errno);
+        }
 #elif defined(__linux__)
         os_calloc(MAX_EVENTS, sizeof(struct epoll_event), events);
         epoll_fd = epoll_create(MAX_EVENTS);
@@ -107,7 +110,7 @@ void HandleSecure()
         request.data.fd = logr.sock;
 
         if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, logr.sock, &request) < 0) {
-            merror_exit(EPOLL_ERROR);
+            merror_exit("epoll when adding listening socket: %s (%d)", strerror(errno), errno);
         }
 #endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
     }
@@ -145,11 +148,16 @@ void HandleSecure()
                     mdebug1("New TCP connection at %s.", inet_ntoa(peer_info.sin_addr));
 #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
                     EV_SET(&request, sock_client, EVFILT_READ, EV_ADD, 0, 0, 0);
-                    kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO);
+
+                    if (kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO) < 0) {
+                        merror("kevent when adding connected socket: %s (%d)", strerror(errno), errno);
+                        close(sock_client);
+                    }
 #elif defined(__linux__)
                     request.data.fd = sock_client;
                     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_client, &request) < 0) {
-                        merror_exit(EPOLL_ERROR);
+                        merror("epoll when adding connected socket: %s (%d)", strerror(errno), errno);
+                        close(sock_client);
                     }
 #endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
                 } else {
@@ -167,16 +175,29 @@ void HandleSecure()
 
                     /* Nothing received */
                     if (recv_b <= 0 || length > OS_MAXSTR) {
-                        if (recv_b <= 0) {
+                        switch (recv_b) {
+                        case -1:
+                            if (errno == ENOTCONN) {
+                                mdebug1("TCP peer at %s disconnected (ENOTCONN).", inet_ntoa(peer_info.sin_addr));
+                            } else {
+                                merror("TCP peer at %s: %s (%d)", inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
+                            }
+
+                            break;
+
+                        case 0:
                             mdebug1("TCP peer at %s disconnected.", inet_ntoa(peer_info.sin_addr));
-                        } else {
-                            merror(RECV_ERROR);
+                            break;
+
+                        default:
+                            // length > OS_MAXSTR
+                            merror("Too big message size from %s.", inet_ntoa(peer_info.sin_addr));
                         }
 #ifdef __linux__
                         /* Kernel event is automatically deleted when closed */
                         request.data.fd = sock_client;
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
-                            merror_exit(EPOLL_ERROR);
+                            merror("epoll when deleting connected socket: %s (%d)", strerror(errno), errno);
                         }
 #endif /* __linux__ */
 
@@ -187,15 +208,14 @@ void HandleSecure()
                     recv_b = recv(sock_client, buffer, length, MSG_WAITALL);
 
                     if (recv_b != length) {
-                        merror(RECV_ERROR);
+                        merror("Incorrect message size from %s: expecting %d, got %zd", inet_ntoa(peer_info.sin_addr), length, recv_b);
 #ifdef __linux__
                         request.data.fd = sock_client;
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {
-                            merror_exit(EPOLL_ERROR);
+                            merror("epoll when deleting connected socket: %s (%d)", strerror(errno), errno);
                         }
 #endif /* __linux__ */
                         close(sock_client);
-                        continue;
                     } else {
                         HandleSecureMessage(buffer, recv_b, &peer_info, sock_client);
                     }
