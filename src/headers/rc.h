@@ -20,8 +20,8 @@
                              (str[2] == '-') && \
                              (str+=3) )
 
-#define IS_ACK(x) (x[0] == 'a' && x[1] == 'c' && x[2] == 'k' && !x[3])
-#define IS_REQ(x) (x[0] == 'r' && x[1] == 'e' && x[2] == 'q' && x[3])
+#define IS_ACK(x) (x && x[0] == 'a' && x[1] == 'c' && x[2] == 'k' && !x[3])
+#define IS_REQ(x) (x && x[0] == 'r' && x[1] == 'e' && x[2] == 'q' && x[3])
 
 #define EXECD_HEADER        "execd "
 #define FILE_UPDATE_HEADER  "up file "
