@@ -37,7 +37,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON_AddItemToObject(root, "rule", rule = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "agent", agent = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "manager", manager = cJSON_CreateObject());
-    cJSON_AddItemToObject(root, "data", data = cJSON_CreateObject());
+    data = cJSON_CreateObject();
 
     if ( lf->time ) {
 
@@ -276,6 +276,14 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     if (lf->previous)
         cJSON_AddStringToObject(root, "previous_log", lf->previous);
+
+    // Insert data object only if it has children
+
+    if (data->child) {
+        cJSON_AddItemToObject(root, "data", data);
+    } else {
+        cJSON_Delete(data);
+    }
 
     W_ParseJSON(root, lf);
     out = cJSON_PrintUnformatted(root);
