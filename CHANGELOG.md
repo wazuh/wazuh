@@ -1,7 +1,20 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v2.1.0]
+## [v2.1.1]
+
+### Changed
+
+- Improved errors messages related to TCP connection queue.
+
+### Fixed
+
+- Fix byte-order incompatibility in agents on SPARC when connecting via TCP.
+- Fix bug in Authd that made it crash when removing keys.
+- Fix race condition in Remoted when writing logs.
+
+
+## [v2.1.0] - 2017-08-14
 
 ### Added
 
@@ -57,7 +70,7 @@ All notable changes to this project will be documented in this file.
 - Remove unused message queue to send alerts from Authd.
 
 
-## [v2.0.1]
+## [v2.0.1] - 2017-07-19
 
 ### Changed
 
@@ -103,7 +116,7 @@ All notable changes to this project will be documented in this file.
 - Fixed agent-auth exit code for controlled server's errors.
 - Fixed incorrect OVAL patch results classification.
 
-## [v2.0]
+## [v2.0] - 2017-03-14
 
 ### Added
 
