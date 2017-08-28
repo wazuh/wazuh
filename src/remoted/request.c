@@ -49,6 +49,7 @@ void * req_main(__attribute__((unused)) void * arg) {
     unsigned int counter = (unsigned int)os_random();
     char counter_s[COUNTER_LENGTH];
     req_node_t * node;
+    const char * path = isChroot() ? REMOTE_REQ_SOCK : DEFAULTDIR REMOTE_REQ_SOCK;
 
     mdebug1("Running request listener thread.");
 
@@ -69,8 +70,8 @@ void * req_main(__attribute__((unused)) void * arg) {
 
     // Create socket
 
-    if (sock = OS_BindUnixDomain(REMOTE_REQ_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': %s", REMOTE_REQ_SOCK, strerror(errno));
+    if (sock = OS_BindUnixDomain(path, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        merror("Unable to bind to socket '%s': %s", path, strerror(errno));
         return NULL;
     }
 

@@ -20,6 +20,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
     int arq = 0;
     int key_id = 0;
     int ar_location = 0;
+    const char * path = isChroot() ? ARQUEUE : DEFAULTDIR ARQUEUE;
 
     char msg_to_send[OS_SIZE_1024 + 1];
 
@@ -31,8 +32,8 @@ void *AR_Forward(__attribute__((unused)) void *arg)
     char agent_id[KEYSIZE + 1] = "";
 
     /* Create the unix queue */
-    if ((arq = StartMQ(ARQUEUE, READ)) < 0) {
-        merror_exit(QUEUE_ERROR, ARQUEUE, strerror(errno));
+    if ((arq = StartMQ(path, READ)) < 0) {
+        merror_exit(QUEUE_ERROR, path, strerror(errno));
     }
 
     memset(msg, '\0', OS_SIZE_1024 + 1);
