@@ -12,6 +12,7 @@
 #include "headers/defs.h"
 #include "os_execd/execd.h"
 #include "os_net/os_net.h"
+#include "config/syscheck-config.h"
 #include "agentd.h"
 
 
@@ -50,3 +51,20 @@ void * restartAgent() {
 
 	return NULL;
 }
+
+int verifyRemoteConf(){
+	const char *configPath;
+
+	if (isChroot()) {
+		configPath = AGENTCONFIGINT;
+
+	} else {
+		configPath = AGENTCONFIG;
+	}
+
+	if (Test_Syscheck(configPath) < 0) {
+		return -1;
+	}
+
+	return 0;
+};

@@ -102,6 +102,9 @@ void * req_receiver(void * arg);
 // Restart agent
 void * restartAgent();
 
+// Verify remote configuration. Return 0 on success or -1 on error.
+int verifyRemoteConf();
+
 // Agent status functions
 int update_status(agent_status_t status);
 int update_keepalive(time_t curr_time);

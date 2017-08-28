@@ -241,7 +241,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
                             if (final_file) {
                                 if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
                                     UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
-                                    restartAgent();
+                                    if (!verifyRemoteConf())
+                                        restartAgent();
                                 }
                             } else {
                                 unlink(file);

@@ -969,3 +969,76 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
 
     return buf;
     }
+
+int Test_Syscheck(const char * path){
+    int fail = 0;
+    syscheck_config test_syscheck = { .tsleep = 0 };
+
+    if (ReadConfig(CAGENT_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
+		merror(RCONFIG_ERROR,"Syscheck", path);
+		fail = 1;
+	}
+
+    Free_Syscheck(&test_syscheck);
+
+    if (fail) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+void Free_Syscheck(syscheck_config * c) {
+    if (c) {
+        int i;
+        free(c->opts);
+        free(c->remote_db);
+        free(c->db);
+        free(c->scan_day);
+        free(c->scan_time);
+        if (c->ignore) {
+            for (i=0; c->ignore[i] != NULL; i++) {
+                free(c->ignore[i]);
+            }
+            free(c->ignore);
+        }
+        if (c->ignore_regex) {
+            for (i=0; c->ignore_regex[i] != NULL; i++) {
+                OSMatch_FreePattern(c->ignore_regex[i]);
+            }
+            free(c->ignore_regex);
+        }
+        if (c->nodiff) {
+            for (i=0; c->nodiff[i] != NULL; i++) {
+                free(c->nodiff[i]);
+            }
+            free(c->nodiff);
+        }
+        if (c->nodiff_regex) {
+            for (i=0; c->nodiff_regex[i] != NULL; i++) {
+                OSMatch_FreePattern(c->nodiff_regex[i]);
+            }
+        }
+        if (c->dir) {
+            for (i=0; c->dir[i] != NULL; i++) {
+                free(c->dir[i]);
+            }
+            free(c->dir);
+        }
+        if (c->filerestrict) {
+            for (i=0; c->filerestrict[i] != NULL; i++) {
+                OSMatch_FreePattern(c->filerestrict[i]);
+            }
+        }
+
+    #ifdef WIN32
+        free(c->registry_ignore);
+        free(c->registry_ignore_regex);
+        free(c->registry);
+        free(c->reg_fp);
+    #endif
+        free(c->fp);
+        free(c->realtime);
+        free(c->prefilter_cmd);
+    }
+}
