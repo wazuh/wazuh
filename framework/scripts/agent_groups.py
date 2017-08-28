@@ -57,7 +57,7 @@ def show_agents_with_group(group_id):
     agents_data = Agent.get_agent_group(group_id, limit=0)
 
     if agents_data['totalItems'] == 0:
-        print("Any agent with group '{0}'.".format(group_id))
+        print("No agents found in group '{0}'.".format(group_id))
     else:
         print("{0} agent(s) in group '{1}':".format(agents_data['totalItems'], group_id))
         for agent in agents_data['items']:
@@ -145,7 +145,7 @@ def create_group(group_id, quiet=False):
 
 def usage():
     msg = """
-    ./agent_groups.py [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g groupd_id | -g group_id) [-q] | -s -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
+    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g groupd_id | -g group_id) [-q] | -s -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
 
     Usage:
     ./agent_groups.py [-l]                                  # List all groups
@@ -172,7 +172,7 @@ def usage():
 
     \t-q, --quiet (no confirmation)
     \t-d, --debug
-    """
+    """.format(argv[0])
     print(msg)
 
 
