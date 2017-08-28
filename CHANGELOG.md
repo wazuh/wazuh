@@ -15,8 +15,15 @@ All notable changes to this project will be documented in this file.
 - Remote agent upgrades with signed WPK packages.
 - Added option for Remoted to prevent it from writing shared merged file.
 - Added state for Agentd and Windows agent to notify connection state and metrics.
-- Added new json log format for local file monitoring.
+- Added new JSON log format for local file monitoring.
 - Added OpenSCAP SSG datastream content for Ubuntu Trusty Tahr.
+- Field "alert_id" in JSON alerts (by Dan Parriot).
+- Added support of "any" IP address to OSSEC batch manager (by Jozef Reisinger).
+- Added ossec-agent SElinux module (by kreon).
+- Added previous output to JSON output (by João Soares).
+- Added option for Authd to specify the allowed cipher list (by James Le Cuirot).
+- Added option for cipher suites in Authd settings.
+- Added internal option for Remoted to set the shared configuration reloading time.
 
 ### Changed
 
@@ -32,6 +39,15 @@ All notable changes to this project will be documented in this file.
 - Changed agent buffer 'length' parameter to 'queue_size'.
 - Changed some Rootcheck error messages to verbose logs.
 - Removed unnecessary message by manage_agents advising to restart Wazuh manager.
+- Update PF tables Active response (by d31m0).
+- Create the users and groups as system users and groups in specs (by Dan Parriot).
+- Show descriptive errors when an agent loses the connection using TCP.
+- Prevent agents with the same name as the manager host from getting added.
+- Changed 'message' field to 'data' for successful agent removing response in Authd API.
+- Changed critical error to standard error in Syslog Remoted when no access list has been configured.
+- Ignore hidden files in shared folder for merged file.
+- Changed agent notification time values: notify time to 10 seconds and reconnect time to one minute.
+- Prevent data field from being inserted into JSON alerts when it's empty.
 
 ### Fixed
 
@@ -42,6 +58,21 @@ All notable changes to this project will be documented in this file.
 - Fixed incorrect CIDR writing on client.keys by Authd.
 - Fixed missing buffer flush by Analysisd when updating Rootcheck database.
 - Stop Wazuh service before removing folder to reinstall.
+- Fixed Remoted service for Systemd (by Phil Porada).
+- Fixed Administrator account mapping in Windows agent installation (by andrewm0374@gmail.com).
+- Fixed MySQL support in dbd (by andrewm0374@gmail.com).
+- Fixed incorrect warning when unencrypting messages (by Dan Parriot).
+- Fixed Syslog mapping for alerts via Csyslogd (by Dan Parriot).
+- Fixed syntax error in the creation of users in Solaris 11.2 (by Pedro Flor).
+- Prevent Monitord from rotating unexisting logs.
+- Fixed some warnings that appeared when compiling on Fedora 26.
+- Fixed permission issue in logs folder.
+- Fixed issue in Remoted that prevented it from send shared configuration when it changed.
+
+### Removed
+
+- Removed Picviz support (by Dan Parriot).
+
 
 
 ## [v2.1.1]
