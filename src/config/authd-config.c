@@ -102,7 +102,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
             config->flags.use_password = b;
         } else if (!strcmp(node[i]->element, xml_ciphers)) {
-            free(config->agent_ca);
+            free(config->ciphers);
             config->ciphers = strdup(node[i]->content);
         }else if (!strcmp(node[i]->element, xml_ssl_agent_ca)) {
             free(config->agent_ca);
