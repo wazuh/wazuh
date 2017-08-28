@@ -79,6 +79,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 }
 
                 recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
+                length = wnet_order(length);
 
                 if (recv_b <= 0) {
                     update_status(AGN_DISCONNECTED);

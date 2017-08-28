@@ -45,6 +45,7 @@ int receive_msg()
             }
 
             recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
+            length = wnet_order(length);
 
             /* Manager disconnected */
             if (recv_b <= 0) {
