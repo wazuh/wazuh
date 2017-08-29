@@ -16,7 +16,7 @@
     <if_sid>7600</if_sid>
     <id>^0|$|^1$|^2$|^33|^10$|^11$|^12$</id>
     <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,</group>
-    <description>Trend: Virus detected and cleaned/quarantined/remved</description>
+    <description>Trend: Virus detected and cleaned/quarantined/removed</description>
   </rule>
 
   <rule id="7611" level="9">
