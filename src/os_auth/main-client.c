@@ -299,7 +299,7 @@ int main(int argc, char **argv)
      * this to do the additional validation on IP addresses as well if needed.
      */
     if (ca_cert) {
-        printf("INFO: Verifing manager's certificate\n");
+        printf("INFO: Verifying manager's certificate\n");
         if (check_x509_cert(ssl, manager) != VERIFY_TRUE) {
             mdebug1("Unable to verify server certificate.");
             exit(1);
