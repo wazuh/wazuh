@@ -252,7 +252,7 @@ All notable changes to this project will be documented in this file.
 - Increases Authd connection pool size.
 - Use general-purpose version-flexible SSL/TLS methods for Authd registration.
 - Enforce minimum 3-digit agent ID format.
-- Exclude BTRFS from Rootcheck searching for hidden files inside directories (by Stehpan Joerrens).
+- Exclude BTRFS from Rootcheck searching for hidden files inside directories (by Stephan Joerrens).
 - Moved OSSEC and Wazuh decoders to one directory.
 - Prevent manage_agents from doing invalid actions (such methods for manager at agent).
 - Disabled capturing of security events 5145 and 5156 on Windows agent.
