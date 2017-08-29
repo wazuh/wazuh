@@ -7,7 +7,7 @@ Mar 19 08:21:14 h780152 spamd[11565]: result: .  0 - AWL,FORGED_RCVD_HELO scanti
 Mar 19 08:21:14 h780152 qmail-scanner[25042]: Clear:RC:0(217.72.192.234):SA:0(0.0/6.0): 1.681359 3302 sylpheed-admin@good-day.net peter@ifup.de [sylpheed:27685]_Sync_two_copies_of_Sylpheed <20060318231614.f9991a2d.johnxj@comcast.net> 1142752873.25044-0.ifup.de:898
 
 
-and a recogniced spam:
+and a recognized spam:
 
 Mar 19 08:36:33 h780152 spamd[18424]: connection from localhost [127.0.0.1] at port 49145
 Mar 19 08:36:33 h780152 spamd[18424]: checking message <3388717865.3821662804@douglas.co.za> for root:98.
