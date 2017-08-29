@@ -69,7 +69,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags);
  */
 const char *OSRegex_Execute(const char *str, OSRegex *reg) __attribute__((nonnull(2)));
 
-/* Release all the memory created by the compilation/executation phases */
+/* Release all the memory created by the compilation/execution phases */
 void OSRegex_FreePattern(OSRegex *reg) __attribute__((nonnull));
 
 
@@ -97,7 +97,7 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags);
  */
 int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg)  __attribute__((nonnull(3)));
 
-/* Release all the memory created by the compilation/executation phases */
+/* Release all the memory created by the compilation/execution phases */
 void OSMatch_FreePattern(OSMatch *reg) __attribute__((nonnull));
 
 int OS_Match2(const char *pattern, const char *str)  __attribute__((nonnull(2)));
