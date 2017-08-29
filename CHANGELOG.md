@@ -306,7 +306,7 @@ All notable changes to this project will be documented in this file.
 - Mistake with incorrect name for PID file (by Tickhon Clearscale).
 - Agent-auth name at messages (it appeared to be the server).
 - Avoid Monitord to log errors when the JSON alerts file doesn't exists.
-- Agents numberig issue (minimum 3 digits).
+- Agents numbering issue (minimum 3 digits).
 - Avoid no-JSON message at agent_control when client.keys empty.
 - Memory leaks at manage_agents.
 - Authd error messages about connection to queue passed to warning.
