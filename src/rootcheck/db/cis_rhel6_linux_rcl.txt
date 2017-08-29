@@ -167,7 +167,7 @@ f:/etc/selinux/config -> r:SELINUX=enforcing;
 f:/etc/selinux/config -> r:SELINUXTYPE=targeted;
 
 # 1.4.4 Remove SETroubleshoot
-[CIS - RHEL6 - 1.4.4 - SELinux setroubleshoot enabld {CIS: 1.4.4 RHEL6} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
+[CIS - RHEL6 - 1.4.4 - SELinux setroubleshoot enabled {CIS: 1.4.4 RHEL6} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
 d:$rc_dirs -> ^S\d\dsetroubleshoot$;
 
 # 1.4.5 Disable MCS Translation service mcstrans
