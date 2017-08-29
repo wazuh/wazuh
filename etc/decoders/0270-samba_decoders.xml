@@ -8,7 +8,7 @@
 
 
 <!--
- - Will extraxt the username/srcip
+ - Will extract the username/srcip
  - Examples:
  - Oct 22 10:12:33 junction smbd[832]: Denied connection from (192.168.3.23)
  - smbd[832]: Connection denied from 0.0.0.0

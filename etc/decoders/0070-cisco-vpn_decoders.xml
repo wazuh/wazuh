@@ -8,7 +8,7 @@
 
 
 <!--
-  - Will exatract srcip and username.
+  - Will extract srcip and username.
   - Examples:
   -
   - Jan 8 09:10:37 vpn.example.com 11504 01/08/2007 09:10:37.780 SEV=3 AUTH/5 RPT=124 192.168.0.1 Authentication rejected: Reason = Unspecified handle = 805, server = auth.example.com, user = testuser, domain = <not specified>
