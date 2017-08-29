@@ -252,7 +252,7 @@ void * req_dispatch(req_node_t * node) {
 
     // If buffer is ACK, wait for response
 
-    for (attempts = 0; attempts < max_attempts && IS_ACK(node->buffer); attempts++) {
+    for (attempts = 0; attempts < max_attempts && (!node->buffer || IS_ACK(node->buffer)); attempts++) {
         gettimeofday(&now, NULL);
         timeout.tv_sec = now.tv_sec + response_timeout;
         timeout.tv_nsec = now.tv_usec * 1000;
@@ -266,6 +266,12 @@ void * req_dispatch(req_node_t * node) {
         }
     }
 
+    if (attempts == max_attempts) {
+        merror("Couldn't get response from agent '%s': number of attempts exceeded.", agentid);
+        send(node->sock, WR_ATTEMPT_ERROR, strlen(WR_ATTEMPT_ERROR), 0);
+        goto cleanup;
+    }
+
     // Send ACK, only in UDP mode
 
     if (logr.proto[logr.position] == UDP_PROTO) {
@@ -276,6 +282,8 @@ void * req_dispatch(req_node_t * node) {
     }
 
     // Send response to local peer
+
+    mdebug2("Sending response: '%s'", node->buffer);
 
     if (send(node->sock, node->buffer, node->length, 0) != (ssize_t)node->length) {
         merror("At req_dispatch(): send(): %s", strerror(errno));
