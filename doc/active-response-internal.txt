@@ -23,7 +23,7 @@ How the active response works internally:
     to the execd directly.
 
 4 - If the active response policy specify that the action
-    must be executed remotelly, a message is sent to the
+    must be executed remotely, a message is sent to the
     "Active response forwarder" (remoted) to forward the
     event to the specified agent.    
 
