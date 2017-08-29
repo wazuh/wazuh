@@ -85,7 +85,7 @@ f:/etc/fstab -> ^# && !r:/home;
 [CIS - RHEL5 - 1.1.10 -  Partition /home without 'nodev' set {CIS: 1.1.10 RHEL5} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_5_Benchmark_v2.1.0.pdf]
 f:/etc/fstab -> !r:^# && r:/home && !r:nodev;
 
-# 1.1.11 nodev on removable media partitons (not scored)
+# 1.1.11 nodev on removable media partitions (not scored)
 [CIS - RHEL5 - 1.1.11 - Removable partition /media without 'nodev' set {CIS: 1.1.11 RHEL5} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_5_Benchmark_v2.1.0.pdf]
 f:/etc/fstab -> !r:^# && r:/media && !r:nodev;
 

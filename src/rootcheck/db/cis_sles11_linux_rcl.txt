@@ -80,7 +80,7 @@ f:/etc/fstab -> ^# && !r:/home;
 [CIS - SLES11 - 2.10 -  Partition /home without 'nodev' set {CIS: 2.10 SLES11} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_SUSE_Linux_Enterprise_Server_11_Benchmark_v1.1.0.pdf]
 f:/etc/fstab -> !r:^# && r:/home && !r:nodev;
 
-# 2.11 nodev on removable media partitons (not scored)
+# 2.11 nodev on removable media partitions (not scored)
 [CIS - SLES11 - 2.11 - Removable partition /media without 'nodev' set {CIS: 2.11 SLES11} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_SUSE_Linux_Enterprise_Server_11_Benchmark_v1.1.0.pdf]
 f:/etc/fstab -> !r:^# && r:/media && !r:nodev;
 
