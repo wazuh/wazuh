@@ -285,7 +285,7 @@ All notable changes to this project will be documented in this file.
 - Renamed XML tags related to rules and decoders inclusion.
 - Set default maximum agents to 8000.
 - Removed FTS numeric bitfield from JSON output.
-- Fixed ID misasignation by manage_agents when the gratest ID exceeds 32512.
+- Fixed ID misasignation by manage_agents when the greatest ID exceeds 32512.
 - Run Windows Registry Syscheck scan on first stage when scan_on_start enabled.
 - Set all Syscheck delay stages to a multiple of internal_options.conf/syscheck.sleep value.
 - Changed JSON timestamp format to ISO8601.
