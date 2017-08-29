@@ -55,7 +55,7 @@ elif [ "x$1" = "xsave" ]; then
         fi
     fi
 
-    cp .function_list ${DIRECTORY}/compiled_rules/function_list > /dev/nulll 2>&1
+    cp .function_list ${DIRECTORY}/compiled_rules/function_list > /dev/null 2>&1
     if [ ! $? = 0 ]; then
         echo "ERROR: Unable to save rules. You must be root to do so."
         exit 1;
@@ -63,7 +63,7 @@ elif [ "x$1" = "xsave" ]; then
 
     for i in `ls *.c`; do
         if [ ! "x$i" = "xgeneric_samples.c" ]; then
-            cp $i ${DIRECTORY}/compiled_rules/ > /dev/nulll 2>&1
+            cp $i ${DIRECTORY}/compiled_rules/ > /dev/null 2>&1
         fi
     done
     echo "*Save completed at ${DIRECTORY}/compiled_rules/";
@@ -99,7 +99,7 @@ elif [ "x$1" = "xrestore" ]; then
 
     for i in `ls ${DIRECTORY}/compiled_rules/*.c`; do
         if [ ! "x$i" = "xgeneric_samples.c" ]; then
-            cp $i ./ > /dev/nulll 2>&1
+            cp $i ./ > /dev/null 2>&1
         fi
     done
     echo "*Restore completed from ${DIRECTORY}/compiled_rules/";
