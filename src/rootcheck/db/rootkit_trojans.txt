@@ -7,7 +7,7 @@
 # Each line must be in the following format:
 # file_name !string_to_search!Description
 
-# Commom binaries and public trojan entries
+# Common binaries and public trojan entries
 ls          !bash|^/bin/sh|dev/[^clu]|\.tmp/lsfile|duarawkz|/prof|/security|file\.h!
 env         !bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh!
 echo        !bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh!
