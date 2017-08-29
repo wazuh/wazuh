@@ -88,7 +88,7 @@ int wdb_get_last_fim(sqlite3 *db, const char *path, int type) {
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         event = (const char*)sqlite3_column_text(stmt, 0);
-        result = !strcmp(event, "modified") ? WDB_FIM_MODIFIED : !strcmp(event, "added") ? WDB_FIM_ADDED : !strcmp(event, "readdded") ? WDB_FIM_READDED : WDB_FIM_DELETED;
+        result = !strcmp(event, "modified") ? WDB_FIM_MODIFIED : !strcmp(event, "added") ? WDB_FIM_ADDED : !strcmp(event, "readded") ? WDB_FIM_READDED : WDB_FIM_DELETED;
         break;
     case SQLITE_DONE:
         result = WDB_FIM_NOT_FOUND;
