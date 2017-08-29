@@ -166,7 +166,7 @@ extern char shost[];
                         "Choose your action: I or Q: "
 
 /* WIN32 errors */
-#define CONF_ERROR      "Could not read (%s) (Make sure config exists and executable is running with Administrative priviliges)."
+#define CONF_ERROR      "Could not read (%s) (Make sure config exists and executable is running with Administrative privileges)."
 #define GMF_ERROR       "Could not run GetModuleFileName."
 #define GMF_BUFF_ERROR  "Could not get path because it is too long and was shrunk by (%d) characters with a max of (%d)."
 #define GMF_UNKN_ERROR  "Could not run GetModuleFileName which returned (%ld)."
