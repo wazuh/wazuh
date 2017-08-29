@@ -33,7 +33,7 @@ char **OS_StrBreak(char match, const char *str, size_t size)
     ret = (char **)calloc(size + 1, sizeof(char *));
 
     if (ret == NULL) {
-        /* Memory error. Should provice a better way to detect it */
+        /* Memory error. Should provide a better way to detect it */
         return (NULL);
     }
 
