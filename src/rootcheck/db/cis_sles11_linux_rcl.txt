@@ -326,7 +326,7 @@ d:$rc_dirs -> ^S\d\drsyncd$;
 # TODO
 
 ###############################################
-# 7 Network Confiuration and Firewalls
+# 7 Network Configuration and Firewalls
 ###############################################
 
 ###############################################

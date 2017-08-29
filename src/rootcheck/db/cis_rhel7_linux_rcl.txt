@@ -381,7 +381,7 @@ d:$rc_dirs -> ^S\d\dsnmpd$;
 
 
 ###############################################
-# 4 Network Confiuration and Firewalls
+# 4 Network Configuration and Firewalls
 ###############################################
 
 ###############################################
