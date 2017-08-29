@@ -105,5 +105,5 @@
     <parent>sqlserver</parent>
     <prematch offset="after_parent">FILESTREAM: effective level = </prematch>
     <regex offset="after_prematch">(\d+), configured level = (\d+), file system access share name = '(\.*)'.</regex>
-    <order>sqlserver.efectivelevel,sqlserver.configuredlevel,sqlserver.fsaccesssharename</order>
+    <order>sqlserver.effectivelevel,sqlserver.configuredlevel,sqlserver.fsaccesssharename</order>
 </decoder>
