@@ -156,7 +156,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         wm_strcat(&command, "--oval", ' ');
         break;
     default:
-        mterror(WM_OSCAP_LOGTAG, "Unspecified content type for file '%s'. This shouln't happen.", eval->path);
+        mterror(WM_OSCAP_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
         pthread_exit(NULL);
     }
 
