@@ -29,10 +29,12 @@
 #define WM_SYS_IF_DIR_SUSE "/etc/sysconfig/network/"
 #define WM_SYS_DGW_FILE "/proc/net/route"
 #define WM_SYS_IFDATA_DIR "/sys/class/net/"
+#define WM_SYS_HW_DIR   "/sys/class/dmi/id"
 
 typedef struct wm_sys_flags_t {
     unsigned int enabled:1;                 // Main switch
     unsigned int scan_on_start:1;           // Scan always on start
+    unsigned int hardware:1;                // Hardware inventory
     unsigned int network:1;                 // Network inventory
     unsigned int os_scan:1;                 // OS inventory
 } wm_sys_flags_t;
@@ -51,6 +53,12 @@ extern const wm_context WM_SYS_CONTEXT;     // Context
 
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module);
+
+// Hardware inventory for Linux
+void sys_hw_linux(int queue_fd, const char* LOCATION);
+
+// Hardware inventory for Windows
+void sys_hw_windows(const char* LOCATION);
 
 // OS inventory for Linux
 void sys_os_linux(int queue_fd, const char* LOCATION);

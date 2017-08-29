@@ -85,6 +85,15 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
         }
 
+        /* Hardware inventory */
+        if (sys->flags.hardware){
+            #ifdef WIN32
+                sys_hw_windows(WM_SYS_LOCATION);
+            #else
+                sys_hw_linux(queue_fd, WM_SYS_LOCATION);
+            #endif
+        }
+
         time_sleep = time(NULL) - time_start;
 
         mtinfo(WM_SYS_LOGTAG, "Evaluation finished.");
@@ -163,6 +172,10 @@ void wm_sys_check() {
 
     if (!sys->flags.os_scan) {
         mtwarn(WM_SYS_LOGTAG, "OS scan disabled.");
+    }
+
+    if (!sys->flags.hardware) {
+        mtwarn(WM_SYS_LOGTAG, "Hardware scan disabled.");
     }
 
     // Check if interval

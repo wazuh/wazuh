@@ -20,12 +20,42 @@
 #include <linux/if_link.h>
 #include <linux/if_packet.h>
 
+char* get_serial_number();                      // Get Motherboard serial number
 char* get_if_type(char *ifa_name);              // Get interface type
 char* get_oper_state(char *ifa_name);           // Get operational state
 char* get_mtu(char *ifa_name);                  // Get MTU
 char* check_dhcp(char *ifa_name, int family);   // Check DHCP status for network interfaces
 char* get_default_gateway(char *ifa_name);      // Get Default Gatewat for network interfaces
 
+// Get Hardware inventory
+
+void sys_hw_linux(int queue_fd, const char* LOCATION){
+
+    char *string;
+
+
+    cJSON *object = cJSON_CreateObject();
+    cJSON *hw_inventory = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "hardware");
+    cJSON_AddItemToObject(object, "inventory", hw_inventory);
+
+    /* Motherboard serial-number */
+    char *serial;
+    serial = get_serial_number();
+    cJSON_AddStringToObject(hw_inventory, "board_number", serial);
+    free(serial);
+
+    /* Send interface data in JSON format */
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_hw_linux() sending '%s'", string);
+    SendMSG(queue_fd, string, LOCATION, WODLE_MQ);
+    cJSON_Delete(object);
+
+    free(string);
+
+}
+
+// Get OS inventory
 
 void sys_os_linux(int queue_fd, const char* LOCATION){
 
@@ -285,6 +315,37 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     }
     free(ifaces_list);
 
+}
+
+/* Get Motherboard Serial Number */
+char* get_serial_number(){
+
+    char file[OS_MAXSTR];
+
+    FILE *fp;
+    char serial_str[OS_MAXSTR] = "";
+    char * serial;
+    char ** parts;
+    int i;
+
+    os_calloc(OS_MAXSTR + 1, sizeof(char), serial);
+
+    snprintf(serial, OS_MAXSTR, "%s", "unknown");
+    snprintf(file, OS_MAXSTR, "%s/%s", WM_SYS_HW_DIR, "board_serial");
+
+    if((fp = fopen(file, "r"))){
+        if (fgets(serial_str, OS_MAXSTR, fp) != NULL){
+
+            parts = OS_StrBreak('\n', serial_str, 2);
+            snprintf(serial, OS_MAXSTR, "%s", parts[0]);
+            for (i = 0; parts[i]; i++){
+                free(parts[i]);
+            }
+            free(parts);
+        }
+        fclose(fp);
+    }
+    return serial;
 }
 
 /* Get interface type */

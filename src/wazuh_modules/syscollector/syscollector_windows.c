@@ -14,6 +14,7 @@
 #define _WIN32_WINNT 0x600  // Windows Vista or later
 
 #include "syscollector.h"
+#include "shared.h"
 
 #include <netioapi.h>
 #include <iphlpapi.h>
@@ -23,6 +24,60 @@
 
 char* length_to_ipv6_mask(int mask_length);
 char* get_broadcast_addr(char* ip, char* netmask);
+
+void sys_hw_windows(const char* LOCATION){
+
+    char *string;
+
+    char *command;
+    char *end;
+    FILE *output;
+    size_t buf_length = 1024;
+    char read_buff[buf_length];
+
+    cJSON *object = cJSON_CreateObject();
+    cJSON *hw_inventory = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "hardware");
+    cJSON_AddItemToObject(object, "inventory", hw_inventory);
+
+    /* Serial number from wmi */
+    char *serial;
+    memset(read_buff, 0, buf_length);
+    command = "wmic baseboard get SerialNumber";
+    output = popen(command, "r");
+    if (!output){
+        mterror(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
+    }else{
+        if (strncmp(fgets(read_buff, buf_length, output),"SerialNumber", 12) == 0) {
+            if (!fgets(read_buff, buf_length, output)){
+                mterror(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
+                serial = strdup("unknown");
+            }
+            else if (end = strpbrk(read_buff,"\r\n"), end) {
+                *end = '\0';
+                int i = strlen(read_buff) - 1;
+                while(read_buff[i] == 32){  // Review
+                    read_buff[i] = '\0';
+                    i--;
+                }
+                serial = strdup(read_buff);
+            }else
+                serial = strdup("unknown");
+        }
+    }
+    pclose(output);
+
+    cJSON_AddStringToObject(hw_inventory, "board_number", serial);
+    free(serial);
+
+    /* Send interface data in JSON format */
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", string);
+    SendMSG(0, string, LOCATION, WODLE_MQ);
+    cJSON_Delete(object);
+
+    free(string);
+}
 
 void sys_os_windows(const char* LOCATION){
 
@@ -289,7 +344,7 @@ void sys_network_windows(const char* LOCATION){
             cJSON_AddItemToObject(iface_info, "IPv6", ipv6);
 
             string = cJSON_PrintUnformatted(object);
-            mtinfo(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
+            mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
             SendMSG(0, string, LOCATION, WODLE_MQ);
             cJSON_Delete(object);
 
