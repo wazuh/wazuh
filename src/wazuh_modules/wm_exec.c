@@ -383,7 +383,7 @@ void wm_remove_sid(pid_t sid) {
     pthread_mutex_unlock(&wm_children_mutex);
 }
 
-// Terminate every child process group. Does't wait for them!
+// Terminate every child process group. Doesn't wait for them!
 
 void wm_kill_children() {
     // This function can be called from a signal handler
