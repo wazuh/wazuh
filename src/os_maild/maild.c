@@ -283,7 +283,7 @@ static void OS_Run(MailConfig *mail)
             /* Get more messages */
         }
 
-        /* Hour changed: send all supressed mails */
+        /* Hour changed: send all suppressed mails */
         else if (((mailtosend < mail->maxperhour) && (mailtosend != 0)) ||
                  ((p->tm_hour != thishour) && (childcount < MAXCHILDPROCESS))) {
             MailNode *mailmsg;
