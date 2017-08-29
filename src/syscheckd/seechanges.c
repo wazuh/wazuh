@@ -98,7 +98,7 @@ int is_text(magic_t cookie, const void *buf, size_t len)
 #endif
 
 #ifndef WIN32
-/* Retrun TRUE if the filename is symlink to an directory */
+/* Return TRUE if the filename is symlink to an directory */
 int symlink_to_dir (const char *filename) {
     struct stat buf;
     int x;
