@@ -395,7 +395,7 @@ sub ossec_aton(){
 
                 return "$num";
         }else{
-                return "1";  # Snorby has a bug where it wont ouput "N/A" on the IP columns if srcip\dstip = 0\null
+                return "1";  # Snorby has a bug where it wont output "N/A" on the IP columns if srcip\dstip = 0\null
         }
 
 }
