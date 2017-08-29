@@ -12,7 +12,7 @@ ID: 81600 - 80799
 <group name="fortigate,syslog,">
     <rule id="81600" level="0">
         <decoded_as>fortigate-firewall-v3</decoded_as>
-        <description>Fortigat v3 messages grouped.</description>
+        <description>Fortigate v3 messages grouped.</description>
     </rule>
 
     <rule id="81601" level="0">
