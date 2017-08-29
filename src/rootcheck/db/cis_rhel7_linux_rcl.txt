@@ -92,7 +92,7 @@ f:/etc/fstab -> !r:^# && r:/media && !r:nodev;
 [CIS - RHEL7 - 1.1.12 - Removable partition /media without 'noexec' set {CIS: 1.1.12 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
 f:/etc/fstab -> !r:^# && r:/media && !r:noexec;
 
-# 1.1.13 nosuid on removale media partitions (not scored)
+# 1.1.13 nosuid on removable media partitions (not scored)
 [CIS - RHEL7 - 1.1.13 - Removable partition /media without 'nosuid' set {CIS: 1.1.13 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
 f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;
 

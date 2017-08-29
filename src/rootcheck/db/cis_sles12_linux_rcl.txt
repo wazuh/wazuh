@@ -88,7 +88,7 @@ f:/etc/fstab -> !r:^# && r:/media && !r:nodev;
 [CIS - SLES12 - 2.12 - Removable partition /media without 'noexec' set {CIS: 2.12 SLES12} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_SUSE_Linux_Enterprise_Server_12_Benchmark_v1.0.0.pdf]
 f:/etc/fstab -> !r:^# && r:/media && !r:noexec;
 
-# 2.13 nosuid on removale media partitions (not scored)
+# 2.13 nosuid on removable media partitions (not scored)
 [CIS - SLES12 - 2.13 - Removable partition /media without 'nosuid' set {CIS: 2.13 SLES12} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_SUSE_Linux_Enterprise_Server_12_Benchmark_v1.0.0.pdf]
 f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;
 
