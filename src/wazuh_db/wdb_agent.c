@@ -285,7 +285,7 @@ int wdb_remove_agent_db(int id) {
         return -1;
 }
 
-/* Get an array containint the ID of every agent (except 0), ended with -1 */
+/* Get an array containing the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents() {
     int i;
     int n = 1;

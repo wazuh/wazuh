@@ -131,7 +131,7 @@ int wdb_create_profile(const char *path);
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
 
-/* Get an array containint the ID of every agent (except 0), ended with -1 */
+/* Get an array containing the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents();
 
 /* Find agent by name and address. Returns id if success or -1 on failure. */
