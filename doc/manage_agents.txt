@@ -26,7 +26,7 @@ For more details, please refer to OSSEC document
     https://documentation.wazuh.com/
 
 PS: you may use some tools (`expect`) to send strings to `manage_agents`,
-insead of using the above environment variables. It's your choice.
+instead of using the above environment variables. It's your choice.
 
 --
 Anh K. Huynh <kyanh@viettug.org>
