@@ -10,7 +10,7 @@
 <group name="syslog,roundcube,">
   <rule id="9400" level="0">
     <decoded_as>roundcube</decoded_as>
-    <description>Roundcube messages groupe.d</description>
+    <description>Roundcube messages grouped.</description>
   </rule>
 
   <rule id="9401" level="5">
