@@ -8,7 +8,7 @@
 
 
   <!--
-  - Will extract the severity and username/ip when availavle.
+  - Will extract the severity and username/ip when available.
   - Examples:
   - [2008-03-09 22:43:35.924 'ha-eventmgr' 84503472 info] Event 2053 : User root@127.0.0.1 logged in
   - [2008-02-05 02:13:18.112 'ha-eventmgr' 95833272 info] Event xyz : User m@1.2.3.4 logged in
