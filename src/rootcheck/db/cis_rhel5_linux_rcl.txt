@@ -224,7 +224,7 @@ f:/etc/security/limits.conf -> !r:^# && !r:hard\.+core\.+0;
 f:/proc/sys/kernel/exec-shield -> 0;
 
 # 1.6.3 Enable Randomized Virtual Memory Region Placement (Scored)
-[CIS - RHEL5 - 1.6.3 - Randomized Virtua Memory Region Placement not enabled  {CIS: 1.6.3 RHEL5} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_5_Benchmark_v2.1.0.pdf]
+[CIS - RHEL5 - 1.6.3 - Randomized Virtual Memory Region Placement not enabled  {CIS: 1.6.3 RHEL5} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_5_Benchmark_v2.1.0.pdf]
 f:/proc/sys/kernel/randomize_va_space -> 0;
 
 # 1.6.4 Enable XD/NX Support on 32-bit x86 Systems (Scored)

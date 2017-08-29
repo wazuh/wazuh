@@ -52,7 +52,7 @@ Download the repository:
     git clone https://github.com/wazuh/wazuh-framework.git
     cd wazuh-framework
 
-Create the virutal environment:
+Create the virtual environment:
 ::
 
     mkdir /var/ossec/framework
