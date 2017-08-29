@@ -386,7 +386,7 @@ int pt_matches(const char *str, char *pattern)
 }
 
 /* Normalizes a string, removing white spaces and tabs
- * from the begining and the end of it.
+ * from the beginning and the end of it.
  */
 char *normalize_string(char *str)
 {

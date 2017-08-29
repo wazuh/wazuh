@@ -39,7 +39,7 @@ EventNode *OS_GetLastEvent()
     return (eventnode_pt);
 }
 
-/* Add an event to the list -- always to the begining */
+/* Add an event to the list -- always to the beginning */
 void OS_AddEvent(Eventinfo *lf)
 {
     EventNode *tmp_node = eventnode;

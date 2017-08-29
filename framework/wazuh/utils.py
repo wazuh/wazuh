@@ -272,7 +272,7 @@ def tail(filename, n=20):
             f.seek(block_number*BLOCK_SIZE, 2)
             blocks.append(f.read(BLOCK_SIZE).decode())
         else:
-            # file too small, start from begining
+            # file too small, start from beginning
             f.seek(0,0)
             # only read what was not read
             blocks.append(f.read(block_end_byte).decode())
