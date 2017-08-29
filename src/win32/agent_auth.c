@@ -333,7 +333,7 @@ void DisconnectFromServer(const int socket, CtxtHandle *context, CredHandle *cre
 
     status = ApplyControlToken(context, &OutBuffer);
     if (status != SEC_E_OK)
-        merror_exit("Could not correclty close connection");
+        merror_exit("Could not correctly close connection");
 
     input_flags = ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_CONFIDENTIALITY | ISC_REQ_INTEGRITY | ISC_REQ_MANUAL_CRED_VALIDATION | ISC_REQ_REPLAY_DETECT | ISC_REQ_SEQUENCE_DETECT | ISC_REQ_STREAM;
     OutBuffers[0].pvBuffer   = NULL;
@@ -346,11 +346,11 @@ void DisconnectFromServer(const int socket, CtxtHandle *context, CredHandle *cre
 
     status = InitializeSecurityContext(cred, context, NULL, input_flags, 0, 0, NULL, 0, context, &OutBuffer, &output_flags, NULL);
     if (status != SEC_E_OK)
-        merror_exit("Could not correclty close connection (2)");
+        merror_exit("Could not correctly close connection (2)");
 
     sent = send(socket, OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer, 0);
     if (sent <= 0)
-        merror_exit("Could not correclty close connection (3)");
+        merror_exit("Could not correctly close connection (3)");
 
     FreeContextBuffer(OutBuffers[0].pvBuffer);
     DeleteSecurityContext(context);
