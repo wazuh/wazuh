@@ -134,8 +134,11 @@ void HandleSecure()
 #endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
 
             if (n_events < 0) {
-                merror("Waiting for connection: %s (%d)", strerror(errno), errno);
-                sleep(1);
+                if (errno != EINTR) {
+                    merror("Waiting for connection: %s (%d)", strerror(errno), errno);
+                    sleep(1);
+                }
+
                 continue;
             }
 
