@@ -59,7 +59,7 @@
     </rule>
 
     <!--
-    Cetificates
+    Certificates
     - Oct  1 12:26:37 puppet puppet-master[1940]: Removing file Puppet::SSL::CertificateRequest puppet.yokatan.com at '/var/lib/puppet/ssl/ca/requests/puppet.yokatan.com.pem'
     - Sep 30 15:53:40 puppet puppet-master[3594]: ubuntu.localdomain has a waiting certificate request
     - Oct  1 12:26:35 puppet puppet-master[1940]: Signed certificate request for ca
@@ -171,7 +171,7 @@
     </rule>
 
     <!--
-    Cetificates
+    Certificates
     - Oct  5 17:08:18 puppet puppet-agent[4209]: Certificate Request fingerprint (SHA256): 34:F3:06:89:C2:D3:78:E0:42:99:F7:B6:39:6F:0C:C2:DB:F1:8A:1C:7E:72:B9:96:E8:A9:67:2B:93:1B:E1:A5
     - Oct  5 16:13:20 puppet puppet-agent[9113]: Using cached certificate for ca
     - Oct  5 17:08:18 puppet puppet-agent[4209]: Creating a new SSL key for puppet.yokatan.com

@@ -30,7 +30,7 @@ BIO *bio_err;
 
 
 /* Create an SSL context. If certificate verification is requested
- * then load the file containing the CA chain and verify the certifcate
+ * then load the file containing the CA chain and verify the certificate
  * sent by the peer.
  */
 SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, const char *cert, const char *key, const char *ca_cert, int auto_method)
