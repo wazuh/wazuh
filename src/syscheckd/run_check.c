@@ -126,7 +126,7 @@ void start_daemon()
         syscheck.time = 604800;
         rootcheck.time = 604800;
     }
-    /* Printing syscheck propierties */
+    /* Printing syscheck properties */
 
     if (!syscheck.disabled)
         minfo("Syscheck scan frequency: %d seconds", syscheck.time);
