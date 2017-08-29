@@ -16,7 +16,7 @@ i.e.
 cat ossec-alerts-05.log | ossec_report_contrib.pl -r | mail root -s 'OSSEC detailed report'
 cat ossec-alerts-05.log | ossec_report_contrib.pl -s | mail root -s 'OSSEC summary report'
 cat <log file> | ossec_report_contrib.pl -t <key> | head -n 15 (for top 15)
-cat <log file> | ossec_report_contrib.pl -s (for sumary)
+cat <log file> | ossec_report_contrib.pl -s (for summary)
 
 Crontab entry:
 58 23 * * * (cat ossec-alerts-05.log | ossec_report_contrib.pl -s)
