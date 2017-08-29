@@ -308,7 +308,7 @@ void wm_sync_manager() {
     if (!module->full_sync) {
         path = DEFAULTDIR SYSCHECK_DIR "/syscheck";
 
-        // Don't print error if stat fails bacause syscheck and rootcheck must not exist
+        // Don't print error if stat fails because syscheck and rootcheck must not exist
 
         if (!stat(path, &buffer) && buffer.st_size > 0) {
             switch (wdb_get_agent_status(0)) {
