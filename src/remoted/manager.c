@@ -272,7 +272,7 @@ static void c_files()
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
 
-    mdebug1("Updating shared files sums.");
+    mdebug2("Updating shared files sums.");
 
     /* Lock mutex */
     w_mutex_lock(&files_mutex);
