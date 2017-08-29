@@ -13,7 +13,7 @@ class WazuhException(Exception):
 	# < 1000: API
 
         # Wazuh: 0999 - 1099
-        999: 'Incompatilbe version of Python',
+        999: 'Incompatible version of Python',
         1000: 'Wazuh Internal Error',
         1001: 'Error importing module',
         1002: 'Error executing command',

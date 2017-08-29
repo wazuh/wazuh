@@ -20,7 +20,7 @@
  *
  * Supports:
  *      '|' to separate multiple OR patterns
- *      '^' to match the begining of a string
+ *      '^' to match the beginning of a string
  */
 
 /* Prototypes */

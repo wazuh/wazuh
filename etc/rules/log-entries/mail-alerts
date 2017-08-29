@@ -16,7 +16,7 @@ OSSEC HIDS Notification.
 2006 May 25 16:40:15
 
 Received From: (gaucha) 200.255.5.5->/var/log/maillog
-Rule: 6253 fired (level 10) -> "Multiple relaying attepmts for spam.'"
+Rule: 6253 fired (level 10) -> "Multiple relaying attempts for spam.'"
 Portion of the log(s):
 
 sm-mta[14582]: k4PJeY7S014582: ruleset=check_rcpt, arg1=<andre.pereira@gerdau.com.br>, relay=200-207-91-189.speedycti.com.br [200.207.91.189] (may be forged), reject=550 5.7.1 <andre.pereira@gerdau.com.br>... Relaying denied. IP name possibly forged [200.207.91.189]
@@ -33,7 +33,7 @@ OSSEC HIDS Notification.
 2006 May 24 20:25:21
 
 Received From: (gaucha) 200.255.5.5->/var/log/maillog
-Rule: 6253 fired (level 10) -> "Multiple relaying attepmts for spam.'"
+Rule: 6253 fired (level 10) -> "Multiple relaying attempts for spam.'"
 Portion of the log(s):
 
 sm-mta[22707]: ruleset=check_relay, arg1=[201.29.120.119], arg2=127.0.0.4, relay=120119.user.veloxzone.com.br [201.29.120.119] (may be forged), reject=550 5.7.1 Rejected: 201.29.120.119 listed at sbl-xbl.spamhaus.org
@@ -48,7 +48,7 @@ OSSEC HIDS Notification.
 2006 May 25 03:13:08
 
 Received From: (gaucha) 200.255.5.5->/var/log/maillog
-Rule: 6253 fired (level 10) -> "Multiple relaying attepmts for spam.'"
+Rule: 6253 fired (level 10) -> "Multiple relaying attempts for spam.'"
 Portion of the log(s):
 
 sm-mta[21399]: ruleset=check_relay, arg1=[201.24.166.179], arg2=127.0.0.5, relay=201-24-166-179.gnace703.dsl.brasiltelecom.net.br [201.24.166.179] (may be forged), reject=550 5.7.1 Rejected: 201.24.166.179 listed at sbl-xbl.spamhaus.org

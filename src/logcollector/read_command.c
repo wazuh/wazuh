@@ -43,7 +43,7 @@ void *read_command(int pos, int *rc, int drop_it)
     while (fgets(str + cmd_size, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output) != NULL && lines < maximum_lines) {
 
         lines++;
-        /* Get the last occurence of \n */
+        /* Get the last occurrence of \n */
         if ((p = strrchr(str, '\n')) != NULL) {
             *p = '\0';
         }

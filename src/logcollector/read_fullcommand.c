@@ -46,7 +46,7 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
     if (n > 0) {
         str[cmd_size + n] = '\0';
 
-        /* Get the last occurence of \n */
+        /* Get the last occurrence of \n */
         if ((p = strrchr(str, '\n')) != NULL) {
             *p = '\0';
         }

@@ -33,7 +33,7 @@ To complete this guide, you will need the following packages:
 
 Automatic installation
 ------------------------
-We will use the script placed in the main directoy of the repository.
+We will use the script placed in the main directory of the repository.
 ::
 
     cd ~
@@ -52,7 +52,7 @@ Download the repository:
     git clone https://github.com/wazuh/wazuh-framework.git
     cd wazuh-framework
 
-Create the virutal environment:
+Create the virtual environment:
 ::
 
     mkdir /var/ossec/framework

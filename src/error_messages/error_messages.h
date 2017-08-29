@@ -14,7 +14,7 @@
 
 /* SYSTEM ERRORS */
 #define FORK_ERROR    "(1101): Could not fork due to [(%d)-(%s)]."
-#define MEM_ERROR     "(1102): Could not aquire memory due to [(%d)-(%s)]."
+#define MEM_ERROR     "(1102): Could not acquire memory due to [(%d)-(%s)]."
 #define FOPEN_ERROR   "(1103): Could not open file '%s' due to [(%d)-(%s)]."
 #define SIZE_ERROR    "(1104): Maximum string size reached for: %s."
 #define NULL_ERROR    "(1105): Attempted to use null string. "
@@ -68,7 +68,7 @@
 #define MSG_ERROR       "(1214): Problem receiving message from '%s'."
 #define CLIENT_ERROR    "(1215): No client configured. Exiting."
 #define CONNS_ERROR     "(1216): Unable to connect to '%s'."
-#define UNABLE_CONN     "(1242): Unable to connect to server. Exausted all options."
+#define UNABLE_CONN     "(1242): Unable to connect to server. Exhausted all options."
 #define SEC_ERROR       "(1217): Error creating encrypted message."
 #define SEND_ERROR      "(1218): Unable to send message to '%s'."
 #define RULESLOAD_ERROR "(1219): Unable to access the rules directory."

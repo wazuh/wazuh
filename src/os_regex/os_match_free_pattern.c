@@ -15,7 +15,7 @@
 #include "os_regex_internal.h"
 
 
-/* Release all the memory created by the compilation/executation phases */
+/* Release all the memory created by the compilation/execution phases */
 void OSMatch_FreePattern(OSMatch *reg)
 {
     /* Free the patterns */

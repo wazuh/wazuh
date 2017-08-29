@@ -540,7 +540,7 @@ void win_read_vista_sec()
         char *key;
         char *desc;
 
-        /* Get the last occurence of \n */
+        /* Get the last occurrence of \n */
         if ((p = strrchr(buf, '\n')) != NULL) {
             *p = '\0';
         }

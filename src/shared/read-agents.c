@@ -974,7 +974,7 @@ const char *agent_file_perm(mode_t mode)
 
 #endif /* !WIN32 */
 
-/* Internal funtion. Extract last time of scan from rootcheck/syscheck. */
+/* Internal function. Extract last time of scan from rootcheck/syscheck. */
 static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info)
 {
     FILE *fp;
@@ -1096,7 +1096,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     return (0);
 }
 
-/* Internal funtion. Extract last time of scan from rootcheck/syscheck. */
+/* Internal function. Extract last time of scan from rootcheck/syscheck. */
 static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip)
 {
     char buf[1024 + 1];

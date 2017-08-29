@@ -156,7 +156,7 @@ int main(int argc, char **argv)
                 printf("no error: %s\n", buf);
                 break;
             case SSL_ERROR_ZERO_RETURN:
-                printf("no returen\n");
+                printf("no return\n");
                 exit(1);
                 break;
             case SSL_ERROR_SYSCALL:

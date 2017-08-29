@@ -97,7 +97,7 @@ void start_daemon()
 
     /* SCHED_BATCH forces the kernel to assume this is a cpu intensive
      * process and gives it a lower priority. This keeps ossec-syscheckd
-     * from reducing the interactity of an ssh session when checksumming
+     * from reducing the interactivity of an ssh session when checksumming
      * large files. This is available in kernel flavors >= 2.6.16.
      */
 #ifdef SCHED_BATCH
@@ -126,7 +126,7 @@ void start_daemon()
         syscheck.time = 604800;
         rootcheck.time = 604800;
     }
-    /* Printing syscheck propierties */
+    /* Printing syscheck properties */
 
     if (!syscheck.disabled)
         minfo("Syscheck scan frequency: %d seconds", syscheck.time);

@@ -17,7 +17,7 @@ All notable changes to this project will be documented in this file.
 - Added state for Agentd and Windows agent to notify connection state and metrics.
 - Added new JSON log format for local file monitoring.
 - Added OpenSCAP SSG datastream content for Ubuntu Trusty Tahr.
-- Field "alert_id" in JSON alerts (by Dan Parriot).
+- Field "alert_id" in JSON alerts (by Dan Parriott).
 - Added support of "any" IP address to OSSEC batch manager (by Jozef Reisinger).
 - Added ossec-agent SElinux module (by kreon).
 - Added previous output to JSON output (by João Soares).
@@ -40,7 +40,7 @@ All notable changes to this project will be documented in this file.
 - Changed some Rootcheck error messages to verbose logs.
 - Removed unnecessary message by manage_agents advising to restart Wazuh manager.
 - Update PF tables Active response (by d31m0).
-- Create the users and groups as system users and groups in specs (by Dan Parriot).
+- Create the users and groups as system users and groups in specs (by Dan Parriott).
 - Show descriptive errors when an agent loses the connection using TCP.
 - Prevent agents with the same name as the manager host from getting added.
 - Changed 'message' field to 'data' for successful agent removing response in Authd API.
@@ -61,8 +61,8 @@ All notable changes to this project will be documented in this file.
 - Fixed Remoted service for Systemd (by Phil Porada).
 - Fixed Administrator account mapping in Windows agent installation (by andrewm0374@gmail.com).
 - Fixed MySQL support in dbd (by andrewm0374@gmail.com).
-- Fixed incorrect warning when unencrypting messages (by Dan Parriot).
-- Fixed Syslog mapping for alerts via Csyslogd (by Dan Parriot).
+- Fixed incorrect warning when unencrypting messages (by Dan Parriott).
+- Fixed Syslog mapping for alerts via Csyslogd (by Dan Parriott).
 - Fixed syntax error in the creation of users in Solaris 11.2 (by Pedro Flor).
 - Prevent Monitord from rotating unexisting logs.
 - Fixed some warnings that appeared when compiling on Fedora 26.
@@ -71,7 +71,7 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
-- Removed Picviz support (by Dan Parriot).
+- Removed Picviz support (by Dan Parriott).
 
 
 
@@ -252,12 +252,12 @@ All notable changes to this project will be documented in this file.
 - Increases Authd connection pool size.
 - Use general-purpose version-flexible SSL/TLS methods for Authd registration.
 - Enforce minimum 3-digit agent ID format.
-- Exclude BTRFS from Rootcheck searching for hidden files inside directories (by Stehpan Joerrens).
+- Exclude BTRFS from Rootcheck searching for hidden files inside directories (by Stephan Joerrens).
 - Moved OSSEC and Wazuh decoders to one directory.
 - Prevent manage_agents from doing invalid actions (such methods for manager at agent).
 - Disabled capturing of security events 5145 and 5156 on Windows agent.
 - Utilities to rename an agent or change the IP address (by Antonio Querubin).
-- Added quiet option for Logtest (by Dan Parriot).
+- Added quiet option for Logtest (by Dan Parriott).
 - Output decoder information onto JSON alerts.
 - Enable mail notifications by default for server installation.
 - Agent control option to restart all agents' Syscheck will also restart manager's Syscheck.
@@ -285,7 +285,7 @@ All notable changes to this project will be documented in this file.
 - Renamed XML tags related to rules and decoders inclusion.
 - Set default maximum agents to 8000.
 - Removed FTS numeric bitfield from JSON output.
-- Fixed ID misasignation by manage_agents when the gratest ID exceeds 32512.
+- Fixed ID misassignment by manage_agents when the greatest ID exceeds 32512.
 - Run Windows Registry Syscheck scan on first stage when scan_on_start enabled.
 - Set all Syscheck delay stages to a multiple of internal_options.conf/syscheck.sleep value.
 - Changed JSON timestamp format to ISO8601.
@@ -306,7 +306,7 @@ All notable changes to this project will be documented in this file.
 - Mistake with incorrect name for PID file (by Tickhon Clearscale).
 - Agent-auth name at messages (it appeared to be the server).
 - Avoid Monitord to log errors when the JSON alerts file doesn't exists.
-- Agents numberig issue (minimum 3 digits).
+- Agents numbering issue (minimum 3 digits).
 - Avoid no-JSON message at agent_control when client.keys empty.
 - Memory leaks at manage_agents.
 - Authd error messages about connection to queue passed to warning.
@@ -320,7 +320,7 @@ All notable changes to this project will be documented in this file.
 - Fixed error that made Analysisd to crash if it received a missing FIM file entry.
 - Fixed compile warnings at cJSON library.
 - Fixed bug that made Active Response to disable all commands if one of them was disabled (by Jason Thomas).
-- Fixed segmentation fault at logtest (by Dan Parriot).
+- Fixed segmentation fault at logtest (by Dan Parriott).
 - Fixed SQL injection vulnerability at Database.
 - Fixed Active Response scripts for Slack and Twitter.
 - Fixed potential segmentation fault at file queue operation.
@@ -347,7 +347,7 @@ All notable changes to this project will be documented in this file.
 - Fixed memory leak (by Byron Golden).
 - Fixed misinterpretation of octal permissions given by Agentless (by Stephan Leemburg).
 - Fixed mistake incorrect openssl flag at Makefile (by Stephan Leemburg).
-- Silence Slack integration transmission messages (by Dan Parriot).
+- Silence Slack integration transmission messages (by Dan Parriott).
 - Fixed OpenSUSE Systemd misconfiguration (By Stephan Joerrens).
 - Fixed case issue on JSON output for Rootcheck alerts.
 - Fixed potential issue on duplicated agent ID detection.

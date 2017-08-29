@@ -70,7 +70,7 @@ lock()
         mkdir ${LOCK} > /dev/null 2>&1
         MSL=$?
         if [ "${MSL}" = "0" ]; then
-            # Lock aquired (setting the pid)
+            # Lock acquired (setting the pid)
             echo "$$" > ${LOCK_PID}
             return;
         fi

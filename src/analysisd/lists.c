@@ -11,7 +11,7 @@
 #include "eventinfo.h"
 
 
-/* Initilalize the cdb lookup lists */
+/* Initialize the cdb lookup lists */
 void Lists_OP_CreateLists()
 {
     OS_CreateListsList();

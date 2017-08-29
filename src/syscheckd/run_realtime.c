@@ -398,7 +398,7 @@ int realtime_adddir(const char *dir)
 
 int realtime_start()
 {
-    merror("Unable to initalize real time file monitoring.");
+    merror("Unable to initialize real time file monitoring.");
 
     return (0);
 }

@@ -5,7 +5,7 @@
 # Author: Rafael Capovilla - under @ ( at ) underlinux.com.br
 # Author: Daniel B. Cid - dcid @ ( at ) ossec.net
 # Author: Charles W. Kefauver ckefauver @ ( at ) ibacom.es
-#         changed for Mac OS X compatability
+#         changed for Mac OS X compatibility
 # Last modified: August 14, 2006
 
 UNAME=`uname`

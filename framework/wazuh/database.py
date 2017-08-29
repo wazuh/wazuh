@@ -72,6 +72,6 @@ class Connection:
 
     def vacuum(self):
         """
-        Rebuild the entire database: reduce size and desfragment
+        Rebuild the entire database: reduce size and defragment
         """
         self.__cur.execute('VACUUM')

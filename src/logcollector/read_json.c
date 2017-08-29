@@ -33,7 +33,7 @@ void *read_json(int pos, int *rc, int drop_it)
     while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL && lines < maximum_lines){
 
         lines++;
-        /* Get the last occurence of \n */
+        /* Get the last occurrence of \n */
         if ((p = strrchr(str, '\n')) != NULL) {
             *p = '\0';
         }
@@ -105,7 +105,7 @@ void *read_json(int pos, int *rc, int drop_it)
             snprintf(buf, OUTSIZE, "%s", str);
             merror("Large message size(length=%d): '%s...'", (int)strlen(str), buf);
             while (fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL) {
-                /* Get the last occurence of \n */
+                /* Get the last occurrence of \n */
                 if (strrchr(str, '\n') != NULL) {
                     break;
                 }

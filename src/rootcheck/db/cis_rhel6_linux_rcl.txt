@@ -20,7 +20,7 @@
 # Also, use " -> r:^\. -> ..." to search all files in a directory
 # For files, use "->" to look for a specific value in the file.
 #
-# Values can be preceeded by: =: (for equal) - default
+# Values can be preceded by: =: (for equal) - default
 #                             r: (for ossec regexes)
 #                             >: (for strcmp greater)
 #                             <: (for strcmp  lower)
@@ -82,7 +82,7 @@ f:/etc/fstab -> ^# && !r:/home;
 [CIS - RHEL6 - 1.1.10 -  Partition /home without 'nodev' set {CIS: 1.1.10 RHEL6} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
 f:/etc/fstab -> !r:^# && r:/home && !r:nodev;
 
-# 1.1.11 nodev on removable media partitons (not scored)
+# 1.1.11 nodev on removable media partitions (not scored)
 [CIS - RHEL6 - 1.1.11 - Removable partition /media without 'nodev' set {CIS: 1.1.11 RHEL6} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
 f:/etc/fstab -> !r:^# && r:/media && !r:nodev;
 
@@ -90,7 +90,7 @@ f:/etc/fstab -> !r:^# && r:/media && !r:nodev;
 [CIS - RHEL6 - 1.1.12 - Removable partition /media without 'noexec' set {CIS: 1.1.12 RHEL6} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
 f:/etc/fstab -> !r:^# && r:/media && !r:noexec;
 
-# 1.1.13 nosuid on removale media partitions (not scored)
+# 1.1.13 nosuid on removable media partitions (not scored)
 [CIS - RHEL6 - 1.1.13 - Removable partition /media without 'nosuid' set {CIS: 1.1.13 RHEL6} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
 f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;
 
@@ -167,7 +167,7 @@ f:/etc/selinux/config -> r:SELINUX=enforcing;
 f:/etc/selinux/config -> r:SELINUXTYPE=targeted;
 
 # 1.4.4 Remove SETroubleshoot
-[CIS - RHEL6 - 1.4.4 - SELinux setroubleshoot enabld {CIS: 1.4.4 RHEL6} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
+[CIS - RHEL6 - 1.4.4 - SELinux setroubleshoot enabled {CIS: 1.4.4 RHEL6} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
 d:$rc_dirs -> ^S\d\dsetroubleshoot$;
 
 # 1.4.5 Disable MCS Translation service mcstrans
@@ -193,7 +193,7 @@ d:$rc_dirs -> ^S\d\dmctrans$;
 f:/boot/grub/menu.lst -> !r:^# && !r:password;
 
 # 1.5.4 Require Authentication for Single-User Mode (Scored)
-[CIS - RHEL6 - 1.5.4 - Authenticaion for single user mode not enabled {CIS: 1.5.4 RHEL6} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
+[CIS - RHEL6 - 1.5.4 - Authentication for single user mode not enabled {CIS: 1.5.4 RHEL6} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
 f:/etc/inittab -> !r:^# && r:S:wait;
 
 # 1.5.5 Disable Interactive Boot (Scored)
@@ -214,7 +214,7 @@ f:/etc/security/limits.conf -> !r:^# && !r:hard\.+core\.+0;
 f:/proc/sys/kernel/exec-shield -> 0;
 
 # 1.6.3 Enable Randomized Virtual Memory Region Placement (Scored)
-[CIS - RHEL6 - 1.6.3 - Randomized Virtua Memory Region Placement not enabled  {CIS: 1.6.3 RHEL6}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
+[CIS - RHEL6 - 1.6.3 - Randomized Virtual Memory Region Placement not enabled  {CIS: 1.6.3 RHEL6}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_6_Benchmark_v1.3.0.pdf]
 f:/proc/sys/kernel/randomize_va_space -> 0;
 
 
@@ -364,7 +364,7 @@ d:$rc_dirs -> ^S\d\dsnmpd$;
 
 
 ###############################################
-# 4 Network Confiuration and Firewalls
+# 4 Network Configuration and Firewalls
 ###############################################
 
 ###############################################

@@ -248,7 +248,7 @@ void *OSHash_Get(const OSHash *self, const char *key)
             continue;
         }
 
-        /* We may have colisions, so double check with strcmp */
+        /* We may have collisions, so double check with strcmp */
         if (strcmp(curr_node->key, key) == 0) {
             return (curr_node->data);
         }

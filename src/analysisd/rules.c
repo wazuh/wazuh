@@ -734,7 +734,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                                 goto cleanup;
                             }
                         } else {
-                            merror("List must have a correctly formatted feild attribute");
+                            merror("List must have a correctly formatted field attribute");
                             merror(INVALID_CONFIG,
                                    rule_opt[k]->element,
                                    rule_opt[k]->content);

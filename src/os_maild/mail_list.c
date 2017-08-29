@@ -94,7 +94,7 @@ void FreeMail(MailNode *ml)
 }
 
 
-/* Add an email to the list -- always to the begining */
+/* Add an email to the list -- always to the beginning */
 void OS_AddMailtoList(MailMsg *ml)
 {
     MailNode *tmp_node = n_node;

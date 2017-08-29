@@ -20,7 +20,7 @@ typedef struct _MailConfig {
     int mn;
     int maxperhour;
     int strict_checking;
-    int groupping;
+    int grouping;
     int subject_full;
     int priority;
     char **to;

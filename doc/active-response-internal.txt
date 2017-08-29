@@ -5,7 +5,7 @@ Copyright (c) 2004-2006 Daniel B. Cid   <daniel.cid@gmail.com>
 
 How the active response works internally:
 
-- Read active-respose-doc.txt for details on configuration
+- Read active-response.txt for details on configuration
 
 
 1 - The analysis server receives an event that matches the
@@ -23,7 +23,7 @@ How the active response works internally:
     to the execd directly.
 
 4 - If the active response policy specify that the action
-    must be executed remotelly, a message is sent to the
+    must be executed remotely, a message is sent to the
     "Active response forwarder" (remoted) to forward the
     event to the specified agent.    
 

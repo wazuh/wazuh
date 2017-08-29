@@ -50,7 +50,7 @@ void req_init() {
     os_calloc(request_pool, sizeof(req_node_t *), req_pool);
 }
 
-// Push a request message into dispathing queue. Return 0 on success or -1 on error.
+// Push a request message into dispatching queue. Return 0 on success or -1 on error.
 int req_push(char * buffer, size_t length) {
     char * counter;
     char * target;

@@ -38,7 +38,7 @@
   <rule id="3104" level="6">
     <if_sid>3101</if_sid>
     <match>reject=550 5.7.1 </match>
-    <description>sendmail: Attepmt to use mail server as relay </description>
+    <description>sendmail: Attempt to use mail server as relay </description>
     <description>(550: Requested action not taken).</description>
     <group>spam,pci_dss_11.4,</group>
   </rule>

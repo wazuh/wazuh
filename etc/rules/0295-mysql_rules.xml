@@ -42,7 +42,7 @@
   <rule id="50120" level="12">
     <if_sid>50100</if_sid>
     <match>mysqld ended|Shutdown complete</match>
-    <description>MySQL: shutdown messge.</description>
+    <description>MySQL: shutdown message.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
 

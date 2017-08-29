@@ -54,7 +54,7 @@ void *read_mssql_log(int pos, int *rc, int drop_it)
             str_len = sizeof(buffer) - 10;
         }
 
-        /* Get the last occurence of \n */
+        /* Get the last occurrence of \n */
         if ((p = strrchr(str, '\n')) != NULL) {
             *p = '\0';
 

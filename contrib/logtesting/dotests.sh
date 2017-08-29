@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "Starting log unit tests (must be run as root and on a system with OSSEC installed)."
-echo "(it will make sure the current rules aree working as they should)."
+echo "(it will make sure the current rules are working as they should)."
 rm -f ./tmpres
 for i in ./*/log; do
     idir=`dirname $i`

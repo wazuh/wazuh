@@ -17,7 +17,7 @@
 #define COUNTER_LENGTH 64
 
 // Dispatcher theads entry point
-static void * req_dispath(req_node_t * node);
+static void * req_dispatch(req_node_t * node);
 
 // Increment request pool
 static void req_pool_post();
@@ -157,7 +157,7 @@ void * req_main(__attribute__((unused)) void * arg) {
                 }
 
                 // Run thread
-                w_create_thread(req_dispath, node);
+                w_create_thread(req_dispatch, node);
 
                 // Do not close peer
                 continue;
@@ -174,7 +174,7 @@ void * req_main(__attribute__((unused)) void * arg) {
 }
 
 // Dispatcher theads entry point
-void * req_dispath(req_node_t * node) {
+void * req_dispatch(req_node_t * node) {
     int attempts;
     int ploff;
     long nsec;
@@ -270,7 +270,7 @@ void * req_dispath(req_node_t * node) {
 
     if (logr.proto[logr.position] == UDP_PROTO) {
         // Example: #!-req 16 ack
-        mdebug2("req_dispath(): Sending ack (%s).", node->counter);
+        mdebug2("req_dispatch(): Sending ack (%s).", node->counter);
         snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);
         send_msg(agentid, response, -1);
     }
@@ -278,7 +278,7 @@ void * req_dispath(req_node_t * node) {
     // Send response to local peer
 
     if (send(node->sock, node->buffer, node->length, 0) != (ssize_t)node->length) {
-        merror("At req_dispath(): send(): %s", strerror(errno));
+        merror("At req_dispatch(): send(): %s", strerror(errno));
     }
 
 cleanup:

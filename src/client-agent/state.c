@@ -97,7 +97,7 @@ int write_state() {
         "\n"
         "# Agent status:\n"
         "# - pending:      waiting for get connected.\n"
-        "# - connected:    connection stablished with manager in the last 30 minutes.\n"
+        "# - connected:    connection established with manager in the last 30 minutes.\n"
         "# - disconnected: connection lost or no ACK received in the last 30 minutes.\n"
         "status='%s'\n"
         "\n"

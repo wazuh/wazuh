@@ -24,7 +24,7 @@ int main(int argc, char **argv)
     }
 
     /* If the compilation failed, we don't need to free anything.
-     * We are passing the OS_RETURN_SUBSTRING because we wan't the
+     * We are passing the OS_RETURN_SUBSTRING because we want the
      * substrings back.
      */
     if (OSRegex_Compile(argv[1], &reg, OS_RETURN_SUBSTRING)) {

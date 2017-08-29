@@ -285,13 +285,13 @@
   <rule id="5106" level="0">
     <if_sid>5100</if_sid>
     <match>svc: unknown program 100227 (me 100003)</match>
-    <description>NFS incompability between Linux and Solaris.</description>
+    <description>NFS incompatibility between Linux and Solaris.</description>
   </rule>
 
   <rule id="5107" level="0">
     <if_sid>5100</if_sid>
     <match>svc: bad direction </match>
-    <description>NFS incompability between Linux and Solaris.</description>
+    <description>NFS incompatibility between Linux and Solaris.</description>
   </rule>
 
   <rule id="5108" level="12">
@@ -666,7 +666,7 @@
   <rule id="2937" level="12">
     <if_sid>2935</if_sid>
     <status>FAILED</status>
-    <description>Posible Disk failure. SCSI controller error.</description>
+    <description>Possible Disk failure. SCSI controller error.</description>
     <group>pci_dss_10.6.1,</group>
   </rule>
 

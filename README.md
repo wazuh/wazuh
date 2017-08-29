@@ -19,7 +19,7 @@ Wazuh also includes a rich web application (fully integrated as a Kibana app), f
 
 * [Wazuh App](https://documentation.wazuh.com/current/index.html#example-screenshots) is a rich web application (fully integrated as a Kibana app), for mining log analysis alerts and for monitoring and managing your Wazuh infrastructure.
 
-* [Wazuh Ruleset](https://documentation.wazuh.com/current/user-manual/ruleset/index.html) is our repository to centralice decoders, rules, rootchecks and SCAP content. The ruleset is used by the manager to detect attacks, intrusions, software misuse, configuration problems, application errors, malware, rootkits, system anomalies or security policy violations. Also, it includes the compliance mapping with PCI DSS v3.1 and CIS. Users can contribute to this rule set by submitting pull requests to our [Github repository](https://github.com/wazuh/wazuh-ruleset).
+* [Wazuh Ruleset](https://documentation.wazuh.com/current/user-manual/ruleset/index.html) is our repository to centralize decoders, rules, rootchecks and SCAP content. The ruleset is used by the manager to detect attacks, intrusions, software misuse, configuration problems, application errors, malware, rootkits, system anomalies or security policy violations. Also, it includes the compliance mapping with PCI DSS v3.1 and CIS. Users can contribute to this rule set by submitting pull requests to our [Github repository](https://github.com/wazuh/wazuh-ruleset).
 
 * [Wazuh RESTful API](https://documentation.wazuh.com/current/user-manual/api/index.html) is used to monitor and control your Wazuh installation, providing an interface to interact with the manager from anything that can send an HTTP request.
 

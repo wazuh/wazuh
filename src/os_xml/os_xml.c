@@ -200,11 +200,11 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
     int prevv = 0;
     char elem[XML_MAXSIZE + 1];
     char cont[XML_MAXSIZE + 1];
-    char closedelem[XML_MAXSIZE + 1];
+    char closedelim[XML_MAXSIZE + 1];
 
     memset(elem, '\0', XML_MAXSIZE + 1);
     memset(cont, '\0', XML_MAXSIZE + 1);
-    memset(closedelem, '\0', XML_MAXSIZE + 1);
+    memset(closedelim, '\0', XML_MAXSIZE + 1);
 
     while ((c = _xml_fgetc(fp)) != EOF) {
         if (c == '\\') {
@@ -279,7 +279,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
                 location = -1;
 
                 memset(elem, '\0', XML_MAXSIZE);
-                memset(closedelem, '\0', XML_MAXSIZE);
+                memset(closedelim, '\0', XML_MAXSIZE);
                 memset(cont, '\0', XML_MAXSIZE);
 
                 if (parent > 0) {
@@ -292,8 +292,8 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
         }
 
         else if ((location == 2) && (c == _R_CONFE)) {
-            closedelem[count] = '\0';
-            if (strcmp(closedelem, elem) != 0) {
+            closedelim[count] = '\0';
+            if (strcmp(closedelim, elem) != 0) {
                 xml_error(_lxml, "XMLERR: Element '%s' not closed.", elem);
                 return (-1);
             }
@@ -302,7 +302,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
             }
             _lxml->ck[_currentlycont] = 1;
             memset(elem, '\0', XML_MAXSIZE);
-            memset(closedelem, '\0', XML_MAXSIZE);
+            memset(closedelim, '\0', XML_MAXSIZE);
             memset(cont, '\0', XML_MAXSIZE);
             _currentlycont = 0;
             count = 0;
@@ -330,7 +330,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
             } else if (location == 1) {
                 cont[count++] = (char) c;
             } else if (location == 2) {
-                closedelem[count++] = (char) c;
+                closedelim[count++] = (char) c;
             }
 
             if ((_R_CONFS == c) && (prevv != 0)) {

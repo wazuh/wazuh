@@ -25,6 +25,6 @@ done
 
 EPSAVG=$(($EPSSUM/$COUNT/(86400)))
 
-echo Your total lifetime number of events colected is: $EPSSUM
+echo Your total lifetime number of events collected is: $EPSSUM
 echo Your total daily number of events average is: $(($EPSSUM/$COUNT))
 echo Your daily events per second average is: $EPSAVG

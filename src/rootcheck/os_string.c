@@ -117,7 +117,7 @@ struct exec {
 
 #include "error_messages/error_messages.h"
 
-#define STR_MINLEN  4       /* Minumum length for a string */
+#define STR_MINLEN  4       /* Minimum length for a string */
 
 #define ISSTR(ch)   (isascii(ch) && (isprint(ch) || ch == '\t'))
 

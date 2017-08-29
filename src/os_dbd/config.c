@@ -89,7 +89,7 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
     }
 #endif
 
-    /* Check for config errros */
+    /* Check for config errors */
     if (db_config->db_type == MYSQLDB) {
 #ifndef MYSQL_DATABASE_ENABLED
         merror(DB_COMPILED, "mysql");

@@ -50,7 +50,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Get the log length */
     loglen = strlen(pieces) + 1;
 
-    /* Assign the values in the strucuture (lf->full_log) */
+    /* Assign the values in the structure (lf->full_log) */
     os_malloc((2 * loglen) + 1, lf->full_log);
 
     /* Set the whole message at full_log */

@@ -48,7 +48,7 @@ them or after them.
      regarding the "admin" (root) account.
 10 - Multiple user generated errors - They include multiple bad
      passwords, multiple failed logins, etc. They may indicate an
-     attack or may just be that a user just forgot his credencials.
+     attack or may just be that a user just forgot his credentials.
 11 - Integrity checking warning - They include messages regarding
      the modification of binaries or the presence of rootkits (by
      rootcheck). If you just modified your system configuration

@@ -264,7 +264,7 @@ TypeMessage:
     </rule>
 
     <!--
-    Permision denied
+    Permission denied
     [21] Thu 26Nov15 19:59:54 - (000030) 550 /C:/Users/file.txt: Permission denied.
     [31] Thu 26Nov15 19:51:28 - (000022) {0x0000000a} SSH_FX_PERMISSION_DENIED: Permission denied.
     [41] Thu 26Nov15 19:58:31 - (000029) HTTP_OKAY (200): SESS_PERMISSION_DENIED
@@ -273,7 +273,7 @@ TypeMessage:
         <if_sid>80500</if_sid>
         <action>21</action>
         <match>Permission denied</match>
-        <description>Serv-U: FTP/FTPS Permision denied</description>
+        <description>Serv-U: FTP/FTPS Permission denied</description>
          <group>pci_dss_10.2.4,</group>
     </rule>
 
@@ -281,7 +281,7 @@ TypeMessage:
         <if_sid>80500</if_sid>
         <action>31</action>
         <match>Permission denied</match>
-        <description>Serv-U: SFTP (SSH) Permision denied</description>
+        <description>Serv-U: SFTP (SSH) Permission denied</description>
         <group>pci_dss_10.2.4,</group>
     </rule>
 
@@ -289,7 +289,7 @@ TypeMessage:
         <if_sid>80500</if_sid>
         <action>41</action>
         <match>SESS_PERMISSION_DENIED</match>
-        <description>Serv-U: HTTP/HTTPS Permision denied</description>
+        <description>Serv-U: HTTP/HTTPS Permission denied</description>
         <group>pci_dss_10.2.4,</group>
     </rule>
 

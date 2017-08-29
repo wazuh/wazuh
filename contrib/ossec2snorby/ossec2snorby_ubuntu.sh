@@ -19,7 +19,7 @@ PIDFILE="/var/run/ossec2snorby.pid"
 CONFIGFILE="/etc/ossec2snorby.conf"
 OPTS="--conf $CONFIGFILE -d"
 
-[ -x $DAEMON ] || { echo " [ERROR]: ossec2snorby.pl non existant or not executable..."; exit 1; }
+[ -x $DAEMON ] || { echo " [ERROR]: ossec2snorby.pl non existent or not executable..."; exit 1; }
 [ -r $CONFIGFILE ] || { echo " [ERROR]: ossec2snorby.conf was not found..."; exit 1; }
 [ -r /usr/local/bin/ossec2snorby/ossecmysql.pm ] || { echo " [ERROR]: ossecmysql was not found..."; exit 1; }
 

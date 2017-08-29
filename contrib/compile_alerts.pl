@@ -77,7 +77,7 @@ sub help(){
 	print STDERR "$0  [-u|--user-signatures] <user-signatures-dir> [-s|--signatures] <signatures-dir>\n"
 	."\n\nBUGS:\n"
 	. "I just wanted to deliver version one.\n"
-	. "I will change the script to read the directory sorted, so you can link signatures with names that would emulate the behavios of the sysV system.\n";
+	. "I will change the script to read the directory sorted, so you can link signatures with names that would emulate the behavior of the sysV system.\n";
 	
 	exit;
 }

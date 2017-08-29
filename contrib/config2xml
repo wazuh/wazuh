@@ -135,7 +135,7 @@ END
 
 if ( exists($config{'active_response'}) ) {		# should always be true
 	if ($config{'active_response'} eq 'disabled') {
-		print "  <active-response>\n    <disabled>yes</diabled>\n  </active-response>\n\n";
+		print "  <active-response>\n    <disabled>yes</disabled>\n  </active-response>\n\n";
 	} else {
 		# Could use some comments/insight here, since I don't use the active response features.
 		foreach my $cmd ( sort(@{$config{'active-response-command'}}) ) {

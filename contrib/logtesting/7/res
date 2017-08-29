@@ -10,7 +10,7 @@
 **Phase 3: Completed filtering (rules).
        Rule id: '50120'
        Level: '12'
-       Description: 'Database shutdown messge.'
+       Description: 'Database shutdown message.'
 **Alert to be generated.
 
 
