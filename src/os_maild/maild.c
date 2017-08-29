@@ -128,9 +128,9 @@ int main(int argc, char **argv)
                                          "strict_checking",
                                          0, 1);
 
-    /* Get groupping */
-    mail.groupping = getDefine_Int("maild",
-                                   "groupping",
+    /* Get grouping */
+    mail.grouping = getDefine_Int("maild",
+                                   "grouping",
                                    0, 1);
 
     /* Get subject type */
@@ -379,7 +379,7 @@ snd_check_hour:
             }
 
             /* Change timeout to see if any new message is coming shortly */
-            if (mail->groupping) {
+            if (mail->grouping) {
                 /* If priority is set, send email now */
                 if (mail->priority) {
                     mail_timeout = DEFAULT_TIMEOUT;

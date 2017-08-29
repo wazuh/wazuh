@@ -36,7 +36,7 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
     Mail->gran_group = NULL;
     Mail->gran_set = NULL;
     Mail->gran_format = NULL;
-    Mail->groupping = 1;
+    Mail->grouping = 1;
     Mail->strict_checking = 0;
     Mail->source = 0;
 #ifdef LIBGEOIP_ENABLED
