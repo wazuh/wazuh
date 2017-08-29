@@ -12,7 +12,7 @@
 #ifndef __AR_H
 #define __AR_H
 
-/* Recepient agents */
+/* Recipient agents */
 #define ALL_AGENTS      0000001
 #define REMOTE_AGENT    0000002
 #define SPECIFIC_AGENT  0000004
