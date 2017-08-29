@@ -666,7 +666,7 @@
   <rule id="2937" level="12">
     <if_sid>2935</if_sid>
     <status>FAILED</status>
-    <description>Posible Disk failure. SCSI controller error.</description>
+    <description>Possible Disk failure. SCSI controller error.</description>
     <group>pci_dss_10.6.1,</group>
   </rule>
 
