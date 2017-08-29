@@ -323,7 +323,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
         /* Compress alerts */
         else if (strcmp(node[i]->element, xml_compress_alerts) == 0) {
-            /* removed from here -- compatility issues only */
+            /* removed from here -- compatibility issues only */
         }
         /* Integrity */
         else if (strcmp(node[i]->element, xml_integrity) == 0) {
