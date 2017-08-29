@@ -13,7 +13,7 @@
 #include "logcollector.h"
 
 
-/* To translante between month (int) to month (char) */
+/* To translate between month (int) to month (char) */
 static const char *(djb_month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
                                    };
