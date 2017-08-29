@@ -66,14 +66,14 @@
   <rule id="50520" level="12">
     <if_sid>50504</if_sid>
     <match>terminating connection due</match>
-    <description>PostgreSQL: Database shutdown messge.</description>
+    <description>PostgreSQL: Database shutdown message.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="50521" level="12">
     <if_sid>50501</if_sid>
     <match>aborting any active transactions|shutting down</match>
-    <description>PostgreSQL: Database shutdown messge.</description>
+    <description>PostgreSQL: Database shutdown message.</description>
     <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
 
