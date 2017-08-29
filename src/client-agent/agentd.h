@@ -93,7 +93,7 @@ void * w_rotate_log_thread(void * arg);
 // Initialize request module
 void req_init();
 
-// Push a request message into dispathing queue. Return 0 on success or -1 on error.
+// Push a request message into dispatching queue. Return 0 on success or -1 on error.
 int req_push(char * buffer, size_t length);
 
 // Request receiver thread start
