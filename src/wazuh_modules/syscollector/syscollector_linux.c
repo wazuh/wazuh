@@ -14,13 +14,40 @@
 #include "syscollector.h"
 
 #include <sys/ioctl.h>
+#include <net/if_arp.h>
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <linux/if_link.h>
 #include <linux/if_packet.h>
 
+char* get_if_type(char *ifa_name);              // Get interface type
+char* get_oper_state(char *ifa_name);           // Get operational state
+char* get_mtu(char *ifa_name);                  // Get MTU
 char* check_dhcp(char *ifa_name, int family);   // Check DHCP status for network interfaces
-char* get_default_gateway(char *ifa_name);
+char* get_default_gateway(char *ifa_name);      // Get Default Gatewat for network interfaces
+
+
+void sys_os_linux(int queue_fd, const char* LOCATION){
+
+    char *string;
+
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "OS");
+
+    cJSON *os_inventory = getunameJSON();
+
+    if (os_inventory != NULL)
+        cJSON_AddItemToObject(object, "inventory", os_inventory);
+
+    /* Send interface data in JSON format */
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_os_linux() sending '%s'", string);
+    SendMSG(queue_fd, string, LOCATION, WODLE_MQ);
+    cJSON_Delete(object);
+
+    free(string);
+
+}
 
 // Get network inventory
 
@@ -48,7 +75,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         found = 0;
         for (i=0; i<=j; i++){
             if (!ifaces_list[i]){
-                if (!strcmp(ifa->ifa_name, "lo"))
+                if (ifa->ifa_flags & IFF_LOOPBACK)
                     found = 1;
 
                 break;
@@ -82,12 +109,24 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
+        /* Interface type */
+        char *type;
+        type = get_if_type(ifaces_list[i]);
+        cJSON_AddStringToObject(interface, "type", type);
+        free(type);
+
+        /* Operational state */
+        char *state;
+        state = get_oper_state(ifaces_list[i]);
+        cJSON_AddStringToObject(interface, "state", state);
+        free(state);
+
         for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
 
             if (strcmp(ifaces_list[i], ifa->ifa_name)){
                 continue;
             }
-            if (!ifa->ifa_addr || !strcmp(ifa->ifa_name, "lo")) {
+            if (ifa->ifa_flags & IFF_LOOPBACK) {
                 continue;
             }
 
@@ -125,30 +164,16 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
                 /* Get broadcast address (or destination address in a Point to Point connection) */
                 if (ifa->ifa_ifu.ifu_broadaddr != NULL){
-                    if (ifa->ifa_flags & IFF_POINTOPOINT){
-                        char dstaddr[NI_MAXHOST];
-                        result = getnameinfo(ifa->ifa_ifu.ifu_dstaddr,
-                            sizeof(struct sockaddr_in),
-                            dstaddr, NI_MAXHOST,
-                            NULL, 0, NI_NUMERICHOST);
+                    char broadaddr[NI_MAXHOST];
+                    result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
+                        sizeof(struct sockaddr_in),
+                        broadaddr, NI_MAXHOST,
+                        NULL, 0, NI_NUMERICHOST);
 
-                        if (result == 0) {
-                            cJSON_AddStringToObject(ipv4, "dst_address", dstaddr);
-                        } else {
-                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
-                        }
-                    }else{
-                        char broadaddr[NI_MAXHOST];
-                        result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
-                            sizeof(struct sockaddr_in),
-                            broadaddr, NI_MAXHOST,
-                            NULL, 0, NI_NUMERICHOST);
-
-                        if (result == 0) {
-                            cJSON_AddStringToObject(ipv4, "broadcast", broadaddr);
-                        } else {
-                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
-                        }
+                    if (result == 0) {
+                        cJSON_AddStringToObject(ipv4, "broadcast", broadaddr);
+                    } else {
+                        mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                     }
                 }
 
@@ -204,30 +229,16 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
                 /* Get broadcast address (or destination address in a Point to Point connection) for IPv6*/
                 if (ifa->ifa_ifu.ifu_broadaddr != NULL){
-                    if (ifa->ifa_flags & IFF_POINTOPOINT){
-                        char dstaddr6[NI_MAXHOST];
-                        result = getnameinfo(ifa->ifa_ifu.ifu_dstaddr,
-                            sizeof(struct sockaddr_in6),
-                            dstaddr6, NI_MAXHOST,
-                            NULL, 0, NI_NUMERICHOST);
+                    char broadaddr6[NI_MAXHOST];
+                    result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
+                        sizeof(struct sockaddr_in6),
+                        broadaddr6, NI_MAXHOST,
+                        NULL, 0, NI_NUMERICHOST);
 
-                        if (result == 0) {
-                            cJSON_AddStringToObject(ipv6, "dst_address", dstaddr6);
-                        } else {
-                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
-                        }
-                    }else{
-                        char broadaddr6[NI_MAXHOST];
-                        result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
-                            sizeof(struct sockaddr_in6),
-                            broadaddr6, NI_MAXHOST,
-                            NULL, 0, NI_NUMERICHOST);
-
-                        if (result == 0) {
-                            cJSON_AddStringToObject(ipv6, "broadcast", broadaddr6);
-                        } else {
-                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
-                        }
+                    if (result == 0) {
+                        cJSON_AddStringToObject(ipv6, "broadcast", broadaddr6);
+                    } else {
+                        mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                     }
                 }
 
@@ -250,12 +261,18 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                 cJSON_AddNumberToObject(interface, "tx_bytes", stats->tx_bytes);
                 cJSON_AddNumberToObject(interface, "rx_bytes", stats->rx_bytes);
 
+                /* MTU */
+                char *mtu;
+                mtu = get_mtu(ifaces_list[i]);
+                cJSON_AddStringToObject(interface, "MTU", mtu);
+                free(mtu);
+
             }
         }
 
         /* Send interface data in JSON format */
         string = cJSON_PrintUnformatted(object);
-        mtdebug2(WM_SYS_LOGTAG, "wm_sys_network() sending '%s'", string);
+        mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
         SendMSG(queue_fd, string, LOCATION, WODLE_MQ);
         cJSON_Delete(object);
 
@@ -270,11 +287,126 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
 }
 
+/* Get interface type */
+char* get_if_type(char *ifa_name){
+
+    char file[256];
+
+    FILE *fp;
+    char type_str[3];
+    int type_int;
+    char * type;
+    os_calloc(TYPE_LENGTH + 1, sizeof(char), type);
+
+    snprintf(type, TYPE_LENGTH, "%s", "unknown");
+    snprintf(file, 256, "%s%s/%s", WM_SYS_IFDATA_DIR, ifa_name, "type");
+
+    if((fp = fopen(file, "r"))){
+        if (fgets(type_str, 3, fp) != NULL){
+
+            type_int = atoi(type_str);
+
+            switch (type_int){
+                case ARPHRD_ETHER:
+                    snprintf(type, TYPE_LENGTH, "%s", "ethernet");
+                    break;
+                case ARPHRD_PRONET:
+                    snprintf(type, TYPE_LENGTH, "%s", "token ring");
+                    break;
+                case ARPHRD_PPP:
+                    snprintf(type, TYPE_LENGTH, "%s", "point-to-point");
+                    break;
+                case ARPHRD_ATM:
+                    snprintf(type, TYPE_LENGTH, "%s", "ATM");
+                    break;
+                case ARPHRD_IEEE1394:
+                    snprintf(type, TYPE_LENGTH, "%s", "firewire");
+                    break;
+                default:
+                    if (type_int >= 768 && type_int <= 783){
+                        snprintf(type, TYPE_LENGTH, "%s", "tunnel");
+                    }else if (type_int >= 784 && type_int <= 799){
+                        snprintf(type, TYPE_LENGTH, "%s", "fibrechannel");
+                    }else if (type_int >= 800 && type_int <=805){
+                        snprintf(type, TYPE_LENGTH, "%s", "wireless");
+                    }else{
+                        snprintf(type, TYPE_LENGTH, "%s", "unknown");
+                    }
+                    break;
+            }
+        }
+        fclose(fp);
+    }
+    return type;
+}
+
+/* Get operation state of a network interface */
+char* get_oper_state(char *ifa_name){
+
+    char file[OS_MAXSTR];
+
+    FILE *fp;
+    char state_str[20] = "";
+    char * state;
+    char ** parts;
+    int i;
+
+    os_calloc(STATE_LENGTH + 1, sizeof(char), state);
+
+    snprintf(state, STATE_LENGTH, "%s", "unknown");
+    snprintf(file, OS_MAXSTR, "%s%s/%s", WM_SYS_IFDATA_DIR, ifa_name, "operstate");
+
+    if((fp = fopen(file, "r"))){
+        if (fgets(state_str, 20, fp) != NULL){
+
+            parts = OS_StrBreak('\n', state_str, 2);
+            snprintf(state, STATE_LENGTH, "%s", parts[0]);
+            for (i = 0; parts[i]; i++){
+                free(parts[i]);
+            }
+            free(parts);
+        }
+        fclose(fp);
+    }
+    return state;
+}
+
+/* Get MTU of a network interface */
+char* get_mtu(char *ifa_name){
+
+    char file[OS_MAXSTR];
+
+    FILE *fp;
+    char mtu_str[20] = "";
+    char * mtu;
+    char ** parts;
+    int i;
+
+    os_calloc(MTU_LENGTH + 1, sizeof(char), mtu);
+
+    snprintf(mtu, MTU_LENGTH, "%s", "unknown");
+    snprintf(file, OS_MAXSTR, "%s%s/%s", WM_SYS_IFDATA_DIR, ifa_name, "mtu");
+
+    if((fp = fopen(file, "r"))){
+        if (fgets(mtu_str, 20, fp) != NULL){
+
+            parts = OS_StrBreak('\n', mtu_str, 2);
+            snprintf(mtu, MTU_LENGTH, "%s", parts[0]);
+            for (i = 0; parts[i]; i++){
+                free(parts[i]);
+            }
+            free(parts);
+        }
+        fclose(fp);
+    }
+    return mtu;
+}
+
 /* Check DHCP status for IPv4 and IPv6 addresses in each interface */
 char* check_dhcp(char *ifa_name, int family){
 
-    char file[256];
-    char file_location[256];
+    char file[OS_MAXSTR];
+    char file_location[OS_MAXSTR];
     FILE *fp;
     DIR *dir;
     char string[OS_MAXSTR];
@@ -285,10 +417,10 @@ char* check_dhcp(char *ifa_name, int family){
     os_calloc(DHCP_LENGTH + 1, sizeof(char), dhcp);
 
     snprintf(dhcp, DHCP_LENGTH, "%s", "unknown");
-    snprintf(file_location, 256, "%s", WM_SYS_IF_FILE);
+    snprintf(file_location, OS_MAXSTR, "%s", WM_SYS_IF_FILE);
 
     /* Check DHCP configuration for Debian based systems */
-    if ((fp=fopen(file_location, "r"))){
+    if ((fp = fopen(file_location, "r"))){
 
         while (fgets(string, OS_MAXSTR, fp) != NULL){
 
@@ -360,22 +492,22 @@ char* check_dhcp(char *ifa_name, int family){
     }else{
 
         /* Check DHCP configuration for Red Hat based systems and SUSE distributions */
-        snprintf(file, 256, "%s%s", "ifcfg-", ifa_name);
+        snprintf(file, OS_MAXSTR, "%s%s", "ifcfg-", ifa_name);
 
-        if ((dir=opendir(WM_SYS_IF_DIR_RH))){
-            snprintf(file_location, 256, "%s%s", WM_SYS_IF_DIR_RH, file);
+        if ((dir = opendir(WM_SYS_IF_DIR_RH))){
+            snprintf(file_location, OS_MAXSTR, "%s%s", WM_SYS_IF_DIR_RH, file);
             snprintf(dhcp, DHCP_LENGTH, "%s", "enabled");
             closedir(dir);
         }
 
         /* For SUSE Linux distributions */
-        if ((dir=opendir(WM_SYS_IF_DIR_SUSE))){
-            snprintf(file_location, 256, "%s%s", WM_SYS_IF_DIR_SUSE, file);
+        if ((dir = opendir(WM_SYS_IF_DIR_SUSE))){
+        snprintf(file_location, OS_MAXSTR, "%s%s", WM_SYS_IF_DIR_SUSE, file);
             snprintf(dhcp, DHCP_LENGTH, "%s", "enabled");
             closedir(dir);
         }
 
-        if ((fp=fopen(file_location, "r"))){
+        if ((fp = fopen(file_location, "r"))){
 
             switch (family){
                 case AF_INET:
@@ -441,8 +573,8 @@ char* check_dhcp(char *ifa_name, int family){
 char* get_default_gateway(char *ifa_name){
 
     FILE *fp;
-    char file_location[256];
-    char interface[OS_MAXSTR];
+    char file_location[OS_MAXSTR];
+    char interface[OS_MAXSTR] = "";
     char string[OS_MAXSTR];
     in_addr_t address = 0;
     int destination, gateway;
@@ -450,10 +582,10 @@ char* get_default_gateway(char *ifa_name){
     os_calloc(NI_MAXHOST, sizeof(char) + 1, def_gateway);
 
     strncpy(interface, ifa_name, strlen(ifa_name));
-    snprintf(file_location, 256, "%s", WM_SYS_DGW_FILE);
+    snprintf(file_location, OS_MAXSTR, "%s", WM_SYS_DGW_FILE);
     snprintf(def_gateway, NI_MAXHOST, "%s", "unknown");
 
-    if ((fp=fopen(file_location, "r"))){
+    if ((fp = fopen(file_location, "r"))){
 
         while (fgets(string, OS_MAXSTR, fp) != NULL){
 

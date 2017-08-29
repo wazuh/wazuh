@@ -53,7 +53,7 @@ os_info *get_win_version()
         if (strncmp(fgets(read_buff, buf_tam, cmd_output),"Caption",7) == 0) {
             if (!fgets(read_buff, buf_tam, cmd_output)){
                 merror("Can't get Version.");
-                info->os_name = strdup("Microsoft Windows unknown version");
+                info->os_name = strdup("unknown");
             }
             else if (end = strpbrk(read_buff,"\r\n"), end) {
                 *end = '\0';
@@ -64,7 +64,7 @@ os_info *get_win_version()
                 }
                 info->os_name = strdup(read_buff);
             }else
-                info->os_name = strdup("Microsoft Windows unknown version");
+                info->os_name = strdup("unknown");
         }
         pclose(cmd_output);
         // Read version number
@@ -73,20 +73,21 @@ os_info *get_win_version()
         cmd_output = popen(command, "r");
         if (!cmd_output) {
             merror("Unable to execute command: '%s'.", command);
-            info->os_version = strdup("Unknown");
+            info->os_version = strdup("unknown");
         }
         if (strncmp(fgets(read_buff, buf_tam, cmd_output),"Version",7) == 0) {
             if (!fgets(read_buff, buf_tam, cmd_output)){
                 merror("Can't get Version.");
-                info->os_version = strdup("Unknown");
+                info->os_version = strdup("unknown");
             }
             else {
                 info->os_version = strdup(strtok(read_buff," "));
-                char str1[10], str2[10], str3[10];
-                sscanf(strtok(read_buff," "), "%s.%s.%s", str1, str2, str3);
-                info->os_major = strdup(str1);
-                info->os_minor = strdup(str2);
-                info->os_build = strdup(str3);
+                char ** parts = NULL;
+                parts = OS_StrBreak('.', info->os_version, 3);
+                info->os_major = strdup(parts[0]);
+                info->os_minor = strdup(parts[1]);
+                info->os_build = strdup(parts[2]);
+                free(parts);
             }
         }
         pclose(cmd_output);
@@ -96,12 +97,12 @@ os_info *get_win_version()
         cmd_output = popen(command, "r");
         if (!cmd_output) {
             merror("Unable to execute command: '%s'.", command);
-            info->nodename = strdup("Unknown");
+            info->nodename = strdup("unknown");
         }
         if (strncmp(fgets(read_buff, buf_tam, cmd_output),"CSName",6) == 0) {
             if (!fgets(read_buff, buf_tam, cmd_output)){
                 merror("Can't get CSName.");
-                info->nodename = strdup("Unknown");
+                info->nodename = strdup("unknown");
             }
             else {
                 info->nodename = strdup(strtok(read_buff," "));
@@ -114,12 +115,12 @@ os_info *get_win_version()
         cmd_output = popen(command, "r");
         if (!cmd_output) {
             merror("Unable to execute command: '%s'.", command);
-            info->machine = strdup("Unknown");
+            info->machine = strdup("unknown");
         }
         if (strncmp(fgets(read_buff, buf_tam, cmd_output),"OSArchitecture",14) == 0) {
             if (!fgets(read_buff, buf_tam, cmd_output)){
                 merror("Can't get OSArchitecture.");
-                info->machine = strdup("Unknown");
+                info->machine = strdup("unknown");
             }
             else {
                 if (strcmp(strtok(read_buff," "), "64-bit") == 0) {
@@ -481,7 +482,7 @@ os_info *get_unix_version()
         }
     }
 
-    if (version) { // Parsing version
+    if (info->os_version) { // Parsing version
         // os_major.os_minor (os_codename)
         if (codename = strstr(version, " ("), codename){
             *codename = '\0';
@@ -502,18 +503,17 @@ os_info *get_unix_version()
             info->os_minor = malloc(match_size +1);
             snprintf(info->os_minor, match_size + 1, "%.*s", match_size, version + match[1].rm_so);
         }
-        free(version);
+
     }
 
-    free(name);
-    free(id);
+    if (uname(&uts_buf) == 0) {
 
-    if (uname(&uts_buf) >= 0) {
-        info->sysname = uts_buf.sysname;
-        info->nodename = uts_buf.nodename;
-        info->release = uts_buf.release;
-        info->version = uts_buf.version;
-        info->machine = uts_buf.machine;
+        os_strdup(uts_buf.sysname, info->sysname);
+        os_strdup(uts_buf.nodename, info->nodename);
+        os_strdup(uts_buf.release, info->release);
+        os_strdup(uts_buf.version, info->version);
+        os_strdup(uts_buf.machine, info->machine);
+
     }
 
     return info;

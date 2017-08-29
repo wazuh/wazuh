@@ -1,5 +1,5 @@
 /*
- * Wazuh Module for System inventory for Linux
+ * Wazuh Module for System inventory for Windows
  * Copyright (C) 2017 Wazuh Inc.
  * 23 Aug, 2017.
  *
@@ -13,7 +13,6 @@
 
 #define _WIN32_WINNT 0x600  // Windows Vista or later
 
-#include <external/cJSON/cJSON.h>
 #include "syscollector.h"
 
 #include <netioapi.h>
@@ -24,6 +23,27 @@
 
 char* length_to_ipv6_mask(int mask_length);
 char* get_broadcast_addr(char* ip, char* netmask);
+
+void sys_os_windows(const char* LOCATION){
+
+    char *string;
+
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "OS");
+
+    cJSON *os_inventory = getunameJSON();
+
+    cJSON_AddItemToObject(object, "inventory", os_inventory);
+
+    /* Send interface data in JSON format */
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", string);
+    SendMSG(0, string, LOCATION, WODLE_MQ);
+    cJSON_Delete(object);
+
+    free(string);
+}
+
 
 void sys_network_windows(const char* LOCATION){
 
@@ -82,9 +102,7 @@ void sys_network_windows(const char* LOCATION){
         while (pCurrAddresses){
 
             /* Ignore Loopback interface */
-            addr6 = (struct sockaddr_in6 *) pCurrAddresses->FirstUnicastAddress->Address.lpSockaddr;
-            inet_ntop(AF_INET6, &(addr6->sin6_addr), host, NI_MAXHOST);
-            if (!strcmp(host, "::1")){
+            if (pCurrAddresses->IfType == IF_TYPE_SOFTWARE_LOOPBACK){
                 pCurrAddresses = pCurrAddresses->Next;
                 continue;
             }
@@ -101,6 +119,67 @@ void sys_network_windows(const char* LOCATION){
             snprintf(iface_name, OS_MAXSTR, "%S", pCurrAddresses->FriendlyName);
             cJSON_AddStringToObject(iface_info, "name", iface_name);
 
+            /* Iface adapter */
+            char description[OS_MAXSTR];
+            snprintf(description, OS_MAXSTR, "%S", pCurrAddresses->Description);
+            cJSON_AddStringToObject(iface_info, "adapter", description);
+
+            /* Type of interface */
+            switch (pCurrAddresses->IfType){
+                case IF_TYPE_ETHERNET_CSMACD:
+                    cJSON_AddStringToObject(iface_info, "type", "ethernet");
+                    break;
+                case IF_TYPE_ISO88025_TOKENRING:
+                    cJSON_AddStringToObject(iface_info, "type", "token ring");
+                    break;
+                case IF_TYPE_PPP:
+                    cJSON_AddStringToObject(iface_info, "type", "point-to-point");
+                    break;
+                case IF_TYPE_ATM:
+                    cJSON_AddStringToObject(iface_info, "type", "ATM");
+                    break;
+                case IF_TYPE_IEEE80211:
+                    cJSON_AddStringToObject(iface_info, "type", "wireless");
+                    break;
+                case IF_TYPE_TUNNEL:
+                    cJSON_AddStringToObject(iface_info, "type", "tunnel");
+                    break;
+                case IF_TYPE_IEEE1394:
+                    cJSON_AddStringToObject(iface_info, "type", "firewire");
+                    break;
+                default:
+                    cJSON_AddStringToObject(iface_info, "type", "unknown");
+                    break;
+            }
+
+            /* Type of interface */
+            switch (pCurrAddresses->OperStatus){
+                case IfOperStatusUp:
+                    cJSON_AddStringToObject(iface_info, "state", "up");
+                    break;
+                case IfOperStatusDown:
+                    cJSON_AddStringToObject(iface_info, "state", "down");
+                    break;
+                case IfOperStatusTesting:
+                    cJSON_AddStringToObject(iface_info, "state", "testing");    // In testing mode
+                    break;
+                case IfOperStatusUnknown:
+                    cJSON_AddStringToObject(iface_info, "state", "unknown");
+                    break;
+                case IfOperStatusDormant:
+                    cJSON_AddStringToObject(iface_info, "state", "dormant");    // In a pending state, waiting for some external event
+                    break;
+                case IfOperStatusNotPresent:
+                    cJSON_AddStringToObject(iface_info, "state", "notpresent"); // Interface down because of any component is not present (hardware typically)
+                    break;
+                case IfOperStatusLowerLayerDown:
+                    cJSON_AddStringToObject(iface_info, "state", "lowerlayerdown"); // This interface depends on a lower layer interface which is down
+                    break;
+                default:
+                    cJSON_AddStringToObject(iface_info, "state", "unknown");
+                    break;
+            }
+
             /* MAC Address */
             char MAC[30] = "";
             char *mac_addr = &MAC[0];
@@ -116,6 +195,10 @@ void sys_network_windows(const char* LOCATION){
             }
 
             free(mac_addr);
+
+            /* MTU */
+            int mtu = (int) pCurrAddresses->Mtu;
+            cJSON_AddNumberToObject(iface_info, "MTU", mtu);
 
             cJSON *ipv4 = cJSON_CreateObject();
             cJSON *ipv6 = cJSON_CreateObject();
@@ -206,7 +289,7 @@ void sys_network_windows(const char* LOCATION){
             cJSON_AddItemToObject(iface_info, "IPv6", ipv6);
 
             string = cJSON_PrintUnformatted(object);
-            mtinfo(WM_SYS_LOGTAG, "wm_sys_network() sending '%s'", string);
+            mtinfo(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
             SendMSG(0, string, LOCATION, WODLE_MQ);
             cJSON_Delete(object);
 

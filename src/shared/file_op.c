@@ -1948,31 +1948,55 @@ cJSON* getunameJSON()
 #else
     if (read_info = get_win_version(), read_info) {
 #endif
-        cJSON_AddStringToObject(root, "os_name", read_info->os_name);
-        cJSON_AddStringToObject(root, "os_major", read_info->os_major);
-        cJSON_AddStringToObject(root, "os_minor", read_info->os_minor);
-        cJSON_AddStringToObject(root, "os_build", read_info->os_build);
-        cJSON_AddStringToObject(root, "os_version", read_info->os_version);
-        cJSON_AddStringToObject(root, "os_codename", read_info->os_codename);
-        cJSON_AddStringToObject(root, "os_platform", read_info->os_platform);
-        cJSON_AddStringToObject(root, "sysname", read_info->sysname);
-        cJSON_AddStringToObject(root, "nodename", read_info->nodename);
-        cJSON_AddStringToObject(root, "release", read_info->release);
-        cJSON_AddStringToObject(root, "version", read_info->version);
-        cJSON_AddStringToObject(root, "machine", read_info->machine);
+        if (read_info->os_name && (strcmp(read_info->os_name, "unknown") != 0)){
+            cJSON_AddStringToObject(root, "os_name", read_info->os_name);
+            free(read_info->os_name);
+        }
+        if (read_info->os_major){
+            cJSON_AddStringToObject(root, "os_major", read_info->os_major);
+            free(read_info->os_major);
+        }
+        if (read_info->os_minor){
+            cJSON_AddStringToObject(root, "os_minor", read_info->os_minor);
+            free(read_info->os_minor);
+        }
+        if (read_info->os_build){
+            cJSON_AddStringToObject(root, "os_build", read_info->os_build);
+            free(read_info->os_build);
+        }
+        if (read_info->os_version && (strcmp(read_info->os_version, "unknown") != 0)){
+            cJSON_AddStringToObject(root, "os_version", read_info->os_version);
+            free(read_info->os_version);
+        }
+        if (read_info->os_codename){
+            cJSON_AddStringToObject(root, "os_codename", read_info->os_codename);
+            free(read_info->os_codename);
+        }
+        if (read_info->os_platform){
+            cJSON_AddStringToObject(root, "os_platform", read_info->os_platform);
+            free(read_info->os_platform);
+        }
+        if (read_info->sysname){
+            cJSON_AddStringToObject(root, "sysname", read_info->sysname);
+            free(read_info->sysname);
+        }
+        if (read_info->nodename && (strcmp(read_info->nodename, "unknown") != 0)){
+            cJSON_AddStringToObject(root, "nodename", read_info->nodename);
+            free(read_info->nodename);
+        }
+        if (read_info->release){
+            cJSON_AddStringToObject(root, "release", read_info->release);
+            free(read_info->release);
+        }
+        if (read_info->version){
+            cJSON_AddStringToObject(root, "version", read_info->version);
+            free(read_info->version);
+        }
+        if (read_info->machine && (strcmp(read_info->machine, "unknown") != 0)){
+            cJSON_AddStringToObject(root, "machine", read_info->machine);
+            free(read_info->machine);
+        }
 
-        free(read_info->os_name);
-        free(read_info->os_major);
-        free(read_info->os_minor);
-        free(read_info->os_build);
-        free(read_info->os_version);
-        free(read_info->os_codename);
-        free(read_info->os_platform);
-        free(read_info->sysname);
-        free(read_info->nodename);
-        free(read_info->release);
-        free(read_info->version);
-        free(read_info->machine);
         return root;
     }
     else

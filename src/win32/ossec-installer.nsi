@@ -175,6 +175,7 @@ Section "Wazuh Agent (required)" MainSec
 	CreateDirectory "$INSTDIR\queue\diff"
     CreateDirectory "$INSTDIR\incoming"
     CreateDirectory "$INSTDIR\upgrade"
+    CreateDirectory "$INSTDIR\wodles"
 
     ; install files
     File ossec-lua.exe
@@ -497,6 +498,7 @@ Section "Uninstall"
     Delete "$INSTDIR\active-response\*"
     Delete "$INSTDIR\tmp\*"
     Delete "$INSTDIR\incoming\*"
+    Delete "$INSTDIR\wodles\*"
 
     ; remove shortcuts
     SetShellVarContext all
@@ -517,6 +519,7 @@ Section "Uninstall"
     RMDir "$INSTDIR\incoming"
     RMDir /r "$INSTDIR\upgrade"
 	RMDir "$INSTDIR\queue"
+    RMDir "$INSTDIR\wodles"
     RMDir "$INSTDIR"
 SectionEnd
 

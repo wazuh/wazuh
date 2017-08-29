@@ -175,10 +175,16 @@ int wm_state_io(const wm_context *context, int op, void *state, size_t size) {
     size_t nmemb;
     FILE *file;
 
+    #ifdef WIN32
+    snprintf(path, PATH_MAX, "%s\\%s", WM_STATE_DIR_WIN, context->name);
+    #else
     snprintf(path, PATH_MAX, "%s/%s", WM_STATE_DIR, context->name);
+    #endif
 
-    if (!(file = fopen(path, op == WM_IO_WRITE ? "w" : "r")))
+    if (!(file = fopen(path, op == WM_IO_WRITE ? "wb" : "rb"))){
+        merror("Unable to open the file: %s", path);
         return -1;
+    }
 
     nmemb = (op == WM_IO_WRITE) ? fwrite(state, size, 1, file) : fread(state, size, 1, file);
     fclose(file);

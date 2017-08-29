@@ -15,6 +15,7 @@ static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START = "scan_on_start";
 static const char *XML_DISABLED = "disabled";
 static const char *XML_NETWORK = "network";
+static const char *XML_OS_SCAN = "os_scan";
 
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module) {
@@ -25,6 +26,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     syscollector->flags.enabled = 1;
     syscollector->flags.scan_on_start = 1;
     syscollector->flags.network = 1;
+    syscollector->flags.os_scan = 1;
     module->context = &WM_SYS_CONTEXT;
     module->data = syscollector;
 
@@ -84,7 +86,16 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.network = 0;
             else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_SCAN_ON_START, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_NETWORK, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(node[i]->element, XML_OS_SCAN)) {
+            if (!strcmp(node[i]->content, "yes"))
+                syscollector->flags.os_scan = 1;
+            else if (!strcmp(node[i]->content, "no"))
+                syscollector->flags.os_scan = 0;
+            else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_OS_SCAN, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {

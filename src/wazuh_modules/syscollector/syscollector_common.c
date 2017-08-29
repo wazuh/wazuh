@@ -61,16 +61,27 @@ void* wm_sys_main(wm_sys_t *sys) {
     // Main loop
 
     while (1) {
+
         mtinfo(WM_SYS_LOGTAG, "Starting evaluation.");
 
         // Get time and execute
         time_start = time(NULL);
 
+        /* Network inventory */
         if (sys->flags.network){
             #ifdef WIN32
                 sys_network_windows(WM_SYS_LOCATION);
             #else
                 sys_network_linux(queue_fd, WM_SYS_LOCATION);
+            #endif
+        }
+
+        /* Operating System inventory */
+        if (sys->flags.os_scan){
+            #ifdef WIN32
+                sys_os_windows(WM_SYS_LOCATION);
+            #else
+                sys_os_linux(queue_fd, WM_SYS_LOCATION);
             #endif
         }
 
@@ -147,8 +158,11 @@ void wm_sys_check() {
     // Check if evals
 
     if (!sys->flags.network) {
-        mterror(WM_SYS_LOGTAG, "No assets defined. Exiting...");
-        pthread_exit(NULL);
+        mtwarn(WM_SYS_LOGTAG, "Network scan disabled.");
+    }
+
+    if (!sys->flags.os_scan) {
+        mtwarn(WM_SYS_LOGTAG, "OS scan disabled.");
     }
 
     // Check if interval
