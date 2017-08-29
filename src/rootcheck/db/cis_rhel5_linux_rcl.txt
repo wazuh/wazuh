@@ -202,7 +202,7 @@ d:$rc_dirs -> ^S\d\dmctrans$;
 f:/boot/grub/menu.lst -> !r:^# && !r:password;
 
 # 1.5.4 Require Authentication for Single-User Mode (Scored)
-[CIS - RHEL5 - 1.5.4 - Authenticaion for single user mode not enabled {CIS: 1.5.4 RHEL5} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_5_Benchmark_v2.1.0.pdf]
+[CIS - RHEL5 - 1.5.4 - Authentication for single user mode not enabled {CIS: 1.5.4 RHEL5} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_5_Benchmark_v2.1.0.pdf]
 f:/etc/inittab -> !r:^# && r:S:wait;
 
 # 1.5.5 Disable Interactive Boot (Scored)
