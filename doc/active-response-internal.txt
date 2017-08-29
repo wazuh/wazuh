@@ -5,7 +5,7 @@ Copyright (c) 2004-2006 Daniel B. Cid   <daniel.cid@gmail.com>
 
 How the active response works internally:
 
-- Read active-respose-doc.txt for details on configuration
+- Read active-response.txt for details on configuration
 
 
 1 - The analysis server receives an event that matches the

@@ -476,7 +476,7 @@ int main_analysisd(int argc, char **argv)
     /* Whitelist */
     if (Config.white_list == NULL) {
         if (Config.ar) {
-            minfo("No IP in the white list for active reponse.");
+            minfo("No IP in the white list for active response.");
         }
     } else {
         if (Config.ar) {
@@ -495,7 +495,7 @@ int main_analysisd(int argc, char **argv)
     /* Hostname whitelist */
     if (Config.hostname_white_list == NULL) {
         if (Config.ar)
-            minfo("No Hostname in the white list for active reponse.");
+            minfo("No Hostname in the white list for active response.");
     } else {
         if (Config.ar) {
             int wlc = 0;
