@@ -99,7 +99,7 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
         /* Get buffer size */
         str_len = strlen(str);
 
-        /* Getting the last occurence of \n */
+        /* Getting the last occurrence of \n */
         if ((p = strrchr(str, '\n')) != NULL) {
             *p = '\0';
 

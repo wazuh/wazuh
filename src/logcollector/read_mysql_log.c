@@ -35,7 +35,7 @@ void *read_mysql_log(int pos, int *rc, int drop_it)
         /* Get buffer size */
         str_len = strlen(str);
 
-        /* Get the last occurence of \n */
+        /* Get the last occurrence of \n */
         if ((p = strrchr(str, '\n')) != NULL) {
             *p = '\0';
 

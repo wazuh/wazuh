@@ -39,7 +39,7 @@ void *read_multiline(int pos, int *rc, int drop_it)
         lines++;
         linesgot++;
 
-        /* Get the last occurence of \n */
+        /* Get the last occurrence of \n */
         if ((p = strrchr(str, '\n')) != NULL) {
             *p = '\0';
         }
@@ -96,7 +96,7 @@ void *read_multiline(int pos, int *rc, int drop_it)
         if (__ms) {
             merror("Large message size: '%s'", str);
             while (fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL) {
-                /* Get the last occurence of \n */
+                /* Get the last occurrence of \n */
                 if ((p = strrchr(str, '\n')) != NULL) {
                     break;
                 }
