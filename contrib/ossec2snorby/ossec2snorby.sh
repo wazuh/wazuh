@@ -10,7 +10,7 @@
 # config: /etc/ossec2snorby.conf
 # pidfile: /var/run/ossec2snorby.pid
 
-[ -x /usr/local/bin/ossec2snorby/ossec2snorby.pl ] || { echo " [ERROR]: ossec2snorby.pl non existant or not executable..."; exit 1; }
+[ -x /usr/local/bin/ossec2snorby/ossec2snorby.pl ] || { echo " [ERROR]: ossec2snorby.pl non existent or not executable..."; exit 1; }
 [ -r /etc/ossec2snorby.conf ] || { echo " [ERROR]: ossec2snorby.conf was not found..."; exit 1; }
 [ -r /usr/local/bin/ossec2snorby/ossecmysql.pm ] || { echo " [ERROR]: ossecmysql was not found..."; exit 1; }
 
