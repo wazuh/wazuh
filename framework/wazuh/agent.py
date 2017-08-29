@@ -30,7 +30,7 @@ except ImportError:
 
 def create_exception_dic(id, e):
     """
-    Creates a dictionary with a list of agent ids and it's error codes. 
+    Creates a dictionary with a list of agent ids and it's error codes.
     """
     exception_dic = {}
     exception_dic['id'] = id
@@ -1591,7 +1591,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data.startswith('err'):
+        if data != 'ok':
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending file to agent
@@ -1611,7 +1611,7 @@ class Agent:
                 s.send(msg.encode() + bytes_read)
                 data = s.recv(1024).decode()
                 s.close()
-                if data.startswith('err'):
+                if data != 'ok':
                     raise WazuhException(1715, data.replace("err ",""))
                 bytes_read = file.read(512)
                 if show_progress:
@@ -1632,7 +1632,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data.startswith('err'):
+        if data != 'ok':
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare
@@ -1646,6 +1646,8 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
+        if not data.startswith('ok '):
+            raise WazuhException(1715, data.replace("err ",""))
         rcv_sha1 = data.split(' ')[1]
         if rcv_sha1 == file_sha1:
             return ["WPK file sent", wpk_file]
@@ -1803,7 +1805,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data.startswith('err'):
+        if data != 'ok':
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending file to agent
@@ -1845,7 +1847,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data.startswith('err'):
+        if data != 'ok':
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare
@@ -1859,6 +1861,8 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
+        if not data.startswith('ok '):
+            raise WazuhException(1715, data.replace("err ",""))
         rcv_sha1 = data.split(' ')[1]
         if calc_sha1 == rcv_sha1:
             return ["WPK file sent", wpk_file]
