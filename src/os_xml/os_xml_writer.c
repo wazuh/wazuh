@@ -147,11 +147,11 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position,
 
     char elem[XML_MAXSIZE + 1];
     char cont[XML_MAXSIZE + 1];
-    char closedelem[XML_MAXSIZE + 1];
+    char closedelim[XML_MAXSIZE + 1];
 
     memset(elem, '\0', XML_MAXSIZE + 1);
     memset(cont, '\0', XML_MAXSIZE + 1);
-    memset(closedelem, '\0', XML_MAXSIZE + 1);
+    memset(closedelim, '\0', XML_MAXSIZE + 1);
 
     while ((c = _xml_wfgetc(fp_in, fp_out)) != EOF) {
         /* Max size */
@@ -211,7 +211,7 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position,
                 location = -1;
 
                 memset(elem, '\0', XML_MAXSIZE);
-                memset(closedelem, '\0', XML_MAXSIZE);
+                memset(closedelim, '\0', XML_MAXSIZE);
                 memset(cont, '\0', XML_MAXSIZE);
 
                 if (parent > 0) {
@@ -250,13 +250,13 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position,
         }
 
         else if ((location == 2) && (c == _R_CONFE)) {
-            closedelem[count] = '\0';
-            if (strcmp(closedelem, elem) != 0) {
+            closedelim[count] = '\0';
+            if (strcmp(closedelim, elem) != 0) {
                 return (-1);
             }
 
             memset(elem, '\0', XML_MAXSIZE);
-            memset(closedelem, '\0', XML_MAXSIZE);
+            memset(closedelim, '\0', XML_MAXSIZE);
             memset(cont, '\0', XML_MAXSIZE);
 
             count = 0;
@@ -300,7 +300,7 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position,
             } else if (location == 1) {
                 cont[count++] = (char) c;
             } else if (location == 2) {
-                closedelem[count++] = (char) c;
+                closedelim[count++] = (char) c;
             }
         }
     }
