@@ -79,7 +79,7 @@ char *OS_GetHost(const char *host, unsigned int attempts);
 int OS_CloseSocket(int socket);
 
 /* Set the receiving timeout for a socket
- * Returns 0 on succes, else -1
+ * Returns 0 on success, else -1
  */
 int OS_SetRecvTimeout(int socket, int seconds);
 
