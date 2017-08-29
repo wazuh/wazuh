@@ -876,7 +876,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
         pthread_mutex_unlock(&mutex_keys);
 
         if (OS_WriteKeys(copy_keys) < 0)
-            merror("Could't write file client.keys");
+            merror("Couldn't write file client.keys");
 
         OS_FreeKeys(copy_keys);
         free(copy_keys);
