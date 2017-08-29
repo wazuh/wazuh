@@ -394,7 +394,7 @@ do
       local changes_file="${package}_${ossec_version}-${package_version}${codename}_${arch}.changes"
       local results_dir="/var/cache/pbuilder/${codename}-${arch}/result/${package}"
       if [ ! -f ${results_dir}/${deb_file} ] || [ ! -f ${results_dir}/${changes_file} ] ; then
-        echo "Error: Coudn't find ${deb_file} or ${changes_file}" | write_log
+        echo "Error: Couldn't find ${deb_file} or ${changes_file}" | write_log
         exit 1
       fi
 
