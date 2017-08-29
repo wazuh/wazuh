@@ -33,7 +33,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     tm = time(NULL);
     p = localtime(&tm);
 
-    /* Initating file queue - to read the alerts */
+    /* Initing file queue - to read the alerts */
     os_calloc(1, sizeof(file_queue), fileq);
     Init_FileQueue(fileq, p, 0);
 
