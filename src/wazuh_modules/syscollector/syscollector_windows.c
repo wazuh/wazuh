@@ -22,41 +22,43 @@
 #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
 #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
 
+hw_info *get_system_windows();
 char* length_to_ipv6_mask(int mask_length);
 char* get_broadcast_addr(char* ip, char* netmask);
 
 void sys_hw_windows(const char* LOCATION){
 
     char *string;
-
     char *command;
     char *end;
     FILE *output;
     size_t buf_length = 1024;
     char read_buff[buf_length];
 
+    mtinfo(WM_SYS_LOGTAG, "Starting Hardware inventory.");
+
     cJSON *object = cJSON_CreateObject();
     cJSON *hw_inventory = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "hardware");
     cJSON_AddItemToObject(object, "inventory", hw_inventory);
 
-    /* Serial number from wmi */
+    /* Get Serial number */
     char *serial;
     memset(read_buff, 0, buf_length);
     command = "wmic baseboard get SerialNumber";
     output = popen(command, "r");
     if (!output){
-        mterror(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
     }else{
         if (strncmp(fgets(read_buff, buf_length, output),"SerialNumber", 12) == 0) {
             if (!fgets(read_buff, buf_length, output)){
-                mterror(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
+                mtwarn(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
                 serial = strdup("unknown");
             }
             else if (end = strpbrk(read_buff,"\r\n"), end) {
                 *end = '\0';
                 int i = strlen(read_buff) - 1;
-                while(read_buff[i] == 32){  // Review
+                while(read_buff[i] == 32){
                     read_buff[i] = '\0';
                     i--;
                 }
@@ -67,8 +69,25 @@ void sys_hw_windows(const char* LOCATION){
     }
     pclose(output);
 
-    cJSON_AddStringToObject(hw_inventory, "board_number", serial);
+    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
     free(serial);
+
+    /* Get CPU and memory information */
+    hw_info *sys_info;
+    if (sys_info = get_system_windows(), sys_info){
+        if (sys_info->cpu_name)
+            cJSON_AddStringToObject(hw_inventory, "cpu_name", sys_info->cpu_name);
+        if (sys_info->cpu_cores)
+            cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
+        if (sys_info->cpu_MHz)
+            cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
+        if (sys_info->ram_total)
+            cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
+        if (sys_info->ram_free)
+            cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
+
+        free(sys_info->cpu_name);
+    }
 
     /* Send interface data in JSON format */
     string = cJSON_PrintUnformatted(object);
@@ -82,6 +101,8 @@ void sys_hw_windows(const char* LOCATION){
 void sys_os_windows(const char* LOCATION){
 
     char *string;
+
+    mtinfo(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "OS");
@@ -102,10 +123,9 @@ void sys_os_windows(const char* LOCATION){
 
 void sys_network_windows(const char* LOCATION){
 
-    /* Declare and initialize variables */
+    mtinfo(WM_SYS_LOGTAG, "Starting network inventory.");
 
     DWORD dwRetVal = 0;
-
     unsigned int i = 0;
 
     struct sockaddr_in *addr4;
@@ -377,6 +397,147 @@ void sys_network_windows(const char* LOCATION){
     }
 
 }
+
+
+hw_info *get_system_windows(){
+
+    hw_info *info;
+    char *command;
+    char *end;
+    FILE *output;
+    size_t buf_length = 1024;
+    char read_buff[buf_length];
+
+    os_calloc(1,sizeof(hw_info),info);
+
+    memset(read_buff, 0, buf_length);
+    command = "wmic cpu get Name";
+    output = popen(command, "r");
+    if (!output){
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
+        info->cpu_name = strdup("unknown");
+    }else{
+        if (strncmp(fgets(read_buff, buf_length, output),"Name",4) == 0) {
+            if (!fgets(read_buff, buf_length, output)){
+                mtwarn(WM_SYS_LOGTAG, "Unable to get CPU Name.");
+                info->cpu_name = strdup("unknown");
+            }
+            else if (end = strpbrk(read_buff,"\r\n"), end) {
+                *end = '\0';
+                int i = strlen(read_buff) - 1;
+                while(read_buff[i] == 32){
+                    read_buff[i] = '\0';
+                    i--;
+                }
+                info->cpu_name = strdup(read_buff);
+            }else
+                info->cpu_name = strdup("unknown");
+        }
+    }
+    pclose(output);
+    memset(read_buff, 0, buf_length);
+    char *cores;
+    command = "wmic cpu get NumberOfCores";
+    output = popen(command, "r");
+    if (!output){
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
+    }else{
+        if (strncmp(fgets(read_buff, buf_length, output),"NumberOfCores",13) == 0) {
+            if (!fgets(read_buff, buf_length, output)){
+                mtwarn(WM_SYS_LOGTAG, "Unable to get number of cores.");
+            }
+            else if (end = strpbrk(read_buff,"\r\n"), end) {
+                *end = '\0';
+                int i = strlen(read_buff) - 1;
+                while(read_buff[i] == 32){
+                    read_buff[i] = '\0';
+                    i--;
+                }
+                cores = strdup(read_buff);
+                info->cpu_cores = atoi(cores);
+            }
+        }
+    }
+    pclose(output);
+
+    memset(read_buff, 0, buf_length);
+    char *frec;
+    command = "wmic cpu get CurrentClockSpeed";
+    output = popen(command, "r");
+    if (!output){
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
+    }else{
+        if (strncmp(fgets(read_buff, buf_length, output),"CurrentClockSpeed",17) == 0) {
+            if (!fgets(read_buff, buf_length, output)){
+                mtwarn(WM_SYS_LOGTAG, "Unable to get CPU clock rate.");
+            }
+            else if (end = strpbrk(read_buff,"\r\n"), end) {
+                *end = '\0';
+                int i = strlen(read_buff) - 1;
+                while(read_buff[i] == 32){
+                    read_buff[i] = '\0';
+                    i--;
+                }
+                frec = strdup(read_buff);
+                info->cpu_MHz = atof(frec);
+            }
+        }
+    }
+    pclose(output);
+
+    memset(read_buff, 0, buf_length);
+    char *total;
+    command = "wmic computersystem get TotalPhysicalMemory";
+    output = popen(command, "r");
+    if (!output){
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
+    }else{
+        if (strncmp(fgets(read_buff, buf_length, output),"TotalPhysicalMemory",19) == 0) {
+            if (!fgets(read_buff, buf_length, output)){
+                mtwarn(WM_SYS_LOGTAG, "Unable to get physical memory information.");
+            }
+            else if (end = strpbrk(read_buff,"\r\n"), end) {
+                *end = '\0';
+                int i = strlen(read_buff) - 1;
+                while(read_buff[i] == 32){
+                    read_buff[i] = '\0';
+                    i--;
+                }
+                total = strdup(read_buff);
+                info->ram_total = (atof(total)) / 1024;
+            }
+        }
+    }
+    pclose(output);
+
+    memset(read_buff, 0, buf_length);
+    char *mem_free;
+    command = "wmic os get FreePhysicalMemory";
+    output = popen(command, "r");
+    if (!output){
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
+    }else{
+        if (strncmp(fgets(read_buff, buf_length, output),"FreePhysicalMemory",18) == 0) {
+            if (!fgets(read_buff, buf_length, output)){
+                mtwarn(WM_SYS_LOGTAG, "Unable to get free memory amount.");
+            }
+            else if (end = strpbrk(read_buff,"\r\n"), end) {
+                *end = '\0';
+                int i = strlen(read_buff) - 1;
+                while(read_buff[i] == 32){
+                    read_buff[i] = '\0';
+                    i--;
+                }
+                mem_free = strdup(read_buff);
+                info->ram_free = atoi(mem_free);
+            }
+        }
+    }
+    pclose(output);
+
+    return info;
+}
+
 
 /* Adapt IPv6 subnet prefix length to hexadecimal notation */
 char* length_to_ipv6_mask(int mask_length){

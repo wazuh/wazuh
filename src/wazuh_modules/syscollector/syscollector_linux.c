@@ -20,6 +20,7 @@
 #include <linux/if_link.h>
 #include <linux/if_packet.h>
 
+hw_info *get_system_linux();                    // Get system information
 char* get_serial_number();                      // Get Motherboard serial number
 char* get_if_type(char *ifa_name);              // Get interface type
 char* get_oper_state(char *ifa_name);           // Get operational state
@@ -33,6 +34,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
     char *string;
 
+    mtinfo(WM_SYS_LOGTAG, "Starting Hardware inventory.");
 
     cJSON *object = cJSON_CreateObject();
     cJSON *hw_inventory = cJSON_CreateObject();
@@ -42,8 +44,21 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     /* Motherboard serial-number */
     char *serial;
     serial = get_serial_number();
-    cJSON_AddStringToObject(hw_inventory, "board_number", serial);
+    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
     free(serial);
+
+    /* Get CPU and memory information */
+    hw_info *sys_info;
+    if (sys_info = get_system_linux(), sys_info){
+        cJSON_AddStringToObject(hw_inventory, "cpu_name", sys_info->cpu_name);
+        cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
+        cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
+        cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
+        cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
+
+        free(sys_info->cpu_name);
+    }
+
 
     /* Send interface data in JSON format */
     string = cJSON_PrintUnformatted(object);
@@ -60,6 +75,8 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 void sys_os_linux(int queue_fd, const char* LOCATION){
 
     char *string;
+
+    mtinfo(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "OS");
@@ -293,8 +310,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
                 /* MTU */
                 char *mtu;
+                int mtu_value;
                 mtu = get_mtu(ifaces_list[i]);
-                cJSON_AddStringToObject(interface, "MTU", mtu);
+                mtu_value = atoi(mtu);
+                cJSON_AddNumberToObject(interface, "MTU", mtu_value);
                 free(mtu);
 
             }
@@ -315,6 +334,90 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     }
     free(ifaces_list);
 
+}
+
+/* Get System information */
+hw_info *get_system_linux(){
+
+    FILE *fp;
+    hw_info *info;
+    char string[OS_MAXSTR];
+    char *aux_string;
+    char *end;
+
+    os_calloc(1, sizeof(hw_info), info);
+
+    if (!(fp = fopen("/proc/cpuinfo", "r"))) {
+        mterror(WM_SYS_LOGTAG, "Unable to read cpuinfo file.");
+        info->cpu_name = strdup("unknown");
+    } else {
+        while (fgets(string, OS_MAXSTR, fp) != NULL){
+            if ((aux_string = strstr(string, "model name")) != NULL){
+
+                char *cpuname;
+                cpuname = strtok(string, ":");
+                cpuname = strtok(NULL, "\n");
+                if (cpuname[0] == '\"' && (end = strchr(++cpuname, '\"'), end)) {
+                    *end = '\0';
+                }
+                info->cpu_name = strdup(cpuname);
+
+            } else if ((aux_string = strstr(string, "cpu cores")) != NULL){
+
+                char *cores;
+                cores = strtok(string, ":");
+                cores = strtok(NULL, "\n");
+                if (cores[0] == '\"' && (end = strchr(++cores, '\"'), end)) {
+                    *end = '\0';
+                }
+                info->cpu_cores = atoi(cores);
+
+            } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
+
+                char *frec;
+                frec = strtok(string, ":");
+                frec = strtok(NULL, "\n");
+                if (frec[0] == '\"' && (end = strchr(++frec, '\"'), end)) {
+                    *end = '\0';
+                }
+                info->cpu_MHz = atof(frec);
+            }
+        }
+        fclose(fp);
+    }
+
+    if (!(fp = fopen("/proc/meminfo", "r"))) {
+        mterror(WM_SYS_LOGTAG, "Unable to read meminfo file.");
+    } else {
+        while (fgets(string, OS_MAXSTR, fp) != NULL){
+            if ((aux_string = strstr(string, "MemTotal")) != NULL){
+
+                char *end_string;
+                aux_string = strtok(string, ":");
+                aux_string = strtok(NULL, "\n");
+                if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
+                    *end = '\0';
+                }
+                info->ram_total = strtol(aux_string, &end_string, 10);
+
+            } else if ((aux_string = strstr(string, "MemFree")) != NULL){
+
+                char *end_string;
+                aux_string = strtok(string, ":");
+                aux_string = strtok(NULL, "\n");
+                if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
+                    *end = '\0';
+                }
+                info->ram_free = strtol(aux_string, &end_string, 10);
+
+            }
+        }
+        fclose(fp);
+    }
+
+    free(aux_string);
+
+    return info;
 }
 
 /* Get Motherboard Serial Number */
@@ -471,8 +574,8 @@ char* check_dhcp(char *ifa_name, int family){
     FILE *fp;
     DIR *dir;
     char string[OS_MAXSTR];
-    char * iface_string;
-    char * aux_string;
+    char * iface_string = NULL;
+    char * aux_string = NULL;
     int spaces;
     char * dhcp;
     os_calloc(DHCP_LENGTH + 1, sizeof(char), dhcp);

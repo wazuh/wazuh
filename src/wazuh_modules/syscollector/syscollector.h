@@ -31,6 +31,14 @@
 #define WM_SYS_IFDATA_DIR "/sys/class/net/"
 #define WM_SYS_HW_DIR   "/sys/class/dmi/id"
 
+typedef struct hw_info {
+    char *cpu_name;
+    int cpu_cores;
+    double cpu_MHz;
+    int ram_total;  // kB
+    int ram_free;   // kB
+} hw_info;
+
 typedef struct wm_sys_flags_t {
     unsigned int enabled:1;                 // Main switch
     unsigned int scan_on_start:1;           // Scan always on start
