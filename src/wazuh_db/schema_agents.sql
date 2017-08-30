@@ -50,3 +50,56 @@ CREATE INDEX IF NOT EXISTS pm_event_log ON pm_event (log);
 CREATE INDEX IF NOT EXISTS pm_event_date ON pm_event (date_last);
 
 PRAGMA journal_mode=WAL;
+
+CREATE TABLE IF NOT EXISTS netaddr (
+    address TEXT PRIMARY KEY NOT NULL,
+    netmask TEXT NOT NULL,
+    broadcast TEXT,
+    gateway TEXT,
+    dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'bootp'))
+);
+
+CREATE INDEX IF NOT EXISTS netaddr_address ON netaddr (address);
+
+CREATE TABLE IF NOT EXISTS netiface (
+    name TEXT PRIMARY KEY,
+    adapter TEXT,
+    type TEXT NOT NULL,
+    state TEXT NOT NULL,
+    mtu INTEGER NOT NULL CHECK (mtu > 0),
+    mac TEXT NOT NULL,
+    tx_packets INTEGER,
+    rx_packets INTEGER,
+    tx_bytes INTEGER,
+    rx_bytes INTEGER,
+    ipv4id INTEGER NOT NULL REFERENCES netaddr (address),
+    ipv6id INTEGER NOT NULL REFERENCES netaddr (address)
+);
+
+CREATE INDEX IF NOT EXISTS netiface_mac ON netiface (mac);
+CREATE INDEX IF NOT EXISTS netiface_ipv4id ON netiface (ipv4id);
+CREATE INDEX IF NOT EXISTS netiface_ipv6id ON netiface (ipv6id);
+CREATE INDEX IF NOT EXISTS netiface_state ON netiface (state);
+
+CREATE TABLE IF NOT EXISTS osinfo (
+    os_name TEXT PRIMARY KEY,
+    os_version TEXT NOT NULL,
+    nodename TEXT NOT NULL,
+    machine TEXT NOT NULL,
+    os_major TEXT,
+    os_minor TEXT,
+    os_build TEXT,
+    os_platform TEXT,
+    sysname TEXT,
+    release TEXT,
+    version TEXT
+);
+
+CREATE TABLE IF NOT EXISTS hwinfo (
+    board_serial TEXT PRIMARY KEY,
+    cpu_name TEXT NOT NULL,
+    cpu_cores INTEGER CHECK (cpu_cores > 0),
+    cpu_mhz REAL CHECK (cpu_mhz > 0),
+    ram_total INTEGER CHECK (ram_total > 0),
+    ram_free INTEGER CHECK (ram_free > 0)
+);
