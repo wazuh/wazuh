@@ -35,6 +35,9 @@
 #define WDB_AGENTINFO 3
 #define WDB_GROUPS 4
 
+#define WDB_NETINFO_IPV4 0
+#define WDB_NETINFO_IPV6 1
+
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
 
@@ -152,9 +155,28 @@ void wdb_delete_pm_all();
 /* Rebuild database. Returns 0 on success or -1 on error. */
 int wdb_vacuum(sqlite3 *db);
 
-
-
 /* Insert key-value pair into info table */
 int wdb_insert_info(const char *key, const char *value);
+
+// Insert network tuple. Return 1 on success or -1 on error.
+int wdb_insert_net_iface(sqlite3 * db, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes);
+
+// Insert network address tuple. Return 1 on success or -1 on error.
+int wdb_insert_net_addr(sqlite3 * db, const char * name, int type, const char * address, const char * netmask, const char * broadcast, const char * gateway, const char * dhcp);
+
+// Clean network tables. Return number of affected rows on success or -1 on error.
+int wdb_delete_network(sqlite3 * db);
+
+// Insert OS info tuple. Return 1 on success or -1 on error.
+int wdb_insert_osinfo(sqlite3 * db, const char * os_name, const char * os_version, const char * node_name, const char * machine, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
+
+// Clean OS info table. Return number of affected rows on success or -1 on error.
+int wdb_delete_osinfo(sqlite3 * db);
+
+// Insert hardware info tuple. Return 1 on success or -1 on error.
+int wdb_insert_hwinfo(sqlite3 * db, const char * board_serial, const char * cpu_name, int cpu_cores, double cpu_mhz, long ram_total, long ram_free);
+
+// Clean hardware info table. Return number of affected rows on success or -1 on error.
+int wdb_delete_hwinfo(sqlite3 * db);
 
 #endif

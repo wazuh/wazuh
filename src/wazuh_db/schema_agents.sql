@@ -52,7 +52,8 @@ CREATE INDEX IF NOT EXISTS pm_event_date ON pm_event (date_last);
 PRAGMA journal_mode=WAL;
 
 CREATE TABLE IF NOT EXISTS netaddr (
-    address TEXT PRIMARY KEY NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address TEXT NOT NULL,
     netmask TEXT NOT NULL,
     broadcast TEXT,
     gateway TEXT,
@@ -72,8 +73,8 @@ CREATE TABLE IF NOT EXISTS netiface (
     rx_packets INTEGER,
     tx_bytes INTEGER,
     rx_bytes INTEGER,
-    ipv4id INTEGER NOT NULL REFERENCES netaddr (address),
-    ipv6id INTEGER NOT NULL REFERENCES netaddr (address)
+    id_ipv4 INTEGER REFERENCES netaddr (address),
+    id_ipv6 INTEGER REFERENCES netaddr (address)
 );
 
 CREATE INDEX IF NOT EXISTS netiface_mac ON netiface (mac);
@@ -84,7 +85,7 @@ CREATE INDEX IF NOT EXISTS netiface_state ON netiface (state);
 CREATE TABLE IF NOT EXISTS osinfo (
     os_name TEXT PRIMARY KEY,
     os_version TEXT NOT NULL,
-    nodename TEXT NOT NULL,
+    node_name TEXT NOT NULL,
     machine TEXT NOT NULL,
     os_major TEXT,
     os_minor TEXT,
