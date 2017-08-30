@@ -72,8 +72,8 @@ int receive_msg()
 
             recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
-            if (recv_b != length) {
-                merror("Incorrect message size from manager: expecting %u, got %zd", length, recv_b);
+            if (recv_b != (ssize_t)length) {
+                merror("Incorrect message size from manager: expecting %u, got %d", length, (int)recv_b);
                 break;
             }
         } else {

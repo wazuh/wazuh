@@ -15,7 +15,7 @@
 #ifndef __OS_NET_H
 #define __OS_NET_H
 
-typedef int32_t netsize_t;
+typedef u_int32_t netsize_t;
 
 
 /* OS_Bindport*

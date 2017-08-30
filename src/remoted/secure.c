@@ -207,8 +207,8 @@ void HandleSecure()
 
                     recv_b = recv(sock_client, buffer, length, MSG_WAITALL);
 
-                    if (recv_b != length) {
-                        merror("Incorrect message size from %s: expecting %d, got %zd", inet_ntoa(peer_info.sin_addr), length, recv_b);
+                    if (recv_b != (ssize_t)length) {
+                        merror("Incorrect message size from %s: expecting %u, got %zd", inet_ntoa(peer_info.sin_addr), length, recv_b);
 #ifdef __linux__
                         request.data.fd = sock_client;
                         if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sock_client, &request) < 0) {

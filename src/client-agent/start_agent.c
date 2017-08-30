@@ -165,7 +165,7 @@ void start_agent(int is_startup)
                 if (recv_b > 0) {
                     recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
-                    if (recv_b != length) {
+                    if (recv_b != (ssize_t)length) {
                         merror(RECV_ERROR);
                         recv_b = 0;
                     }
