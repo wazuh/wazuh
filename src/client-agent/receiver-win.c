@@ -80,16 +80,23 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
                 length = wnet_order(length);
 
+                // Manager disconnected or error
+
                 if (recv_b <= 0) {
                     merror(LOST_ERROR);
                     start_agent(0);
                     break;
                 }
 
+                if (length > OS_MAXSTR) {
+                    merror("Too big message size from manager.");
+                    break;
+                }
+
                 recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
                 if (recv_b != length) {
-                    merror(RECV_ERROR);
+                    merror("Incorrect message size from manager: expecting %u, got %zd", length, recv_b);
                     break;
                 }
             } else {

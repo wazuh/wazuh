@@ -45,19 +45,37 @@ int receive_msg()
             recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
             length = wnet_order(length);
 
-            /* Manager disconnected */
-            if (recv_b <= 0) {
-                return -1;
-            } else if (length <= 0)
-                continue;
+            // Manager disconnected or error
+
+            if (recv_b <= 0 || length > OS_MAXSTR) {
+                switch (recv_b) {
+                case -1:
+                    if (errno == ENOTCONN) {
+                        mdebug1("Manager disconnected (ENOTCONN).");
+                    } else {
+                        merror("Connection socket: %s (%d)", strerror(errno), errno);
+                    }
+
+                    break;
+
+                case 0:
+                    mdebug1("Manager disconnected.");
+                    break;
+
+                default:
+                    // length > OS_MAXSTR
+                    merror("Too big message size from manager.");
+                }
+
+                break;
+            }
 
             recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
             if (recv_b != length) {
-                merror(RECV_ERROR);
-                continue;
+                merror("Incorrect message size from manager: expecting %u, got %zd", length, recv_b);
+                break;
             }
-
         } else {
             recv_b = recv(agt->sock, buffer, OS_SIZE_1024, MSG_DONTWAIT);
 
