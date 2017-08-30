@@ -63,7 +63,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     /* Send interface data in JSON format */
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_hw_linux() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, WODLE_MQ);
+    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
 
     free(string);
@@ -89,7 +89,7 @@ void sys_os_linux(int queue_fd, const char* LOCATION){
     /* Send interface data in JSON format */
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_os_linux() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, WODLE_MQ);
+    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
 
     free(string);
@@ -322,7 +322,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         /* Send interface data in JSON format */
         string = cJSON_PrintUnformatted(object);
         mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
-        SendMSG(queue_fd, string, LOCATION, WODLE_MQ);
+        SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
         cJSON_Delete(object);
 
         free(string);

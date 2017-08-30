@@ -92,7 +92,7 @@ void sys_hw_windows(const char* LOCATION){
     /* Send interface data in JSON format */
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", string);
-    SendMSG(0, string, LOCATION, WODLE_MQ);
+    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
 
     free(string);
@@ -114,7 +114,7 @@ void sys_os_windows(const char* LOCATION){
     /* Send interface data in JSON format */
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", string);
-    SendMSG(0, string, LOCATION, WODLE_MQ);
+    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
 
     free(string);
@@ -365,7 +365,7 @@ void sys_network_windows(const char* LOCATION){
 
             string = cJSON_PrintUnformatted(object);
             mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
-            SendMSG(0, string, LOCATION, WODLE_MQ);
+            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
 
             free(string);
