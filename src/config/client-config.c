@@ -169,3 +169,36 @@ int Read_Client(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     return (0);
 }
+
+int Test_Client(const char * path){
+    int fail = 0;
+    agent test_client = { .port = 0 };
+
+    if (ReadConfig(CAGENT_CONFIG | CCLIENT, path, &test_client, NULL) < 0) {
+		merror(RCONFIG_ERROR,"Client", path);
+		fail = 1;
+	}
+
+    Free_Client(&test_client);
+
+    if (fail) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+void Free_Client(agent * c){
+    if (c) {
+        int i;
+        free(c->lip);
+        if (c->rip) {
+            for (i=0; c->rip[i] != NULL; i++) {
+                free(c->rip[i]);
+            }
+            free(c->rip);
+        }
+        free(c->profile);
+        labels_free(c->labels);
+    }
+}

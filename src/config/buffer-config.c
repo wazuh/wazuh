@@ -71,9 +71,23 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
         i++;
     }
 
-    if (!logr->rip) {
-        return (OS_INVALID);
-    }
-
     return (0);
+}
+
+int Test_ClientBuffer(const char * path){
+    int fail = 0;
+    agent test_clientBuffer = { .port = 0 };
+
+    if (ReadConfig(CAGENT_CONFIG | CBUFFER, path, NULL, &test_clientBuffer) < 0) {
+		merror(RCONFIG_ERROR,"ClientBuffer", path);
+		fail = 1;
+	}
+
+    Free_Client(&test_clientBuffer);
+
+    if (fail) {
+        return -1;
+    } else {
+        return 0;
+    }
 }

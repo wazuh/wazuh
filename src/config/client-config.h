@@ -29,4 +29,13 @@ typedef struct _agent {
     wlabel_t *labels; /* null-ended label set */
 } agent;
 
+/* Verifies that the configuration for Client is correct. Return 0 on success or -1 on error.  */
+int Test_Client(const char * path);
+
+/* Verifies that the configuration for ClientBuffer is correct. Return 0 on success or -1 on error.  */
+int Test_ClientBuffer(const char * path);
+
+/* Frees the Client struct  */
+void Free_Client(agent * c);
+
 #endif /* __CAGENTD_H */

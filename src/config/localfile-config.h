@@ -54,4 +54,10 @@ typedef struct _logreader_config {
     logreader *config;
 } logreader_config;
 
+/* Verifies that the configuration for Localfile is correct. Return 0 on success or -1 on error.  */
+int Test_Localfile(const char * path);
+
+/* Frees the Localfile struct  */
+void Free_Localfile(logreader_config * c);
+
 #endif /* __CLOGREADER_H */

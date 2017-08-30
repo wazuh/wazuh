@@ -13,6 +13,9 @@
 #include "os_execd/execd.h"
 #include "os_net/os_net.h"
 #include "config/syscheck-config.h"
+#include "config/rootcheck-config.h"
+#include "config/localfile-config.h"
+#include "config/client-config.h"
 #include "agentd.h"
 
 
@@ -64,7 +67,15 @@ int verifyRemoteConf(){
 
 	if (Test_Syscheck(configPath) < 0) {
 		return -1;
-	}
+	} else if (Test_Rootcheck(configPath) < 0) {
+        return -1;
+    } else if (Test_Localfile(configPath) < 0) {
+        return -1;
+    } else if (Test_Client(configPath) < 0) {
+        return -1;
+    } else if (Test_ClientBuffer(configPath) < 0) { 
+        return -1;
+    }
 
 	return 0;
 };

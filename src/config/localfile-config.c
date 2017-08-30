@@ -413,3 +413,39 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     return (0);
 }
+
+int Test_Localfile(const char * path){
+    int fail = 0;
+    logreader_config test_localfile = { .agent_cfg = 0 };
+
+    if (ReadConfig(CAGENT_CONFIG | CLOCALFILE, path, &test_localfile, NULL) < 0) {
+		merror(RCONFIG_ERROR,"Localfile", path);
+		fail = 1;
+	}
+
+    Free_Localfile(&test_localfile);
+
+    if (fail) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+void Free_Localfile(logreader_config * c){
+    if (c) {
+        if (c->config) {
+            free(c->config->ffile);
+            free(c->config->file);
+            free(c->config->logformat);
+            free(c->config->djb_program_name);
+            free(c->config->command);
+            free(c->config->alias);
+            free(c->config->query);
+            labels_free(c->config->labels);
+            free(c->config->read);
+            free(c->config->fp);
+            free(c->config);
+        }
+    }
+}
