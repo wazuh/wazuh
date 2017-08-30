@@ -36,7 +36,7 @@ int send_msg(int agentid, const char *msg)
     }
 
     if (recv_b < 0) {
-        merror(SEND_ERROR, "server");
+        merror(SEND_ERROR, "server", strerror(errno));
         sleep(1);
         return (-1);
     }

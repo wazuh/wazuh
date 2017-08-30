@@ -90,6 +90,7 @@ int send_msg(unsigned int agentid, const char *msg)
     ssize_t msg_size, send_b;
     netsize_t length;
     char crypt_msg[OS_MAXSTR + 1];
+    int retval = 0;
 
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[agentid]->rcvd < (time(0) - (2 * NOTIFY_TIME))) {
@@ -121,7 +122,8 @@ int send_msg(unsigned int agentid, const char *msg)
     }
 
     if (send_b < 0) {
-        merror(SEND_ERROR, keys.keyentries[agentid]->id);
+        merror(SEND_ERROR, keys.keyentries[agentid]->id, strerror(errno));
+        retval = -1;
     }
 
     /* Unlock mutex */
@@ -130,5 +132,5 @@ int send_msg(unsigned int agentid, const char *msg)
         return (-1);
     }
 
-    return (0);
+    return retval;
 }
