@@ -56,11 +56,11 @@ int receive_msg()
                         merror("Connection socket: %s (%d)", strerror(errno), errno);
                     }
 
-                    break;
+                    return -1;
 
                 case 0:
                     mdebug1("Manager disconnected.");
-                    break;
+                    return -1;
 
                 default:
                     // length > OS_MAXSTR
