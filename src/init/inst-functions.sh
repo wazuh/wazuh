@@ -347,7 +347,7 @@ WriteManager()
 
     cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
-    
+
     # Write syscheck
     WriteSyscheck "manager"
 
@@ -614,7 +614,7 @@ InstallServer(){
     fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
-
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscollector
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
 
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
