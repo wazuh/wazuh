@@ -70,7 +70,7 @@
 #define CONNS_ERROR     "(1216): Unable to connect to '%s'."
 #define UNABLE_CONN     "(1242): Unable to connect to server. Exhausted all options."
 #define SEC_ERROR       "(1217): Error creating encrypted message."
-#define SEND_ERROR      "(1218): Unable to send message to '%s'."
+#define SEND_ERROR      "(1218): Unable to send message to '%s': %s"
 #define RULESLOAD_ERROR "(1219): Unable to access the rules directory."
 #define RULES_ERROR     "(1220): Error loading the rules: '%s'."
 #define LISTS_ERROR     "(1221): Error loading the list: '%s'."

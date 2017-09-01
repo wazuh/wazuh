@@ -146,8 +146,9 @@ typedef int socklen_t;
 #define lstat(x,y) stat(x,y)
 #define CloseSocket(x) closesocket(x)
 void WinSetError();
-typedef unsigned short int u_int16_t;
-typedef unsigned char u_int8_t;
+typedef uint32_t u_int32_t;
+typedef uint16_t u_int16_t;
+typedef uint8_t u_int8_t;
 
 #define MSG_DONTWAIT    0
 

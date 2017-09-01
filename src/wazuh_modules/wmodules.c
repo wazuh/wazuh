@@ -36,8 +36,10 @@ void wm_check() {
 
     // Check that a configuration exists
 
-    if (!wmodules)
-        merror_exit("No configuration defined. Exiting...");
+    if (!wmodules) {
+        minfo("No configuration defined. Exiting...");
+        exit(EXIT_SUCCESS);
+    }
 
     // Get the last module of the same type
 

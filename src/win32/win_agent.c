@@ -547,17 +547,17 @@ void send_win32_info(time_t curr_time)
     /* Send UDP message */
     if (agt->protocol == UDP_PROTO) {
         if (OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0) {
-            merror(SEND_ERROR, "server");
+            merror(SEND_ERROR, "server", strerror(errno));
             sleep(1);
         }
     } else {
         netsize_t length = msg_size;
 
         if (OS_SendTCPbySize(agt->sock, sizeof(length), (void*)&length) < 0) {
-            merror(SEND_ERROR, "server");
+            merror(SEND_ERROR, "server", strerror(errno));
             sleep(1);
         } else if (OS_SendTCPbySize(agt->sock, msg_size, crypt_msg) < 0) {
-            merror(SEND_ERROR, "server");
+            merror(SEND_ERROR, "server", strerror(errno));
             sleep(1);
         }
     }

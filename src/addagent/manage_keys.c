@@ -60,12 +60,9 @@ int k_import(const char *cmdimport)
     char *tmp_key;
 
     char line_read[FILE_SIZE + 1];
-
-    char *keys_file = basename_ex(AUTH_FILE);
-
     char tmp_path[PATH_MAX];
 
-    snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, keys_file);
+    snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, AUTH_FILE);
 
     /* Parse user argument */
     if (cmdimport) {

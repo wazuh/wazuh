@@ -36,7 +36,7 @@ int send_msg(const char *msg, ssize_t msg_length)
     }
 
     if (recv_b < 0) {
-        merror(SEND_ERROR, "server");
+        merror(SEND_ERROR, "server", strerror(errno));
         sleep(1);
         return (-1);
     }

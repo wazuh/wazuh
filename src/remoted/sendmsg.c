@@ -71,6 +71,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     netsize_t length;
     char crypt_msg[OS_MAXSTR + 1];
     struct sockaddr_in peer_info;
+    int retval = 0;
 
     key_lock();
     key_id = OS_IsAllowedID(&keys, agent_id);
@@ -115,8 +116,8 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     }
 
     if (send_b < 0) {
-        merror(SEND_ERROR, agent_id);
+        merror(SEND_ERROR, agent_id, strerror(errno));
     }
 
-    return (0);
+    return retval;
 }
