@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Labels configuration for agents to show data on alerts.
 - Added group property for agents to customize shared files set.
 - Send shared files to multiple agents in parallel.
 - New decoder plugin for logs in JSON format with dynamic fields definition.
@@ -48,6 +47,8 @@ All notable changes to this project will be documented in this file.
 - Ignore hidden files in shared folder for merged file.
 - Changed agent notification time values: notify time to 10 seconds and reconnect time to one minute.
 - Prevent data field from being inserted into JSON alerts when it's empty.
+- Spelling corrections (by Josh Soref).
+- Moved debug messages when updating shared files to level 2.
 
 ### Fixed
 
