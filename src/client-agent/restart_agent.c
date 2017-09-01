@@ -31,7 +31,7 @@ void * restartAgent() {
 
 	int sock = -1;
 	char sockname[PATH_MAX + 1];
-
+	
 	if (isChroot()) {
 		strcpy(sockname, COM_LOCAL_SOCK);
 	} else {
