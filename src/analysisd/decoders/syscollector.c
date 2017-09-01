@@ -15,6 +15,7 @@
 #include "alerts/alerts.h"
 #include "decoder.h"
 #include "external/cJSON/cJSON.h"
+#include "plugin_decoders.h"
 
 #define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
@@ -33,14 +34,29 @@ int DecodeSyscollector(Eventinfo *lf)
     char buffer[OS_SIZE_2048 + 1];
 
     // Decoding JSON
-    JSON_Decoder_Exec(&lf);
-    if (strcmp(lf->location, "syscollector") != 0) {
-        merror("Invalid Syscollector received event.");
+    JSON_Decoder_Exec(lf);
+
+    // Check location
+    if (lf->location[0] == '(') {
+        char* search;
+        search = strchr(lf->location, '>') + 1;
+        if (!search) {
+            merror("Invalid received event.");
+            return (0);
+        }
+        else if (strcmp(search, "syscollector") != 0) {
+            merror("Invalid received event. Not syscollector.");
+            return (0);
+        }
+    }
+    else {
+        merror("Invalid received event. (Location)");
         return (0);
     }
 
     // Opening syscollector file
     snprintf(file_name, OS_SIZE_1024, "%s/%s", SYSCOLLECTOR_DIR, lf->agent_id);
+    snprintf(temp_file_name, OS_SIZE_1024, "%s/%s_tmp", SYSCOLLECTOR_DIR, lf->agent_id);
 
     if (fp = fopen(file_name, "r"), fp) { // File already exists
         // Zero buffer
@@ -54,7 +70,8 @@ int DecodeSyscollector(Eventinfo *lf)
             return (0);
         }
         lf_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
-        if (strcmp(rd_type, "network") == 0) {
+
+        if (strcmp(lf_type, "network") == 0) {
             lf_iface_name = cJSON_GetObjectItem(cJSON_GetObjectItem(logJSON, "iface"), "name")->valuestring;
         }
 
@@ -77,29 +94,35 @@ int DecodeSyscollector(Eventinfo *lf)
         fclose(fp);
 
         // Opening syscollector temp file
-        snprintf(temp_file_name, OS_SIZE_1024, "%s/%s_tmp", SYSCOLLECTOR_DIR, lf->agent_id);
         fp = fopen(temp_file_name, "w");
         if (!fp) {
-            merror("Error handling syscollector database.");
+            merror(FOPEN_ERROR, temp_file_name, errno, strerror(errno));
             return (0);
         }
 
         // Generating new updated file
+        int found = 0;
         cJSON_ArrayForEach(readedJSON, arrayJSON) {
             rd_type = (cJSON_GetObjectItem(readedJSON, "type")->valuestring);
             if ((strcmp(lf_type, rd_type) == 0) && (strcmp(rd_type, "network") == 0)) {
                 rd_iface_name = cJSON_GetObjectItem(cJSON_GetObjectItem(readedJSON, "iface"), "name")->valuestring;
                 if (strcmp(lf_iface_name, rd_iface_name) == 0) {
-                    fprintf(fp, "%s\n", cJSON_Print(logJSON));
+                    fprintf(fp, "%s\n", cJSON_PrintUnformatted(logJSON));
+                    found = 1;
+                } else {
+                    fprintf(fp, "%s\n", cJSON_PrintUnformatted(readedJSON));
                 }
             }
             else if ((strcmp(lf_type, rd_type) == 0) && (strcmp(rd_type, "network") != 0)) {
-                fprintf(fp, "%s\n", cJSON_Print(logJSON));
+                fprintf(fp, "%s\n", cJSON_PrintUnformatted(logJSON));
+                found = 1;
             }
             else {
-                fprintf(fp, "%s\n", cJSON_Print(readedJSON));
+                fprintf(fp, "%s\n", cJSON_PrintUnformatted(readedJSON));
             }
         }
+        if (!found)
+            fprintf(fp, "%s\n", cJSON_PrintUnformatted(logJSON));
 
         fclose(fp);
 
@@ -114,12 +137,11 @@ int DecodeSyscollector(Eventinfo *lf)
         // Cleaning
         cJSON_Delete (arrayJSON);
         cJSON_Delete (logJSON);
-
     }
     else {
-        fp = fopen(temp_file_name, "w");
+        fp = fopen(file_name, "w");
         if (!fp) {
-            merror("Error handling syscollector database.");
+            merror(FOPEN_ERROR, file_name, errno, strerror(errno));
             return (0);
         }
         fprintf(fp, "%s\n", lf->log);
