@@ -6,12 +6,15 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Improved errors messages related to TCP connection queue.
+- Changed info log about unsupported FS checking in Rootcheck scan to debug messages.
+- Prevent Modules daemon from giving critical error when no wodles are enabled.
 
 ### Fixed
 
-- Fix byte-order incompatibility in agents on SPARC when connecting via TCP.
+- Fix endianess incompatibility in agents on SPARC when connecting via TCP.
 - Fix bug in Authd that made it crash when removing keys.
 - Fix race condition in Remoted when writing logs.
+- Avoid repeated errors by Remoted when sending data to a disconnected agent.
 
 
 ## [v2.1.0] - 2017-08-14
