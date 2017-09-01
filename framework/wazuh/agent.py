@@ -1602,7 +1602,7 @@ class Agent:
             print("Sending: {0}".format(common.ossec_path + "/var/upgrade/" + wpk_file))
         try:
             start_time = time()
-            bytes_read = file.read(512)
+            bytes_read = file.read(common.wpk_read_size)
             bytes_read_acum = 0
             while bytes_read:
                 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -1613,7 +1613,7 @@ class Agent:
                 s.close()
                 if data != 'ok':
                     raise WazuhException(1715, data.replace("err ",""))
-                bytes_read = file.read(512)
+                bytes_read = file.read(common.wpk_read_size)
                 if show_progress:
                     bytes_read_acum = bytes_read_acum + len(bytes_read)
                     show_progress(int(bytes_read_acum * 100 / wpk_file_size) + (bytes_read_acum * 100 % wpk_file_size > 0))
@@ -1814,7 +1814,7 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
         try:
             start_time = time()
-            bytes_read = file.read(512)
+            bytes_read = file.read(common.wpk_read_size)
             file_sha1=sha1(bytes_read)
             bytes_read_acum = 0
             while bytes_read:
@@ -1824,7 +1824,7 @@ class Agent:
                 s.send(msg.encode() + bytes_read)
                 data = s.recv(1024).decode()
                 s.close()
-                bytes_read = file.read(512)
+                bytes_read = file.read(common.wpk_read_size)
                 file_sha1.update(bytes_read)
                 if show_progress:
                     bytes_read_acum = bytes_read_acum + len(bytes_read)
