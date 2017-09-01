@@ -61,14 +61,7 @@ void wm_check() {
 // Destroy configuration data
 
 void wm_destroy() {
-    wmodule *cur_module;
-    wmodule *next_module;
-
-    for (cur_module = wmodules; cur_module; cur_module = next_module) {
-        next_module = cur_module->next;
-        cur_module->context->destroy(cur_module->data);
-        free(cur_module);
-    }
+    wm_free(wmodules);
 }
 
 // Concatenate strings with optional separator
@@ -160,4 +153,15 @@ int wm_state_io(const wm_context *context, int op, void *state, size_t size) {
     fclose(file);
 
     return nmemb - 1;
+}
+
+void wm_free(wmodule * config) {
+    wmodule *cur_module;
+    wmodule *next_module;
+
+    for (cur_module = config; cur_module; cur_module = next_module) {
+        next_module = cur_module->next;
+        cur_module->context->destroy(cur_module->data);
+        free(cur_module);
+    }
 }

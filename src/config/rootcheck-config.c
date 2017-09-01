@@ -245,34 +245,34 @@ int Test_Rootcheck(const char * path){
     }
 }
 
-void Free_Rootcheck(rkconfig * c){
-    if (c) {
+void Free_Rootcheck(rkconfig * config){
+    if (config) {
         int i;
-        free((char*) c->workdir);
-        free(c->basedir);
-        free(c->rootkit_files);
-        free(c->rootkit_trojans);
-        if (c->unixaudit) {
-            for (i=0; c->unixaudit[i] != NULL; i++) {
-                free(c->unixaudit[i]);
+        free((char*) config->workdir);
+        free(config->basedir);
+        free(config->rootkit_files);
+        free(config->rootkit_trojans);
+        if (config->unixaudit) {
+            for (i=0; config->unixaudit[i] != NULL; i++) {
+                free(config->unixaudit[i]);
             }
-            free(c->unixaudit);
+            free(config->unixaudit);
         }
-        if (c->ignore) {
-            for (i=0; c->ignore[i] != NULL; i++) {
-                free(c->ignore[i]);
+        if (config->ignore) {
+            for (i=0; config->ignore[i] != NULL; i++) {
+                free(config->ignore[i]);
             }
-            free(c->ignore);
+            free(config->ignore);
         }
-        free(c->winaudit);
-        free(c->winmalware);
-        free(c->winapps);
-        if (c->alert_msg) {
-            for (i=0; c->alert_msg[i] != NULL; i++) {
-                free(c->alert_msg[i]);
+        free(config->winaudit);
+        free(config->winmalware);
+        free(config->winapps);
+        if (config->alert_msg) {
+            for (i=0; config->alert_msg[i] != NULL; i++) {
+                free(config->alert_msg[i]);
             }
-            free(c->ignore);
+            free(config->ignore);
         }
-        free(c->fp);
+        free(config->fp);
     }
 }

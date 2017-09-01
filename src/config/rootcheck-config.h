@@ -57,10 +57,7 @@ typedef struct _rkconfig {
 
 } rkconfig;
 
-/* Verifies that the configuration for Rootcheck is correct. Return 0 on success or -1 on error.  */
-int Test_Rootcheck(const char * path);
-
 /* Frees the Rootcheck struct  */
-void Free_Rootcheck(rkconfig * c);
+void Free_Rootcheck(rkconfig * config);
 
 #endif /* __CROOTCHECK_H */

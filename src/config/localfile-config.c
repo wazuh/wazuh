@@ -432,20 +432,23 @@ int Test_Localfile(const char * path){
     }
 }
 
-void Free_Localfile(logreader_config * c){
-    if (c) {
-        if (c->config) {
-            free(c->config->ffile);
-            free(c->config->file);
-            free(c->config->logformat);
-            free(c->config->djb_program_name);
-            free(c->config->command);
-            free(c->config->alias);
-            free(c->config->query);
-            labels_free(c->config->labels);
-            free(c->config->read);
-            free(c->config->fp);
-            free(c->config);
+void Free_Localfile(logreader_config * config){
+    if (config) {
+        if (config->config) {
+            int i;
+            for (i=0; config->config[i].file != NULL; i++) {
+                free(config->config[i].ffile);
+                free(config->config[i].file);
+                free(config->config[i].logformat);
+                free(config->config[i].djb_program_name);
+                free(config->config[i].command);
+                free(config->config[i].alias);
+                free(config->config[i].query);
+                labels_free(config->config[i].labels);
+                free(config->config[i].read);
+                free(config->config[i].fp);
+            }
+            free(config->config);
         }
     }
 }

@@ -988,57 +988,57 @@ int Test_Syscheck(const char * path){
     }
 }
 
-void Free_Syscheck(syscheck_config * c) {
-    if (c) {
+void Free_Syscheck(syscheck_config * config) {
+    if (config) {
         int i;
-        free(c->opts);
-        free(c->remote_db);
-        free(c->db);
-        free(c->scan_day);
-        free(c->scan_time);
-        if (c->ignore) {
-            for (i=0; c->ignore[i] != NULL; i++) {
-                free(c->ignore[i]);
+        free(config->opts);
+        free(config->remote_db);
+        free(config->db);
+        free(config->scan_day);
+        free(config->scan_time);
+        if (config->ignore) {
+            for (i=0; config->ignore[i] != NULL; i++) {
+                free(config->ignore[i]);
             }
-            free(c->ignore);
+            free(config->ignore);
         }
-        if (c->ignore_regex) {
-            for (i=0; c->ignore_regex[i] != NULL; i++) {
-                OSMatch_FreePattern(c->ignore_regex[i]);
+        if (config->ignore_regex) {
+            for (i=0; config->ignore_regex[i] != NULL; i++) {
+                OSMatch_FreePattern(config->ignore_regex[i]);
             }
-            free(c->ignore_regex);
+            free(config->ignore_regex);
         }
-        if (c->nodiff) {
-            for (i=0; c->nodiff[i] != NULL; i++) {
-                free(c->nodiff[i]);
+        if (config->nodiff) {
+            for (i=0; config->nodiff[i] != NULL; i++) {
+                free(config->nodiff[i]);
             }
-            free(c->nodiff);
+            free(config->nodiff);
         }
-        if (c->nodiff_regex) {
-            for (i=0; c->nodiff_regex[i] != NULL; i++) {
-                OSMatch_FreePattern(c->nodiff_regex[i]);
+        if (config->nodiff_regex) {
+            for (i=0; config->nodiff_regex[i] != NULL; i++) {
+                OSMatch_FreePattern(config->nodiff_regex[i]);
             }
         }
-        if (c->dir) {
-            for (i=0; c->dir[i] != NULL; i++) {
-                free(c->dir[i]);
+        if (config->dir) {
+            for (i=0; config->dir[i] != NULL; i++) {
+                free(config->dir[i]);
+                if(config->filerestrict[i]) {
+                    OSMatch_FreePattern(config->filerestrict[i]);
+                    free(config->filerestrict[i]);
+                }
             }
-            free(c->dir);
-        }
-        if (c->filerestrict) {
-            for (i=0; c->filerestrict[i] != NULL; i++) {
-                OSMatch_FreePattern(c->filerestrict[i]);
-            }
+            free(config->dir);
+            free(config->filerestrict);
         }
 
     #ifdef WIN32
-        free(c->registry_ignore);
-        free(c->registry_ignore_regex);
-        free(c->registry);
-        free(c->reg_fp);
+        free(config->registry_ignore);
+        free(config->registry_ignore_regex);
+        free(config->registry);
+        free(config->reg_fp);
     #endif
-        free(c->fp);
-        free(c->realtime);
-        free(c->prefilter_cmd);
+        free(config->fp);
+        free(config->realtime);
+        free(config->prefilter_cmd);
     }
 }

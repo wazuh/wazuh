@@ -61,4 +61,25 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_Labels(XML_NODE node, void *d1, void *d2);
 int Read_Authd(XML_NODE node, void *d1, void *d2);
 
+/* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */
+int Test_Syscheck(const char * path);
+
+/* Verifies that the configuration for Rootcheck is correct. Return 0 on success or -1 on error.  */
+int Test_Rootcheck(const char * path);
+
+/* Verifies that the configuration for Localfile is correct. Return 0 on success or -1 on error.  */
+int Test_Localfile(const char * path);
+
+/* Verifies that the configuration for Client is correct. Return 0 on success or -1 on error.  */
+int Test_Client(const char * path);
+
+/* Verifies that the configuration for ClientBuffer is correct. Return 0 on success or -1 on error.  */
+int Test_ClientBuffer(const char * path);
+
+/* Verifies that the configuration for Wodle is correct. Return 0 on success or -1 on error. */
+int Test_WModule(const char * path);
+
+/* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
+int Test_Labels(const char * path);
+
 #endif /* _HCONFIG__H */

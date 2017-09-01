@@ -188,17 +188,17 @@ int Test_Client(const char * path){
     }
 }
 
-void Free_Client(agent * c){
-    if (c) {
+void Free_Client(agent * config){
+    if (config) {
         int i;
-        free(c->lip);
-        if (c->rip) {
-            for (i=0; c->rip[i] != NULL; i++) {
-                free(c->rip[i]);
+        free(config->lip);
+        if (config->rip) {
+            for (i=0; config->rip[i] != NULL; i++) {
+                free(config->rip[i]);
             }
-            free(c->rip);
+            free(config->rip);
         }
-        free(c->profile);
-        labels_free(c->labels);
+        free(config->profile);
+        labels_free(config->labels);
     }
 }

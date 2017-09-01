@@ -103,4 +103,7 @@ char** wm_strtok(char *string);
  */
 int wm_state_io(const wm_context *context, int op, void *state, size_t size);
 
+// Frees the wmodule struct
+void wm_free(wmodule * c);
+
 #endif // W_MODULES

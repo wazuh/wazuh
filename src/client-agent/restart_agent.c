@@ -16,6 +16,7 @@
 #include "config/rootcheck-config.h"
 #include "config/localfile-config.h"
 #include "config/client-config.h"
+#include "wazuh_modules/wmodules.h"
 #include "agentd.h"
 
 
@@ -66,15 +67,19 @@ int verifyRemoteConf(){
 	}
 
 	if (Test_Syscheck(configPath) < 0) {
-		return -1;
+		return OS_INVALID;
 	} else if (Test_Rootcheck(configPath) < 0) {
-        return -1;
+		return OS_INVALID;
     } else if (Test_Localfile(configPath) < 0) {
-        return -1;
+		return OS_INVALID;
     } else if (Test_Client(configPath) < 0) {
-        return -1;
-    } else if (Test_ClientBuffer(configPath) < 0) { 
-        return -1;
+		return OS_INVALID;
+	} else if (Test_ClientBuffer(configPath) < 0) {
+		return OS_INVALID;
+    } else if (Test_WModule(configPath) < 0) {
+		return OS_INVALID;
+    } else if (Test_Labels(configPath) < 0) {
+		return OS_INVALID;
     }
 
 	return 0;

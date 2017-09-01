@@ -105,10 +105,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
 
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 
-/* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */
-int Test_Syscheck(const char * path);
-
 /* Frees the Syscheck struct  */
-void Free_Syscheck(syscheck_config * c);
+void Free_Syscheck(syscheck_config * config);
 
 #endif /* __SYSCHECKC_H */
