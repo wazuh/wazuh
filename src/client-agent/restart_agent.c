@@ -19,6 +19,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "agentd.h"
 
+static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";
 
 void * restartAgent() {
 
@@ -31,7 +32,7 @@ void * restartAgent() {
 
 	int sock = -1;
 	char sockname[PATH_MAX + 1];
-	
+
 	if (isChroot()) {
 		strcpy(sockname, COM_LOCAL_SOCK);
 	} else {
@@ -58,6 +59,7 @@ void * restartAgent() {
 
 int verifyRemoteConf(){
 	const char *configPath;
+ 	char msg_output[OS_MAXSTR];
 
 	if (isChroot()) {
 		configPath = AGENTCONFIGINT;
@@ -67,20 +69,32 @@ int verifyRemoteConf(){
 	}
 
 	if (Test_Syscheck(configPath) < 0) {
-		return OS_INVALID;
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "syscheck");
+		goto fail;
 	} else if (Test_Rootcheck(configPath) < 0) {
-		return OS_INVALID;
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "rootcheck");
+		goto fail;
     } else if (Test_Localfile(configPath) < 0) {
-		return OS_INVALID;
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "localfile");
+		goto fail;
     } else if (Test_Client(configPath) < 0) {
-		return OS_INVALID;
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "client");
+		goto fail;
 	} else if (Test_ClientBuffer(configPath) < 0) {
-		return OS_INVALID;
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "client_buffer");
+		goto fail;
     } else if (Test_WModule(configPath) < 0) {
-		return OS_INVALID;
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "wodle");
+		goto fail;
     } else if (Test_Labels(configPath) < 0) {
-		return OS_INVALID;
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "labels");
+		goto fail;
     }
 
 	return 0;
+
+	fail:
+		mdebug2("Invalid remote configuration received");
+		send_msg(msg_output, -1);
+		return OS_INVALID;
 };

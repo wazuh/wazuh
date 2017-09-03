@@ -95,9 +95,9 @@ int Test_Labels(const char * path) {
     if (ReadConfig(CAGENT_CONFIG | CLABELS, path, &test_labels, NULL) < 0) {
         merror(RCONFIG_ERROR,"Labels", path);
         fail = 1;
+    } else {
+        labels_free(test_labels);
     }
-
-    labels_free(test_labels);
 
     if (fail) {
         return -1;

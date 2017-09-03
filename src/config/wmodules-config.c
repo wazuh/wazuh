@@ -70,14 +70,15 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, __attribute__((unu
 
 int Test_WModule(const char * path) {
     int fail = 0;
-    wlabel_t *test_labels = NULL;
+    wmodule *test_wmodule;
+    os_calloc(1, sizeof(wmodule), test_wmodule);
 
-    if (ReadConfig(CAGENT_CONFIG | CLABELS, path, &test_labels, NULL) < 0) {
-        merror(RCONFIG_ERROR,"Labels", path);
+    if (ReadConfig(CAGENT_CONFIG | CWMODULE, path, &test_wmodule, NULL) < 0) {
+        merror(RCONFIG_ERROR,"WModule", path);
         fail = 1;
     }
 
-    labels_free(test_labels);
+    wm_free(test_wmodule);
 
     if (fail) {
         return -1;
