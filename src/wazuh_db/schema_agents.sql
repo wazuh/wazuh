@@ -73,8 +73,8 @@ CREATE TABLE IF NOT EXISTS netiface (
     rx_packets INTEGER,
     tx_bytes INTEGER,
     rx_bytes INTEGER,
-    id_ipv4 INTEGER REFERENCES netaddr (address),
-    id_ipv6 INTEGER REFERENCES netaddr (address)
+    id_ipv4 INTEGER REFERENCES netaddr (id),
+    id_ipv6 INTEGER REFERENCES netaddr (id)
 );
 
 CREATE INDEX IF NOT EXISTS netiface_mac ON netiface (mac);
