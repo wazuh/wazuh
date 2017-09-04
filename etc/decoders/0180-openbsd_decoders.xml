@@ -121,3 +121,20 @@
   <regex> => (\d+) </regex>
   <order>action</order>
 </decoder>
+
+<!-- OpenBSD doas -->
+<decoder name="doas">
+  <program_name>^doas</program_name>
+</decoder>
+
+<decoder name="doas-user">
+  <parent>doas</parent>
+  <regex>^(\S+) ran| for (\S+):</regex>
+  <order>srcuser</order>
+</decoder>
+
+<decoder name="doas-user">
+  <parent>doas</parent>
+  <regex offset="after_parent"> as (\S+): </regex>
+  <order>dstuser</order>
+</decoder>

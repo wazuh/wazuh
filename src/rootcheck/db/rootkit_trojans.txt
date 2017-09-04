@@ -38,7 +38,7 @@ hdparm      !bash|/dev/ida!
 ldd         !/dev/[^n]|proc\.h|libshow.so|libproc.a!
 
 # Trojan entries for troubleshooting binaries
-grep        !bash|givemer|/dev/!
+grep        !bash|givemer!
 egrep       !bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh!
 find        !bash|/dev/[^tnlcs]|/prof|/home/virus|file\.h!
 lsof        !/prof|/dev/[^apcmnfk]|proc\.h|bash|^/bin/sh|/dev/ttyo|/dev/ttyp!

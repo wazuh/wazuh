@@ -31,4 +31,12 @@
     <description>mailscanner: Multiple attempts of spam.</description>
     <group>multiple_spam,pci_dss_10.6.1,</group>
   </rule>
+
+  <rule id="3752" level="0">
+      <if_sid>1002</if_sid>
+      <program_name>update.bad.phishing.sites</program_name>
+      <match>^Phishing bad sites list updated</match>
+      <description>ignore</description>
+  </rule>
+
 </group>

@@ -68,6 +68,13 @@
     <match>PPM exceeds tolerance</match>
     <description>Ignoring known false positives on rule 1002..</description>
   </rule>
+
+  <rule id="1010" level="5">
+    <match>segfault at </match>
+    <description>Process segfaulted.</description>
+    <group>service_availability,</group>
+  </rule>
+
 </group> <!-- SYSLOG,ERRORS -->
 
 
@@ -526,12 +533,19 @@
     <group>pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
-    <rule id="5405" level="5">
-        <if_sid>5400</if_sid>
-        <match>user NOT in sudoers</match>
-        <description>Unauthorized user attempted to use sudo.</description>
-        <group>pci_dss_10.2.2,pci_dss_10.2.5,</group>
-    </rule>
+  <rule id="5405" level="5">
+    <if_sid>5400</if_sid>
+    <match>user NOT in sudoers</match>
+    <description>Unauthorized user attempted to use sudo.</description>
+    <group>pci_dss_10.2.2,pci_dss_10.2.5,</group>
+  </rule>
+
+  <rule id="5406" level="5">
+    <if_sid>5400</if_sid>
+    <match>command not allowed</match>
+    <description>Sudo: Command not allowed</description>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
 
 </group> <!-- SYSLOG, SUDO -->
 

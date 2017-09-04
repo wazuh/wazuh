@@ -146,8 +146,22 @@
 
 <decoder name="ssh-scan2">
   <parent>sshd</parent>
-  <prematch>^Did not receive identification|^Bad protocol version</prematch>
+  <prematch>^Did not receive identification</prematch>
   <regex offset="after_prematch"> from (\S+)$</regex>
+  <order>srcip</order>
+</decoder>
+
+<!--
+Jul 12 16:10:26 cloud sshd[14486]: Bad protocol version identification 'GET http://m.search.yahoo.com/ HTTP/1.1' from 112.98.69.104 port 3533
+Jul 12 16:10:41 cloud sshd[14530]: Bad protocol version identification 'GET http://check2.zennolab.com/proxy.php HTTP/1.1' from 46.182.129.46 port 60866
+Jul 12 16:11:31 cloud sshd[14582]: Bad protocol version identification 'GET http://www.msftncsi.com/ncsi.txt HTTP/1.1' from 88.244.115.169 port 62240
+Jul 12 16:12:15 cloud sshd[14662]: Bad protocol version identification 'GET http://m.search.yahoo.com/ HTTP/1.1' from 118.76.116.187 port 54513
+-->
+
+<decoder name="ssh-scan3">
+  <parent>sshd</parent>
+  <prematch>^Bad protocol version </prematch>
+  <regex offset="after_prematch">\w* from (\S+)</regex>
   <order>srcip</order>
 </decoder>
 

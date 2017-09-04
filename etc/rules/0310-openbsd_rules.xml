@@ -239,3 +239,54 @@
   </rule>
 
 </group>
+
+<group name="local,syslog,openbsd,doas">
+
+  <rule id="51550" level="0">
+    <decoded_as>doas</decoded_as>
+    <description>doas grouping</description>
+  </rule>
+
+  <rule id="51551" level="1">
+    <if_sid>51550</if_sid>
+    <match>cannot stat</match>
+    <description>doas cannot stat a file.</description>
+  </rule>
+
+  <rule id="51552" level="2">
+    <if_sid>51551</if_sid>
+    <match>: Permission denied$</match>
+    <description>doas cannot stat a file due to permissions.</description>
+  </rule>
+
+  <rule id="51553" level="5">
+    <if_sid>51550</if_sid>
+    <match>path not secure$</match>
+    <description>A critical path for doas does not have secure permissions.</description>
+  </rule>
+
+  <rule id="51554" level="5">
+    <if_sid>51550</if_sid>
+    <match>failed command for </match>
+    <description>Failed doas command.</description>
+  </rule>
+
+  <rule id="51555" level="1">
+    <if_sid>51550</if_sid>
+    <match>ran command</match>
+    <description>A command was run using doas.</description>
+  </rule>
+
+  <rule id="51556" level="2">
+    <if_sid>51555</if_sid>
+    <match> as root </match>
+    <description>A doas command was run as root.</description>
+  </rule>
+
+  <rule id="51557" level="5">
+    <if_sid>51550</if_sid>
+    <match>failed auth for</match>
+    <description>doas authentication failed.</description>
+  </rule>
+
+</group> <!-- SYSLOG,LOCAL -->

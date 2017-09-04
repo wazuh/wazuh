@@ -15,6 +15,12 @@
   -  Dec 30 19:36:11 rheltest sudo: cplummer : TTY=pts/2 ; PWD=/home/cplummer1 ; USER=root ; TSID=0000UM ; COMMAND=/bin/bash
   -  Oct 18 20:49:02 ip-10-0-0-10 sudo: santiago : TTY=pts/1 ; PWD=/root ; USER=root ; COMMAND=/bin/su
   -  Dec  1 09:50:51 ip-10-0-0-20 sudo:    homer : user NOT in sudoers ; TTY=pts/2 ; PWD=/home/homer ; USER=root ; COMMAND=/bin/ls
+
+  - Output for /etc/sudoers
+  - Aug 31 08:11:00 2017 : homer : HOST=hostname : TTY=pts/1 ; PWD=/home ; USER=root ; COMMAND=/bin/bash
+  - Aug 31 10:15:22 2017 : homer : HOST=hostname : TTY=pts/1 ; PWD=/home/homer/testingDestination ; USER=root ; COMMAND=/usr/local/bin/puppet agent -t --server=server.d.com
+  - Aug 31 08:23:20 2017 : bart1 : HOST=hostname : command not allowed ; TTY=pts/0 ; PWD=/home ; USER=homer ; COMMAND=/u/homer/sudoTesting/testcopyscript.sh
+
   -->
 
 <decoder name="sudo">
@@ -51,5 +57,51 @@
 <decoder name="sudo-fields">
   <parent>sudo</parent>
   <regex offset="after_regex">COMMAND=(\S+)</regex>
+  <order>command</order>
+</decoder>
+
+
+
+<decoder name="sudo">
+    <program_name/>
+    <prematch>^\S+\s+:\s+HOST=\S+\s+:\s+\.+;</prematch>
+</decoder>
+
+<decoder name="sudo2-fields">
+    <parent>sudo</parent>
+    <program_name/>
+    <regex>(\S+)\s+:\s+HOST</regex>
+    <order>srcuser</order>
+    <fts>name,srcuser,location</fts>
+    <ftscomment>First time user executed the sudo command</ftscomment>
+</decoder>
+
+<decoder name="sudo2-fields">
+  <parent>sudo</parent>
+  <regex offset="after_regex">=(\S+)\s*:</regex>
+  <order>host</order>
+</decoder>
+
+<decoder name="sudo2-fields">
+  <parent>sudo</parent>
+  <regex offset="after_regex">TTY=(\S+)</regex>
+  <order>tty</order>
+</decoder>
+
+<decoder name="sudo2-fields">
+  <parent>sudo</parent>
+  <regex offset="after_regex">PWD=(\S+)</regex>
+  <order>pwd</order>
+</decoder>
+
+<decoder name="sudo2-fields">
+  <parent>sudo</parent>
+  <regex offset="after_regex">USER=(\S+)</regex>
+  <order>dstuser</order>
+</decoder>
+
+<decoder name="sudo2-fields">
+  <parent>sudo</parent>
+  <regex offset="after_regex">COMMAND=(\.+)</regex>
   <order>command</order>
 </decoder>

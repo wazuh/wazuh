@@ -120,4 +120,11 @@
     <group>upgrade,upgrade_failure,</group>
   </rule>
 
+  <rule id="220" level="7">
+    <if_sid>200</if_sid>
+    <match>^wazuh: Invalid remote configuration: </match>
+    <description>The agent could not restart due to a $(module) failure in the remote configuration</description>
+    <group>agent_restarting,configuration_failure,</group>
+  </rule>
+
 </group>

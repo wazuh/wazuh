@@ -39,3 +39,10 @@
   <regex>succeeded.\sNew\sversion:\sWazuh\s(\.+)$</regex>
   <order>agent.new_version</order>
 </decoder>
+
+<decoder name="agent-restart">
+  <parent>wazuh</parent>
+  <prematch offset="after_parent">^Invalid remote configuration:</prematch>
+  <regex offset="after_prematch">^ '(\S+)'.</regex>
+  <order>module</order>
+</decoder>

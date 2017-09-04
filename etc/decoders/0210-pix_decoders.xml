@@ -142,9 +142,16 @@
 
 <decoder name="pix-srcip">
   <parent>pix</parent>
-  <prematch offset="after_parent">^6-605004|^6-308001|^6-605005</prematch>
+  <prematch offset="after_parent">^6-308001</prematch>
   <regex offset="after_parent">^(\S+): \.+ (\S+)</regex>
   <order>id, srcip</order>
+</decoder>
+
+<decoder name="pix-srcip-port">
+  <parent>pix</parent>
+  <prematch offset="after_parent">^6-605004|^6-605005</prematch>
+  <regex offset="after_parent">^(\S+): Login (\S+) from (\S+)/(\d+) \.+user "(\w+)"</regex>
+  <order>id, action, srcip, srcport, user</order>
 </decoder>
 
 <decoder name="pix-generic">
