@@ -388,6 +388,13 @@ install-hybrid: install-server-generic
 install-server: install-server-generic
 
 install-common: build
+
+ifeq (${uname_S},HP-UX)
+	chmod +x init/adduser.sh
+	chmod +x analysisd/compiled_rules/register_rule.sh
+	chmod +x init/fw-check.sh
+endif
+
 	./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
 
 	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/
@@ -721,6 +728,9 @@ ${EXTERNAL_ZLIB}libz.a:
 ifeq (${TARGET},winagent)
 	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
 else
+ifeq (${uname_S},HP-UX)
+	chmod +x ${EXTERNAL_ZLIB}/configure
+endif
 	cd ${EXTERNAL_ZLIB} && ./configure && ${MAKE} libz.a
 endif
 
