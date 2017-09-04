@@ -111,11 +111,6 @@ ifeq (${uname_S},HP-UX)
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
 		USE_LEGACY_SSL=yes
-		# Make executable the scripts
-		chmod +x external/zlib/configure
-		chmod +x init/adduser.sh
-		chmod +x analysisd/compiled_rules/register_rule.sh
-		chmod +x init/fw-check.sh
 else
 	    # Unknow platform
 endif # HPUX
