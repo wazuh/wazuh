@@ -86,6 +86,8 @@ Install()
   	    MAKEBIN=gmake
     elif [ "X$NUNAME" = "XSunOS" ]; then
 	      MAKEBIN=gmake
+    elif [ "X$NUNAME" = "XHP-UX" ]; then
+          MAKEBIN=/usr/local/bin/gmake
     fi
 
 

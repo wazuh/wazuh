@@ -105,6 +105,17 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
+		LUA_PLAT=posix
+		OSSEC_LDFLAGS+=-pthread -lrt
+		PATH:=${PATH}:/usr/local/bin
+		CC=gcc
+		INSTALL=/usr/local/coreutils/bin/install
+		USE_LEGACY_SSL=yes
+		# Make executable the scripts
+		chmod +x external/zlib/configure
+		chmod +x init/adduser.sh
+		chmod +x analysisd/compiled_rules/register_rule.sh
+		chmod +x init/fw-check.sh
 else
 	    # Unknow platform
 endif # HPUX
@@ -416,8 +427,9 @@ install-common: build
 	${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/* ${PREFIX}/wodles/oscap/content
 
 	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
+ifneq (,$(wildcard /etc/localtime))
 	${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
-
+endif
 	${INSTALL} -d -m 1750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
 ifneq (,$(wildcard /etc/TIMEZONE))

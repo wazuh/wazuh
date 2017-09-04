@@ -936,6 +936,16 @@ void add_remove(const keyentry *entry) {
     remove_tail = &node->next;
 }
 
+/* To avoid hp-ux requirement of strsignal */
+#ifdef __hpux
+char* strsignal(int sig)
+{
+    char str[12];
+    sprintf(str, "%d", sig);
+    return str;
+}
+#endif
+
 /* Signal handler */
 void handler(int signum) {
     switch (signum) {
