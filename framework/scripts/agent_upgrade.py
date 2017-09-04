@@ -65,11 +65,8 @@ def main():
     agent = Agent(id=args.agent)
     agent._load_info_from_DB()
 
-    timeout = 10
     agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.ip)
-    if os.path.isfile(agent_info):
-        agent_info_stat = os.stat(agent_info).st_mtime
-    else:
+    if not os.path.isfile(agent_info):
         raise WazuhException(1720)
 
     # Custom WPK file
@@ -81,10 +78,18 @@ def main():
                     print("\n{0}... Please wait.".format(upgrade_command_result))
                 else:
                     print(upgrade_command_result)
+
             counter = 0
-            while agent_info_stat == os.stat(agent_info).st_mtime and counter < timeout:
-                sleep(2)
+            agent_info_stat = os.stat(agent_info).st_mtime
+
+            sleep(10)
+            while agent_info_stat == os.stat(agent_info).st_mtime and counter < common.agent_info_retries:
+                sleep(common.agent_info_sleep)
                 counter = counter + 1
+
+            if agent_info_stat == os.stat(agent_info).st_mtime:
+                raise WazuhException(1716, "Timeout waiting for agent reconnection.")
+
             upgrade_result = agent.upgrade_result(debug=args.debug)
             if not args.silent:
                 print(upgrade_result)
@@ -100,10 +105,18 @@ def main():
                 print("\n{0}... Please wait.".format(upgrade_command_result))
             else:
                 print(upgrade_command_result)
+
         counter = 0
-        while agent_info_stat == os.stat(agent_info).st_mtime and counter < timeout:
-            sleep(30)
+        agent_info_stat = os.stat(agent_info).st_mtime
+
+        while agent_info_stat == os.stat(agent_info).st_mtime and counter < common.agent_info_retries:
+            sleep(common.agent_info_sleep)
             counter = counter + 1
+
+        if agent_info_stat == os.stat(agent_info).st_mtime:
+            raise WazuhException(1716, "Timeout waiting for agent reconnection.")
+
+        sleep(10)
         upgrade_result = agent.upgrade_result(debug=args.debug)
         if not args.silent:
             if not args.debug:

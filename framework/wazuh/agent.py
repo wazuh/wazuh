@@ -398,7 +398,6 @@ class Agent:
         :param force: Remove old agents with same IP if disconnected since <force> seconds
         :return: Agent ID.
         """
-
         manager_status = manager.status()
         if 'ossec-authd' not in manager_status or manager_status['ossec-authd'] != 'running':
             data = self._add_manual(name, ip, id, key, force)
@@ -472,6 +471,18 @@ class Agent:
             raise WazuhException(1709)
 
         force = force if type(force) == int else int(force)
+
+        # Check manager name
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+        conn.execute("SELECT name FROM agent WHERE (id = 0)")
+        manager_name = str(conn.fetch()[0])
+
+        if name == manager_name:
+            raise WazuhException(1705, name)
 
         # Check if ip, name or id exist in client.keys
         last_id = 0
@@ -639,10 +650,10 @@ class Agent:
             query += ' ORDER BY id ASC'
 
 
-
-        query += ' LIMIT :offset,:limit'
-        request['offset'] = offset
-        request['limit'] = limit
+        if limit:
+            query += ' LIMIT :offset,:limit'
+            request['offset'] = offset
+            request['limit'] = limit
 
         conn.execute(query.format(','.join(select)), request)
 
@@ -1726,7 +1737,7 @@ class Agent:
         return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force)==1 else False)
 
 
-    def upgrade_result(self, debug=False, timeout=60):
+    def upgrade_result(self, debug=False, timeout=common.upgrade_result_retries):
         """
         Read upgrade result output from agent.
         """
@@ -1744,7 +1755,7 @@ class Agent:
             print("RESPONSE: {0}".format(data))
         counter = 0
         while data.startswith('err') and counter < timeout:
-            sleep(1)
+            sleep(common.upgrade_result_sleep)
             counter = counter + 1
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.connect(common.ossec_path + "/queue/ossec/request")

@@ -225,9 +225,10 @@ def files(agent_id=None, event=None, filename=None, filetype='file', md5=None, s
     else:
         query += ' ORDER BY date DESC'
 
-    query += ' LIMIT :offset,:limit'
-    request['offset'] = offset
-    request['limit'] = limit
+    if limit:
+        query += ' LIMIT :offset,:limit'
+        request['offset'] = offset
+        request['limit'] = limit
 
     if summary:
         select = ["max(date)", "mtime", "fim_event.type", "path"]

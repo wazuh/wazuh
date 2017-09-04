@@ -171,9 +171,10 @@ def print_db(agent_id=None, status='all', pci=None, cis=None, offset=0, limit=co
     else:
         query += ' ORDER BY date_last DESC'
 
-    query += ' LIMIT :offset,:limit'
-    request['offset'] = offset
-    request['limit'] = limit
+    if limit:
+        query += ' LIMIT :offset,:limit'
+        request['offset'] = offset
+        request['limit'] = limit
 
     select = ["status", "date_first", "date_last", "log", "pci_dss", "cis"]
 
@@ -246,9 +247,10 @@ def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
     else:
         query += ' ORDER BY pci_dss ASC'
 
-    query += ' LIMIT :offset,:limit'
-    request['offset'] = offset
-    request['limit'] = limit
+    if limit:
+        query += ' LIMIT :offset,:limit'
+        request['offset'] = offset
+        request['limit'] = limit
 
 
     conn.execute(query.format('DISTINCT pci_dss'), request)
@@ -305,9 +307,10 @@ def get_cis(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
     else:
         query += ' ORDER BY cis ASC'
 
-    query += ' LIMIT :offset,:limit'
-    request['offset'] = offset
-    request['limit'] = limit
+    if limit:
+        query += ' LIMIT :offset,:limit'
+        request['offset'] = offset
+        request['limit'] = limit
 
 
     conn.execute(query.format('DISTINCT cis'), request)
