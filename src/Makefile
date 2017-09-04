@@ -105,6 +105,17 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
+		LUA_PLAT=posix
+		OSSEC_LDFLAGS+=-pthread -lrt
+		PATH:=${PATH}:/usr/local/bin
+		CC=gcc
+		INSTALL=/usr/local/coreutils/bin/install
+		USE_LEGACY_SSL=yes
+		# Make executable the scripts
+		chmod +x external/zlib/configure
+		chmod +x init/adduser.sh
+		chmod +x analysisd/compiled_rules/register_rule.sh
+		chmod +x init/fw-check.sh
 else
 	    # Unknow platform
 endif # HPUX

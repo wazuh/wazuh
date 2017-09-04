@@ -41,6 +41,10 @@ else
         GROUPADD="/usr/sbin/groupadd"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
+    elif [ "$UNAME" = "HP-UX" ]; then
+        GROUPADD="/usr/sbin/groupadd"
+        USERADD="/usr/sbin/useradd"
+        OSMYSHELL="/bin/false"
     elif [ "$UNAME" = "AIX" ]; then
         GROUPADD="/usr/sbin/mkgroup"
         USERADD="/usr/sbin/useradd"
@@ -78,6 +82,8 @@ else
                ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
 	    elif [ "$UNAME" = "SunOS" ]; then
 			   ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
+        elif [ "$UNAME" = "HP-UX" ]; then
+               ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
 		else
 	       ${USERADD} "${U}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
 	    fi
