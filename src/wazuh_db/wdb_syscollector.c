@@ -17,7 +17,7 @@ static const char * SQL_UPDATE_NET_ADDR_IPV4 = "UPDATE netiface SET id_ipv4 = ? 
 static const char * SQL_UPDATE_NET_ADDR_IPV6 = "UPDATE netiface SET id_ipv6 = ? WHERE name = ?;";
 static const char * SQL_DELETE_NET_IFACE = "DELETE FROM netiface;";
 static const char * SQL_DELETE_NET_ADDR = "DELETE FROM netaddr;";
-static const char * SQL_INSERT_OS_INFO = "INSERT INTO osinfo (os_name, os_version, node_name, machine, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ;?, ?, ?, ?, ?, ?, ?, ?, ?);";
+static const char * SQL_INSERT_OS_INFO = "INSERT INTO osinfo (os_name, os_version, nodename, machine, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 static const char * SQL_DELETE_OS_INFO = "DELETE FROM osinfo;";
 static const char * SQL_INSERT_HW_INFO = "INSERT INTO hwinfo (board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?);";
 static const char * SQL_DELETE_HW_INFO = "DELETE FROM hwinfo;";
@@ -36,7 +36,13 @@ int wdb_insert_net_iface(sqlite3 * db, const char * name, const char * adapter, 
     sqlite3_bind_text(stmt, 2, adapter, -1, NULL);
     sqlite3_bind_text(stmt, 3, type, -1, NULL);
     sqlite3_bind_text(stmt, 4, state, -1, NULL);
-    sqlite3_bind_int(stmt, 5, mtu);
+
+    if (mtu > 0) {
+        sqlite3_bind_int(stmt, 5, mtu);
+    } else {
+        sqlite3_bind_null(stmt, 5);
+    }
+
     sqlite3_bind_text(stmt, 6, mac, -1, NULL);
     sqlite3_bind_int64(stmt, 7, tx_packets);
     sqlite3_bind_int64(stmt, 8, rx_packets);
@@ -141,7 +147,7 @@ int wdb_delete_network(sqlite3 * db) {
 }
 
 // Insert OS info tuple. Return ID on success or -1 on error.
-int wdb_insert_osinfo(sqlite3 * db, const char * os_name, const char * os_version, const char * node_name, const char * machine, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version) {
+int wdb_insert_osinfo(sqlite3 * db, const char * os_name, const char * os_version, const char * nodename, const char * machine, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version) {
     sqlite3_stmt *stmt = NULL;
     int result;
 
@@ -152,7 +158,7 @@ int wdb_insert_osinfo(sqlite3 * db, const char * os_name, const char * os_versio
 
     sqlite3_bind_text(stmt, 1, os_name, -1, NULL);
     sqlite3_bind_text(stmt, 2, os_version, -1, NULL);
-    sqlite3_bind_text(stmt, 3, node_name, -1, NULL);
+    sqlite3_bind_text(stmt, 3, nodename, -1, NULL);
     sqlite3_bind_text(stmt, 4, machine, -1, NULL);
     sqlite3_bind_text(stmt, 5, os_major, -1, NULL);
     sqlite3_bind_text(stmt, 6, os_minor, -1, NULL);
@@ -200,10 +206,30 @@ int wdb_insert_hwinfo(sqlite3 * db, const char * board_serial, const char * cpu_
 
     sqlite3_bind_text(stmt, 1, board_serial, -1, NULL);
     sqlite3_bind_text(stmt, 2, cpu_name, -1, NULL);
-    sqlite3_bind_int(stmt, 3, cpu_cores);
-    sqlite3_bind_double(stmt, 4, cpu_mhz);
-    sqlite3_bind_int64(stmt, 5, ram_total);
-    sqlite3_bind_int64(stmt, 6, ram_free);
+
+    if (cpu_cores > 0) {
+        sqlite3_bind_int(stmt, 3, cpu_cores);
+    } else {
+        sqlite3_bind_null(stmt, 3);
+    }
+
+    if (cpu_mhz > 0) {
+        sqlite3_bind_double(stmt, 4, cpu_mhz);
+    } else {
+        sqlite3_bind_null(stmt, 4);
+    }
+
+    if (ram_total > 0) {
+        sqlite3_bind_int(stmt, 5, ram_total);
+    } else {
+        sqlite3_bind_null(stmt, 5);
+    }
+
+    if (ram_free > 0) {
+        sqlite3_bind_int(stmt, 6, ram_free);
+    } else {
+        sqlite3_bind_null(stmt, 6);
+    }
 
     if (wdb_step(stmt) == SQLITE_DONE)
         result = (int)sqlite3_last_insert_rowid(db);

@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS netaddr (
     netmask TEXT NOT NULL,
     broadcast TEXT,
     gateway TEXT,
-    dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'bootp'))
+    dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'bootp')) DEFAULT 'unknown'
 );
 
 CREATE INDEX IF NOT EXISTS netaddr_address ON netaddr (address);
@@ -65,10 +65,10 @@ CREATE INDEX IF NOT EXISTS netaddr_address ON netaddr (address);
 CREATE TABLE IF NOT EXISTS netiface (
     name TEXT PRIMARY KEY,
     adapter TEXT,
-    type TEXT NOT NULL,
-    state TEXT NOT NULL,
-    mtu INTEGER NOT NULL CHECK (mtu > 0),
-    mac TEXT NOT NULL,
+    type TEXT,
+    state TEXT,
+    mtu INTEGER CHECK (mtu > 0),
+    mac TEXT,
     tx_packets INTEGER,
     rx_packets INTEGER,
     tx_bytes INTEGER,
@@ -78,15 +78,12 @@ CREATE TABLE IF NOT EXISTS netiface (
 );
 
 CREATE INDEX IF NOT EXISTS netiface_mac ON netiface (mac);
-CREATE INDEX IF NOT EXISTS netiface_ipv4id ON netiface (ipv4id);
-CREATE INDEX IF NOT EXISTS netiface_ipv6id ON netiface (ipv6id);
-CREATE INDEX IF NOT EXISTS netiface_state ON netiface (state);
 
 CREATE TABLE IF NOT EXISTS osinfo (
     os_name TEXT PRIMARY KEY,
-    os_version TEXT NOT NULL,
-    node_name TEXT NOT NULL,
-    machine TEXT NOT NULL,
+    os_version TEXT,
+    nodename TEXT,
+    machine TEXT,
     os_major TEXT,
     os_minor TEXT,
     os_build TEXT,
@@ -98,7 +95,7 @@ CREATE TABLE IF NOT EXISTS osinfo (
 
 CREATE TABLE IF NOT EXISTS hwinfo (
     board_serial TEXT PRIMARY KEY,
-    cpu_name TEXT NOT NULL,
+    cpu_name TEXT,
     cpu_cores INTEGER CHECK (cpu_cores > 0),
     cpu_mhz REAL CHECK (cpu_mhz > 0),
     ram_total INTEGER CHECK (ram_total > 0),

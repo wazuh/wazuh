@@ -360,7 +360,7 @@ hw_info *get_system_linux(){
                 if (cpuname[0] == '\"' && (end = strchr(++cpuname, '\"'), end)) {
                     *end = '\0';
                 }
-                info->cpu_name = strdup(cpuname);
+                info->cpu_name = strdup(cpuname + (*cpuname == ' ' ? 1 : 0));
 
             } else if ((aux_string = strstr(string, "cpu cores")) != NULL){
 
