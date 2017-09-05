@@ -255,13 +255,6 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
     } else {
         return (OS_INVALID);
     }
-#ifdef HPUX
-    {
-        int flags;
-        flags = fcntl(ossock, F_GETFL, 0);
-        fcntl(ossock, F_SETFL, flags | O_NONBLOCK);
-    }
-#endif
 
     if ((_ip == NULL) || (_ip[0] == '\0')) {
         OS_CloseSocket(ossock);
