@@ -241,9 +241,14 @@ void *receiver_thread(__attribute__((unused)) void *none)
                             if (final_file) {
                                 if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
                                     UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
+
                                     if (!verifyRemoteConf()) {
-                                        minfo("Agent is restarting due to a change in the remote configuration");
-                                        restartAgent();
+                                        if (agt->flags.auto_restart) {
+                                            minfo("Agent is restarting due to shared configuration changes.");
+                                            restartAgent();
+                                        } else {
+                                            minfo("Shared agent configuration has been updated.");
+                                        }
                                     }
                                 }
                             } else {

@@ -27,6 +27,7 @@ int Read_Client(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_max_time_reconnect_try = "time-reconnect";
     const char *xml_profile_name = "config-profile";
     const char *xml_protocol = "protocol";
+    const char *xml_auto_restart = "auto_restart";
 
     agent *logr;
 
@@ -152,6 +153,15 @@ int Read_Client(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 logr->protocol = TCP_PROTO;
             } else if (strcmp(node[i]->content, "udp") == 0) {
                 logr->protocol = UDP_PROTO;
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+        } else if (strcmp(node[i]->element, xml_auto_restart) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                logr->flags.auto_restart = 1;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                logr->flags.auto_restart = 0;
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);

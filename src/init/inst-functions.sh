@@ -226,6 +226,7 @@ WriteAgent()
     echo "    <protocol>udp</protocol>" >> $NEWCONFIG
     echo "    <notify_time>10</notify_time>" >> $NEWCONFIG
     echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
+    echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 

@@ -10,6 +10,10 @@
 #ifndef __CAGENTD_H
 #define __CAGENTD_H
 
+typedef struct agent_flags_t {
+    unsigned int auto_restart:1;
+} agent_flags_t;
+
 /* Configuration structure */
 typedef struct _agent {
     int port;
@@ -27,6 +31,7 @@ typedef struct _agent {
     int buflength;
     int events_persec;
     wlabel_t *labels; /* null-ended label set */
+    agent_flags_t flags;
 } agent;
 
 /* Frees the Client struct  */

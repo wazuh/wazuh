@@ -61,7 +61,7 @@
 #define CONNTYPE_ERROR  "(1204): Invalid connection type: '%s'."
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
 #define BIND_ERROR      "(1206): Unable to Bind port '%d'"
-#define RCONFIG_ERROR   "(1207): %s remote configuration in '%s' is corrupted"
+#define RCONFIG_ERROR   "(1207): %s remote configuration in '%s' is corrupted."
 #define QUEUE_ERROR     "(1210): Queue '%s' not accessible: '%s'."
 #define QUEUE_FATAL     "(1211): Unable to access queue: '%s'. Giving up.."
 #define PID_ERROR       "(1212): Unable to create PID file."
