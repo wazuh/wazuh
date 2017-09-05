@@ -1,6 +1,6 @@
 [Unit]
-Description=OSSEC Agentless
-PartOf=ossec-server.target
+Description=Wazuh Agentless
+PartOf=wazuh-server.target
 
 [Service]
 EnvironmentFile=/etc/ossec-init.conf

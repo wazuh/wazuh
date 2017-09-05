@@ -1,6 +1,6 @@
 [Unit]
-Description=OSSEC Execd
-PartOf=ossec-server.target
+Description=Wazuh Execd
+PartOf=wazuh-server.target
 
 [Service]
 EnvironmentFile=/etc/ossec-init.conf

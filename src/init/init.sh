@@ -18,6 +18,20 @@ runInit()
         fi
     fi
 
+    # Checking for Systemd
+    if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
+        if [ "X$1" = "Xserver" ] || [ "X$1" = "Xlocal" ]; then
+            type=server
+        else
+            type=agent
+        fi
+        cp -p ./src/systemd/$type/* /etc/systemd/system/
+        systemctl daemon-reload
+        systemctl enable "wazuh-"$type.target
+        systemctl start "wazuh-"$type.target
+        return 0;
+    fi
+
     # Checking if it is a Redhat system.
     if [ -r "/etc/redhat-release" ]; then
         if [ -d /etc/rc.d/init.d ]; then

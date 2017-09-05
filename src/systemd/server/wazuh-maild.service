@@ -1,6 +1,6 @@
 [Unit]
-Description=OSSEC Maild
-PartOf=ossec-server.target
+Description=Wazuh Maild
+PartOf=wazuh-server.target
 
 [Service]
 EnvironmentFile=/etc/ossec-init.conf

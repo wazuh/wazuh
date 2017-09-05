@@ -1,6 +1,6 @@
 [Unit]
-Description=OSSEC Logcollector
-PartOf=ossec-agent.target
+Description=Wazuh Logcollector
+PartOf=wazuh-server.target
 
 [Service]
 EnvironmentFile=/etc/ossec-init.conf

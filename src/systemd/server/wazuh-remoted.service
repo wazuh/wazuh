@@ -1,11 +1,12 @@
 [Unit]
-Description=OSSEC remoted
-PartOf=ossec-server.target
+Description=Wazuh remoted
+PartOf=wazuh-server.target
 
 [Service]
 Type=forking
 EnvironmentFile=/etc/ossec-init.conf
 Environment=DIRECTORY=/var/ossec
+LimitNOFILE=10000
 
 ExecStartPre=/usr/bin/env ${DIRECTORY}/bin/ossec-remoted -t
 ExecStart=/usr/bin/env ${DIRECTORY}/bin/ossec-remoted -f

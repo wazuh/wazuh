@@ -1,6 +1,6 @@
 [Unit]
-Description=OSSEC Agent
-PartOf=ossec-agent.target
+Description=Wazuh Agent
+PartOf=wazuh-agent.target
 
 [Service]
 EnvironmentFile=/etc/ossec-init.conf

@@ -1,6 +1,6 @@
 [Unit]
-Description=OSSEC syscheckd
-PartOf=ossec-server.target
+Description=Wazuh syscheckd
+PartOf=wazuh-agent.target
 
 [Service]
 EnvironmentFile=/etc/ossec-init.conf
