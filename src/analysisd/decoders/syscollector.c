@@ -48,8 +48,7 @@ int DecodeSyscollector(Eventinfo *lf)
             merror("Invalid received event. Not syscollector.");
             return (0);
         }
-    }
-    else {
+    } else if (strcmp(lf->location, "syscollector") != 0) {
         merror("Invalid received event. (Location)");
         return (0);
     }
