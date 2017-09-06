@@ -98,6 +98,12 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
+		LUA_PLAT=posix
+		OSSEC_LDFLAGS+=-pthread -lrt
+		PATH:=${PATH}:/usr/local/bin
+		CC=gcc
+		INSTALL=/usr/local/coreutils/bin/install
+		USE_LEGACY_SSL=yes
 else
 	    # Unknow platform
 endif # HPUX

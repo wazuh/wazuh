@@ -1063,6 +1063,19 @@ static const char *get_unix_version()
                     }
                     pclose(cmd_output_ver);
                 }
+            } else if (strcmp(strtok(buff, "\n"),"HP-UX") == 0){ // HP-UX
+                name = strdup("HP-UX");
+                id = strdup("hpux");
+                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        mdebug1("Can not read from command output (uname -r).");
+                    } else if (w_regexec("([0-9][0-9]*\\.[0-9][0-9]*)\\.*", buff, 2, match)){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        version = malloc(match_size +1);
+                        snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    }
+                    pclose(cmd_output_ver);
+                }
             } else if (strcmp(strtok(buff, "\n"),"OpenBSD") == 0 ||
                        strcmp(strtok(buff, "\n"),"NetBSD")  == 0 ||
                        strcmp(strtok(buff, "\n"),"FreeBSD") == 0 ){ // BSD

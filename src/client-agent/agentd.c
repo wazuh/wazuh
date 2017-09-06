@@ -179,7 +179,10 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
             if (receive_msg() < 0) {
                 update_status(AGN_DISCONNECTED);
                 merror(LOST_ERROR);
+                os_setwait();
                 start_agent(0);
+                minfo(SERVER_UP);
+                os_delwait();
                 update_status(AGN_CONNECTED);
             }
         }

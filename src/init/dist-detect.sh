@@ -95,6 +95,12 @@ else
         DIST_VER=$(uname -r | cut -d\. -f1)
         DIST_SUBVER=$(uname -r | cut -d\. -f2)
 
+    # HP-UX / SunOS
+    elif [ "$(uname)" = "HP-UX" ]; then
+        DIST_NAME="HP-UX"
+        DIST_VER=$(uname -r | cut -d\. -f2)
+        DIST_SUBVER=$(uname -r | cut -d\. -f3)
+
     # BSD
     elif [ "X$(uname)" = "XOpenBSD" -o "X$(uname)" = "XNetBSD" -o "X$(uname)" = "XFreeBSD" -o "X$(uname)" = "XDragonFly" ]; then
         DIST_NAME=$(uname)

@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# name: wazuh
+# purpose: Init script for Wazuh
+# 2017 Wazuh, Inc. <support@wazuh.com>
+#
+
+. /etc/ossec-init.conf
+if [ "X${DIRECTORY}" = "X" ]; then
+    DIRECTORY="/var/ossec"
+fi
+
+case "$1" in
+start)
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
+        echo "Starting Wazuh"
+        ${DIRECTORY}/bin/ossec-control start
+    fi
+    ;;
+stop)
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
+        echo "Stopping Wazuh"
+        ${DIRECTORY}/bin/ossec-control stop
+    fi
+    ;;
+status)
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
+        ${DIRECTORY}/bin/ossec-control status
+    fi
+    ;;
+*)
+    echo "Usage: $0 (start | stop | status)"
+    exit 1
+esac

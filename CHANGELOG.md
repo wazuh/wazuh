@@ -90,7 +90,9 @@ All notable changes to this project will be documented in this file.
 - Fix bug in Authd that made it crash when removing keys.
 - Fix race condition in Remoted when writing logs.
 - Avoid repeated errors by Remoted when sending data to a disconnected agent.
-
+- Prevented Monitord from rotating non-existent logs.
+- Some fixes to support HP-UX.
+- Prevent processes from sending events when TCP connection is lost.
 
 ## [v2.1.0] - 2017-08-14
 

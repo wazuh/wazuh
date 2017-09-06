@@ -106,6 +106,16 @@ runInit()
         return 0;
     fi
 
+    if [ "X${UN}" = "XHP-UX" ]; then
+        echo " - ${systemis} HP-UX."
+        echo " - ${modifiedinit}"
+        cp -pr ./src/init/ossec-hids-hpux.init /sbin/init.d/${service}
+        chmod 755 /sbin/init.d/${service}
+        ln -s /sbin/init.d/${service} /sbin/rc2.d/S97${service}
+        ln -s /sbin/init.d/${service} /sbin/rc3.d/S97${service}
+        return 0;
+    fi
+
     if [ "X${UN}" = "XAIX" ]; then
         echo " - ${systemis} AIX."
         echo " - ${modifiedinit}"
