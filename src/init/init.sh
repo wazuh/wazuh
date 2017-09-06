@@ -26,9 +26,9 @@ runInit()
             type=agent
         fi
         cp -p ./src/systemd/wazuh-$type.service /etc/systemd/system/
+        chown root:ossec /etc/systemd/system/"wazuh-"$type.service
         systemctl daemon-reload
         systemctl enable "wazuh-"$type
-        systemctl start "wazuh-"$type
         return 0;
     fi
 

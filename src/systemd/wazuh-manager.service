@@ -9,3 +9,6 @@ LimitNOFILE=10000
 ExecStart=/usr/bin/env ${DIRECTORY}/bin/ossec-control start
 ExecStop=/usr/bin/env ${DIRECTORY}/bin/ossec-control stop
 ExecReload=/usr/bin/env ${DIRECTORY}/bin/ossec-control reload
+
+[Install]
+WantedBy=multi-user.target
