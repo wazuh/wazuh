@@ -173,7 +173,10 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         if (FD_ISSET(agt->sock, &fdset)) {
             if (receive_msg() < 0) {
                 merror(LOST_ERROR);
+                os_setwait();
                 start_agent(0);
+                minfo(SERVER_UP);
+                os_delwait();
             }
         }
 

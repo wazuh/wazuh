@@ -84,7 +84,10 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                 if (recv_b <= 0) {
                     merror(LOST_ERROR);
+                    os_setwait();
                     start_agent(0);
+                    minfo(SERVER_UP);
+                    os_delwait();
                     break;
                 }
 
