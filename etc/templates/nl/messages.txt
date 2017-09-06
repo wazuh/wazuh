@@ -113,3 +113,7 @@ pfenable="Wilt u de PF firewall gebruiken bij actief handelen?"
 nopf="PF respons is uitgeschakeld."
 pftablename="Naam van de PF tabel om te gebruiken?"
 pfmessage="Voeg de volgende regels toe aan het begin van uw PF regels"
+
+# CA store
+addcastore="Wilt u meer certificaten toevoegen?"
+castore="Voer het pad in op een X509-certificaat of een certificaatmap: "

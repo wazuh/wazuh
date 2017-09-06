@@ -113,3 +113,7 @@ pfenable="Voulez-vous utiliser le firewall PF dans la réponse active ?"
 nopf="Réponse par PF désactivée."
 pftablename="Nom de la table PF à utiliser ?"
 pfmessage="Ajouter les lignes suivantes au début de vos règles"
+
+# CA store
+addcastore="Voulez-vous ajouter d'autres certificats?"
+castore="Entrez le chemin d'accès vers un certificat X509 ou un dossier de certificat: "

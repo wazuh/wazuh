@@ -311,8 +311,12 @@ ConfigureClient()
             ;;
     esac
 
+    # Set up CA store
+    catMsg "0x109-castore"
+    AddCAStore
+
     # Set up the log files
-    SetupLogs "3.6"
+    SetupLogs "3.7"
 
     # echo "</ossec_config>" >> $NEWCONFIG
     WriteAgent
@@ -581,6 +585,46 @@ AddWhite()
                     read IPS
                 else
                     IPS=${USER_WHITE_LIST}
+                fi
+
+                break;
+                ;;
+        esac
+    done
+}
+
+##########
+# AddCAStore()
+##########
+AddCAStore()
+{
+    while [ 1 ]
+    do
+        echo ""
+        $ECHO "   - ${addcastore} ($yes/$no)? [$no]: "
+
+        # If white list is set, we don't need to ask it here.
+        if [ "X${USER_CA_STORE}" = "X" ]; then
+            read ANSWER
+        else
+            ANSWER=$yes
+        fi
+
+        if [ "X${ANSWER}" = "X" ] ; then
+            ANSWER=$no
+        fi
+
+        case $ANSWER in
+            $no)
+                break;
+                ;;
+            *)
+                SET_CA_STORE="true"
+                $ECHO "   - ${castore}"
+                if [ "X${USER_CA_STORE}" = "X" ]; then
+                    read CA_STORE
+                else
+                    CA_STORE=${USER_CA_STORE}
                 fi
 
                 break;

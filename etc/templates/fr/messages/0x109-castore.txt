@@ -1,0 +1,5 @@
+
+  3.6- Les mises à niveau à distance utilisent les paquetages signés par le responsable du système.
+       Le certificat correspondant (ou le certificat racine) doit être installé
+       dans le système afin de vérifier les paquets WPK. Par défaut,
+       le certificat racine de Wazuh est installé.

@@ -1,0 +1,5 @@
+
+  3.6- Uzaktan güncellemeler sistem yöneticisi tarafından imzalanmış paketleri
+       kullanır. WPK paketlerini doğrulamak için ilgili sertifikanın (veya kök
+       sertifikanın) sisteme yüklenmesi gerekir. Varsayılan olarak, kök
+       sertifikası Wazuh tarafından yüklenir.

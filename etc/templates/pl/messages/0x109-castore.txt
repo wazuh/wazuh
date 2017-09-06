@@ -1,0 +1,5 @@
+
+  3.6- RZdalne aktualizacje używają pakietów podpisanych przez administratora
+       systemu. Odpowiednie świadectwo (lub certyfikat główny) musi być
+       zainstalowane w systemie w celu sprawdzenia pakietów WPK. Domyślnie jest
+       zainstalowany certyfikat główny firmy Wazuh.

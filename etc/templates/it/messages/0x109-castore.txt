@@ -1,0 +1,5 @@
+
+  3.6- Gli aggiornamenti remoti utilizzano pacchetti firmati dal manutentore del
+       sistema. Il certificato corrispondente (o certificato di origine) deve
+       essere installato nel sistema per verificare i pacchetti WPK. Per
+       impostazione predefinita, viene installato il certificato principale di Wazuh.

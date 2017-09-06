@@ -113,3 +113,7 @@ pfenable="你希望在联动功能中使用 PF 防火墙吗?"
 nopf="PF 防火墙联动被禁止."
 pftablename="请输入希望使用的 PF 表?"
 pfmessage="请将以下几行添加到 PF 规则的前面"
+
+# CA store
+addcastore="您要添加更多證書嗎"
+castore="輸入X509證書或證書文件夾的路徑："

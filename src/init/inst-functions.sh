@@ -272,6 +272,12 @@ WriteAgent()
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG
     fi
     echo "    <ca_store>${INSTALLDIR}/etc/wpk_root.pem</ca_store>" >> $NEWCONFIG
+
+    if [ -n "$CA_STORE" ]
+    then
+        echo "    <ca_store>${CA_STORE}</ca_store>" >> $NEWCONFIG
+    fi
+
     echo "  </active-response>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -345,7 +351,7 @@ WriteManager()
               echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
           fi
       done
-      # Readed string
+      # Read string
       for ip in ${IPS};
         do
           if [ ! "X${ip}" = "X" ]; then

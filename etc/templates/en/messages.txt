@@ -114,3 +114,7 @@ pfenable="Do you want to use the PF firewall in the active response?"
 nopf="PF response disabled."
 pftablename="Name of the PF table to use?"
 pfmessage="Add the following lines to the beginning of your PF rules"
+
+# CA store
+addcastore="Do you want to add more certificates?"
+castore="Enter the path to a X509 certificate or a certificate folder: "

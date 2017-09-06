@@ -113,3 +113,7 @@ pfenable="Chcesz uywa firewall'a PF jako aktywnej ochrony?"
 nopf="ochrona PF wyczona."
 pftablename="Podaj nazwe tabeli PF?"
 pfmessage="Dodaj nastpujce linie na pocztku Twoich regu"
+
+# CA store
+addcastore="Czy chcesz dodać więcej certyfikatów?"
+castore="Wprowadź ścieżkę do certyfikatu X509 lub folderu certyfikatów: "

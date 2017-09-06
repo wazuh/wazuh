@@ -112,3 +112,7 @@ pfenable="Desea usar el PF firewall en la respuesta activa?"
 nopf="respuesta PF deshabilitada."
 pftablename="Nombre de la tabla de PF table a usar?"
 pfmessage="Agregar las siguientes lineas al principio de las reglas del PF"
+
+# CA store
+addcastore="Desea añadir más certificados?"
+castore="Indique la ruta del certificado o una carpeta de certificados: "

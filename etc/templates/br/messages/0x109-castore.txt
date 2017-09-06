@@ -1,0 +1,5 @@
+
+  3.6- Atualizações remotas usam pacotes assinados pelo mantenedor do sistema. o
+       O certificado correspondente (ou certificado raiz) deve ser instalado
+       no sistema para verificar os pacotes WPK. Por padrão,
+       o certificado raiz do Wazuh está instalado.

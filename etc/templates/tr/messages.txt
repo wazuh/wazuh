@@ -113,3 +113,7 @@ pfenable="Etkin yanıtlarda PF güvenlik duvarını kullanmak istiyor musunuz?"
 nopf="PF yanıtları etkisiz kılındı."
 pftablename="Kullanılacak PF tablosunun adı?"
 pfmessage="Aşağıdaki satırları kurallarınızın başına ekleyin"
+
+# CA store
+addcastore="Daha fazla sertifika eklemek istiyor musunuz?"
+castore="X509 sertifika ya da sertifika klasörünün yolunu girin: "

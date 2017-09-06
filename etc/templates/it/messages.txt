@@ -108,7 +108,11 @@ update_rev_newconf1="Backup dal ossec.conf è stato creato nel file $INSTALLDIR/
 update_rev_newconf2="Si prega di verificare la configurazione da ossec.conf a $INSTALLDIR/etc/ossec.conf."
 
 # Pf support
-pfenable="Do you want to use the PF firewall in the active response?"
-nopf="PF response disabled."
-pftablename="Name of the PF table to use?"
-pfmessage="Add the following lines to the beginning of your rules"
+pfenable="Vuoi utilizzare il firewall PF nella risposta attiva?"
+nopf="La risposta PF è disattivata."
+pftablename="Nome della tabella PF da utilizzare?"
+pfmessage="Aggiungi le seguenti righe all'inizio delle regole"
+
+# CA store
+addcastore="Vuoi aggiungere altri certificati?"
+castore="Inserire il path di un certificato X509 oppure di una cartella di certificati: "

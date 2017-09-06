@@ -114,3 +114,7 @@ pfenable="Da li želiš da koristiš PF firewall u aktivnoj reakciji?"
 nopf="PF reakcija onesposobljena."
 pftablename="Ime PF table za korišćenje?"
 pfmessage="Dodaj sledeće redove početku tvojih PF pravila"
+
+# CA store
+addcastore="Želite li dodati još certifikata?"
+castore="Unesite put do certifikata X509 ili mape certifikata: "

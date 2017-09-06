@@ -115,3 +115,7 @@ pfenable="Möchten Sie die PF Firewall für active response benutzen?"
 nopf="active response für PF Firewall ausgeschaltet."
 pftablename="Name der PF Tabelle die benutzt werden soll?"
 pfmessage="Fügen Sie die folgende Zeile am Anfang Ihrer Regeln ein "
+
+# CA store
+addcastore="Möchten Sie weitere Zertifikate hinzufügen?"
+castore="Geben Sie den Pfad zu einem X509-Zertifikat oder einem Zertifikatsordner ein: "

@@ -1,0 +1,5 @@
+
+  3.6- Daljinske nadogradnje koriste pakete koje je potpisao održavatelj
+       sustava. Potrebno je instalirati odgovarajuću potvrdu (ili certifikat
+       korijena) u sustavu kako bi se potvrdili WPK paketi. Prema zadanim
+       postavkama instalira se korijenska potvrda tvrtke Wazuh.

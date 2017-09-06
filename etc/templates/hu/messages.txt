@@ -115,3 +115,7 @@ pfenable="Szeretné alkalmazni a PF tűzfalat az active response során?"
 nopf="PF response kikapcsolva."
 pftablename="Az alkalmazandó PF tábla neve?"
 pfmessage="Adja hozzá a következő sorokat a PF szabályainak kezdetéhez"
+
+# CA store
+addcastore="DSzeretne további tanúsítványokat adni?"
+castore="Adja meg az X509 tanúsítvány vagy a tanúsítványsomag elérési útját: "

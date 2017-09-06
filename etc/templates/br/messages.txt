@@ -115,3 +115,7 @@ pfenable="Deseja utilizar o firewall PF nas respostas automaticas?"
 nopf="Respostas automaticas com o PF desabilitadas."
 pftablename="Qual o nome da tabela no PF que deseja utilizar?"
 pfmessage="Adicione as seguintes linhas na configuracao do seu firewall"
+
+# CA store
+addcastore="Deseja adicionar mais certificados?"
+castore="Digite o caminho para um certificado X509 ou uma pasta de certificado: "
