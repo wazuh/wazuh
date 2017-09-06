@@ -23,6 +23,8 @@ All notable changes to this project will be documented in this file.
 - Added option for Authd to specify the allowed cipher list (by James Le Cuirot).
 - Added option for cipher suites in Authd settings.
 - Added internal option for Remoted to set the shared configuration reloading time.
+- Auto restart agents when new shared configuration is pushed from the manager.
+- Added native support for Systemd.
 
 ### Changed
 
@@ -65,7 +67,6 @@ All notable changes to this project will be documented in this file.
 - Fixed incorrect warning when unencrypting messages (by Dan Parriott).
 - Fixed Syslog mapping for alerts via Csyslogd (by Dan Parriott).
 - Fixed syntax error in the creation of users in Solaris 11.2 (by Pedro Flor).
-- Prevent Monitord from rotating unexisting logs.
 - Fixed some warnings that appeared when compiling on Fedora 26.
 - Fixed permission issue in logs folder.
 - Fixed issue in Remoted that prevented it from send shared configuration when it changed.
@@ -73,7 +74,6 @@ All notable changes to this project will be documented in this file.
 ### Removed
 
 - Removed Picviz support (by Dan Parriott).
-
 
 
 ## [v2.1.1]
