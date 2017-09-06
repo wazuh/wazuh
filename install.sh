@@ -631,6 +631,24 @@ AddCAStore()
                 ;;
         esac
     done
+
+    # Check the certificate
+
+    if [ -n "$CA_STORE" ]
+    then
+        if [ -f $CA_STORE ]
+        then
+            if hash openssl 2>&1 > /dev/null && [ $(date -d "$(openssl x509 -enddate -noout -in $CA_STORE | cut -d = -f 2)" +%s) -lt $(date +%s) ]
+            then
+                echo ""
+                echo "     Warning: the certificate at \"$CA_STORE\" is expired."
+            fi
+        elif [ ! -d $CA_STORE ]
+        then
+            echo ""
+            echo "     Warning: No such file or directory \"$CA_STORE\"."
+        fi
+    fi
 }
 
 
