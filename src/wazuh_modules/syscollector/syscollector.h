@@ -44,9 +44,9 @@ typedef struct hw_info {
 typedef struct wm_sys_flags_t {
     unsigned int enabled:1;                 // Main switch
     unsigned int scan_on_start:1;           // Scan always on start
-    unsigned int hardware:1;                // Hardware inventory
-    unsigned int network:1;                 // Network inventory
-    unsigned int os_scan:1;                 // OS inventory
+    unsigned int hwinfo:1;                  // Hardware inventory
+    unsigned int netinfo:1;                 // Network inventory
+    unsigned int osinfo:1;                  // OS inventory
 } wm_sys_flags_t;
 
 typedef struct wm_sys_state_t {

@@ -15,7 +15,7 @@ static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START = "scan_on_start";
 static const char *XML_DISABLED = "disabled";
 static const char *XML_NETWORK = "network";
-static const char *XML_OS_SCAN = "os_scan";
+static const char *XML_OS_SCAN = "os";
 static const char *XML_HARDWARE = "hardware";
 
 // Parse XML configuration
@@ -26,9 +26,9 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     os_calloc(1, sizeof(wm_sys_t), syscollector);
     syscollector->flags.enabled = 1;
     syscollector->flags.scan_on_start = 1;
-    syscollector->flags.network = 1;
-    syscollector->flags.os_scan = 1;
-    syscollector->flags.hardware = 1;
+    syscollector->flags.netinfo = 1;
+    syscollector->flags.osinfo = 1;
+    syscollector->flags.hwinfo = 1;
     module->context = &WM_SYS_CONTEXT;
     module->data = syscollector;
 
@@ -84,27 +84,27 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
             }
         } else if (!strcmp(node[i]->element, XML_NETWORK)) {
             if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.network = 1;
+                syscollector->flags.netinfo = 1;
             else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.network = 0;
+                syscollector->flags.netinfo = 0;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_NETWORK, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_OS_SCAN)) {
             if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.os_scan = 1;
+                syscollector->flags.osinfo = 1;
             else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.os_scan = 0;
+                syscollector->flags.osinfo = 0;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_OS_SCAN, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_HARDWARE)) {
             if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.hardware = 1;
+                syscollector->flags.hwinfo = 1;
             else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.hardware = 0;
+                syscollector->flags.hwinfo = 0;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_HARDWARE, WM_SYS_CONTEXT.name);
                 return OS_INVALID;

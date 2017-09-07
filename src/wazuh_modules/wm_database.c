@@ -200,6 +200,11 @@ void* wm_database_main(wm_database *data) {
                     break;
                 }
 
+                if (event->name[0] == '.') {
+                    mtdebug2(WM_DATABASE_LOGTAG, "Discarding hidden file.");
+                    continue;
+                }
+
                 if (event->wd == wd_agents) {
                     if (!strcmp(event->name, keysfile))
                         wm_sync_agents();

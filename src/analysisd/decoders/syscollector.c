@@ -55,7 +55,7 @@ int DecodeSyscollector(Eventinfo *lf)
 
     // Opening syscollector file
     snprintf(file_name, OS_SIZE_1024, "%s/%s", SYSCOLLECTOR_DIR, lf->agent_id);
-    snprintf(temp_file_name, OS_SIZE_1024, "%s/%s_tmp", SYSCOLLECTOR_DIR, lf->agent_id);
+    snprintf(temp_file_name, OS_SIZE_1024, "%s/.%s.tmp", SYSCOLLECTOR_DIR, lf->agent_id);
 
     if (fp = fopen(file_name, "r"), fp) { // File already exists
         // Zero buffer

@@ -61,7 +61,7 @@ void* wm_sys_main(wm_sys_t *sys) {
     #ifdef WIN32
         if (!checkVista()){
             mtwarn(WM_SYS_LOGTAG, "Network scan is incompatible with versions older than Vista.");
-            sys->flags.network = 0;
+            sys->flags.netinfo = 0;
         }
     #endif
 
@@ -75,7 +75,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         time_start = time(NULL);
 
         /* Network inventory */
-        if (sys->flags.network){
+        if (sys->flags.netinfo){
             #ifdef WIN32
                 sys_network_windows(WM_SYS_LOCATION);
             #elif defined(__linux__)
@@ -86,7 +86,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         }
 
         /* Operating System inventory */
-        if (sys->flags.os_scan){
+        if (sys->flags.osinfo){
             #ifdef WIN32
                 sys_os_windows(WM_SYS_LOCATION);
             #else
@@ -95,13 +95,13 @@ void* wm_sys_main(wm_sys_t *sys) {
         }
 
         /* Hardware inventory */
-        if (sys->flags.hardware){
+        if (sys->flags.hwinfo){
             #if defined(WIN32)
                 sys_hw_windows(WM_SYS_LOCATION);
             #elif defined(__linux__)
                 sys_hw_linux(queue_fd, WM_SYS_LOCATION);
             #else
-                sys->flags.hardware = 0;
+                sys->flags.hwinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Hardware inventory is not available for this OS version.");
             #endif
         }
@@ -178,15 +178,15 @@ void wm_sys_check() {
 
     // Check if evals
 
-    if (!sys->flags.network) {
+    if (!sys->flags.netinfo) {
         mtwarn(WM_SYS_LOGTAG, "Network scan disabled.");
     }
 
-    if (!sys->flags.os_scan) {
+    if (!sys->flags.osinfo) {
         mtwarn(WM_SYS_LOGTAG, "OS scan disabled.");
     }
 
-    if (!sys->flags.hardware) {
+    if (!sys->flags.hwinfo) {
         mtwarn(WM_SYS_LOGTAG, "Hardware scan disabled.");
     }
 
