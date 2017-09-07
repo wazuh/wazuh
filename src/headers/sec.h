@@ -68,7 +68,7 @@ typedef struct _keystore {
 int OS_CheckKeys(void);
 
 /* Read the keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed) __attribute((nonnull));
+void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit) __attribute((nonnull));
 
 /* Free the auth keys */
 void OS_FreeKeys(keystore *keys) __attribute((nonnull));

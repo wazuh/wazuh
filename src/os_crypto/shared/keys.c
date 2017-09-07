@@ -156,7 +156,7 @@ int OS_CheckKeys()
 }
 
 /* Read the authentication keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
+void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit)
 {
     FILE *fp;
 
@@ -285,7 +285,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
         __memclear(id, name, ip, key, KEYSIZE + 1);
 
         /* Check for maximum agent size */
-        if (keys->keysize >= (MAX_AGENTS - 2)) {
+        if ( !no_limit && keys->keysize >= (MAX_AGENTS - 2) ) {
             merror(AG_MAX_ERROR, MAX_AGENTS - 2);
             merror_exit(CONFIG_ERROR, keys_file);
         }
@@ -409,7 +409,7 @@ int OS_UpdateKeys(keystore *keys)
         /* Read keys */
         mdebug1("OS_ReadKeys");
         minfo(ENC_READ);
-        OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed);
+        OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed, 0);
 
         mdebug1("OS_StartCounter");
         OS_StartCounter(keys);

@@ -93,6 +93,7 @@ static void help_authd()
     print_out("    -x <path>   Full path to server certificate. Default: %s%s.", DEFAULTDIR, CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s%s.", DEFAULTDIR, KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
+    print_out("    -l          Disable agents limit for adding.");
     print_out(" ");
     exit(1);
 }
@@ -154,6 +155,7 @@ int main(int argc, char **argv)
     int test_config = 0;
     int status;
     int run_foreground = 0;
+    int no_limit = 0;
     gid_t gid;
     int client_sock = 0;
     const char *dir  = DEFAULTDIR;
@@ -190,7 +192,7 @@ int main(int argc, char **argv)
         const char *server_key = NULL;
         unsigned short port = 0;  // TODO: config.port
 
-        while (c = getopt(argc, argv, "Vdhtfig:D:p:c:v:sx:k:PF:ar"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfig:D:p:c:v:sx:k:PF:ar:l"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -299,6 +301,10 @@ int main(int argc, char **argv)
 
                 case 'a':
                     auto_method = 1;
+                    break;
+
+                case 'l':
+                    no_limit = 1;
                     break;
 
                 default:
@@ -507,7 +513,7 @@ int main(int argc, char **argv)
 
     /* Start working threads */
 
-    status = pthread_create(&thread_dispatcher, NULL, run_dispatcher, NULL);
+    status = pthread_create(&thread_dispatcher, NULL, run_dispatcher, &no_limit);
 
     if (status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
@@ -610,6 +616,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *id_exist = NULL;
     char buf[4096 + 1];
     int index;
+    int no_limit = *((int *) arg);
 
     authd_sigblock();
 
@@ -617,7 +624,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     memset(srcip, '\0', IPSIZE + 1);
 
     OS_PassEmptyKeyfile();
-    OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
+    OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
     mdebug1("Dispatch thread ready");
 
     while (running) {
@@ -800,6 +807,18 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
                     agentname = fname;
                 }
+            }
+
+            if ( !no_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
+                pthread_mutex_unlock(&mutex_keys);
+                merror("The maximum number of agents has been reached (%d)", MAX_AGENTS);
+                snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
+                SSL_write(ssl, response, strlen(response));
+                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                SSL_write(ssl, response, strlen(response));
+                SSL_free(ssl);
+                close(client.socket);
+                continue;
             }
 
             /* Add the new agent */
