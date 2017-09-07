@@ -490,7 +490,11 @@ else
 ifeq (${uname_S},Darwin)
 	cd ${EXTERNAL_OPENSSL} && ./Configure darwin64-x86_64-cc && ${MAKE} build_libs
 else
+ifeq (${uname_S},HP-UX)
+	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure hpux-ia64-gcc && ${MAKE} build_libs
+else
 	cd ${EXTERNAL_OPENSSL} && ./config && ${MAKE} build_libs
+endif
 endif
 endif
 

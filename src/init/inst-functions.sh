@@ -426,6 +426,12 @@ InstallCommon(){
         PREFIX=${INSTALLDIR}
     fi
 
+    if [ ${DIST_NAME} = "SunOS" ]; then
+        INSTALL="ginstall"
+    elif [ ${DIST_NAME} = "HP-UX" ]; then
+        INSTALL="/usr/local/coreutils/bin/install"
+    fi
+
     ./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
 
 	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/
