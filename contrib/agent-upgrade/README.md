@@ -5,7 +5,7 @@
 ### Create root CA
 
 ```
-openssl req -x509 -new -nodes -newkey rsa:2048 -keyout wpk_root.key -out wpk_root.pem -batch
+openssl req -x509 -new -nodes -newkey rsa:2048 -keyout wpk_root.key -out wpk_root.pem -batch -days 1825
 ```
 
 ### Create certificate and key
@@ -21,7 +21,7 @@ openssl req -new -nodes -newkey rsa:2048 -keyout wpkcert.key -out wpkcert.csr -s
 Sign this certificate with the root CA:
 
 ```
-openssl x509 -req -days 365 -in wpkcert.csr -CA wpk_root.pem -CAkey wpk_root.key -out wpkcert.pem -CAcreateserial
+openssl x509 -req -days 730 -in wpkcert.csr -CA wpk_root.pem -CAkey wpk_root.key -out wpkcert.pem -CAcreateserial
 ```
 
 ## Compile a package
