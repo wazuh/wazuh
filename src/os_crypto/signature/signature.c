@@ -265,13 +265,16 @@ int wpk_verify_cert(X509 * cert, const char ** ca_store) {
         ERR_load_crypto_strings();
 
         while (err = ERR_get_error(), err) {
-            merror("At RSA_verify(): %s (%lu)", ERR_reason_error_string(err), err);
+            merror("At wpk_verify_cert(): %s (%lu)", ERR_reason_error_string(err), err);
         }
 
         goto cleanup;
 
     case 0:
-        merror("Certificate couldn't be verified by CA.");
+        ERR_load_crypto_strings();
+
+        err = X509_STORE_CTX_get_error(store_ctx);
+        merror("Certificate couldn't be verified by CA: %s (%lu)", X509_verify_cert_error_string(err), err);
         break;
 
     case 1:
@@ -279,7 +282,7 @@ int wpk_verify_cert(X509 * cert, const char ** ca_store) {
         break;
 
     default:
-        merror("At RSA_verify(): unexpected result.");
+        merror("At wpk_verify_cert(): unexpected result.");
     }
 
 cleanup:
