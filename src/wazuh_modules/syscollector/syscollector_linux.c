@@ -1,17 +1,17 @@
 /*
  * Wazuh Module for System inventory for Linux
  * Copyright (C) 2017 Wazuh Inc.
- * 23 Aug, 2017.
+ * Aug, 2017.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- */
-
-#ifndef WIN32
+*/
 
 #include "syscollector.h"
+
+#if defined(__linux__)
 
 #include <sys/ioctl.h>
 #include <net/if_arp.h>
@@ -70,9 +70,11 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
 }
 
+#endif /* __linux__ */
+
 // Get OS inventory
 
-void sys_os_linux(int queue_fd, const char* LOCATION){
+void sys_os_unix(int queue_fd, const char* LOCATION){
 
     char *string;
 
@@ -88,13 +90,15 @@ void sys_os_linux(int queue_fd, const char* LOCATION){
 
     /* Send interface data in JSON format */
     string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_os_linux() sending '%s'", string);
+    mtdebug2(WM_SYS_LOGTAG, "sys_os_unix() sending '%s'", string);
     SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
 
     free(string);
 
 }
+
+#if defined(__linux__)
 
 // Get network inventory
 
@@ -298,10 +302,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             } else if (family == AF_PACKET && ifa->ifa_data != NULL){
 
                 /* Get MAC address and stats */
-                char MAC[18];
+                char MAC[MAC_LENGTH];
                 struct rtnl_link_stats *stats = ifa->ifa_data;
                 struct sockaddr_ll *addr = (struct sockaddr_ll*)ifa->ifa_addr;
-                snprintf(MAC, 18, "%02X:%02X:%02X:%02X:%02X:%02X", addr->sll_addr[0], addr->sll_addr[1], addr->sll_addr[2], addr->sll_addr[3], addr->sll_addr[4], addr->sll_addr[5]);
+                snprintf(MAC, MAC_LENGTH, "%02X:%02X:%02X:%02X:%02X:%02X", addr->sll_addr[0], addr->sll_addr[1], addr->sll_addr[2], addr->sll_addr[3], addr->sll_addr[4], addr->sll_addr[5]);
                 cJSON_AddStringToObject(interface, "MAC", MAC);
                 cJSON_AddNumberToObject(interface, "tx_packets", stats->tx_packets);
                 cJSON_AddNumberToObject(interface, "rx_packets", stats->rx_packets);
@@ -360,7 +364,7 @@ hw_info *get_system_linux(){
                 if (cpuname[0] == '\"' && (end = strchr(++cpuname, '\"'), end)) {
                     *end = '\0';
                 }
-                info->cpu_name = strdup(cpuname + (*cpuname == ' ' ? 1 : 0));
+                info->cpu_name = strdup(cpuname);
 
             } else if ((aux_string = strstr(string, "cpu cores")) != NULL){
 
@@ -770,4 +774,4 @@ char* get_default_gateway(char *ifa_name){
 
 }
 
-#endif // !WIN32
+#endif /* __linux__ */

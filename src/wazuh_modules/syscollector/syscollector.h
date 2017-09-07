@@ -10,17 +10,19 @@
  */
 
 #include "../wmodules.h"
+#include "shared.h"
 
 #ifndef WM_SYSCOLLECTOR
 #define WM_SYSCOLLECTOR
 
+#define WORKING_BUFFER_SIZE 15000
+#define MAX_TRIES 3
+
+#define MAC_LENGTH 18
 #define TYPE_LENGTH 64
 #define STATE_LENGTH 20
 #define MTU_LENGTH 20
 #define DHCP_LENGTH 10
-
-#define WORKING_BUFFER_SIZE 15000
-#define MAX_TRIES 3
 
 #define WM_SYS_DEF_INTERVAL 3600            // Default cycle interval (1 hour)
 #define WM_SYS_LOGTAG ARGV0 ":syscollector" // Tag for log messages
@@ -68,8 +70,8 @@ void sys_hw_linux(int queue_fd, const char* LOCATION);
 // Hardware inventory for Windows
 void sys_hw_windows(const char* LOCATION);
 
-// OS inventory for Linux
-void sys_os_linux(int queue_fd, const char* LOCATION);
+// OS inventory for Unix
+void sys_os_unix(int queue_fd, const char* LOCATION);
 
 // OS inventory for Windows
 void sys_os_windows(const char* LOCATION);

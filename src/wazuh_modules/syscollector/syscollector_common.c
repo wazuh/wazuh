@@ -58,6 +58,13 @@ void* wm_sys_main(wm_sys_t *sys) {
         }
     }
 
+    #ifdef WIN32
+        if (!checkVista()){
+            mtwarn(WM_SYS_LOGTAG, "Network scan is incompatible with versions older than Vista.");
+            sys->flags.network = 0;
+        }
+    #endif
+
     // Main loop
 
     while (1) {
@@ -71,8 +78,10 @@ void* wm_sys_main(wm_sys_t *sys) {
         if (sys->flags.network){
             #ifdef WIN32
                 sys_network_windows(WM_SYS_LOCATION);
-            #else
+            #elif defined(__linux__)
                 sys_network_linux(queue_fd, WM_SYS_LOCATION);
+            #elif defined(__MACH__) || defined(__FreeBSD__)
+                sys_network_bsd(queue_fd, WM_SYS_LOCATION);
             #endif
         }
 
@@ -81,16 +90,19 @@ void* wm_sys_main(wm_sys_t *sys) {
             #ifdef WIN32
                 sys_os_windows(WM_SYS_LOCATION);
             #else
-                sys_os_linux(queue_fd, WM_SYS_LOCATION);
+                sys_os_unix(queue_fd, WM_SYS_LOCATION);
             #endif
         }
 
         /* Hardware inventory */
         if (sys->flags.hardware){
-            #ifdef WIN32
+            #if defined(WIN32)
                 sys_hw_windows(WM_SYS_LOCATION);
-            #else
+            #elif defined(__linux__)
                 sys_hw_linux(queue_fd, WM_SYS_LOCATION);
+            #else
+                sys->flags.hardware = 0;
+                mtwarn(WM_SYS_LOGTAG, "Hardware inventory is not available for this OS version.");
             #endif
         }
 
