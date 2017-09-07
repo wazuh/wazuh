@@ -318,7 +318,7 @@ int main(int argc, char **argv)
     if (agent_id != NULL) {
         if (strcmp(agent_id, "000") != 0) {
             OS_PassEmptyKeyfile();
-            OS_ReadKeys(&keys, 1, 0);
+            OS_ReadKeys(&keys, 1, 0, 0);
 
             agt_id = OS_IsAllowedID(&keys, agent_id);
             if (agt_id < 0) {

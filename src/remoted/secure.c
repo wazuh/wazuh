@@ -84,7 +84,7 @@ void HandleSecure()
 
     /* Read authentication keys */
     minfo(ENC_READ);
-    OS_ReadKeys(&keys, 1, 0);
+    OS_ReadKeys(&keys, 1, 0, 0);
     OS_StartCounter(&keys);
 
     /* Set up peer size */

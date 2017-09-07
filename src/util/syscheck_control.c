@@ -289,7 +289,7 @@ int main(int argc, char **argv)
             int i;
             keystore keys = KEYSTORE_INITIALIZER;
 
-            OS_ReadKeys(&keys, 1, 0);
+            OS_ReadKeys(&keys, 1, 0, 0);
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {
@@ -355,7 +355,7 @@ int main(int argc, char **argv)
                            csv_output, json_entries, zero_counter);
         } else {
 
-            OS_ReadKeys(&keys, 1, 0);
+            OS_ReadKeys(&keys, 1, 0, 0);
 
             i = OS_IsAllowedID(&keys, agent_id);
             if (i < 0) {

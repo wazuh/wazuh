@@ -360,7 +360,7 @@ void wm_sync_agents() {
 
     mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing agents.");
     OS_PassEmptyKeyfile();
-    OS_ReadKeys(&keys, 0, 0);
+    OS_ReadKeys(&keys, 0, 0, 0);
 
     /* Insert new entries */
 

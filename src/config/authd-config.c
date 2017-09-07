@@ -24,6 +24,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *xml_force_time = "force_time";
     static const char *xml_purge = "purge";
     static const char *xml_use_password = "use_password";
+    static const char *xml_register_limit = "register_limit";
     static const char *xml_ciphers = "ciphers";
     static const char *xml_ssl_agent_ca = "ssl_agent_ca";
     static const char *xml_ssl_verify_host = "ssl_verify_host";
@@ -101,6 +102,15 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             }
 
             config->flags.use_password = b;
+        } else if (!strcmp(node[i]->element, xml_register_limit)) {
+            short b = eval_bool(node[i]->content);
+
+            if (b < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+
+            config->flags.register_limit = b;
         } else if (!strcmp(node[i]->element, xml_ciphers)) {
             free(config->ciphers);
             config->ciphers = strdup(node[i]->content);

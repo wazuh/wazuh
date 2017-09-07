@@ -616,7 +616,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *id_exist = NULL;
     char buf[4096 + 1];
     int index;
-    int no_limit = *((int *) arg);
+    int no_limit = *((int *) arg) || !config.flags.register_limit;
 
     authd_sigblock();
 
@@ -808,6 +808,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     agentname = fname;
                 }
             }
+
+            /* Check for agents limit */
 
             if ( !no_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
                 pthread_mutex_unlock(&mutex_keys);
