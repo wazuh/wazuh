@@ -527,7 +527,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    if (status = pthread_create(&thread_local_server, NULL, run_local_server, NULL), status != 0) {
+    if (status = pthread_create(&thread_local_server, NULL, run_local_server, &no_limit), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
         return EXIT_FAILURE;
     }
@@ -813,7 +813,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             if ( !no_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
                 pthread_mutex_unlock(&mutex_keys);
-                merror("The maximum number of agents has been reached (%d)", MAX_AGENTS);
+                merror(AG_MAX_ERROR, MAX_AGENTS - 2);
                 snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
                 SSL_write(ssl, response, strlen(response));
                 snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");

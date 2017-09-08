@@ -26,6 +26,7 @@
 #define ENOID       9
 #define ENOAGENT    10
 #define EDUPID      11
+#define EAGLIM      12
 
 static const struct {
     int code;
@@ -42,14 +43,15 @@ static const struct {
     { 9009, "Issue generating key" },
     { 9010, "No such agent ID" },
     { 9011, "Agent ID not found" },
-    { 9012, "Duplicated ID" }
+    { 9012, "Duplicated ID" },
+    { 9013, "Maximum number of agents reached" }
 };
 
 // Dispatch local request
-static char* local_dispatch(const char *input);
+static char* local_dispatch(const char *input, int no_limit);
 
 // Add a new agent
-static cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force);
+static cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force, int no_limit);
 
 // Remove an agent
 static cJSON* local_remove(const char *id);
@@ -66,6 +68,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
     ssize_t length;
     fd_set fdset;
     struct timeval timeout;
+    int no_limit = *((int *) arg) || !config.flags.register_limit;
 
     authd_sigblock();
 
@@ -117,7 +120,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         default:
             buffer[length] = '\0';
 
-            if (response = local_dispatch(buffer), response) {
+            if (response = local_dispatch(buffer, no_limit), response) {
                 send(peer, response, strlen(response), 0);
                 free(response);
             }
@@ -133,7 +136,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
 }
 
 // Dispatch local request
-char* local_dispatch(const char *input) {
+char* local_dispatch(const char *input, int no_limit) {
     cJSON *request;
     cJSON *function;
     cJSON *arguments;
@@ -181,7 +184,7 @@ char* local_dispatch(const char *input) {
         ip = item->valuestring;
         key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
         force = (item = cJSON_GetObjectItem(arguments, "force"), item) ? item->valueint : -1;
-        response = local_add(id, name, ip, key, force);
+        response = local_add(id, name, ip, key, force, no_limit);
     } else if (!strcmp(function->valuestring, "remove")) {
         cJSON *item;
 
@@ -237,7 +240,7 @@ fail:
     return output;
 }
 
-cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force) {
+cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force, int no_limit) {
     int index;
     char *id_exist;
     cJSON *response;
@@ -290,6 +293,13 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
             ierror = EDUPNAME;
             goto fail;
         }
+    }
+
+    /* Check for agents limit */
+
+    if ( !no_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
+        ierror = EAGLIM;
+        goto fail;
     }
 
     if (index = OS_AddNewAgent(&keys, id, name, ip, key), index < 0) {
