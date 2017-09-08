@@ -93,7 +93,7 @@ static void help_authd()
     print_out("    -x <path>   Full path to server certificate. Default: %s%s.", DEFAULTDIR, CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s%s.", DEFAULTDIR, KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
-    print_out("    -l          Disable agents limit.");
+    print_out("    -L          Force insertion though agent limit reached.");
     print_out(" ");
     exit(1);
 }
@@ -192,7 +192,7 @@ int main(int argc, char **argv)
         const char *server_key = NULL;
         unsigned short port = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfig:D:p:c:v:sx:k:PF:ar:l"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfig:D:p:c:v:sx:k:PF:ar:L"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -303,7 +303,7 @@ int main(int argc, char **argv)
                     auto_method = 1;
                     break;
 
-                case 'l':
+                case 'L':
                     no_limit = 1;
                     break;
 
