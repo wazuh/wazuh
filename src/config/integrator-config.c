@@ -117,7 +117,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
                                (id_i +2) * sizeof(int),
                                integrator_config[s]->rule_id);
 
-                    integrator_config[s]->rule_id[id_i + i] = 0;
+                    integrator_config[s]->rule_id[id_i + 1] = 0;
                     integrator_config[s]->rule_id[id_i] = r_id;
 
                     str_pt = strchr(str_pt, ',');
