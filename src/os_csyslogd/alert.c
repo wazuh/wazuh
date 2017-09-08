@@ -281,13 +281,29 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
  * Returns 1 on success or 0 on error
  */
 int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config) {
-    cJSON * rule = cJSON_GetObjectItem(json_data, "rule");
+    cJSON * rule;
+    cJSON * timestamp;
     cJSON * groups;
     cJSON * item;
     char * string;
     int i;
+    char msg[OS_MAXSTR];
+    struct tm tm;
+    time_t now;
+    char * end;
+    char strtime[64];
 
     mdebug2("OS_Alert_SendSyslog_JSON()");
+
+    if (rule = cJSON_GetObjectItem(json_data, "rule"), !rule) {
+        merror("Alert with no rule field.");
+        return 0;
+    }
+
+    if (timestamp = cJSON_GetObjectItem(json_data, "timestamp"), !timestamp) {
+        merror("Alert with no timestamp field.");
+        return 0;
+    }
 
     /* Look if location is set */
 
@@ -344,8 +360,35 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
     }
 
     string = cJSON_PrintUnformatted(json_data);
-    mdebug2("OS_Alert_SendSyslog_JSON(): sending '%s'", string);
-    OS_SendUDPbySize(syslog_config->socket, strlen(string), string);
+
+    now = time(NULL);
+    localtime_r(&now, &tm);
+
+    if (end = strptime(timestamp->valuestring, "%FT%T%z", &tm), !end || *end) {
+        merror("Could not parse timestamp '%s'.", timestamp->valuestring);
+    }
+
+    strftime(strtime, sizeof(strtime), "%b %d %T", &tm);
+
+    // Space-padding instead of zero-padding
+    if (strtime[4] == '0') {
+        strtime[4] = ' ';
+    }
+
+    /* Create the syslog message */
+    snprintf(msg, OS_SIZE_2048,
+             "<%u>%s %s ossec: %s",
+
+             /* syslog header */
+             syslog_config->priority, strtime, syslog_config->use_fqdn ? __shost_long : __shost,
+
+             /* JSON Encoded Data */
+             string
+            );
+
+    mdebug2("OS_Alert_SendSyslog_JSON(): sending '%s'", msg);
+    OS_SendUDPbySize(syslog_config->socket, strlen(msg), msg);
     free(string);
+
     return 1;
 }
