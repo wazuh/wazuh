@@ -155,7 +155,6 @@ int main(int argc, char **argv)
     int test_config = 0;
     int status;
     int run_foreground = 0;
-    int no_limit = 0;
     gid_t gid;
     int client_sock = 0;
     const char *dir  = DEFAULTDIR;
@@ -186,11 +185,12 @@ int main(int argc, char **argv)
         int use_ip_address = 0;
         int clear_removed = 0;
         int force_insert = -2;
+        int no_limit = 0;
         const char *ciphers = NULL;
         const char *ca_cert = NULL;
         const char *server_cert = NULL;
         const char *server_key = NULL;
-        unsigned short port = 0;  // TODO: config.port
+        unsigned short port = 0;
 
         while (c = getopt(argc, argv, "Vdhtfig:D:p:c:v:sx:k:PF:ar:l"), c != -1) {
             switch (c) {
@@ -381,6 +381,10 @@ int main(int argc, char **argv)
         if (port) {
             config.port = port;
         }
+
+        if (no_limit) {
+            config.flags.register_limit = 0;
+        }
     }
 
     /* Exit here if test config is set */
@@ -513,7 +517,7 @@ int main(int argc, char **argv)
 
     /* Start working threads */
 
-    status = pthread_create(&thread_dispatcher, NULL, run_dispatcher, &no_limit);
+    status = pthread_create(&thread_dispatcher, NULL, run_dispatcher, NULL);
 
     if (status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
@@ -527,7 +531,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    if (status = pthread_create(&thread_local_server, NULL, run_local_server, &no_limit), status != 0) {
+    if (status = pthread_create(&thread_local_server, NULL, run_local_server, NULL), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
         return EXIT_FAILURE;
     }
@@ -616,7 +620,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *id_exist = NULL;
     char buf[4096 + 1];
     int index;
-    int no_limit = *((int *) arg) || !config.flags.register_limit;
 
     authd_sigblock();
 
@@ -811,7 +814,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             /* Check for agents limit */
 
-            if ( !no_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
+            if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
                 pthread_mutex_unlock(&mutex_keys);
                 merror(AG_MAX_ERROR, MAX_AGENTS - 2);
                 snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
