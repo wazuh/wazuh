@@ -93,7 +93,7 @@ static void help_authd()
     print_out("    -x <path>   Full path to server certificate. Default: %s%s.", DEFAULTDIR, CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s%s.", DEFAULTDIR, KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
-    print_out("    -l          Disable agents limit for adding.");
+    print_out("    -l          Disable agents limit.");
     print_out(" ");
     exit(1);
 }

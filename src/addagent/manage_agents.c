@@ -71,7 +71,7 @@ char *chomp(char *str)
     return (str);
 }
 
-int add_agent(int json_output)
+int add_agent(int json_output, int no_limit)
 {
     int i = 1;
     FILE *fp;
@@ -307,6 +307,11 @@ int add_agent(int json_output)
         /* If user accepts to add */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
             if (sock < 0) {
+                if ( !no_limit && limitReached() ) {
+                    merror(AG_MAX_ERROR, MAX_AGENTS - 2);
+                    merror_exit(CONFIG_ERROR, KEYS_FILE);
+                }
+
                 time3 = time(0);
                 rand2 = os_random();
 
@@ -540,4 +545,79 @@ int list_agents(int cmdlist)
     }
 
     return (0);
+}
+
+int limitReached() {
+    FILE *fp;
+    const char *keys_file = isChroot() ? KEYS_FILE : KEYSFILE_PATH;
+    char buffer[OS_BUFFER_SIZE + 1];
+    int counter = 0;
+
+    fp = fopen(keys_file, "r");
+    if (!fp) {
+        /* We can leave from here */
+        merror(FOPEN_ERROR, keys_file, errno, strerror(errno));
+        merror_exit(NO_CLIENT_KEYS);
+    }
+
+    /* Read each line. Lines are divided as "id name ip key" */
+    while (fgets(buffer, OS_BUFFER_SIZE, fp) != NULL) {
+        char *tmp_str;
+
+        if ((buffer[0] == '#') || (buffer[0] == ' ')) {
+            continue;
+        }
+
+        /* Get ID */
+        tmp_str = strchr(buffer, ' ');
+        if (!tmp_str) {
+            merror(INVALID_KEY, buffer);
+            continue;
+        }
+
+        *tmp_str = '\0';
+        tmp_str++;
+
+        /* Removed entry */
+        if (*tmp_str == '#' || *tmp_str == '!') {
+            continue;
+        }
+
+        /* Get name */
+        tmp_str = strchr(tmp_str, ' ');
+        if (!tmp_str) {
+            merror(INVALID_KEY, buffer);
+            continue;
+        }
+
+        *tmp_str = '\0';
+        tmp_str++;
+
+        /* Get IP address */
+        tmp_str = strchr(tmp_str, ' ');
+        if (!tmp_str) {
+            merror(INVALID_KEY, buffer);
+            continue;
+        }
+
+        *tmp_str = '\0';
+        tmp_str++;
+
+        /* Get key */
+        tmp_str = strchr(tmp_str, '\n');
+        if (tmp_str) {
+            *tmp_str = '\0';
+        }
+
+        counter++;
+        continue;
+    }
+
+    fclose(fp);
+
+    /* Check for maximum agent size */
+    if ( counter >= (MAX_AGENTS - 2) )
+        return 1;
+    return 0;
+
 }
