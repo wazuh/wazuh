@@ -321,7 +321,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 #ifndef ONEWAY_ENABLED
     /* Check if the server has responded */
     if ((cu_time - available_server) > agt->notify_time) {
-        minfo("Sending agent information to server.");
+        mdebug1("Sending agent information to server.");
         send_win32_info(cu_time);
 
         /* Attempt to send message again */
