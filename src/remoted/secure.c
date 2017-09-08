@@ -29,7 +29,7 @@ void HandleSecure()
     int n_events = 0;
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
-    netsize_t length;
+    uint32_t length;
     struct sockaddr_in peer_info;
 
 #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
@@ -163,7 +163,7 @@ void HandleSecure()
                 } else {
                     sock_client = fd;
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
-                    length = wnet_order(length);
+                    length = le32toh(length);
 
                     if (getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size) < 0) {
                         merror("Couldn't get the remote peer information: %s", strerror(errno));

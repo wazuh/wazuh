@@ -16,7 +16,7 @@
 int send_msg(int agentid, const char *msg)
 {
     ssize_t msg_size;
-    netsize_t length;
+    uint32_t length;
     char crypt_msg[OS_MAXSTR + 1];
     int recv_b;
 
@@ -30,7 +30,7 @@ int send_msg(int agentid, const char *msg)
     if (agt->protocol == UDP_PROTO) {
         recv_b = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
     } else {
-        length = wnet_order(msg_size);
+        length = htole32(msg_size);
         OS_SendTCPbySize(agt->sock, sizeof(length), (char *)&length);
         recv_b = OS_SendTCPbySize(agt->sock, msg_size, crypt_msg);
     }
