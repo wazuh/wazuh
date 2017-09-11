@@ -567,7 +567,7 @@ AddWhite()
         if [ "X${USER_WHITE_LIST}" = "X" ]; then
             read ANSWER
         else
-            ANSWER=$yes
+            ANSWER=${USER_WHITE_LIST}
         fi
 
         if [ "X${ANSWER}" = "X" ] ; then
@@ -607,7 +607,7 @@ AddCAStore()
         if [ "X${USER_CA_STORE}" = "X" ]; then
             read ANSWER
         else
-            ANSWER=$yes
+            ANSWER=${USER_CA_STORE}
         fi
 
         if [ "X${ANSWER}" = "X" ] ; then
