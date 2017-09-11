@@ -57,11 +57,13 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DHIGHFIRST
 		PATH:=${PATH}:/usr/vac/bin
 		OSSEC_LDFLAGS+=-pthread
+		CFLAGS+=-Wl,--start-group
 else
 ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-std=gnu99
+		CFLAGS+=-Wl,--start-group
 		OSSEC_LDFLAGS+=-z relax=secadj
 		OSSEC_LDFLAGS+=-lsocket -lnsl -lresolv
 		LUA_PLAT=solaris
@@ -80,19 +82,20 @@ ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
 		OSSEC_LDFLAGS+=-pthread
 		LUA_PLAT=freebsd
-		CFLAGS+=-I/usr/local/include
+		CFLAGS+=-I/usr/local/include -Wl,--start-group
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 else
 ifeq (${uname_S},NetBSD)
 		DEFINES+=-DNetBSD
 		OSSEC_LDFLAGS+=-pthread
+		CFLAGS+=-Wl,--start-group
 		LUA_PLAT=posix
 else
 ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
 		DEFINES+=-pthread
 		LUA_PLAT=posix
-		CFLAGS+=-I/usr/local/include
+		CFLAGS+=-I/usr/local/include -Wl,--start-group
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 else
 ifeq (${uname_S},HP-UX)
@@ -107,6 +110,7 @@ ifeq (${uname_S},HP-UX)
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
 		USE_LEGACY_SSL=yes
+		CFLAGS+=-Wl,--start-group
 else
 	    # Unknow platform
 endif # HPUX

@@ -76,6 +76,9 @@ void sys_os_unix(int queue_fd, const char* LOCATION);
 // OS inventory for Windows
 void sys_os_windows(const char* LOCATION);
 
+// Network inventory for BSD based systems
+void sys_network_bsd(int queue_fd, const char* LOCATION);
+
 // Network inventory for Linux
 void sys_network_linux(int queue_fd, const char* LOCATION);
 

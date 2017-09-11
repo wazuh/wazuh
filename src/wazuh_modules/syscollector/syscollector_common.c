@@ -10,6 +10,7 @@
  */
 
 #include "syscollector.h"
+#include <errno.h>
 
 static wm_sys_t *sys;                           // Pointer to configuration
 
@@ -80,7 +81,7 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys_network_windows(WM_SYS_LOCATION);
             #elif defined(__linux__)
                 sys_network_linux(queue_fd, WM_SYS_LOCATION);
-            #elif defined(__MACH__) || defined(__FreeBSD__)
+            #elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
                 sys_network_bsd(queue_fd, WM_SYS_LOCATION);
             #endif
         }
@@ -200,8 +201,8 @@ void delay(unsigned int ms) {
 #ifdef WIN32
     Sleep(ms);
 #else
-    struct timeval timeout = { 0, ms * 1000 };
-    select(0 , NULL, NULL, NULL, &timeout);
+    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
+    select(0, NULL, NULL, NULL, &timeout);
 #endif
 
 }
