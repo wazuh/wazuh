@@ -112,6 +112,11 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     :param allowed_sort_fields: Check sort_by with allowed_sort_fields (array).
     :return: sorted array.
     """
+    def check_sort_fields(allowed_sort_fields, sort_by):
+        # Check if every element in sort['fields'] is in allowed_sort_fields
+        if not sort_by.issubset(allowed_sort_fields):
+            uncorrect_fields = map(lambda x: str(x), sort_by - allowed_sort_fields)
+            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(list(allowed_sort_fields), uncorrect_fields))
 
     if not array:
         return array
@@ -124,17 +129,12 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         raise WazuhException(1402)
 
     if allowed_sort_fields:
-        for sort_field in sort_by:
-            if sort_field not in allowed_sort_fields:
-                raise WazuhException(1403, 'Allowed sort fields: {0}. Field: {1}'.format(allowed_sort_fields, sort_field))
+        check_sort_fields(set(allowed_sort_fields), set(sort_by))
 
     if sort_by:  # array should be a dictionary or a Class
         if type(array[0]) is dict:
-            allowed_sort_fields = array[0].keys()
-            for sort_field in sort_by:
-                if sort_field not in allowed_sort_fields:
-                    raise WazuhException(1403, 'Allowed sort fields: {0}. Field: {1}'.format(allowed_sort_fields, sort_field))
-
+            check_sort_fields(set(array[0].keys()), set(sort_by))
+            
             return sorted(array, key=lambda o: tuple(o.get(a) for a in sort_by), reverse=order_desc)
         else:
             return sorted(array, key=lambda o: tuple(getattr(o, a) for a in sort_by), reverse=order_desc)

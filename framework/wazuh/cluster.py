@@ -212,7 +212,7 @@ class Node:
         nodes = config_cluster["cluster.nodes"]
 
         discard_list = []
-        sychronize_list = []
+        synchronize_list = []
         error_list = []
 
         # auth
@@ -377,13 +377,13 @@ class Node:
 
 
                 item["updated"] = True
-                sychronize_list.append(item)
+                synchronize_list.append(item)
 
         #print check_list
         final_output = {
             'discard': discard_list,
             'error': error_list,
-            'updated': sychronize_list
+            'updated': synchronize_list
         }
 
         if output_file:

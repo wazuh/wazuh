@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
+import re
 from glob import glob
 from xml.etree.ElementTree import fromstring
 import wazuh.configuration as configuration
@@ -207,25 +207,22 @@ class Decoder:
             position = 0
 
             # wrap the data
-            if version_info.major == 2:
-                f = open("{0}/{1}".format(decoder_path, decoder_file))
-            else:
-                f = open("{0}/{1}".format(decoder_path, decoder_file), encoding="utf-8")
+            with open("{0}/{1}".format(decoder_path, decoder_file)) as f:
+                data = f.read()
 
-            data = f.read()
+            data = re.sub("(<!--.*?-->)", "", data, flags=re.MULTILINE | re.DOTALL)
             data = data.replace(" -- ", " -INVALID_CHAR ").replace("\<;", "\INVALID_CHAR;")
-            f.close()
             xmldata = '<root_tag>' + data + '</root_tag>'
 
             root = fromstring(xmldata)
             for xml_decoder in root.getchildren():
                 # New decoder
                 if xml_decoder.tag.lower() == "decoder":
-                    decoder = Decoder()
-                    decoder.path = decoder_path
-                    decoder.file = decoder_file
-                    decoder.status = decoder_status
-                    decoder.name = xml_decoder.attrib['name']
+                    decoder          = Decoder()
+                    decoder.path     = decoder_path
+                    decoder.file     = decoder_file
+                    decoder.status   = decoder_status
+                    decoder.name     = xml_decoder.attrib['name']
                     decoder.position = position
                     position += 1
 

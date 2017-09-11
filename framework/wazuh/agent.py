@@ -8,6 +8,7 @@ from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
 from wazuh.database import Connection
+from wazuh.InputValidator import InputValidator
 from wazuh import manager
 from wazuh import common
 from glob import glob
@@ -22,6 +23,7 @@ from pwd import getpwnam
 from grp import getgrnam
 from time import time, sleep
 import socket
+import hashlib
 from distutils.version import StrictVersion
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -561,6 +563,39 @@ class Agent:
 
         self.id = agent_id
 
+    def _remove_single_group(self, group_id):
+        """
+        Remove the group in every agent.
+
+        :param group_id: Group ID.
+        :return: Confirmation message.
+        """
+
+        if group_id.lower() == "default":
+            raise WazuhException(1712)
+
+        if not self.group_exists(group_id):
+            raise WazuhException(1710, group_id)
+
+        ids = []
+
+        # Remove agent group
+        agents = self.get_agent_group(group_id=group_id, limit=None)
+        for agent in agents['items']:
+            self.unset_group(agent['id'])
+            ids.append(agent['id'])
+
+        # Remove group directory
+        group_path = "{0}/{1}".format(common.shared_path, group_id)
+        group_backup = "{0}/groups/{1}_{2}".format(common.backup_path, group_id, int(time()))
+        if path.exists(group_path):
+            move(group_path, group_backup)
+
+        # msg = "Group '{0}' removed.".format(group_id)
+
+        # return {'msg': msg, 'affected_agents': ids}
+
+
     @staticmethod
     def get_agents_overview(status="all", os_platform="all", os_version="all", offset=0, limit=common.database_limit, sort=None, search=None):
         """
@@ -1025,7 +1060,7 @@ class Agent:
         return data
 
     @staticmethod
-    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, hash_algorithm='md5'):
         """
         Gets the existing groups.
 
@@ -1035,11 +1070,24 @@ class Agent:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        def get_hash(directory):
+            filename = "{0}/{1}/merged.mg".format(common.shared_path, directory)
+
+            with open(filename, 'rb') as f:
+                hashing.update(f.read())
+
+            return hashing.hexdigest()
 
         # Connect DB
         db_global = glob(common.database_path_global)
         if not db_global:
             raise WazuhException(1600)
+
+        # check hash algorithm
+        if not hash_algorithm in hashlib.algorithms_available:
+            raise WazuhException(1723)
+
+        hashing = hashlib.new(hash_algorithm) 
 
         conn = Connection(db_global[0])
         query = "SELECT {0} FROM agent WHERE `group` = :group_id"
@@ -1047,18 +1095,20 @@ class Agent:
         # Group names
         data = []
         for entry in listdir(common.shared_path):
-            item = {}
-
             full_entry = path.join(common.shared_path, entry)
             if not path.isdir(full_entry):
                 continue
 
-            item['name'] = entry
-
             # Group count
-            request = {'group_id': item['name']}
+            request = {'group_id': entry}
             conn.execute(query.format('COUNT(*)'), request)
-            item['count'] = conn.fetch()[0]
+
+            # merged.mg and agent.conf sum
+            merged_sum = get_hash(entry)
+            conf_sum   = get_hash(entry)
+
+            item = {'count':conn.fetch()[0], 'name': entry,
+                    'merged_sum': merged_sum, 'conf_sum': conf_sum}
 
             data.append(item)
 
@@ -1081,6 +1131,9 @@ class Agent:
         :param group_id: Group ID.
         :return: True if group exists, False otherwise
         """
+        # Input Validation of group_id
+        if not InputValidator().group(group_id):
+            raise WazuhException(1722)
 
         db_global = glob(common.database_path_global)
         if not db_global:
@@ -1108,6 +1161,9 @@ class Agent:
         :param group_id: Group ID.
         :return: True if group exists, False otherwise
         """
+        # Input Validation of group_id
+        if not InputValidator().group(group_id):
+            raise WazuhException(1722)
 
         if path.exists("{0}/{1}".format(common.shared_path, group_id)):
             return True
@@ -1115,7 +1171,7 @@ class Agent:
             return False
 
     @staticmethod
-    def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
         """
         Gets the agents in a group
 
@@ -1133,12 +1189,24 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
+        valid_select_fiels = ["id", "name", "ip", "last_keepalive", "os_name", 
+                             "os_version", "os_platform", "version",
+                             "config_sum", "merged_sum"]
 
         # Init query
         query = "SELECT {0} FROM agent WHERE `group` = :group_id"
         fields = {'id': 'id', 'name': 'name'}  # field: db_column
-        select = ['id', 'name']
         request = {'group_id': group_id}
+
+        # Select
+        if select:
+            if not set(select['fields']).issubset(valid_select_fiels):
+                uncorrect_fields = map(lambda x: str(x), set(select['fields']) - set(valid_select_fiels))
+                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
+                        format(valid_select_fiels, uncorrect_fields))
+            select_fields = select['fields']
+        else:
+            select_fields = valid_select_fiels
 
         # Search
         if search:
@@ -1153,10 +1221,11 @@ class Agent:
         # Sorting
         if sort:
             if sort['fields']:
-                allowed_sort_fields = fields.keys()
+                allowed_sort_fields = select_fields
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
                 if not set(sort['fields']).issubset(allowed_sort_fields):
-                    raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
+                    raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.\
+                        format(allowed_sort_fields, sort['fields']))
 
                 order_str_fields = ['{0} {1}'.format(fields[i], sort['order']) for i in sort['fields']]
                 query += ' ORDER BY ' + ','.join(order_str_fields)
@@ -1172,19 +1241,10 @@ class Agent:
             request['limit'] = limit
 
         # Data query
-        conn.execute(query.format(','.join(select)), request)
+        conn.execute(query.format(','.join(select_fields)), request)
 
-        data['items'] = []
-
-        for tuple in conn:
-            data_tuple = {}
-
-            if tuple[0] != None:
-                data_tuple['id'] = str(tuple[0]).zfill(3)
-            if tuple[1] != None:
-                data_tuple['name'] = tuple[1]
-
-            data['items'].append(data_tuple)
+        data['items'] = [{field:str(tuple_elem).zfill(3) for field,tuple_elem \
+                        in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
 
         return data
 
@@ -1242,6 +1302,9 @@ class Agent:
         :param group_id: Group ID.
         :return: Confirmation message.
         """
+        # Input Validation of group_id
+        if not InputValidator().group(group_id):
+            raise WazuhException(1722)
 
         group_path = "{0}/{1}".format(common.shared_path, group_id)
 
@@ -1273,6 +1336,10 @@ class Agent:
         :return: Confirmation message.
         """
 
+        # Input Validation of group_id
+        if not InputValidator().group(group_id):
+            raise WazuhException(1722)
+
         if group_id.lower() == "default":
             raise WazuhException(1712)
 
@@ -1280,22 +1347,27 @@ class Agent:
             raise WazuhException(1710, group_id)
 
         ids = []
+        if isinstance(group_id, list):
+            for id in group_id:
+                try:
+                    Agent()._remove_single_group(id)
+                except Exception as e:
+                    ids.append(create_exception_dic(id, e))
+        else:
+            try:
+                Agent()._remove_single_group(group_id)
+            except Exception as e:
+                ids.append(create_exception_dic(group_id, e))
 
-        # Remove agent group
-        agents = Agent.get_agent_group(group_id=group_id, limit=None)
-        for agent in agents['items']:
-            Agent.unset_group(agent['id'])
-            ids.append(agent['id'])
+        final_dict = {}
+        if not ids:
+            message = 'All selected groups were removed'
+            final_dict = {'msg': message}
+        else:
+            message = 'Some groups were not removed'
+            final_dict = {'msg': message, 'ids': ids}
 
-        # Remove group directory
-        group_path = "{0}/{1}".format(common.shared_path, group_id)
-        group_backup = "{0}/groups/{1}_{2}".format(common.backup_path, group_id, int(time()))
-        if path.exists(group_path):
-            move(group_path, group_backup)
-
-        msg = "Group '{0}' removed.".format(group_id)
-
-        return {'msg': msg, 'affected_agents': ids}
+        return final_dict
 
     @staticmethod
     def set_group(agent_id, group_id, force=False):
@@ -1307,6 +1379,9 @@ class Agent:
         :param force: No check if agent exists
         :return: Confirmation message.
         """
+        # Input Validation of group_id
+        if not InputValidator().group(group_id):
+            raise WazuhException(1722)
 
         agent_id = agent_id.zfill(3)
         if agent_id == "000":
@@ -1353,7 +1428,6 @@ class Agent:
         :param force: No check if agent exists
         :return: Confirmation message.
         """
-
         # Check if agent exists
         if not force:
             Agent(agent_id).get_basic_information()
