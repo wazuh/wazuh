@@ -13,6 +13,12 @@
 #include "remoted.h"
 #include "os_net/os_net.h"
 
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/endian.h>
+#elif defined(__MACH__)
+#include <machine/endian.h>
+#endif
+
 /* pthread send_msg mutex */
 static pthread_mutex_t sendmsg_mutex;
 

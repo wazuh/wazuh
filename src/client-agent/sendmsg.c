@@ -11,6 +11,11 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/endian.h>
+#elif defined(__MACH__)
+#include <machine/endian.h>
+#endif
 
 /* Send a message to the server */
 int send_msg(int agentid, const char *msg)

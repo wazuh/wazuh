@@ -14,6 +14,12 @@
 #include <sys/event.h>
 #endif /* __linux__ */
 
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/endian.h>
+#elif defined(__MACH__)
+#include <machine/endian.h>
+#endif
+
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
