@@ -58,13 +58,9 @@ void randombytes(void *ptr, size_t length)
 void srandom_init(void)
 {
 #ifndef WIN32
-#ifdef __OpenBSD__
-    srandomdev();
-#else
     unsigned int seed;
     randombytes(&seed, sizeof seed);
     srandom(seed);
-#endif /* !__OpenBSD__ */
 #endif /* !WIN32 */
 }
 
