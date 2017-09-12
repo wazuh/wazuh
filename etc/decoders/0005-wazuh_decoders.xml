@@ -12,5 +12,5 @@
   <parent>wazuh</parent>
   <prematch offset="after_parent">^Agent buffer:</prematch>
   <regex offset="after_prematch">^ '(\S+)'.</regex>
-  <order>status</order>
+  <order>level</order>
 </decoder>
