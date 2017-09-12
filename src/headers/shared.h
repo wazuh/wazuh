@@ -43,6 +43,7 @@
 
 #ifndef WIN32
 #include <sys/wait.h>
+#include <sys/resource.h>
 
 // Only Linux and FreeBSD need mount.h */
 #if defined(Linux) || defined(FreeBSD)

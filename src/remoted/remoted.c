@@ -41,6 +41,17 @@ void HandleRemote(int uid)
         }
     }
 
+    // Set resource limit for file descriptors
+
+    {
+        rlim_t nofile = getDefine_Int("remoted", "rlimit_nofile", 1024, INT_MAX);
+        struct rlimit rlimit = { nofile, nofile };
+
+        if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
+            merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+        }
+    }
+
     /* Bind TCP */
     if (logr.proto[position] == TCP_PROTO) {
         if ((logr.sock =
