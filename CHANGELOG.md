@@ -93,6 +93,8 @@ All notable changes to this project will be documented in this file.
 - Prevented Monitord from rotating non-existent logs.
 - Some fixes to support HP-UX.
 - Prevent processes from sending events when TCP connection is lost.
+- Fixed output header by Syslog client when reading JSON alerts.
+- Fixed bug in Integrator settings parser when reading rules list.
 
 ## [v2.1.0] - 2017-08-14
 

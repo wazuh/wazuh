@@ -13,6 +13,11 @@
 #include "remoted.h"
 #include "os_net/os_net.h"
 
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/endian.h>
+#elif defined(__MACH__)
+#include <machine/endian.h>
+#endif
 
 /* pthread key update mutex */
 static pthread_mutex_t keyupdate_mutex;
@@ -68,7 +73,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     int key_id;
     int sock = -1;
     ssize_t msg_size, send_b;
-    netsize_t length;
+    uint32_t length;
     char crypt_msg[OS_MAXSTR + 1];
     struct sockaddr_in peer_info;
     int retval = 0;
@@ -110,7 +115,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
                (struct sockaddr *)&peer_info,
                logr.peer_size);
     } else {
-        length = wnet_order(msg_size);
+        length = htole32(msg_size);
         send(sock, (char*)&length, sizeof(length), 0);
         send_b = send(sock, crypt_msg, msg_size, 0);
     }

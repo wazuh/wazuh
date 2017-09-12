@@ -37,7 +37,7 @@ else
         GROUPADD="/usr/sbin/pw groupadd"
         USERADD="/usr/sbin/pw useradd"
         OSMYSHELL="/sbin/nologin"
-    elif [ "$UNAME" = "SunOS" ]; then
+    elif [ "$UNAME" = "SunOS" -o "$UNAME" = "OpenBSD" ]; then
         GROUPADD="/usr/sbin/groupadd"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"

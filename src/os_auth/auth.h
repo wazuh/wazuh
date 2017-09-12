@@ -32,7 +32,7 @@
 #include "addagent/manage_agents.h"
 #include "os_net/os_net.h"
 #include "config/authd-config.h"
-
+#include <pthread.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>

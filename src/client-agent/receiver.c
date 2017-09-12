@@ -15,6 +15,12 @@
 #include "os_net/os_net.h"
 #include "agentd.h"
 
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/endian.h>
+#elif defined(__MACH__)
+#include <machine/endian.h>
+#endif
+
 /* Global variables */
 static FILE *fp = NULL;
 static char file_sum[34] = "";
@@ -26,7 +32,7 @@ static char file[OS_SIZE_1024 + 1] = "";
 int receive_msg()
 {
     ssize_t recv_b;
-    netsize_t length;
+    uint32_t length;
     size_t msg_length;
     int reads = 0;
     char buffer[OS_MAXSTR + 1];
@@ -45,7 +51,7 @@ int receive_msg()
             }
 
             recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
-            length = wnet_order(length);
+            length = le32toh(length);
 
             // Manager disconnected or error
 
