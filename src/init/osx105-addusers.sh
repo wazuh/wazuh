@@ -100,7 +100,7 @@ for U in ${NEWUSERS}; do
        sudo ${DSCL} localhost -create /Local/Default/Users/${U}
        check_errm "Error creating user ${U}" "87"
        sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} RecordName ${U}
-       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} RealName "ossecmacct"
+       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} RealName "${U}acct"
        sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} NFSHomeDirectory /var/ossec
        sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} UniqueID ${j}
        sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} PrimaryGroupID ${new_gid}
