@@ -3,8 +3,8 @@
 set -e
 set -u
 
-if ! [ $# -eq 5 ]; then
-    echo "Usage: ${0} USERNAME_DEFAULT USERNAME_MAIL USERNAME_REMOTE GROUPNAME DIRECTORY.";
+if ! [ $# -eq 6 ]; then
+    echo "Usage: ${0} USERNAME_DEFAULT USERNAME_MAIL USERNAME_REMOTE GROUPNAME DIRECTORY INSTYPE.";
     exit 1;
 fi
 
@@ -15,6 +15,7 @@ USER_MAIL=$2
 USER_REM=$3
 GROUP=$4
 DIR=$5
+INSTYPE=$6
 
 UNAME=$(uname);
 
@@ -76,7 +77,15 @@ else
         fi
     fi
 
-    for U in ${USER} ${USER_MAIL} ${USER_REM}; do
+    if [ "X$INSTYPE" = "Xserver" ]; then
+        NEWUSERS="${USER} ${USER_MAIL} ${USER_REM}"
+    elif [ "X$INSTYPE" = "Xlocal" ]; then
+        NEWUSERS="${USER} ${USER_MAIL}"
+    else
+        NEWUSERS=${USER}
+    fi
+
+    for U in ${NEWUSERS}; do
         if ! grep "^${U}" /etc/passwd > /dev/null 2>&1; then
 	    if [ "$UNAME" = "OpenBSD" ] || [ "$UNAME" = "SunOS" ] || [ "$UNAME" = "HP-UX" ]; then
                ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
