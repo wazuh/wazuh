@@ -31,7 +31,7 @@ static char file[OS_SIZE_1024 + 1] = "";
 int receive_msg()
 {
     ssize_t recv_b;
-    uint32_t length;
+    netsize_t length;
     int reads = 0;
     char buffer[OS_MAXSTR + 1];
     char cleartext[OS_MAXSTR + 1];
@@ -49,7 +49,7 @@ int receive_msg()
             }
 
             recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
-            length = le32toh(length);
+            length = wnet_order(length);
 
             // Manager disconnected or error
 

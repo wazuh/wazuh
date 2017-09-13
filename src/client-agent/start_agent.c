@@ -137,7 +137,7 @@ int connect_server(int initial_id)
 void start_agent(int is_startup)
 {
     ssize_t recv_b = 0;
-    uint32_t length;
+    netsize_t length;
     int attempts = 0, g_attempts = 1;
 
     char *tmp_msg;
@@ -165,7 +165,7 @@ void start_agent(int is_startup)
         while (attempts <= 5) {
             if (agt->protocol == TCP_PROTO) {
                 recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
-                length = le32toh(length);
+                length = wnet_order(length);
 
                 if (recv_b > 0) {
                     recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);

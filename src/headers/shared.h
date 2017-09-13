@@ -149,10 +149,6 @@ typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
 
-// Windows runs on little endian systems
-#define htole32(x) x
-#define le32toh(x) x
-
 #define MSG_DONTWAIT    0
 
 #ifndef PROCESSOR_ARCHITECTURE_AMD64

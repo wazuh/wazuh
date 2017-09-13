@@ -20,7 +20,7 @@
 void *receiver_thread(__attribute__((unused)) void *none)
 {
     ssize_t recv_b;
-    uint32_t length;
+    netsize_t length;
     int reads;
     char file[OS_SIZE_1024 + 1];
     char buffer[OS_MAXSTR + 1];
@@ -78,7 +78,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 }
 
                 recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
-                length = le32toh(length);
+                length = wnet_order(length);
 
                 // Manager disconnected or error
 
