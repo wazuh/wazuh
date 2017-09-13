@@ -18,7 +18,6 @@ DIR=$5
 INSTYPE=$6
 
 UNAME=$(uname);
-
 # Thanks Chuck L. for the mac addusers
 if [ "$UNAME" = "Darwin" ]; then
     if ! id -u "${USER}" > /dev/null 2>&1; then
@@ -29,7 +28,7 @@ if [ "$UNAME" = "Darwin" ]; then
             ./init/darwin-addusers.pl $USER $USER_MAIL $USER_REM $INSTYPE
         else
             chmod +x ./init/osx105-addusers.sh
-            ./init/osx105-addusers.sh
+            ./init/osx105-addusers.sh $USER $USER_MAIL $USER_REM $GROUP $INSTYPE
         fi
     fi
 
@@ -87,11 +86,11 @@ else
 
     for U in ${NEWUSERS}; do
         if ! grep "^${U}" /etc/passwd > /dev/null 2>&1; then
-	    if [ "$UNAME" = "OpenBSD" ] || [ "$UNAME" = "SunOS" ] || [ "$UNAME" = "HP-UX" ]; then
-               ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
-        else
-           ${USERADD} "${U}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
-        fi
+    	    if [ "$UNAME" = "OpenBSD" ] || [ "$UNAME" = "SunOS" ] || [ "$UNAME" = "HP-UX" ]; then
+                ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
+            else
+                ${USERADD} "${U}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
+            fi
         fi
     done
 fi

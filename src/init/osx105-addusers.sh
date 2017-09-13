@@ -7,14 +7,6 @@
 # $1 is the message
 # $2 is the error code
 
-if [[ ! -f "/usr/bin/dscl" ]]
-  then
-  echo "Error, I have no dscl, dying here";
-  exit
-fi
-
-DSCL="/usr/bin/dscl";
-
 function check_errm
 {
    if  [[ ${?} != "0" ]]
@@ -23,6 +15,26 @@ function check_errm
       exit ${2};
       fi
 }
+
+USER=$1
+USER_MAIL=$2
+USER_REM=$3
+GROUP=$4
+INSTYPE=$5
+
+if ! [ $# -eq 5 ]; then
+    echo $#
+    echo "Usage: ${0} USERNAME_DEFAULT USERNAME_MAIL USERNAME_REMOTE GROUPNAME INSTYPE.";
+    exit 1;
+fi
+
+if [[ ! -f "/usr/bin/dscl" ]]
+  then
+  echo "Error, I have no dscl, dying here";
+  exit
+fi
+
+DSCL="/usr/bin/dscl";
 
 # get unique id numbers (uid, gid) that are greater than 100
 unset -v i new_uid new_gid idvar;
@@ -61,59 +73,38 @@ if [[ ${new_uid} != ${new_gid} ]]
 
 
 # Creating the groups.
-sudo ${DSCL} localhost -create /Local/Default/Groups/ossec
-check_errm "Error creating group ossec" "67"
-sudo ${DSCL} localhost -createprop /Local/Default/Groups/ossec PrimaryGroupID ${new_gid}
-sudo ${DSCL} localhost -createprop /Local/Default/Groups/ossec RealName ossec
-sudo ${DSCL} localhost -createprop /Local/Default/Groups/ossec RecordName ossec
-sudo ${DSCL} localhost -createprop /Local/Default/Groups/ossec RecordType: dsRecTypeStandard:Groups
-sudo ${DSCL} localhost -createprop /Local/Default/Groups/ossec Password "*"
+sudo ${DSCL} localhost -create /Local/Default/Groups/${GROUP}
+check_errm "Error creating group $GROUP" "67"
+sudo ${DSCL} localhost -createprop /Local/Default/Groups/${GROUP} PrimaryGroupID ${new_gid}
+sudo ${DSCL} localhost -createprop /Local/Default/Groups/${GROUP} RealName ${GROUP}
+sudo ${DSCL} localhost -createprop /Local/Default/Groups/${GROUP} RecordName ${GROUP}
+sudo ${DSCL} localhost -createprop /Local/Default/Groups/${GROUP} RecordType: dsRecTypeStandard:Groups
+sudo ${DSCL} localhost -createprop /Local/Default/Groups/${GROUP} Password "*"
 
 
 # Creating the users.
 
-if [[ $(dscl . -read /Users/ossecm) ]]
-   then
-   echo "ossecm already exists";
+if [ "X$INSTYPE" = "Xserver" ]; then
+    NEWUSERS="${USER} ${USER_MAIL} ${USER_REM}"
+elif [ "X$INSTYPE" = "Xlocal" ]; then
+    NEWUSERS="${USER} ${USER_MAIL}"
 else
-   sudo ${DSCL} localhost -create /Local/Default/Users/ossecm
-   check_errm "Error creating user ossecm" "87"
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecm RecordName ossecm
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecm RealName "ossecmacct"
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecm NFSHomeDirectory /var/ossec
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecm UniqueID ${j}
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecm PrimaryGroupID ${new_gid}
-   sudo ${DSCL} localhost -append /Local/Default/Groups/ossec GroupMembership ossecm
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecm Password "*"
+    NEWUSERS=${USER}
 fi
 
-if [[ $(dscl . -read /Users/ossecr) ]]
-   then
-   echo "ossecr already exists";
-else
-   sudo ${DSCL} localhost -create /Local/Default/Users/ossecr
-   check_errm "Error creating user ossecr" "97"
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecr RecordName ossecr
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecr RealName "ossecracct"
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecr NFSHomeDirectory /var/ossec
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecr UniqueID ${k}
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecr PrimaryGroupID ${new_gid}
-   sudo ${DSCL} localhost -append /Local/Default/Groups/ossec GroupMembership ossecr
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossecr Password "*"
-fi
-
-if [[ $(dscl . -read /Users/ossec) ]]
-   then
-   echo "ossec already exists";
-else
-   sudo ${DSCL} localhost -create /Local/Default/Users/ossec
-   check_errm "Error creating user ossec" "77"
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossec RecordName ossec
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossec RealName "ossecacct"
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossec NFSHomeDirectory /var/ossec
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossec UniqueID ${new_uid}
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossec PrimaryGroupID ${new_gid}
-   sudo ${DSCL} localhost -append /Local/Default/Groups/ossec GroupMembership ossec
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/ossec Password "*"
-fi
-
+for U in ${NEWUSERS}; do
+    if [[ $(dscl . -read /Users/${U}) ]]
+       then
+       echo "${U} already exists";
+    else
+       sudo ${DSCL} localhost -create /Local/Default/Users/${U}
+       check_errm "Error creating user ${U}" "87"
+       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} RecordName ${U}
+       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} RealName "ossecmacct"
+       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} NFSHomeDirectory /var/ossec
+       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} UniqueID ${j}
+       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} PrimaryGroupID ${new_gid}
+       sudo ${DSCL} localhost -append /Local/Default/Groups/${GROUP} GroupMembership ${U}
+       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} Password "*"
+    fi
+done
