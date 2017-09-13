@@ -9,11 +9,16 @@
 #######################################
 
 # Variables and whatnot
-my ($debug, $oUid, $oGid, @inUseUids, @inUseGids, $rev, $revDate);
+my ($debug, $oUid, $oGid, @inUseUids, @inUseGids, $rev, $revDate, $USER, $USER_MAIL, $USER_REM, $INSTYPE, @NEWUSERS);
 $rev     = '0.2-1';
 $revDate = '30-Aug-2006';
 $debug   = '0';
 $fName   = "/tmp/niusers.tmp";
+$USER=$ARGV[0];
+$USER_MAIL=$ARGV[1];
+$USER_REM=$ARGV[2];
+$INSTYPE=$ARGV[3];
+@NEWUSERS=($USER);
 
 # Commands
 $NILOAD  = "/usr/bin/niload";
@@ -56,21 +61,25 @@ sub createUsersGroups {
     print "Sub - UID is: $oUid\n" if $debug;
     print "Sub - GID is: $oGid\n" if $debug;
 
-    my $oUidM = $oUid + 1;
-    my $oUidE = $oUid + 2;
-    my $oUidR = $oUid + 3;
+    if ($INSTYPE eq "server") {
+        push @NEWUSERS, $USER_MAIL;
+        push @NEWUSERS, $USER_REM;
+    } elsif ($INSTYPE eq "local") {
+        push @NEWUSERS, $USER_MAIL;
+    }
 
     $niPid = open (NIFH, "| $SUDO $NILOAD -v group /");
     print "Adding ossec group\n" if $debug;
-    print NIFH "ossec:*:" . $oGid . ":ossec,ossecm,ossecr\n";
+    print NIFH "ossec:*:" . $oGid . ":" . join(',', @NEWUSERS) . "\n";
     close (NIFH);
 
     $fh = open (NITMP, ">$fName") or die "Unable to create temp file: $!\n";
 
     print "Adding ossec users\n" if $debug;
-    print NITMP "ossec:*:" . $oUid . ":" . $oGid . "::0:0:ossec acct:/var/ossec:/sbin/nologin\n";
-    print NITMP "ossecm:*:" . $oUidM . ":" . $oGid . "::0:0:ossecm acct:/var/ossec:/sbin/nologin\n";
-    print NITMP "ossecr:*:" . $oUidR . ":" . $oGid . "::0:0:ossecr acct:/var/ossec:/sbin/nologin\n";
+    foreach(@NEWUSERS){
+        print NITMP $_ . ":*:" . $oUid . ":" . $oGid . "::0:0:" . $_ . " acct:/var/ossec:/sbin/nologin\n";
+        $oUid++;
+    }
 
     close ($fh);
     $rtnVal = system("$SUDO $NILOAD -v passwd / < $fName");
@@ -78,4 +87,3 @@ sub createUsersGroups {
     unlink ($fName);
 
 } # end sub
-

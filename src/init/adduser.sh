@@ -26,7 +26,7 @@ if [ "$UNAME" = "Darwin" ]; then
         # Creating for <= 10.4
         if /usr/bin/sw_vers 2>/dev/null| grep "ProductVersion" | grep -E "10.2.|10.3|10.4" > /dev/null 2>&1; then
             chmod +x ./init/darwin-addusers.pl
-            ./init/darwin-addusers.pl
+            ./init/darwin-addusers.pl $USER $USER_MAIL $USER_REM $INSTYPE
         else
             chmod +x ./init/osx105-addusers.sh
             ./init/osx105-addusers.sh
