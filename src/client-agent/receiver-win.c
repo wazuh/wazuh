@@ -20,7 +20,7 @@
 void *receiver_thread(__attribute__((unused)) void *none)
 {
     ssize_t recv_b;
-    netsize_t length;
+    uint32_t length;
     int reads;
     char file[OS_SIZE_1024 + 1];
     char buffer[OS_MAXSTR + 1];

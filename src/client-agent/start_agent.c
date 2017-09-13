@@ -137,7 +137,7 @@ int connect_server(int initial_id)
 void start_agent(int is_startup)
 {
     ssize_t recv_b = 0;
-    netsize_t length;
+    uint32_t length;
     int attempts = 0, g_attempts = 1;
 
     char *tmp_msg;

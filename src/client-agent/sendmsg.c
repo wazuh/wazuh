@@ -21,7 +21,7 @@
 int send_msg(int agentid, const char *msg)
 {
     ssize_t msg_size;
-    netsize_t length;
+    uint32_t length;
     char crypt_msg[OS_MAXSTR + 1];
     int recv_b;
 

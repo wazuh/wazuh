@@ -94,7 +94,7 @@ void send_msg_init()
 int send_msg(unsigned int agentid, const char *msg)
 {
     ssize_t msg_size, send_b;
-    netsize_t length;
+    uint32_t length;
     char crypt_msg[OS_MAXSTR + 1];
     int retval = 0;
 

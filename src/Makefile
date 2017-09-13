@@ -23,6 +23,7 @@ USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
 USE_INOTIFY=no
+USE_BIG_ENDIAN=no
 
 ifneq (${TARGET},winagent)
 	USE_PICVIZ?=yes
@@ -199,6 +200,10 @@ ifneq (,$(filter ${USE_INOTIFY},auto yes y Y 1))
 		OSSEC_LDFLAGS+=-linotify -L/usr/local/lib -I/usr/local/include
 		OSSEC_CFLAGS+=-I/usr/local/include
 	endif
+endif
+
+ifneq (,$(filter ${USE_BIG_ENDIAN},yes y Y 1))
+	DEFINES+=-DBIG_ENDIAN
 endif
 
 ifneq (,$(filter ${USE_PRELUDE},auto yes y Y 1))
@@ -610,6 +615,7 @@ settings:
 	@echo "    USE_LEGACY_SSL:   ${USE_LEGACY_SSL}"
 	@echo "    USE_PICVIZ:       ${USE_PICVIZ}"
 	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
+	@echo "    USE_BIG_ENDIAN:   ${USE_BIG_ENDIAN}"
 	@echo "Mysql settings:"
 	@echo "    includes:         ${MI}"
 	@echo "    libs:             ${ML}"

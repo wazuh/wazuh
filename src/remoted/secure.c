@@ -35,7 +35,7 @@ void HandleSecure()
     int n_events = 0;
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
-    netsize_t length;
+    uint32_t length;
     struct sockaddr_in peer_info;
 
 #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)

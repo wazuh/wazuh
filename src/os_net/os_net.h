@@ -15,9 +15,6 @@
 #ifndef __OS_NET_H
 #define __OS_NET_H
 
-typedef u_int32_t netsize_t;
-
-
 /* OS_Bindport*
  * Bind a specific port (protocol and a ip).
  * If the IP is not set, it is going to use ADDR_ANY
@@ -85,6 +82,6 @@ int OS_SetRecvTimeout(int socket, int seconds);
 
 // Byte ordering
 
-netsize_t wnet_order(netsize_t value);
+uint32_t wnet_order(uint32_t value);
 
 #endif /* __OS_NET_H */
