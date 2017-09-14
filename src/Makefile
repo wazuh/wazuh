@@ -463,7 +463,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a
+winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32 -liphlpapi -lws2_32"
 	cd ${EXTERNAL_LUA}src/ && ${MAKE} CC=${MING_BASE}${CC} -f Makefile.mingw mingw
 	cp ${EXTERNAL_LUA}src/ossec-lua.exe win32/
@@ -611,6 +611,11 @@ wmodules_o := $(wmodules_c:.c=.o)
 
 wazuh_modules/%.o: wazuh_modules/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
+
+ifeq (${TARGET},winagent)
+wazuh_modules/syscollector/syscollector_win_ext.dll: wazuh_modules/syscollector/syscollector_win_ext.o ${JSON_LIB}
+	${OSSEC_CC} -pipe -O2 -shared -o $@ $^ -liphlpapi -lws2_32
+endif # DLL for Windows
 
 wazuh_modules/syscollector/%.o: wazuh_modules/syscollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
@@ -1115,9 +1120,9 @@ test_coverage: build_tests
 	rm -rf coverage-report/
 	genhtml --branch-coverage --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
 
-####################
-#### RUule Tests ###
-####################
+###################
+#### Rule Tests ###
+###################
 
 test-rules:
 	( cd ../contrib/ossec-testing && sudo python runtests.py)
@@ -1229,6 +1234,7 @@ clean-internals:
 	rm -f ${sqlite_o} sqlite.a
 
 clean-windows:
+	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt
 	rm -f win32/internal_options.conf

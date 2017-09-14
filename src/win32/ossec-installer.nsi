@@ -207,6 +207,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=libwinpthread-1.dll /usr/i686-w64-mingw32/lib/libwinpthread-1.dll
 	File agent-auth.exe
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
+    File ../wazuh_modules/syscollector/syscollector_win_ext.dll
 
     ; Create empty file active-responses.log
     FileOpen $0 "$INSTDIR\active-response\active-responses.log" w
@@ -499,6 +500,7 @@ Section "Uninstall"
     Delete "$INSTDIR\tmp\*"
     Delete "$INSTDIR\incoming\*"
     Delete "$INSTDIR\wodles\*"
+    Delete "$INSTDIR\syscollector_win_ext.dll"
 
     ; remove shortcuts
     SetShellVarContext all

@@ -346,7 +346,7 @@ hw_info *get_system_linux(){
     FILE *fp;
     hw_info *info;
     char string[OS_MAXSTR];
-    char *aux_string;
+
     char *end;
 
     os_calloc(1, sizeof(hw_info), info);
@@ -355,6 +355,7 @@ hw_info *get_system_linux(){
         mterror(WM_SYS_LOGTAG, "Unable to read cpuinfo file.");
         info->cpu_name = strdup("unknown");
     } else {
+        char *aux_string;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
             if ((aux_string = strstr(string, "model name")) != NULL){
 
@@ -387,12 +388,14 @@ hw_info *get_system_linux(){
                 info->cpu_MHz = atof(frec);
             }
         }
+        free(aux_string);
         fclose(fp);
     }
 
     if (!(fp = fopen("/proc/meminfo", "r"))) {
         mterror(WM_SYS_LOGTAG, "Unable to read meminfo file.");
     } else {
+        char *aux_string;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
             if ((aux_string = strstr(string, "MemTotal")) != NULL){
 
@@ -416,10 +419,9 @@ hw_info *get_system_linux(){
 
             }
         }
+        free(aux_string);
         fclose(fp);
     }
-
-    free(aux_string);
 
     return info;
 }

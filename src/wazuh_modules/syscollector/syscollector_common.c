@@ -61,8 +61,9 @@ void* wm_sys_main(wm_sys_t *sys) {
 
     #ifdef WIN32
         if (!checkVista()){
-            mtwarn(WM_SYS_LOGTAG, "Network scan is incompatible with versions older than Vista.");
+            mtwarn(WM_SYS_LOGTAG, "Network and OS scan is incompatible with versions older than Vista.");
             sys->flags.netinfo = 0;
+            sys->flags.osinfo = 0;
         }
     #endif
 
