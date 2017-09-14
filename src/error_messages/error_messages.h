@@ -189,7 +189,7 @@
 #define ENCSIZE_ERROR   "(1405): Message size not valid: '%s'."
 #define ENCSUM_ERROR    "(1406): Checksum mismatch on message from '%s'."
 #define ENCTIME_ERROR   "(1407): Duplicated counter for '%s'."
-#define ENC_IP_ERROR    "(1408): Invalid ID %s for the source ip: '%s'."
+#define ENC_IP_ERROR    "(1408): Invalid ID %s for the source ip: '%s' (name '%s')."
 #define ENCFILE_CHANGED "(1409): Authentication file changed. Updating."
 #define ENC_READ        "(1410): Reading authentication keys file."
 
