@@ -14,6 +14,9 @@
 #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 
 #include <sys/types.h>
+#include <sys/sysctl.h>
+#include <sys/vmmeter.h>
+#include <sys/sysctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
 #include <net/if_dl.h>
@@ -22,6 +25,149 @@
 #include <net/if_types.h>
 #include <ifaddrs.h>
 #include <string.h>
+
+hw_info *get_system_bsd();    // Get system information
+
+// Get hardware inventory
+
+void sys_hw_bsd(int queue_fd, const char* LOCATION){
+
+    char *string;
+    mtinfo(WM_SYS_LOGTAG, "Starting Hardware inventory");
+
+    cJSON *object = cJSON_CreateObject();
+    cJSON *hw_inventory = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "hardware");
+    cJSON_AddItemToObject(object, "inventory", hw_inventory);
+
+    /* Motherboard serial-number */
+#if defined(__OpenBSD__)
+
+    char serial[OS_MAXSTR];
+    int mib[2];
+    size_t len;
+    mib[0] = CTL_HW;
+    mib[1] = HW_SERIALNO;
+    len = sizeof(serial);
+    if (!sysctl(mib, 2, &serial, &len, NULL, 0)){
+        cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+    }else{
+        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting serial number due to %s", strerror(errno));
+    }
+
+#else
+    cJSON_AddStringToObject(hw_inventory, "board_serial", "unknown");
+#endif
+
+    /* Get CPU and memory information */
+    hw_info *sys_info;
+    if (sys_info = get_system_bsd(), sys_info){
+        cJSON_AddStringToObject(hw_inventory, "cpu_name", sys_info->cpu_name);
+        cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
+        cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
+        cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
+        cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
+
+        free(sys_info->cpu_name);
+    }
+
+    /* Send interface data in JSON format */
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_hw_bsd() sending '%s'", string);
+    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+
+    free(string);
+}
+
+hw_info *get_system_bsd(){
+
+    hw_info *info;
+    os_calloc(1, sizeof(hw_info), info);
+
+    int mib[2];
+    size_t len;
+
+    /* CPU Name */
+    char cpu_name[1024];
+    mib[0] = CTL_HW;
+    mib[1] = HW_MODEL;
+    len = sizeof(cpu_name);
+    if (!sysctl(mib, 2, &cpu_name, &len, NULL, 0)){
+        info->cpu_name = strdup(cpu_name);
+    }else{
+        info->cpu_name = strdup("unknown");
+        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU name due to (%s)", strerror(errno));
+    }
+
+    /* Number of cores */
+    unsigned int cpu_cores;
+    mib[0] = CTL_HW;
+    mib[1] = HW_NCPU;
+    len = sizeof(cpu_cores);
+    if (!sysctl(mib, 2, &cpu_cores, &len, NULL, 0)){
+        info->cpu_cores = (int)cpu_cores;
+    }else{
+        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU cores due to (%s)", strerror(errno));
+    }
+
+    /* CPU clockrate (MHz) */
+    char *clockrate;
+    clockrate = calloc(256, sizeof(char));
+
+#if defined(__FreeBSD__)
+    snprintf(clockrate, 256-1, "%s", "hw.clockrate");
+#elif defined(__OpenBSD__)
+    snprintf(clockrate, 256-1, "%s", "hw.cpuspeed");
+#endif
+
+    unsigned int cpu_MHz;
+    len = sizeof(cpu_MHz);
+    if (!sysctlbyname(clockrate, &cpu_MHz, &len, NULL, 0)){
+        info->cpu_MHz = (double)cpu_MHz;
+    }else{
+        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
+    }
+
+    free(clockrate);
+
+    /* Total memory RAM */
+    long cpu_ram;
+    mib[0] = CTL_HW;
+    mib[1] = HW_PHYSMEM;
+    len = sizeof(cpu_ram);
+    if (!sysctl(mib, 2, &cpu_ram, &len, NULL, 0)){
+        int cpu_ram_kb = cpu_ram / 1024;
+        info->ram_total = cpu_ram_kb;
+    }else{
+        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting total RAM due to (%s)", strerror(errno));
+    }
+
+    /* Free memory RAM */
+#if defined(__FreeBSD__)
+
+    u_int page_size;
+    struct vmtotal vmt;
+
+    len = sizeof(vmt);
+
+    if (!sysctlbyname("vm.vmtotal", &vmt, &len, NULL, 0))
+        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting vm.vmtotal due to (%s)", strerror(errno));
+
+    len = sizeof(page_size);
+
+    if (!sysctlbyname("vm.stats.vm.v_page_size", &page_size, &len, NULL, 0)){
+        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting free memory due to (%s)", strerror(errno));
+    }else{
+        long cpu_free_kb = (vmt.t_free * (u_int64_t)page_size) / 1024;
+        info->ram_free = cpu_free_kb;
+    }
+
+#endif
+
+    return info;
+
+}
 
 // Get network inventory
 

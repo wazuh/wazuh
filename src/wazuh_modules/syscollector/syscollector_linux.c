@@ -59,7 +59,6 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
         free(sys_info->cpu_name);
     }
 
-
     /* Send interface data in JSON format */
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_hw_linux() sending '%s'", string);

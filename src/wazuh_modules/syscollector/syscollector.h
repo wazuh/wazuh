@@ -67,6 +67,9 @@ int wm_sys_read(XML_NODE node, wmodule *module);
 // Hardware inventory for Linux
 void sys_hw_linux(int queue_fd, const char* LOCATION);
 
+// Hardware inventory for BSD based systems
+void sys_hw_bsd(int queue_fd, const char* LOCATION);
+
 // Hardware inventory for Windows
 void sys_hw_windows(const char* LOCATION);
 
