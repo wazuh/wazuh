@@ -58,6 +58,14 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
+#ifdef HPUX
+    {
+        int flags;
+        flags = fcntl(agt->m_queue, F_GETFL, 0);
+        fcntl(agt->m_queue, F_SETFL, flags | O_NONBLOCK);
+    }
+#endif
+
     maxfd = agt->m_queue;
     agt->sock = -1;
 
