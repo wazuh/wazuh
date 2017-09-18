@@ -106,7 +106,7 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
-		DEFINES+=-DBIG_ENDIAN
+		DEFINES+=-DOS_BIG_ENDIAN
 		LUA_PLAT=posix
 		OSSEC_LDFLAGS+=-pthread -lrt
 		PATH:=${PATH}:/usr/local/bin
@@ -204,7 +204,7 @@ ifneq (,$(filter ${USE_INOTIFY},auto yes y Y 1))
 endif
 
 ifneq (,$(filter ${USE_BIG_ENDIAN},yes y Y 1))
-	DEFINES+=-DBIG_ENDIAN
+	DEFINES+=-DOS_BIG_ENDIAN
 endif
 
 ifneq (,$(filter ${USE_PRELUDE},auto yes y Y 1))

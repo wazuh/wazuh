@@ -507,7 +507,7 @@ int OS_SetRecvTimeout(int socket, int seconds)
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value) {
-#if (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) || defined(BIG_ENDIAN)
+#if (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) || defined(OS_BIG_ENDIAN)
     return (value >> 24) | (value << 24) | ((value & 0xFF0000) >> 8) | ((value & 0xFF00) << 8);
 #else
     return value;
