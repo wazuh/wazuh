@@ -79,7 +79,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 }
 
                 recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
-                length = le32toh(length);
+                length = wnet_order(length);
 
                 // Manager disconnected or error
 

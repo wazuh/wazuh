@@ -24,6 +24,7 @@ USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
 USE_INOTIFY=no
+USE_BIG_ENDIAN=no
 
 ONEWAY?=no
 CLEANFULL?=no
@@ -98,6 +99,7 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
+		DEFINES+=-DOS_BIG_ENDIAN
 		LUA_PLAT=posix
 		OSSEC_LDFLAGS+=-pthread -lrt
 		PATH:=${PATH}:/usr/local/bin
@@ -195,6 +197,10 @@ ifneq (,$(filter ${USE_INOTIFY},auto yes y Y 1))
 		OSSEC_LDFLAGS+=-linotify -L/usr/local/lib -I/usr/local/include
 		OSSEC_CFLAGS+=-I/usr/local/include
 	endif
+endif
+
+ifneq (,$(filter ${USE_BIG_ENDIAN},yes y Y 1))
+	DEFINES+=-DOS_BIG_ENDIAN
 endif
 
 ifneq (,$(filter ${USE_PRELUDE},auto yes y Y 1))
@@ -380,6 +386,7 @@ settings:
 	@echo "    USE_GEOIP:        ${USE_GEOIP}"
 	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
 	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
+	@echo "    USE_BIG_ENDIAN:   ${USE_BIG_ENDIAN}"
 	@echo "Mysql settings:"
 	@echo "    includes:         ${MI}"
 	@echo "    libs:             ${ML}"

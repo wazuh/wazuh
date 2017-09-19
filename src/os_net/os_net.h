@@ -80,4 +80,8 @@ int OS_CloseSocket(int socket);
  */
 int OS_SetRecvTimeout(int socket, int seconds);
 
+// Byte ordering
+
+uint32_t wnet_order(uint32_t value);
+
 #endif /* __OS_NET_H */

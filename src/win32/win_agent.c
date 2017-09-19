@@ -551,7 +551,7 @@ void send_win32_info(time_t curr_time)
             sleep(1);
         }
     } else {
-        uint32_t length = htole32(msg_size);
+        uint32_t length = msg_size;
 
         if (OS_SendTCPbySize(agt->sock, sizeof(length), (void*)&length) < 0) {
             merror(SEND_ERROR, "server", strerror(errno));

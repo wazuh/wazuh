@@ -181,7 +181,7 @@ void HandleSecure()
                 } else {
                     sock_client = fd;
                     recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
-                    length = le32toh(length);
+                    length = wnet_order(length);
 
                     if (getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size) < 0) {
                         switch (errno) {
@@ -265,6 +265,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1];
+    char agname[KEYSIZE + 1];
     char *tmp_msg;
     size_t msg_length;
 
@@ -308,7 +309,15 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
 
         if (agentid == -1) {
-            merror(ENC_IP_ERROR, buffer + 1, srcip);
+            int id = OS_IsAllowedID(&keys, buffer + 1);
+            if (id < 0) {
+                strncpy(agname, "unknown", sizeof(agname));
+            } else {
+                strncpy(agname, keys.keyentries[id]->name, sizeof(agname));
+            }
+            agname[sizeof(agname) - 1] = '\0';
+
+            merror(ENC_IP_ERROR, buffer + 1, srcip, agname);
 
             if (sock_client >= 0)
                 close(sock_client);
