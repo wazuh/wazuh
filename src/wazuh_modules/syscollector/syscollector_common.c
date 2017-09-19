@@ -102,7 +102,7 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys_hw_windows(WM_SYS_LOCATION);
             #elif defined(__linux__)
                 sys_hw_linux(queue_fd, WM_SYS_LOCATION);
-            #elif defined(__FreeBSD__) || defined(__OpenBSD__)
+            #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__MACH__)
                 sys_hw_bsd(queue_fd, WM_SYS_LOCATION);
             #else
                 sys->flags.hwinfo = 0;

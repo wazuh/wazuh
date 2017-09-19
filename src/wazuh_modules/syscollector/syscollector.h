@@ -23,6 +23,7 @@
 #define STATE_LENGTH 20
 #define MTU_LENGTH 20
 #define DHCP_LENGTH 10
+#define CLOCK_LENGTH 256
 
 #define WM_SYS_DEF_INTERVAL 3600            // Default cycle interval (1 hour)
 #define WM_SYS_LOGTAG ARGV0 ":syscollector" // Tag for log messages

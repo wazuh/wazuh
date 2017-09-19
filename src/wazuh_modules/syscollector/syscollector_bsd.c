@@ -52,8 +52,46 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     if (!sysctl(mib, 2, &serial, &len, NULL, 0)){
         cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting serial number due to %s", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting serial number due to (%s)", strerror(errno));
     }
+
+#elif defined(__MACH__)
+
+    char *serial_str = NULL;
+    char *serial = NULL;
+    char *command;
+    FILE *output;
+    size_t buf_length = 1024;
+    char read_buff[buf_length];
+    int i;
+
+    memset(read_buff, 0, buf_length);
+    command = "system_profiler SPHardwareDataType | grep Serial";
+    output = popen(command, "r");
+    if(!fgets(read_buff, buf_length, output)){
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
+        serial = strdup("unknown");
+    }else{
+        char ** parts = NULL;
+        parts = OS_StrBreak('\n', read_buff, 2);
+        if (parts[0]){
+            serial_str = strdup(parts[0]);
+            parts = OS_StrBreak(':', serial_str, 2);
+            if (parts[1]){
+                serial = strdup(parts[1]);
+            }else{
+                serial = strdup("unknown");
+            }
+        }else{
+            serial = strdup("unknown");
+        }
+        for (i=0; parts[i]; i++){
+            free(parts[i]);
+        }
+        free(parts);
+    }
+    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+    pclose(output);
 
 #else
     cJSON_AddStringToObject(hw_inventory, "board_serial", "unknown");
@@ -112,24 +150,40 @@ hw_info *get_system_bsd(){
     }
 
     /* CPU clockrate (MHz) */
+#if defined(__OpenBSD__)
+
+    unsigned long cpu_MHz;
+    mib[0] = CTL_HW;
+    mib[1] = HW_CPUSPEED;
+    len = sizeof(cpu_MHz);
+    if (!sysctl(mib, 2, &cpu_MHz, &len, NULL, 0)){
+        info->cpu_MHz = (double)cpu_MHz/1000000.0;
+    }else{
+        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
+    }
+
+#elif defined(__FreeBSD__) || defined(__MACH__)
+
     char *clockrate;
-    clockrate = calloc(256, sizeof(char));
+    clockrate = calloc(CLOCK_LENGTH, sizeof(char));
 
 #if defined(__FreeBSD__)
-    snprintf(clockrate, 256-1, "%s", "hw.clockrate");
-#elif defined(__OpenBSD__)
-    snprintf(clockrate, 256-1, "%s", "hw.cpuspeed");
+    snprintf(clockrate, CLOCK_LENGTH-1, "%s", "hw.clockrate");
+#elif defined(__MACH__)
+    snprintf(clockrate, CLOCK_LENGTH-1, "%s", "hw.cpufrequency");
 #endif
 
-    unsigned int cpu_MHz;
+    unsigned long cpu_MHz;
     len = sizeof(cpu_MHz);
     if (!sysctlbyname(clockrate, &cpu_MHz, &len, NULL, 0)){
-        info->cpu_MHz = (double)cpu_MHz;
+        info->cpu_MHz = (double)cpu_MHz/1000000.0;
     }else{
         mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
     }
 
     free(clockrate);
+
+#endif
 
     /* Total memory RAM */
     long cpu_ram;
