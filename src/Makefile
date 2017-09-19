@@ -181,6 +181,15 @@ $(error No windows cross-compiler found!) #MING_BASE:=unknown-
 endif
 endif
 endif
+
+ifneq (,$(wildcard /usr/i686-w64-mingw32/lib/libwinpthread-1.dll))
+	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/lib/libwinpthread-1.dll
+else
+ifneq (,$(wildcard /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll))
+	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
+endif
+endif
+
 endif #winagent
 
 
@@ -458,7 +467,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a
+winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a win32/libwinpthread-1.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32"
 	cd ${EXTERNAL_LUA}src/ && ${MAKE} CC=${MING_BASE}${CC} -f Makefile.mingw mingw
 	cp ${EXTERNAL_LUA}src/ossec-lua.exe win32/
@@ -472,6 +481,8 @@ winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a
 	cd win32/ && ./unix2dos.pl ../../active-response/win/restart-ossec.cmd > restart-ossec.cmd
 	cd win32/ && makensis ossec-installer.nsi
 
+win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
+	cp $< $@
 
 ####################
 #### External ######
@@ -489,10 +500,14 @@ OPENSSL_LIB=${EXTERNAL_OPENSSL}libssl.a
 CRYPTO_LIB=${EXTERNAL_OPENSSL}libcrypto.a
 
 ${CRYPTO_LIB}: ${OPENSSL_LIB}
+ifeq (${TARGET},winagent)
+	${OSSEC_RANLIB} ${CRYPTO_LIB}
+endif
 
 ${OPENSSL_LIB}:
 ifeq (${TARGET},winagent)
 	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} ./Configure mingw && ${MAKE} build_libs
+	${OSSEC_RANLIB} ${OPENSSL_LIB}
 else
 ifeq (${uname_S},Darwin)
 	cd ${EXTERNAL_OPENSSL} && ./Configure darwin64-x86_64-cc && ${MAKE} build_libs
@@ -1237,3 +1252,4 @@ clean-windows:
 	rm -f win32/ossec-lua.exe
 	rm -f win32/ossec-luac.exe
 	rm -f win32/wazuh-agent-*.exe
+	rm -f win32/libwinpthread-1.dll

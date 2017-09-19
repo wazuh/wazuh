@@ -203,7 +203,7 @@ Section "Wazuh Agent (required)" MainSec
     File vista_sec.txt
     File /oname=active-response\bin\route-null.cmd route-null.cmd
     File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
-    File /oname=libwinpthread-1.dll /usr/i686-w64-mingw32/lib/libwinpthread-1.dll
+    File /oname=libwinpthread-1.dll libwinpthread-1.dll
 	File agent-auth.exe
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
 

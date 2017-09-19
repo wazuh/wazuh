@@ -260,3 +260,4 @@ src/external/openssl/crypto/x86cpuid.s
 src/external/openssl/Makefile.bak
 src/external/openssl/apps/CA.pl.bak
 src/external/openssl/tools/c_rehash.bak
+src/external/openssl/crypto/opensslconf.h.bak
