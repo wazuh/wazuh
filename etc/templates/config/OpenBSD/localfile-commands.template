@@ -1,0 +1,6 @@
+  <localfile>
+    <log_format>full_command</log_format>
+    <command>(netstat -n -f inet && netstat -n -f inet) | grep -e "udp" -e "tcp" | sed -E 's/\.([0-9]+) / \. \1/' | sort -k5 | sed 's/ \. /\./' | sed -E 's/ ([A-Z]|\_)+//'</command>
+    <alias>netstat listening ports</alias>
+    <frequency>360</frequency>
+  </localfile>
