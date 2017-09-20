@@ -28,6 +28,124 @@ char* get_mtu(char *ifa_name);                  // Get MTU
 char* check_dhcp(char *ifa_name, int family);   // Check DHCP status for network interfaces
 char* get_default_gateway(char *ifa_name);      // Get Default Gatewat for network interfaces
 
+// Get installed programs inventory
+
+void sys_programs_linux(int queue_fd, const char* LOCATION){
+
+    char file[OS_MAXSTR];
+    //char *command;
+    char read_buff[OS_MAXSTR];
+    FILE *fp;
+    int i;
+    int created = 1;
+
+    snprintf(file, OS_MAXSTR, "%s", "/var/lib/dpkg/available");
+
+    cJSON *object = cJSON_CreateObject();
+    cJSON *program = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "program");
+    cJSON_AddItemToObject(object, "data", program);
+
+    if ((fp = fopen(file, "r"))){
+        while (fgets(read_buff, OS_MAXSTR, fp) != NULL){
+            if (!strncmp(read_buff, "Package:", 8)){
+
+                if (!created){
+                    cJSON *object = cJSON_CreateObject();
+                    cJSON *program = cJSON_CreateObject();
+                    cJSON_AddStringToObject(object, "type", "program");
+                    cJSON_AddItemToObject(object, "data", program);
+                }
+                char *name;
+                char ** name_f = NULL;
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(':', read_buff, 2);
+                name = w_strtrim(parts[1]);
+                name_f = OS_StrBreak('\n', name, 2);
+                cJSON_AddStringToObject(program, "name", name_f[0]);
+                for (i=0; name_f[i]; i++){
+                    free(name_f[i]);
+                }
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+                free(name_f);
+
+            }else if (!strncmp(read_buff, "Maintainer:", 11)){
+
+                char *vendor;
+                char ** vendor_f = NULL;
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(':', read_buff, 2);
+                vendor = w_strtrim(parts[1]);
+                vendor_f = OS_StrBreak('\n', vendor, 2);
+                cJSON_AddStringToObject(program, "vendor", vendor_f[0]);
+                for (i=0; vendor_f[i]; i++){
+                    free(vendor_f[i]);
+                }
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+                free(vendor_f);
+
+            }else if (!strncmp(read_buff, "Version:", 8)){
+
+                char *version;
+                char ** version_f = NULL;
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(':', read_buff, 2);
+                version = w_strtrim(parts[1]);
+                version_f = OS_StrBreak('\n', version, 2);
+                cJSON_AddStringToObject(program, "version", version_f[0]);
+                for (i=0; version_f[i]; i++){
+                    free(version_f[i]);
+                }
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+                free(version_f);
+
+            }else if (!strncmp(read_buff, "Description:", 12)){
+
+                char *description;
+                char ** description_f = NULL;
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(':', read_buff, 2);
+                description = w_strtrim(parts[1]);
+                description_f = OS_StrBreak('\n', description, 2);
+                cJSON_AddStringToObject(program, "description", description_f[0]);
+                for (i=0; description_f[i]; i++){
+                    free(description_f[i]);
+                }
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+                free(description_f);
+                created = 0;
+
+                char *string;
+                string = cJSON_PrintUnformatted(object);
+                mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", string);
+                SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                cJSON_Delete(object);
+                free(string);
+
+            }
+        }
+        fclose(fp);
+    }else{
+        mterror(WM_SYS_LOGTAG, "Unable to read '%s'", file);
+    }
+}
+
 // Get Hardware inventory
 
 void sys_hw_linux(int queue_fd, const char* LOCATION){
