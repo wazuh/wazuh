@@ -17,6 +17,7 @@ static const char *XML_DISABLED = "disabled";
 static const char *XML_NETWORK = "network";
 static const char *XML_OS_SCAN = "os";
 static const char *XML_HARDWARE = "hardware";
+static const char *XML_PROGRAMS = "programs";
 
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module) {
@@ -29,6 +30,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     syscollector->flags.netinfo = 1;
     syscollector->flags.osinfo = 1;
     syscollector->flags.hwinfo = 1;
+    syscollector->flags.programinfo = 1;
     module->context = &WM_SYS_CONTEXT;
     module->data = syscollector;
 
@@ -107,6 +109,15 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 syscollector->flags.hwinfo = 0;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_HARDWARE, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(node[i]->element, XML_PROGRAMS)) {
+            if (!strcmp(node[i]->content, "yes"))
+                syscollector->flags.programinfo = 1;
+            else if (!strcmp(node[i]->content, "no"))
+                syscollector->flags.programinfo = 0;
+            else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_PROGRAMS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {

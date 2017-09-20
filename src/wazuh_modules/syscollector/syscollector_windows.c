@@ -25,6 +25,63 @@ typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses);
 
 hw_info *get_system_windows();
 
+// Get installed programs inventory
+
+void sys_programs_windows(const char* LOCATION){
+
+    char *command;
+    FILE *output;
+    char read_buff[OS_MAXSTR];
+    int i;
+
+    mtinfo(WM_SYS_LOGTAG, "Starting installed programs inventory.");
+
+    memset(read_buff, 0, OS_MAXSTR);
+    command = "wmic product get Name,Version,Vendor / format:csv";
+    output = popen(command, "r");
+
+    if (!output){
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
+    }else{
+        while(strncmp(fgets(read_buff, OS_MAXSTR, output),"Node,Name,Vendor,Version", 24) != 0){
+            continue;
+        }
+        while(fgets(read_buff, OS_MAXSTR, output)){
+
+            cJSON *object = cJSON_CreateObject();
+            cJSON *program = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "program");
+            cJSON_AddItemToObject(object, "data", program);
+
+            char *string;
+            char ** parts = NULL;
+
+            parts = OS_StrBreak(',', read_buff, 4);
+            cJSON_AddStringToObject(program, "name", parts[1]);
+            cJSON_AddStringToObject(program, "vendor", parts[2]);
+
+            char ** version = NULL;
+            version = OS_StrBreak('\r', parts[3], 2);
+            cJSON_AddStringToObject(program, "version", version[0]);
+            for (i=0; version[i]; i++){
+                free(version[i]);
+            }
+            for (i=0; parts[i]; i++){
+                free(parts[i]);
+            }
+            free(version);
+            free(parts);
+
+            string = cJSON_PrintUnformatted(object);
+            mtdebug(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
+            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(object);
+
+            free(string);
+        }
+    }
+}
+
 void sys_hw_windows(const char* LOCATION){
 
     char *string;

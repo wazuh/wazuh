@@ -48,6 +48,7 @@ typedef struct wm_sys_flags_t {
     unsigned int hwinfo:1;                  // Hardware inventory
     unsigned int netinfo:1;                 // Network inventory
     unsigned int osinfo:1;                  // OS inventory
+    unsigned int programinfo:1;             // Installed programs inventory
 } wm_sys_flags_t;
 
 typedef struct wm_sys_state_t {
@@ -64,6 +65,9 @@ extern const wm_context WM_SYS_CONTEXT;     // Context
 
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module);
+
+// Installed programs inventory for Windows
+void sys_programs_windows(const char* LOCATION);
 
 // Hardware inventory for Linux
 void sys_hw_linux(int queue_fd, const char* LOCATION);
