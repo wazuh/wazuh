@@ -6,7 +6,7 @@
 
   <localfile>
     <log_format>full_command</log_format>
-    <command>netstat -tulpn | sed -r 's/ ([A-Z]|\-).*//' | sed 's/:\([[:digit:]]\+\) / : \1 /' | sort -k 6 -g | sed 's/ : /:/' | sed 's/ [0-9]*\///'</command>
+    <command>netstat -tulpn | sed -r 's/ ([A-Z]|\-|_)+//' | sed 's/:\([[:digit:]]\+\) / : \1 /' | sort -k 6 -g | sed 's/ : /:/' | sed 's/ [0-9]*\///' | sed 's/ [0-9]\+\ *[0-9]\+ //'</command>
     <alias>netstat listening ports</alias>
     <frequency>360</frequency>
   </localfile>
