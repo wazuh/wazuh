@@ -28,7 +28,7 @@
 char* length_to_ipv6_mask(int mask_length);
 char* get_broadcast_addr(char* ip, char* netmask);
 
-__declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses){
+__declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID){
 
     PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
     PIP_ADAPTER_GATEWAY_ADDRESS_LH pGateway = NULL;
@@ -44,7 +44,7 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses){
     cJSON *object = cJSON_CreateObject();
     cJSON *iface_info = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network");
-
+    cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddItemToObject(object, "iface", iface_info);
 
     /* Iface Name */

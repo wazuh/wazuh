@@ -18,7 +18,7 @@
 #include <netioapi.h>
 #include <iphlpapi.h>
 
-typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses);
+typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID);
 
 #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
 #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
@@ -33,6 +33,10 @@ void sys_programs_windows(const char* LOCATION){
     FILE *output;
     char read_buff[OS_MAXSTR];
     int i;
+    int ID = os_random();
+
+    if (ID < 0)
+        ID = -ID;
 
     mtinfo(WM_SYS_LOGTAG, "Starting installed programs inventory.");
 
@@ -51,7 +55,9 @@ void sys_programs_windows(const char* LOCATION){
             cJSON *object = cJSON_CreateObject();
             cJSON *program = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
+            cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddItemToObject(object, "data", program);
+            ID++;
 
             char *string;
             char ** parts = NULL;
@@ -73,7 +79,7 @@ void sys_programs_windows(const char* LOCATION){
             free(parts);
 
             string = cJSON_PrintUnformatted(object);
-            mtdebug(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
+            mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
             SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
 
@@ -181,6 +187,11 @@ void sys_network_windows(const char* LOCATION){
 
     mtinfo(WM_SYS_LOGTAG, "Starting network inventory.");
 
+    int ID = os_random();
+
+    if (ID < 0)
+        ID = -ID;
+
     CallFunc _get_network_win;
 
     /* Load DLL with network inventory functions */
@@ -244,7 +255,8 @@ void sys_network_windows(const char* LOCATION){
 
                     char* string;
                     /* Call function get_network in syscollector_win_ext.dll */
-                    string = _get_network_win(pCurrAddresses);
+                    string = _get_network_win(pCurrAddresses, ID);
+                    ID++;
 
                     mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
                     SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);

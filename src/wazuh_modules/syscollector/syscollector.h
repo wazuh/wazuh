@@ -66,6 +66,9 @@ extern const wm_context WM_SYS_CONTEXT;     // Context
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module);
 
+// Installed programs inventory for Linux
+void sys_programs_linux(int queue_fd, const char* WM_SYS_LOCATION);
+
 // Installed programs inventory for Windows
 void sys_programs_windows(const char* LOCATION);
 

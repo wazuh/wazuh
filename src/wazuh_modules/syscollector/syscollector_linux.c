@@ -38,13 +38,19 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     FILE *fp;
     int i;
     int created = 1;
+    int ID = os_random();
+
+    if (ID < 0)
+        ID = -ID;
 
     snprintf(file, OS_MAXSTR, "%s", "/var/lib/dpkg/available");
 
     cJSON *object = cJSON_CreateObject();
     cJSON *program = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program");
+    cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddItemToObject(object, "data", program);
+    ID++;
 
     if ((fp = fopen(file, "r"))){
         while (fgets(read_buff, OS_MAXSTR, fp) != NULL){
@@ -54,8 +60,11 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
                     cJSON *object = cJSON_CreateObject();
                     cJSON *program = cJSON_CreateObject();
                     cJSON_AddStringToObject(object, "type", "program");
+                    cJSON_AddNumberToObject(object, "ID", ID);
                     cJSON_AddItemToObject(object, "data", program);
+                    ID++;
                 }
+
                 char *name;
                 char ** name_f = NULL;
                 char ** parts = NULL;
@@ -225,6 +234,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     int i = 0, j = 0, k = 0, found;
     int family;
     struct ifaddrs *ifaddr, *ifa;
+    int ID = os_random();
+
+    if (ID < 0)
+        ID = -ID;
 
     mtinfo(WM_SYS_LOGTAG, "Starting network inventory.");
 
@@ -273,8 +286,9 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         cJSON *object = cJSON_CreateObject();
         cJSON *interface = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "network");
+        cJSON_AddNumberToObject(object, "ID", ID);
         cJSON_AddItemToObject(object, "iface", interface);
-
+        ID++;
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
         /* Interface type */
