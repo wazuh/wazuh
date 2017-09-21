@@ -10,7 +10,7 @@ class WazuhException(Exception):
     """
 
     ERRORS = {
-	# < 1000: API
+        # < 1000: API
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
@@ -96,7 +96,8 @@ class WazuhException(Exception):
         2001: 'Incompatible version of SQLite',
 
         # Cluster
-        3000: 'Cluster'
+        3000: 'Cluster',
+        3001: 'Error creating zip file'
 
         # > 9000: Authd
     }

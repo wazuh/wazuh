@@ -22,7 +22,7 @@ class Connection:
     Represents a connection against a database
     """
 
-    def __init__(self, db_path=common.database_path_global):
+    def __init__(self, db_path=common.database_path_global, busy_sleep=0.001, max_attempts=1000):
         """
         Constructor
         """
@@ -31,7 +31,9 @@ class Connection:
         if not isfile(db_path):
             raise WazuhException(2000)
 
-        self.__conn = sqlite3.connect(db_path)
+        self.max_attempts = max_attempts
+
+        self.__conn = sqlite3.connect(database = db_path, timeout = busy_sleep)
         self.__cur = self.__conn.cursor()
 
     def __iter__(self):
@@ -59,10 +61,24 @@ class Connection:
         :param query: Query string.
         :param args: Query values.
         """
-        if args:
-            self.__cur.execute(query, *args)
-        else:
-            self.__cur.execute(query)
+        n_attempts = 0
+        while n_attempts <= self.max_attempts:
+            try:
+                if args:
+                    self.__cur.execute(query, *args)
+                else:
+                    self.__cur.execute(query)
+
+                break
+
+            except sqlite3.OperationalError:
+                n_attempts += 1
+
+            except Exception as e:
+                raise Exception (str(e))
+
+            if n_attempts > self.max_attempts:
+                raise sqlite3.OperationalError("Maximum attempts exceeded for sqlite3 execute")
 
     def fetch(self):
         """

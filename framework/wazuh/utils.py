@@ -9,9 +9,10 @@ from tempfile import mkstemp
 from subprocess import call, CalledProcessError
 from os import remove, chmod, chown, path, listdir, close as close
 from datetime import datetime, timedelta
+import hashlib
 import json
 import stat
-
+import requests
 
 try:
     from subprocess import check_output
@@ -304,6 +305,7 @@ def chmod_r(filepath, mode):
             elif path.isdir(itempath):
                 chmod_r(itempath, mode)
 
+
 def chown_r(filepath, uid, gid):
     """
     Recursive chmod.
@@ -321,3 +323,52 @@ def chown_r(filepath, uid, gid):
                 chown(itempath, uid, gid)
             elif path.isdir(itempath):
                 chown_r(itempath, uid, gid)
+
+
+def md5(fname):
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+def send_request(url, user, password, verify, type, session=requests.Session(), method='get', data=None):
+    session.auth = (user, password)
+    # auth = requests.auth.HTTPBasicAuth(user, password)
+
+    error = 0
+    try:
+        if method == 'get':
+            r = session.get(url, verify=verify)
+            if r.status_code == 401:
+                  data = str(r.text)
+                  error = 401
+        else:
+            r = session.post(url, verify=verify, json=data)
+            if r.status_code == 401:
+                  data = str(r.text)
+                  error = 401
+    except requests.exceptions.Timeout as e:
+        data = str(e)
+        error = 1
+    except requests.exceptions.TooManyRedirects as e:
+        data = str(e)
+        error = 2
+    except requests.exceptions.RequestException as e:
+        data = str(e)
+        error = 3
+    except Exception as e:
+        data = str(e)
+        error = 4
+
+    if error == 0:
+        if type == "json":
+            try:
+                data = json.loads(r.text)
+            except Exception as e:
+                data = str(e)
+                error = 5
+        else:
+            data = r.content
+
+    return (error, data)

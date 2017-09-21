@@ -4,6 +4,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
+from operator import mul
+from functools import reduce
 
 class InputValidator:
     """
@@ -28,4 +30,10 @@ class InputValidator:
 
         group_name: name of the group to be validated
         """
-        return self.check_length(group_name) and self.check_name(group_name)
+        def check_single_group_name(group_name):
+            return self.check_length(group_name) and self.check_name(group_name)
+
+        if isinstance(group_name, list):
+            return reduce(mul, map(lambda x: check_single_group_name(x), group_name))
+        else:
+            return check_single_group_name(group_name)

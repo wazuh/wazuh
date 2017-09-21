@@ -1340,20 +1340,22 @@ class Agent:
         if not InputValidator().group(group_id):
             raise WazuhException(1722)
 
-        if group_id.lower() == "default":
-            raise WazuhException(1712)
-
-        if not Agent.group_exists(group_id):
-            raise WazuhException(1710, group_id)
 
         ids = []
         if isinstance(group_id, list):
             for id in group_id:
+
+                if id.lower() == "default":
+                    raise WazuhException(1712)
+
                 try:
                     Agent()._remove_single_group(id)
                 except Exception as e:
                     ids.append(create_exception_dic(id, e))
         else:
+            if group_id.lower() == "default":
+                raise WazuhException(1712)
+
             try:
                 Agent()._remove_single_group(group_id)
             except Exception as e:
