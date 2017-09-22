@@ -86,6 +86,7 @@ void sys_programs_windows(const char* LOCATION){
             free(string);
         }
     }
+    pclose(output);
 }
 
 void sys_hw_windows(const char* LOCATION){

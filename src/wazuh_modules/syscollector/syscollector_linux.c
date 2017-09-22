@@ -13,6 +13,7 @@
 
 #if defined(__linux__)
 
+#include <stdio.h>
 #include <sys/ioctl.h>
 #include <net/if_arp.h>
 #include <net/if.h>
@@ -33,9 +34,9 @@ char* get_default_gateway(char *ifa_name);      // Get Default Gatewat for netwo
 void sys_programs_linux(int queue_fd, const char* LOCATION){
 
     char file[OS_MAXSTR];
-    //char *command;
     char read_buff[OS_MAXSTR];
-    FILE *fp;
+    char *command;
+    FILE *fp, *output;
     int i;
     int created = 1;
     int ID = os_random();
@@ -43,16 +44,20 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
+    memset(read_buff, 0, OS_MAXSTR);
+    os_calloc(OS_MAXSTR + 1, sizeof(char), command);
+    snprintf(command, OS_MAXSTR, "%s", "rpm -qa --queryformat '%{NAME},%{VENDOR},%{VERSION},%{SUMMARY}\n'");
     snprintf(file, OS_MAXSTR, "%s", "/var/lib/dpkg/available");
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON *program = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddItemToObject(object, "data", program);
-    ID++;
-
     if ((fp = fopen(file, "r"))){
+
+        cJSON *object = cJSON_CreateObject();
+        cJSON *program = cJSON_CreateObject();
+        cJSON_AddStringToObject(object, "type", "program");
+        cJSON_AddNumberToObject(object, "ID", ID);
+        cJSON_AddItemToObject(object, "data", program);
+        ID++;
+
         while (fgets(read_buff, OS_MAXSTR, fp) != NULL){
             if (!strncmp(read_buff, "Package:", 8)){
 
@@ -150,9 +155,50 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             }
         }
         fclose(fp);
+    }else if ((output = popen(command, "r"))){
+
+        while(fgets(read_buff, OS_MAXSTR, output)){
+
+            cJSON *object = cJSON_CreateObject();
+            cJSON *program = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "program");
+            cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddItemToObject(object, "data", program);
+            ID++;
+
+            char *string;
+            char ** parts = NULL;
+
+            parts = OS_StrBreak(',', read_buff, 4);
+            cJSON_AddStringToObject(program, "name", parts[0]);
+            cJSON_AddStringToObject(program, "vendor", parts[1]);
+            cJSON_AddStringToObject(program, "version", parts[2]);
+
+            char ** description = NULL;
+            description = OS_StrBreak('\n', parts[3], 2);
+            cJSON_AddStringToObject(program, "version", description[0]);
+            for (i=0; description[i]; i++){
+                free(description[i]);
+            }
+            for (i=0; parts[i]; i++){
+                free(parts[i]);
+            }
+            free(description);
+            free(parts);
+
+            string = cJSON_PrintUnformatted(object);
+            mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", string);
+            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(object);
+
+            free(string);
+        }
+        pclose(output);
+
     }else{
-        mterror(WM_SYS_LOGTAG, "Unable to read '%s'", file);
+        mterror(WM_SYS_LOGTAG, "Unable to get installed programs inventory.");
     }
+    free(command);
 }
 
 // Get Hardware inventory
