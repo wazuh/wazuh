@@ -28,6 +28,78 @@
 
 hw_info *get_system_bsd();    // Get system information
 
+#if defined(__FreeBSD__)
+
+// Get installed programs inventory
+
+void sys_programs_bsd(int queue_fd, const char* LOCATION){
+
+    char read_buff[OS_MAXSTR];
+    char *command;
+    FILE *output;
+    int i;
+    int ID = os_random();
+
+    mtinfo(WM_SYS_LOGTAG, "Starting installed programs inventory.");
+
+    /* Set positive random ID for each event */
+
+    if (ID < 0)
+        ID = -ID;
+
+    os_calloc(OS_MAXSTR + 1, sizeof(char), command);
+    snprintf(command, OS_MAXSTR, "%s", "pkg query -a '\%n|%m|%v|\%c'");
+
+    memset(read_buff, 0, OS_MAXSTR);
+
+    if ((output = popen(command, "r"))){
+
+        while(fgets(read_buff, OS_MAXSTR, output)){
+
+            cJSON *object = cJSON_CreateObject();
+            cJSON *program = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "program");
+            cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddItemToObject(object, "data", program);
+            ID++;
+
+            char *string;
+            char ** parts = NULL;
+
+            parts = OS_StrBreak('|', read_buff, 4);
+            cJSON_AddStringToObject(program, "name", parts[0]);
+            cJSON_AddStringToObject(program, "vendor", parts[1]);
+            cJSON_AddStringToObject(program, "version", parts[2]);
+
+            char ** description = NULL;
+            description = OS_StrBreak('\n', parts[3], 2);
+            cJSON_AddStringToObject(program, "description", description[0]);
+            for (i=0; description[i]; i++){
+                free(description[i]);
+            }
+            for (i=0; parts[i]; i++){
+                free(parts[i]);
+            }
+            free(description);
+            free(parts);
+
+            string = cJSON_PrintUnformatted(object);
+            mtdebug2(WM_SYS_LOGTAG, "sys_programs_bsd() sending '%s'", string);
+            SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(object);
+
+            free(string);
+        }
+        pclose(output);
+
+    }else{
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
+    }
+    free(command);
+}
+
+#endif
+
 // Get hardware inventory
 
 void sys_hw_bsd(int queue_fd, const char* LOCATION){

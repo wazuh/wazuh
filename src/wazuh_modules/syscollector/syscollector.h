@@ -73,6 +73,11 @@ void sys_programs_linux(int queue_fd, const char* WM_SYS_LOCATION);
 // Installed programs inventory for Windows
 void sys_programs_windows(const char* LOCATION);
 
+#if defined(__FreeBSD__)
+// Installed programs inventory for BSD based systems
+void sys_programs_bsd(int queue_fd, const char* LOCATION);
+#endif
+
 // Hardware inventory for Linux
 void sys_hw_linux(int queue_fd, const char* LOCATION);
 
