@@ -18,6 +18,7 @@
 #define WORKING_BUFFER_SIZE 15000
 #define MAX_TRIES 3
 
+#define FORMAT_LENGTH 18
 #define MAC_LENGTH 18
 #define TYPE_LENGTH 64
 #define STATE_LENGTH 20

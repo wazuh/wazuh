@@ -33,129 +33,43 @@ char* get_default_gateway(char *ifa_name);      // Get Default Gatewat for netwo
 
 void sys_programs_linux(int queue_fd, const char* LOCATION){
 
-    char file[OS_MAXSTR];
     char read_buff[OS_MAXSTR];
     char *command;
-    FILE *fp, *output;
+    char *format;
+    FILE *output;
+    DIR *dir;
     int i;
-    int created = 1;
     int ID = os_random();
+
+    mtinfo(WM_SYS_LOGTAG, "Starting installed programs inventory.");
+
+    /* Set positive random ID for each event */
 
     if (ID < 0)
         ID = -ID;
 
+    /* Check if the distribution has rpm or deb packages */
+
+    if ((dir = opendir("/var/lib/rpm/"))){
+        os_calloc(FORMAT_LENGTH, sizeof(char), format);
+        snprintf(format, FORMAT_LENGTH -1, "%s", "rpm");
+        os_calloc(OS_MAXSTR + 1, sizeof(char), command);
+        snprintf(command, OS_MAXSTR, "%s", "rpm -qa --queryformat '%{NAME}|%{VENDOR}|%{VERSION}|%{SUMMARY}\n'");
+        closedir(dir);
+    } else if ((dir = opendir("/var/lib/dpkg/"))){
+        os_calloc(FORMAT_LENGTH, sizeof(char), format);
+        snprintf(format, FORMAT_LENGTH -1, "%s", "deb");
+        os_calloc(OS_MAXSTR + 1, sizeof(char), command);
+        snprintf(command, OS_MAXSTR, "%s", "dpkg-query --showformat='${Package}|${Maintainer}|${Version}|${binary:Summary}\n' --show");
+        closedir(dir);
+    }else{
+        mtwarn(WM_SYS_LOGTAG, "Unable to get installed programs inventory.");
+        return;
+    }
+
     memset(read_buff, 0, OS_MAXSTR);
-    os_calloc(OS_MAXSTR + 1, sizeof(char), command);
-    snprintf(command, OS_MAXSTR, "%s", "rpm -qa --queryformat '%{NAME},%{VENDOR},%{VERSION},%{SUMMARY}\n'");
-    snprintf(file, OS_MAXSTR, "%s", "/var/lib/dpkg/available");
 
-    if ((fp = fopen(file, "r"))){
-
-        cJSON *object = cJSON_CreateObject();
-        cJSON *program = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "program");
-        cJSON_AddNumberToObject(object, "ID", ID);
-        cJSON_AddItemToObject(object, "data", program);
-        ID++;
-
-        while (fgets(read_buff, OS_MAXSTR, fp) != NULL){
-            if (!strncmp(read_buff, "Package:", 8)){
-
-                if (!created){
-                    cJSON *object = cJSON_CreateObject();
-                    cJSON *program = cJSON_CreateObject();
-                    cJSON_AddStringToObject(object, "type", "program");
-                    cJSON_AddNumberToObject(object, "ID", ID);
-                    cJSON_AddItemToObject(object, "data", program);
-                    ID++;
-                }
-
-                char *name;
-                char ** name_f = NULL;
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(':', read_buff, 2);
-                name = w_strtrim(parts[1]);
-                name_f = OS_StrBreak('\n', name, 2);
-                cJSON_AddStringToObject(program, "name", name_f[0]);
-                for (i=0; name_f[i]; i++){
-                    free(name_f[i]);
-                }
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-                free(name_f);
-
-            }else if (!strncmp(read_buff, "Maintainer:", 11)){
-
-                char *vendor;
-                char ** vendor_f = NULL;
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(':', read_buff, 2);
-                vendor = w_strtrim(parts[1]);
-                vendor_f = OS_StrBreak('\n', vendor, 2);
-                cJSON_AddStringToObject(program, "vendor", vendor_f[0]);
-                for (i=0; vendor_f[i]; i++){
-                    free(vendor_f[i]);
-                }
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-                free(vendor_f);
-
-            }else if (!strncmp(read_buff, "Version:", 8)){
-
-                char *version;
-                char ** version_f = NULL;
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(':', read_buff, 2);
-                version = w_strtrim(parts[1]);
-                version_f = OS_StrBreak('\n', version, 2);
-                cJSON_AddStringToObject(program, "version", version_f[0]);
-                for (i=0; version_f[i]; i++){
-                    free(version_f[i]);
-                }
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-                free(version_f);
-
-            }else if (!strncmp(read_buff, "Description:", 12)){
-
-                char *description;
-                char ** description_f = NULL;
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(':', read_buff, 2);
-                description = w_strtrim(parts[1]);
-                description_f = OS_StrBreak('\n', description, 2);
-                cJSON_AddStringToObject(program, "description", description_f[0]);
-                for (i=0; description_f[i]; i++){
-                    free(description_f[i]);
-                }
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-                free(description_f);
-                created = 0;
-
-                char *string;
-                string = cJSON_PrintUnformatted(object);
-                mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", string);
-                SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(object);
-                free(string);
-
-            }
-        }
-        fclose(fp);
-    }else if ((output = popen(command, "r"))){
+    if ((output = popen(command, "r"))){
 
         while(fgets(read_buff, OS_MAXSTR, output)){
 
@@ -163,20 +77,21 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             cJSON *program = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
             cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "format", format);
             cJSON_AddItemToObject(object, "data", program);
             ID++;
 
             char *string;
             char ** parts = NULL;
 
-            parts = OS_StrBreak(',', read_buff, 4);
+            parts = OS_StrBreak('|', read_buff, 4);
             cJSON_AddStringToObject(program, "name", parts[0]);
             cJSON_AddStringToObject(program, "vendor", parts[1]);
             cJSON_AddStringToObject(program, "version", parts[2]);
 
             char ** description = NULL;
             description = OS_StrBreak('\n', parts[3], 2);
-            cJSON_AddStringToObject(program, "version", description[0]);
+            cJSON_AddStringToObject(program, "description", description[0]);
             for (i=0; description[i]; i++){
                 free(description[i]);
             }
@@ -188,7 +103,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
 
             string = cJSON_PrintUnformatted(object);
             mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", string);
-            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+            SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
 
             free(string);
@@ -196,8 +111,9 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
         pclose(output);
 
     }else{
-        mterror(WM_SYS_LOGTAG, "Unable to get installed programs inventory.");
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
     }
+    free(format);
     free(command);
 }
 
