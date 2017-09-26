@@ -77,11 +77,11 @@ void* wm_database_main(wm_database *data) {
     char *keysfile;
     struct inotify_event *event = (struct inotify_event *)buffer;
     int fd;
-    int wd_agents = -1;
-    int wd_agentinfo = -1;
-    int wd_syscheck = -1;
-    int wd_rootcheck = -1;
-    int wd_groups = -1;
+    int wd_agents = -2;
+    int wd_agentinfo = -2;
+    int wd_syscheck = -2;
+    int wd_rootcheck = -2;
+    int wd_groups = -2;
     int old_max_queued_events = -1;
     ssize_t count;
     ssize_t i;
