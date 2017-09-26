@@ -126,8 +126,9 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
         if (n > 0) {
             flastcontent[n] = '\0';
         } else {
-            merror("Read error on %s", flastfile);
+            merror("Read error on %s: file empty.", flastfile);
             fclose(fp);
+            unlink(flastfile);
             return (0);
         }
         fclose(fp);
