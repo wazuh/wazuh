@@ -57,11 +57,13 @@ void Monitord()
         p = localtime(&tm);
         counter++;
 
+#ifndef LOCAL
         /* Check for unavailable agents, every two minutes */
         if (mond.monitor_agents && counter >= 120) {
             monitor_agents();
             counter = 0;
         }
+#endif
 
         /* Day changed, deal with log files */
         if (today != p->tm_mday) {
