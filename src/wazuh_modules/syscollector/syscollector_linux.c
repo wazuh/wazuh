@@ -21,6 +21,7 @@
 #include <ifaddrs.h>
 #include <linux/if_link.h>
 #include <linux/if_packet.h>
+#include <proc/readproc.h>
 
 hw_info *get_system_linux();                    // Get system information
 char* get_serial_number();                      // Get Motherboard serial number
@@ -696,7 +697,7 @@ hw_info *get_system_linux(){
         mterror(WM_SYS_LOGTAG, "Unable to read cpuinfo file.");
         info->cpu_name = strdup("unknown");
     } else {
-        char *aux_string;
+        char *aux_string = NULL;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
             if ((aux_string = strstr(string, "model name")) != NULL){
 
@@ -736,7 +737,7 @@ hw_info *get_system_linux(){
     if (!(fp = fopen("/proc/meminfo", "r"))) {
         mterror(WM_SYS_LOGTAG, "Unable to read meminfo file.");
     } else {
-        char *aux_string;
+        char *aux_string = NULL;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
             if ((aux_string = strstr(string, "MemTotal")) != NULL){
 
@@ -1115,6 +1116,97 @@ char* get_default_gateway(char *ifa_name){
 
     return def_gateway;
 
+}
+
+
+void sys_proc_linux(int queue_fd, const char* LOCATION) {
+
+    PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV | PROC_FILLNS);
+
+    proc_t proc_info;
+    char *string;
+    memset(&proc_info, 0, sizeof(proc_info));
+
+    unsigned int random = (unsigned int)os_random();
+
+    cJSON *item;
+    cJSON *id_msg = cJSON_CreateObject();
+    cJSON *id_array = cJSON_CreateArray();
+    cJSON *proc_array = cJSON_CreateArray();
+
+    while (readproc(proc, &proc_info) != NULL) {
+        cJSON *object = cJSON_CreateObject();
+        cJSON *process = cJSON_CreateObject();
+        cJSON_AddStringToObject(object, "type", "process");
+        cJSON_AddNumberToObject(object, "msg_id", random);
+        cJSON_AddItemToObject(object, "info", process);
+        cJSON_AddNumberToObject(process,"pid",proc_info.tid);
+        cJSON_AddItemToArray(id_array, cJSON_CreateNumber(proc_info.tid));
+        cJSON_AddStringToObject(process,"name",proc_info.cmd);
+        cJSON_AddStringToObject(process,"state",&proc_info.state);
+        cJSON_AddNumberToObject(process,"ppid",proc_info.ppid);
+        cJSON_AddNumberToObject(process,"utime",proc_info.utime);
+        cJSON_AddNumberToObject(process,"stime",proc_info.stime);
+        if (proc_info.cmdline && proc_info.cmdline[0]) {
+            cJSON *argvs = cJSON_CreateArray();
+            cJSON_AddStringToObject(process, "cmd", proc_info.cmdline[0]);
+            for (int i = 1; proc_info.cmdline[i]; i++) {
+                if (!strlen(proc_info.cmdline[i])==0) {
+                    cJSON_AddItemToArray(argvs, cJSON_CreateString(proc_info.cmdline[i]));
+                }
+            }
+            if (cJSON_GetArraySize(argvs) > 0)
+                cJSON_AddItemToObject(process, "argvs", argvs);
+        }
+        cJSON_AddStringToObject(process,"euser",proc_info.euser);
+        cJSON_AddStringToObject(process,"ruser",proc_info.ruser);
+        cJSON_AddStringToObject(process,"suser",proc_info.suser);
+        cJSON_AddStringToObject(process,"rgroup",proc_info.rgroup);
+        cJSON_AddStringToObject(process,"egroup",proc_info.egroup);
+        cJSON_AddStringToObject(process,"sgroup",proc_info.sgroup);
+        cJSON_AddStringToObject(process,"fgroup",proc_info.fgroup);
+        cJSON_AddNumberToObject(process,"priority",proc_info.priority);
+        cJSON_AddNumberToObject(process,"nice",proc_info.nice);
+        cJSON_AddNumberToObject(process,"size",proc_info.size);
+        cJSON_AddNumberToObject(process,"resident",proc_info.resident);
+        cJSON_AddNumberToObject(process,"share",proc_info.share);
+        cJSON_AddNumberToObject(process,"start_time",proc_info.start_time);
+        cJSON_AddNumberToObject(process,"pgrp",proc_info.pgrp);
+        cJSON_AddNumberToObject(process,"session",proc_info.session);
+        cJSON_AddNumberToObject(process,"nlwp",proc_info.nlwp);
+        cJSON_AddNumberToObject(process,"tgid",proc_info.tgid);
+        cJSON_AddNumberToObject(process,"tty",proc_info.tty);
+        cJSON_AddNumberToObject(process,"processor",proc_info.processor);
+        if (proc_info.ns) {
+            cJSON *ns = cJSON_CreateArray();
+            for (int i = 0; proc_info.ns[i]; i++) {
+                cJSON_AddItemToArray(ns, cJSON_CreateNumber(proc_info.ns[i]));
+            }
+            if (cJSON_GetArraySize(ns) > 0)
+                cJSON_AddItemToObject(process, "ns", ns);
+        }
+
+        cJSON_AddItemToArray(proc_array, object);
+    }
+
+    cJSON_AddStringToObject(id_msg, "type", "process_list");
+    cJSON_AddNumberToObject(id_msg, "msg_id", random);
+    cJSON_AddItemToObject(id_msg, "list", id_array);
+
+    string = cJSON_PrintUnformatted(id_msg);
+    mtdebug2(WM_SYS_LOGTAG, "sys_process_linux() sending '%s'", string);
+    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+
+    cJSON_ArrayForEach(item, proc_array) {
+        string = cJSON_PrintUnformatted(item);
+        mtdebug2(WM_SYS_LOGTAG, "sys_process_linux() sending '%s'", string);
+        SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    }
+
+    free(string);
+    cJSON_Delete(id_msg);
+    cJSON_Delete(proc_array);
+    closeproc(proc);
 }
 
 #endif /* __linux__ */

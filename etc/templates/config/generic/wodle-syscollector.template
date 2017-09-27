@@ -7,4 +7,5 @@
     <network>yes</network>
     <programs>yes</programs>
     <ports>yes</ports>
+    <processes>yes</processes>
   </wodle>

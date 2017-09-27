@@ -134,6 +134,16 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
         }
 
+        /* Running processes inventory */
+        if (sys->flags.procinfo){
+            #if defined(__linux__)
+                sys_proc_linux(queue_fd, WM_SYS_LOCATION);
+            #else
+                sys->flags.procinfo = 0;
+                mtwarn(WM_SYS_LOGTAG, "Running processes inventory is not available for this OS version.");
+            #endif
+        }
+
         time_sleep = time(NULL) - time_start;
 
         mtinfo(WM_SYS_LOGTAG, "Evaluation finished.");
@@ -216,6 +226,10 @@ void wm_sys_check() {
 
     if (!sys->flags.hwinfo) {
         mtwarn(WM_SYS_LOGTAG, "Hardware scan disabled.");
+    }
+
+    if (!sys->flags.procinfo) {
+        mtwarn(WM_SYS_LOGTAG, "Running processes inventory disabled.");
     }
 
     if (!sys->flags.programinfo) {

@@ -52,6 +52,7 @@ typedef struct wm_sys_flags_t {
     unsigned int osinfo:1;                  // OS inventory
     unsigned int programinfo:1;             // Installed programs inventory
     unsigned int portsinfo:1;               // Opened ports inventory
+    unsigned int procinfo:1;                // Running processes inventory
 } wm_sys_flags_t;
 
 typedef struct wm_sys_state_t {
@@ -112,5 +113,8 @@ void sys_network_linux(int queue_fd, const char* LOCATION);
 
 // Network inventory for windows
 void sys_network_windows(const char* LOCATION);
+
+// Running processes inventory
+void sys_proc_linux(int queue_fd, const char* LOCATION);
 
 #endif
