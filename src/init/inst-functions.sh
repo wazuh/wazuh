@@ -534,7 +534,7 @@ InstallCommon(){
 	./init/fw-check.sh execute
 }
 
-InstallServer(){
+InstallLocal(){
 
     InstallCommon
 
@@ -554,10 +554,8 @@ InstallServer(){
     ${INSTALL} -m 0750 -o root -g 0 ossec-monitord ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-reportd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-maild ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-logtest ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-dbd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
@@ -607,18 +605,27 @@ InstallServer(){
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
 
-    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
 
-    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-groups
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
     ${INSTALL} -m 750 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations
     touch ${PREFIX}/logs/integrations.log
     chmod 640 ${PREFIX}/logs/integrations.log
     chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
+}
+
+InstallServer(){
+
+    InstallLocal
+
+    ${INSTALL} -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
+
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
+    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-groups
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
 
     rm -f ${PREFIX}/etc/shared/merged.mg
 }
@@ -644,6 +651,6 @@ InstallWazuh(){
     elif [ "X$INSTYPE" = "Xserver" ]; then
         InstallServer
     elif [ "X$INSTYPE" = "Xlocal" ]; then
-        InstallServer
+        InstallLocal
     fi
 }
