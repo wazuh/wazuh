@@ -25,8 +25,6 @@ static int get_max_queued_events();
 /* Set current inotify queued events limit */
 static int set_max_queued_events(int size);
 
-#else
-static void wm_check_agents();
 #endif
 
 wm_database *module;
@@ -37,8 +35,18 @@ static void* wm_database_main(wm_database *data);
 static void* wm_database_destroy(wm_database *data);
 // Update manager information
 static void wm_sync_manager();
+
+#ifndef LOCAL
+
+#ifndef INOTIFY_ENABLED
+static void wm_check_agents();
+#endif // INOTIFY_ENABLED
+
 // Synchronize agents and groups
 static void wm_sync_agents();
+
+#endif // LOCAL
+
 static int wm_sync_agentinfo(int id_agent, const char *path);
 static int wm_sync_agent_group(int id_agent, const char *fname);
 static void wm_scan_directory(const char *dirname);
@@ -77,11 +85,15 @@ void* wm_database_main(wm_database *data) {
     char *keysfile;
     struct inotify_event *event = (struct inotify_event *)buffer;
     int fd;
+
+#ifndef LOCAL
     int wd_agents = -2;
     int wd_agentinfo = -2;
+    int wd_groups = -2;
+#endif
+
     int wd_syscheck = -2;
     int wd_rootcheck = -2;
-    int wd_groups = -2;
     int old_max_queued_events = -1;
     ssize_t count;
     ssize_t i;
@@ -124,6 +136,8 @@ void* wm_database_main(wm_database *data) {
 
     // First synchronization and add watch for client.keys, Agent info, Syscheck and Rootcheck directories
 
+#ifndef LOCAL
+
     if (data->sync_agents) {
         if ((wd_agents = inotify_add_watch(fd, keysfile_dir, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch client.keys file: %s.", strerror(errno));
@@ -143,6 +157,8 @@ void* wm_database_main(wm_database *data) {
         wm_sync_agents();
         wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
     }
+
+#endif
 
     if (data->sync_syscheck) {
         if ((wd_syscheck = inotify_add_watch(fd, DEFAULTDIR SYSCHECK_DIR, IN_MODIFY)) < 0)
@@ -186,20 +202,22 @@ void* wm_database_main(wm_database *data) {
                     mterror(WM_DATABASE_LOGTAG, "Inotify event too large (%u)", event->len);
                     break;
                 }
-
+#ifndef LOCAL
                 if (event->wd == wd_agents) {
-                    if (!strcmp(event->name, keysfile))
+                    if (!strcmp(event->name, keysfile)) {
                         wm_sync_agents();
-                }
-                else if (event->wd == wd_agentinfo)
+                    }
+                } else if (event->wd == wd_agentinfo) {
                     wm_sync_file(DEFAULTDIR AGENTINFO_DIR, event->name);
-                else if (event->wd == wd_syscheck)
-                    wm_sync_file(DEFAULTDIR SYSCHECK_DIR, event->name);
-                else if (event->wd == wd_rootcheck)
-                    wm_sync_file(DEFAULTDIR ROOTCHECK_DIR, event->name);
-                else if (event->wd == wd_groups)
+                } else if (event->wd == wd_groups) {
                     wm_sync_file(DEFAULTDIR GROUPS_DIR, event->name);
-                else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
+                } else
+#endif
+                if (event->wd == wd_syscheck) {
+                    wm_sync_file(DEFAULTDIR SYSCHECK_DIR, event->name);
+                } else if (event->wd == wd_rootcheck) {
+                    wm_sync_file(DEFAULTDIR ROOTCHECK_DIR, event->name);
+                } else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
                     mterror(WM_DATABASE_LOGTAG, "Inotify event queue overflowed.");
                     continue;
                 } else
@@ -213,11 +231,12 @@ void* wm_database_main(wm_database *data) {
     // Systems that don't support inotify
 
     while (1) {
+#ifndef LOCAL
         if (data->sync_agents) {
             wm_check_agents();
             wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
         }
-
+#endif
         if (data->sync_syscheck)
             wm_scan_directory(DEFAULTDIR SYSCHECK_DIR);
 
@@ -327,6 +346,8 @@ void wm_sync_manager() {
     }
 }
 
+#ifndef LOCAL
+
 #ifndef INOTIFY_ENABLED
 void wm_check_agents() {
     static time_t timestamp = 0;
@@ -344,7 +365,7 @@ void wm_check_agents() {
         }
     }
 }
-#endif
+#endif // INOTIFY_ENABLED
 
 // Synchronize agents
 void wm_sync_agents() {
@@ -422,6 +443,8 @@ void wm_sync_agents() {
     mtdebug1(WM_DATABASE_LOGTAG, "Agent sync completed.");
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms.", (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 }
+
+#endif // LOCAL
 
 int wm_sync_agentinfo(int id_agent, const char *path) {
     char header[OS_MAXSTR];
