@@ -35,6 +35,7 @@ int receive_msg()
     uint32_t length;
     size_t msg_length;
     int reads = 0;
+    int undefined_msg_logged = 0;
     char buffer[OS_MAXSTR + 1];
     char cleartext[OS_MAXSTR + 1];
     char *tmp_msg;
@@ -104,6 +105,8 @@ int receive_msg()
 
         /* Check for commands */
         if (IsValidHeader(tmp_msg)) {
+            undefined_msg_logged = 0;
+
             available_server = (int)time(NULL);
             update_ack(available_server);
 
@@ -263,8 +266,9 @@ int receive_msg()
             fprintf(fp, "%s", tmp_msg);
         }
 
-        else {
-            mwarn("Unknown message received. No action defined.");
+        else if (!undefined_msg_logged) {
+            mwarn("Unknown message received. No action defined. Maybe restarted while receiving merged file?");
+            undefined_msg_logged = 1;
         }
     }
 
