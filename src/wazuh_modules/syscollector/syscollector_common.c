@@ -124,6 +124,16 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
         }
 
+        /* Opened ports inventory */
+        if (sys->flags.portsinfo){
+            #if defined(__linux__)
+                sys_ports_linux(queue_fd, WM_SYS_LOCATION);
+            #else
+                sys->flags.portsinfo = 0;
+                mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this OS version.");
+            #endif
+        }
+
         time_sleep = time(NULL) - time_start;
 
         mtinfo(WM_SYS_LOGTAG, "Evaluation finished.");

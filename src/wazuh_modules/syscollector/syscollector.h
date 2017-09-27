@@ -18,6 +18,7 @@
 #define WORKING_BUFFER_SIZE 15000
 #define MAX_TRIES 3
 
+#define PROTO_LENGTH 6
 #define FORMAT_LENGTH 18
 #define MAC_LENGTH 18
 #define TYPE_LENGTH 64
@@ -31,9 +32,9 @@
 #define WM_SYS_IF_FILE "/etc/network/interfaces"
 #define WM_SYS_IF_DIR_RH "/etc/sysconfig/network-scripts/"
 #define WM_SYS_IF_DIR_SUSE "/etc/sysconfig/network/"
-#define WM_SYS_DGW_FILE "/proc/net/route"
 #define WM_SYS_IFDATA_DIR "/sys/class/net/"
 #define WM_SYS_HW_DIR   "/sys/class/dmi/id"
+#define WM_SYS_NET_DIR  "/proc/net/"
 
 typedef struct hw_info {
     char *cpu_name;
@@ -50,6 +51,7 @@ typedef struct wm_sys_flags_t {
     unsigned int netinfo:1;                 // Network inventory
     unsigned int osinfo:1;                  // OS inventory
     unsigned int programinfo:1;             // Installed programs inventory
+    unsigned int portsinfo:1;               // Opened ports inventory
 } wm_sys_flags_t;
 
 typedef struct wm_sys_state_t {
@@ -66,6 +68,15 @@ extern const wm_context WM_SYS_CONTEXT;     // Context
 
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module);
+
+// Get opened ports for IPv4 sockets.
+int get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID);
+
+// Get opened ports for IPv6 sockets.
+int get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID);
+
+// Opened ports inventory for Linux
+void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION);
 
 // Installed programs inventory for Linux
 void sys_programs_linux(int queue_fd, const char* WM_SYS_LOCATION);

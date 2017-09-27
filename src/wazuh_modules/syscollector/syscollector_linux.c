@@ -17,6 +17,7 @@
 #include <sys/ioctl.h>
 #include <net/if_arp.h>
 #include <net/if.h>
+#include <netinet/tcp.h>
 #include <ifaddrs.h>
 #include <linux/if_link.h>
 #include <linux/if_packet.h>
@@ -28,6 +29,253 @@ char* get_oper_state(char *ifa_name);           // Get operational state
 char* get_mtu(char *ifa_name);                  // Get MTU
 char* check_dhcp(char *ifa_name, int family);   // Check DHCP status for network interfaces
 char* get_default_gateway(char *ifa_name);      // Get Default Gatewat for network interfaces
+
+// Set port state
+
+char* get_port_state(int state){
+
+    char *port_state;
+    os_calloc(OS_MAXSTR, sizeof(char), port_state);
+
+    switch(state){
+        case TCP_ESTABLISHED:
+            snprintf(port_state, OS_MAXSTR, "%s", "established");
+            break;
+        case TCP_SYN_SENT:
+            snprintf(port_state, OS_MAXSTR, "%s", "syn_sent");
+            break;
+        case TCP_SYN_RECV:
+            snprintf(port_state, OS_MAXSTR, "%s", "syn_recv");
+            break;
+        case TCP_FIN_WAIT1:
+            snprintf(port_state, OS_MAXSTR, "%s", "fin_wait1");
+            break;
+        case TCP_FIN_WAIT2:
+            snprintf(port_state, OS_MAXSTR, "%s", "fin_wait2");
+            break;
+        case TCP_TIME_WAIT:
+            snprintf(port_state, OS_MAXSTR, "%s", "time_wait");
+            break;
+        case TCP_CLOSE:
+            snprintf(port_state, OS_MAXSTR, "%s", "close");
+            break;
+        case TCP_CLOSE_WAIT:
+            snprintf(port_state, OS_MAXSTR, "%s", "close_wait");
+            break;
+        case TCP_LAST_ACK:
+            snprintf(port_state, OS_MAXSTR, "%s", "last_ack");
+            break;
+        case TCP_LISTEN:
+            snprintf(port_state, OS_MAXSTR, "%s", "listening");
+            break;
+        case TCP_CLOSING:
+            snprintf(port_state, OS_MAXSTR, "%s", "closing");
+            break;
+        default:
+            snprintf(port_state, OS_MAXSTR, "%s", "unknown");
+            break;
+    }
+    return port_state;
+}
+
+// Get opened ports related to IPv4 sockets
+
+int get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID){
+
+    unsigned long rxq, txq, time_len, retr, inode;
+    int local_port, rem_port, d, state, uid, timer_run, timeout;
+    int local_addr, rem_addr;
+    in_addr_t local, remote;
+    char *laddress, *raddress;
+    char read_buff[OS_MAXSTR];
+    char file[OS_MAXSTR];
+    FILE *fp;
+    int first_line = 1;
+
+    snprintf(file, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, protocol);
+
+    os_calloc(NI_MAXHOST, sizeof(char), laddress);
+    os_calloc(NI_MAXHOST, sizeof(char), raddress);
+
+    memset(read_buff, 0, OS_MAXSTR);
+
+    if ((fp = fopen(file, "r"))){
+
+        while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
+
+            if (first_line){
+                first_line = 0;
+                continue;
+            }
+
+            sscanf(read_buff,
+                "%d: %8X:%X %8X:%X %X %lX:%lX %X:%lX %lX %d %d %lu %*s\n",
+                &d, &local_addr, &local_port, &rem_addr, &rem_port, &state, &txq, &rxq,
+                &timer_run, &time_len, &retr, &uid, &timeout, &inode);
+
+            local = local_addr;
+            remote = rem_addr;
+
+            snprintf(laddress, NI_MAXHOST, "%s", inet_ntoa(*(struct in_addr *) &local));
+            snprintf(raddress, NI_MAXHOST, "%s", inet_ntoa(*(struct in_addr *) &remote));
+
+            cJSON *object = cJSON_CreateObject();
+            cJSON *port = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "port");
+            cJSON_AddNumberToObject(object, "ID", ID);
+            ID++;
+            cJSON_AddStringToObject(object, "protocol", protocol);
+            cJSON_AddItemToObject(object, "data", port);
+            cJSON_AddStringToObject(port, "local_ip", laddress);
+            cJSON_AddNumberToObject(port, "local_port", local_port);
+            cJSON_AddStringToObject(port, "remote_ip", raddress);
+            cJSON_AddNumberToObject(port, "remote_port", rem_port);
+            cJSON_AddNumberToObject(port, "tx_queue", txq);
+            cJSON_AddNumberToObject(port, "rx_queue", rxq);
+
+            if (!strncmp(protocol, "tcp", 3)){
+                char *port_state;
+                port_state = get_port_state(state);
+                cJSON_AddStringToObject(port, "state", port_state);
+                free(port_state);
+            }
+
+            char *string;
+
+            string = cJSON_PrintUnformatted(object);
+            mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
+            SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(object);
+
+            free(string);
+
+        }
+        fclose(fp);
+    }else{
+        printf("Unable to get list of %s opened ports.", protocol);
+    }
+
+    free(laddress);
+    free(raddress);
+
+    return ID;
+
+}
+
+// Get opened ports related to IPv6 sockets
+
+int get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID){
+
+    unsigned long rxq, txq, time_len, retr, inode;
+    int local_port, rem_port, d, state, uid, timer_run, timeout;
+    char local_addr[OS_MAXSTR], rem_addr[OS_MAXSTR];
+    char laddress[INET6_ADDRSTRLEN];
+    char raddress[INET6_ADDRSTRLEN];
+    struct in6_addr local;
+    struct in6_addr rem;
+    char read_buff[OS_MAXSTR];
+    char file[OS_MAXSTR];
+    FILE *fp;
+    int first_line = 1;
+
+    snprintf(file, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, protocol);
+
+    memset(read_buff, 0, OS_MAXSTR);
+
+    if ((fp = fopen(file, "r"))){
+
+        while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
+
+            if (first_line){
+                first_line = 0;
+                continue;
+            }
+
+            sscanf(read_buff,
+                "%d: %64[0-9A-Fa-f]:%X %64[0-9A-Fa-f]:%X %X %lX:%lX %X:%lX %lX %d %d %lu %*s\n",
+                &d, local_addr, &local_port, rem_addr, &rem_port, &state, &txq, &rxq,
+                &timer_run, &time_len, &retr, &uid, &timeout, &inode);
+
+            sscanf(local_addr, "%08X%08X%08X%08X",
+                &local.s6_addr32[0], &local.s6_addr32[1],
+                &local.s6_addr32[2], &local.s6_addr32[3]);
+            inet_ntop(AF_INET6, &local, laddress, sizeof(laddress));
+
+            sscanf(local_addr, "%08X%08X%08X%08X",
+                &rem.s6_addr32[0], &rem.s6_addr32[1],
+                &rem.s6_addr32[2], &rem.s6_addr32[3]);
+            inet_ntop(AF_INET6, &rem, raddress, sizeof(raddress));
+
+            cJSON *object = cJSON_CreateObject();
+            cJSON *port = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "port");
+            cJSON_AddNumberToObject(object, "ID", ID);
+            ID++;
+            cJSON_AddStringToObject(object, "protocol", protocol);
+            cJSON_AddItemToObject(object, "data", port);
+            cJSON_AddStringToObject(port, "local_ip", laddress);
+            cJSON_AddNumberToObject(port, "local_port", local_port);
+            cJSON_AddStringToObject(port, "remote_ip", raddress);
+            cJSON_AddNumberToObject(port, "remote_port", rem_port);
+            cJSON_AddNumberToObject(port, "tx_queue", txq);
+            cJSON_AddNumberToObject(port, "rx_queue", rxq);
+
+            if (!strncmp(protocol, "tcp6", 4)){
+                char *port_state;
+                port_state = get_port_state(state);
+                cJSON_AddStringToObject(port, "state", port_state);
+                free(port_state);
+            }
+
+            char *string;
+
+            string = cJSON_PrintUnformatted(object);
+            mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
+            SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(object);
+
+            free(string);
+        }
+        fclose(fp);
+    }else{
+        printf("Unable to get list of %s opened ports.", protocol);
+    }
+    return ID;
+}
+
+// Opened ports inventory
+
+void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION){
+
+    char *protocol;
+    int ID = os_random();
+
+    if (ID < 0)
+        ID = -ID;
+
+    mtinfo(WM_SYS_LOGTAG, "Starting port scanning.");
+
+    os_calloc(PROTO_LENGTH + 1, sizeof(char), protocol);
+
+    /* TCP opened ports inventory */
+    snprintf(protocol, PROTO_LENGTH, "%s", "tcp");
+    ID = get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
+
+    /* UDP opened ports inventory */
+    snprintf(protocol, PROTO_LENGTH, "%s", "udp");
+    ID = get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
+
+    /* TCP6 opened ports inventory */
+    snprintf(protocol, PROTO_LENGTH, "%s", "tcp6");
+    ID = get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
+
+    /* UDP6 opened ports inventory */
+    snprintf(protocol, PROTO_LENGTH, "%s", "udp6");
+    ID = get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
+
+    free(protocol);
+
+}
 
 // Get installed programs inventory
 
@@ -845,7 +1093,7 @@ char* get_default_gateway(char *ifa_name){
     os_calloc(NI_MAXHOST, sizeof(char) + 1, def_gateway);
 
     strncpy(interface, ifa_name, strlen(ifa_name));
-    snprintf(file_location, OS_MAXSTR, "%s", WM_SYS_DGW_FILE);
+    snprintf(file_location, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, "route");
     snprintf(def_gateway, NI_MAXHOST, "%s", "unknown");
 
     if ((fp = fopen(file_location, "r"))){
