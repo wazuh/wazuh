@@ -254,7 +254,7 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting port scanning.");
+    mtinfo(WM_SYS_LOGTAG, "Starting ports inventory.");
 
     os_calloc(PROTO_LENGTH + 1, sizeof(char), protocol);
 
@@ -1194,12 +1194,12 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     cJSON_AddItemToObject(id_msg, "list", id_array);
 
     string = cJSON_PrintUnformatted(id_msg);
-    mtdebug2(WM_SYS_LOGTAG, "sys_process_linux() sending '%s'", string);
+    mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
     SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
 
     cJSON_ArrayForEach(item, proc_array) {
         string = cJSON_PrintUnformatted(item);
-        mtdebug2(WM_SYS_LOGTAG, "sys_process_linux() sending '%s'", string);
+        mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
         SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     }
 
