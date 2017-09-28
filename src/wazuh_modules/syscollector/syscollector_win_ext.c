@@ -28,6 +28,17 @@
 char* length_to_ipv6_mask(int mask_length);
 char* get_broadcast_addr(char* ip, char* netmask);
 
+__declspec( dllexport ) char* wm_inet_ntop(UCHAR ucLocalAddr[]){
+
+    char *address;
+    address = calloc(129, sizeof(char));
+
+    inet_ntop(AF_INET6,(struct in6_addr *)ucLocalAddr, address, 128);
+
+    return address;
+
+}
+
 __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID){
 
     PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;

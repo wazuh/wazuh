@@ -31,7 +31,7 @@ char* get_mtu(char *ifa_name);                  // Get MTU
 char* check_dhcp(char *ifa_name, int family);   // Check DHCP status for network interfaces
 char* get_default_gateway(char *ifa_name);      // Get Default Gatewat for network interfaces
 
-// Set port state
+// Get port state
 
 char* get_port_state(int state){
 
@@ -81,7 +81,7 @@ char* get_port_state(int state){
 
 // Get opened ports related to IPv4 sockets
 
-int get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID){
+void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID){
 
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
@@ -124,7 +124,6 @@ int get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, int
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
-            ID++;
             cJSON_AddStringToObject(object, "protocol", protocol);
             cJSON_AddItemToObject(object, "data", port);
             cJSON_AddStringToObject(port, "local_ip", laddress);
@@ -159,13 +158,11 @@ int get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, int
     free(laddress);
     free(raddress);
 
-    return ID;
-
 }
 
 // Get opened ports related to IPv6 sockets
 
-int get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID){
+void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID){
 
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
@@ -211,7 +208,6 @@ int get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, int
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
-            ID++;
             cJSON_AddStringToObject(object, "protocol", protocol);
             cJSON_AddItemToObject(object, "data", port);
             cJSON_AddStringToObject(port, "local_ip", laddress);
@@ -241,7 +237,6 @@ int get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, int
     }else{
         printf("Unable to get list of %s opened ports.", protocol);
     }
-    return ID;
 }
 
 // Opened ports inventory
@@ -260,19 +255,19 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION){
 
     /* TCP opened ports inventory */
     snprintf(protocol, PROTO_LENGTH, "%s", "tcp");
-    ID = get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
+    get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
 
     /* UDP opened ports inventory */
     snprintf(protocol, PROTO_LENGTH, "%s", "udp");
-    ID = get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
+    get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
 
     /* TCP6 opened ports inventory */
     snprintf(protocol, PROTO_LENGTH, "%s", "tcp6");
-    ID = get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
+    get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
 
     /* UDP6 opened ports inventory */
     snprintf(protocol, PROTO_LENGTH, "%s", "udp6");
-    ID = get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
+    get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, ID);
 
     free(protocol);
 
@@ -328,7 +323,6 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddStringToObject(object, "format", format);
             cJSON_AddItemToObject(object, "data", program);
-            ID++;
 
             char *string;
             char ** parts = NULL;
@@ -371,12 +365,17 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
 void sys_hw_linux(int queue_fd, const char* LOCATION){
 
     char *string;
+    int ID = os_random();
+
+    if (ID < 0)
+        ID = -ID;
 
     mtinfo(WM_SYS_LOGTAG, "Starting Hardware inventory.");
 
     cJSON *object = cJSON_CreateObject();
     cJSON *hw_inventory = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "hardware");
+    cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddItemToObject(object, "inventory", hw_inventory);
 
     /* Motherboard serial-number */
@@ -414,11 +413,16 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 void sys_os_unix(int queue_fd, const char* LOCATION){
 
     char *string;
+    int ID = os_random();
+
+    if (ID < 0)
+        ID = -ID;
 
     mtinfo(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "OS");
+    cJSON_AddNumberToObject(object, "ID", ID);
 
     cJSON *os_inventory = getunameJSON();
 
@@ -499,7 +503,6 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         cJSON_AddStringToObject(object, "type", "network");
         cJSON_AddNumberToObject(object, "ID", ID);
         cJSON_AddItemToObject(object, "iface", interface);
-        ID++;
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
         /* Interface type */

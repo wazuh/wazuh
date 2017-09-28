@@ -61,9 +61,10 @@ void* wm_sys_main(wm_sys_t *sys) {
 
     #ifdef WIN32
         if (!checkVista()){
-            mtwarn(WM_SYS_LOGTAG, "Network and OS scan is incompatible with versions older than Vista.");
+            mtwarn(WM_SYS_LOGTAG, "Network, opened ports, and OS scans are incompatible with versions older than Vista.");
             sys->flags.netinfo = 0;
             sys->flags.osinfo = 0;
+            sys->flags.portsinfo = 0;
         }
     #endif
 
@@ -126,9 +127,10 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         /* Opened ports inventory */
         if (sys->flags.portsinfo){
-            #if defined(__linux__)
+            #if defined(WIN32)
+                sys_ports_windows(WM_SYS_LOCATION);
+            #elif defined(__linux__)
                 sys_ports_linux(queue_fd, WM_SYS_LOCATION);
-            #else
                 sys->flags.portsinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this OS version.");
             #endif
@@ -234,6 +236,10 @@ void wm_sys_check() {
 
     if (!sys->flags.programinfo) {
         mtwarn(WM_SYS_LOGTAG, "Installed programs scan disabled.");
+    }
+
+    if (!sys->flags.portsinfo) {
+        mtwarn(WM_SYS_LOGTAG, "Opened ports scan disabled.");
     }
 
     // Check if interval

@@ -61,7 +61,6 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
             cJSON_AddStringToObject(object, "type", "program");
             cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddItemToObject(object, "data", program);
-            ID++;
 
             char *string;
             char ** parts = NULL;
@@ -105,11 +104,17 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
 void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
     char *string;
+    int ID = os_random();
+
+    if (ID < 0)
+        ID = -ID;
+
     mtinfo(WM_SYS_LOGTAG, "Starting Hardware inventory");
 
     cJSON *object = cJSON_CreateObject();
     cJSON *hw_inventory = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "hardware");
+    cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddItemToObject(object, "inventory", hw_inventory);
 
     /* Motherboard serial-number */
@@ -357,7 +362,6 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         cJSON_AddNumberToObject(object, "ID", ID);
         cJSON_AddItemToObject(object, "iface", interface);
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
-        ID++;
 
         for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next){
 

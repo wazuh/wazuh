@@ -70,14 +70,11 @@ extern const wm_context WM_SYS_CONTEXT;     // Context
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module);
 
-// Get opened ports for IPv4 sockets.
-int get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID);
-
-// Get opened ports for IPv6 sockets.
-int get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID);
-
 // Opened ports inventory for Linux
 void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION);
+
+// Opened ports inventory for Windows
+void sys_ports_windows(const char* LOCATION);
 
 // Installed programs inventory for Linux
 void sys_programs_linux(int queue_fd, const char* WM_SYS_LOCATION);
