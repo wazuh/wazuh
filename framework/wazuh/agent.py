@@ -81,7 +81,7 @@ class Agent:
         return dictionary
 
     @staticmethod
-    def calculate_status(last_keep_alive):
+    def calculate_status(last_keep_alive, pending):
         """
         Calculates state based on last keep alive
         """
@@ -93,7 +93,10 @@ class Agent:
             difference = (datetime.now() - last_date).total_seconds()
 
             if difference < limit_seconds:
-                return "Active"
+                if pending:
+                    return "Pending"
+                else:
+                    return "Active"
             else:
                 return "Disconnected"
 
@@ -107,6 +110,7 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
+        pending = True
 
         # Query
         query = "SELECT {0} FROM agent WHERE id = :id"
@@ -131,6 +135,7 @@ class Agent:
                 self.internal_key = tuple[3]
             if tuple[4] != None:
                 self.version = tuple[4]
+                pending = False if self.version != "" else True
             if tuple[5] != None:
                 self.dateAdd = tuple[5]
             if tuple[6] != None:
@@ -179,7 +184,7 @@ class Agent:
                     self.os['arch'] = "armv7"
 
             if self.id != "000":
-                self.status = Agent.calculate_status(self.lastKeepAlive)
+                self.status = Agent.calculate_status(self.lastKeepAlive, pending)
             else:
                 self.status = 'Active'
                 self.ip = '127.0.0.1'
@@ -697,6 +702,7 @@ class Agent:
         for tuple in conn:
             data_tuple = {}
             os = {}
+            pending = True
 
             if tuple[0] != None:
                 data_tuple['id'] = str(tuple[0]).zfill(3)
@@ -719,6 +725,7 @@ class Agent:
 
             if tuple[7] != None:
                 data_tuple['version'] = tuple[7]
+                pending = False if data_tuple['version'] != "" else True
 
             if os:
                 os_no_empty = dict((k, v) for k, v in os.items() if v)
@@ -729,7 +736,7 @@ class Agent:
                 data_tuple['status'] = "Active"
                 data_tuple['ip'] = '127.0.0.1'
             else:
-                data_tuple['status'] = Agent.calculate_status(lastKeepAlive)
+                data_tuple['status'] = Agent.calculate_status(lastKeepAlive, pending)
 
             data['items'].append(data_tuple)
 
