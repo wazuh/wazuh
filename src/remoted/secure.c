@@ -14,18 +14,15 @@
 #include <sys/event.h>
 #endif /* __linux__ */
 
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
-#include <sys/endian.h>
-#elif defined(__MACH__)
-#include <machine/endian.h>
-#endif
-
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
 
 /* Handle each message received */
 static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client);
+
+// Close and remove socket from keystore
+int _close_sock(keystore * keys, int sock);
 
 /* Handle secure connections */
 void HandleSecure()
@@ -169,13 +166,13 @@ void HandleSecure()
 
                     if (kevent(kqueue_fd, &request, 1, NULL, 0, &TS_ZERO) < 0) {
                         merror("kevent when adding connected socket: %s (%d)", strerror(errno), errno);
-                        close(sock_client);
+                        _close_sock(&keys, sock_client);
                     }
 #elif defined(__linux__)
                     request.data.fd = sock_client;
                     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_client, &request) < 0) {
                         merror("epoll when adding connected socket: %s (%d)", strerror(errno), errno);
-                        close(sock_client);
+                        _close_sock(&keys, sock_client);
                     }
 #endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
                 } else {
@@ -192,7 +189,7 @@ void HandleSecure()
                                 merror("Couldn't get the remote peer information: %s [%d]", strerror(errno), errno);
                         }
 
-                        close(sock_client);
+                        _close_sock(&keys, sock_client);
                         continue;
                     }
 
@@ -226,7 +223,7 @@ void HandleSecure()
                         }
 #endif /* __linux__ */
 
-                        close(sock_client);
+                        _close_sock(&keys, sock_client);
                         continue;
                     }
 
@@ -240,7 +237,7 @@ void HandleSecure()
                             merror("epoll when deleting connected socket: %s (%d)", strerror(errno), errno);
                         }
 #endif /* __linux__ */
-                        close(sock_client);
+                        _close_sock(&keys, sock_client);
                     } else {
                         HandleSecureMessage(buffer, recv_b, &peer_info, sock_client);
                     }
@@ -297,7 +294,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             merror(ENCFORMAT_ERROR, "(unknown)", srcip);
 
             if (sock_client >= 0)
-                close(sock_client);
+                _close_sock(&keys, sock_client);
 
             return;
         }
@@ -320,7 +317,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             merror(ENC_IP_ERROR, buffer + 1, srcip, agname);
 
             if (sock_client >= 0)
-                close(sock_client);
+                _close_sock(&keys, sock_client);
 
             return;
         }
@@ -331,7 +328,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             mwarn(DENYIP_WARN, srcip);
 
             if (sock_client >= 0)
-                close(sock_client);
+                _close_sock(&keys, sock_client);
 
             return;
         }
@@ -351,10 +348,19 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
         /* We need to save the peerinfo if it is a control msg */
-        if (protocol == UDP_PROTO) {
-            memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
-        } else {
-            keys.keyentries[agentid]->sock = sock_client;
+        memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
+
+        if (protocol == TCP_PROTO) {
+            switch (OS_AddSocket(&keys, agentid, sock_client)) {
+            case 0:
+                merror("Couldn't add TCP socket to keystore.");
+                break;
+            case 1:
+                mwarn("TCP socket already in keystore.");
+                break;
+            default:
+                ;
+            }
         }
 
         keys.keyentries[agentid]->rcvd = time(0);
@@ -378,4 +384,10 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
     }
+}
+
+// Close and remove socket from keystore
+int _close_sock(keystore * keys, int sock) {
+    close(sock);
+    return OS_DeleteSocket(keys, sock);
 }

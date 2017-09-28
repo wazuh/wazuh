@@ -66,7 +66,8 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 {
     int key_id;
     int sock = -1;
-    ssize_t msg_size, send_b;
+    ssize_t msg_size;
+    ssize_t send_b = 0;
     uint32_t length;
     char crypt_msg[OS_MAXSTR + 1];
     struct sockaddr_in peer_info;
@@ -108,10 +109,12 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         send_b = sendto(logr.sock, crypt_msg, msg_size, 0,
                (struct sockaddr *)&peer_info,
                logr.peer_size);
-    } else {
+    } else if (sock >= 0) {
         length = wnet_order(msg_size);
         send(sock, (char*)&length, sizeof(length), 0);
         send_b = send(sock, crypt_msg, msg_size, 0);
+    } else {
+        mdebug1("Send operation cancelled due to closed socket.");
     }
 
     if (send_b < 0) {

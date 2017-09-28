@@ -42,6 +42,7 @@ typedef struct _keystore {
     /* Hashes, based on the ID/IP to look up the keys */
     OSHash *keyhash_id;
     OSHash *keyhash_ip;
+    OSHash *keyhash_sock;
 
     /* Total key size */
     unsigned int keysize;
@@ -60,7 +61,7 @@ typedef struct _keystore {
     size_t removed_keys_size;
 } keystore;
 
-#define KEYSTORE_INITIALIZER { NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0 }
+#define KEYSTORE_INITIALIZER { NULL, NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0 }
 
 /** Function prototypes -- key management **/
 
@@ -123,6 +124,11 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
 /* Create an OSSEC message (encrypt and compress) */
 size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, unsigned int id) __attribute((nonnull));
 
+// Add socket number into keystore
+int OS_AddSocket(keystore * keys, unsigned int i, int sock);
+
+// Delete socket number from keystore
+int OS_DeleteSocket(keystore * keys, int sock);
 
 /** Remote IDs directories and internal definitions */
 #ifndef WIN32
