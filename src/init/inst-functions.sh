@@ -155,7 +155,7 @@ WriteLogs()
 }
 
 ##########
-# SetHeaders() 1-agent|manager
+# SetHeaders() 1-agent|manager|local
 ##########
 SetHeaders()
 {
@@ -400,6 +400,100 @@ WriteManager()
     echo "</ossec_config>" >> $NEWCONFIG
 }
 
+##########
+# WriteLocal() $1="no_locafiles" or empty
+##########
+WriteLocal()
+{
+    NO_LOCALFILES=$1
+
+    HEADERS=$(SetHeaders "Local")
+    echo "$HEADERS" > $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    echo "<ossec_config>" >> $NEWCONFIG
+
+    if [ "$EMAILNOTIFY" = "yes"   ]; then
+        sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
+        s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
+        s|<email_from>ossecm@example.wazuh.com</email_from>|<email_from>ossecm@${HOST}</email_from>|g; \
+        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG
+    else
+        cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
+    fi
+    echo "" >> $NEWCONFIG
+
+    # Alerts level
+    cat ${ALERTS_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Logging format
+    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Write rootcheck
+    WriteRootcheck "manager"
+
+    # Write OpenSCAP
+    WriteOpenSCAP "manager"
+
+    # Write syscheck
+    WriteSyscheck "manager"
+
+    # Active response
+    if [ "$SET_WHITE_LIST"="true" ]; then
+       sed -e "/  <\/global>/d" "${GLOBAL_AR_TEMPLATE}" >> $NEWCONFIG
+      # Nameservers in /etc/resolv.conf
+      for ip in ${NAMESERVERS} ${NAMESERVERS2};
+        do
+          if [ ! "X${ip}" = "X" ]; then
+              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
+          fi
+      done
+      # Read string
+      for ip in ${IPS};
+        do
+          if [ ! "X${ip}" = "X" ]; then
+            echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
+            if [ $? = 0 ]; then
+              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
+            fi
+          fi
+        done
+        echo "  </global>" >> $NEWCONFIG
+        echo "" >> $NEWCONFIG
+    else
+      cat ${GLOBAL_AR_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
+
+    cat ${AR_COMMANDS_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+    cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Write the log files
+    if [ "X${NO_LOCALFILES}" = "X" ]; then
+      echo "  <!-- Log analysis -->" >> $NEWCONFIG
+      WriteLogs "add"
+    else
+      echo "  <!-- Log analysis -->" >> $NEWCONFIG
+    fi
+
+    # Localfile commands
+    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Writting rules configuration
+    cat ${RULES_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    echo "</ossec_config>" >> $NEWCONFIG
+}
 
 InstallCommon(){
 
