@@ -13,12 +13,6 @@
 #include "remoted.h"
 #include "os_net/os_net.h"
 
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
-#include <sys/endian.h>
-#elif defined(__MACH__)
-#include <machine/endian.h>
-#endif
-
 /* pthread key update mutex */
 static pthread_mutex_t keyupdate_mutex;
 
@@ -121,7 +115,14 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     }
 
     if (send_b < 0) {
-        merror(SEND_ERROR, agent_id, strerror(errno));
+        switch (errno) {
+        case EPIPE:
+        case EBADF:
+            mdebug1(SEND_ERROR ". Agent might got disconnected.", agent_id, strerror(errno));
+            break;
+        default:
+            merror(SEND_ERROR, agent_id, strerror(errno));
+        }
     }
 
     return retval;
