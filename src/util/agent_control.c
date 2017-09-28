@@ -341,7 +341,7 @@ int main(int argc, char **argv)
 
     /* Print information from an agent */
     if (info_agent) {
-        int agt_status = 0;
+        agent_status_t agt_status = 0;
         char final_ip[128 + 1];
         char final_mask[128 + 1];
         agent_info *agt_info;

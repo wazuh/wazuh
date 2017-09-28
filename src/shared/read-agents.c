@@ -877,17 +877,20 @@ int delete_agentinfo(const char *id, const char *name)
 }
 
 /* Print the text representation of the agent status */
-const char *print_agent_status(int status)
+const char *print_agent_status(agent_status_t status)
 {
-    const char *status_str = "Never connected";
-
-    if (status == GA_STATUS_ACTIVE) {
-        status_str = "Active";
-    } else if (status == GA_STATUS_NACTIVE) {
-        status_str = "Disconnected";
+    switch (status) {
+    case GA_STATUS_ACTIVE:
+        return "Active";
+    case GA_STATUS_NACTIVE:
+        return "Disconnected";
+    case GA_STATUS_INV:
+        return "Never connected";
+    case GA_STATUS_PENDING:
+        return "Pending";
+    default:
+        return "(undefined)";
     }
-
-    return (status_str);
 }
 
 #ifndef WIN32
@@ -1235,7 +1238,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip)
 }
 
 /* Gets the status of an agent, based on the name / IP address */
-int get_agent_status(const char *agent_name, const char *agent_ip)
+agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
 {
     char tmp_file[513];
     char *agent_ip_pt = NULL;
@@ -1264,11 +1267,15 @@ int get_agent_status(const char *agent_name, const char *agent_ip)
         return (GA_STATUS_INV);
     }
 
-    if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
-        return (GA_STATUS_ACTIVE);
+    if (file_status.st_mtime < (time(0) - DISCON_TIME)) {
+        return (GA_STATUS_NACTIVE);
     }
 
-    return (GA_STATUS_NACTIVE);
+    if (file_status.st_size == 0) {
+        return GA_STATUS_PENDING;
+    }
+
+    return (GA_STATUS_ACTIVE);
 }
 
 /* List available agents */

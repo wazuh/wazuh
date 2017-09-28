@@ -68,13 +68,13 @@ int write_state() {
 #endif
 
     switch (agent_state.status) {
-    case AGN_PENDING:
+    case GA_STATUS_PENDING:
         status = "pending";
         break;
-    case AGN_CONNECTED:
+    case GA_STATUS_ACTIVE:
         status = "connected";
         break;
-    case AGN_DISCONNECTED:
+    case GA_STATUS_NACTIVE:
         status = "disconnected";
         break;
     default:

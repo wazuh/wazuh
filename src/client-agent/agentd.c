@@ -140,7 +140,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     start_agent(1);
 
     os_delwait();
-    update_status(AGN_CONNECTED);
+    update_status(GA_STATUS_ACTIVE);
 
     /* Send integrity message for agent configs */
     intcheck_file(OSSECCONF, dir);
@@ -185,13 +185,13 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         /* For the receiver */
         if (FD_ISSET(agt->sock, &fdset)) {
             if (receive_msg() < 0) {
-                update_status(AGN_DISCONNECTED);
+                update_status(GA_STATUS_NACTIVE);
                 merror(LOST_ERROR);
                 os_setwait();
                 start_agent(0);
                 minfo(SERVER_UP);
                 os_delwait();
-                update_status(AGN_CONNECTED);
+                update_status(GA_STATUS_ACTIVE);
             }
         }
 

@@ -449,8 +449,8 @@ void wm_sync_agents() {
 int wm_sync_agentinfo(int id_agent, const char *path) {
     char header[OS_MAXSTR];
     char files[OS_MAXSTR];
-    char *os;
-    char *version;
+    char *os = NULL;
+    char *version = NULL;
     char *os_name = NULL;
     char *os_major = NULL;
     char *os_minor = NULL;
@@ -458,8 +458,8 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char *os_version = NULL;
     char *os_codename = NULL;
     char *os_platform = NULL;
-    char *config_sum;
-    char *merged_sum;
+    char *config_sum = NULL;
+    char *merged_sum = NULL;
     char *end;
     char *end_line;
     FILE *fp;
@@ -473,118 +473,116 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         return -1;
     }
 
-    os = fgets(header, OS_MAXSTR, fp);
+    if (os = fgets(header, OS_MAXSTR, fp), !os) {
+        mtdebug1(WM_DATABASE_LOGTAG, "Empty file '%s'. Agent is pending.", path);
 
-    if (!os) {
-        mtdebug1(WM_DATABASE_LOGTAG, "Empty file '%s'.", path);
-        fclose(fp);
-        return -1;
-    }
-
-    if (end_line = strstr(os, "\n"), end_line){
-        *end_line = '\0';
     } else {
-        mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s' (incomplete). Returning.", path);
-        fclose(fp);
-        return -1;
-    }
 
-    if (config_sum = strstr(os, " / "), config_sum){
-        *config_sum = '\0';
-        config_sum += 3;
-    }
-
-    if (version = strstr(os, " - "), version){
-        *version = '\0';
-        version += 3;
-    } else {
-        mterror(WM_DATABASE_LOGTAG, "Corrupt file '%s'.", path);
-        fclose(fp);
-        return -1;
-    }
-
-    // [Ver: os_major.os_minor.os_build]
-    if (os_version = strstr(os, " [Ver: "), os_version){
-        *os_version = '\0';
-        os_version += 7;
-        os_name = os;
-        *(os_version + strlen(os_version) - 1) = '\0';
-
-        // Get os_major
-
-        if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_major = malloc(match_size +1 );
-            snprintf (os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+        if (end_line = strstr(os, "\n"), end_line){
+            *end_line = '\0';
+        } else {
+            mtwarn(WM_DATABASE_LOGTAG, "Corrupt line found parsing '%s' (incomplete). Returning.", path);
+            fclose(fp);
+            return -1;
         }
 
-        // Get os_minor
-
-        if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_minor = malloc(match_size +1);
-            snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+        if (config_sum = strstr(os, " / "), config_sum){
+            *config_sum = '\0';
+            config_sum += 3;
         }
 
-        // Get os_build
-
-        if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_build = malloc(match_size +1);
-            snprintf(os_build, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+        if (version = strstr(os, " - "), version){
+            *version = '\0';
+            version += 3;
+        } else {
+            mterror(WM_DATABASE_LOGTAG, "Corrupt file '%s'.", path);
+            fclose(fp);
+            return -1;
         }
 
-        os_platform = "windows";
-    }
-    else {
-        if (os_name = strstr(os, " ["), os_name){
-            *os_name = '\0';
-            os_name += 2;
-            if (os_version = strstr(os_name, ": "), os_version){
-                *os_version = '\0';
-                os_version += 2;
-                *(os_version + strlen(os_version) - 1) = '\0';
+        // [Ver: os_major.os_minor.os_build]
+        if (os_version = strstr(os, " [Ver: "), os_version){
+            *os_version = '\0';
+            os_version += 7;
+            os_name = os;
+            *(os_version + strlen(os_version) - 1) = '\0';
 
-                // os_major.os_minor (os_codename)
-                if (os_codename = strstr(os_version, " ("), os_codename){
-                    *os_codename = '\0';
-                    os_codename += 2;
-                    *(os_codename + strlen(os_codename) - 1) = '\0';
+            // Get os_major
+
+            if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_major = malloc(match_size +1 );
+                snprintf (os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+            }
+
+            // Get os_minor
+
+            if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_minor = malloc(match_size +1);
+                snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+            }
+
+            // Get os_build
+
+            if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_build = malloc(match_size +1);
+                snprintf(os_build, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+            }
+
+            os_platform = "windows";
+        }
+        else {
+            if (os_name = strstr(os, " ["), os_name){
+                *os_name = '\0';
+                os_name += 2;
+                if (os_version = strstr(os_name, ": "), os_version){
+                    *os_version = '\0';
+                    os_version += 2;
+                    *(os_version + strlen(os_version) - 1) = '\0';
+
+                    // os_major.os_minor (os_codename)
+                    if (os_codename = strstr(os_version, " ("), os_codename){
+                        *os_codename = '\0';
+                        os_codename += 2;
+                        *(os_codename + strlen(os_codename) - 1) = '\0';
+                    }
+
+                    // Get os_major
+                    if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        os_major = malloc(match_size +1);
+                        snprintf(os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+                    }
+
+                    // Get os_minor
+                    if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        os_minor = malloc(match_size +1);
+                        snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
+                    }
+
+                } else
+                    *(os_name + strlen(os_name) - 1) = '\0';
+
+                // os_name|os_platform
+                if (os_platform = strstr(os_name, "|"), os_platform){
+                    *os_platform = '\0';
+                    os_platform ++;
                 }
-
-                // Get os_major
-                if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_major = malloc(match_size +1);
-                    snprintf(os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-                }
-
-                // Get os_minor
-                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_minor = malloc(match_size +1);
-                    snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
-                }
-
-            } else
-                *(os_name + strlen(os_name) - 1) = '\0';
-
-            // os_name|os_platform
-            if (os_platform = strstr(os_name, "|"), os_platform){
-                *os_platform = '\0';
-                os_platform ++;
             }
         }
-    }
 
-    // Search for merged.mg sum
+        // Search for merged.mg sum
 
-    while (end = NULL, merged_sum = fgets(files, OS_MAXSTR, fp), merged_sum) {
-        if (*merged_sum != '\"' && *merged_sum != '!' && (end = strchr(merged_sum, ' '), end)) {
-            *end = '\0';
+        while (end = NULL, merged_sum = fgets(files, OS_MAXSTR, fp), merged_sum) {
+            if (*merged_sum != '\"' && *merged_sum != '!' && (end = strchr(merged_sum, ' '), end)) {
+                *end = '\0';
 
-            if (strcmp(end + 1, SHAREDCFG_FILENAME "\n") == 0) {
-                break;
+                if (strcmp(end + 1, SHAREDCFG_FILENAME "\n") == 0) {
+                    break;
+                }
             }
         }
     }

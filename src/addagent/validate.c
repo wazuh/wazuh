@@ -534,7 +534,7 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
                     total++;
 
                     if (print_status) {
-                        int agt_status = get_agent_status(name, ip);
+                        agent_status_t agt_status = get_agent_status(name, ip);
                         if (active_only && (agt_status != GA_STATUS_ACTIVE)) {
                             continue;
                         }

@@ -60,6 +60,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
     pending_data_t *data;
     FILE * fp;
     mode_t oldmask;
+    int is_startup = 0;
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
         char * counter = r_msg + strlen(HC_REQUEST);
@@ -83,11 +84,10 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
 
     if (strcmp(r_msg, HC_STARTUP) == 0) {
         mdebug1("Agent %s sent HC_STARTUP from %s.", keys.keyentries[agentid]->name, inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr));
-        return;
+        is_startup = 1;
     } else {
-        uname = r_msg;
-
         /* Clean uname and shared files (remove random string) */
+        uname = r_msg;
 
         if ((r_msg = strchr(r_msg, '\n'))) {
             /* Forward to random string (pass shared files) */
@@ -97,33 +97,57 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
             mwarn("Invalid message from agent id: '%d'(uname)", agentid);
             return;
         }
+    }
 
-        /* Lock mutex */
-        w_mutex_lock(&lastmsg_mutex)
+    /* Lock mutex */
+    w_mutex_lock(&lastmsg_mutex)
 
-        /* Check if there is a keep alive already for this agent */
-        if (data = OSHash_Get(pending_data, keys.keyentries[agentid]->id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
+    /* Check if there is a keep alive already for this agent */
+    if (data = OSHash_Get(pending_data, keys.keyentries[agentid]->id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
+        w_mutex_unlock(&lastmsg_mutex);
+        utimes(data->keep_alive, NULL);
+    } else {
+        if (!data) {
+            os_calloc(1, sizeof(pending_data_t), data);
+
+            if (OSHash_Add(pending_data, keys.keyentries[agentid]->id, data) != 2) {
+                merror("Couldn't add pending data into hash table.");
+
+                /* Unlock mutex */
+                w_mutex_unlock(&lastmsg_mutex);
+
+                free(data);
+                return;
+            }
+        }
+
+        if (!data->keep_alive) {
+            char agent_file[PATH_MAX];
+
+            /* Write to the agent file */
+            snprintf(agent_file, PATH_MAX, "%s/%s-%s",
+                     AGENTINFO_DIR,
+                     keys.keyentries[agentid]->name,
+                     keys.keyentries[agentid]->ip->ip);
+
+            os_strdup(agent_file, data->keep_alive);
+        }
+
+        if (is_startup) {
             w_mutex_unlock(&lastmsg_mutex);
-            utimes(data->keep_alive, NULL);
-        } else {
-            if (data) {
-                free(data->message);
+            oldmask = umask(0006);
+
+            if (fp = fopen(data->keep_alive, "a"), fp) {
+                fclose(fp);
             } else {
-                os_calloc(1, sizeof(pending_data_t), data);
-
-                if (OSHash_Add(pending_data, keys.keyentries[agentid]->id, data) != 2) {
-                    merror("Couldn't add pending data into hash table.");
-
-                    /* Unlock mutex */
-                    w_mutex_unlock(&lastmsg_mutex);
-
-                    free(data);
-                    return;
-                }
+                merror(FOPEN_ERROR, data->keep_alive, errno, strerror(errno));
             }
 
+            umask(oldmask);
+        } else {
             /* Update message */
             mdebug2("save_controlmsg(): inserting '%s'", uname);
+            free(data->message);
             os_strdup(uname, data->message);
 
             /* Mark data as changed and insert into queue */
@@ -144,20 +168,6 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
 
             /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
-
-            /* This is not critical section since is not used by another thread */
-
-            if (!data->keep_alive) {
-                char agent_file[PATH_MAX];
-
-                /* Write to the agent file */
-                snprintf(agent_file, PATH_MAX, "%s/%s-%s",
-                         AGENTINFO_DIR,
-                         keys.keyentries[agentid]->name,
-                         keys.keyentries[agentid]->ip->ip);
-
-                os_strdup(agent_file, data->keep_alive);
-            }
 
             /* Write uname to the file */
 

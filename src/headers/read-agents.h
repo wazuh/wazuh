@@ -24,6 +24,15 @@ typedef struct _agent_info {
     char *merged_sum;
 } agent_info;
 
+/* Status */
+
+typedef enum agent_status_t {
+    GA_STATUS_ACTIVE = 12,
+    GA_STATUS_NACTIVE,
+    GA_STATUS_INV,
+    GA_STATUS_PENDING
+} agent_status_t;
+
 /* Print syscheck db (of modified files) */
 int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname, int print_registry,
                    int all_files, int csv_output, cJSON *json_output, int update_counter);
@@ -51,10 +60,10 @@ char **get_agents(int flag);
 void free_agents(char **agent_list);
 
 /* Print the text representation of the agent status */
-const char *print_agent_status(int status);
+const char *print_agent_status(agent_status_t status);
 
 /* Gets the status of an agent, based on the name/IP address */
-int get_agent_status(const char *agent_name, const char *agent_ip);
+agent_status_t get_agent_status(const char *agent_name, const char *agent_ip);
 
 /* Get information from an agent */
 agent_info *get_agent_info(const char *agent_name, const char *agent_ip) __attribute__((nonnull(2)));
@@ -80,10 +89,5 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
 #define GA_ACTIVE           3
 #define GA_ALL              5
 #define GA_ALL_WSTATUS      7
-
-/* Status */
-#define GA_STATUS_ACTIVE    12
-#define GA_STATUS_NACTIVE   13
-#define GA_STATUS_INV       14
 
 #endif
