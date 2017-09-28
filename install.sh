@@ -463,10 +463,13 @@ ConfigureServer()
     fi
 
     # Setting up the logs
-    SetupLogs "3.7"
-
-    WriteManager
-
+    if [ "X$INSTYPE" = "Xserver" ]; then
+        SetupLogs "3.7"
+        WriteManager
+    else
+        SetupLogs "3.6"
+        WriteLocal
+    fi
 }
 
 ##########
