@@ -228,7 +228,14 @@ void* wm_database_main(wm_database *data) {
 
         // Systems that don't support inotify, or real-time disabled
 
+        time_t tsleep;
+        time_t tstart;
+        clock_t cstart;
+
         while (1) {
+            tstart = time(NULL);
+            cstart = clock();
+
 #ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
@@ -241,7 +248,13 @@ void* wm_database_main(wm_database *data) {
             if (data->sync_rootcheck)
                 wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
 
-            sleep(data->sleep);
+            mtdebug1(WM_DATABASE_LOGTAG, "Cycle completed: %.3lf ms.", (double)(clock() - cstart) / CLOCKS_PER_SEC * 1000);
+
+            if (tsleep = tstart + data->interval - time(NULL), tsleep >= 0) {
+                sleep(tsleep);
+            } else {
+                mtwarn(WM_DATABASE_LOGTAG, "Time interval exceeded by %ld seconds.", -tsleep);
+            }
         }
 #ifdef INOTIFY_ENABLED
     }
@@ -650,7 +663,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     int type;
     sqlite3 *db;
 
-    mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing file '%s/%s'", dirname, fname);
+    mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing file '%s/%s'", dirname, fname);
 
     if (snprintf(path, PATH_MAX, "%s/%s", dirname, fname) >= PATH_MAX) {
         mterror(WM_DATABASE_LOGTAG, "At wm_sync_file(): Path '%s/%s' exceeded length limit.", dirname, fname);
@@ -1059,7 +1072,7 @@ wmodule* wm_database_read() {
     data.sync_rootcheck = getDefine_Int("wazuh_database", "sync_rootcheck", 0, 1);
     data.full_sync = getDefine_Int("wazuh_database", "full_sync", 0, 1);
     data.real_time = getDefine_Int("wazuh_database", "real_time", 0, 1);
-    data.sleep = getDefine_Int("wazuh_database", "sleep", 0, 86400);
+    data.interval = getDefine_Int("wazuh_database", "interval", 0, 86400);
     data.max_queued_events = getDefine_Int("wazuh_database", "max_queued_events", 0, INT_MAX);
 
     if (data.sync_agents || data.sync_syscheck || data.sync_rootcheck) {
