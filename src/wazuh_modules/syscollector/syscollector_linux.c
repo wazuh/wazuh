@@ -91,12 +91,15 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     char read_buff[OS_MAXSTR];
     char file[OS_MAXSTR];
     FILE *fp;
-    int first_line = 1;
+    int first_line = 1, i;
+    char *command;
+    FILE *output;
 
     snprintf(file, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, protocol);
 
     os_calloc(NI_MAXHOST, sizeof(char), laddress);
     os_calloc(NI_MAXHOST, sizeof(char), raddress);
+    os_calloc(OS_MAXSTR, sizeof(char), command);
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -140,6 +143,28 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                 free(port_state);
             }
 
+            snprintf(command, OS_MAXSTR, "lsof | grep %lu", inode);
+            char *proc_name;
+            if ((output = popen(command, "r"))){
+                if(fgets(read_buff, OS_MAXSTR, output)){
+                    char ** parts = NULL;
+                    char *aux_string;
+                    parts = OS_StrBreak(' ', read_buff, 2);
+                    proc_name = strdup(parts[0]);
+                    int spaces = strspn(parts[1], " ");
+                    aux_string = parts[1] + spaces;
+                    parts = OS_StrBreak(' ', aux_string, 2);
+                    cJSON_AddStringToObject(port, "PID", parts[0]);
+                    cJSON_AddStringToObject(port, "process", proc_name);
+                    for (i=0; parts[i]; i++){
+                        free(parts[i]);
+                    }
+                    free(parts);
+                }
+            }else{
+                mtdebug1(WM_SYS_LOGTAG, "No process found for inode %lu", inode);
+            }
+
             char *string;
 
             string = cJSON_PrintUnformatted(object);
@@ -154,7 +179,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     }else{
         printf("Unable to get list of %s opened ports.", protocol);
     }
-
+    free(command);
     free(laddress);
     free(raddress);
 
@@ -174,10 +199,12 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     char read_buff[OS_MAXSTR];
     char file[OS_MAXSTR];
     FILE *fp;
-    int first_line = 1;
+    int first_line = 1, i;
+    char *command;
+    FILE *output;
 
     snprintf(file, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, protocol);
-
+    os_calloc(OS_MAXSTR, sizeof(char), command);
     memset(read_buff, 0, OS_MAXSTR);
 
     if ((fp = fopen(file, "r"))){
@@ -216,12 +243,35 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
             cJSON_AddNumberToObject(port, "remote_port", rem_port);
             cJSON_AddNumberToObject(port, "tx_queue", txq);
             cJSON_AddNumberToObject(port, "rx_queue", rxq);
+            cJSON_AddNumberToObject(port, "inode", inode);
 
             if (!strncmp(protocol, "tcp6", 4)){
                 char *port_state;
                 port_state = get_port_state(state);
                 cJSON_AddStringToObject(port, "state", port_state);
                 free(port_state);
+            }
+
+            snprintf(command, OS_MAXSTR, "lsof | grep %lu", inode);
+            char *proc_name;
+            if ((output = popen(command, "r"))){
+                if(fgets(read_buff, OS_MAXSTR, output)){
+                    char ** parts = NULL;
+                    char *aux_string;
+                    parts = OS_StrBreak(' ', read_buff, 2);
+                    proc_name = strdup(parts[0]);
+                    int spaces = strspn(parts[1], " ");
+                    aux_string = parts[1] + spaces;
+                    parts = OS_StrBreak(' ', aux_string, 2);
+                    cJSON_AddStringToObject(port, "PID", parts[0]);
+                    cJSON_AddStringToObject(port, "process", proc_name);
+                    for (i=0; parts[i]; i++){
+                        free(parts[i]);
+                    }
+                    free(parts);
+                }
+            }else{
+                mtdebug1(WM_SYS_LOGTAG, "No process found for inode %lu", inode);
             }
 
             char *string;

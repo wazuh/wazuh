@@ -130,7 +130,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.procinfo = 0;
             else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_PROGRAMS, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_PROCS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_PORTS)) {
