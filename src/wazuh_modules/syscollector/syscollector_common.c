@@ -140,6 +140,8 @@ void* wm_sys_main(wm_sys_t *sys) {
         if (sys->flags.procinfo){
             #if defined(__linux__)
                 sys_proc_linux(queue_fd, WM_SYS_LOCATION);
+            #elif defined(WIN32)
+                sys_proc_windows(WM_SYS_LOCATION);
             #else
                 sys->flags.procinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Running processes inventory is not available for this OS version.");

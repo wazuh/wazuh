@@ -1221,6 +1221,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         cJSON_AddNumberToObject(process,"priority",proc_info.priority);
         cJSON_AddNumberToObject(process,"nice",proc_info.nice);
         cJSON_AddNumberToObject(process,"size",proc_info.size);
+        cJSON_AddNumberToObject(process,"vm_size",proc_info.vm_size);
         cJSON_AddNumberToObject(process,"resident",proc_info.resident);
         cJSON_AddNumberToObject(process,"share",proc_info.share);
         cJSON_AddNumberToObject(process,"start_time",proc_info.start_time);
@@ -1230,14 +1231,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         cJSON_AddNumberToObject(process,"tgid",proc_info.tgid);
         cJSON_AddNumberToObject(process,"tty",proc_info.tty);
         cJSON_AddNumberToObject(process,"processor",proc_info.processor);
-        if (proc_info.ns) {
-            cJSON *ns = cJSON_CreateArray();
-            for (int i = 0; proc_info.ns[i]; i++) {
-                cJSON_AddItemToArray(ns, cJSON_CreateNumber(proc_info.ns[i]));
-            }
-            if (cJSON_GetArraySize(ns) > 0)
-                cJSON_AddItemToObject(process, "ns", ns);
-        }
 
         cJSON_AddItemToArray(proc_array, object);
     }

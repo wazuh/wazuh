@@ -29,7 +29,7 @@ hw_info *get_system_windows();
 
 char* get_process_name(DWORD pid){
 
-    char *string;
+    char *string = NULL;
     FILE *output;
     char *command;
     char *end;
@@ -876,6 +876,80 @@ hw_info *get_system_windows(){
     pclose(output);
 
     return info;
+}
+
+
+void sys_proc_windows(const char* LOCATION) {
+    char *command;
+    char *string;
+    FILE *output;
+    char read_buff[OS_MAXSTR];
+    unsigned int random = (unsigned int)os_random();
+
+    cJSON *item;
+    cJSON *id_msg = cJSON_CreateObject();
+    cJSON *id_array = cJSON_CreateArray();
+    cJSON *proc_array = cJSON_CreateArray();
+
+    mtinfo(WM_SYS_LOGTAG, "Starting running processes inventory.");
+
+    memset(read_buff, 0, OS_MAXSTR);
+    command = "wmic process get ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize /format:csv";
+    output = popen(command, "r");
+
+    if (!output){
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
+    }else{
+        while(strncmp(fgets(read_buff, OS_MAXSTR, output),"Node,ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize", 132) != 0){
+            continue;
+        }
+        while(fgets(read_buff, OS_MAXSTR, output)){
+
+            cJSON *object = cJSON_CreateObject();
+            cJSON *process = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "process");
+            cJSON_AddNumberToObject(object, "msg_id", random);
+            cJSON_AddItemToObject(object, "info", process);
+
+            char ** parts = NULL;
+            parts = OS_StrBreak(',', read_buff, 12);
+
+            cJSON_AddStringToObject(process,"cmd",parts[1]); // CommandLine
+            cJSON_AddNumberToObject(process,"stime",atol(parts[2])); // KernelModeTime
+            cJSON_AddStringToObject(process,"name",parts[3]); // Name
+            cJSON_AddNumberToObject(process,"size",atoi(parts[4])); // PageFileUsage
+            cJSON_AddNumberToObject(process,"ppid",atoi(parts[5])); // ParentProcessId
+            cJSON_AddNumberToObject(process,"priority",atoi(parts[6])); // Priority
+            cJSON_AddNumberToObject(process,"pid",atoi(parts[7])); // ProcessId
+            cJSON_AddItemToArray(id_array, cJSON_CreateNumber(atoi(parts[7]))); // ProcessId
+            cJSON_AddNumberToObject(process,"session",atoi(parts[8])); // SessionId
+            cJSON_AddNumberToObject(process,"nlwp",atoi(parts[9])); // ThreadCount
+            cJSON_AddNumberToObject(process,"stime",atol(parts[10])); // UserModeTime
+            cJSON_AddNumberToObject(process,"vm_size",atol(parts[11])); // VirtualSize
+
+            cJSON_AddItemToArray(proc_array, object);
+            free(parts);
+        }
+
+        cJSON_AddStringToObject(id_msg, "type", "process_list");
+        cJSON_AddNumberToObject(id_msg, "msg_id", random);
+        cJSON_AddItemToObject(id_msg, "list", id_array);
+
+        string = cJSON_PrintUnformatted(id_msg);
+        mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
+        SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+
+        cJSON_ArrayForEach(item, proc_array) {
+            string = cJSON_PrintUnformatted(item);
+            mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
+            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+        }
+
+        free(string);
+        cJSON_Delete(id_msg);
+        cJSON_Delete(proc_array);
+    }
+    pclose(output);
 }
 
 #endif

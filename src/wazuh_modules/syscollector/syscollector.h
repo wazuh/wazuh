@@ -113,5 +113,6 @@ void sys_network_windows(const char* LOCATION);
 
 // Running processes inventory
 void sys_proc_linux(int queue_fd, const char* LOCATION);
+void sys_proc_windows(const char* LOCATION);
 
 #endif
