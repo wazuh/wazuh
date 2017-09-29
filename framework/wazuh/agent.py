@@ -1094,7 +1094,7 @@ class Agent:
         if not hash_algorithm in hashlib.algorithms_available:
             raise WazuhException(1723)
 
-        hashing = hashlib.new(hash_algorithm) 
+        hashing = hashlib.new(hash_algorithm)
 
         conn = Connection(db_global[0])
         query = "SELECT {0} FROM agent WHERE `group` = :group_id"
@@ -1196,7 +1196,7 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
-        valid_select_fiels = ["id", "name", "ip", "last_keepalive", "os_name", 
+        valid_select_fiels = ["id", "name", "ip", "last_keepalive", "os_name",
                              "os_version", "os_platform", "version",
                              "config_sum", "merged_sum"]
 
@@ -1400,31 +1400,26 @@ class Agent:
         if not force:
             Agent(agent_id).get_basic_information()
 
-        if group_id.lower() != "default":
-            ossec_uid = getpwnam("ossec").pw_uid
-            ossec_gid = getgrnam("ossec").gr_gid
+        # Assign group in /queue/agent-groups
+        agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
+        try:
+            new_file = False if path.exists(agent_group_path) else True
 
-            # Assign group in /queue/agent-groups
-            agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
-            try:
-                new_file = False if path.exists(agent_group_path) else True
+            f_group = open(agent_group_path, 'w')
+            f_group.write(group_id)
+            f_group.close()
 
-                f_group = open(agent_group_path, 'w')
-                f_group.write(group_id)
-                f_group.close()
+            if new_file:
+                ossec_uid = getpwnam("ossec").pw_uid
+                ossec_gid = getgrnam("ossec").gr_gid
+                chown(agent_group_path, ossec_uid, ossec_gid)
+                chmod(agent_group_path, 0o660)
+        except Exception as e:
+            raise WazuhException(1005, str(e))
 
-                if new_file:
-                    chown(agent_group_path, ossec_uid, ossec_gid)
-                    chmod(agent_group_path, 0o660)
-            except Exception as e:
-                raise WazuhException(1005, str(e))
-
-            # Create group in /etc/shared
-            if not Agent.group_exists(group_id):
-                Agent.create_group(group_id)
-
-        else:
-            Agent.unset_group(agent_id)
+        # Create group in /etc/shared
+        if not Agent.group_exists(group_id):
+            Agent.create_group(group_id)
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
@@ -1445,7 +1440,7 @@ class Agent:
         if path.exists(agent_group_path):
             remove(agent_group_path)
 
-        return "Group unset. Current group for agent '{0}': 'default'.".format(agent_id)
+        return "Group unset for agent '{0}'.".format(agent_id)
 
     @staticmethod
     def get_outdated_agents(offset=0, limit=common.database_limit, sort=None):
