@@ -169,22 +169,6 @@ static void* reader(void *args);   // Reading thread's start point
 static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child process pool
 static pthread_mutex_t wm_children_mutex = PTHREAD_MUTEX_INITIALIZER;   // Mutex for child process pool
 
-// Work-around for OS X
-
-static inline void get_time(struct timespec *ts) {
-#ifdef __MACH__
-    clock_serv_t cclock;
-    mach_timespec_t mts;
-    host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
-    clock_get_time(cclock, &mts);
-    mach_port_deallocate(mach_task_self(), cclock);
-    ts->tv_sec = mts.tv_sec;
-    ts->tv_nsec = mts.tv_nsec;
-#else
-    clock_gettime(CLOCK_REALTIME, ts);
-#endif
-}
-
 // Execute command with timeout of secs
 
 int wm_exec(char *command, char **output, int *exitcode, int secs)
@@ -253,7 +237,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             return -1;
         }
 
-        get_time(&timeout);
+        gettime(&timeout);
         timeout.tv_sec += secs;
 
         // Wait for reading termination

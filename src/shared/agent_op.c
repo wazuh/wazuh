@@ -253,7 +253,7 @@ int get_agent_group(const char *id, char *group, size_t size) {
     }
 
     if (!(fp = fopen(path, "r"))) {
-        mdebug1("At get_agent_group(): file '%s' not found.", path);
+        mdebug2("At get_agent_group(): file '%s' not found.", path);
         return -1;
     }
 
@@ -288,7 +288,7 @@ int set_agent_group(const char * id, const char * group) {
     umask(oldmask);
 
     if (!fp) {
-        mdebug1("At get_agent_group(): file '%s' not found.", path);
+        merror("At set_agent_group(): open(%s): %s", path, strerror(errno));
         return -1;
     }
 

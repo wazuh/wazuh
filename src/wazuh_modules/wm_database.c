@@ -13,11 +13,30 @@
 #include "sec.h"
 #include "wazuh_db/wdb.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
+
 #ifndef WIN32
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
+
 #define IN_BUFFER_SIZE sizeof(struct inotify_event) + NAME_MAX + 1
+
+static volatile unsigned int queue_i;
+static volatile unsigned int queue_j;
+static queue_t * queue;                 // Queue for pending files
+static OSHash * ptable;                 // Table for pending paths
+static pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
+
+int inotify_fd;
+
+#ifndef LOCAL
+int wd_agents = -2;
+int wd_agentinfo = -2;
+int wd_groups = -2;
+#endif // !LOCAL
+int wd_syscheck = -2;
+int wd_rootcheck = -2;
 
 /* Get current inotify queued events limit */
 static int get_max_queued_events();
@@ -25,7 +44,19 @@ static int get_max_queued_events();
 /* Set current inotify queued events limit */
 static int set_max_queued_events(int size);
 
-#endif
+// Setup inotify reader
+static void wm_inotify_setup(wm_database * data);
+
+// Real time inotify reader thread
+static void * wm_inotify_start(void * args);
+
+// Insert request into internal structure
+void wm_inotify_push(const char * dirname, const char * fname);
+
+// Extract enqueued path from internal structure
+char * wm_inotify_pop();
+
+#endif // INOTIFY_ENABLED
 
 wm_database *module;
 
@@ -74,155 +105,35 @@ void* wm_database_main(wm_database *data) {
 
     // Manager name synchronization
 
-    if (data->sync_agents)
+    if (data->sync_agents) {
         wm_sync_manager();
+    }
 
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
-        char buffer[IN_BUFFER_SIZE];
-        char keysfile_dir[] = KEYSFILE_PATH;
-        char *keysfile;
-        struct inotify_event *event = (struct inotify_event *)buffer;
-        int fd;
+        char * path;
+        char * file;
 
-#ifndef LOCAL
-        int wd_agents = -2;
-        int wd_agentinfo = -2;
-        int wd_groups = -2;
-#endif
-        int wd_syscheck = -2;
-        int wd_rootcheck = -2;
-        int old_max_queued_events = -1;
-        ssize_t count;
-        ssize_t i;
+        wm_inotify_setup(data);
 
-        // Set inotify queued events limit
+        while (1) {
+            path = wm_inotify_pop();
 
-        if (data->max_queued_events) {
-            old_max_queued_events = get_max_queued_events();
 
-            if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
-                mtdebug1(WM_DATABASE_LOGTAG, "Setting inotify queued events limit to '%d'", data->max_queued_events);
-
-                 if (set_max_queued_events(data->max_queued_events) < 0) {
-                     // Error: do not reset then
-                     old_max_queued_events = -1;
-                 }
+            if (!strcmp(path, KEYSFILE_PATH)) {
+                wm_sync_agents();
+            } else {
+                if (file = strrchr(path, '/'), file) {
+                    *(file++) = '\0';
+                    wm_sync_file(path, file);
+                } else {
+                    mterror(WM_DATABASE_LOGTAG, "Couldn't extract file name from '%s'", path);
+                }
             }
+
+            free(path);
         }
 
-        // Start inotify
-
-        if ((fd = inotify_init()) < 0) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't init inotify: %s.", strerror(errno));
-            return NULL;
-        }
-
-        // Reset inotify queued events limit
-
-        if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
-            mtdebug2(WM_DATABASE_LOGTAG, "Restoring inotify queued events limit to '%d'", old_max_queued_events);
-            set_max_queued_events(old_max_queued_events);
-        }
-
-        if (!(keysfile = strrchr(keysfile_dir, '/'))) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't decode keys file path '%s'.", keysfile_dir);
-            return NULL;
-        }
-
-        *(keysfile++) = '\0';
-
-        // First synchronization and add watch for client.keys, Agent info, Syscheck and Rootcheck directories
-
-#ifndef LOCAL
-
-        if (data->sync_agents) {
-            if ((wd_agents = inotify_add_watch(fd, keysfile_dir, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)
-                mterror(WM_DATABASE_LOGTAG, "Couldn't watch client.keys file: %s.", strerror(errno));
-
-            mtdebug2(WM_DATABASE_LOGTAG, "wd_agents='%d'", wd_agents);
-
-            if ((wd_agentinfo = inotify_add_watch(fd, DEFAULTDIR AGENTINFO_DIR, IN_CLOSE_WRITE | IN_ATTRIB)) < 0)
-                mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent info directory: %s.", strerror(errno));
-
-            mtdebug2(WM_DATABASE_LOGTAG, "wd_agentinfo='%d'", wd_agentinfo);
-
-            if ((wd_groups = inotify_add_watch(fd, DEFAULTDIR GROUPS_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
-                mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent groups directory: %s.", strerror(errno));
-
-            mtdebug2(WM_DATABASE_LOGTAG, "wd_groups='%d'", wd_groups);
-
-            wm_sync_agents();
-            wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
-        }
-
-#endif
-
-        if (data->sync_syscheck) {
-            if ((wd_syscheck = inotify_add_watch(fd, DEFAULTDIR SYSCHECK_DIR, IN_MODIFY)) < 0)
-                mterror(WM_DATABASE_LOGTAG, "Couldn't watch Syscheck directory: %s.", strerror(errno));
-
-            mtdebug2(WM_DATABASE_LOGTAG, "wd_syscheck='%d'", wd_syscheck);
-            wm_scan_directory(DEFAULTDIR SYSCHECK_DIR);
-        }
-
-        if (data->sync_rootcheck) {
-            if ((wd_rootcheck = inotify_add_watch(fd, DEFAULTDIR ROOTCHECK_DIR, IN_MODIFY)) < 0)
-                mterror(WM_DATABASE_LOGTAG, "Couldn't watch Rootcheck directory: %s.", strerror(errno));
-
-            mtdebug2(WM_DATABASE_LOGTAG, "wd_rootcheck='%d'", wd_rootcheck);
-            wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
-        }
-
-        // Loop
-
-    while (1) {
-
-            // Wait for changes
-
-            mtdebug1(WM_DATABASE_LOGTAG, "Waiting for event notification...");
-
-            do {
-                if ((count = read(fd, buffer, IN_BUFFER_SIZE)) < 0) {
-                    if (errno != EAGAIN)
-                        mterror(WM_DATABASE_LOGTAG, "read(): %s.", strerror(errno));
-
-                    break;
-                }
-
-                buffer[count - 1] = '\0';
-
-                for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
-                    event = (struct inotify_event*)&buffer[i];
-                    mtdebug2(WM_DATABASE_LOGTAG, "inotify: i='%zd', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
-
-                    if (event->len > IN_BUFFER_SIZE) {
-                        mterror(WM_DATABASE_LOGTAG, "Inotify event too large (%u)", event->len);
-                        break;
-                    }
-#ifndef LOCAL
-                    if (event->wd == wd_agents) {
-                        if (!strcmp(event->name, keysfile)) {
-                            wm_sync_agents();
-                        }
-                    } else if (event->wd == wd_agentinfo) {
-                        wm_sync_file(DEFAULTDIR AGENTINFO_DIR, event->name);
-                    } else if (event->wd == wd_groups) {
-                        wm_sync_file(DEFAULTDIR GROUPS_DIR, event->name);
-                    } else
-#endif
-                    if (event->wd == wd_syscheck) {
-                        wm_sync_file(DEFAULTDIR SYSCHECK_DIR, event->name);
-                    } else if (event->wd == wd_rootcheck) {
-                        wm_sync_file(DEFAULTDIR ROOTCHECK_DIR, event->name);
-                    } else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
-                        mterror(WM_DATABASE_LOGTAG, "Inotify event queue overflowed.");
-                        continue;
-                    } else
-                        mterror(WM_DATABASE_LOGTAG, "Unknown watch descriptor '%d', mask='%u'.", event->wd, event->mask);
-                }
-            } while (count > 0);
-        }
     } else {
 #endif // INOTIFY_ENABLED
 
@@ -231,24 +142,32 @@ void* wm_database_main(wm_database *data) {
         time_t tsleep;
         time_t tstart;
         clock_t cstart;
+        struct timespec spec0;
+        struct timespec spec1;
 
         while (1) {
             tstart = time(NULL);
             cstart = clock();
+            gettime(&spec0);
 
 #ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
                 wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
+                wm_scan_directory(DEFAULTDIR GROUPS_DIR);
             }
 #endif
-            if (data->sync_syscheck)
+            if (data->sync_syscheck) {
                 wm_scan_directory(DEFAULTDIR SYSCHECK_DIR);
+            }
 
-            if (data->sync_rootcheck)
+            if (data->sync_rootcheck) {
                 wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
+            }
 
-            mtdebug1(WM_DATABASE_LOGTAG, "Cycle completed: %.3lf ms.", (double)(clock() - cstart) / CLOCKS_PER_SEC * 1000);
+            gettime(&spec1);
+            time_sub(&spec1, &spec0);
+            mtdebug1(WM_DATABASE_LOGTAG, "Cycle completed: %.3lf ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - cstart) / CLOCKS_PER_SEC * 1000);
 
             if (tsleep = tstart + data->interval - time(NULL), tsleep >= 0) {
                 sleep(tsleep);
@@ -388,7 +307,11 @@ void wm_sync_agents() {
     keyentry *entry;
     int *agents;
     clock_t clock0 = clock();
+    struct timespec spec0;
+    struct timespec spec1;
     struct stat buffer;
+
+    gettime(&spec0);
 
     mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing agents.");
     OS_PassEmptyKeyfile();
@@ -452,7 +375,9 @@ void wm_sync_agents() {
 
     OS_FreeKeys(&keys);
     mtdebug1(WM_DATABASE_LOGTAG, "Agent sync completed.");
-    mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms.", (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+    gettime(&spec1);
+    time_sub(&spec1, &spec0);
+    mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 }
 
 #endif // LOCAL
@@ -688,7 +613,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
     } else if (!strcmp(dirname, DEFAULTDIR GROUPS_DIR)) {
         type = WDB_GROUPS;
-    }else {
+    } else {
         mterror(WM_DATABASE_LOGTAG, "Directory name '%s' not recognized.", dirname);
         return -1;
     }
@@ -1123,6 +1048,235 @@ int set_max_queued_events(int size) {
     return 0;
 }
 
-#endif
+// Setup inotify reader
+void wm_inotify_setup(wm_database * data) {
+    int old_max_queued_events = -1;
+    char keysfile_path[] = KEYSFILE_PATH;
+    char * keysfile_dir = dirname(keysfile_path);
+
+    // Create hash table
+
+    if (ptable = OSHash_Create(), !ptable) {
+        merror_exit("At wm_inotify_setup(): OSHash_Create()");
+    }
+
+    // Create queue
+    if (queue = queue_init(data->max_queued_events > 0 ? data->max_queued_events : 16384), !queue) {
+        merror_exit("At wm_inotify_setup(): queue_init()");
+    }
+
+    // Set inotify queued events limit
+
+    if (data->max_queued_events) {
+        old_max_queued_events = get_max_queued_events();
+
+        if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
+            mtdebug1(WM_DATABASE_LOGTAG, "Setting inotify queued events limit to '%d'", data->max_queued_events);
+
+            if (set_max_queued_events(data->max_queued_events) < 0) {
+                // Error: do not reset then
+                old_max_queued_events = -1;
+            }
+        }
+    }
+
+    // Start inotify
+
+    if (inotify_fd = inotify_init(), inotify_fd < 0) {
+        mterror_exit(WM_DATABASE_LOGTAG, "Couldn't init inotify: %s.", strerror(errno));
+    }
+
+    // Reset inotify queued events limit
+
+    if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
+        mtdebug2(WM_DATABASE_LOGTAG, "Restoring inotify queued events limit to '%d'", old_max_queued_events);
+        set_max_queued_events(old_max_queued_events);
+    }
+
+    // Run thread
+    w_create_thread(wm_inotify_start, NULL);
+
+    // First synchronization and add watch for client.keys, Agent info, Syscheck and Rootcheck directories
+
+#ifndef LOCAL
+
+    if (data->sync_agents) {
+        if ((wd_agents = inotify_add_watch(inotify_fd, keysfile_dir, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)
+            mterror(WM_DATABASE_LOGTAG, "Couldn't watch client.keys file: %s.", strerror(errno));
+
+        mtdebug2(WM_DATABASE_LOGTAG, "wd_agents='%d'", wd_agents);
+
+        if ((wd_agentinfo = inotify_add_watch(inotify_fd, DEFAULTDIR AGENTINFO_DIR, IN_CLOSE_WRITE | IN_ATTRIB)) < 0)
+            mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent info directory: %s.", strerror(errno));
+
+        mtdebug2(WM_DATABASE_LOGTAG, "wd_agentinfo='%d'", wd_agentinfo);
+
+        if ((wd_groups = inotify_add_watch(inotify_fd, DEFAULTDIR GROUPS_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
+            mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent groups directory: %s.", strerror(errno));
+
+        mtdebug2(WM_DATABASE_LOGTAG, "wd_groups='%d'", wd_groups);
+
+        wm_sync_agents();
+        wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
+    }
 
 #endif
+
+    if (data->sync_syscheck) {
+        if ((wd_syscheck = inotify_add_watch(inotify_fd, DEFAULTDIR SYSCHECK_DIR, IN_MODIFY)) < 0)
+            mterror(WM_DATABASE_LOGTAG, "Couldn't watch Syscheck directory: %s.", strerror(errno));
+
+        mtdebug2(WM_DATABASE_LOGTAG, "wd_syscheck='%d'", wd_syscheck);
+        wm_scan_directory(DEFAULTDIR SYSCHECK_DIR);
+    }
+
+    if (data->sync_rootcheck) {
+        if ((wd_rootcheck = inotify_add_watch(inotify_fd, DEFAULTDIR ROOTCHECK_DIR, IN_MODIFY)) < 0)
+            mterror(WM_DATABASE_LOGTAG, "Couldn't watch Rootcheck directory: %s.", strerror(errno));
+
+        mtdebug2(WM_DATABASE_LOGTAG, "wd_rootcheck='%d'", wd_rootcheck);
+        wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
+    }
+}
+
+// Real time inotify reader thread
+static void * wm_inotify_start(__attribute__((unused)) void * args) {
+    char buffer[IN_BUFFER_SIZE];
+    char keysfile_dir[] = KEYSFILE_PATH;
+    char * keysfile = keysfile_dir;
+    struct inotify_event *event = (struct inotify_event *)buffer;
+    char * dirname = NULL;
+    ssize_t count;
+    ssize_t i;
+
+        if (!(keysfile = strrchr(keysfile_dir, '/'))) {
+            mterror_exit(WM_DATABASE_LOGTAG, "Couldn't decode keys file path '%s'.", keysfile_dir);
+        }
+
+        *(keysfile++) = '\0';
+
+    // Loop
+
+    while (1) {
+
+            // Wait for changes
+
+            mtdebug1(WM_DATABASE_LOGTAG, "Waiting for event notification...");
+
+            do {
+                if ((count = read(inotify_fd, buffer, IN_BUFFER_SIZE)) < 0) {
+                    if (errno != EAGAIN)
+                        mterror(WM_DATABASE_LOGTAG, "read(): %s.", strerror(errno));
+
+                    break;
+                }
+
+                buffer[count - 1] = '\0';
+
+                for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
+                    event = (struct inotify_event*)&buffer[i];
+                    mtdebug2(WM_DATABASE_LOGTAG, "inotify: i='%zd', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
+
+                    if (event->len > IN_BUFFER_SIZE) {
+                        mterror(WM_DATABASE_LOGTAG, "Inotify event too large (%u)", event->len);
+                        break;
+                    }
+#ifndef LOCAL
+                    if (event->wd == wd_agents) {
+                        if (!strcmp(event->name, keysfile)) {
+                            dirname = keysfile_dir;
+                        } else {
+                            continue;
+                        }
+                    } else if (event->wd == wd_agentinfo) {
+                        dirname = DEFAULTDIR AGENTINFO_DIR;
+                    } else if (event->wd == wd_groups) {
+                        dirname = DEFAULTDIR GROUPS_DIR;
+                    } else
+#endif
+                    if (event->wd == wd_syscheck) {
+                        dirname = DEFAULTDIR SYSCHECK_DIR;
+                    } else if (event->wd == wd_rootcheck) {
+                        dirname = DEFAULTDIR ROOTCHECK_DIR;
+                    } else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
+                        mterror(WM_DATABASE_LOGTAG, "Inotify event queue overflowed.");
+                        continue;
+                    } else {
+                        mterror(WM_DATABASE_LOGTAG, "Unknown watch descriptor '%d', mask='%u'.", event->wd, event->mask);
+                        continue;
+                    }
+
+                    wm_inotify_push(dirname, event->name);
+                }
+            } while (count > 0);
+        }
+
+    return NULL;
+}
+
+// Insert request into internal structure
+void wm_inotify_push(const char * dirname, const char * fname) {
+    char path[PATH_MAX + 1];
+    char * dup;
+
+    if (snprintf(path, sizeof(path), "%s/%s", dirname, fname) >= (int)sizeof(path)) {
+        mterror(WM_DATABASE_LOGTAG, "At wm_inotify_push(): Path too long: '%s'/'%s'", dirname, fname);
+        return;
+    }
+
+    w_mutex_lock(&mutex_queue);
+
+    if (queue_full(queue)) {
+        mterror(WM_DATABASE_LOGTAG, "Internal queue is full (%zu).", queue->size);
+        goto end;
+    }
+
+    switch (OSHash_Add(ptable, path, (void *)1)) {
+    case 0:
+        mterror(WM_DATABASE_LOGTAG, "Couldn't insert key into table.");
+        break;
+
+    case 1:
+        mtdebug2(WM_DATABASE_LOGTAG, "Adding '%s': file already exists at path table.", path);
+        break;
+
+    case 2:
+        os_strdup(path, dup);
+        mtdebug2(WM_DATABASE_LOGTAG, "Adding '%s' to path table.", path);
+
+        if (queue_push(queue, dup) < 0) {
+            mterror(WM_DATABASE_LOGTAG, "Couldn't insert key into queue.");
+            free(dup);
+        }
+
+        w_cond_signal(&cond_pending);
+    }
+
+end:
+    w_mutex_unlock(&mutex_queue);
+}
+
+// Extract enqueued path from internal structure
+char * wm_inotify_pop() {
+    char * path;
+
+    w_mutex_lock(&mutex_queue);
+
+    while (queue_empty(queue)) {
+        w_cond_wait(&cond_pending, &mutex_queue);
+    }
+
+    path = queue_pop(queue);
+
+    if (!OSHash_Delete(ptable, path)) {
+        mterror(WM_DATABASE_LOGTAG, "Couldn't delete key '%s' from path table.", path);
+    }
+
+    w_mutex_unlock(&mutex_queue);
+    mtdebug2(WM_DATABASE_LOGTAG, "Taking '%s' from path table.", path);
+    return path;
+}
+
+#endif // INOTIFY_ENABLED
+
+#endif // !WIN32
