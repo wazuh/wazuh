@@ -258,7 +258,7 @@ int local_start()
     os_setwait();
     start_agent(1);
     os_delwait();
-    update_status(AGN_CONNECTED);
+    update_status(GA_STATUS_ACTIVE);
 
     /* Send integrity message for agent configs */
     intcheck_file(cfg, "");
@@ -373,7 +373,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
                 /* If response is not available, set lock and wait for it */
                 mwarn(SERVER_UNAV);
-                update_status(AGN_DISCONNECTED);
+                update_status(GA_STATUS_NACTIVE);
 
                 /* Go into reconnect mode */
                 while ((cu_time - available_server) > agt->max_time_reconnect_try) {
@@ -418,7 +418,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
                 minfo(AG_CONNECTED, agt->rip[agt->rip_id], agt->port);
                 minfo(SERVER_UP);
-                update_status(AGN_CONNECTED);
+                update_status(GA_STATUS_ACTIVE);
             }
         }
     }

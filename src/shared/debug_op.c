@@ -32,7 +32,6 @@ void WinSetError();
 
 static void _log(int level, const char *tag, const char *msg, va_list args)
 {
-    int oldmask;
     time_t now;
     struct tm localtm;
     va_list args2; /* For the stderr print */
@@ -71,10 +70,9 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
     if (flags.log_json) {
 
 #ifndef WIN32
+        int oldmask;
+
         strncpy(logfile, isChroot() ? LOGJSONFILE : DEFAULTDIR LOGJSONFILE, sizeof(logfile));
-#else
-        strncpy(logfile, LOGJSONFILE, sizeof(logfile));
-#endif
 
         if (!IsFile(logfile)) {
             fp = fopen(logfile, "a");
@@ -95,6 +93,10 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
                 }
             }
         }
+#else
+        strncpy(logfile, LOGJSONFILE, sizeof(logfile));
+        fp = fopen(logfile, "a");
+#endif
 
         if (fp) {
             cJSON *json_log = cJSON_CreateObject();
@@ -126,10 +128,9 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
       /* If under chroot, log directly to /logs/ossec.log */
 
 #ifndef WIN32
+        int oldmask;
+
         strncpy(logfile, isChroot() ? LOGFILE : DEFAULTDIR LOGFILE, sizeof(logfile));
-#else
-        strncpy(logfile, LOGFILE, sizeof(logfile));
-#endif
 
         if (!IsFile(logfile)) {
             fp = fopen(logfile, "a");
@@ -150,6 +151,10 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
                 }
             }
         }
+#else
+        strncpy(logfile, LOGFILE, sizeof(logfile));
+        fp = fopen(logfile, "a");
+#endif
 
         /* Maybe log to syslog if the log file is not available */
         if (fp) {

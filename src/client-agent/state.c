@@ -13,7 +13,7 @@
 #include "agentd.h"
 #include <pthread.h>
 
-agent_state_t agent_state;
+agent_state_t agent_state = { .status = GA_STATUS_PENDING };
 pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int update_status(agent_status_t status) {
