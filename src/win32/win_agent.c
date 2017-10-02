@@ -130,7 +130,6 @@ int local_start()
     if (!agt) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
-    agt->port = DEFAULT_SECURE;
 
     /* Get debug level */
     debug_level = getDefine_Int("windows", "debug", 0, 2);
@@ -416,7 +415,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
                     }
                 }
 
-                minfo(AG_CONNECTED, agt->rip[agt->rip_id], agt->port);
+                minfo(AG_CONNECTED, agt->rip[agt->rip_id], agt->port[agt->rip_id]);
                 minfo(SERVER_UP);
                 update_status(GA_STATUS_ACTIVE);
             }
@@ -545,7 +544,7 @@ void send_win32_info(time_t curr_time)
     }
 
     /* Send UDP message */
-    if (agt->protocol == UDP_PROTO) {
+    if (agt->protocol[agt->rip_id] == UDP_PROTO) {
         if (OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0) {
             merror(SEND_ERROR, "server", strerror(errno));
             sleep(1);

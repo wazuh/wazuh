@@ -26,13 +26,13 @@ int ClientConf(const char *cfgfile)
     int modules = 0;
     int min_eps;
 
-    agt->port = DEFAULT_SECURE;
+    agt->port = NULL;
     agt->rip = NULL;
     agt->lip = NULL;
     agt->rip_id = 0;
     agt->execdq = 0;
     agt->profile = NULL;
-    agt->protocol = UDP_PROTO;
+    agt->protocol = NULL;
     agt->buffer = 1;
     agt->buflength = 5000;
     agt->events_persec = 500;

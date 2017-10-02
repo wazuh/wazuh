@@ -52,7 +52,7 @@ int Read_CAgentless(XML_NODE node, void *config1, void *config2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Integrator(XML_NODE node, void *config1, void *config2);
 int Read_Remote(XML_NODE node, void *d1, void *d2);
-int Read_Client(XML_NODE node, void *d1, void *d2);
+int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);

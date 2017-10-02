@@ -16,7 +16,7 @@ typedef struct agent_flags_t {
 
 /* Configuration structure */
 typedef struct _agent {
-    int port;
+    int *port;
     int m_queue;
     int sock;
     int execdq;
@@ -26,7 +26,7 @@ typedef struct _agent {
     int notify_time;
     int max_time_reconnect_try;
     char *profile;
-    int protocol;
+    int *protocol;
     int buffer;
     int buflength;
     int events_persec;

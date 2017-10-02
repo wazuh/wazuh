@@ -32,7 +32,7 @@ int send_msg(const char *msg, ssize_t msg_length)
     }
 
     /* Send msg_size of crypt_msg */
-    if (agt->protocol == UDP_PROTO) {
+    if (agt->protocol[agt->rip_id] == UDP_PROTO) {
         recv_b = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
     } else {
         length = wnet_order(msg_size);

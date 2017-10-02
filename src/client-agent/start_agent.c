@@ -39,7 +39,7 @@ int connect_server(int initial_id)
         if (agt->rip[1]) {
             minfo("Closing connection to server (%s:%d).",
                     agt->rip[rc],
-                    agt->port);
+                    agt->port[rc]);
         }
     }
 
@@ -82,16 +82,16 @@ int connect_server(int initial_id)
 
         minfo("Trying to connect to server (%s:%d).",
                 agt->rip[rc],
-                agt->port);
+                agt->port[rc]);
 
-        if (agt->protocol == UDP_PROTO) {
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str, strchr(tmp_str, ':') != NULL);
+        if (agt->protocol[rc] == UDP_PROTO) {
+            agt->sock = OS_ConnectUDP(agt->port[rc], tmp_str, strchr(tmp_str, ':') != NULL);
         } else {
             if (agt->sock >= 0) {
                 close(agt->sock);
             }
 
-            agt->sock = OS_ConnectTCP(agt->port, tmp_str, strchr(tmp_str, ':') != NULL);
+            agt->sock = OS_ConnectTCP(agt->port[rc], tmp_str, strchr(tmp_str, ':') != NULL);
         }
 
         if (agt->sock < 0) {
@@ -117,7 +117,7 @@ int connect_server(int initial_id)
 #endif
 
 #ifdef WIN32
-            if (agt->protocol == UDP_PROTO) {
+            if (agt->protocol[rc] == UDP_PROTO) {
                 int bmode = 1;
 
                 /* Set socket to non-blocking */
@@ -164,7 +164,7 @@ void start_agent(int is_startup)
 
         /* Read until our reply comes back */
         while (attempts <= 5) {
-            if (agt->protocol == TCP_PROTO) {
+            if (agt->protocol[agt->rip_id] == TCP_PROTO) {
                 recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
                 length = wnet_order(length);
 
@@ -189,7 +189,7 @@ void start_agent(int is_startup)
 
                 /* Send message again (after three attempts) */
                 if (attempts >= 3) {
-                    if (agt->protocol == TCP_PROTO) {
+                    if (agt->protocol[agt->rip_id] == TCP_PROTO) {
                         if (!connect_server(agt->rip_id)) {
                             continue;
                         }
@@ -215,7 +215,7 @@ void start_agent(int is_startup)
                     available_server = time(0);
 
                     minfo(AG_CONNECTED, agt->rip[agt->rip_id],
-                            agt->port);
+                            agt->port[agt->rip_id]);
 
                     if (is_startup) {
                         /* Send log message about start up */

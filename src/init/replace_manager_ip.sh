@@ -36,7 +36,7 @@ get_value_tag () {  # tag file
 
 edit_value_tag() {  # tag file value
     if [ "$#" == "3" ]; then
-        sed -ri "s#<server-ip>.+</server-ip>#<$1>$3</$1>#g" $2 > /dev/null
+        sed -ri "s#<ip>.+</ip>#<$1>$3</$1>#g" $2 > /dev/null
     fi
 
     if [ "$?" != "0" ]; then
@@ -61,8 +61,8 @@ main() {
     old_config="$1"
     new_config="$2"
     status="1"
-    tag_serverip="server-ip"
-    tag_serverhostname="server-hostname"
+    tag_serverip="ip"
+    tag_serverhostname="hostname"
 
     line_ip=$(check_tag_in_file $tag_serverip $old_config)
     line_host=$(check_tag_in_file $tag_serverhostname $old_config)

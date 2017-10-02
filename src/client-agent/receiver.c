@@ -45,7 +45,7 @@ int receive_msg()
 
     /* Read until no more messages are available */
     while (1) {
-        if (agt->protocol == TCP_PROTO) {
+        if (agt->protocol[agt->rip_id] == TCP_PROTO) {
             /* Only one read per call */
             if (reads++) {
                 break;

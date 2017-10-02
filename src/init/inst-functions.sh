@@ -202,13 +202,15 @@ WriteAgent()
 
     echo "<ossec_config>" >> $NEWCONFIG
     echo "  <client>" >> $NEWCONFIG
-
+    echo "    <server>" >> $NEWCONFIG
     if [ "X${HNAME}" = "X" ]; then
-      echo "    <server-ip>$SERVER_IP</server-ip>" >> $NEWCONFIG
+      echo "      <ip>$SERVER_IP</ip>" >> $NEWCONFIG
     else
-      echo "    <server-hostname>$HNAME</server-hostname>" >> $NEWCONFIG
+      echo "      <hostname>$HNAME</hostname>" >> $NEWCONFIG
     fi
-
+    echo "      <port>1514</port>" >> $NEWCONFIG
+    echo "      <protocol>udp</protocol>" >> $NEWCONFIG
+    echo "    </server>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
          echo "    <config-profile>$PROFILE</config-profile>" >> $NEWCONFIG
@@ -223,7 +225,6 @@ WriteAgent()
         fi
       fi
     fi
-    echo "    <protocol>udp</protocol>" >> $NEWCONFIG
     echo "    <notify_time>10</notify_time>" >> $NEWCONFIG
     echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
