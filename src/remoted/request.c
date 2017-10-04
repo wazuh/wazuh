@@ -45,7 +45,6 @@ static int response_timeout;
 void * req_main(__attribute__((unused)) void * arg) {
     int sock;
     int error;
-    int request_timeout;
     unsigned int counter = (unsigned int)os_random();
     char counter_s[COUNTER_LENGTH];
     req_node_t * node;
