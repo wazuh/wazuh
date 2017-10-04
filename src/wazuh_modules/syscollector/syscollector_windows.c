@@ -39,9 +39,9 @@ char* get_process_name(DWORD pid){
     os_calloc(OS_MAXSTR, sizeof(char), command);
     snprintf(command, OS_MAXSTR, "wmic process where processID=%lu get Name", pid);
     output = popen(command, "r");
-    if (!output){
+    if (!output) {
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-    }else{
+    } else {
         if (strncmp(fgets(read_buff, OS_MAXSTR, output),"Name", 4) == 0) {
             if (!fgets(read_buff, OS_MAXSTR, output)){
                 mtwarn(WM_SYS_LOGTAG, "Unable to get process name.");
@@ -450,6 +450,9 @@ void sys_ports_windows(const char* LOCATION){
         FREE(pUdp6Table);
         pUdp6Table = NULL;
     }
+
+    mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", SYSCOLLECTOR_PORTS_END);
+    SendMSG(0, SYSCOLLECTOR_PORTS_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 // Get installed programs inventory
@@ -513,6 +516,9 @@ void sys_programs_windows(const char* LOCATION){
         }
     }
     pclose(output);
+
+    mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", SYSCOLLECTOR_PROGRAMS_END);
+    SendMSG(0, SYSCOLLECTOR_PROGRAMS_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 void sys_hw_windows(const char* LOCATION){
@@ -590,6 +596,9 @@ void sys_hw_windows(const char* LOCATION){
     cJSON_Delete(object);
 
     free(string);
+
+    mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", SYSCOLLECTOR_HARDWARE_END);
+    SendMSG(0, SYSCOLLECTOR_HARDWARE_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 void sys_os_windows(const char* LOCATION){
@@ -617,6 +626,9 @@ void sys_os_windows(const char* LOCATION){
     cJSON_Delete(object);
 
     free(string);
+
+    mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", SYSCOLLECTOR_OS_END);
+    SendMSG(0, SYSCOLLECTOR_OS_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 /* Network inventory for Windows systems (Vista or later) */
@@ -725,6 +737,9 @@ void sys_network_windows(const char* LOCATION){
             }
 
             FreeLibrary(sys_library);
+
+            mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", SYSCOLLECTOR_NETWORK_END);
+            SendMSG(0, SYSCOLLECTOR_NETWORK_END, LOCATION, SYSCOLLECTOR_MQ);
         }
     }else{
         mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll.");
@@ -950,6 +965,9 @@ void sys_proc_windows(const char* LOCATION) {
         cJSON_Delete(proc_array);
     }
     pclose(output);
+
+    mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", SYSCOLLECTOR_PROCESSES_END);
+    SendMSG(0, SYSCOLLECTOR_PROCESSES_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 #endif

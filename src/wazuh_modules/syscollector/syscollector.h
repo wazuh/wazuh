@@ -36,6 +36,13 @@
 #define WM_SYS_HW_DIR   "/sys/class/dmi/id"
 #define WM_SYS_NET_DIR  "/proc/net/"
 
+#define SYSCOLLECTOR_PORTS_END      "{\"type\":\"port_end\"}"
+#define SYSCOLLECTOR_PROGRAMS_END   "{\"type\":\"program_end\"}"
+#define SYSCOLLECTOR_HARDWARE_END   "{\"type\":\"hardware_end\"}"
+#define SYSCOLLECTOR_OS_END         "{\"type\":\"OS_end\"}"
+#define SYSCOLLECTOR_NETWORK_END    "{\"type\":\"network_end\"}"
+#define SYSCOLLECTOR_PROCESSES_END  "{\"type\":\"process_end\"}"
+
 typedef struct hw_info {
     char *cpu_name;
     int cpu_cores;

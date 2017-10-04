@@ -21,7 +21,7 @@
 #include <ifaddrs.h>
 #include <linux/if_link.h>
 #include <linux/if_packet.h>
-#include <proc/readproc.h>
+#include "external/procps/readproc.h"
 
 hw_info *get_system_linux();                    // Get system information
 char* get_serial_number();                      // Get Motherboard serial number
@@ -182,7 +182,6 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     free(command);
     free(laddress);
     free(raddress);
-
 }
 
 // Get opened ports related to IPv6 sockets
@@ -321,6 +320,8 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION){
 
     free(protocol);
 
+    mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", SYSCOLLECTOR_PORTS_END);
+    SendMSG(queue_fd, SYSCOLLECTOR_PORTS_END, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
 }
 
 // Get installed programs inventory
@@ -408,6 +409,9 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     }
     free(format);
     free(command);
+
+    mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", SYSCOLLECTOR_PROGRAMS_END);
+    SendMSG(queue_fd, SYSCOLLECTOR_PROGRAMS_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 // Get Hardware inventory
@@ -454,6 +458,8 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
     free(string);
 
+    mtdebug2(WM_SYS_LOGTAG, "sys_hw_linux() sending '%s'", SYSCOLLECTOR_HARDWARE_END);
+    SendMSG(queue_fd, SYSCOLLECTOR_HARDWARE_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 #endif /* __linux__ */
@@ -487,6 +493,8 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
 
     free(string);
 
+    mtdebug2(WM_SYS_LOGTAG, "sys_os_unix() sending '%s'", SYSCOLLECTOR_OS_END);
+    SendMSG(queue_fd, SYSCOLLECTOR_OS_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 #if defined(__linux__)
@@ -733,6 +741,8 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     }
     free(ifaces_list);
 
+    mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", SYSCOLLECTOR_NETWORK_END);
+    SendMSG(queue_fd, SYSCOLLECTOR_NETWORK_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 /* Get System information */
@@ -1174,7 +1184,7 @@ char* get_default_gateway(char *ifa_name){
 
 void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
-    PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV | PROC_FILLNS);
+    PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV);
 
     proc_t proc_info;
     char *string;
@@ -1182,10 +1192,13 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     unsigned int random = (unsigned int)os_random();
 
+    int i = 0;
     cJSON *item;
     cJSON *id_msg = cJSON_CreateObject();
     cJSON *id_array = cJSON_CreateArray();
     cJSON *proc_array = cJSON_CreateArray();
+
+    mtinfo(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
     while (readproc(proc, &proc_info) != NULL) {
         cJSON *object = cJSON_CreateObject();
@@ -1203,7 +1216,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         if (proc_info.cmdline && proc_info.cmdline[0]) {
             cJSON *argvs = cJSON_CreateArray();
             cJSON_AddStringToObject(process, "cmd", proc_info.cmdline[0]);
-            for (int i = 1; proc_info.cmdline[i]; i++) {
+            for (i = 1; proc_info.cmdline[i]; i++) {
                 if (!strlen(proc_info.cmdline[i])==0) {
                     cJSON_AddItemToArray(argvs, cJSON_CreateString(proc_info.cmdline[i]));
                 }
@@ -1253,6 +1266,9 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     cJSON_Delete(id_msg);
     cJSON_Delete(proc_array);
     closeproc(proc);
+
+    mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", SYSCOLLECTOR_PROCESSES_END);
+    SendMSG(queue_fd, SYSCOLLECTOR_PROCESSES_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 #endif /* __linux__ */
