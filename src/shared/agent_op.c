@@ -296,3 +296,60 @@ int set_agent_group(const char * id, const char * group) {
     fclose(fp);
     return 0;
 }
+
+/*
+ * Parse manager hostname from agent-info file.
+ * If no such file, returns NULL.
+ */
+
+char* hostname_parse(const char *path) {
+    char buffer[OS_MAXSTR];
+    char *key;
+    char *value;
+    char *end;
+    char *manager_hostname;
+    FILE *fp;
+
+    if (!(fp = fopen(path, "r"))) {
+        if (errno == ENOENT) {
+            mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
+        } else {
+            merror(FOPEN_ERROR, path, errno, strerror(errno));
+        }
+
+        return NULL;
+    }
+
+    os_calloc(OS_MAXSTR, sizeof(char), manager_hostname);
+
+    while (fgets(buffer, OS_MAXSTR, fp)) {
+        switch (*buffer) {
+        case '#':
+            if (buffer[1] == '\"') {
+                key = buffer + 2;
+            } else {
+                continue;
+            }
+
+            break;
+        default:
+            continue;
+        }
+
+        if (!(value = strstr(key, "\":"))) {
+            continue;
+        }
+
+        *value = '\0';
+        value += 2;
+
+        if (!(end = strchr(value, '\n'))) {
+            continue;
+        }
+
+        snprintf(manager_hostname, OS_MAXSTR - 1, "%s", value);
+    }
+
+    fclose(fp);
+    return manager_hostname;
+}

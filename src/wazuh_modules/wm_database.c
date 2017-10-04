@@ -248,7 +248,7 @@ void wm_sync_manager() {
             }
         }
 
-        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __ossec_version, NULL, NULL);
+        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __ossec_version, NULL, NULL, hostname);
 
         free(os_major);
         free(os_minor);
@@ -396,13 +396,15 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char *os_platform = NULL;
     char *config_sum = NULL;
     char *merged_sum = NULL;
-    char *end;
+    char *manager_host = NULL;
+    char **parts;
     char *end_line;
     FILE *fp;
     int result;
     clock_t clock0 = clock();
     regmatch_t match[2];
     int match_size;
+    int i = 0;
 
     if (!(fp = fopen(path, "r"))) {
         mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
@@ -511,24 +513,39 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         }
 
         // Search for merged.mg sum
+        os_calloc(OS_MAXSTR, sizeof(char), merged_sum);
 
-        while (end = NULL, merged_sum = fgets(files, OS_MAXSTR, fp), merged_sum) {
-            if (*merged_sum != '\"' && *merged_sum != '!' && (end = strchr(merged_sum, ' '), end)) {
-                *end = '\0';
+        while (fgets(files, OS_MAXSTR, fp)) {
+            if (strstr(files, "merged.mg")) {
+                parts = OS_StrBreak(' ', files, 2);
+                os_strdup(parts[0], merged_sum);
+                break;
+            }
+        }
 
-                if (strcmp(end + 1, SHAREDCFG_FILENAME "\n") == 0) {
-                    break;
-                }
+        // Search for manager hostname connected to the agent
+        os_calloc(OS_MAXSTR, sizeof(char), manager_host);
+        while (fgets(files, OS_MAXSTR, fp)) {
+            if(!strncmp(files, "#\"manager_hostname\":", 20)){
+                parts = OS_StrBreak(':', files, 2);
+                os_strdup(parts[1], manager_host);
+                break;
             }
         }
     }
 
-    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, version, config_sum, end ? merged_sum : NULL);
+    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, version, config_sum, merged_sum, manager_host);
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agentinfo(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 
     free(os_major);
     free(os_minor);
     free(os_build);
+    free(merged_sum);
+    free(manager_host);
+    for (i=0; parts[i]; i++){
+      free(parts[i]);
+    }
+    free(parts);
     fclose(fp);
     return result;
 }

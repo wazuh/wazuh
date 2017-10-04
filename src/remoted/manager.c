@@ -176,8 +176,22 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
             umask(oldmask);
 
             if (fp) {
-                fprintf(fp, "%s\n", uname);
+
+                /* Get manager name before chroot */
+                char *hostname;
+                os_calloc(HOST_NAME_MAX + 1, sizeof(char), hostname);
+                if (gethostname(hostname, HOST_NAME_MAX) < 0){
+                    mwarn("Unable to get hostname due to: '%s'", strerror(errno));
+                }
+                /* Write manager hostname to the file */
+                char *manager_name;
+                os_calloc(OS_MAXSTR, sizeof(char), manager_name);
+                snprintf(manager_name, OS_MAXSTR - 1, "#\"%s\":%s", "manager_hostname", hostname);
+
+                fprintf(fp, "%s\n%s\n", uname, manager_name);
                 fclose(fp);
+                free(hostname);
+                free(manager_name);
             } else {
                 merror(FOPEN_ERROR, data->keep_alive, errno, strerror(errno));
             }

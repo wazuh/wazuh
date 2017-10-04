@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS agent (
     version TEXT,
     config_sum TEXT,
     merged_sum TEXT,
+    manager_host TEXT,
     date_add TEXT NOT NULL,
     last_keepalive TEXT,
     status TEXT NOT NULL CHECK (status IN ('empty', 'pending', 'updated')) DEFAULT 'empty',

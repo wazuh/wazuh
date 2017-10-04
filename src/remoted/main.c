@@ -9,6 +9,8 @@
 
 #include "shared.h"
 #include "remoted.h"
+#include <unistd.h>
+
 
 /* Prototypes */
 static void help_remoted(void) __attribute__((noreturn));
