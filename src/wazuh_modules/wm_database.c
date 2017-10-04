@@ -513,22 +513,33 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         }
 
         // Search for merged.mg sum
-        os_calloc(OS_MAXSTR, sizeof(char), merged_sum);
 
         while (fgets(files, OS_MAXSTR, fp)) {
             if (strstr(files, "merged.mg")) {
                 parts = OS_StrBreak(' ', files, 2);
                 os_strdup(parts[0], merged_sum);
+
+                for (i = 0; parts[i]; i++){
+                  free(parts[i]);
+                }
+
+                free(parts);
                 break;
             }
         }
 
         // Search for manager hostname connected to the agent
-        os_calloc(OS_MAXSTR, sizeof(char), manager_host);
+
         while (fgets(files, OS_MAXSTR, fp)) {
             if(!strncmp(files, "#\"manager_hostname\":", 20)){
                 parts = OS_StrBreak(':', files, 2);
                 os_strdup(parts[1], manager_host);
+
+                for (i = 0; parts[i]; i++){
+                  free(parts[i]);
+                }
+
+                free(parts);
                 break;
             }
         }
@@ -542,10 +553,6 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     free(os_build);
     free(merged_sum);
     free(manager_host);
-    for (i=0; parts[i]; i++){
-      free(parts[i]);
-    }
-    free(parts);
     fclose(fp);
     return result;
 }
