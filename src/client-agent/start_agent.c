@@ -22,6 +22,9 @@ int connect_server(int initial_id)
 {
     int attempts = 2;
     int rc = initial_id;
+    int timeout;    //timeout in seconds waiting for a server reply
+
+    timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 
     /* Checking if the initial is zero, meaning we have to
      * rotate to the beginning
@@ -115,7 +118,9 @@ int connect_server(int initial_id)
             /* Set socket non-blocking on HPUX */
             // fcntl(agt->sock, O_NONBLOCK);
 #endif
-
+            if (OS_SetRecvTimeout(agt->sock, timeout) < 0){
+                merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
+            }
 #ifdef WIN32
             if (agt->protocol[rc] == UDP_PROTO) {
                 int bmode = 1;
