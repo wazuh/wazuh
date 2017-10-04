@@ -7,6 +7,7 @@ EXTERNAL_LUA=external/lua-5.2.3/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
+EXTERNAL_PROCPS=external/procps/
 LUA_PLAT=posix
 MAXAGENTS?=8000
 REUSE_ID?=no
@@ -48,7 +49,7 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-pthread -lrt -ldl -lprocps
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
 		CFLAGS+=-Wl,--start-group
 else
@@ -483,7 +484,7 @@ winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a wazuh_modules/sysco
 ####################
 
 .PHONY: external lua
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a
 
 lua:
 	cd ${EXTERNAL_LUA} && ${MAKE} ${LUA_PLAT}
@@ -549,11 +550,28 @@ libcJSON.a: ${cjson_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
+
+#### procps #########
+
+PROCPS_LIB=libproc.a
+PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
+
+procps_c := $(wildcard ${EXTERNAL_PROCPS}*.c)
+procps_o := $(procps_c:.c=.o)
+
+${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+libproc.a: ${procps_o}
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
+
+
 ####################
 #### OSSEC Libs ####
 ####################
 
-ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a ${JSON_LIB} ${OPENSSL_LIB} ${CRYPTO_LIB}
+ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a ${JSON_LIB} ${OPENSSL_LIB} ${CRYPTO_LIB} ${PROCPS_LIB}
 
 #### os_xml ########
 
@@ -1050,7 +1068,7 @@ ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} aler
 wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
-wazuh-modulesd: ${wmodulesd_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+wazuh-modulesd: ${wmodulesd_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB} ${PROCPS_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 ####################
@@ -1203,6 +1221,7 @@ clean-external:
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
 	rm -f ${OPENSSL_LIB}
 	rm -f ${CRYPTO_LIB}
+	rm -f ${procps_o} libproc.a
 
 clean-internals:
 	rm -f ${os_zlib_o} os_zlib.a
