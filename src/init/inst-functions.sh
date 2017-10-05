@@ -204,9 +204,9 @@ WriteAgent()
     echo "  <client>" >> $NEWCONFIG
     echo "    <server>" >> $NEWCONFIG
     if [ "X${HNAME}" = "X" ]; then
-      echo "      <ip>$SERVER_IP</ip>" >> $NEWCONFIG
+      echo "      <address>$SERVER_IP</address>" >> $NEWCONFIG
     else
-      echo "      <hostname>$HNAME</hostname>" >> $NEWCONFIG
+      echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1514</port>" >> $NEWCONFIG
     echo "      <protocol>udp</protocol>" >> $NEWCONFIG

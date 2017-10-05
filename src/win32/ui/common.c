@@ -284,8 +284,7 @@ int get_ossec_server()
     char *str = NULL;
 
     /* Definitions */
-    const char *(xml_serverip[]) = {"ossec_config", "client", "server", "ip", NULL};
-    const char *(xml_serverhost[]) = {"ossec_config", "client", "server", "hostname", NULL};
+    const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
 
     /* Read XML */
     if (OS_ReadXML(CONFIG, &xml) < 0) {
@@ -299,8 +298,8 @@ int get_ossec_server()
     }
     config_inst.server_type = 0;
 
-    /* Get IP */
-    str = OS_GetOneContentforElement(&xml, xml_serverip);
+    /* Get IP address of manager */
+    str = OS_GetOneContentforElement(&xml, xml_serveraddr);
     if (str && (OS_IsValidIP(str, NULL) == 1)) {
         config_inst.server_type = SERVER_IP_USED;
         config_inst.server = str;
@@ -310,12 +309,6 @@ int get_ossec_server()
     }
     /* If we don't find the IP, try the server hostname */
     else {
-        if (str) {
-            free(str);
-            str = NULL;
-        }
-
-        str = OS_GetOneContentforElement(&xml, xml_serverhost);
         if (str) {
             char *s_ip;
             s_ip = OS_GetHost(str, 0);
@@ -392,9 +385,7 @@ int run_cmd(char *cmd, HWND hwnd)
 int set_ossec_server(char *ip, HWND hwnd)
 {
     const char **xml_pt = NULL;
-    const char *(xml_serverip[]) = {"ossec_config", "client", "server", "ip", NULL};
-    const char *(xml_serverhost[]) = {"ossec_config", "client", "server", "hostname", NULL};
-
+    const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
     char config_tmp[] = CONFIG;
     char *conf_file = basename_ex(config_tmp);
 
@@ -415,10 +406,10 @@ int set_ossec_server(char *ip, HWND hwnd)
             return (0);
         }
         config_inst.server_type = SERVER_HOST_USED;
-        xml_pt = xml_serverhost;
+        xml_pt = xml_serveraddr;
     } else {
         config_inst.server_type = SERVER_IP_USED;
-        xml_pt = xml_serverip;
+        xml_pt = xml_serveraddr;
     }
 
     /* Create temporary file */

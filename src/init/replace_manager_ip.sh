@@ -9,7 +9,7 @@
 # Foundation.
 
 # Just for agents
-# Prints the current ossec.conf with <server-ip|hostname> of ossec.conf specified as first argument.
+# Prints the current ossec.conf with <address> of ossec.conf specified as first argument.
 # Example: ./replace_manager_ip.sh /var/ossec/etc/ossec.conf.rpmorig
 
 # Aux functions
@@ -36,7 +36,7 @@ get_value_tag () {  # tag file
 
 edit_value_tag() {  # tag file value
     if [ "$#" == "3" ]; then
-        sed -ri "s#<ip>.+</ip>#<$1>$3</$1>#g" $2 > /dev/null
+        sed -ri "s#<address>.+</address>#<$1>$3</$1>#g" $2 > /dev/null
     fi
 
     if [ "$?" != "0" ]; then
@@ -61,19 +61,12 @@ main() {
     old_config="$1"
     new_config="$2"
     status="1"
-    tag_serverip="ip"
-    tag_serverhostname="hostname"
+    tag_server="address"
 
-    line_ip=$(check_tag_in_file $tag_serverip $old_config)
-    line_host=$(check_tag_in_file $tag_serverhostname $old_config)
+    line_server=$(check_tag_in_file $tag_server $old_config)
 
-    if [ "$line_ip" == "1" ]; then
-        replace $tag_serverip $old_config $new_config
-        status="0"
-    fi
-
-    if [ "$line_host" == "1" ]; then
-        replace $tag_serverhostname $old_config $new_config
+    if [ "$line_server" == "1" ]; then
+        replace $tag_server $old_config $new_config
         status="0"
     fi
 

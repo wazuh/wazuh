@@ -127,8 +127,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
 {
 
     /* XML definitions */
-    const char *xml_client_ip = "ip";
-    const char *xml_client_hostname = "hostname";
+    const char *xml_client_addr = "address";
     const char *xml_client_port = "port";
     const char *xml_protocol = "protocol";
 
@@ -145,9 +144,10 @@ int Read_Client_Server(XML_NODE node, agent * logr)
             merror(XML_VALUENULL, node[j]->element);
             return (OS_INVALID);
         }
-        /* Get server IP */
-        else if (strcmp(node[j]->element, xml_client_ip) == 0) {
+        /* Get server address (IP or hostname) */
+        else if (strcmp(node[j]->element, xml_client_addr) == 0) {
             ip_id = 0;
+            char *s_ip;
 
             /* Get last IP */
             if (logr->rip) {
@@ -155,45 +155,26 @@ int Read_Client_Server(XML_NODE node, agent * logr)
                     ip_id++;
                 }
             }
+
             os_realloc(logr->rip, (ip_id + 2) * sizeof(char *), logr->rip);
             logr->rip[ip_id] = NULL;
             logr->rip[ip_id + 1] = NULL;
 
-            os_strdup(node[j]->content, logr->rip[ip_id]);
-            if (OS_IsValidIP(logr->rip[ip_id], NULL) != 1) {
-                merror(INVALID_IP, logr->rip[ip_id]);
+            if (OS_IsValidIP(node[j]->content, NULL) == 1) {
+                os_strdup(node[j]->content, logr->rip[ip_id]);
+            } else if ((s_ip = OS_GetHost(node[j]->content, 5)) != NULL){
+                char f_ip[128];
+                f_ip[127] = '\0';
+                snprintf(f_ip, 127, "%s/%s", node[j]->content, s_ip);
+
+                os_strdup(f_ip, logr->rip[ip_id]);
+                logr->rip[ip_id + 1] = NULL;
+
+                free(s_ip);
+            } else {
+                merror(AG_INV_HOST, node[j]->content);
                 return (OS_INVALID);
             }
-        } else if (strcmp(node[j]->element, xml_client_hostname) == 0) {
-            ip_id = 0;
-            char *s_ip;
-            char f_ip[128];
-
-            /* Get last IP */
-            if (logr->rip) {
-                while (logr->rip[ip_id]) {
-                    ip_id++;
-                }
-            }
-
-            os_realloc(logr->rip, (ip_id + 2) * sizeof(char *),
-                       logr->rip);
-
-            s_ip = OS_GetHost(node[j]->content, 5);
-            if (!s_ip) {
-                mwarn("Unable to get hostname for '%s'.", node[j]->content);
-                merror(AG_INV_HOST, node[j]->content);
-
-                os_strdup("invalid_ip", s_ip);
-            }
-
-            f_ip[127] = '\0';
-            snprintf(f_ip, 127, "%s/%s", node[j]->content, s_ip);
-
-            os_strdup(f_ip, logr->rip[ip_id]);
-            logr->rip[ip_id + 1] = NULL;
-
-            free(s_ip);
         } else if (strcmp(node[j]->element, xml_client_port) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);

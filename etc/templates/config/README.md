@@ -44,7 +44,7 @@
     <ossec_config>
         <client>
           <server>
-            <ip>192.168.10.100</ip>
+            <address>192.168.10.100</address>
           </server>
           <config-profile>distribution, distributionVersion</config-profile>
         </client>
