@@ -385,6 +385,7 @@ void wm_sync_agents() {
 int wm_sync_agentinfo(int id_agent, const char *path) {
     char header[OS_MAXSTR];
     char files[OS_MAXSTR];
+    char file[OS_MAXSTR];
     char *os = NULL;
     char *version = NULL;
     char *os_name = NULL;
@@ -397,14 +398,14 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char *config_sum = NULL;
     char *merged_sum = NULL;
     char *manager_host = NULL;
-    char **parts;
+    char *end;
+    char *end_manager;
     char *end_line;
     FILE *fp;
     int result;
     clock_t clock0 = clock();
     regmatch_t match[2];
     int match_size;
-    int i = 0;
 
     if (!(fp = fopen(path, "r"))) {
         mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
@@ -514,33 +515,25 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
         // Search for merged.mg sum
 
-        while (fgets(files, OS_MAXSTR, fp)) {
-            if (strstr(files, "merged.mg")) {
-                parts = OS_StrBreak(' ', files, 2);
-                os_strdup(parts[0], merged_sum);
+        while (end = NULL, merged_sum = fgets(files, OS_MAXSTR, fp), merged_sum) {
+            if (*merged_sum != '\"' && *merged_sum != '!' && (end = strchr(merged_sum, ' '), end)) {
+                *end = '\0';
 
-                for (i = 0; parts[i]; i++){
-                  free(parts[i]);
+                if (strcmp(end + 1, SHAREDCFG_FILENAME "\n") == 0) {
+                    break;
                 }
-
-                free(parts);
-                break;
             }
         }
 
         // Search for manager hostname connected to the agent
 
-        while (fgets(files, OS_MAXSTR, fp)) {
-            if(!strncmp(files, "#\"manager_hostname\":", 20)){
-                parts = OS_StrBreak(':', files, 2);
-                os_strdup(parts[1], manager_host);
-
-                for (i = 0; parts[i]; i++){
-                  free(parts[i]);
+        const char * MANAGER_HOST = "#\"manager_hostname\":";
+        while (fgets(file, OS_MAXSTR, fp)) {
+            if (!strncmp(file, MANAGER_HOST, strlen(MANAGER_HOST))) {
+                manager_host = strdup(file + strlen(MANAGER_HOST));
+                if (end_manager = strchr(manager_host, '\n'), end_manager){
+                    *end_manager = '\0';
                 }
-
-                free(parts);
-                break;
             }
         }
     }
@@ -551,8 +544,6 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     free(os_major);
     free(os_minor);
     free(os_build);
-    free(merged_sum);
-    free(manager_host);
     fclose(fp);
     return result;
 }
