@@ -329,7 +329,8 @@ int OS_IsValidName(const char *u_name)
     /* Check if it contains any non-alphanumeric characters */
     for (i = 0; i < uname_length; i++) {
         if (!isalnum((int)u_name[i]) && (u_name[i] != '-') &&
-                (u_name[i] != '_') && (u_name[i] != '.')) {
+                (u_name[i] != '_') && (u_name[i] != '.') &&
+                (u_name[i] != '(') && (u_name[i] != ')')) {
             return (0);
         }
     }

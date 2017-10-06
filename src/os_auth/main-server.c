@@ -790,7 +790,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     strncpy(fname, agentname, 2048);
 
                     while (OS_IsAllowedName(&keys, fname) >= 0) {
-                        snprintf(fname, 2048, "%s%d", agentname, acount);
+                        snprintf(fname, 2048, "%s(%d)", agentname, acount);
 
                         if (++acount > MAX_TAG_COUNTER)
                             break;
