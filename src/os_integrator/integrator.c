@@ -7,13 +7,20 @@
  * Foundation.
  *
  */
-
+#include "shared.h"
 #include "integrator.h"
+#include <external/cJSON/cJSON.h>
 #include "os_net/os_net.h"
+
+typedef struct alert_source_t {
+    int alert_log:1;
+    int alert_json:1;
+} alert_source_t;
 
 void OS_IntegratorD(IntegratorConfig **integrator_config)
 {
     int s = 0;
+    int tries = 0;
     int temp_file_created = 0;
     time_t tm;
     struct tm *p;
@@ -23,8 +30,17 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     FILE *fp;
 
     file_queue *fileq;
+    file_queue jfileq;
     alert_data *al_data;
-
+    cJSON *al_json = NULL;
+    cJSON *json_object;
+    cJSON *json_field;
+    cJSON *location;
+    cJSON *agent;
+    cJSON *agent_name;
+    cJSON *agent_ip;
+    cJSON *rule;
+    
     integration_path[2048] = 0;
     exec_tmp_file[2048] = 0;
     exec_full_cmd[4096] = 0;
@@ -37,6 +53,19 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     os_calloc(1, sizeof(file_queue), fileq);
     Init_FileQueue(fileq, p, 0);
 
+    /* Initing file queue JSON - to read the alerts */
+    jqueue_init(&jfileq);
+
+    for (tries = 1; tries < 100 && jqueue_open(&jfileq) < 0; tries++) {
+        sleep(1);
+    }
+
+    if (tries == 100) {
+        merror("Could not open JSON queue after %d tries.", tries);
+    } else {
+        mdebug1("JSON file queue connected.");
+    }
+    
     /* Connecting to syslog. */
     while(integrator_config[s])
     {
@@ -102,14 +131,11 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         tm = time(NULL);
         p = localtime(&tm);
 
-
-        /* Get message if available (timeout of 5 seconds) */
-        mdebug2("waiting for available alerts...");
-        al_data = Read_FileMon(fileq, p, 5);
-        if(!al_data)
-        {
+        /* Get JSON message if available (timeout of 5 seconds) */
+        mdebug2("jqueue_next()");
+        al_json = jqueue_next(&jfileq);
+        if(!al_json)
             continue;
-        }
 
         mdebug1("sending new alert.");
         temp_file_created = 0;
@@ -128,8 +154,12 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             /* Looking if location is set */
             if(integrator_config[s]->location)
             {
-                if(!OSMatch_Execute(al_data->location,
-                                   strlen(al_data->location),
+              
+              if (location = cJSON_GetObjectItem(al_json, "location"), !location) {
+                  s++; continue;
+              }
+                if(!OSMatch_Execute(location->valuestring,
+                                   strlen(location->valuestring),
                                    integrator_config[s]->location))
                 {
                     mdebug2("skipping: location doesn't match");
@@ -140,7 +170,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             /* Looking for the level */
             if(integrator_config[s]->level)
             {
-                if(al_data->level < integrator_config[s]->level)
+                if(json_data->level < integrator_config[s]->level)
                 {
                     mdebug2("skipping: alert level is too low");
                     s++; continue;
@@ -302,6 +332,13 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         /* Clearing the memory */
         if(temp_file_created == 1)
             unlink(exec_tmp_file);
-        FreeAlertData(al_data);
+            
+        if (al_data) {
+            FreeAlertData(al_data);
+        }
+        
+        if (json_data) {
+            cJSON_Delete(json_data);
+        }
     }
 }
