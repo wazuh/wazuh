@@ -269,8 +269,8 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         }
 
         /* Clearing the memory */
-        //if(temp_file_created == 1)
-            //unlink(exec_tmp_file);
+        if(temp_file_created == 1)
+            unlink(exec_tmp_file);
             
         
         if (al_json) {
