@@ -1,4 +1,5 @@
 /* Copyright (C) 2014 Daniel B. Cid
+ * Modified by Wazuh, Inc
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -12,46 +13,29 @@
 #include <external/cJSON/cJSON.h>
 #include "os_net/os_net.h"
 
-typedef struct alert_source_t {
-    int alert_log:1;
-    int alert_json:1;
-} alert_source_t;
-
 void OS_IntegratorD(IntegratorConfig **integrator_config)
 {
     int s = 0;
     int tries = 0;
     int temp_file_created = 0;
-    time_t tm;
-    struct tm *p;
+	unsigned int alert_level = 0;
+	unsigned int rule_id = 0;
     char integration_path[2048 + 1];
     char exec_tmp_file[2048 + 1];
     char exec_full_cmd[4096 + 1];
+	char *json_str;
     FILE *fp;
 
-    file_queue *fileq;
     file_queue jfileq;
-    alert_data *al_data;
     cJSON *al_json = NULL;
     cJSON *json_object;
     cJSON *json_field;
     cJSON *location;
-    cJSON *agent;
-    cJSON *agent_name;
-    cJSON *agent_ip;
     cJSON *rule;
     
     integration_path[2048] = 0;
     exec_tmp_file[2048] = 0;
     exec_full_cmd[4096] = 0;
-
-    /* Getting currently time before starting */
-    tm = time(NULL);
-    p = localtime(&tm);
-
-    /* Initing file queue - to read the alerts */
-    os_calloc(1, sizeof(file_queue), fileq);
-    Init_FileQueue(fileq, p, 0);
 
     /* Initing file queue JSON - to read the alerts */
     jqueue_init(&jfileq);
@@ -105,7 +89,16 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 continue;
             }
         }
-
+		else if(strcmp(integrator_config[s]->name, "virustotal") == 0)
+        {
+            if(!integrator_config[s]->apikey)
+            {
+                integrator_config[s]->enabled = 0;
+                merror("Unable to enable integration for: '%s'. Missing API Key.", integrator_config[s]->name);
+                s++;
+                continue;
+            }
+        }
         else if(strncmp(integrator_config[s]->name, "custom-", 7) == 0)
         {
         }
@@ -128,8 +121,6 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     /* Infinite loop reading the alerts and inserting them. */
     while(1)
     {
-        tm = time(NULL);
-        p = localtime(&tm);
 
         /* Get JSON message if available (timeout of 5 seconds) */
         mdebug2("jqueue_next()");
@@ -137,8 +128,15 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         if(!al_json)
             continue;
 
-        mdebug1("sending new alert.");
+		mdebug1("sending new alert.");
         temp_file_created = 0;
+
+		/* If JSON does not contain rule block, continue*/
+		if (rule = cJSON_GetObjectItem(al_json, "rule"), !rule){
+				s++;
+                mdebug2("skipping: Alert does not contain a rule block");
+                continue;
+		}
 
         /* Sending to the configured integrations */
         s = 0;
@@ -150,14 +148,14 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 mdebug2("skipping: integration disabled");
                 continue;
             }
-
+			
             /* Looking if location is set */
             if(integrator_config[s]->location)
             {
               
-              if (location = cJSON_GetObjectItem(al_json, "location"), !location) {
-                  s++; continue;
-              }
+				if (location = cJSON_GetObjectItem(al_json, "location"), !location) {
+				  s++; continue;
+				}
                 if(!OSMatch_Execute(location->valuestring,
                                    strlen(location->valuestring),
                                    integrator_config[s]->location))
@@ -170,7 +168,11 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             /* Looking for the level */
             if(integrator_config[s]->level)
             {
-                if(json_data->level < integrator_config[s]->level)
+				if (json_field = cJSON_GetObjectItem(rule,"level"), !json_field) {
+						s++; continue;
+				}
+				alert_level = json_field->valueint;
+                if(alert_level < integrator_config[s]->level)
                 {
                     mdebug2("skipping: alert level is too low");
                     s++; continue;
@@ -180,13 +182,20 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             /* Looking for the group */
             if(integrator_config[s]->group)
             {
-                if(!OSMatch_Execute(al_data->group,
-                            strlen(al_data->group),
-                            integrator_config[s]->group))
-                {
-                    mdebug2("skipping: group doesn't match");
-                    s++; continue;
-                }
+				int found = 0;
+				if (json_object = cJSON_GetObjectItem(rule,"groups"), json_object) {
+					cJSON_ArrayForEach(json_field, json_object) {
+                        json_str = json_field->valuestring;
+                        if (OSMatch_Execute(json_str, strlen(json_str), integrator_config[s]->group)) {
+                            found++;
+                        }
+                    }
+				}
+				if (!found) {
+					mdebug2("skipping: group doesn't match");
+					s++; continue;
+				}
+						
             }
 
             /* Looking for the rule */
@@ -196,9 +205,15 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 int id_i = 0;
                 int rule_match = -1;
 
+				if (json_field = cJSON_GetObjectItem(rule,"id"), !json_field) {
+					mdebug2("skipping: alert does not containg rule id.");
+                    s++; continue;
+				}
+				rule_id = atoi(json_field->valuestring);
+
                 while(integrator_config[s]->rule_id[id_i])
                 {
-                    if(al_data->rule == integrator_config[s]->rule_id[id_i])
+                    if(rule_id == integrator_config[s]->rule_id[id_i])
                     {
                         rule_match = id_i;
                         break;
@@ -229,84 +244,8 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 }
                 else
                 {
-                    int log_count = 0;
-                    char *tmpstr = al_data->log[0];
-                    while(*tmpstr != '\0')
-                    {
-                        if(*tmpstr == '\'')
-                        {
-                            *tmpstr = ' ';
-                        }
-                        else if(*tmpstr == '\\')
-                        {
-                            *tmpstr = '/';
-                        }
-                        else if(*tmpstr == '`')
-                        {
-                            *tmpstr = ' ';
-                        }
-                        else if(*tmpstr == '"')
-                        {
-                            *tmpstr = ' ';
-                        }
-                        else if(*tmpstr == ';')
-                        {
-                            *tmpstr = ',';
-                        }
-                        else if(*tmpstr == '!')
-                        {
-                            *tmpstr = ' ';
-                        }
-                        else if(*tmpstr == '$')
-                        {
-                            *tmpstr = ' ';
-                        }
-
-                        else if(*tmpstr < 32 || *tmpstr > 122)
-                        {
-                            *tmpstr = ' ';
-                        }
-                        log_count++;
-                        tmpstr++;
-
-                        if(log_count >= (int)integrator_config[s]->max_log)
-                        {
-                            *tmpstr='\0';
-                            *(tmpstr -1)='.';
-                            *(tmpstr -2)='.';
-                            *(tmpstr -3)='.';
-                            break;
-                        }
-                    }
-                    if(al_data->srcip != NULL)
-                    {
-                        tmpstr = al_data->srcip;
-                        while(*tmpstr != '\0')
-                        {
-                            if(*tmpstr == '\'')
-                            {
-                                *tmpstr = ' ';
-                            }
-                            else if(*tmpstr == '\\')
-                            {
-                                *tmpstr = ' ';
-                            }
-                            else if(*tmpstr == '`')
-                            {
-                                *tmpstr = ' ';
-                            }
-                            else if(*tmpstr == ' ')
-                            {
-                            }
-                            else if(*tmpstr < 46 || *tmpstr > 122)
-                            {
-                                *tmpstr = ' ';
-                            }
-
-                            tmpstr++;
-                        }
-                    }
-                    fprintf(fp, "alertdate='%s'\nalertlocation='%s'\nruleid='%d'\nalertlevel='%d'\nruledescription='%s'\nalertlog='%s'\nsrcip='%s'", al_data->date, al_data->location, al_data->rule, al_data->level, al_data->comment, al_data->log[0], al_data->srcip == NULL?"":al_data->srcip);
+                    
+                    fprintf(fp, "%s", cJSON_PrintUnformatted(al_json));
                     temp_file_created = 1;
                     mdebug2("file %s was written.", exec_tmp_file);
                     fclose(fp);
@@ -330,15 +269,12 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         }
 
         /* Clearing the memory */
-        if(temp_file_created == 1)
-            unlink(exec_tmp_file);
+        //if(temp_file_created == 1)
+            //unlink(exec_tmp_file);
             
-        if (al_data) {
-            FreeAlertData(al_data);
-        }
         
-        if (json_data) {
-            cJSON_Delete(json_data);
+        if (al_json) {
+            cJSON_Delete(al_json);
         }
     }
 }
