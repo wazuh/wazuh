@@ -25,6 +25,13 @@ All notable changes to this project will be documented in this file.
 - Added internal option for Remoted to set the shared configuration reloading time.
 - Auto restart agents when new shared configuration is pushed from the manager.
 - Added native support for Systemd.
+- Added option to register unlimited agents in Authd.
+- New internal option to limit the number of file descriptors in Analysisd and Remoted.
+- Added new state "pending" for agents.
+- Added internal option to disable real-time DB synchronization.
+- Allow multiple manager stanzas in Agentd settings.
+- New internal option to limit the receiving time in TCP mode.
+- Add manager hostname data to agent information.
 
 ### Changed
 
@@ -51,6 +58,11 @@ All notable changes to this project will be documented in this file.
 - Prevent data field from being inserted into JSON alerts when it's empty.
 - Spelling corrections (by Josh Soref).
 - Moved debug messages when updating shared files to level 2.
+- Do not create users ossecm or ossecr on agents.
+- Upgrade netstat command in Logcollector.
+- Prevent Monitord  nd DB sync module from dealing with agent files on local installations.
+- Speed up DB syncing by keeping databases opened and an inotify event queue.
+- Merge server's IP and hostname options to one setting.
 
 ### Fixed
 
@@ -70,6 +82,13 @@ All notable changes to this project will be documented in this file.
 - Fixed some warnings that appeared when compiling on Fedora 26.
 - Fixed permission issue in logs folder.
 - Fixed issue in Remoted that prevented it from send shared configuration when it changed.
+- Fixed Windows agent compilation compability with CentOS.
+- Supporting different case from password prompt in Agentless (by Jesus Fidalgo).
+- Fix bad detection of inotify queue overflowed.
+- Fix repetitive error when a rule's diff file is empty.
+- Fixed log group permission when created by a daemon running as root.
+- Prevented Agentd from logging too many errors when restarted while receiving the merged file.
+- Prevented Remoted from sending data to disconnected agents in TCP mode.
 
 ### Removed
 
