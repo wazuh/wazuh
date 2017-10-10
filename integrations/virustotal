@@ -6,7 +6,7 @@
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
-# Author Wazuh Integration: Wazuh, Inc <support@gmail.com>
+# Wazuh, Inc <support@wazuh.com>
 
 import json
 import sys
@@ -30,6 +30,7 @@ except Exception as e:
 #  </integration>
 
 # Global vars
+
 debug_enabled = False
 pwd = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert = {}
