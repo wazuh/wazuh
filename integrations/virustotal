@@ -47,12 +47,17 @@ def main(args):
 	# Read args
 	alert_file_location = args[1]
 	apikey = args[2]
+
+	debug("*API KEY*")
 	debug(apikey)
+
+	debug("*File location*")
 	debug(alert_file_location)
 
 	# Load alert. Parse JSON object.
 	with open(alert_file_location) as alert_file:    
 		json_alert = json.load(alert_file)
+	debug("*ALERT BEING PROCESSED*")
 	debug(json_alert)
 
 	# Request VirusTotal info
@@ -106,7 +111,7 @@ def query_api(hash, apikey):
 	  data = json_response
 	  return data
   else:
-	  debug("Error when conecting VirusTotal API")
+	  debug("** Error when conecting VirusTotal API ** ")
 	  response.raise_for_status()
 	  exit(0)
 
@@ -114,14 +119,14 @@ def request_virustotal_info(alert, apikey):
 
 	# If there is no a md5 checksum present in the alert. Exit.
 	if not "md5_after" in alert["syscheck"]:
-		return(0)
+	  return(0)
 
 	# Request info using VirusTotal API
 	data = query_api(alert["syscheck"]["md5_after"], apikey)
 
 	# If VirusTotal does not have any info about our hash, ignore it
 	if not in_database(data, hash):
-	  debug('No entry for %s in database' % hash)
+	  debug('**  No entry for %s in database ** ' % hash)
 	  return(0)
 
 	# Info about the file found in VirusTotal
@@ -139,16 +144,17 @@ def request_virustotal_info(alert, apikey):
 	  alert_output["virustotal"]["permalink"] = permalink
 	  alert_output["syscheck"] = alert["syscheck"]
 	  alert_output["source_agent"] = alert["agent"]
+	  alert_output["integration"] = "virustotal"
 	  debug(alert_output)
 
-	  return(alert)
+	  return(alert_output)
 	else:
-	  debug('Entry %s is not malicious' % hash)
+	  debug('** Entry %s is not malicious **' % hash)
 	  return(0)
 
 def send_event(msg):
-        #'1:json:{"example":1}'
-	string = ' '.join(json.dumps(msg))
+	string = '1:virustotal:{0}'.format(json.dumps(msg))
+	debug(string)
 	sock = socket(AF_UNIX, SOCK_DGRAM)
 	sock.connect(socket_addr)
 	sock.send(string.encode())
@@ -172,7 +178,7 @@ if __name__ == "__main__":
         f.close()
 
         if bad_arguments:
-            debug("Exiting: Bad arguments.")
+            debug("** Exiting: Bad arguments. **")
             sys.exit(1)
 
         # Main function
