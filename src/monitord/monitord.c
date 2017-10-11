@@ -20,6 +20,11 @@ void Monitord()
     struct tm *p;
     int counter = 0;
 
+    char path[PATH_MAX];
+    char path_json[PATH_MAX];
+    struct stat buf;
+    off_t size;
+
     int today = 0;
     int thismonth = 0;
     int thisyear = 0;
@@ -38,6 +43,19 @@ void Monitord()
     today = p->tm_mday;
     thismonth = p->tm_mon;
     thisyear = p->tm_year + 1900;
+
+    /* Set internal log path to rotate them */
+#ifdef WIN32
+    // ossec.log
+    snprintf(path, PATH_MAX, "%s", LOGFILE);
+    // ossec.json
+    snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
+#else
+    // /var/ossec/logs/ossec.log
+    snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
+    // /var/ossec/logs/ossec.json
+    snprintf(path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
+#endif
 
     /* Connect to the message queue or exit */
     if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
@@ -69,8 +87,8 @@ void Monitord()
         if (today != p->tm_mday) {
             if (mond.rotate_log) {
                 sleep(mond.day_wait);
-                /* Rotate and compress ossec.log */
-                w_rotate_log(mond.compress, mond.keep_log_days);
+                /* Daily rotation and compression of ossec.log/ossec.json */
+                w_rotate_log(mond.compress, mond.keep_log_days, 1, 0, mond.daily_rotations);
             }
 
             /* Generate reports */
@@ -80,6 +98,22 @@ void Monitord()
             today = p->tm_mday;
             thismonth = p->tm_mon;
             thisyear = p->tm_year + 1900;
+        } else if (mond.rotate_log && mond.size_rotate > 0) {
+            if (stat(path, &buf) == 0) {
+                size = buf.st_size;
+                /* If log file reachs maximum size, rotate ossec.log */
+                if ( (unsigned long) size >= mond.size_rotate) {
+                    w_rotate_log(mond.compress, mond.keep_log_days, 0, 0, mond.daily_rotations);
+                }
+            }
+
+            if (stat(path_json, &buf) == 0) {
+                size = buf.st_size;
+                /* If log file reachs maximum size, rotate ossec.json */
+                if ( (unsigned long) size >= mond.size_rotate) {
+                    w_rotate_log(mond.compress, mond.keep_log_days, 0, 1, mond.daily_rotations);
+                }
+            }
         }
 
         sleep(1);

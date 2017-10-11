@@ -35,7 +35,7 @@ static void remove_old_logs(const char *base_dir, int keep_log_days);
 static void remove_old_logs_y(const char * base_dir, int year, time_t threshold);
 static void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold);
 
-void w_rotate_log(int compress, int keep_log_days) {
+void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations) {
     char old_path[PATH_MAX];
     char old_path_json[PATH_MAX];
     char base_dir[PATH_MAX];
@@ -43,10 +43,26 @@ void w_rotate_log(int compress, int keep_log_days) {
     char month_dir[PATH_MAX];
     char new_path[PATH_MAX];
     char new_path_json[PATH_MAX];
-    time_t now = time(NULL) - 86400;
+    char compressed_path[PATH_MAX];
+    char rename_path[PATH_MAX];
+    char old_rename_path[PATH_MAX];
     struct tm tm;
+    time_t now;
+    int counter = 0;
 
-    mdebug1("Rotating log files");
+    if (new_day)
+        minfo("Running daily rotation of log files.");
+    else {
+        if (rotate_json)
+            minfo("Rotating 'ossec.json' file: Maximum size reached.");
+        else
+            minfo("Rotating 'ossec.log' file: Maximum size reached.");
+    }
+
+    if (new_day)
+        now = time(NULL) - 86400;
+    else
+        now = time(NULL);
 
     localtime_r(&now, &tm);
 
@@ -70,6 +86,7 @@ void w_rotate_log(int compress, int keep_log_days) {
     snprintf(month_dir, PATH_MAX, "%s/%s", year_dir, MONTHS[tm.tm_mon]);
     snprintf(new_path, PATH_MAX, "%s/ossec-%02d.log", month_dir, tm.tm_mday);
     snprintf(new_path_json, PATH_MAX, "%s/ossec-%02d.json", month_dir, tm.tm_mday);
+    snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
 
     // Create folders
 
@@ -81,24 +98,90 @@ void w_rotate_log(int compress, int keep_log_days) {
         merror_exit(MKDIR_ERROR, month_dir, errno, strerror(errno));
     }
 
-    if (!IsFile(old_path)) {
-        if (rename(old_path, new_path) == 0) {
-            if (compress) {
-                OS_CompressLog(new_path);
-            }
-        } else {
-            merror("Couldn't rename '%s' to '%s': %s", old_path, new_path, strerror(errno));
+    if (new_day || (!new_day && !rotate_json)) {
+
+        /* Count rotated log files of the current day */
+        while(!IsFile(compressed_path)){
+            counter++;
+            snprintf(new_path, PATH_MAX, "%s/ossec-%02d(%03d).log", month_dir, tm.tm_mday, counter);
+            snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
         }
+
+        /* Rotate compressed logs if needed */
+        if (counter == daily_rotations) {
+            if (daily_rotations == 1 && counter == 1) {
+                snprintf(new_path, PATH_MAX, "%s/ossec-%02d.log", month_dir, tm.tm_mday);
+            } else {
+                snprintf(rename_path, PATH_MAX, "%s/ossec-%02d.log.gz", month_dir, tm.tm_mday);
+                snprintf(old_rename_path, PATH_MAX, "%s/ossec-%02d(001).log.gz", month_dir, tm.tm_mday);
+                counter = 1;
+                while (counter < daily_rotations) {
+                    if (rename(old_rename_path, rename_path) != 0) {
+                        merror("Could rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
+                        return;
+                    }
+                    counter++;
+                    snprintf(rename_path, PATH_MAX, "%s", old_rename_path);
+                    snprintf(old_rename_path, PATH_MAX, "%s/ossec-%02d(%03d).log.gz", month_dir, tm.tm_mday, counter);
+                }
+                snprintf(new_path, PATH_MAX, "%s/ossec-%02d(%03d).log", month_dir, tm.tm_mday, counter - 1);
+            }
+        }
+
+        if (!IsFile(old_path)) {
+            if (rename(old_path, new_path) == 0) {
+                if (compress) {
+                    OS_CompressLog(new_path);
+                }
+            } else {
+                merror("Couldn't rename '%s' to '%s': %s", old_path, new_path, strerror(errno));
+            }
+        }
+
     }
 
-    if (!IsFile(old_path_json)) {
-        if (rename(old_path_json, new_path_json) == 0) {
-            if (compress) {
-                OS_CompressLog(new_path_json);
-            }
-        } else {
-            merror("Couldn't rename '%s' to '%s': %s", old_path_json, new_path_json, strerror(errno));
+    if (new_day || (!new_day && rotate_json)) {
+
+        snprintf(compressed_path, PATH_MAX, "%s.gz", new_path_json);
+
+        /* Count rotated log files of the current day */
+        while(!IsFile(compressed_path)) {
+            counter++;
+            snprintf(new_path_json, PATH_MAX, "%s/ossec-%02d(%03d).json", month_dir, tm.tm_mday, counter);
+            snprintf(compressed_path, PATH_MAX, "%s.gz", new_path_json);
         }
+
+        /* Rotate compressed logs if needed */
+        if (counter == daily_rotations) {
+            if (daily_rotations == 1 && counter == 1) {
+                snprintf(new_path_json, PATH_MAX, "%s/ossec-%02d.json", month_dir, tm.tm_mday);
+            } else {
+                snprintf(rename_path, PATH_MAX, "%s/ossec-%02d.json.gz", month_dir, tm.tm_mday);
+                snprintf(old_rename_path, PATH_MAX, "%s/ossec-%02d(001).json.gz", month_dir, tm.tm_mday);
+                counter = 1;
+                while (counter < daily_rotations) {
+                    if (rename(old_rename_path, rename_path) != 0) {
+                        merror("Could rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
+                        return;
+                    }
+                    counter++;
+                    snprintf(rename_path, PATH_MAX, "%s", old_rename_path);
+                    snprintf(old_rename_path, PATH_MAX, "%s/ossec-%02d(%03d).json.gz", month_dir, tm.tm_mday, counter);
+                }
+                snprintf(new_path_json, PATH_MAX, "%s/ossec-%02d(%03d).json", month_dir, tm.tm_mday, counter - 1);
+            }
+        }
+
+        if (!IsFile(old_path_json)) {
+            if (rename(old_path_json, new_path_json) == 0) {
+                if (compress) {
+                    OS_CompressLog(new_path_json);
+                }
+            } else {
+                merror("Couldn't rename '%s' to '%s': %s", old_path_json, new_path_json, strerror(errno));
+            }
+        }
+
     }
 
     // Remove old compressed files
@@ -176,6 +259,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     struct dirent *dirent;
     time_t now = time(NULL);
     struct tm tm;
+    int counter;
 
     localtime_r(&now, &tm);
 
@@ -206,7 +290,27 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             }
         }
 
+        if (sscanf(dirent->d_name, "ossec-%02d(%03d).log", &day, &counter) > 0) {
+            tm.tm_mday = day;
+
+            if (mktime(&tm) <= threshold) {
+                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+                mdebug2("Removing old log '%s'", path);
+                unlink(path);
+            }
+        }
+
         if (sscanf(dirent->d_name, "ossec-%02d.json", &day) > 0) {
+            tm.tm_mday = day;
+
+            if (mktime(&tm) <= threshold) {
+                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+                mdebug2("Removing old log '%s'", path);
+                unlink(path);
+            }
+        }
+
+        if (sscanf(dirent->d_name, "ossec-%02d(%03d).json", &day, &counter) > 0) {
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
