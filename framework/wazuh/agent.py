@@ -66,6 +66,7 @@ class Agent:
         self.configSum     = None
         self.mergedSum     = None
         self.group         = None
+        self.manager_host  = None
 
         # if the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
@@ -76,7 +77,7 @@ class Agent:
         return str(self.to_dict())
 
     def to_dict(self):
-        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os, 'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive, 'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum, 'group': self.group }
+        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os, 'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive, 'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum, 'group': self.group, 'manager_host': self.manager_host }
 
         return dictionary
 
@@ -116,7 +117,7 @@ class Agent:
         query = "SELECT {0} FROM agent WHERE id = :id"
         request = {'id': self.id}
 
-        select = ["id", "name", "ip", "key", "version", "date_add", "last_keepalive", "config_sum", "merged_sum", "`group`", "os_name", "os_version", "os_major", "os_minor", "os_codename", "os_build", "os_platform", "os_uname"]
+        select = ["id", "name", "ip", "key", "version", "date_add", "last_keepalive", "config_sum", "merged_sum", "`group`", "manager_host", "os_name", "os_version", "os_major", "os_minor", "os_codename", "os_build", "os_platform", "os_uname"]
 
         conn.execute(query.format(','.join(select)), request)
 
@@ -149,21 +150,23 @@ class Agent:
             if tuple[9] != None:
                 self.group = tuple[9]
             if tuple[10] != None:
-                self.os['name'] = tuple[10]
+                self.manager_host = tuple[10]
             if tuple[11] != None:
-                self.os['version'] = tuple[11]
+                self.os['name'] = tuple[11]
             if tuple[12] != None:
-                self.os['major'] = tuple[12]
+                self.os['version'] = tuple[12]
             if tuple[13] != None:
-                self.os['minor'] = tuple[13]
+                self.os['major'] = tuple[13]
             if tuple[14] != None:
-                self.os['codename'] = tuple[14]
+                self.os['minor'] = tuple[14]
             if tuple[15] != None:
-                self.os['build'] = tuple[15]
+                self.os['codename'] = tuple[15]
             if tuple[16] != None:
-                self.os['platform'] = tuple[16]
+                self.os['build'] = tuple[16]
             if tuple[17] != None:
-                self.os['uname'] = tuple[17]
+                self.os['platform'] = tuple[17]
+            if tuple[18] != None:
+                self.os['uname'] = tuple[18]
                 if "x86_64" in self.os['uname']:
                     self.os['arch'] = "x86_64"
                 elif "i386" in self.os['uname']:
@@ -228,6 +231,8 @@ class Agent:
         #    info['key'] = self.key
         if self.group:
             info['group'] = self.group
+        if self.manager_host:
+            info['manager_host'] = self.manager_host
 
         return info
 
@@ -1198,7 +1203,7 @@ class Agent:
         conn = Connection(db_global[0])
         valid_select_fiels = ["id", "name", "ip", "last_keepalive", "os_name",
                              "os_version", "os_platform", "version",
-                             "config_sum", "merged_sum"]
+                             "config_sum", "merged_sum", "manager_host"]
 
         # Init query
         query = "SELECT {0} FROM agent WHERE `group` = :group_id"
@@ -1438,7 +1443,10 @@ class Agent:
 
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
         if path.exists(agent_group_path):
-            remove(agent_group_path)
+            # remove(agent_group_path)
+            fo = open(agent_group_path, "rw+")
+            fo.truncate()
+            fo.close()
 
         return "Group unset for agent '{0}'.".format(agent_id)
 
