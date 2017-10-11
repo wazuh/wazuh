@@ -56,7 +56,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
 {
     char msg_ack[OS_FLSIZE + 1];
     char *end;
-    char *uname;
+    char *uname = "";
     pending_data_t *data;
     FILE * fp;
     mode_t oldmask;
@@ -176,22 +176,20 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
             umask(oldmask);
 
             if (fp) {
-
                 /* Get manager name before chroot */
-                char *hostname;
-                os_calloc(HOST_NAME_MAX + 1, sizeof(char), hostname);
+                char hostname[HOST_NAME_MAX + 1];
+
+                fprintf(fp, "%s\n", uname);
+
+                /* Write manager hostname to the file */
+
                 if (gethostname(hostname, HOST_NAME_MAX) < 0){
                     mwarn("Unable to get hostname due to: '%s'", strerror(errno));
+                } else {
+                    fprintf(fp, "#\"manager_hostname\":%s\n", hostname);
                 }
-                /* Write manager hostname to the file */
-                char *manager_name;
-                os_calloc(OS_MAXSTR, sizeof(char), manager_name);
-                snprintf(manager_name, OS_MAXSTR - 1, "#\"%s\":%s", "manager_hostname", hostname);
 
-                fprintf(fp, "%s\n%s\n", uname, manager_name);
                 fclose(fp);
-                free(hostname);
-                free(manager_name);
             } else {
                 merror(FOPEN_ERROR, data->keep_alive, errno, strerror(errno));
             }
@@ -595,12 +593,8 @@ static void read_controlmsg(const char *agent_id, char *msg)
             return;
         }
 
-        for (i = 1;; i++) {
-            if (f_sum[i] == NULL) {
-                break;
-            }
-
-            else if (strcmp(f_sum[i]->name, file) != 0) {
+        for (i = 1; f_sum[i]; i++) {
+            if (strcmp(f_sum[i]->name, file) != 0) {
                 continue;
             }
 
@@ -616,11 +610,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     }
 
     /* Update each marked file */
-    for (i = 1;; i++) {
-        if (f_sum[i] == NULL) {
-            break;
-        }
-
+    for (i = 1; f_sum && f_sum[i]; i++) {
         if ((f_sum[i]->mark == 1) ||
                 (f_sum[i]->mark == 0)) {
 

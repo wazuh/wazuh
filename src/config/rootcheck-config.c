@@ -271,7 +271,7 @@ void Free_Rootcheck(rkconfig * config){
             for (i=0; config->alert_msg[i] != NULL; i++) {
                 free(config->alert_msg[i]);
             }
-            free(config->ignore);
+            free(config->alert_msg);
         }
         free(config->fp);
     }

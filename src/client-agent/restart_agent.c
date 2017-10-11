@@ -41,11 +41,13 @@ void * restartAgent() {
 
 	if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
 		merror("At restartAgent(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-	} else if (send(sock, req, length, 0) != length) {
-		merror("send(): %s", strerror(errno));
-	}
+	} else {
+		if (send(sock, req, length, 0) != length) {
+			merror("send(): %s", strerror(errno));
+		}
 
-	close(sock);
+		close(sock);
+	}
 
 	#else
 

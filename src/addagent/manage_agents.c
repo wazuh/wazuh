@@ -144,7 +144,7 @@ int add_agent(int json_output, int no_limit)
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
 
-                if (!strcmp(_name, shost) || NameExist(_name)) {
+                if (_name && (!strcmp(_name, shost) || NameExist(_name))) {
                     cJSON_AddNumberToObject(json_root, "error", 75);
                     cJSON_AddStringToObject(json_root, "message", "Name already present");
                 } else {

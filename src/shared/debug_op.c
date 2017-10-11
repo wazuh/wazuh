@@ -72,7 +72,8 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGJSONFILE : DEFAULTDIR LOGJSONFILE, sizeof(logfile));
+        strncpy(logfile, isChroot() ? LOGJSONFILE : DEFAULTDIR LOGJSONFILE, sizeof(logfile) - 1);
+        logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
             fp = fopen(logfile, "a");
@@ -94,7 +95,8 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
             }
         }
 #else
-        strncpy(logfile, LOGJSONFILE, sizeof(logfile));
+        strncpy(logfile, LOGJSONFILE, sizeof(logfile) - 1);
+        logfile[sizeof(logfile) - 1] = '\0';
         fp = fopen(logfile, "a");
 #endif
 
@@ -130,7 +132,8 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGFILE : DEFAULTDIR LOGFILE, sizeof(logfile));
+        strncpy(logfile, isChroot() ? LOGFILE : DEFAULTDIR LOGFILE, sizeof(logfile) - 1);
+        logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
             fp = fopen(logfile, "a");
@@ -152,7 +155,8 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
             }
         }
 #else
-        strncpy(logfile, LOGFILE, sizeof(logfile));
+        strncpy(logfile, LOGFILE, sizeof(logfile) - 1);
+        logfile[sizeof(logfile) - 1] = '\0';
         fp = fopen(logfile, "a");
 #endif
 

@@ -523,6 +523,8 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
                     break;
                 }
             }
+
+            merged_sum = NULL;
         }
 
         // Search for manager hostname connected to the agent
@@ -1162,7 +1164,7 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
     struct inotify_event *event = (struct inotify_event *)buffer;
     char * dirname = NULL;
     ssize_t count;
-    ssize_t i;
+    size_t i;
 
         if (!(keysfile = strrchr(keysfile_dir, '/'))) {
             mterror_exit(WM_DATABASE_LOGTAG, "Couldn't decode keys file path '%s'.", keysfile_dir);
@@ -1179,7 +1181,7 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
             mtdebug1(WM_DATABASE_LOGTAG, "Waiting for event notification...");
 
             do {
-                if ((count = read(inotify_fd, buffer, IN_BUFFER_SIZE)) < 0) {
+                if (count = read(inotify_fd, buffer, IN_BUFFER_SIZE), count < 0) {
                     if (errno != EAGAIN)
                         mterror(WM_DATABASE_LOGTAG, "read(): %s.", strerror(errno));
 
@@ -1188,9 +1190,9 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
 
                 buffer[count - 1] = '\0';
 
-                for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
+                for (i = 0; i < (size_t)count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
                     event = (struct inotify_event*)&buffer[i];
-                    mtdebug2(WM_DATABASE_LOGTAG, "inotify: i='%zd', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
+                    mtdebug2(WM_DATABASE_LOGTAG, "inotify: i='%zu', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
 
                     if (event->len > IN_BUFFER_SIZE) {
                         mterror(WM_DATABASE_LOGTAG, "Inotify event too large (%u)", event->len);

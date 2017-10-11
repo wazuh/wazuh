@@ -435,8 +435,9 @@ int Test_Localfile(const char * path){
 void Free_Localfile(logreader_config * config){
     if (config) {
         if (config->config) {
-            int i = 0;
-            do {
+            int i;
+
+            for (i = 0; config->config[i].file; i++) {
                 free(config->config[i].ffile);
                 free(config->config[i].file);
                 free(config->config[i].logformat);
@@ -445,10 +446,9 @@ void Free_Localfile(logreader_config * config){
                 free(config->config[i].alias);
                 free(config->config[i].query);
                 labels_free(config->config[i].labels);
-                free(config->config[i].read);
                 free(config->config[i].fp);
-                i++;
-            } while (config->config[i].file != NULL);
+            }
+
             free(config->config);
         }
     }
