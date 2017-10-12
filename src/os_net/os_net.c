@@ -297,7 +297,17 @@ int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6)
 /* Open a UDP socket */
 int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6)
 {
-    return (OS_Connect(_port, IPPROTO_UDP, _ip, ipv6));
+    int sock = OS_Connect(_port, IPPROTO_UDP, _ip, ipv6);
+
+#ifdef HPUX
+    if (sock >= 0) {
+        int flags;
+        flags = fcntl(ossock, F_GETFL, 0);
+        fcntl(ossock, F_SETFL, flags | O_NONBLOCK);
+    }
+#endif
+
+    return sock;
 }
 
 /* Send a TCP packet (through an open socket) */
