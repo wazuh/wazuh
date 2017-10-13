@@ -17,7 +17,11 @@ int Read_Client_Server(XML_NODE node, agent *logr);
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
-    unsigned int ip_id = 0;
+    char f_ip[128];
+    char * rip = NULL;
+    char * s_ip;
+    int port = DEFAULT_SECURE;
+    int protocol = UDP_PROTO;
 
     /* XML definitions */
     const char *xml_client_server = "server";
@@ -29,20 +33,17 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_auto_restart = "auto_restart";
 
     /* Old XML definitions */
-    unsigned char old_format = 2;
     const char *xml_client_ip = "server-ip";
     const char *xml_client_hostname = "server-hostname";
     const char *xml_client_port = "port";
     const char *xml_protocol = "protocol";
 
-    agent *logr;
-
-    logr = (agent *)d1;
-
+    agent * logr = (agent *)d1;
     logr->notify_time = 0;
     logr->max_time_reconnect_try = 0;
+    logr->rip_id = 0;
 
-    while (node[i]) {
+    for (i = 0; node[i]; i++) {
         XML_NODE chld_node = NULL;
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -62,113 +63,49 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         /* Get server IP */
         else if (strcmp(node[i]->element, xml_client_ip) == 0) {
             mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_ip);
-            if (old_format == 0) {
-                merror("Incompatible server configuration in ossec.conf file.");
+
+            if (OS_IsValidIP(node[i]->content, NULL) != 1) {
+                merror(INVALID_IP, node[i]->content);
                 return (OS_INVALID);
             }
-            old_format = 1;
-            unsigned int ip_id = 0;
 
-            /* Get last IP */
-            if (logr->rip) {
-                while (logr->rip[ip_id]) {
-                    ip_id++;
-                }
-            }
-            os_realloc(logr->rip, (ip_id + 2) * sizeof(char *), logr->rip);
-            logr->rip[ip_id] = NULL;
-            logr->rip[ip_id + 1] = NULL;
-
-            os_strdup(node[i]->content, logr->rip[ip_id]);
-            if (OS_IsValidIP(logr->rip[ip_id], NULL) != 1) {
-                merror(INVALID_IP, logr->rip[ip_id]);
-                return (OS_INVALID);
-            }
-            logr->rip_id++;
+            rip = node[i]->content;
         } else if (strcmp(node[i]->element, xml_client_hostname) == 0) {
             mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_hostname);
-            if (old_format == 0) {
-                merror("Incompatible server configuration in ossec.conf file.");
+
+            if (s_ip = OS_GetHost(node[i]->content, 5), !s_ip) {
+                merror(AG_INV_HOST, node[i]->content);
                 return (OS_INVALID);
             }
-            old_format = 1;
-            unsigned int ip_id = 0;
-            char *s_ip;
-            char f_ip[128];
 
-            /* Get last IP */
-            if (logr->rip) {
-                while (logr->rip[ip_id]) {
-                    ip_id++;
-                }
-            }
-
-            os_realloc(logr->rip, (ip_id + 2) * sizeof(char *),
-                       logr->rip);
-
-            s_ip = OS_GetHost(node[i]->content, 5);
-            if (!s_ip) {
-                mwarn("Unable to get hostname for '%s'.", node[i]->content);
-                merror(AG_INV_HOST, node[i]->content);
-
-                os_strdup("invalid_ip", s_ip);
-            }
-
-            f_ip[127] = '\0';
             snprintf(f_ip, 127, "%s/%s", node[i]->content, s_ip);
-
-            os_strdup(f_ip, logr->rip[ip_id]);
-            logr->rip[ip_id + 1] = NULL;
-
+            rip = f_ip;
             free(s_ip);
-
-            logr->rip_id++;
         } else if (strcmp(node[i]->element, xml_client_port) == 0) {
             mwarn("The <%s> tag is deprecated, please use <server><port> instead.", xml_client_port);
-            if (old_format == 0) {
-                merror("Incompatible server configuration in ossec.conf file.");
-                return (OS_INVALID);
-            }
-            old_format = 1;
+
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 
-            ip_id = 0;
-
-            /* Get port used by last server */
-            if (logr->port) {
-                while (logr->port[ip_id]) {
-                    ip_id++;
-                }
-            }
-            os_realloc(logr->port, (ip_id + 2) * sizeof(int), logr->port);
-            logr->port[ip_id] = DEFAULT_SECURE;
-            logr->port[ip_id + 1] = 0;
-
-            logr->port[ip_id] = atoi(node[i]->content);
-
-            if (logr->port[ip_id] <= 0 || logr->port[ip_id] > 65535) {
-                merror(PORT_ERROR, logr->port[ip_id]);
+            if (port = atoi(node[i]->content), port <= 0 || port > 65535) {
+                merror(PORT_ERROR, port);
                 return (OS_INVALID);
             }
         }
         /* Get parameters for each configurated server*/
         else if (strcmp(node[i]->element, xml_client_server) == 0) {
-            if (old_format == 1) {
-                merror("Incompatible server configuration in ossec.conf file.");
-                return (OS_INVALID);
-            }
-            old_format = 0;
-
             if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 merror(XML_INVELEM, node[i]->element);
-                goto fail;
-            }
-            if (Read_Client_Server(chld_node, logr) < 0) {
                 return (OS_INVALID);
             }
+            if (Read_Client_Server(chld_node, logr) < 0) {
+                OS_ClearNode(chld_node);
+                return (OS_INVALID);
+            }
+
+            OS_ClearNode(chld_node);
         } else if (strcmp(node[i]->element, xml_notify_time) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -212,23 +149,12 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_protocol) == 0) {
-            ip_id = 0;
-            old_format = 1;
             mwarn("The <%s> tag is deprecated, please use <server><protocol> instead.", xml_protocol);
-            /* Get protocol used by last server */
-            if (logr->protocol) {
-                while (logr->protocol[ip_id]) {
-                    ip_id++;
-                }
-            }
-            os_realloc(logr->protocol, (ip_id + 2) * sizeof(int), logr->protocol);
-            logr->protocol[ip_id] = UDP_PROTO;
-            logr->protocol[ip_id + 1] = 0;
 
             if (strcmp(node[i]->content, "tcp") == 0) {
-                logr->protocol[ip_id] = TCP_PROTO;
+                protocol = TCP_PROTO;
             } else if (strcmp(node[i]->content, "udp") == 0) {
-                logr->protocol[ip_id] = UDP_PROTO;
+                protocol = UDP_PROTO;
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
@@ -237,18 +163,17 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
-        OS_ClearNode(chld_node);
-        i++;
-
-        continue;
-
-        fail:
-        OS_ClearNode(chld_node);
-        return (OS_INVALID);
     }
 
-    if (!logr->rip) {
-        return (OS_INVALID);
+    // Add extra server (legacy configuration)
+
+    if (rip) {
+        os_realloc(logr->server, sizeof(agent_server) * (logr->rip_id + 2), logr->server);
+        os_strdup(rip, logr->server[logr->rip_id].rip);
+        logr->server[logr->rip_id].port = port;
+        logr->server[logr->rip_id].protocol = protocol;
+        memset(logr->server + logr->rip_id + 1, 0, sizeof(agent_server));
+        logr->rip_id++;
     }
 
     return (0);
@@ -256,18 +181,20 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
 int Read_Client_Server(XML_NODE node, agent * logr)
 {
-
     /* XML definitions */
     const char *xml_client_addr = "address";
     const char *xml_client_port = "port";
     const char *xml_protocol = "protocol";
 
-    int j = 0;
-    unsigned int ip_id = 0;
+    int j;
+    char f_ip[128];
+    char * rip = NULL;
+    int port = DEFAULT_SECURE;
+    int protocol = UDP_PROTO;
 
     /* Get parameters for each configurated server*/
 
-    while (node[j]) {
+    for (j = 0; node[j]; j++) {
         if (!node[j]->element) {
             merror(XML_ELEMNULL);
             return (OS_INVALID);
@@ -277,30 +204,13 @@ int Read_Client_Server(XML_NODE node, agent * logr)
         }
         /* Get server address (IP or hostname) */
         else if (strcmp(node[j]->element, xml_client_addr) == 0) {
-            ip_id = 0;
-            char *s_ip;
-
-            /* Get last IP */
-            if (logr->rip) {
-                while (logr->rip[ip_id]) {
-                    ip_id++;
-                }
-            }
-
-            os_realloc(logr->rip, (ip_id + 2) * sizeof(char *), logr->rip);
-            logr->rip[ip_id] = NULL;
-            logr->rip[ip_id + 1] = NULL;
+            char * s_ip;
 
             if (OS_IsValidIP(node[j]->content, NULL) == 1) {
-                os_strdup(node[j]->content, logr->rip[ip_id]);
-            } else if ((s_ip = OS_GetHost(node[j]->content, 5)) != NULL){
-                char f_ip[128];
-                f_ip[127] = '\0';
-                snprintf(f_ip, 127, "%s/%s", node[j]->content, s_ip);
-
-                os_strdup(f_ip, logr->rip[ip_id]);
-                logr->rip[ip_id + 1] = NULL;
-
+                rip = node[j]->content;
+            } else if (s_ip = OS_GetHost(node[j]->content, 5), s_ip) {
+                snprintf(f_ip, sizeof(f_ip), "%s/%s", node[j]->content, s_ip);
+                rip = f_ip;
                 free(s_ip);
             } else {
                 merror(AG_INV_HOST, node[j]->content);
@@ -312,41 +222,15 @@ int Read_Client_Server(XML_NODE node, agent * logr)
                 return (OS_INVALID);
             }
 
-            ip_id = 0;
-
-            /* Get port used by last server */
-            if (logr->port) {
-                while (logr->port[ip_id]) {
-                    ip_id++;
-                }
-            }
-            os_realloc(logr->port, (ip_id + 2) * sizeof(int), logr->port);
-            logr->port[ip_id] = DEFAULT_SECURE;
-            logr->port[ip_id + 1] = 0;
-
-            logr->port[ip_id] = atoi(node[j]->content);
-
-            if (logr->port[ip_id] <= 0 || logr->port[ip_id] > 65535) {
-                merror(PORT_ERROR, logr->port[ip_id]);
+            if (port = atoi(node[j]->content), port <= 0 || port > 65535) {
+                merror(PORT_ERROR, port);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[j]->element, xml_protocol) == 0) {
-            ip_id = 0;
-
-            /* Get protocol used by last server */
-            if (logr->protocol) {
-                while (logr->protocol[ip_id]) {
-                    ip_id++;
-                }
-            }
-            os_realloc(logr->protocol, (ip_id + 2) * sizeof(int), logr->protocol);
-            logr->protocol[ip_id] = UDP_PROTO;
-            logr->protocol[ip_id + 1] = 0;
-
             if (strcmp(node[j]->content, "tcp") == 0) {
-                logr->protocol[ip_id] = TCP_PROTO;
+                protocol = TCP_PROTO;
             } else if (strcmp(node[j]->content, "udp") == 0) {
-                logr->protocol[ip_id] = UDP_PROTO;
+                protocol = UDP_PROTO;
             } else {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
@@ -355,44 +239,18 @@ int Read_Client_Server(XML_NODE node, agent * logr)
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);
         }
-        j++;
-    }
-    /* Set default parameters if they haven't been specified */
-    unsigned int id = 0;
-    if (logr->port){
-        while (logr->port[id]) {
-            id++;
-        }
-        if (id <= ip_id){
-            os_realloc(logr->port, (ip_id + 2) * sizeof(int), logr->port);
-            logr->port[ip_id] = DEFAULT_SECURE;
-            logr->port[ip_id + 1] = 0;
-        }
-    }else{
-        os_realloc(logr->port, (ip_id + 2) * sizeof(int), logr->port);
-        logr->port[ip_id] = DEFAULT_SECURE;
-        logr->port[ip_id + 1] = 0;
     }
 
-    if (logr->protocol){
-        id = 0;
-        while (logr->protocol[id]) {
-            id++;
-        }
-        if (id <= ip_id){
-            os_realloc(logr->protocol, (ip_id + 2) * sizeof(int), logr->protocol);
-            logr->protocol[ip_id] = UDP_PROTO;
-            logr->protocol[ip_id + 1] = 0;
-        }
-    }else{
-        os_realloc(logr->protocol, (ip_id + 2) * sizeof(int), logr->protocol);
-        logr->protocol[ip_id] = UDP_PROTO;
-        logr->protocol[ip_id + 1] = 0;
-    }
-    if (!logr->rip) {
+    if (!rip) {
+        merror("No such address in the configuration.");
         return (OS_INVALID);
     }
 
+    os_realloc(logr->server, sizeof(agent_server) * (logr->rip_id + 2), logr->server);
+    os_strdup(rip, logr->server[logr->rip_id].rip);
+    logr->server[logr->rip_id].port = port;
+    logr->server[logr->rip_id].protocol = protocol;
+    memset(logr->server + logr->rip_id + 1, 0, sizeof(agent_server));
     logr->rip_id++;
 
     return (0);
@@ -400,7 +258,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
 
 int Test_Client(const char * path){
     int fail = 0;
-    agent test_client = { .port = 0 };
+    agent test_client = { .server = NULL };
 
     if (ReadConfig(CAGENT_CONFIG | CCLIENT, path, &test_client, NULL) < 0) {
 		merror(RCONFIG_ERROR,"Client", path);
@@ -419,19 +277,16 @@ int Test_Client(const char * path){
 void Free_Client(agent * config){
     if (config) {
         int i;
-        free(config->lip);
-        if (config->rip) {
-            for (i=0; config->rip[i] != NULL; i++) {
-                free(config->rip[i]);
+
+        if (config->server) {
+            for (i = 0; config->server[i].rip; i++) {
+                free(config->server[i].rip);
             }
-            free(config->rip);
+
+            free(config->server);
         }
-        if (config->port) {
-            free(config->port);
-        }
-        if (config->protocol) {
-            free(config->protocol);
-        }
+
+        free(config->lip);
         free(config->profile);
         labels_free(config->labels);
     }

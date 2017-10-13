@@ -109,7 +109,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Connect remote */
     rc = 0;
     while (rc < agt->rip_id) {
-        minfo("Server IP Address: %s", agt->rip[rc]);
+        minfo("Server IP Address: %s", agt->server[rc].rip);
         rc++;
     }
 

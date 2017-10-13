@@ -131,7 +131,7 @@ int main(int argc, char **argv)
         merror_exit(CLIENT_ERROR);
     }
 
-    if (!agt->rip) {
+    if (!(agt->server && agt->server[0].rip)) {
         merror(AG_INV_IP);
         merror_exit(CLIENT_ERROR);
     }

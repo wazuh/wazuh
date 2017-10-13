@@ -14,19 +14,23 @@ typedef struct agent_flags_t {
     unsigned int auto_restart:1;
 } agent_flags_t;
 
+typedef struct agent_server {
+    char * rip;
+    int port;
+    int protocol;
+} agent_server;
+
 /* Configuration structure */
 typedef struct _agent {
-    int *port;
+    agent_server * server;
     int m_queue;
     int sock;
     int execdq;
     int rip_id;
     char *lip;
-    char **rip; /* remote (server) IP */
     int notify_time;
     int max_time_reconnect_try;
     char *profile;
-    int *protocol;
     int buffer;
     int buflength;
     int events_persec;

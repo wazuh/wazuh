@@ -23,7 +23,7 @@ int connect_server(int initial_id)
     /* Checking if the initial is zero, meaning we have to
      * rotate to the beginning
      */
-    if (agt->rip[initial_id] == NULL) {
+    if (agt->server[initial_id].rip == NULL) {
         rc = 0;
     }
 
@@ -33,62 +33,62 @@ int connect_server(int initial_id)
         CloseSocket(agt->sock);
         agt->sock = -1;
 
-        if (agt->rip[1]) {
+        if (agt->server[1].rip) {
             minfo("Closing connection to server (%s:%d).",
-                    agt->rip[rc],
-                    agt->port[rc]);
+                    agt->server[rc].rip,
+                    agt->server[rc].port);
         }
     }
 
-    while (agt->rip[rc]) {
+    while (agt->server[rc].rip) {
         char *tmp_str;
 
         /* Check if we have a hostname */
-        tmp_str = strchr(agt->rip[rc], '/');
+        tmp_str = strchr(agt->server[rc].rip, '/');
         if (tmp_str) {
             char *f_ip;
             *tmp_str = '\0';
 
-            f_ip = OS_GetHost(agt->rip[rc], 5);
+            f_ip = OS_GetHost(agt->server[rc].rip, 5);
             if (f_ip) {
                 char ip_str[128];
                 ip_str[127] = '\0';
 
-                snprintf(ip_str, 127, "%s/%s", agt->rip[rc], f_ip);
+                snprintf(ip_str, 127, "%s/%s", agt->server[rc].rip, f_ip);
 
                 free(f_ip);
-                free(agt->rip[rc]);
+                free(agt->server[rc].rip);
 
-                os_strdup(ip_str, agt->rip[rc]);
-                tmp_str = strchr(agt->rip[rc], '/');
+                os_strdup(ip_str, agt->server[rc].rip);
+                tmp_str = strchr(agt->server[rc].rip, '/');
                 if (!tmp_str) {
-                    mwarn("Invalid hostname format: '%s'.", agt->rip[rc]);
+                    mwarn("Invalid hostname format: '%s'.", agt->server[rc].rip);
                     return 0;
                 }
 
                 tmp_str++;
             } else {
                 mwarn("Unable to get hostname for '%s'.",
-                       agt->rip[rc]);
+                       agt->server[rc].rip);
                 *tmp_str = '/';
                 tmp_str++;
             }
         } else {
-            tmp_str = agt->rip[rc];
+            tmp_str = agt->server[rc].rip;
         }
 
         minfo("Trying to connect to server (%s:%d).",
-                agt->rip[rc],
-                agt->port[rc]);
+                agt->server[rc].rip,
+                agt->server[rc].port);
 
-        if (agt->protocol[rc] == UDP_PROTO) {
-            agt->sock = OS_ConnectUDP(agt->port[rc], tmp_str, strchr(tmp_str, ':') != NULL);
+        if (agt->server[rc].protocol == UDP_PROTO) {
+            agt->sock = OS_ConnectUDP(agt->server[rc].port, tmp_str, strchr(tmp_str, ':') != NULL);
         } else {
             if (agt->sock >= 0) {
                 close(agt->sock);
             }
 
-            agt->sock = OS_ConnectTCP(agt->port[rc], tmp_str, strchr(tmp_str, ':') != NULL);
+            agt->sock = OS_ConnectTCP(agt->server[rc].port, tmp_str, strchr(tmp_str, ':') != NULL);
         }
 
         if (agt->sock < 0) {
@@ -96,11 +96,11 @@ int connect_server(int initial_id)
             merror(CONNS_ERROR, tmp_str);
             rc++;
 
-            if (agt->rip[rc] == NULL) {
+            if (agt->server[rc].rip == NULL) {
                 attempts += 10;
 
                 /* Only log that if we have more than 1 server configured */
-                if (agt->rip[1]) {
+                if (agt->server[1].rip) {
                     merror("Unable to connect to any server.");
                 }
 
@@ -115,8 +115,8 @@ int connect_server(int initial_id)
             if (OS_SetRecvTimeout(agt->sock, timeout) < 0){
                 merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
             }
-#ifdef WIN32
-            if (agt->protocol[rc] == UDP_PROTO) {
+#ifdef WIN32s
+            if (agt->server[rc].protocol == UDP_PROTO) {
                 int bmode = 1;
 
                 /* Set socket to non-blocking */
@@ -163,7 +163,7 @@ void start_agent(int is_startup)
 
         /* Read until our reply comes back */
         while (attempts <= 5) {
-            if (agt->protocol[agt->rip_id] == TCP_PROTO) {
+            if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
                 recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
                 length = wnet_order(length);
 
@@ -188,7 +188,7 @@ void start_agent(int is_startup)
 
                 /* Send message again (after three attempts) */
                 if (attempts >= 3) {
-                    if (agt->protocol[agt->rip_id] == TCP_PROTO) {
+                    if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
                         if (!connect_server(agt->rip_id)) {
                             continue;
                         }
@@ -201,9 +201,9 @@ void start_agent(int is_startup)
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->rip[agt->rip_id]);
+            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip);
             if (tmp_msg == NULL) {
-                mwarn(MSG_ERROR, agt->rip[agt->rip_id]);
+                mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
                 continue;
             }
 
@@ -213,8 +213,8 @@ void start_agent(int is_startup)
                 if (strcmp(tmp_msg, HC_ACK) == 0) {
                     available_server = time(0);
 
-                    minfo(AG_CONNECTED, agt->rip[agt->rip_id],
-                            agt->port[agt->rip_id]);
+                    minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
+                            agt->server[agt->rip_id].port);
 
                     if (is_startup) {
                         /* Send log message about start up */
@@ -231,13 +231,13 @@ void start_agent(int is_startup)
         }
 
         /* Wait for server reply */
-        mwarn(AG_WAIT_SERVER, agt->rip[agt->rip_id]);
+        mwarn(AG_WAIT_SERVER, agt->server[agt->rip_id].rip);
 
         /* If we have more than one server, try all */
-        if (agt->rip[1]) {
+        if (agt->server[1].rip) {
             int curr_rip = agt->rip_id;
             minfo("Trying next server ip in the line: '%s'.",
-                   agt->rip[agt->rip_id + 1] != NULL ? agt->rip[agt->rip_id + 1] : agt->rip[0]);
+                   agt->server[agt->rip_id + 1].rip != NULL ? agt->server[agt->rip_id + 1].rip : agt->server[0].rip);
             connect_server(agt->rip_id + 1);
 
             if (agt->rip_id == curr_rip) {
