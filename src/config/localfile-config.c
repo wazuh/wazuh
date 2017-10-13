@@ -442,7 +442,6 @@ void Free_Localfile(logreader_config * config){
                 free(config->config[i].file);
                 free(config->config[i].logformat);
                 free(config->config[i].djb_program_name);
-                free(config->config[i].command);
                 free(config->config[i].alias);
                 free(config->config[i].query);
                 labels_free(config->config[i].labels);
