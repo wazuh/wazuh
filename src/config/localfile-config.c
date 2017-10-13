@@ -129,7 +129,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 logf[pl].alias = NULL;
                 logf[pl].logformat = NULL;
                 logf[pl].fp = NULL;
-                return (OS_INVALID);
+                labels_free(logf[pl].labels);
+                return 0;
             }
 
             os_strdup(node[i]->content, logf[pl].file);
