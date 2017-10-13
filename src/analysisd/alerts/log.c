@@ -123,7 +123,7 @@ void OS_LogOutput(Eventinfo *lf)
     printf(
         "** Alert %ld.%ld:%s - %s\n"
         "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
-        "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
+        "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%.1256s\n",
         (long int)lf->time,
         __crt_ftell,
         lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
@@ -175,7 +175,8 @@ void OS_LogOutput(Eventinfo *lf)
         lf->dstuser == NULL ? "" : "\nUser: ",
         lf->dstuser == NULL ? "" : lf->dstuser,
 
-        lf->full_log);
+        lf->generated_rule->alert_opts & NO_FULL_LOG ? "" : "\n",
+        lf->generated_rule->alert_opts & NO_FULL_LOG ? "" : lf->full_log);
 
     /* FIM events */
 
@@ -294,7 +295,7 @@ void OS_Log(Eventinfo *lf)
     fprintf(_aflog,
             "** Alert %ld.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
-            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
+            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%.1256s\n",
             (long int)lf->time,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
@@ -345,7 +346,8 @@ void OS_Log(Eventinfo *lf)
             lf->dstuser == NULL ? "" : "\nUser: ",
             lf->dstuser == NULL ? "" : lf->dstuser,
 
-            lf->full_log);
+            lf->generated_rule->alert_opts & NO_FULL_LOG ? "" : "\n",
+            lf->generated_rule->alert_opts & NO_FULL_LOG ? "" : lf->full_log);
 
     /* FIM events */
 

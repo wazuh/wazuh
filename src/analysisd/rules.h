@@ -42,6 +42,7 @@
 #define DO_PACKETINFO   0x040
 #define DO_EXTRAINFO    0x100
 #define SAME_EXTRAINFO  0x200
+#define NO_FULL_LOG     0x400
 
 #define RULE_MASTER     1
 #define RULE_SRCIP      2

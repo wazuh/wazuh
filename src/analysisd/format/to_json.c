@@ -123,7 +123,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->dstuser) {
         cJSON_AddStringToObject(data, "dstuser", lf->dstuser);
     }
-    if(lf->full_log) {
+    if(lf->full_log && !(lf->generated_rule && lf->generated_rule->alert_opts & NO_FULL_LOG)) {
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
     }
     if (lf->agent_id) {
