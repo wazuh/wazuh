@@ -239,9 +239,6 @@ void OS_LogOutput(Eventinfo *lf)
             printf("Old inode: %ld\n", lf->inode_before);
         if (lf->inode_after)
             printf("New inode: %ld\n", lf->inode_after);
-
-        if (lf->diff)
-            printf("What changed: %s\n", lf->diff);
     }
 
     // Dynamic fields, except for syscheck events
@@ -410,9 +407,6 @@ void OS_Log(Eventinfo *lf)
             fprintf(_aflog, "Old inode: %ld\n", lf->inode_before);
         if (lf->inode_after)
             fprintf(_aflog, "New inode: %ld\n", lf->inode_after);
-
-        if (lf->diff)
-            fprintf(_aflog, "What changed: %s\n", lf->diff);
     }
 
     // Dynamic fields, except for syscheck events
