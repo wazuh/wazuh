@@ -31,6 +31,7 @@ REMOTE_SYS_TEMPLATE="./etc/templates/config/generic/remote-syslog.template"
 LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 
 AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
+CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 ##########
 # WriteSyscheck()
@@ -396,6 +397,10 @@ WriteManager()
 
     # Writting auth configuration
     cat ${AUTH_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Writting cluster configuration
+    cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</ossec_config>" >> $NEWCONFIG
