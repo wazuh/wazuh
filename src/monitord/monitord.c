@@ -68,6 +68,7 @@ void Monitord()
         /* Day changed, deal with log files */
         if (today != p->tm_mday) {
             if (mond.rotate_log) {
+                sleep(mond.day_wait);
                 /* Rotate and compress ossec.log */
                 w_rotate_log(mond.compress, mond.keep_log_days);
             }

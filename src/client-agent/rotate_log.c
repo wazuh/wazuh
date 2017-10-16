@@ -22,6 +22,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     int today;
     int compress = getDefine_Int("monitord", "compress", 0, 1);
     int keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
+    int day_wait = getDefine_Int("monitord", "day_wait", 5, 240);
 
     mdebug1("Log rotating thread started.");
 
@@ -33,6 +34,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
         localtime_r(&now, &tm);
 
         if (today != tm.tm_mday) {
+            sleep(day_wait);
             /* Rotate and compress ossec.log */
             w_rotate_log(compress, keep_log_days);
             today = tm.tm_mday;

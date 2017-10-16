@@ -58,8 +58,11 @@ void manage_files(int cday, int cmon, int cyear)
     memset(flogfile_old, '\0', OS_FLSIZE + 1);
     memset(ejlogfile, '\0', OS_FLSIZE + 1);
     memset(ejlogfile_old, '\0', OS_FLSIZE + 1);
-    /* When the day changes, we wait up to day_wait before compressing the file */
-    sleep(mond.day_wait);
+
+    if (!mond.rotate_log) {
+        /* When the day changes, we wait up to day_wait before compressing the file */
+        sleep(mond.day_wait);
+    }
 
     /* Event logfile */
     snprintf(elogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
