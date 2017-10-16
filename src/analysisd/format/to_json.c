@@ -22,6 +22,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* file_diff;
     cJSON* manager;
 	cJSON* agent;
+    cJSON* predecoder;
     cJSON* data;
 	char manager_name[512];
     char* out;
@@ -34,6 +35,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     // Parse timestamp
     W_JSON_AddTimestamp(root, lf);
 
+    cJSON_AddItemToObject(root, "predecoder", predecoder = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "rule", rule = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "agent", agent = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "manager", manager = cJSON_CreateObject());
@@ -225,7 +227,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     }
 
     if(lf->program_name)
-        cJSON_AddStringToObject(root, "program_name", lf->program_name);
+        cJSON_AddStringToObject(predecoder, "program_name", lf->program_name);
 
     if(lf->id)
         cJSON_AddStringToObject(data, "id", lf->id);

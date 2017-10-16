@@ -235,9 +235,11 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 {
     cJSON* agent;
     cJSON* manager;
+    cJSON* predecoder;
     cJSON * name;
     agent = cJSON_GetObjectItem(root, "agent");
     manager = cJSON_GetObjectItem(root, "manager");
+    predecoder = cJSON_GetObjectItem(root, "predecoder");
     if(lf->hostname[0] == '(') {
         char* search;
         char string[MAX_STRING] = "";
@@ -257,9 +259,9 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
             cJSON_AddItemReferenceToObject(agent, "name", name);
         }
 
-        cJSON_AddStringToObject(root, "hostname", lf->hostname);
+        cJSON_AddStringToObject(predecoder, "hostname", lf->hostname);
     }else{
-        cJSON_AddStringToObject(root, "hostname", lf->hostname);
+        cJSON_AddStringToObject(predecoder, "hostname", lf->hostname);
     }
 }
 // Parse timestamp
