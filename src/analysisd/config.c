@@ -60,11 +60,15 @@ int GlobalConf(const char *cfgfile)
     Config.label_cache_maxage = 0;
     Config.show_hidden_labels = 0;
 
+    Config.cluster_name = NULL;
+    Config.node_name = NULL;
+
     os_calloc(1, sizeof(wlabel_t), Config.labels);
 
     modules |= CGLOBAL;
     modules |= CRULES;
     modules |= CALERTS;
+    modules |= CCLUSTER;
 
     /* Read config */
     if (ReadConfig(modules, cfgfile, &Config, NULL) < 0 ||

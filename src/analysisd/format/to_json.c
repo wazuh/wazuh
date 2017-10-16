@@ -24,6 +24,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 	cJSON* agent;
     cJSON* predecoder;
     cJSON* data;
+    cJSON* cluster;
 	char manager_name[512];
     char* out;
     int i;
@@ -39,6 +40,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON_AddItemToObject(root, "rule", rule = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "agent", agent = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "manager", manager = cJSON_CreateObject());
+    cJSON_AddItemToObject(root, "cluster", cluster = cJSON_CreateObject());
     data = cJSON_CreateObject();
 
     if ( lf->time ) {
@@ -52,6 +54,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddStringToObject(root, "id", alert_id);
     }
 
+    // Cluster information
+    if(Config.cluster_name)
+        cJSON_AddStringToObject(cluster, "name", Config.cluster_name);
+
+    if(Config.node_name)
+        cJSON_AddStringToObject(cluster, "node", Config.node_name);
 
 	/* Get manager hostname */
     memset(manager_name, '\0', 512);

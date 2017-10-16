@@ -98,6 +98,10 @@ typedef struct __Config {
     int label_cache_maxage;
     int show_hidden_labels;
 
+    // Cluster configuration
+    char *cluster_name;
+    char *node_name;
+
 } _Config;
 
 #endif /* _CCONFIG__H */
