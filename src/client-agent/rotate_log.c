@@ -22,7 +22,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     int today;
     int compress = getDefine_Int("monitord", "compress", 0, 1);
     int keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
-    int day_wait = getDefine_Int("monitord", "day_wait", 5, 240);
+    int day_wait = getDefine_Int("monitord", "day_wait", 0, 600);
 
     mdebug1("Log rotating thread started.");
 
