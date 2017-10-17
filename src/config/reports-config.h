@@ -23,7 +23,7 @@ typedef struct _report_config {
 } report_config;
 
 typedef struct _monitor_config {
-    unsigned short int day_wait;
+    short int day_wait;
     unsigned int compress:1;
     unsigned int sign:1;
     unsigned int monitor_agents:1;

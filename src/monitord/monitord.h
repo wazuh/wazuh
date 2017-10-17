@@ -16,6 +16,8 @@
 
 #include "config/reports-config.h"
 
+#define MAX_DAY_WAIT 600
+
 /* Prototypes */
 void Monitord(void) __attribute__((noreturn));
 void manage_files(int cday, int cmon, int cyear);

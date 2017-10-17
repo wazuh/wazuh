@@ -33,6 +33,7 @@ static void help_monitord()
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    -n          Disable agent monitoring.");
+    print_out("    -w <sec>    Time (sec.) to wait before rotating logs and alerts.");
     print_out(" ");
     exit(1);
 }
@@ -47,6 +48,8 @@ int main(int argc, char **argv)
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
+    short day_wait = -1;
+    char * end;
 
     /* Initialize global variables */
     mond.a_queue = 0;
@@ -54,7 +57,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtfu:g:D:c:n")) != -1) {
+    while ((c = getopt(argc, argv, "Vdhtfu:g:D:c:nw:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -98,6 +101,16 @@ int main(int argc, char **argv)
             case 'n':
                 no_agents = 1;
                 break;
+            case 'w':
+                if (!optarg) {
+                    merror_exit("-%c needs an argument", c);
+                }
+
+                if (day_wait = (short)strtol(optarg, &end, 10), !end || *end || day_wait < 0 || day_wait > MAX_DAY_WAIT) {
+                    merror_exit("Invalid value for option -%c.", c);
+                }
+
+                break;
             default:
                 help_monitord();
                 break;
@@ -116,7 +129,7 @@ int main(int argc, char **argv)
     }
 
     /* Get config options */
-    mond.day_wait = (unsigned short) getDefine_Int("monitord", "day_wait", 0, 600);
+    mond.day_wait = day_wait >= 0 ? day_wait : (short)getDefine_Int("monitord", "day_wait", 0, MAX_DAY_WAIT);
     mond.compress = (unsigned int) getDefine_Int("monitord", "compress", 0, 1);
     mond.sign = (unsigned int) getDefine_Int("monitord", "sign", 0, 1);
     mond.monitor_agents = no_agents ? 0 : (unsigned int) getDefine_Int("monitord", "monitor_agents", 0, 1);
