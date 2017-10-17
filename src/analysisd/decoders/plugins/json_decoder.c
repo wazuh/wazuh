@@ -339,7 +339,7 @@ void *JSON_Decoder_Exec(Eventinfo *lf)
     cJSON *logJSON;
     logJSON = cJSON_Parse(lf->log);
     if (!logJSON)
-        mdebug2 ("Error parsing JSON string. %s", cJSON_GetErrorPtr());
+        mdebug2("Malformed JSON string '%s', near '%.20s'", lf->log, cJSON_GetErrorPtr());
     else
     {
         readJSON (logJSON, NULL, lf);
