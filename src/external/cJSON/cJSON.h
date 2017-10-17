@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2009 Dave Gamble
+  Copyright (c) 2009-2017 Dave Gamble and cJSON contributors
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -30,8 +30,8 @@ extern "C"
 
 /* project version */
 #define CJSON_VERSION_MAJOR 1
-#define CJSON_VERSION_MINOR 4
-#define CJSON_VERSION_PATCH 7
+#define CJSON_VERSION_MINOR 5
+#define CJSON_VERSION_PATCH 9
 
 #include <stddef.h>
 
@@ -123,18 +123,28 @@ then using the CJSON_API_VISIBILITY flag to "export" the same symbols the way CJ
 #endif
 #endif
 
+/* Limits how deeply nested arrays/objects can be before cJSON rejects to parse them.
+ * This is to prevent stack overflows. */
+#ifndef CJSON_NESTING_LIMIT
+#define CJSON_NESTING_LIMIT 1000
+#endif
+
 /* returns the version of cJSON as a string */
 CJSON_PUBLIC(const char*) cJSON_Version(void);
 
 /* Supply malloc, realloc and free functions to cJSON */
 CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks);
 
-
-/* Supply a block of JSON, and this returns a cJSON object you can interrogate. Call cJSON_Delete when finished. */
+/* Memory Management: the caller is always responsible to free the results from all variants of cJSON_Parse (with cJSON_Delete) and cJSON_Print (with stdlib free, cJSON_Hooks.free_fn, or cJSON_free as appropriate). The exception is cJSON_PrintPreallocated, where the caller has full responsibility of the buffer. */
+/* Supply a block of JSON, and this returns a cJSON object you can interrogate. */
 CJSON_PUBLIC(cJSON *) cJSON_Parse(const char *value);
-/* Render a cJSON entity to text for transfer/storage. Free the char* when finished. */
+/* ParseWithOpts allows you to require (and check) that the JSON is null terminated, and to retrieve the pointer to the final byte parsed. */
+/* If you supply a ptr in return_parse_end and parsing fails, then return_parse_end will contain a pointer to the error so will match cJSON_GetErrorPtr(). */
+CJSON_PUBLIC(cJSON *) cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool require_null_terminated);
+
+/* Render a cJSON entity to text for transfer/storage. */
 CJSON_PUBLIC(char *) cJSON_Print(const cJSON *item);
-/* Render a cJSON entity to text for transfer/storage without any formatting. Free the char* when finished. */
+/* Render a cJSON entity to text for transfer/storage without any formatting. */
 CJSON_PUBLIC(char *) cJSON_PrintUnformatted(const cJSON *item);
 /* Render a cJSON entity to text using a buffered strategy. prebuffer is a guess at the final size. guessing well reduces reallocation. fmt=0 gives unformatted, =1 gives formatted */
 CJSON_PUBLIC(char *) cJSON_PrintBuffered(const cJSON *item, int prebuffer, cJSON_bool fmt);
@@ -147,10 +157,10 @@ CJSON_PUBLIC(void) cJSON_Delete(cJSON *c);
 /* Returns the number of items in an array (or object). */
 CJSON_PUBLIC(int) cJSON_GetArraySize(const cJSON *array);
 /* Retrieve item number "item" from array "array". Returns NULL if unsuccessful. */
-CJSON_PUBLIC(cJSON *) cJSON_GetArrayItem(const cJSON *array, int item);
+CJSON_PUBLIC(cJSON *) cJSON_GetArrayItem(const cJSON *array, int index);
 /* Get item "string" from object. Case insensitive. */
 CJSON_PUBLIC(cJSON *) cJSON_GetObjectItem(const cJSON * const object, const char * const string);
-CJSON_PUBLIC(cJSON *) cJSON_GetObjectItemCaseSensitive(const cJSON *object, const char *string);
+CJSON_PUBLIC(cJSON *) cJSON_GetObjectItemCaseSensitive(const cJSON * const object, const char * const string);
 CJSON_PUBLIC(cJSON_bool) cJSON_HasObjectItem(const cJSON *object, const char *string);
 /* For analysing failed parses. This returns a pointer to the parse error. You'll probably need to look a few chars back to make sense of it. Defined when cJSON_Parse() returns 0. 0 when cJSON_Parse() succeeds. */
 CJSON_PUBLIC(const char *) cJSON_GetErrorPtr(void);
@@ -197,25 +207,30 @@ CJSON_PUBLIC(void) cJSON_AddItemReferenceToArray(cJSON *array, cJSON *item);
 CJSON_PUBLIC(void) cJSON_AddItemReferenceToObject(cJSON *object, const char *string, cJSON *item);
 
 /* Remove/Detatch items from Arrays/Objects. */
+CJSON_PUBLIC(cJSON *) cJSON_DetachItemViaPointer(cJSON *parent, cJSON * const item);
 CJSON_PUBLIC(cJSON *) cJSON_DetachItemFromArray(cJSON *array, int which);
 CJSON_PUBLIC(void) cJSON_DeleteItemFromArray(cJSON *array, int which);
 CJSON_PUBLIC(cJSON *) cJSON_DetachItemFromObject(cJSON *object, const char *string);
+CJSON_PUBLIC(cJSON *) cJSON_DetachItemFromObjectCaseSensitive(cJSON *object, const char *string);
 CJSON_PUBLIC(void) cJSON_DeleteItemFromObject(cJSON *object, const char *string);
+CJSON_PUBLIC(void) cJSON_DeleteItemFromObjectCaseSensitive(cJSON *object, const char *string);
 
 /* Update array items. */
 CJSON_PUBLIC(void) cJSON_InsertItemInArray(cJSON *array, int which, cJSON *newitem); /* Shifts pre-existing items to the right. */
+CJSON_PUBLIC(cJSON_bool) cJSON_ReplaceItemViaPointer(cJSON * const parent, cJSON * const item, cJSON * replacement);
 CJSON_PUBLIC(void) cJSON_ReplaceItemInArray(cJSON *array, int which, cJSON *newitem);
 CJSON_PUBLIC(void) cJSON_ReplaceItemInObject(cJSON *object,const char *string,cJSON *newitem);
+CJSON_PUBLIC(void) cJSON_ReplaceItemInObjectCaseSensitive(cJSON *object,const char *string,cJSON *newitem);
 
 /* Duplicate a cJSON item */
 CJSON_PUBLIC(cJSON *) cJSON_Duplicate(const cJSON *item, cJSON_bool recurse);
 /* Duplicate will create a new, identical cJSON item to the one you pass, in new memory that will
 need to be released. With recurse!=0, it will duplicate any children connected to the item.
 The item->next and ->prev pointers are always zero on return from Duplicate. */
+/* Recursively compare two cJSON items for equality. If either a or b is NULL or invalid, they will be considered unequal.
+ * case_sensitive determines if object keys are treated case sensitive (1) or case insensitive (0) */
+CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * const b, const cJSON_bool case_sensitive);
 
-/* ParseWithOpts allows you to require (and check) that the JSON is null terminated, and to retrieve the pointer to the final byte parsed. */
-/* If you supply a ptr in return_parse_end and parsing fails, then return_parse_end will contain a pointer to the error. If not, then cJSON_GetErrorPtr() does the job. */
-CJSON_PUBLIC(cJSON *) cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool require_null_terminated);
 
 CJSON_PUBLIC(void) cJSON_Minify(char *json);
 
@@ -234,8 +249,12 @@ CJSON_PUBLIC(void) cJSON_Minify(char *json);
 CJSON_PUBLIC(double) cJSON_SetNumberHelper(cJSON *object, double number);
 #define cJSON_SetNumberValue(object, number) ((object != NULL) ? cJSON_SetNumberHelper(object, (double)number) : (number))
 
-/* Macro for iterating over an array */
+/* Macro for iterating over an array or object */
 #define cJSON_ArrayForEach(element, array) for(element = (array != NULL) ? (array)->child : NULL; element != NULL; element = element->next)
+
+/* malloc/free objects using the malloc/free functions that have been set with cJSON_InitHooks */
+CJSON_PUBLIC(void *) cJSON_malloc(size_t size);
+CJSON_PUBLIC(void) cJSON_free(void *object);
 
 #ifdef __cplusplus
 }
