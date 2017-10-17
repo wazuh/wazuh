@@ -397,7 +397,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char *os_platform = NULL;
     char *config_sum = NULL;
     char *merged_sum = NULL;
-    char *manager_host = NULL;
+    char manager_host[512] = "";
     char *end;
     char *end_manager;
     char *end_line;
@@ -532,7 +532,9 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         const char * MANAGER_HOST = "#\"manager_hostname\":";
         while (fgets(file, OS_MAXSTR, fp)) {
             if (!strncmp(file, MANAGER_HOST, strlen(MANAGER_HOST))) {
-                manager_host = strdup(file + strlen(MANAGER_HOST));
+                strncpy(manager_host, file, sizeof(manager_host) - 1);
+                manager_host[sizeof(manager_host) - 1] = '\0';
+
                 if (end_manager = strchr(manager_host, '\n'), end_manager){
                     *end_manager = '\0';
                 }

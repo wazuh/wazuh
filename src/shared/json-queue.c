@@ -32,10 +32,12 @@ int jqueue_open(file_queue * queue) {
         merror(FOPEN_ERROR, queue->file_name, errno, strerror(errno));
         return -1;
     }
-	
+
 	/* Position file queue to end of the file */
 	if (fseek(queue->fp, 0, SEEK_END) == -1) {
 		merror(FOPEN_ERROR, queue->file_name, errno, strerror(errno));
+        fclose(queue->fp);
+        queue->fp = NULL;
         return -1;
     }
 
