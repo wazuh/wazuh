@@ -135,7 +135,7 @@ int main(int argc, char **argv)
     mond.monitor_agents = no_agents ? 0 : (unsigned int) getDefine_Int("monitord", "monitor_agents", 0, 1);
     mond.rotate_log = (unsigned int)getDefine_Int("monitord", "rotate_log", 0, 1);
     mond.keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
-    mond.size_rotate = (unsigned long) (getDefine_Int("monitord", "size_rotate", 0, 2048) * 1024 * 1023);
+    mond.size_rotate = (unsigned long) getDefine_Int("monitord", "size_rotate", 0, 4096) * 1024 * 1024;
     mond.daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
 
     mond.agents = NULL;

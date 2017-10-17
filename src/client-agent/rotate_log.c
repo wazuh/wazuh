@@ -27,7 +27,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     int compress = getDefine_Int("monitord", "compress", 0, 1);
     int keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
     int day_wait = getDefine_Int("monitord", "day_wait", 0, 600);
-    unsigned long size_rotate = (unsigned long) (getDefine_Int("monitord", "size_rotate", 0, 2048) * 1024 * 1023);
+    unsigned long size_rotate = (unsigned long) getDefine_Int("monitord", "size_rotate", 0, 4096) * 1024 * 1024;
     int daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
 
     mdebug1("Log rotating thread started.");
