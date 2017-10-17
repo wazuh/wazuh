@@ -391,9 +391,9 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
                     }
 
                     /* If we have more than one server, try all */
-                    if (wi > 12 && agt->rip[1]) {
+                    if (wi > 12 && agt->server[1].rip) {
                         int curr_rip = agt->rip_id;
-                        minfo("Trying next server IP in line: '%s'.", agt->rip[agt->rip_id + 1] != NULL ? agt->rip[agt->rip_id + 1] : agt->rip[0]);
+                        minfo("Trying next server IP in line: '%s'.", agt->server[agt->rip_id + 1].rip != NULL ? agt->server[agt->rip_id + 1].rip : agt->server[0].rip);
 
                         connect_server(agt->rip_id + 1);
 
@@ -415,7 +415,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
                     }
                 }
 
-                minfo(AG_CONNECTED, agt->rip[agt->rip_id], agt->port[agt->rip_id]);
+                minfo(AG_CONNECTED, agt->server[agt->rip_id].rip, agt->server[agt->rip_id].port);
                 minfo(SERVER_UP);
                 update_status(GA_STATUS_ACTIVE);
             }
@@ -544,7 +544,7 @@ void send_win32_info(time_t curr_time)
     }
 
     /* Send UDP message */
-    if (agt->protocol[agt->rip_id] == UDP_PROTO) {
+    if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
         if (OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0) {
             merror(SEND_ERROR, "server", strerror(errno));
             sleep(1);

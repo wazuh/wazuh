@@ -73,7 +73,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
         /* Read until no more messages are available */
         while (1) {
-            if (agt->protocol[agt->rip_id] == TCP_PROTO) {
+            if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
                 /* Only one read per call */
                 if (reads++) {
                     break;
@@ -116,9 +116,9 @@ void *receiver_thread(__attribute__((unused)) void *none)
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->rip[agt->rip_id]);
+            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip);
             if (tmp_msg == NULL) {
-                mwarn(MSG_ERROR, agt->rip[agt->rip_id]);
+                mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
                 continue;
             }
 
