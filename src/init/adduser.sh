@@ -46,7 +46,7 @@ else
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
     elif [ "$UNAME" = "AIX" ]; then
-        GROUPADD="/usr/sbin/mkgroup"
+        GROUPADD="/usr/bin/mkgroup"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
     else
