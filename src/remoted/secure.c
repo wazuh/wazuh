@@ -344,7 +344,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         return;
     }
 
-
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
         /* We need to save the peerinfo if it is a control msg */
@@ -356,7 +355,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
                 merror("Couldn't add TCP socket to keystore.");
                 break;
             case 1:
-                mwarn("TCP socket already in keystore.");
+                mdebug2("TCP socket already in keystore.");
                 break;
             default:
                 ;
