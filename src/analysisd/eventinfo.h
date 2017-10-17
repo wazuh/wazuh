@@ -16,7 +16,7 @@
 typedef enum syscheck_event_t { FIM_ADDED, FIM_MODIFIED, FIM_READDED, FIM_DELETED } syscheck_event_t;
 
 typedef struct _DynamicField {
-    const char *key;
+    char *key;
     char *value;
 } DynamicField;
 

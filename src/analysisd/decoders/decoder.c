@@ -429,7 +429,7 @@ void *DynamicField_FP(Eventinfo *lf, char *field, const char *order)
     }
 #endif
 
-    lf->fields[lf->nfields].key = order;
+    os_strdup(order, lf->fields[lf->nfields].key);
     lf->fields[lf->nfields++].value = field;
     return (NULL);
 }
