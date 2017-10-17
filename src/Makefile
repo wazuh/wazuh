@@ -63,6 +63,8 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DHIGHFIRST
 		PATH:=${PATH}:/usr/vac/bin
 		OSSEC_LDFLAGS+=-pthread
+		INSTALL=/opt/freeware/bin/install
+		CC=gcc
 else
 ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
