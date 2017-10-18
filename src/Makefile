@@ -42,7 +42,6 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 endif
 
 OSSEC_LDFLAGS=${LDFLAGS} -L${EXTERNAL_OPENSSL} -lm -lssl -lcrypto
-INSTALL=install
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -56,6 +55,7 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DHIGHFIRST
 		PATH:=${PATH}:/usr/vac/bin
 		OSSEC_LDFLAGS+=-pthread
+		CC=gcc
 else
 ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
@@ -67,7 +67,6 @@ ifeq (${uname_S},SunOS)
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
 		OSSEC_LDFLAGS+=-pthread -lrt
-		INSTALL=ginstall
 else
 ifeq (${uname_S},Darwin)
 		DEFINES+=-DDarwin
