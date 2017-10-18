@@ -6,6 +6,7 @@
 #include "json_extended.h"
 #include <stddef.h>
 #include "config.h"
+#include <regex.h>
 
 #define MAX_MATCHES 10
 #define MAX_STRING 1024
@@ -235,13 +236,19 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 {
     cJSON* agent;
     cJSON* manager;
+    cJSON* predecoder;
     cJSON * name;
     agent = cJSON_GetObjectItem(root, "agent");
     manager = cJSON_GetObjectItem(root, "manager");
+
     if(lf->hostname[0] == '(') {
         char* search;
+        char* agent_hostname = NULL;
         char string[MAX_STRING] = "";
         int index;
+        regex_t regexCompiled;
+        regmatch_t match[2];
+        int match_size;
 
         strncpy(string, lf->hostname, MAX_STRING - 1);
         search = strchr(string, ')');
@@ -250,16 +257,46 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
             index = (int)(search - string);
             str_cut(string, index, -1);
             str_cut(string, 0, 1);
-            cJSON_AddStringToObject(agent, "name", string);
-        }
-    } else if(lf->agent_id && !strcmp(lf->agent_id, "000")){
-        if (name = cJSON_GetObjectItem(manager,"name"), name) {
-            cJSON_AddItemReferenceToObject(agent, "name", name);
         }
 
-        cJSON_AddStringToObject(root, "hostname", lf->hostname);
-    }else{
-        cJSON_AddStringToObject(root, "hostname", lf->hostname);
+        // Get agent hostname
+        static const char *pattern = " [0-9][0-9]:[0-9][0-9]:[0-9][0-9] (.+) .+\\[";
+        if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+            merror_exit("Can not compile regular expression.");
+        }
+        if(regexec(&regexCompiled, lf->full_log, 2, match, 0) == 0){
+            match_size = match[1].rm_eo - match[1].rm_so;
+            agent_hostname = malloc(match_size + 1);
+            snprintf (agent_hostname, match_size + 1, "%.*s", match_size, lf->full_log + match[1].rm_so);
+
+            if (!cJSON_HasObjectItem(root, "predecoder")) {
+                cJSON_AddItemToObject(root, "predecoder", predecoder = cJSON_CreateObject());
+            } else {
+                predecoder = cJSON_GetObjectItem(root, "predecoder");
+            }
+
+            cJSON_AddStringToObject(predecoder, "hostname", agent_hostname);
+            free(agent_hostname);
+        }
+        regfree(&regexCompiled);
+
+    } else {
+
+        if (!cJSON_HasObjectItem(root, "predecoder")) {
+            cJSON_AddItemToObject(root, "predecoder", predecoder = cJSON_CreateObject());
+        } else {
+            predecoder = cJSON_GetObjectItem(root, "predecoder");
+        }
+
+        if(lf->agent_id && !strcmp(lf->agent_id, "000")){
+            if (name = cJSON_GetObjectItem(manager,"name"), name) {
+                cJSON_AddItemReferenceToObject(agent, "name", name);
+            }
+
+            cJSON_AddStringToObject(predecoder, "hostname", lf->hostname);
+        }else{
+            cJSON_AddStringToObject(predecoder, "hostname", lf->hostname);
+        }
     }
 }
 // Parse timestamp
