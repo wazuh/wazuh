@@ -32,13 +32,16 @@ def status():
 
     return data
 
-def __get_ossec_log_category(log):
-    regex_category = re.compile("^\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d\s(\S+):\s")
+def __get_ossec_log_fields(log):
+    regex_category = re.compile("^(\d\d\d\d/\d\d/\d\d)\s\d\d:\d\d:\d\d\s(\S+):\s(\S+):\s(.+)$")
 
     match = re.search(regex_category, log)
 
     if match:
-        category = match.group(1)
+        date        = match.group(1)
+        category    = match.group(2)
+        type_log    = match.group(3)
+        description = match.group(4)
 
         if "rootcheck" in category:  # Unify rootcheck category
             category = "ossec-rootcheck"
@@ -48,7 +51,7 @@ def __get_ossec_log_category(log):
     else:
         return None
 
-    return category
+    return date, category, type_log, description
 
 
 def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -70,44 +73,47 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
     statfs_error = "ERROR: statfs('******') produced error: No such file or directory"
 
     for line in tail(common.ossec_log, 2000):
+        date, log_category, level, description = __get_ossec_log_fields(line)
+
         try:
-            log_date = datetime.strptime(line[:10], '%Y/%m/%d')
-        except ValueError:
+            log_date = datetime.strptime(date, '%Y/%m/%d')
+        except ValueError as e:
             continue
 
         if log_date < first_date:
             continue
 
         if category != 'all':
-            log_category = __get_ossec_log_category(line)
-
             if log_category:
                 if log_category != category:
                     continue
             else:
                 continue
 
-        line = line.replace('\n', '')
+        log_line = {'timestamp': date, 'tag': log_category, 'level': level, 'description': description}
         if type_log == 'all':
-            logs.append(line)
-        elif type_log == 'error' and "error:" in line.lower():
+            logs.append(log_line)
+        elif type_log.lower() == level.lower():
             if "ERROR: statfs(" in line:
                 if statfs_error in logs:
                     continue
                 else:
                     logs.append(statfs_error)
             else:
-                logs.append(line)
-        elif type_log == 'info' and "error:" not in line.lower():
-            logs.append(line)
+                logs.append(log_line)
+        else:
+            continue
 
     if search:
         logs = search_array(logs, search['value'], search['negation'])
 
     if sort:
-        logs = sort_array(logs, order=sort['order'])
+        if sort['fields']:
+            logs = sort_array(logs, order=sort['order'], sort_by=sort['fields'])
+        else:
+            logs = sort_array(logs, order=sort['order'], sort_by=['timestamp'])
     else:
-        logs = sort_array(logs, order='desc')
+        logs = sort_array(logs, order='desc', sort_by=['timestamp'])
 
     return {'items': cut_array(logs, offset, limit), 'totalItems': len(logs)}
 
@@ -137,7 +143,7 @@ def ossec_log_summary(months=3):
             if log_date < first_date:
                 break
 
-            category = __get_ossec_log_category(line)
+            _, category, _, _, = __get_ossec_log_fields(line)
             if category:
                 if category in categories:
                     categories[category]['all'] += 1

@@ -13,7 +13,6 @@ from wazuh import manager
 from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
-from hashlib import md5, sha1
 from base64 import b64encode
 from shutil import copyfile, move, copytree
 from time import time
@@ -548,9 +547,9 @@ class Agent:
             epoch_time = int(time())
             str1 = "{0}{1}{2}".format(epoch_time, name, platform())
             str2 = "{0}{1}".format(ip, agent_id)
-            hash1 = md5(str1.encode())
+            hash1 = hashlib.md5(str1.encode())
             hash1.update(urandom(64))
-            hash2 = md5(str2.encode())
+            hash2 = hashlib.md5(str2.encode())
             hash1.update(urandom(64))
             agent_key = hash1.hexdigest() + hash2.hexdigest()
         else:
@@ -1096,8 +1095,13 @@ class Agent:
             raise WazuhException(1600)
 
         # check hash algorithm
-        if not hash_algorithm in hashlib.algorithms_available:
-            raise WazuhException(1723)
+        try:
+            algorithm_list = hashlib.algorithms_available
+        except Exception as e:
+            algorithm_list = hashlib.algorithms
+
+        if not hash_algorithm in algorithm_list:
+            raise WazuhException(1723, "Available algorithms are {0}.".format(algorithm_list))
 
         hashing = hashlib.new(hash_algorithm)
 
@@ -1287,13 +1291,13 @@ class Agent:
             item = {}
             item['filename'] = entry
             with open("{0}/{1}".format(group_path, entry), 'rb') as f:
-                item['hash'] = md5(f.read()).hexdigest()
+                item['hash'] = hashlib.md5(f.read()).hexdigest()
             data.append(item)
 
         # ar.conf
         ar_path = "{0}/ar.conf".format(common.shared_path, entry)
         with open(ar_path, 'rb') as f:
-            hash_ar = md5(f.read()).hexdigest()
+            hash_ar = hashlib.md5(f.read()).hexdigest()
         data.append({'filename': "../ar.conf", 'hash': hash_ar})
 
         if search:
@@ -1614,7 +1618,7 @@ class Agent:
         # If WPK is already downloaded
         if path.isfile(wpk_file_path):
             # Get SHA1 file sum
-            sha1hash = sha1(open(wpk_file_path, 'rb').read()).hexdigest()
+            sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
             # Comparing SHA1 hash
             if not sha1hash == agent_new_shasum:
                 if debug:
@@ -1652,7 +1656,7 @@ class Agent:
             raise WazuhException(1714, error)
 
         # Get SHA1 file sum
-        sha1hash = sha1(open(wpk_file_path, 'rb').read()).hexdigest()
+        sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
 
         # Comparing SHA1 hash
         if not sha1hash == agent_new_shasum:
@@ -1912,7 +1916,7 @@ class Agent:
         try:
             start_time = time()
             bytes_read = file.read(common.wpk_read_size)
-            file_sha1=sha1(bytes_read)
+            file_sha1=hashlib.sha1(bytes_read)
             bytes_read_acum = 0
             while bytes_read:
                 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

@@ -71,14 +71,15 @@ class Connection:
 
                 break
 
-            except sqlite3.OperationalError:
+            except sqlite3.OperationalError as e:
+                error_text = str(e)
                 n_attempts += 1
 
             except Exception as e:
                 raise Exception (str(e))
 
             if n_attempts > self.max_attempts:
-                raise sqlite3.OperationalError("Maximum attempts exceeded for sqlite3 execute")
+                raise sqlite3.OperationalError("Maximum attempts exceeded for sqlite3 execute: {0}".format(error_text))
 
     def fetch(self):
         """

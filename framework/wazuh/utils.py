@@ -332,9 +332,8 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def send_request(url, user, password, verify, type, session=requests.Session(), method='get', data=None):
+def send_request(url, user, password, verify, type, session=requests.Session(), method='get', data=None, file=None):
     session.auth = (user, password)
-    # auth = requests.auth.HTTPBasicAuth(user, password)
 
     error = 0
     try:
@@ -344,7 +343,10 @@ def send_request(url, user, password, verify, type, session=requests.Session(), 
                   data = str(r.text)
                   error = 401
         else:
-            r = session.post(url, verify=verify, json=data)
+            if file:
+                r = session.post(url, verify=verify, data=file, headers={'Content-Type': 'application/zip'}, timeout=20)
+            else:
+                r = session.post(url, verify=verify, json=data)
             if r.status_code == 401:
                   data = str(r.text)
                   error = 401
