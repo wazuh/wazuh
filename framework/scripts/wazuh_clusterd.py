@@ -8,6 +8,7 @@ import select
 from sys import argv, exit, path
 from os.path import dirname
 from collections import deque
+import json
 
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
@@ -48,7 +49,7 @@ def loop():
             if task_type == "send":
                 send_wait[task_place] = task
         except StopIteration as e:
-            logging.error("Broken loop event with task {0}: {1}".format(task, str(e)))
+            logging.info("All jobs done")
 
 def server(port, host):
     try:
@@ -83,42 +84,59 @@ def server(port, host):
 
 
 def handler(clientsocket, address):
-    while True:
-        try:
-            # receive size of command
-            yield "recv", clientsocket
-            size = int(clientsocket.recv(4))
-            logging.debug("I will receive a command of size {0} from {1}".format(size, address))
-            # send confirmation
+    try:
+        res = ""
+        # receive size of command
+        yield "recv", clientsocket
+        size = int(clientsocket.recv(4))
+        logging.debug("I will receive a command of size {0} from {1}".format(size, address))
+        # send confirmation
+        yield "send", clientsocket
+        clientsocket.send(b'1')
+        logging.debug("I've sent confirmation of receiving msg size to {0}".format(address))
+        # receive command
+        yield "recv", clientsocket
+        command = clientsocket.recv(size).decode().split(" ")
+        logging.debug("Command received: {0}".format(command[0]))
+
+        if command[0] == "sync":
+            # command[1] can be either true or false
+            res = sync(command[1])
+        elif command[0] == "node":
+            res = get_node()
+        elif command[0] == "zip":
+            # command[1] is the size of zip file
+            # zip command has two stages: one to receive the will to send
+            # a zip file and another to send the zip file
             yield "send", clientsocket
             clientsocket.send('1')
-            logging.debug("I've sent confirmation of receiving msg size to {0}".format(address))
-            # receive command
+            logging.debug("Asking {0} for the bytes of zip file".format(address))
             yield "recv", clientsocket
-            command = clientsocket.recv(size).decode().split(" ")
-            logging.debug("Command received: {0}".format(command[0]))
+            zip_bytes = clientsocket.recv(int(command[1]))
+            res = extract_zip()
 
-            if command[0] == "sync":
-                # command[1] can be either true or false
-                res = sync(command[1])
-            elif command[0] == "node":
-                res = get_node()
-            elif command[0] == "zip":
-                # command[1] is the size of zip file
-                # zip command has two stages: one to receive the will to send
-                # a zip file and another to send the zip file
-                yield "send", clientsocket
-                clientsocket.send('1')
-                logging.debug("Asking {0} for the bytes of zip file".format(address))
-                yield "recv", clientsocket
-                zip_bytes = clientsocket.recv(int(command[1]))
-                res = extract_zip()
+        # convert data to json format
+        data = json.dumps(res).encode()
+        logging.debug("Command {0} executed for {1}".format(command[0], address))
+        # send data size to client
+        yield "send", clientsocket
+        res_size = str(len(data))
+        clientsocket.send(res_size.encode())
+        logging.debug("Size of response is {0}".format(res_size))
+        # wait for confirmation
+        yield "recv", clientsocket
+        clientsocket.recv(4)
+        logging.debug("Confirmation from {0} received".format(address))
+        # send data
+        yield "send", clientsocket
+        clientsocket.send(data)
+        logging.debug("Data sent to {0}".format(address))
+        # close connection
+        clientsocket.close()
+        logging.info("Closed connection with host {0}".format(address))
 
-            print res
-
-        except Exception as e:
-            logging.error("Error handling client request: {0}".format(str(e)))
-            break
+    except Exception as e:
+        logging.error("Error handling client request: {0}".format(str(e)))
 
 
 if __name__ == '__main__':
@@ -129,3 +147,4 @@ if __name__ == '__main__':
     tasks.append(server(port=int(cluster_config['port']),
                         host='' if not cluster_config['host'] else cluster_config['host']))
     loop()
+
