@@ -50,7 +50,7 @@ def loop():
         except StopIteration as e:
             logging.error("Broken loop event with task {0}: {1}".format(task, str(e)))
 
-def server(port=1516, host=''):
+def server(port, host):
     try:
         # Create a TCP/IP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -101,8 +101,8 @@ def handler(clientsocket, address):
             if command[0] == "sync":
                 # command[1] can be either true or false
                 res = sync(command[1])
-            elif command[0] == "nodes":
-                res = get_nodes()
+            elif command[0] == "node":
+                res = get_node()
             elif command[0] == "zip":
                 # command[1] is the size of zip file
                 # zip command has two stages: one to receive the will to send
@@ -124,5 +124,8 @@ def handler(clientsocket, address):
 if __name__ == '__main__':
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
-    tasks.append(server())
+    # get cluster conf
+    cluster_config = read_config()
+    tasks.append(server(port=int(cluster_config['port']),
+                        host='' if not cluster_config['host'] else cluster_config['host']))
     loop()

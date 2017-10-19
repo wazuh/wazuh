@@ -157,12 +157,11 @@ def get_nodes(session=requests.Session()):
     localhost_ips = get_localhost_ips()
     data = []
 
-    for url in config_cluster["cluster.nodes"]:
-        # Split http(s)://x.x.x.x:55000 in just x.x.x.x
-        if not url.split(':')[1][2:] in localhost_ips:
+    for url in config_cluster["nodes"]:
+        if not url in localhost_ips:
             req_url = '{0}{1}'.format(url, "/cluster/node")
-            error, response = send_request(req_url, config_cluster["cluster.user"],
-                                config_cluster["cluster.password"], False, "json",session)
+            error, response = send_request(req_url, config_cluster["user"],
+                                config_cluster["password"], False, "json",session)
         else:
             error = 0
             url = "localhost"
@@ -191,8 +190,8 @@ def get_node(name=None):
         if not config_cluster:
             raise WazuhException(3000, "No config found")
 
-        data["node"] = config_cluster["cluster.node"]
-        data["cluster"] = config_cluster["cluster.name"]
+        data["node"] = config_cluster["node"]
+        data["cluster"] = config_cluster["name"]
 
     return data
 
@@ -230,7 +229,7 @@ def get_token():
     if not config_cluster:
         raise WazuhException(3000, "No config found")
 
-    raw_key = config_cluster["cluster.key"]
+    raw_key = config_cluster["key"]
     token = sha512(raw_key).hexdigest()
     return token
 
@@ -359,8 +358,8 @@ def sync(debug, start_node=None, output_file=False, force=None):
         zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
         url = '{0}{1}'.format(node_dest, '/cluster/node/zip')
         
-        error, response = send_request(url, config_cluster["cluster.user"], 
-                                       config_cluster["cluster.password"], False, "text", session, 
+        error, response = send_request(url, config_cluster["user"], 
+                                       config_cluster["password"], False, "text", session, 
                                        method="post", data={}, file=zip_file)
         
         try:
