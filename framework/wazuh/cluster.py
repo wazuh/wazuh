@@ -16,7 +16,6 @@ import requests
 from shutil import rmtree
 from io import BytesIO
 from itertools import compress
-import threading
 from operator import itemgetter
 from ast import literal_eval
 import socket
@@ -249,6 +248,7 @@ def _check_token(other_token):
     else:
         return False
 
+
 def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None):
     # Set Timezone to epoch converter
     environ['TZ']='UTC'
@@ -270,14 +270,22 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None)
 
     dest_file.close()
 
-    mtime_epoch = int(mktime(datetime.strptime(mtime, "%Y-%m-%d %H:%M:%S").timetuple()))
+    # mtime_epoch = int(mktime(datetime.strptime(mtime, "%Y-%m-%d %H:%M:%S").timetuple()))
+    mtime_epoch = int(mtime.timetuple())
     utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
 
     # Atomic
     if w_mode == "atomic":
         rename(f_temp, fullpath)
 
+def extract_zip(zip_bytes):
+    zip_json = {}
+    with zipfile.ZipFile(BytesIO(zip_file)) as zipf:
+        zip_json = {name:{'data':zipf.open(name).read(),
+                          'time':datetime.datetime(*zipf.getinfo(name).date_time)}
+                    for name in zipf.namelist()}
 
+    return receive_zip(zip_json)
 
 def receive_zip(zip_file):
     logging.info("Receiving zip with {0} files".format(len(zip_file)))
