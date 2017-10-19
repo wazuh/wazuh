@@ -20,6 +20,7 @@ from operator import itemgetter
 from ast import literal_eval
 import socket
 import json
+import threading
 from sys import version
 # import the C accelerated API of ElementTree
 try:
@@ -258,7 +259,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None)
     dest_file.close()
 
     # mtime_epoch = int(mktime(datetime.strptime(mtime, "%Y-%m-%d %H:%M:%S").timetuple()))
-    mtime_epoch = int(mtime.timetuple())
+    mtime_epoch = int(mktime(mtime.timetuple()))
     utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
 
     # Atomic
@@ -267,9 +268,9 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None)
 
 def extract_zip(zip_bytes):
     zip_json = {}
-    with zipfile.ZipFile(BytesIO(zip_file)) as zipf:
+    with zipfile.ZipFile(BytesIO(zip_bytes)) as zipf:
         zip_json = {name:{'data':zipf.open(name).read(),
-                          'time':datetime.datetime(*zipf.getinfo(name).date_time)}
+                          'time':datetime(*zipf.getinfo(name).date_time)}
                     for name in zipf.namelist()}
 
     return receive_zip(zip_json)
@@ -352,7 +353,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
         zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
         
         error, response = send_request(host=node_dest, port=config_cluster['port'],
-                                       data="zip", file=zip_file)
+                                       data="zip {0}".format(len(zip_file)), file=zip_file)
         
         try:
             res = literal_eval(response)

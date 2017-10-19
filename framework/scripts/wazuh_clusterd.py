@@ -110,10 +110,10 @@ def handler(clientsocket, address):
             # a zip file and another to send the zip file
             yield "send", clientsocket
             clientsocket.send('1')
-            logging.debug("Asking {0} for the bytes of zip file".format(address))
+            logging.debug("Waiting for the bytes of zip file from {0}".format(address))
             yield "recv", clientsocket
             zip_bytes = clientsocket.recv(int(command[1]))
-            res = extract_zip()
+            res = extract_zip(zip_bytes)
 
         # convert data to json format
         data = json.dumps(res).encode()
