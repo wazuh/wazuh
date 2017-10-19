@@ -7,12 +7,12 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close as close
+from os import remove, chmod, chown, path, listdir, close
 from datetime import datetime, timedelta
 import hashlib
 import json
 import stat
-import requests
+import socket
 
 try:
     from subprocess import check_output
@@ -332,45 +332,23 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def send_request(url, user, password, verify, type, session=requests.Session(), method='get', data=None, file=None):
-    session.auth = (user, password)
-
+def send_request(host, port, data, file=None):
     error = 0
     try:
-        if method == 'get':
-            r = session.get(url, verify=verify)
-            if r.status_code == 401:
-                  data = str(r.text)
-                  error = 401
-        else:
-            if file:
-                r = session.post(url, verify=verify, data=file, headers={'Content-Type': 'application/zip'}, timeout=20)
-            else:
-                r = session.post(url, verify=verify, json=data)
-            if r.status_code == 401:
-                  data = str(r.text)
-                  error = 401
-    except requests.exceptions.Timeout as e:
-        data = str(e)
-        error = 1
-    except requests.exceptions.TooManyRedirects as e:
-        data = str(e)
-        error = 2
-    except requests.exceptions.RequestException as e:
-        data = str(e)
-        error = 3
+        csock = socket.create_connection((host,port))
+        # send data size to the server
+        csock.send(str(len(data)).encode())
+        # wait for confirmation
+        csock.recv(4)
+        # send data
+        csock.send(data)
+        # receive size of response
+        response_size = int(csock.recv(4))
+        # confirm receiving
+        csock.send(b'1')
+        # receive response
+        data = json.loads(csock.recv(response_size).decode())
     except Exception as e:
+        error = 1
         data = str(e)
-        error = 4
-
-    if error == 0:
-        if type == "json":
-            try:
-                data = json.loads(r.text)
-            except Exception as e:
-                data = str(e)
-                error = 5
-        else:
-            data = r.content
-
-    return (error, data)
+    return error, data

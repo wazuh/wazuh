@@ -159,25 +159,19 @@ def get_nodes(session=requests.Session()):
 
     for url in config_cluster["nodes"]:
         if not url in localhost_ips:
-            req_url = '{0}{1}'.format(url, "/cluster/node")
-            error, response = send_request(req_url, config_cluster["user"],
-                                config_cluster["password"], False, "json",session)
+            error, response = send_request(host=url, port=config_cluster["port"],
+                                data="node")
         else:
             error = 0
             url = "localhost"
-            response = {'data': get_node()}
+            response = get_node()
 
         if error:
             data.append({'error': response, 'status':'disconnected', 'url':url})
             continue
 
-        if 'data' in response:
-            data.append({'url':url, 'node':response['data']['node'],
-                         'status':'connected', 'cluster':response['data']['cluster']})
-        else:
-            data.append({'error': response['message'], 'status':'Unknown', 'url':url})
-            continue
-
+        data.append({'url':url, 'node':response['node'],
+                     'status':'connected', 'cluster':response['cluster']})
 
     return {'items': data, 'totalItems': len(data)}
 
@@ -356,11 +350,9 @@ def sync(debug, start_node=None, output_file=False, force=None):
         pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
         logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
         zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
-        url = '{0}{1}'.format(node_dest, '/cluster/node/zip')
         
-        error, response = send_request(url, config_cluster["user"], 
-                                       config_cluster["password"], False, "text", session, 
-                                       method="post", data={}, file=zip_file)
+        error, response = send_request(host=node_dest, port=config_cluster['port'],
+                                       data="zip", file=zip_file)
         
         try:
             res = literal_eval(response)
