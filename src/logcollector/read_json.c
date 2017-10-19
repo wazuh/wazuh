@@ -78,7 +78,7 @@ void *read_json(int pos, int *rc, int drop_it)
           cJSON_Delete(obj);
         } else {
           cJSON_Delete(obj);
-          mdebug1("The line is not a JSON object");
+          mdebug1("Line '%s' read from '%s' is not a JSON object.", str, logff[pos].file);
           continue;
         }
 
