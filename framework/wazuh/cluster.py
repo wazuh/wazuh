@@ -21,6 +21,11 @@ from ast import literal_eval
 import socket
 import json
 from sys import version
+# import the C accelerated API of ElementTree
+try:
+    import xml.etree.cElementTree as ET
+except ImportError:
+    import xml.etree.ElementTree as ET
 
 import logging
 logging.basicConfig(filename=common.ossec_path+'/logs/cluster.log',level=logging.DEBUG,
@@ -130,21 +135,10 @@ def compress_files(list_path, conditions={'/etc/client.keys'}):
 def read_config():
     # Get api/configuration/config.js content
     try:
-        with open(common.api_config_path) as api_config_file:
-            lines = filter(lambda x: x.startswith('config.cluster.'),
-                           api_config_file.readlines())
-
-        name_vars = map(lambda x: x.partition("=")[::2], lines)
-        config_cluster = {name.strip().split('config.')[1]:
-                          var.replace("\n","").replace("]","").replace("[","").\
-                          replace('\"',"").replace(";","").strip()
-                          for name,var in name_vars}
-
-        if "cluster.nodes" in config_cluster.keys():
-            all_nodes = config_cluster["cluster.nodes"].split(",")
-            config_cluster['cluster.nodes'] = [node.strip() for node in all_nodes]
-        else:
-            config_cluster["cluster.nodes"] = []
+        cluster_xml = ET.parse(common.ossec_conf).find('cluster')
+        config_cluster={child.tag:child.text for child in cluster_xml}
+        config_cluster['nodes'] = [child.text for child in
+                                   cluster_xml.find('nodes')]
 
     except Exception as e:
         raise WazuhException(3000, str(e))
