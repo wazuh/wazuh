@@ -20,6 +20,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *key = "key";
     static const char *interval = "interval";
     static const char *nodes = "nodes";
+    static const char *hidden = "hidden";
 
     _Config *Config;
     Config = (_Config *)d1;
@@ -37,6 +38,8 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
          } else if (!strcmp(node[i]->element, node_name)) {
              os_strdup(node[i]->content, Config->node_name);
          } else if (!strcmp(node[i]->element, key)) {
+         } else if (!strcmp(node[i]->element, hidden)) {
+             Config->hide_cluster_info = 1;
          } else if (!strcmp(node[i]->element, interval)) {
          } else if (!strcmp(node[i]->element, nodes)) {
          } else {
