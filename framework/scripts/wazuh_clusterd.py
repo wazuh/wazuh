@@ -12,6 +12,9 @@ import json
 from distutils.util import strtobool
 from subprocess import check_call, CalledProcessError
 from os import devnull
+from multiprocessing import Process
+from time import sleep
+from re import search
 
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
@@ -26,6 +29,7 @@ try:
     from wazuh.cluster import *
     from wazuh.exception import WazuhException
     from wazuh.InputValidator import InputValidator
+    from wazuh.utils import send_request
     iv = InputValidator()
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -151,17 +155,33 @@ def handler(clientsocket, address):
     except Exception as e:
         logging.error("Error handling client request: {0}".format(str(e)))
 
+def crontab_sync(interval, port, host):
+    host_bind = "localhost" if host is None else host
+    interval_number  = int(search('\d+', interval).group(0))
+    interval_measure = interval[-1]
+    while True:
+        logging.debug("Crontab: send sync request")
+        send_request(host=host_bind, port=port, data="sync False")
+        sleep(interval_number if interval_measure == 's' else interval_number*60)
 
 if __name__ == '__main__':
+    cluster_config = read_config()
+
     # execute C cluster daemon (database & inotify) if it's not running
     try:
         exit_code = check_call(["ps", "-C", "cluster_daemon"], stdout=open(devnull, 'w'))
     except CalledProcessError:
         check_call(["{0}/framework/cluster_daemon".format(ossec_path)])
+
+    # execute an independent process to "crontab" the sync interval
+    p = Process(target=crontab_sync, args=(cluster_config['interval'],
+                                           cluster_config['port'],
+                                           cluster_config['host'],))
+    p.start()
+
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
     # get cluster conf
-    cluster_config = read_config()
     tasks.append(server(port=int(cluster_config['port']),
                         host='' if not cluster_config['host'] else cluster_config['host']))
     loop()
