@@ -9,6 +9,7 @@ from sys import argv, exit, path
 from os.path import dirname
 from collections import deque
 import json
+from distutils.util import strtobool
 
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
@@ -21,6 +22,8 @@ try:
     from wazuh import Wazuh
     from wazuh.cluster import *
     from wazuh.exception import WazuhException
+    from wazuh.InputValidator import InputValidator
+    iv = InputValidator()
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
@@ -82,8 +85,8 @@ def server(port, host):
             sock.close()
             logging.error("Closed socket: {0}".format(str(e)))
 
-
 def handler(clientsocket, address):
+    error = 0
     try:
         res = ""
         # receive size of command
@@ -99,25 +102,32 @@ def handler(clientsocket, address):
         command = clientsocket.recv(size).decode().split(" ")
         logging.debug("Command received: {0}".format(command[0]))
 
-        if command[0] == "sync":
-            # command[1] can be either true or false
-            res = sync(command[1])
-        elif command[0] == "node":
-            res = get_node()
-        elif command[0] == "zip":
-            # command[1] is the size of zip file
-            # zip command has two stages: one to receive the will to send
-            # a zip file and another to send the zip file
-            yield "send", clientsocket
-            clientsocket.send('1')
-            logging.debug("Waiting for the bytes of zip file from {0}".format(address))
-            yield "recv", clientsocket
-            zip_bytes = clientsocket.recv(int(command[1]))
-            res = extract_zip(zip_bytes)
+        if not iv.check_cluster_cmd(command):
+            logging.debug("Received unvalid cluster command {0} from {1}".format(command[0], address))
+            error = 1
+            res = "Received unvalid cluster command: {0}".format(command[0])
 
-        # convert data to json format
-        data = json.dumps(res).encode()
-        logging.debug("Command {0} executed for {1}".format(command[0], address))
+        if error == 0:
+            if command[0] == "sync":
+                # command[1] can be either true or false
+                res = sync(strtobool(command[1]))
+            elif command[0] == "node":
+                res = get_node()
+            elif command[0] == "zip":
+                # command[1] is the size of zip file
+                # zip command has two stages: one to receive the will to send
+                # a zip file and another to send the zip file
+                yield "send", clientsocket
+                clientsocket.send('1')
+                logging.debug("Waiting for the bytes of zip file from {0}".format(address))
+                yield "recv", clientsocket
+                zip_bytes = clientsocket.recv(int(command[1]))
+                res = extract_zip(zip_bytes)
+
+            logging.debug("Command {0} executed for {1}".format(command[0], address))
+        
+        data = json.dumps({'error': error, 'data': res}).encode()
+
         # send data size to client
         yield "send", clientsocket
         res_size = str(len(data))
@@ -147,4 +157,3 @@ if __name__ == '__main__':
     tasks.append(server(port=int(cluster_config['port']),
                         host='' if not cluster_config['host'] else cluster_config['host']))
     loop()
-

@@ -149,7 +149,7 @@ def read_config():
 
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
 
-def get_nodes(session=requests.Session()):
+def get_nodes():
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
@@ -162,6 +162,8 @@ def get_nodes(session=requests.Session()):
         if not url in localhost_ips:
             error, response = send_request(host=url, port=config_cluster["port"],
                                 data="node")
+            if error == 0:
+                response = response['data']
         else:
             error = 0
             url = "localhost"
@@ -346,7 +348,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
     Sync this node with others
     :return: Files synced.
     """
-    def push_updates_single_node(all_files, node_dest, config_cluster, session, result_queue):
+    def push_updates_single_node(all_files, node_dest, config_cluster, result_queue):
         # filter to send only pending files
         pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
         logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
@@ -369,8 +371,6 @@ def sync(debug, start_node=None, output_file=False, force=None):
         else:
             result_queue.put({'node': node_dest, 'data': res})
 
-    session = requests.Session()
-
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
@@ -380,7 +380,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
     # Get own items status
     own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files().items()))
     own_items_names = own_items.keys()
-    all_nodes = get_nodes(session)['items']
+    all_nodes = get_nodes()['items']
 
     # Get connected nodes in the cluster
     cluster = [n['url'] for n in filter(lambda x: x['status'] == 'connected', 
@@ -397,7 +397,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
     # with all files marked as pending
     all_nodes_files = {}
     remote_nodes = list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
-    logging.debug(str(cluster))
+    logging.debug("Nodes to sync: {0}".format(str(cluster)))
     for node in remote_nodes:
         # check files in database
         count_query = "count {0}".format(node)
@@ -454,7 +454,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
     thread_results = {}
     for node in remote_nodes:
         t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node],node,
-                                                                    config_cluster, session,
+                                                                    config_cluster,
                                                                     result_queue))
         threads.append(t)
         t.start()

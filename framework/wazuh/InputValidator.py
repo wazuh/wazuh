@@ -37,3 +37,26 @@ class InputValidator:
             return reduce(mul, map(lambda x: check_single_group_name(x), group_name))
         else:
             return check_single_group_name(group_name)
+
+    def check_cluster_cmd(self, cmd):
+        # cmd must be a list
+        if not isinstance(cmd, list):
+            return False
+
+        # check command type
+        if not cmd[0] in ['zip', 'sync', 'node']:
+            return False
+
+        # sync and zip has a second parameter
+        if (cmd[0] == 'zip' or cmd[0] == 'sync') and len(cmd) != 2:
+            return False
+
+        # second argument of sync is either True or False
+        if cmd[0] == 'sync' and cmd[1] not in ['True', 'False']:
+            return False
+
+        # second argument of zip is a number
+        if cmd[0] == 'zip' and not re.compile('\d+').match(cmd[1]):
+            return False
+
+        return True

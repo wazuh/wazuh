@@ -342,6 +342,11 @@ def send_request(host, port, data, file=None):
         csock.recv(4)
         # send data
         csock.send(data)
+        if file:
+            # wait confirmation
+            csock.recv(4)
+            # send file
+            csock.send(file)
         # receive size of response
         response_size = int(csock.recv(4))
         # confirm receiving
