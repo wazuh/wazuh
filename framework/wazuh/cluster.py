@@ -187,7 +187,7 @@ def get_node(name=None):
         if not config_cluster:
             raise WazuhException(3000, "No config found")
 
-        data["node"] = config_cluster["node"]
+        data["node"] = config_cluster["node_name"]
         data["cluster"] = config_cluster["name"]
 
     return data
