@@ -101,7 +101,7 @@ typedef struct __Config {
     // Cluster configuration
     char *cluster_name;
     char *node_name;
-    u_int8_t hide_cluster_info;
+    unsigned char hide_cluster_info;
 
 } _Config;
 
