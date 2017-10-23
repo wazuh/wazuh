@@ -25,38 +25,19 @@ public function config()
 home_dir = Session.Property("APPLICATIONFOLDER")
 
 ' Custom parameters
-' Wazuh 3.0.0
 address       = Session.Property("ADDRESS")
-
-' Wazuh 2.1.1
-' server_ip       = Session.Property("SERVER_IP")
-' server_hostname = Session.Property("SERVER_HOSTNAME")
-
 server_port     = Session.Property("SERVER_PORT")
 protocol        = Session.Property("PROTOCOL")
 notify_time     = Session.Property("NOTIFY_TIME")
 time_reconnect  = Session.Property("TIME_RECONNECT")
 
 
-' Session.Log("---- WAZUH CUSTOM INFORMATION -----");
-' Session.Log("-----------------------------------");
-
-' Session.Log("SERVER_IP: " & server_ip)
-' Session.Log("SERVER_HOSTNAME: " & server_hostname)
-' Session.Log("SERVER_PORT: " & server_port)
-' Session.Log("PROTOCOL: " & protocol)
-' Session.Log("NOTIFY_TIME: " & notify_time)
-' Session.Log("TIME_RECONNECT: " & time_reconnect)
-
-
 ' Only try to set the configuration if variables are setted
-If server_ip <> "" or server_hostname <> "" or server_port <> "1514" or protocol = "tcp" or notify_time <> "" or time_reconnect <> "" Then
+If address <> "" or server_port <> "1514" or protocol = "tcp" or notify_time <> "" or time_reconnect <> "" Then
 
     Set objFSO = CreateObject("Scripting.FileSystemObject")
 
     If objFSO.fileExists(home_dir & "\ossec.conf") Then
-
-        ' Session.Log(home_dir & "\ossec.conf exists")
 
         ' Reading ossec.conf file
         Const ForReading = 1
@@ -68,7 +49,6 @@ If server_ip <> "" or server_hostname <> "" or server_port <> "1514" or protocol
         ' Modifying values in ossec.conf
         strNewText = Replace(strText, "<teststring>", "<teststring>")
 
-        ' Wazuh 3.0.0
         If address <> "" and InStr(address,",") > 0 Then 'list of address
 
             list=Split(address,",")
@@ -76,24 +56,19 @@ If server_ip <> "" or server_hostname <> "" or server_port <> "1514" or protocol
             for each ip in list
                 formatted_list = formatted_list & "    <address>" & ip & "</address>" & vbCrLf
             next
-            strNewText = Replace(strNewText, "    <server-ip>0.0.0.0</server-ip>", formatted_list)
+            strNewText = Replace(strNewText, "    <address>0.0.0.0</address>", formatted_list)
 
         ElseIf address <> "" Then 'single address
 
-            strNewText = Replace(strNewText, "<server-ip>0.0.0.0</server-ip>", "<address>" & address & "</address>")
+            strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
 
         End If
-
 
         If server_port <> "1514" Then ' manager server_port
             strNewText = Replace(strNewText, "</client>", "  <server_port>" & server_port & "</server_port>"& vbCrLf &"  </client>")
         End If
 
-
         If protocol = "tcp" Then
-            ' Wazuh 3.0.0
-            ' strNewText = Replace(strNewText, "<protocol>udp</protocol>", "<protocol>tcp</protocol>")
-            ' Wazuh 2.1.1
             strNewText = Replace(strNewText, "</client>", "  <protocol>tcp</protocol>"& vbCrLf &"  </client>")
         End If
 
@@ -114,10 +89,6 @@ If server_ip <> "" or server_hostname <> "" or server_port <> "1514" or protocol
     End If
 
 End If
-
-' Session.Log("-----------------------------------");
-' Session.Log("-- END WAZUH CUSTOM INFORMATION ---");
-
 
 config = 0
 
