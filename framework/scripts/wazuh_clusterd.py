@@ -10,6 +10,8 @@ from os.path import dirname
 from collections import deque
 import json
 from distutils.util import strtobool
+from subprocess import check_call, CalledProcessError
+from os import devnull
 
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
@@ -20,6 +22,7 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 # Import framework
 try:
     from wazuh import Wazuh
+    from wazuh.common import *
     from wazuh.cluster import *
     from wazuh.exception import WazuhException
     from wazuh.InputValidator import InputValidator
@@ -150,6 +153,11 @@ def handler(clientsocket, address):
 
 
 if __name__ == '__main__':
+    # execute C cluster daemon (database & inotify) if it's not running
+    try:
+        exit_code = check_call(["ps", "-C", "cluster_daemon"], stdout=open(devnull, 'w'))
+    except CalledProcessError:
+        check_call(["{0}/framework/cluster_daemon".format(ossec_path)])
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
     # get cluster conf
