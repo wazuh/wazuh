@@ -28,9 +28,12 @@ try:
 except ImportError:
     import xml.etree.ElementTree as ET
 
-import logging
-logging.basicConfig(filename=common.ossec_path+'/logs/cluster.log',level=logging.DEBUG,
-                    format='%(asctime)s %(levelname)s: %(message)s')
+try:
+    import logging
+    logging.basicConfig(filename=common.ossec_path+'/logs/cluster.log',level=logging.DEBUG,
+                        format='%(asctime)s %(levelname)s: %(message)s')
+except:
+    pass
 
 is_py2 = version[0] == '2'
 if is_py2:
