@@ -32,6 +32,11 @@ All notable changes to this project will be documented in this file.
 - Allow multiple manager stanzas in Agentd settings.
 - New internal option to limit the receiving time in TCP mode.
 - Add manager hostname data to agent information.
+- New option for rotating internal logs by size.
+- Added internal option to enable or disable daily rotation of internal logs.
+- Added command option for Monitord to overwrite 'day_wait' parameter.
+
+
 
 ### Changed
 
@@ -60,9 +65,12 @@ All notable changes to this project will be documented in this file.
 - Moved debug messages when updating shared files to level 2.
 - Do not create users ossecm or ossecr on agents.
 - Upgrade netstat command in Logcollector.
-- Prevent Monitord  nd DB sync module from dealing with agent files on local installations.
+- Prevent Monitord and DB sync module from dealing with agent files on local installations.
 - Speed up DB syncing by keeping databases opened and an inotify event queue.
 - Merge server's IP and hostname options to one setting.
+- Enabled Active Response by default in both Windows and UNIX.
+- Make Monitord 'day_wait' internal option affect log rotation.
+- Extend Monitord 'day_wait' internal option range.
 
 ### Fixed
 
