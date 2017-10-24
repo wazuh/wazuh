@@ -257,6 +257,7 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
             index = (int)(search - string);
             str_cut(string, index, -1);
             str_cut(string, 0, 1);
+            cJSON_AddStringToObject(agent, "name", string);
         }
 
         // Get agent hostname
