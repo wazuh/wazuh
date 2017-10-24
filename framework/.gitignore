@@ -11,3 +11,4 @@ build/
 
 # Objects
 libsqlite3.so*
+cluster_daemon
