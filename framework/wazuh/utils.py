@@ -13,6 +13,7 @@ import hashlib
 import json
 import stat
 import socket
+import asyncore
 
 try:
     from subprocess import check_output
@@ -332,27 +333,44 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
+class WazuhClusterClient(asyncore.dispatcher):
+    def __init__(self, host, port, data, file):
+        asyncore.dispatcher.__init__(self)
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connect((host, port))
+        self.data = data
+        self.file = file
+        self.response = ""
+        self.can_read = False
+        self.can_write = True
+
+    def handle_connect(self):
+        pass
+
+    def readable(self):
+        return self.can_read
+
+    def writable(self):
+        return self.can_write
+
+    def handle_read(self):
+        self.can_read=False
+        self.response = json.loads(self.recv(2048))
+        self.close()
+
+    def handle_write(self):
+        self.send(self.data)
+        if self.file is not None:
+            self.send(self.file)
+        self.can_read=True
+        self.can_write=False
+
 def send_request(host, port, data, file=None):
     error = 0
     try:
-        csock = socket.create_connection((host,port))
-        # send data size to the server
-        csock.send(str(len(data)).encode())
-        # wait for confirmation
-        csock.recv(4)
-        # send data
-        csock.send(data)
-        if file:
-            # wait confirmation
-            csock.recv(4)
-            # send file
-            csock.send(file)
-        # receive size of response
-        response_size = int(csock.recv(4))
-        # confirm receiving
-        csock.send(b'1')
-        # receive response
-        data = json.loads(csock.recv(response_size).decode())
+        client = WazuhClusterClient(host, int(port), data, file)
+        asyncore.loop()
+        data = client.response
     except Exception as e:
         error = 1
         data = str(e)
