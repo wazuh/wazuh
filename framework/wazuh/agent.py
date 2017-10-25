@@ -1081,11 +1081,25 @@ class Agent:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        def get_hash(directory):
-            filename = "{0}/{1}/merged.mg".format(common.shared_path, directory)
+        def get_hash(file, hash_algorithm='md5'):
+            filename = "{0}/{1}".format(common.shared_path, file)
 
-            with open(filename, 'rb') as f:
-                hashing.update(f.read())
+            # check hash algorithm
+            try:
+                algorithm_list = hashlib.algorithms_available
+            except Exception as e:
+                algorithm_list = hashlib.algorithms
+
+            if not hash_algorithm in algorithm_list:
+                raise WazuhException(1723, "Available algorithms are {0}.".format(algorithm_list))
+
+            hashing = hashlib.new(hash_algorithm)
+
+            try:
+                with open(filename, 'rb') as f:
+                    hashing.update(f.read())
+            except IOError:
+                return None
 
             return hashing.hexdigest()
 
@@ -1093,17 +1107,6 @@ class Agent:
         db_global = glob(common.database_path_global)
         if not db_global:
             raise WazuhException(1600)
-
-        # check hash algorithm
-        try:
-            algorithm_list = hashlib.algorithms_available
-        except Exception as e:
-            algorithm_list = hashlib.algorithms
-
-        if not hash_algorithm in algorithm_list:
-            raise WazuhException(1723, "Available algorithms are {0}.".format(algorithm_list))
-
-        hashing = hashlib.new(hash_algorithm)
 
         conn = Connection(db_global[0])
         query = "SELECT {0} FROM agent WHERE `group` = :group_id"
@@ -1120,11 +1123,16 @@ class Agent:
             conn.execute(query.format('COUNT(*)'), request)
 
             # merged.mg and agent.conf sum
-            merged_sum = get_hash(entry)
-            conf_sum   = get_hash(entry)
+            merged_sum = get_hash(entry + "/merged.mg")
+            conf_sum   = get_hash(entry + "/agent.conf")
 
-            item = {'count':conn.fetch()[0], 'name': entry,
-                    'merged_sum': merged_sum, 'conf_sum': conf_sum}
+            item = {'count':conn.fetch()[0], 'name': entry}
+
+            if merged_sum:
+                item['merged_sum'] = merged_sum
+
+            if conf_sum:
+                item['conf_sum'] = conf_sum
 
             data.append(item)
 
