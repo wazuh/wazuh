@@ -354,17 +354,23 @@ def sync(debug, start_node=None, output_file=False, force=None):
     def push_updates_single_node(all_files, node_dest, config_cluster, result_queue):
         # filter to send only pending files
         pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
-        logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
-        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
-        
-        error, response = send_request(host=node_dest, port=config_cluster['port'],
-                                       data="zip {0}".format(str(len(zip_file)).zfill(6)), 
-                                       file=zip_file)
-        
-        try:
-            res = literal_eval(response)
-        except Exception as e:
-            res = response
+        if len(pending_files) > 0:
+            logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
+            zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
+            
+            error, response = send_request(host=node_dest, port=config_cluster['port'],
+                                           data="zip {0}".format(str(len(zip_file)).zfill(6)), 
+                                           file=zip_file)
+            
+            try:
+                res = literal_eval(response)
+            except Exception as e:
+                res = response
+
+        else:
+            logging.info("No pending files to send to {0} ".format(node_dest))
+            res = {'data':{'updated':[], 'error':[], 'invalid':[]}}
+            error = 0
 
         logging.debug({'updated': len(res['data']['updated']), 
                       'error': res['data']['error'],
