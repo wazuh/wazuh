@@ -50,13 +50,13 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql, FILE *f) {
         if (rc != SQLITE_OK) {
             fprintf(f, "Failed to fetch data: %s\n", sqlite3_errmsg(db));
             sqlite3_close(db);
-            exit(-1);
+            exit(1);
         }
         int rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
         if (rc != SQLITE_OK) {
             fprintf(f, "Failed to fetch data: %s\n", sqlite3_errmsg(db));
             sqlite3_close(db);
-            exit(-1);
+            exit(1);
         }
     } 
     return 0;
@@ -80,7 +80,7 @@ void* daemon_socket(void *arg) {
 
     if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         fprintf(f, "Error initializing server socket: %s\n", strerror(errno));
-        exit(-1);
+        exit(1);
     }
 
     memset(&addr, 0, sizeof(addr));
@@ -92,7 +92,7 @@ void* daemon_socket(void *arg) {
 
     if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
         fprintf(f, "Error binding socket: %s\n", strerror(errno));
-        exit(-1);
+        exit(1);
     }
 
     umask(oldmask);
@@ -109,7 +109,7 @@ void* daemon_socket(void *arg) {
     if (sqlite_rc != SQLITE_OK) {
         fprintf(f, "Error opening database: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
-        exit(-1);
+        exit(1);
     }
 
     // sql sentences to update file status
@@ -126,7 +126,7 @@ void* daemon_socket(void *arg) {
 
     if (listen(fd, 5) == -1) {
         fprintf(f, "Error listening in socket: %s\n", strerror(errno));
-        exit(-1);
+        exit(1);
     }
 
     char *cmd;
@@ -182,7 +182,7 @@ void* daemon_socket(void *arg) {
             }
             
             int step;
-            if (prepare_db(db, &res, sql, f) < 0) exit(-1);
+            if (prepare_db(db, &res, sql, f) < 0) exit(1);
             sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
             while (cmd != NULL) {
                 cmd = strtok(NULL, " ");
@@ -227,13 +227,13 @@ void* daemon_socket(void *arg) {
 
         if (rc == -1) {
             fprintf(f, "Error reading in socket: %s\n", strerror(errno));
-            exit(-1);
+            exit(1);
         }
         else if (rc == 0) {
             fprintf(f,"Closed connection from %d\n", cl);
             if (close(cl) < 0) {
                 fprintf(f, "Error closing connection from %d: %s\n", cl, strerror(errno));
-                exit(-1);
+                exit(1);
             }
         }
     }
@@ -355,17 +355,17 @@ void* daemon_inotify(void *arg) {
 
             if ((db_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
                 fprintf(f, "Error initializing client socket: %s\n", strerror(errno));
-                exit(-1);
+                exit(1);
             }
 
             if (connect(db_socket, (struct sockaddr*)&addr , sizeof(addr)) < 0) {
                 fprintf(f, "Error connecting to socket: %s\n", strerror(errno));
-                exit(-1);
+                exit(1);
             }
 
             if ((rc = write(db_socket, cmd, sizeof(cmd))) < 0) {
                 fprintf(f, "Error writing update in DB socket: %s\n", strerror(errno));
-                exit(-1);
+                exit(1);
             }
 
             char data[10000];
@@ -394,7 +394,7 @@ void* daemon_inotify(void *arg) {
 int main(void) {
     if (daemon(0, 0) < 0) {
         fprintf(stderr, "Error starting daemon: %s\n", strerror(errno));
-        exit(-1);
+        exit(1);
     }
 
     struct file_thread_param *arg = malloc(sizeof *arg);
@@ -407,7 +407,7 @@ int main(void) {
 
     if (f == NULL) {
         fprintf(stderr, "Error opening file %s: %s\n", log_path, strerror(errno));
-        exit(-1);
+        exit(1);
     }
 
     struct file_thread_param *arg2 = malloc(sizeof *arg2);
@@ -420,7 +420,7 @@ int main(void) {
 
     if (f2 == NULL) {
         fprintf(stderr, "Error opening file %s: %s\n", log_path, strerror(errno));
-        exit(-1);
+        exit(1);
     }
 
     pthread_t socket_thread, inotify_thread;
