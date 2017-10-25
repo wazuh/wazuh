@@ -54,4 +54,4 @@ cluster_daemon.o: wazuh/cluster_daemon.c
 	$(CC) $(CFLAGS) $(THREAD_FLAGS) -c $^ -o $@ -I $(SQLITE_DIR) -ldl
 
 clean:
-	$(RM_FILE) $(TARGET)
+	$(RM_FILE) $(TARGET) *.o
