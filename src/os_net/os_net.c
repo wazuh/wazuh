@@ -302,8 +302,8 @@ int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6)
 #ifdef HPUX
     if (sock >= 0) {
         int flags;
-        flags = fcntl(ossock, F_GETFL, 0);
-        fcntl(ossock, F_SETFL, flags | O_NONBLOCK);
+        flags = fcntl(sock, F_GETFL, 0);
+        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
     }
 #endif
 
