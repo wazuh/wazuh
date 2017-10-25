@@ -6,6 +6,7 @@
 import re
 from operator import mul
 from functools import reduce
+from wazuh import common
 
 class InputValidator:
     """
@@ -52,7 +53,7 @@ class InputValidator:
             return False
 
         # check cmd len
-        if len(' '.join(cmd)) != 10:
+        if len(' '.join(cmd)) != common.cluster_sync_msg_size:
             return False
 
         # second argument of zip is a number

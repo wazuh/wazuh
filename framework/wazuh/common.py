@@ -52,6 +52,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global database_path_agents
     database_path_agents = database_path + '/agents'
 
+    global cluster_sync_msg_size
+    cluster_sync_msg_size = 14
+
     # Queues
     global ARQUEUE
     ARQUEUE = "{0}/queue/alerts/ar".format(ossec_path)

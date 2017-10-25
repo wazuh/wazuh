@@ -46,7 +46,7 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
         error = 0
         res = ""
         try:
-            recv_command = self.recv(10).decode()
+            recv_command = self.recv(common.cluster_sync_msg_size).decode()
 
             if recv_command == '':
                 self.handle_close()
