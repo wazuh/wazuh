@@ -356,15 +356,20 @@ class WazuhClusterClient(asyncore.dispatcher):
     def writable(self):
         return self.can_write
 
+    def handle_error(self):
+        nil, t, v, tbinfo = asyncore.compact_traceback()
+        raise t(v)
+
     def handle_read(self):
         self.can_read=False
         self.response = json.loads(self.recv(2048))
         self.close()
 
     def handle_write(self):
-        self.send(self.data)
         if self.file is not None:
-            self.send(self.file)
+            self.send(self.data.encode() + self.file)
+        else:
+            self.send(self.data.encode())
         self.can_read=True
         self.can_write=False
 

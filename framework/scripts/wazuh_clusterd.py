@@ -46,7 +46,7 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
         error = 0
         res = ""
         try:
-            recv_command = self.recv(10)
+            recv_command = self.recv(10).decode()
 
             if recv_command == '':
                 self.handle_close()
@@ -66,6 +66,9 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
                     res = get_node()
                 elif command[0] == "zip":
                     zip_bytes = self.recv(int(command[1]))
+                    if not zip_bytes:
+                        raise "Received empty zip file"
+                        return
                     logging.debug("Zip file received from {0}".format(self.addr))
                     res = extract_zip(zip_bytes)
 
@@ -100,6 +103,11 @@ class WazuhClusterServer(asyncore.dispatcher):
             logging.info("Accepted connection from host {0}".format(addr[0]))
             handler = WazuhClusterHandler(sock, addr[0])
         return
+
+    def handle_error(self):
+        nil, t, v, tbinfo = asyncore.compact_traceback()
+        raise t(v)
+
 
 def crontab_sync(interval):
     interval_number  = int(search('\d+', interval).group(0))
