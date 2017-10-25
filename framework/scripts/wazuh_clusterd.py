@@ -46,10 +46,11 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
         error = 0
         res = ""
         try:
-            recv_command = self.recv(20)
+            recv_command = self.recv(10)
 
             if recv_command == '':
                 self.handle_close()
+                return
 
             command = recv_command.split(" ")
 
@@ -61,14 +62,10 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
                 res = "Received unvalid cluster command {0}".format(command[0])
 
             if error == 0:
-                if command[0] == "sync":
-                    res = sync(strtobool(command[1]))
-                elif command[0] == "node":
+                if command[0] == "node":
                     res = get_node()
                 elif command[0] == "zip":
                     zip_bytes = self.recv(int(command[1]))
-                    if not zip_bytes:
-                        return
                     logging.debug("Zip file received from {0}".format(self.addr))
                     res = extract_zip(zip_bytes)
 
@@ -104,16 +101,18 @@ class WazuhClusterServer(asyncore.dispatcher):
             handler = WazuhClusterHandler(sock, addr[0])
         return
 
-def crontab_sync(interval, port, host):
-    host_bind = "localhost" if host is None else host
+def crontab_sync(interval):
     interval_number  = int(search('\d+', interval).group(0))
     interval_measure = interval[-1]
     while True:
-        logging.debug("Crontab: send sync request to {0}:{1}".format(host_bind, port))
-        send_request(host=host_bind, port=port, data="sync False")
+        logging.debug("Crontab: starting to sync")
+        sync(False)
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
 if __name__ == '__main__':
+    # Initialize framework
+    myWazuh = Wazuh(get_init=True)
+    
     cluster_config = read_config()
 
     # execute C cluster daemon (database & inotify) if it's not running
@@ -123,13 +122,9 @@ if __name__ == '__main__':
         check_call(["{0}/framework/cluster_daemon".format(ossec_path)])
 
     # execute an independent process to "crontab" the sync interval
-    p = Process(target=crontab_sync, args=(cluster_config['interval'],
-                                           cluster_config['port'],
-                                           cluster_config['host'],))
+    p = Process(target=crontab_sync, args=(cluster_config['interval'],))
     p.start()
 
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
 
     server = WazuhClusterServer('' if not cluster_config['host'] else cluster_config['host'], 
                                 int(cluster_config['port']))

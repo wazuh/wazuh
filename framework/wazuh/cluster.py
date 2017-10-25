@@ -164,7 +164,7 @@ def get_nodes():
     for url in config_cluster["nodes"]:
         if not url in localhost_ips:
             error, response = send_request(host=url, port=config_cluster["port"],
-                                data="node")
+                                data="node 12345")
             if error == 0:
                 response = response['data']
         else:
@@ -358,7 +358,8 @@ def sync(debug, start_node=None, output_file=False, force=None):
         zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
         
         error, response = send_request(host=node_dest, port=config_cluster['port'],
-                                       data="zip {0}".format(len(zip_file)), file=zip_file)
+                                       data="zip {0}".format(str(len(zip_file)).zfill(6)), 
+                                       file=zip_file)
         
         try:
             res = literal_eval(response)
@@ -396,11 +397,13 @@ def sync(debug, start_node=None, output_file=False, force=None):
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
 
+    logging.debug("Connected to cluster database socket")
+
     # for each connected manager, check its files. If the manager is not on database add it
     # with all files marked as pending
     all_nodes_files = {}
     remote_nodes = list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
-    logging.debug("Nodes to sync: {0}".format(str(cluster)))
+    logging.debug("Nodes to sync: {0}".format(str(remote_nodes)))
     for node in remote_nodes:
         # check files in database
         count_query = "count {0}".format(node)

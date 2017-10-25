@@ -44,15 +44,15 @@ class InputValidator:
             return False
 
         # check command type
-        if not cmd[0] in ['zip', 'sync', 'node']:
+        if not cmd[0] in ['zip', 'node']:
             return False
 
-        # sync and zip has a second parameter
-        if (cmd[0] == 'zip' or cmd[0] == 'sync') and len(cmd) != 2:
+        # check cmd len list
+        if len(cmd) != 2:
             return False
 
-        # second argument of sync is either True or False
-        if cmd[0] == 'sync' and cmd[1] not in ['True', 'False']:
+        # check cmd len
+        if len(' '.join(cmd)) != 10:
             return False
 
         # second argument of zip is a number

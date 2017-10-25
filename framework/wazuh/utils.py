@@ -347,6 +347,9 @@ class WazuhClusterClient(asyncore.dispatcher):
     def handle_connect(self):
         pass
 
+    def handle_close(self):
+        self.close()
+
     def readable(self):
         return self.can_read
 
