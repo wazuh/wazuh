@@ -396,7 +396,7 @@ WriteManager()
     echo "" >> $NEWCONFIG
 
     # Writting auth configuration
-    cat ${AUTH_TEMPLATE} >> $NEWCONFIG
+    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Writting cluster configuration
