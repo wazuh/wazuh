@@ -23,8 +23,9 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <sys/inotify.h>
+#include <debug_op.h>
+#include <defs.h>
 
-#define OSSEC_PATH "/var/ossec"
 #define DB_PATH "/stats/cluster_db"
 #define SOCKET_PATH "/queue/ossec/cluster_db"
 #define IN_BUFFER_SIZE sizeof(struct inotify_event) + 256
@@ -34,11 +35,11 @@
 #define LOG_FILE "/logs/cluster_debug_socket.log"
 #define LOG_FILE_I "/logs/cluster_debug_inotify.log"
 
-struct file_thread_param {
-    FILE *f;
-};
+#define MAIN_TAG "cluster_daemon"
+#define INOTIFY_TAG "cluster_inotify"
+#define DB_TAG "cluster_db_socket"
 
-int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql, FILE *f) {
+int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
     int rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
     if (rc != SQLITE_OK) {
         char *create = "CREATE TABLE IF NOT EXISTS manager_file_status (" \
@@ -48,26 +49,20 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql, FILE *f) {
                         "PRIMARY KEY (id_manager, id_file))";
         rc = sqlite3_exec(db, create, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
-            fprintf(f, "Failed to fetch data: %s\n", sqlite3_errmsg(db));
             sqlite3_close(db);
-            exit(1);
+            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
         }
         int rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
         if (rc != SQLITE_OK) {
-            fprintf(f, "Failed to fetch data: %s\n", sqlite3_errmsg(db));
             sqlite3_close(db);
-            exit(1);
+            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
         }
     } 
     return 0;
 }
 
-void* daemon_socket(void *arg) {
-    struct file_thread_param *param = arg;
-    FILE *f = param->f;
-    free(param);
-
-    fprintf(f,"Preparing server socket\n");
+void* daemon_socket() {
+    mtdebug1(DB_TAG,"Preparing server socket");
     /* Prepare socket */
     struct sockaddr_un addr;
     char buf[1000000];
@@ -75,12 +70,11 @@ void* daemon_socket(void *arg) {
     int fd,cl,rc;
 
     char socket_path[80];
-    strcpy(socket_path, OSSEC_PATH);
+    strcpy(socket_path, DEFAULTDIR);
     strcat(socket_path, SOCKET_PATH);
 
     if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-        fprintf(f, "Error initializing server socket: %s\n", strerror(errno));
-        exit(1);
+        mterror_exit(DB_TAG, "Error initializing server socket: %s", strerror(errno));
     }
 
     memset(&addr, 0, sizeof(addr));
@@ -91,25 +85,24 @@ void* daemon_socket(void *arg) {
     int oldmask = umask(0660);
 
     if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
-        fprintf(f, "Error binding socket: %s\n", strerror(errno));
-        exit(1);
+        mterror_exit(DB_TAG, "Error binding socket: %s", strerror(errno));
     }
 
     umask(oldmask);
 
-    fprintf(f,"Opening database\n");
     /* Prepare database */
     char db_path[80];
-    strcpy(db_path, OSSEC_PATH);
+    strcpy(db_path, DEFAULTDIR);
     strcat(db_path, DB_PATH);
+
+    mtdebug1(DB_TAG, "Opening database %s", db_path);
 
     sqlite3 *db;
     sqlite3_stmt *res;
     int sqlite_rc = sqlite3_open(db_path, &db);
     if (sqlite_rc != SQLITE_OK) {
-        fprintf(f, "Error opening database: %s\n", sqlite3_errmsg(db));
+        mterror_exit(DB_TAG, "Error opening database: %s", sqlite3_errmsg(db));
         sqlite3_close(db);
-        exit(1);
     }
 
     // sql sentences to update file status
@@ -125,18 +118,17 @@ void* daemon_socket(void *arg) {
     bool has2, has3, select, count;
 
     if (listen(fd, 5) == -1) {
-        fprintf(f, "Error listening in socket: %s\n", strerror(errno));
-        exit(1);
+        mterror_exit(DB_TAG, "Error listening in socket: %s", strerror(errno));
     }
 
     char *cmd;
     while (1) {
         if ( (cl = accept(fd, NULL, NULL)) == -1) {
-            fprintf(f, "Error accepting connection: %s\n", strerror(errno));
+            mterror(DB_TAG, "Error accepting connection: %s", strerror(errno));
             continue;
         }
 
-        fprintf(f,"Accepted connection from %d\n", cl);
+        mtdebug2(DB_TAG,"Accepted connection from %d", cl);
 
         memset(buf, 0, sizeof(buf));
         memset(response, 0, sizeof(response));
@@ -144,7 +136,7 @@ void* daemon_socket(void *arg) {
         while ( (rc=recv(cl,buf,sizeof(buf),0)) > 0) {
 
             cmd = strtok(buf, " ");
-            fprintf(f,"Received %s command\n", cmd);
+            mtdebug2(DB_TAG,"Received %s command", cmd);
             if (cmd != NULL && strcmp(cmd, "update1") == 0) {
                 sql = sql_upd1;
                 count = false;
@@ -177,12 +169,12 @@ void* daemon_socket(void *arg) {
                 has2 = false;
                 has3 = false;
             } else {
-                fprintf(f,"Nothing to do\n");
+                mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
             }
             
             int step;
-            if (prepare_db(db, &res, sql, f) < 0) exit(1);
+            prepare_db(db, &res, sql);
             sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
             while (cmd != NULL) {
                 cmd = strtok(NULL, " ");
@@ -226,14 +218,12 @@ void* daemon_socket(void *arg) {
         }
 
         if (rc == -1) {
-            fprintf(f, "Error reading in socket: %s\n", strerror(errno));
-            exit(1);
+            mterror_exit(DB_TAG, "Error reading in socket: %s", strerror(errno));
         }
         else if (rc == 0) {
-            fprintf(f,"Closed connection from %d\n", cl);
+            mtinfo(DB_TAG,"Closed connection from %d", cl);
             if (close(cl) < 0) {
-                fprintf(f, "Error closing connection from %d: %s\n", cl, strerror(errno));
-                exit(1);
+                mterror_exit(DB_TAG, "Error closing connection from %d: %s", cl, strerror(errno));
             }
         }
     }
@@ -243,49 +233,45 @@ void* daemon_socket(void *arg) {
     return 0;
 }
 
-void* daemon_inotify(void *arg) {
-    struct file_thread_param *param = arg;
-    FILE *f = param->f;
-    free(param);
-
-    fprintf(f,"Preparing client socket\n");
+void* daemon_inotify() {
+    mtinfo(INOTIFY_TAG,"Preparing client socket");
     /* prepare socket */
     struct sockaddr_un addr;
     int db_socket,rc;
 
     char socket_path[80];
-    strcpy(socket_path, OSSEC_PATH);
+    strcpy(socket_path, DEFAULTDIR);
     strcat(socket_path, SOCKET_PATH);
 
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path)-1);
 
-    fprintf(f, "Preparing inotify watchers\n");
+    mtdebug1(INOTIFY_TAG, "Preparing inotify watchers");
     /* prepare inotify */
     int fd, wd_agent_info, wd_client_keys, wd_agent_groups;
     fd = inotify_init ();
 
     char agent_info_path[80];
-    strcpy(agent_info_path, OSSEC_PATH);
+    strcpy(agent_info_path, DEFAULTDIR);
     strcat(agent_info_path, AGENT_INFO_PATH);
     wd_agent_info = inotify_add_watch (fd, agent_info_path, IN_MODIFY);
     if (wd_agent_info < 0) 
-        fprintf(f, "Error setting watcher for agent info: %s\n", strerror(errno));
+        mterror(INOTIFY_TAG, "Error setting watcher for agent info: %s", strerror(errno));
 
     char agent_groups_path[80];
-    strcpy(agent_groups_path, OSSEC_PATH);
+    strcpy(agent_groups_path, DEFAULTDIR);
     strcat(agent_groups_path, AGENT_GROUPS_PATH);
     wd_agent_groups = inotify_add_watch (fd, agent_groups_path, IN_MODIFY);
     if (wd_agent_groups < 0)
-        fprintf(f, "Error setting watcher for agent groups: %s\n", strerror(errno));
+        mterror(INOTIFY_TAG, "Error setting watcher for agent groups: %s", strerror(errno));
 
     char client_keys_path[80];
-    strcpy(client_keys_path, OSSEC_PATH);
+    strcpy(client_keys_path, DEFAULTDIR);
     strcat(client_keys_path, CLIENT_KEYS_PATH);
     wd_client_keys = inotify_add_watch (fd, client_keys_path, IN_MODIFY);
     if (wd_client_keys < 0) 
-        fprintf(f, "Error setting watcher for client keys: %s\n", strerror(errno));
+        mterror(INOTIFY_TAG, "Error setting watcher for client keys: %s", strerror(errno));
 
     char buffer[IN_BUFFER_SIZE];
     struct inotify_event *event = (struct inotify_event *)buffer;
@@ -295,7 +281,7 @@ void* daemon_inotify(void *arg) {
     while (1) {
         if ((count = read(fd, buffer, IN_BUFFER_SIZE)) < 0) {
             if (errno != EAGAIN)
-                fprintf(f, "Error reading inotify: %s\n", strerror(errno));
+                mterror(INOTIFY_TAG, "Error reading inotify: %s", strerror(errno));
 
             break;
         }
@@ -306,7 +292,7 @@ void* daemon_inotify(void *arg) {
             char cmd[80];
 
             event = (struct inotify_event*)&buffer[i];
-            fprintf(f,"inotify: i='%d', name='%s', mask='%u', wd='%d'\n", i, event->name, event->mask, event->wd);
+            mtdebug2(DB_TAG,"inotify: i='%d', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
             if (event->wd == wd_agent_info) {
                 if (event->mask & IN_MODIFY) {
                     strcpy(cmd, "update1 ");
@@ -316,10 +302,10 @@ void* daemon_inotify(void *arg) {
                     inotify_rm_watch(fd, wd_agent_info);
                     wd_agent_info = inotify_add_watch(fd, agent_info_path , IN_MODIFY);
                 } else if (event->mask & IN_Q_OVERFLOW) {
-                    fprintf(f, "Inotify event queue overflowed");
+                    mtinfo(DB_TAG, "Inotify event queue overflowed");
                     continue;
                 } else {
-                    fprintf(f, "Unknown inotify event\n");
+                    mtinfo(DB_TAG, "Unknown inotify event");
                     continue;
                 }
             } else if (event->wd == wd_agent_groups) {
@@ -331,10 +317,10 @@ void* daemon_inotify(void *arg) {
                     inotify_rm_watch(fd, wd_agent_groups);
                     wd_agent_groups = inotify_add_watch(fd, agent_groups_path , IN_MODIFY);
                 } else if (event->mask & IN_Q_OVERFLOW) {
-                    fprintf(f, "Inotify event queue overflowed");
+                    mtinfo(DB_TAG, "Inotify event queue overflowed");
                     continue;
                 } else {
-                    fprintf(f, "Unknown inotify event\n");
+                    mtinfo(DB_TAG, "Unknown inotify event");
                     continue;
                 }
             } else if (event->wd == wd_client_keys) {
@@ -345,43 +331,40 @@ void* daemon_inotify(void *arg) {
                     inotify_rm_watch(fd, wd_client_keys);
                     wd_client_keys = inotify_add_watch(fd, client_keys_path , IN_MODIFY);
                 } else if (event->mask & IN_Q_OVERFLOW) {
-                    fprintf(f, "Inotify event queue overflowed");
+                    mtinfo(DB_TAG, "Inotify event queue overflowed");
                     continue;
                 } else {
-                    fprintf(f, "Unknown inotify event\n");
+                    mtinfo(DB_TAG, "Unknown inotify event");
                     continue;
                 }
             } 
 
             if ((db_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-                fprintf(f, "Error initializing client socket: %s\n", strerror(errno));
-                exit(1);
+                mterror_exit(INOTIFY_TAG, "Error initializing client socket: %s", strerror(errno));
             }
 
             if (connect(db_socket, (struct sockaddr*)&addr , sizeof(addr)) < 0) {
-                fprintf(f, "Error connecting to socket: %s\n", strerror(errno));
-                exit(1);
+                mterror_exit(INOTIFY_TAG, "Error connecting to socket: %s", strerror(errno));
             }
 
             if ((rc = write(db_socket, cmd, sizeof(cmd))) < 0) {
-                fprintf(f, "Error writing update in DB socket: %s\n", strerror(errno));
-                exit(1);
+                mterror_exit(INOTIFY_TAG, "Error writing update in DB socket: %s", strerror(errno));
             }
 
             char data[10000];
             recv(db_socket, data, sizeof(data),0);
             if (shutdown(db_socket, SHUT_RDWR) < 0) {
-                fprintf(f, "Error in shutdown: %s\n", strerror(errno));
+                mterror(INOTIFY_TAG, "Error in shutdown: %s", strerror(errno));
             }
             if (close(db_socket) < 0) {
-                fprintf(f, "Error closing client socket:  %s\n", strerror(errno));
+                mterror(INOTIFY_TAG, "Error closing client socket:  %s", strerror(errno));
             }
             memset(cmd,0,sizeof(cmd));
             memset(data,0,sizeof(data));
         }
     }
 
-    fprintf(f,"Removing watchers\n");
+    mtdebug1(INOTIFY_TAG,"Removing watchers");
     /*removing the directory from the watch list.*/
     inotify_rm_watch( fd, wd_agent_info );
     inotify_rm_watch( fd, wd_agent_groups );
@@ -391,43 +374,32 @@ void* daemon_inotify(void *arg) {
     return 0;
 }
 
-int main(void) {
-    if (daemon(0, 0) < 0) {
-        fprintf(stderr, "Error starting daemon: %s\n", strerror(errno));
-        exit(1);
+int main(int argc, char * const * argv) {
+    int run_foreground = 0;
+    int c;
+    while (c = getopt(argc, argv, "fd"), c != -1) {
+        switch(c) {
+            case 'f':
+                run_foreground = 1;
+                break;
+
+            case 'd':
+                nowDebug();
+                break;
+        }
     }
 
-    struct file_thread_param *arg = malloc(sizeof *arg);
-
-    char log_path[80];
-    strcpy(log_path, OSSEC_PATH);
-    strcat(log_path, LOG_FILE);
-    FILE *f = fopen(log_path, "w");
-    arg->f = f;
-
-    if (f == NULL) {
-        fprintf(stderr, "Error opening file %s: %s\n", log_path, strerror(errno));
-        exit(1);
-    }
-
-    struct file_thread_param *arg2 = malloc(sizeof *arg2);
-
-    char log_path2[80];
-    strcpy(log_path2, OSSEC_PATH);
-    strcat(log_path2, LOG_FILE_I);
-    FILE *f2 = fopen(log_path2, "w");
-    arg2->f = f2;
-
-    if (f2 == NULL) {
-        fprintf(stderr, "Error opening file %s: %s\n", log_path, strerror(errno));
-        exit(1);
+    if (!run_foreground) {
+        if (daemon(0, 0) < 0) {
+            mterror_exit(MAIN_TAG, "Error starting daemon: %s", strerror(errno));
+        }
     }
 
     pthread_t socket_thread, inotify_thread;
 
-    pthread_create(&socket_thread, NULL, daemon_socket, arg);
+    pthread_create(&socket_thread, NULL, daemon_socket, NULL);
     sleep(1);
-    pthread_create(&inotify_thread, NULL, daemon_inotify, arg2);
+    pthread_create(&inotify_thread, NULL, daemon_inotify, NULL);
 
     pthread_join(socket_thread, NULL);
     pthread_join(inotify_thread, NULL);
