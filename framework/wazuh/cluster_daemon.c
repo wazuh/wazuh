@@ -25,6 +25,7 @@
 #include <sys/inotify.h>
 #include <debug_op.h>
 #include <defs.h>
+#include <help.h>
 
 #define DB_PATH "/stats/cluster_db"
 #define SOCKET_PATH "/queue/ossec/cluster_db"
@@ -38,6 +39,19 @@
 #define MAIN_TAG "cluster_daemon"
 #define INOTIFY_TAG "cluster_inotify"
 #define DB_TAG "cluster_db_socket"
+
+/* Print help statement */
+static void help_cluster_daemon(char * name)
+{
+    print_header();
+    print_out("  %s: -[Vhdf]", name);
+    print_out("    -V          Version and license message.");
+    print_out("    -h          This help message.");
+    print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
+    print_out("    -f          Run in foreground.");
+    print_out(" ");
+    exit(1);
+}
 
 int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
     int rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
@@ -377,7 +391,7 @@ void* daemon_inotify() {
 int main(int argc, char * const * argv) {
     int run_foreground = 0;
     int c;
-    while (c = getopt(argc, argv, "fd"), c != -1) {
+    while (c = getopt(argc, argv, "fdVh"), c != -1) {
         switch(c) {
             case 'f':
                 run_foreground = 1;
@@ -385,6 +399,14 @@ int main(int argc, char * const * argv) {
 
             case 'd':
                 nowDebug();
+                break;
+
+            case 'V':
+                print_version();
+                break;
+
+            case 'h':
+                help_cluster_daemon(argv[0]);
                 break;
         }
     }

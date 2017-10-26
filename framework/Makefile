@@ -28,7 +28,8 @@ REGEX_OP         = ../src/shared/regex_op.o
 STRING_OP        = ../src/shared/string_op.o
 FILE_OP          = ../src/shared/file_op.o
 PRIVSEP_OP       = ../src/shared/privsep_op.o
-DEBUG_OP_DEPS    = $(DEBUG_OP) $(JSON_LIB) $(XML_LIB) $(XML_ACCESS) $(STRBREAK) $(STRING_OP) $(FILE_OP) $(PRIVSEP_OP) $(REGEX_OP)
+HELP_O           = ../src/shared/help.o
+DEBUG_OP_DEPS    = $(DEBUG_OP) $(JSON_LIB) $(XML_LIB) $(XML_ACCESS) $(STRBREAK) $(STRING_OP) $(FILE_OP) $(PRIVSEP_OP) $(REGEX_OP) $(HELP_O)
 TARGET           = libsqlite3.so.0 cluster_daemon
 
 .PHONY: all build install examples clean
