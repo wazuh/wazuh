@@ -22,7 +22,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* file_diff;
     cJSON* manager;
 	cJSON* agent;
+    cJSON* predecoder;
     cJSON* data;
+    cJSON* cluster;
 	char manager_name[512];
     char* out;
     int i;
@@ -50,6 +52,17 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddStringToObject(root, "id", alert_id);
     }
 
+    // Cluster information
+    if (!Config.hide_cluster_info) {
+        cJSON_AddItemToObject(root, "cluster", cluster = cJSON_CreateObject());
+        if(Config.cluster_name)
+            cJSON_AddStringToObject(cluster, "name", Config.cluster_name);
+        else
+            cJSON_AddStringToObject(cluster, "name", "wazuh");
+
+        if(Config.node_name)
+            cJSON_AddStringToObject(cluster, "node", Config.node_name);
+    }
 
 	/* Get manager hostname */
     memset(manager_name, '\0', 512);
@@ -224,8 +237,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
     }
 
-    if(lf->program_name)
-        cJSON_AddStringToObject(root, "program_name", lf->program_name);
+    if(lf->program_name) {
+        cJSON_AddItemToObject(root, "predecoder", predecoder = cJSON_CreateObject());
+        cJSON_AddStringToObject(predecoder, "program_name", lf->program_name);
+    }
 
     if(lf->id)
         cJSON_AddStringToObject(data, "id", lf->id);

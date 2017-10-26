@@ -18,12 +18,12 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     int s = 0;
     int tries = 0;
     int temp_file_created = 0;
-	unsigned int alert_level = 0;
-	unsigned int rule_id = 0;
+    unsigned int alert_level = 0;
+    unsigned int rule_id = 0;
     char integration_path[2048 + 1];
     char exec_tmp_file[2048 + 1];
     char exec_full_cmd[4096 + 1];
-	char *json_str;
+    char *json_str;
     FILE *fp;
 
     file_queue jfileq;
@@ -128,15 +128,15 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         if(!al_json)
             continue;
 
-		mdebug1("sending new alert.");
+        mdebug1("sending new alert.");
         temp_file_created = 0;
 
-		/* If JSON does not contain rule block, continue*/
-		if (rule = cJSON_GetObjectItem(al_json, "rule"), !rule){
-				s++;
+        /* If JSON does not contain rule block, continue*/
+        if (rule = cJSON_GetObjectItem(al_json, "rule"), !rule){
+                s++;
                 mdebug2("skipping: Alert does not contain a rule block");
                 continue;
-		}
+        }
 
         /* Sending to the configured integrations */
         s = 0;
@@ -148,14 +148,14 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 mdebug2("skipping: integration disabled");
                 continue;
             }
-			
+
             /* Looking if location is set */
             if(integrator_config[s]->location)
             {
               
-				if (location = cJSON_GetObjectItem(al_json, "location"), !location) {
-				  s++; continue;
-				}
+                if (location = cJSON_GetObjectItem(al_json, "location"), !location) {
+                    s++; continue;
+                }
                 if(!OSMatch_Execute(location->valuestring,
                                    strlen(location->valuestring),
                                    integrator_config[s]->location))
@@ -168,10 +168,10 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             /* Looking for the level */
             if(integrator_config[s]->level)
             {
-				if (json_field = cJSON_GetObjectItem(rule,"level"), !json_field) {
-						s++; continue;
-				}
-				alert_level = json_field->valueint;
+                if (json_field = cJSON_GetObjectItem(rule,"level"), !json_field) {
+                    s++; continue;
+                }
+                alert_level = json_field->valueint;
                 if(alert_level < integrator_config[s]->level)
                 {
                     mdebug2("skipping: alert level is too low");
@@ -182,20 +182,20 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             /* Looking for the group */
             if(integrator_config[s]->group)
             {
-				int found = 0;
-				if (json_object = cJSON_GetObjectItem(rule,"groups"), json_object) {
-					cJSON_ArrayForEach(json_field, json_object) {
+                int found = 0;
+                if (json_object = cJSON_GetObjectItem(rule,"groups"), json_object) {
+                    cJSON_ArrayForEach(json_field, json_object) {
                         json_str = json_field->valuestring;
                         if (OSMatch_Execute(json_str, strlen(json_str), integrator_config[s]->group)) {
                             found++;
                         }
                     }
-				}
-				if (!found) {
-					mdebug2("skipping: group doesn't match");
-					s++; continue;
-				}
-						
+                }
+                if (!found) {
+                    mdebug2("skipping: group doesn't match");
+                    s++; continue;
+                }
+
             }
 
             /* Looking for the rule */
@@ -205,11 +205,11 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 int id_i = 0;
                 int rule_match = -1;
 
-				if (json_field = cJSON_GetObjectItem(rule,"id"), !json_field) {
-					mdebug2("skipping: alert does not containg rule id.");
+                if (json_field = cJSON_GetObjectItem(rule,"id"), !json_field) {
+                    mdebug2("skipping: alert does not containg rule id.");
                     s++; continue;
-				}
-				rule_id = atoi(json_field->valuestring);
+                }
+                rule_id = atoi(json_field->valuestring);
 
                 while(integrator_config[s]->rule_id[id_i])
                 {

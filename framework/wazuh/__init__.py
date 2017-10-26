@@ -3,6 +3,22 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+# Check that requests module is installed
+from imp import find_module
+
+try:
+    find_module('requests')
+except ImportError:
+    error_msg=""""ERROR: requests module is not installed.
+    
+You can install it:
+    - Using pip: pip install requests.
+    - apt: apt install python-requests.
+    - yum: yum install python-requests.
+    """
+    print(error_msg)
+    exit()
+
 from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.utils import execute

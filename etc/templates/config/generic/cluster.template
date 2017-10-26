@@ -1,0 +1,11 @@
+  <cluster>
+    <name>wazuh</name>
+    <node_name>node01</node_name>
+    <key></key>
+    <interval>2m</interval>
+    <port>1516</port>
+    <host></host>
+    <nodes>
+        <node>localhost</node>
+    </nodes>
+  </cluster>

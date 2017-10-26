@@ -22,6 +22,9 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
     const char *xml_buffer_queue_size = "queue_size";
     const char *xml_events_per_second = "events_per_second";
 
+    /* Old XML definition */
+    const char *xml_buffer_length = "length";
+
     agent *logr;
 
     logr = (agent *)d2;
@@ -43,6 +46,18 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_buffer_queue_size) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            logr->buflength = atoi(node[i]->content);
+            if (logr->buflength <= 0 || logr->buflength > 100000) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+        } else if (strcmp(node[i]->element, xml_buffer_length) == 0) {
+            mwarn("The <%s> tag is deprecated, please use <%s> instead.", xml_buffer_length, xml_buffer_queue_size);
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
