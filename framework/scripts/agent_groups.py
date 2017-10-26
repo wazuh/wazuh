@@ -190,9 +190,6 @@ def main():
     # Capture Cntrl + C
     signal(SIGINT, signal_handler)
 
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
-
     # Parse arguments
     arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False, 'add-group': False, 'show-group': False, 'remove-group': False, 'quiet': False }
     try:
@@ -232,6 +229,9 @@ def main():
             exit(0)
         else:
             invalid_option()
+
+    # Initialize framework
+    myWazuh = Wazuh(get_init=True)
 
     # Actions
     if arguments['n_args'] > 5 or arguments['n_actions'] > 1:
