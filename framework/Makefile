@@ -4,6 +4,8 @@
 #
 # Syntax: make [ all | build | install | examples | clean ]
 
+uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+
 OSSEC_GROUP  = ossec
 PREFIX       = /var/ossec
 
@@ -30,7 +32,12 @@ FILE_OP          = ../src/shared/file_op.o
 PRIVSEP_OP       = ../src/shared/privsep_op.o
 HELP_O           = ../src/shared/help.o
 DEBUG_OP_DEPS    = $(DEBUG_OP) $(JSON_LIB) $(XML_LIB) $(XML_ACCESS) $(STRBREAK) $(STRING_OP) $(FILE_OP) $(PRIVSEP_OP) $(REGEX_OP) $(HELP_O)
+
+ifeq (${uname_S},Linux)
 TARGET           = libsqlite3.so.0 cluster_daemon
+else
+TARGET           = libsqlite3.so.0
+endif
 
 .PHONY: all build install examples clean
 
@@ -43,7 +50,9 @@ install: build
 
 	$(INSTALL_EXEC) wazuh/*.py ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib
+ifeq (${uname_S},Linux)
 	$(INSTALL_EXEC) cluster_daemon ${PREFIX}/framework
+endif
 
 #	Install scripts/%.py on $(PREFIX)/bin/%
 	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) $(script) $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
@@ -57,14 +66,18 @@ build: $(TARGET)
 libsqlite3.so.0: sqlite3.o
 	$(CC) $(LFLAGS) -shared -o $@ $^
 
+ifeq (${uname_S},Linux)
 cluster_daemon: cluster_daemon.o sqlite3.o $(DEBUG_OP_DEPS)
 	$(CC) $(THREAD_FLAGS) -o $@ $^ -ldl
+endif
 
 sqlite3.o: $(SQLITE_DIR)/sqlite3.c
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $^
 
+ifeq (${uname_S},Linux)
 cluster_daemon.o: wazuh/cluster_daemon.c
 	$(CC) $(CFLAGS) $(THREAD_FLAGS) -c $^ -o $@ -I $(SQLITE_DIR) -I $(HEADERS_DIR) -ldl
+endif
 
 clean:
 	$(RM_FILE) $(TARGET) *.o
