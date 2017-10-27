@@ -63,7 +63,7 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
 # Agent upgrading variables
 wpk_repo_url = "https://packages.wazuh.com/wpk/"
 
-wpk_read_size = 512
+wpk_chunk_size = 512
 
 upgrade_result_retries = 60 # Retries until get upgrade_result ok message
 upgrade_result_sleep = 5 # Seconds between retries
