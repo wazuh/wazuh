@@ -10,9 +10,6 @@
  */
 
 #include <Python.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 static PyObject* pyDaemon() {
 	int res_code = daemon(0, 0);
