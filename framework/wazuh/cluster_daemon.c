@@ -1,4 +1,3 @@
-// gcc -pthread -Wall cluster_daemon.c -o daemon -l sqlite3
 /*
  * Wazuh Cluster Daemon
  * Copyright (C) 2017 Wazuh Inc.
@@ -9,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>

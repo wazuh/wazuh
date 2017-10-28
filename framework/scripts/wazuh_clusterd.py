@@ -16,7 +16,8 @@ from re import search
 from time import sleep
 
 import logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
+                    filename="/var/ossec/logs/cluster.log")
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
@@ -29,6 +30,7 @@ try:
     from wazuh.exception import WazuhException
     from wazuh.InputValidator import InputValidator
     from wazuh.utils import send_request
+    from wazuh.pyDaemonModule import pyDaemon
     iv = InputValidator()
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -118,20 +120,21 @@ def crontab_sync(interval):
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
 if __name__ == '__main__':
+    res_code = pyDaemon()
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
     
     cluster_config = read_config()
+    # execute an independent process to "crontab" the sync interval
+    p = Process(target=crontab_sync, args=(cluster_config['interval'],))
+    p.daemon=True
+    p.start()
 
     # execute C cluster daemon (database & inotify) if it's not running
     try:
         exit_code = check_call(["ps", "-C", "cluster_daemon"], stdout=open(devnull, 'w'))
     except CalledProcessError:
         check_call(["{0}/framework/cluster_daemon".format(ossec_path)])
-
-    # execute an independent process to "crontab" the sync interval
-    p = Process(target=crontab_sync, args=(cluster_config['interval'],))
-    p.start()
 
 
     server = WazuhClusterServer('' if not cluster_config['host'] else cluster_config['host'], 
