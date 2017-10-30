@@ -148,7 +148,7 @@ if __name__ == '__main__':
         logging.getLogger('').addHandler(console)
 
     if not args.d:
-        logging.setLevel(logging.INFO)
+        logging.getLogger('').setLevel(logging.INFO)
 
     # execute C cluster daemon (database & inotify) if it's not running
     try:
@@ -165,8 +165,6 @@ if __name__ == '__main__':
     if not args.f:
         p.daemon=True
     p.start()
-
-
 
     server = WazuhClusterServer('' if not cluster_config['host'] else cluster_config['host'], 
                                 int(cluster_config['port']))
