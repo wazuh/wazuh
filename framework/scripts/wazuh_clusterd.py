@@ -150,6 +150,12 @@ if __name__ == '__main__':
     if not args.d:
         logging.setLevel(logging.INFO)
 
+    # execute C cluster daemon (database & inotify) if it's not running
+    try:
+        exit_code = check_call(["ps", "-C", "cluster_daemon"], stdout=open(devnull, 'w'))
+    except CalledProcessError:
+        check_call(["{0}/framework/cluster_daemon".format(ossec_path)])
+    
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
     
@@ -160,11 +166,6 @@ if __name__ == '__main__':
         p.daemon=True
     p.start()
 
-    # execute C cluster daemon (database & inotify) if it's not running
-    try:
-        exit_code = check_call(["ps", "-C", "cluster_daemon"], stdout=open(devnull, 'w'))
-    except CalledProcessError:
-        check_call(["{0}/framework/cluster_daemon".format(ossec_path)])
 
 
     server = WazuhClusterServer('' if not cluster_config['host'] else cluster_config['host'], 
