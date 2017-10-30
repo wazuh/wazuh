@@ -34,7 +34,7 @@ HELP_O           = ../src/shared/help.o
 DEBUG_OP_DEPS    = $(DEBUG_OP) $(JSON_LIB) $(XML_LIB) $(XML_ACCESS) $(STRBREAK) $(STRING_OP) $(FILE_OP) $(PRIVSEP_OP) $(REGEX_OP) $(HELP_O)
 
 ifeq (${uname_S},Linux)
-BUILD_TARGET           = cluster_daemon wazuh/pyDaemonModule.so
+BUILD_TARGET           = cluster_daemon
 endif
 
 .PHONY: all build install examples clean
@@ -61,11 +61,6 @@ examples: install
 	$(INSTALL_EXEC) examples/*.py ${PREFIX}/framework/examples
 
 build: $(BUILD_TARGET)
-
-ifeq (${uname_S},Linux)
-wazuh/pyDaemonModule.so: wazuh/pyDaemonModule.c
-	$(CC) -shared -I/usr/include/python2.7/ -lpython2.7 -o $@ $^ -fPIC
-endif
 
 ifeq (${uname_S},Linux)
 cluster_daemon: cluster_daemon.o $(SQLITE_DIR)/sqlite3.o $(DEBUG_OP_DEPS)
