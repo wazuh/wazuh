@@ -429,6 +429,7 @@ BUILD_SERVER+=ossec-makelists
 BUILD_SERVER+=ossec-dbd
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
+BUILD_SERVER+=wazuh-framework
 
 BUILD_AGENT+=ossec-agentd
 BUILD_AGENT+=agent-auth
@@ -1054,6 +1055,12 @@ wmodulesd_o := $(wmodulesd_c:.c=.o)
 wazuh-modulesd: ${wmodulesd_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
+### wazuh-framework ##
+
+wazuh-framework:
+	${MAKE} -C ../framework build PREFIX=${PREFIX}
+
+
 ####################
 #### test ##########
 ####################
@@ -1188,7 +1195,7 @@ win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.c addagent/validat
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows
+clean: clean-test clean-internals clean-external clean-windows clean-framework
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1233,6 +1240,9 @@ clean-internals:
 	rm -f ${integrator_o} ossec-integratord
 	rm -f ${wmodulesd_o} ${wmodules_o} wazuh-modulesd wmodules.a
 	rm -f ${sqlite_o} sqlite.a
+
+clean-framework:
+	${MAKE} -C ../framework clean
 
 clean-windows:
 	rm -f win32/LICENSE.txt
