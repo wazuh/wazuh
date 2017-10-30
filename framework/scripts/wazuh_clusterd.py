@@ -9,7 +9,7 @@ import json
 from distutils.util import strtobool
 from sys import argv, exit, path
 from os.path import dirname
-from subprocess import check_call, CalledProcessError
+from subprocess import check_call, CalledProcessError, check_output
 from os import devnull
 from multiprocessing import Process
 from re import search
@@ -18,6 +18,12 @@ from time import sleep
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
                     filename="/var/ossec/logs/cluster.log")
+
+import argparse
+parser =argparse.ArgumentParser()
+parser.add_argument('-f', help="Run in foreground", action='store_true')
+parser.add_argument('-d', help="Enable debug messages", action='store_true')
+parser.add_argument('-V', help="Print version", action='store_true')
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
@@ -120,14 +126,28 @@ def crontab_sync(interval):
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
 if __name__ == '__main__':
-    res_code = pyDaemon()
+    args = parser.parse_args()
+    if args.V:
+        try:
+            check_output(["{0}/framework/cluster_daemon".format(ossec_path), '-V'])
+            exit(0)
+        except CalledProcessError:
+            pass
+
+    if not args.f:
+        res_code = pyDaemon()
+
+    if not args.d:
+        logging.disable(logging.DEBUG)
+
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
     
     cluster_config = read_config()
     # execute an independent process to "crontab" the sync interval
     p = Process(target=crontab_sync, args=(cluster_config['interval'],))
-    p.daemon=True
+    if not args.f:
+        p.daemon=True
     p.start()
 
     # execute C cluster daemon (database & inotify) if it's not running
