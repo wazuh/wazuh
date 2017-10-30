@@ -34,9 +34,7 @@ HELP_O           = ../src/shared/help.o
 DEBUG_OP_DEPS    = $(DEBUG_OP) $(JSON_LIB) $(XML_LIB) $(XML_ACCESS) $(STRBREAK) $(STRING_OP) $(FILE_OP) $(PRIVSEP_OP) $(REGEX_OP) $(HELP_O)
 
 ifeq (${uname_S},Linux)
-BUILD_TARGET           = libsqlite3.so.0 cluster_daemon wazuh/pyDaemonModule.so
-else
-BUILD_TARGET           = libsqlite3.so.0
+BUILD_TARGET           = cluster_daemon wazuh/pyDaemonModule.so
 endif
 
 .PHONY: all build install examples clean
@@ -50,7 +48,7 @@ install:
 
 	$(INSTALL_EXEC) wazuh/*.py ${PREFIX}/framework/wazuh
 	$(INSTALL_EXEC) wazuh/*.so ${PREFIX}/framework/wazuh
-	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib
+	$(INSTALL_FILE) $(SQLITE_DIR)/sqlite3.o ${PREFIX}/framework/lib/libsqlite3.so.0
 ifeq (${uname_S},Linux)
 	$(INSTALL_EXEC) cluster_daemon ${PREFIX}/framework
 endif
@@ -64,21 +62,15 @@ examples: install
 
 build: $(BUILD_TARGET)
 
-libsqlite3.so.0: sqlite3.o
-	$(CC) $(LFLAGS) -shared -o $@ $^
-
 ifeq (${uname_S},Linux)
 wazuh/pyDaemonModule.so: wazuh/pyDaemonModule.c
 	$(CC) -shared -I/usr/include/python2.7/ -lpython2.7 -o $@ $^ -fPIC
 endif
 
 ifeq (${uname_S},Linux)
-cluster_daemon: cluster_daemon.o sqlite3.o $(DEBUG_OP_DEPS)
+cluster_daemon: cluster_daemon.o $(SQLITE_DIR)/sqlite3.o $(DEBUG_OP_DEPS)
 	$(CC) $(THREAD_FLAGS) -o $@ $^ -ldl
 endif
-
-sqlite3.o: $(SQLITE_DIR)/sqlite3.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $^
 
 ifeq (${uname_S},Linux)
 cluster_daemon.o: wazuh/cluster_daemon.c
