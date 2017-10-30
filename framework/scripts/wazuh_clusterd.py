@@ -128,11 +128,8 @@ def crontab_sync(interval):
 if __name__ == '__main__':
     args = parser.parse_args()
     if args.V:
-        try:
-            check_output(["{0}/framework/cluster_daemon".format(ossec_path), '-V'])
-            exit(0)
-        except CalledProcessError:
-            pass
+        check_output(["{0}/framework/cluster_daemon".format(ossec_path), '-V'])
+        exit(0)
 
     if not args.f:
         res_code = pyDaemon()
