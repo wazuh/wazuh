@@ -13,7 +13,6 @@ except ImportError:
     raise WazuhException(4000)
 
 from wazuh import common
-from wazuh.exception import WazuhException
 from wazuh.utils import execute
 from wazuh.database import Connection
 from time import strftime
