@@ -1081,11 +1081,25 @@ class Agent:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        def get_hash(directory):
-            filename = "{0}/{1}/merged.mg".format(common.shared_path, directory)
+        def get_hash(file, hash_algorithm='md5'):
+            filename = "{0}/{1}".format(common.shared_path, file)
 
-            with open(filename, 'rb') as f:
-                hashing.update(f.read())
+            # check hash algorithm
+            try:
+                algorithm_list = hashlib.algorithms_available
+            except Exception as e:
+                algorithm_list = hashlib.algorithms
+
+            if not hash_algorithm in algorithm_list:
+                raise WazuhException(1723, "Available algorithms are {0}.".format(algorithm_list))
+
+            hashing = hashlib.new(hash_algorithm)
+
+            try:
+                with open(filename, 'rb') as f:
+                    hashing.update(f.read())
+            except IOError:
+                return None
 
             return hashing.hexdigest()
 
@@ -1093,17 +1107,6 @@ class Agent:
         db_global = glob(common.database_path_global)
         if not db_global:
             raise WazuhException(1600)
-
-        # check hash algorithm
-        try:
-            algorithm_list = hashlib.algorithms_available
-        except Exception as e:
-            algorithm_list = hashlib.algorithms
-
-        if not hash_algorithm in algorithm_list:
-            raise WazuhException(1723, "Available algorithms are {0}.".format(algorithm_list))
-
-        hashing = hashlib.new(hash_algorithm)
 
         conn = Connection(db_global[0])
         query = "SELECT {0} FROM agent WHERE `group` = :group_id"
@@ -1120,11 +1123,16 @@ class Agent:
             conn.execute(query.format('COUNT(*)'), request)
 
             # merged.mg and agent.conf sum
-            merged_sum = get_hash(entry)
-            conf_sum   = get_hash(entry)
+            merged_sum = get_hash(entry + "/merged.mg")
+            conf_sum   = get_hash(entry + "/agent.conf")
 
-            item = {'count':conn.fetch()[0], 'name': entry,
-                    'merged_sum': merged_sum, 'conf_sum': conf_sum}
+            item = {'count':conn.fetch()[0], 'name': entry}
+
+            if merged_sum:
+                item['merged_sum'] = merged_sum
+
+            if conf_sum:
+                item['conf_sum'] = conf_sum
 
             data.append(item)
 
@@ -1670,10 +1678,12 @@ class Agent:
         return [wpk_file, sha1hash]
 
 
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None):
+    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None):
         """
         Sends WPK file to agent.
         """
+        if not chunk_size:
+            chunk_size = common.wpk_chunk_size
         # Check WPK file
         _get_wpk = self._get_wpk_file(wpk_repo, debug, version, force)
         wpk_file = _get_wpk[0]
@@ -1696,6 +1706,8 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending file to agent
+        if debug:
+            print("Chunk size: {0} bytes".format(chunk_size))
         file = open(common.ossec_path + "/var/upgrade/" + wpk_file, "rb")
         if not file:
             raise WazuhException(1715, data.replace("err ",""))
@@ -1703,7 +1715,7 @@ class Agent:
             print("Sending: {0}".format(common.ossec_path + "/var/upgrade/" + wpk_file))
         try:
             start_time = time()
-            bytes_read = file.read(common.wpk_read_size)
+            bytes_read = file.read(chunk_size)
             bytes_read_acum = 0
             while bytes_read:
                 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -1714,7 +1726,7 @@ class Agent:
                 s.close()
                 if data != 'ok':
                     raise WazuhException(1715, data.replace("err ",""))
-                bytes_read = file.read(common.wpk_read_size)
+                bytes_read = file.read(chunk_size)
                 if show_progress:
                     bytes_read_acum = bytes_read_acum + len(bytes_read)
                     show_progress(int(bytes_read_acum * 100 / wpk_file_size) + (bytes_read_acum * 100 % wpk_file_size > 0))
@@ -1756,7 +1768,7 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
 
-    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None):
+    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None):
         """
         Upgrade agent using a WPK file.
         """
@@ -1787,7 +1799,7 @@ class Agent:
             raise WazuhException(1720)
 
         # Send file to agent
-        sending_result = self._send_wpk_file(wpk_repo, debug, version, force, show_progress)
+        sending_result = self._send_wpk_file(wpk_repo, debug, version, force, show_progress, chunk_size)
         if debug:
             print(sending_result[0])
 
@@ -1816,7 +1828,7 @@ class Agent:
 
 
     @staticmethod
-    def upgrade_agent(agent_id, wpk_repo=None, version=None, force=False):
+    def upgrade_agent(agent_id, wpk_repo=None, version=None, force=False, chunk_size=None):
         """
         Read upgrade result output from agent.
 
@@ -1824,7 +1836,7 @@ class Agent:
         :return: Upgrade message.
         """
 
-        return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force)==1 else False)
+        return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force)==1 else False, chunk_size=chunk_size)
 
 
     def upgrade_result(self, debug=False, timeout=common.upgrade_result_retries):
@@ -1882,10 +1894,13 @@ class Agent:
         return Agent(agent_id).upgrade_result(timeout=int(timeout))
 
 
-    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None):
+    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None):
         """
         Sends custom WPK file to agent.
         """
+        if not chunk_size:
+            chunk_size = common.wpk_chunk_size
+
         # Check WPK file
         if not path.isfile(file_path):
             raise WazuhException(1006)
@@ -1910,12 +1925,14 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending file to agent
+        if debug:
+            print("Chunk size: {0} bytes".format(chunk_size))
         file = open(file_path, "rb")
         if not file:
             raise WazuhException(1715, data.replace("err ",""))
         try:
             start_time = time()
-            bytes_read = file.read(common.wpk_read_size)
+            bytes_read = file.read(chunk_size)
             file_sha1=hashlib.sha1(bytes_read)
             bytes_read_acum = 0
             while bytes_read:
@@ -1925,7 +1942,7 @@ class Agent:
                 s.send(msg.encode() + bytes_read)
                 data = s.recv(1024).decode()
                 s.close()
-                bytes_read = file.read(common.wpk_read_size)
+                bytes_read = file.read(chunk_size)
                 file_sha1.update(bytes_read)
                 if show_progress:
                     bytes_read_acum = bytes_read_acum + len(bytes_read)
@@ -1971,7 +1988,7 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
 
-    def upgrade_custom(self, file_path, installer, debug=False, show_progress=None):
+    def upgrade_custom(self, file_path, installer, debug=False, show_progress=None, chunk_size=None):
         """
         Upgrade agent using a custom WPK file.
         """
@@ -1982,7 +1999,7 @@ class Agent:
             raise WazuhException(1720)
 
         # Send file to agent
-        sending_result = self._send_custom_wpk_file(file_path, debug, show_progress)
+        sending_result = self._send_custom_wpk_file(file_path, debug, show_progress, chunk_size)
         if debug:
             print(sending_result[0])
 

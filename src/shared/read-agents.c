@@ -646,19 +646,14 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
         strftime(old_day, 23, "%Y %h %d %T", tm_time);
 
         if (json_output) {
+            char json_buffer[OS_MAXSTR + 1];
             cJSON *event = cJSON_CreateObject();
             cJSON_AddStringToObject(event, "status", resolved == 0 ? "outstanding" : "resolved");
             cJSON_AddStringToObject(event, "readDay", read_day);
             cJSON_AddStringToObject(event, "oldDay", old_day);
 
-            if (ns_events[i])
-                cJSON_AddStringToObject(event, "event", tmp_str);
-            else {
-                char json_buffer[OS_MAXSTR + 1];
-                snprintf(json_buffer, OS_MAXSTR, "%s%s", ns_events[i], tmp_str);
-                cJSON_AddStringToObject(event, "event", json_buffer);
-            }
-
+            snprintf(json_buffer, OS_MAXSTR, "%s%s", ns_events[i] ? "" : "System Audit: ", tmp_str);
+            cJSON_AddStringToObject(event, "event", json_buffer);
             cJSON_AddItemToArray(json_output, event);
         } else if (csv_output) {
             printf("%s,%s,%s,%s%s\n", resolved == 0 ? "outstanding" : "resolved",

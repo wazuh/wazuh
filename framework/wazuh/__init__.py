@@ -5,22 +5,14 @@
 
 # Check that requests module is installed
 from imp import find_module
+from wazuh.exception import WazuhException
 
 try:
     find_module('requests')
 except ImportError:
-    error_msg=""""ERROR: requests module is not installed.
-    
-You can install it:
-    - Using pip: pip install requests.
-    - apt: apt install python-requests.
-    - yum: yum install python-requests.
-    """
-    print(error_msg)
-    exit()
+    raise WazuhException(4000)
 
 from wazuh import common
-from wazuh.exception import WazuhException
 from wazuh.utils import execute
 from wazuh.database import Connection
 from time import strftime

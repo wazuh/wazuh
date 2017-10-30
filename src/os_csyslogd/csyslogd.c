@@ -61,7 +61,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     if (sources.alert_json) {
         jqueue_init(&jfileq);
 
-        for (tries = 1; tries < OS_CSYSLOGD_MAX_TRIES && jqueue_open(&jfileq) < 0; tries++) {
+        for (tries = 1; tries < OS_CSYSLOGD_MAX_TRIES && jqueue_open(&jfileq, 1) < 0; tries++) {
             sleep(1);
         }
 

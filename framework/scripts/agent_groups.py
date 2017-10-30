@@ -4,7 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from sys import exit, path, argv
-from os.path import dirname
+from os.path import dirname, basename
 from getopt import GetoptError, getopt
 from signal import signal, SIGINT
 
@@ -148,16 +148,16 @@ def usage():
     {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g groupd_id | -g group_id) [-q] | -s -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
 
     Usage:
-    ./agent_groups.py [-l]                                  # List all groups
-    ./agent_groups.py -l -g group_id                        # List agents in group
-    ./agent_groups.py -c -g group_id                        # List configuration files in group
-
-    ./agent_groups.py -a -i agent_id -g group_id [-q]       # Set agent group
-    ./agent_groups.py -r -i agent_id [-q]                   # Unset agent group
-    ./agent_groups.py -s -i agent_id                        # Show group of agent
-
-    ./agent_groups.py -a -g group_id [-q]                   # Create group
-    ./agent_groups.py -r -g group_id [-q]                   # Remove group
+    \t-l                                    # List all groups
+    \t-l -g group_id                        # List agents in group
+    \t-c -g group_id                        # List configuration files in group
+    \t
+    \t-a -i agent_id -g group_id [-q]       # Set agent group
+    \t-r -i agent_id [-q]                   # Unset agent group
+    \t-s -i agent_id                        # Show group of agent
+    \t
+    \t-a -g group_id [-q]                   # Create group
+    \t-r -g group_id [-q]                   # Remove group
 
 
     Params:
@@ -172,7 +172,7 @@ def usage():
 
     \t-q, --quiet (no confirmation)
     \t-d, --debug
-    """.format(argv[0])
+    """.format(basename(argv[0]))
     print(msg)
 
 
@@ -189,9 +189,6 @@ def invalid_option(msg=None):
 def main():
     # Capture Cntrl + C
     signal(SIGINT, signal_handler)
-
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
 
     # Parse arguments
     arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False, 'add-group': False, 'show-group': False, 'remove-group': False, 'quiet': False }
@@ -232,6 +229,9 @@ def main():
             exit(0)
         else:
             invalid_option()
+
+    # Initialize framework
+    myWazuh = Wazuh(get_init=True)
 
     # Actions
     if arguments['n_args'] > 5 or arguments['n_actions'] > 1:

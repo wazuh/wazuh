@@ -32,7 +32,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     cJSON *json_field;
     cJSON *location;
     cJSON *rule;
-    
+
     integration_path[2048] = 0;
     exec_tmp_file[2048] = 0;
     exec_full_cmd[4096] = 0;
@@ -40,7 +40,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     /* Initing file queue JSON - to read the alerts */
     jqueue_init(&jfileq);
 
-    for (tries = 1; tries < 100 && jqueue_open(&jfileq) < 0; tries++) {
+    for (tries = 1; tries < 100 && jqueue_open(&jfileq, 1) < 0; tries++) {
         sleep(1);
     }
 
@@ -49,7 +49,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     } else {
         mdebug1("JSON file queue connected.");
     }
-    
+
     /* Connecting to syslog. */
     while(integrator_config[s])
     {
@@ -152,7 +152,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             /* Looking if location is set */
             if(integrator_config[s]->location)
             {
-              
+
                 if (location = cJSON_GetObjectItem(al_json, "location"), !location) {
                     s++; continue;
                 }
@@ -244,7 +244,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 }
                 else
                 {
-                    
+
                     fprintf(fp, "%s", cJSON_PrintUnformatted(al_json));
                     temp_file_created = 1;
                     mdebug2("file %s was written.", exec_tmp_file);
@@ -271,8 +271,8 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         /* Clearing the memory */
         if(temp_file_created == 1)
             unlink(exec_tmp_file);
-            
-        
+
+
         if (al_json) {
             cJSON_Delete(al_json);
         }

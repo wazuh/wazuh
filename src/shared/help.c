@@ -25,5 +25,5 @@ void print_version()
     print_out("%s %s - %s", __ossec_name, __ossec_version, __author);
     print_out(" ");
     print_out("%s", __license);
-    exit(1);
+    exit(0);
 }

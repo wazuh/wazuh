@@ -243,7 +243,7 @@ int add_agent(int json_output, int no_limit)
     if (sock < 0 && !*id) {
         do {
             /* Default ID */
-            for (i = 1; snprintf(id, 8, "%03d", i), IDExist(id, 0); i++);
+            for (i = 1; snprintf(id, sizeof(id), "%03d", i), IDExist(id, 0); i++);
 
             /* Get ID */
 

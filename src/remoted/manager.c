@@ -13,6 +13,10 @@
 #include "os_net/os_net.h"
 #include <pthread.h>
 
+#if defined(__FreeBSD__)
+#define HOST_NAME_MAX 64
+#endif
+
 /* Internal structures */
 typedef struct _file_sum {
     int mark;

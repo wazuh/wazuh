@@ -223,8 +223,8 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char *outp
     }
 
     if (strcmp(file.path, final_path) != 0) {
-        merror("At WCOM write: No file is opened.");
-        strcpy(output, "err No file opened");
+        merror("At WCOM write: The target file doesn't match the opened file (%s).", file.path);
+        strcpy(output, "err The target file doesn't match the opened file");
         return strlen(output);
     }
 
@@ -254,8 +254,8 @@ size_t wcom_close(const char *file_path, char *output){
     }
 
     if (strcmp(file.path, final_path) != 0) {
-        merror("At WCOM close: No file is opened.");
-        strcpy(output, "err No file opened");
+        merror("At WCOM close: The target file doesn't match the opened file (%s).", file.path);
+        strcpy(output, "err The target file doesn't match the opened file");
         return strlen(output);
     }
 

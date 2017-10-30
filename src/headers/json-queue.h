@@ -20,7 +20,7 @@ void jqueue_init(file_queue * queue);
  * Open queue with the JSON alerts log file.
  * Returns 0 on success or -1 on error.
  */
-int jqueue_open(file_queue * queue);
+int jqueue_open(file_queue * queue, int tail);
 
 /*
  * Return next JSON object from the queue, or NULL if it is not available.
