@@ -397,7 +397,10 @@ def sync(debug, start_node=None, output_file=False, force=None):
     cluster = [n['url'] for n in filter(lambda x: x['status'] == 'connected', 
                 all_nodes)]
     # search the index of the localhost in the cluster
-    localhost_index = cluster.index('localhost')
+    try:
+        localhost_index = cluster.index('localhost')
+    except ValueError as e:
+        logging.error("Cluster nodes are not correctly configured at ossec.conf.")
 
     logging.info("Starting to sync {0}'s files".format(cluster[localhost_index]))
 
