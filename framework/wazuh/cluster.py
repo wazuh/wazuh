@@ -401,6 +401,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
         localhost_index = cluster.index('localhost')
     except ValueError as e:
         logging.error("Cluster nodes are not correctly configured at ossec.conf.")
+        exit(1)
 
     logging.info("Starting to sync {0}'s files".format(cluster[localhost_index]))
 

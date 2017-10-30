@@ -136,9 +136,19 @@ if __name__ == '__main__':
 
     if not args.f:
         res_code = pyDaemon()
+    else:
+        # define a Handler which writes INFO messages or higher to the sys.stderr
+        console = logging.StreamHandler()
+        console.setLevel(logging.DEBUG)
+        # set a format which is simpler for console use
+        formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+        # tell the handler to use this format
+        console.setFormatter(formatter)
+        # add the handler to the root logger
+        logging.getLogger('').addHandler(console)
 
     if not args.d:
-        logging.disable(logging.DEBUG)
+        logging.setLevel(logging.INFO)
 
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
