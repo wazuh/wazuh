@@ -47,7 +47,6 @@ install:
 	$(INSTALL_DIR) $(PREFIX)/framework/lib
 
 	$(INSTALL_EXEC) wazuh/*.py ${PREFIX}/framework/wazuh
-	$(INSTALL_EXEC) wazuh/*.so ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) $(SQLITE_DIR)/sqlite3.o ${PREFIX}/framework/lib/libsqlite3.so.0
 ifeq (${uname_S},Linux)
 	$(INSTALL_EXEC) cluster_daemon ${PREFIX}/framework
