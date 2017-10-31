@@ -59,6 +59,7 @@ typedef struct wmodule {
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
 extern int wm_max_eps;          // Maximum events per second sent by OpenScap Wazuh Module
+extern int wm_kill_timeout;     // Time for a process to quit before killing it
 
 // Add module to the global list
 void wm_add(wmodule *module);

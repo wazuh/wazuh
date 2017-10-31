@@ -393,17 +393,64 @@ void wm_remove_sid(pid_t sid) {
 // Terminate every child process group. Doesn't wait for them!
 
 void wm_kill_children() {
-    // This function can be called from a signal handler
+    // This function may be called from a signal handler
 
     int i;
+    int timeout;
     pid_t sid;
 
     for (i = 0; i < WM_POOL_SIZE; i++) {
         sid = wm_children[i];
 
         if (sid) {
-            kill(-sid, SIGTERM);
-            wm_children[i] = 0;
+            if (wm_kill_timeout) {
+                timeout = wm_kill_timeout;
+
+                // Fork a process to kill the child
+
+                switch (fork()) {
+                case -1:
+                    merror("wm_kill_children(): Couldn't fork: (%d) %s.", errno, strerror(errno));
+                    break;
+
+                case 0: // Child
+                    kill(-sid, SIGTERM);
+
+                    do {
+                        sleep(1);
+
+                        // Poll process, waitpid() does not work here
+
+                        switch (kill(-sid, 0)) {
+                        case -1:
+                            switch (errno) {
+                            case ESRCH:
+                                exit(EXIT_SUCCESS);
+
+                            default:
+                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", sid, errno, strerror(errno));
+                                exit(EXIT_FAILURE);
+                            }
+
+                        default:
+                            timeout--;
+                        }
+                    } while (timeout);
+
+                    // If time is gone, kill process
+
+                    mdebug1("Killing process group %d", sid);
+
+                    kill(-sid, SIGKILL);
+                    exit(EXIT_SUCCESS);
+
+                default: // Parent
+                    wm_children[i] = 0;
+                }
+            } else {
+                // Kill immediately
+                kill(-sid, SIGKILL);
+            }
         }
     }
 }

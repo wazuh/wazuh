@@ -118,8 +118,8 @@ void wm_setup()
     // Get defined values from internal_options
 
     wm_task_nice = getDefine_Int("wazuh_modules", "task_nice", -20, 19);
-
     wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 100, 1000);
+    wm_kill_timeout = getDefine_Int("wazuh_modules", "kill_timeout", 0, 3600);
 
     // Read configuration: ossec.conf
 
