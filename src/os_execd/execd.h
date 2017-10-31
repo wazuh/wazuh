@@ -29,6 +29,7 @@
 
 extern int repeated_offenders_timeout[];
 extern char ** wcom_ca_store;
+extern time_t pending_upg;
 
 /** Function prototypes **/
 
@@ -49,8 +50,9 @@ size_t wcom_unmerge(const char *file_path, char *output);
 size_t wcom_uncompress(const char * source, const char * target, char * output);
 size_t wcom_upgrade(const char * package, const char * installer, char * output);
 size_t wcom_upgrade_result(char *output);
-size_t wcom_restart(char *output); 
+size_t wcom_restart(char *output);
 size_t wcom_dispatch(char *command, size_t length, char *output);
+size_t lock_restart(int timeout);
 
 #ifndef WIN32
 // Com request thread dispatcher
