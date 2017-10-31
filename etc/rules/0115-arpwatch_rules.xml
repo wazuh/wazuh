@@ -31,7 +31,7 @@
     <if_sid>7200</if_sid>
     <match>reaper: pid </match>
     <description>Arpwatch: exiting.</description>
-    <group>service_availability,pci_dss_10.6.1,</group>
+    <group>service_availability,pci_dss_10.6.1,gpg13_4.14,</group>
   </rule>
 
   <rule id="7204" level="9">

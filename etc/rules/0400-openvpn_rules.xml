@@ -20,7 +20,7 @@
         <if_sid>81800</if_sid>
         <match>Peer Connection Initiated with</match>
         <description>OpenVPN: User logged in</description>
-        <group>authentication_success,pci_dss_10.2.5,</group>
+        <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,</group>
     </rule>
 
     <rule id="81802" level="3" frequency="1" timeframe="60">

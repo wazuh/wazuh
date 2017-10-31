@@ -15,7 +15,7 @@
         <if_sid>18101</if_sid>
         <id>1102</id>
         <description>The audit log was cleared</description>
-        <group>log_clearing_auditlog,</group>
+        <group>log_clearing_auditlog,gpg13_10.1,</group>
     </rule>
 
     <!--
@@ -23,9 +23,9 @@
     -->
     <rule id="83201" level="5">
         <if_sid>18101</if_sid>
-        <id>104</id>
+        <id>^104$</id>
         <description>The Internet Explorer log file was cleared</description>
-        <group>log_clearing_ie,</group>
+        <group>log_clearing_ie,gpg13_10.1,</group>
     </rule>
 
     <!--
@@ -33,8 +33,8 @@
     -->
     <rule id="83202" level="5">
         <if_sid>18101</if_sid>
-        <id>6005</id>
+        <id>^6005$</id>
         <description>The Event log service was started</description>
-        <group>windows_log_service_started,</group>
+        <group>windows_log_service_started,gpg13_10.1,</group>
     </rule>
 </group>

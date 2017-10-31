@@ -31,7 +31,7 @@
         <if_sid>82202</if_sid>
         <match>Password incorrect</match>
         <description>FreeIPA: Authentication fail</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
     </rule>
 
 </group>

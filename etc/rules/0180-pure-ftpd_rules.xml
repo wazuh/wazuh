@@ -24,14 +24,14 @@
     <if_sid>11300</if_sid>
     <match>[WARNING] Authentication failed for user</match>
     <description>pure-ftpd: FTP Authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
   </rule>
 
   <rule id="11303" level="0">
     <if_sid>11300</if_sid>
     <match> [INFO] Logout| [INFO] Timeout</match>
     <description>pure-ftpd: FTP user logout/timeout</description>
-    <group>pci_dss_8.1.5,</group>
+    <group>pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,</group>
   </rule>
 
   <rule id="11304" level="0">
@@ -50,7 +50,7 @@
   <rule id="11306" level="10" frequency="6" timeframe="120">
     <if_matched_sid>11302</if_matched_sid>
     <description>pure-ftpd: FTP brute force (multiple failed logins).</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,</group>
   </rule>
 
   <rule id="11307" level="10" frequency="6" timeframe="60">
@@ -64,7 +64,7 @@
     <if_sid>11300</if_sid>
     <match>[INFO] \S+ is now logged in| is now logged in</match>
     <description>pure-ftpd: FTP Authentication success.</description>
-    <group>authentication_success,pci_dss_10.2.5,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,</group>
   </rule>
 
   <rule id="11310" level="0">

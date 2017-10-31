@@ -1,0 +1,34 @@
+<!--
+  -  Proxmox Virtual Environment (Proxmox VE) rules
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!-- ID: 87200 - 87300 -->
+<group name="syslog,proxmox-ve,">
+  <rule id="87200" level="0">
+    <decoded_as>pvedaemon</decoded_as>
+    <description>pvedaemon messages grouped.</description>
+  </rule>
+
+  <rule id="87201" level="6">
+    <if_sid>87200</if_sid>
+    <match>authentication failure; </match>
+    <description>Proxmox VE authentication failed.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+
+  <rule id="87202" level="10" frequency="6" timeframe="120">
+    <if_matched_sid>87201</if_matched_sid>
+    <same_source_ip />
+    <description>Proxmox VE brute force (multiple failed logins).</description>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
+  </rule>
+
+  <rule id="87203" level="3">
+    <if_sid>87200</if_sid>
+    <match> successful auth for user </match>
+    <description>Proxmox VE authentication succeeded.</description>
+    <group>authentication_success,pci_dss_10.2.5,</group>
+  </rule>
+
+</group>

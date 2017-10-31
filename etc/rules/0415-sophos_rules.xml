@@ -41,6 +41,7 @@
 		<if_sid>82100</if_sid>
 		<match>detection data version</match>
 		<description>Sophos database updated</description>
+        <group>gpg13_4.4,</group>
 	</rule>
 
 </group>
