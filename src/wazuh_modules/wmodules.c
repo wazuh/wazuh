@@ -13,7 +13,8 @@
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
-int wm_max_eps;
+int wm_max_eps;             // Maximum events per second sent by OpenScap Wazuh Module
+int wm_kill_timeout;        // Time for a process to quit before killing it
 
 // Add module to the global list
 
