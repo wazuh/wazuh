@@ -168,7 +168,7 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         }
     } else if (strcmp(rcv_comm, "restart") == 0) {
         return wcom_restart(output);
-    } else if (strcmp(rcv_comm, "rlock") == 0) {
+    } else if (strcmp(rcv_comm, "lock_restart") == 0) {
         static int max_restart_lock = 0;
         int timeout;
 
@@ -177,11 +177,16 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         };
         timeout = atoi(rcv_args);
 
-        if (timeout < 0 || timeout > max_restart_lock) {
-            timeout = max_restart_lock;
+        if (timeout < -1) {
             strcpy(output, "err Invalid timeout");
         } else {
             strcpy(output, "ok");
+            if (timeout == -1 || timeout > max_restart_lock) {
+                if (timeout > max_restart_lock) {
+                    mwarn("Timeout exceeds the maximum allowed.");
+                }
+                timeout = max_restart_lock;
+            }
         }
         lock_restart(timeout);
 
@@ -520,7 +525,7 @@ size_t wcom_restart(char *output) {
         ExecCmd_Win32(exec_cm);
 #endif
     } else {
-        mwarn(LOCK_RES, (int)lock);
+        minfo(LOCK_RES, (int)lock);
     }
 
     return strlen(output);
@@ -720,7 +725,6 @@ int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1
 }
 
 size_t lock_restart(int timeout) {
-    minfo(LOCK_RES, timeout);
     pending_upg = time(NULL) + (time_t) timeout;
     return 0;
 }
