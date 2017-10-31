@@ -83,12 +83,14 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
                 logging.debug("Command {0} executed for {1}".format(command[0], self.addr))
 
             data = json.dumps({'error': error, 'data': res})
-            res_size = str(len(data))
-            self.send(data)
-            logging.debug("Data sent to {0}".format(self.addr))
+
         except Exception as e:
             logging.error("Error handling client request: {0}".format(str(e)))
-            self.handle_close()
+            data = json.dumps({'error': 1, 'data': str(e)})
+        
+        self.send(data + '\n')
+        logging.debug("Data sent to {0}".format(self.addr))
+        # self.handle_close()
 
 class WazuhClusterServer(asyncore.dispatcher):
 
