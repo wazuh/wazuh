@@ -33,6 +33,25 @@ void wm_check() {
     wmodule *i;
     wmodule *j;
     wmodule *next;
+    wmodule ** ptr = &wmodules;
+
+    // Discard empty configurations
+
+    for (i = wmodules; i; i = i->next) {
+        if (!i->context) {
+            *ptr = i->next;
+            free(i);
+
+            if (*ptr) {
+                i = *ptr;
+            } else {
+                break;
+            }
+
+        } else {
+            ptr = &i->next;
+        }
+    }
 
     // Check that a configuration exists
 
