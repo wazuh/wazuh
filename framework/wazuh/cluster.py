@@ -377,13 +377,13 @@ def sync(debug, start_node=None, output_file=False, force=None):
         if error:
             logging.debug(res)
             result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
-                              'error': 1, 'data':{'updated':[], 'invalid':[], 
+                              'error': 1, 'files':{'updated':[], 'invalid':[], 
                                             'error':list(map(itemgetter(0), pending_files))}})
         else:
             logging.debug({'updated': len(res['data']['updated']), 
                           'error': res['data']['error'],
                           'invalid': res['data']['invalid']})
-            result_queue.put({'node': node_dest, 'data': res, 'error': 0, 'reason': ""})
+            result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
 
     config_cluster = read_config()
     if not config_cluster:
@@ -479,7 +479,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
         threads.append(t)
         t.start()
         result = result_queue.get()
-        thread_results[result['node']] = {'data': result['data'], 'error': result['error'],
+        thread_results[result['node']] = {'files': result['files'], 'error': result['error'],
                                           'reason': result['reason']}
 
     for t in threads:
@@ -491,7 +491,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
     before = time()
     for node,data in thread_results.items():
         logging.info("Updating {0}'s file status in DB".format(node))
-        for updated in divide_list(data['data']['updated']):
+        for updated in divide_list(data['files']['updated']):
             update_sql = "update2"
             for u in updated:
                 update_sql += " synchronized {0} /{1}".format(node, u)
@@ -499,7 +499,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
             cluster_socket.send(update_sql)
             received = cluster_socket.recv(10000)
 
-        for failed in divide_list(data['data']['error']):
+        for failed in divide_list(data['files']['error']):
             update_sql = "update2"
             for f in failed:
                 if isinstance(f, dict):
@@ -510,7 +510,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
             cluster_socket.send(update_sql)
             received = cluster_socket.recv(10000)
 
-        for invalid in divide_list(data['data']['invalid']):
+        for invalid in divide_list(data['files']['invalid']):
             update_sql = "update2"
             for i in invalid:
                 update_sql += " invalid {0} {1}".format(node, i)
@@ -526,9 +526,9 @@ def sync(debug, start_node=None, output_file=False, force=None):
     if debug:
         return thread_results
     else:
-        return {node:{'updated': len(data['data']['updated']), 
-                      'error': data['data']['error'],
-                      'invalid': data['data']['invalid'],
+        return {node:{'updated': len(data['files']['updated']), 
+                      'error': data['files']['error'],
+                      'invalid': data['files']['invalid'],
                       'error': data['error'],
                       'reason': data['reason']} 
                       for node,data in thread_results.items()}
