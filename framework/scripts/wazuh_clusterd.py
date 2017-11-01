@@ -10,10 +10,11 @@ from distutils.util import strtobool
 from sys import argv, exit, path
 from os.path import dirname
 from subprocess import check_call, CalledProcessError, check_output
-from os import devnull
+from os import devnull, seteuid, setgid
 from multiprocessing import Process
 from re import search
 from time import sleep
+from pwd import getpwnam
 
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
@@ -128,6 +129,11 @@ def crontab_sync(interval):
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
 if __name__ == '__main__':
+    # Drop privileges to ossec
+    pwdnam_ossec = getpwnam('ossec')
+    setgid(pwdnam_ossec.pw_gid)
+    seteuid(pwdnam_ossec.pw_uid)
+
     args = parser.parse_args()
     if args.V:
         check_output(["{0}/framework/cluster_daemon".format(ossec_path), '-V'])
