@@ -105,6 +105,31 @@ WriteOpenSCAP()
     fi
 }
 
+##########
+# InstallOpenSCAPFiles()
+##########
+InstallOpenSCAPFiles()
+{
+    if [ "X$OPENSCAP" = "Xyes" ]; then
+        cd ..
+        OPENSCAP_FILES_PATH=$(GetTemplate "openscap.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+        cd ./src
+        if [ "$OPENSCAP_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
+            echo "SCAP security policies not available for this OS version."
+        else
+            echo "Installing SCAP security policies..."
+            OPENSCAP_FILES=$(cat .$OPENSCAP_FILES_PATH)
+            for file in $OPENSCAP_FILES; do
+                if [ -f "../wodles/oscap/content/$file" ]; then
+                    ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/$file ${PREFIX}/wodles/oscap/content
+                else
+                    echo "ERROR: SCAP security policy not found: ./wodles/oscap/content/$file"
+                fi
+            done
+        fi
+    fi
+
+}
 
 ##########
 # WriteLogs()
@@ -572,11 +597,7 @@ InstallCommon(){
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
 
-    if [ -d "../wodles/oscap/content" ]; then
-        if [ $(ls ../wodles/oscap/content | wc -l) -gt 0 ]; then
-            ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/* ${PREFIX}/wodles/oscap/content
-        fi
-    fi
+	InstallOpenSCAPFiles
 
 	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
 
