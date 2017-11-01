@@ -263,7 +263,6 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None)
 
     dest_file.close()
 
-    # mtime_epoch = int(mktime(datetime.strptime(mtime, "%Y-%m-%d %H:%M:%S").timetuple()))
     mtime_epoch = int(mktime(mtime.timetuple()))
     utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
 
