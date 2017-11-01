@@ -7,5 +7,5 @@
     <content type="xccdf" path="ssg-debian-8-ds.xml">
       <profile>xccdf_org.ssgproject.content_profile_common</profile>
     </content>
-    <content type="oval" path="cve-debian-oval.xml"/>
+    <content type="oval" path="cve-debian-8-oval.xml"/>
   </wodle>
