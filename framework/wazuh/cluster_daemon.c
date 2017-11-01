@@ -26,6 +26,8 @@
 #include <debug_op.h>
 #include <defs.h>
 #include <help.h>
+#include <file_op.h>
+#include <error_messages.h>
 
 #define DB_PATH "/stats/cluster_db"
 #define SOCKET_PATH "/queue/ossec/cluster_db"
@@ -96,13 +98,15 @@ void* daemon_socket() {
     strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path)-1);
     unlink(socket_path);
 
-    int oldmask = umask(0660);
-
     if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
         mterror_exit(DB_TAG, "Error binding socket: %s", strerror(errno));
     }
 
-    umask(oldmask);
+    /* Change permissions */
+    if (chmod(socket_path, 0660) < 0) {
+        close(fd);
+        mterror_exit(DB_TAG, "Error changing socket permissions: %s", strerror(errno));
+    }
 
     /* Prepare database */
     char db_path[80];
@@ -415,6 +419,11 @@ int main(int argc, char * const * argv) {
         if (daemon(0, 0) < 0) {
             mterror_exit(MAIN_TAG, "Error starting daemon: %s", strerror(errno));
         }
+    }
+
+    /* Create PID files */
+    if (CreatePID("cluster_daemon", getpid()) < 0) {
+        mterror_exit(MAIN_TAG, PID_ERROR);
     }
 
     pthread_t socket_thread, inotify_thread;

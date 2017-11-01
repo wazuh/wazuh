@@ -31,6 +31,7 @@ STRING_OP        = ../src/shared/string_op.o
 FILE_OP          = ../src/shared/file_op.o
 PRIVSEP_OP       = ../src/shared/privsep_op.o
 HELP_O           = ../src/shared/help.o
+ERROR_MSGS       = ../src/error_messages
 DEBUG_OP_DEPS    = $(DEBUG_OP) $(JSON_LIB) $(XML_LIB) $(XML_ACCESS) $(STRBREAK) $(STRING_OP) $(FILE_OP) $(PRIVSEP_OP) $(REGEX_OP) $(HELP_O)
 
 ifeq (${uname_S},Linux)
@@ -68,7 +69,7 @@ endif
 
 ifeq (${uname_S},Linux)
 cluster_daemon.o: wazuh/cluster_daemon.c
-	$(CC) $(CFLAGS) $(THREAD_FLAGS) -c $^ -o $@ -I $(SQLITE_DIR) -I $(HEADERS_DIR) -ldl
+	$(CC) $(CFLAGS) $(THREAD_FLAGS) -c $^ -o $@ -I $(SQLITE_DIR) -I $(HEADERS_DIR) -I $(ERROR_MSGS) -ldl
 endif
 
 clean:
