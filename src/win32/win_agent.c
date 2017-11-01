@@ -549,16 +549,9 @@ void send_win32_info(time_t curr_time)
             merror(SEND_ERROR, "server", strerror(errno));
             sleep(1);
         }
-    } else {
-        uint32_t length = msg_size;
-
-        if (OS_SendTCPbySize(agt->sock, sizeof(length), (void*)&length) < 0) {
-            merror(SEND_ERROR, "server", strerror(errno));
-            sleep(1);
-        } else if (OS_SendTCPbySize(agt->sock, msg_size, crypt_msg) < 0) {
-            merror(SEND_ERROR, "server", strerror(errno));
-            sleep(1);
-        }
+    } else if (OS_SendSecureTCP(agt->sock, msg_size, crypt_msg) < 0) {
+        merror(SEND_ERROR, "server", strerror(errno));
+        sleep(1);
     }
 
     update_keepalive(curr_time);
