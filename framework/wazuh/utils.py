@@ -7,12 +7,14 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close as close
+from os import remove, chmod, chown, path, listdir, close
 from datetime import datetime, timedelta
 import hashlib
 import json
 import stat
-import requests
+import socket
+import asyncore
+import asynchat
 
 try:
     from subprocess import check_output
@@ -332,45 +334,57 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def send_request(url, user, password, verify, type, session=requests.Session(), method='get', data=None, file=None):
-    session.auth = (user, password)
+class WazuhClusterClient(asynchat.async_chat):
+    def __init__(self, host, port, data, file):
+        asynchat.async_chat.__init__(self)
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connect((host, port))
+        self.data = data
+        self.file = file
+        self.set_terminator('\n')
+        self.response = ""
+        self.can_read = False
+        self.can_write = True
+        self.received_data = []
 
+    def handle_connect(self):
+        pass
+
+    def handle_close(self):
+        self.close()
+
+    def readable(self):
+        return self.can_read
+
+    def writable(self):
+        return self.can_write
+
+    def handle_error(self):
+        nil, t, v, tbinfo = asyncore.compact_traceback()
+        raise t(v)
+
+    def collect_incoming_data(self, data):
+        self.received_data.append(data)
+
+    def found_terminator(self):
+        self.response = json.loads(''.join(self.received_data))
+        self.close()
+
+    def handle_write(self):
+        if self.file is not None:
+            self.send(self.data.encode() + self.file)
+        else:
+            self.send(self.data.encode())
+        self.can_read=True
+        self.can_write=False
+
+def send_request(host, port, data, file=None):
     error = 0
     try:
-        if method == 'get':
-            r = session.get(url, verify=verify)
-            if r.status_code == 401:
-                  data = str(r.text)
-                  error = 401
-        else:
-            if file:
-                r = session.post(url, verify=verify, data=file, headers={'Content-Type': 'application/zip'}, timeout=20)
-            else:
-                r = session.post(url, verify=verify, json=data)
-            if r.status_code == 401:
-                  data = str(r.text)
-                  error = 401
-    except requests.exceptions.Timeout as e:
-        data = str(e)
-        error = 1
-    except requests.exceptions.TooManyRedirects as e:
-        data = str(e)
-        error = 2
-    except requests.exceptions.RequestException as e:
-        data = str(e)
-        error = 3
+        client = WazuhClusterClient(host, int(port), data, file)
+        asyncore.loop()
+        data = client.response
     except Exception as e:
+        error = 1
         data = str(e)
-        error = 4
-
-    if error == 0:
-        if type == "json":
-            try:
-                data = json.loads(r.text)
-            except Exception as e:
-                data = str(e)
-                error = 5
-        else:
-            data = r.content
-
-    return (error, data)
+    return error, data

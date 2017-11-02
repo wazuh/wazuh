@@ -16,16 +16,24 @@ import requests
 from shutil import rmtree
 from io import BytesIO
 from itertools import compress
-import threading
 from operator import itemgetter
 from ast import literal_eval
 import socket
 import json
+import threading
 from sys import version
+# import the C accelerated API of ElementTree
+try:
+    import xml.etree.cElementTree as ET
+except ImportError:
+    import xml.etree.ElementTree as ET
 
-import logging
-logging.basicConfig(filename=common.ossec_path+'/logs/cluster.log',level=logging.DEBUG,
-                    format='%(asctime)s %(levelname)s: %(message)s')
+try:
+    import logging
+    logging.basicConfig(filename=common.ossec_path+'/logs/cluster.log',level=logging.DEBUG,
+                        format='%(asctime)s %(levelname)s: %(message)s')
+except:
+    pass
 
 is_py2 = version[0] == '2'
 if is_py2:
@@ -131,21 +139,10 @@ def compress_files(list_path, conditions={'/etc/client.keys'}):
 def read_config():
     # Get api/configuration/config.js content
     try:
-        with open(common.api_config_path) as api_config_file:
-            lines = filter(lambda x: x.startswith('config.cluster.'),
-                           api_config_file.readlines())
-
-        name_vars = map(lambda x: x.partition("=")[::2], lines)
-        config_cluster = {name.strip().split('config.')[1]:
-                          var.replace("\n","").replace("]","").replace("[","").\
-                          replace('\"',"").replace(";","").strip()
-                          for name,var in name_vars}
-
-        if "cluster.nodes" in config_cluster.keys():
-            all_nodes = config_cluster["cluster.nodes"].split(",")
-            config_cluster['cluster.nodes'] = [node.strip() for node in all_nodes]
-        else:
-            config_cluster["cluster.nodes"] = []
+        cluster_xml = ET.parse(common.ossec_conf).find('cluster')
+        config_cluster={child.tag:child.text for child in cluster_xml}
+        config_cluster['nodes'] = [child.text for child in
+                                   cluster_xml.find('nodes')]
 
     except Exception as e:
         raise WazuhException(3000, str(e))
@@ -155,7 +152,7 @@ def read_config():
 
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
 
-def get_nodes(session=requests.Session()):
+def get_nodes():
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
@@ -164,28 +161,23 @@ def get_nodes(session=requests.Session()):
     localhost_ips = get_localhost_ips()
     data = []
 
-    for url in config_cluster["cluster.nodes"]:
-        # Split http(s)://x.x.x.x:55000 in just x.x.x.x
-        if not url.split(':')[1][2:] in localhost_ips:
-            req_url = '{0}{1}'.format(url, "/cluster/node")
-            error, response = send_request(req_url, config_cluster["cluster.user"],
-                                config_cluster["cluster.password"], False, "json",session)
+    for url in config_cluster["nodes"]:
+        if not url in localhost_ips:
+            error, response = send_request(host=url, port=config_cluster["port"],
+                                data="node {0}".format('a'*(common.cluster_sync_msg_size - len("node "))))
+            if error == 0:
+                response = response['data']
         else:
             error = 0
             url = "localhost"
-            response = {'data': get_node()}
+            response = get_node()
 
         if error:
             data.append({'error': response, 'status':'disconnected', 'url':url})
             continue
 
-        if 'data' in response:
-            data.append({'url':url, 'node':response['data']['node'],
-                         'status':'connected', 'cluster':response['data']['cluster']})
-        else:
-            data.append({'error': response['message'], 'status':'Unknown', 'url':url})
-            continue
-
+        data.append({'url':url, 'node':response['node'],
+                     'status':'connected', 'cluster':response['cluster']})
 
     return {'items': data, 'totalItems': len(data)}
 
@@ -198,8 +190,8 @@ def get_node(name=None):
         if not config_cluster:
             raise WazuhException(3000, "No config found")
 
-        data["node"] = config_cluster["cluster.node"]
-        data["cluster"] = config_cluster["cluster.name"]
+        data["node"] = config_cluster["node_name"]
+        data["cluster"] = config_cluster["name"]
 
     return data
 
@@ -237,7 +229,7 @@ def get_token():
     if not config_cluster:
         raise WazuhException(3000, "No config found")
 
-    raw_key = config_cluster["cluster.key"]
+    raw_key = config_cluster["key"]
     token = sha512(raw_key).hexdigest()
     return token
 
@@ -248,6 +240,7 @@ def _check_token(other_token):
         return True
     else:
         return False
+
 
 def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None):
     # Set Timezone to epoch converter
@@ -270,14 +263,21 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None)
 
     dest_file.close()
 
-    mtime_epoch = int(mktime(datetime.strptime(mtime, "%Y-%m-%d %H:%M:%S").timetuple()))
+    mtime_epoch = int(mktime(mtime.timetuple()))
     utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
 
     # Atomic
     if w_mode == "atomic":
         rename(f_temp, fullpath)
 
+def extract_zip(zip_bytes):
+    zip_json = {}
+    with zipfile.ZipFile(BytesIO(zip_bytes)) as zipf:
+        zip_json = {name:{'data':zipf.open(name).read(),
+                          'time':datetime(*zipf.getinfo(name).date_time)}
+                    for name in zipf.namelist()}
 
+    return receive_zip(zip_json)
 
 def receive_zip(zip_file):
     logging.info("Receiving zip with {0} files".format(len(zip_file)))
@@ -350,32 +350,39 @@ def sync(debug, start_node=None, output_file=False, force=None):
     Sync this node with others
     :return: Files synced.
     """
-    def push_updates_single_node(all_files, node_dest, config_cluster, session, result_queue):
+    def push_updates_single_node(all_files, node_dest, config_cluster, result_queue):
         # filter to send only pending files
         pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
-        logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
-        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
-        url = '{0}{1}'.format(node_dest, '/cluster/node/zip')
-        
-        error, response = send_request(url, config_cluster["cluster.user"], 
-                                       config_cluster["cluster.password"], False, "text", session, 
-                                       method="post", data={}, file=zip_file)
-        
-        try:
-            res = literal_eval(response)
-        except Exception as e:
-            res = response
+        if len(pending_files) > 0:
+            logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
+            zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
+            
+            error, response = send_request(host=node_dest, port=config_cluster['port'],
+                                           data="zip {0}".format(str(len(zip_file)).
+                                            zfill(common.cluster_sync_msg_size - len("zip "))), 
+                                           file=zip_file)
+            
+            try:
+                res = literal_eval(response)
+            except Exception as e:
+                res = response
 
-        logging.debug({'updated': len(res['data']['updated']), 
-                      'error': res['data']['error'],
-                      'invalid': res['data']['invalid']})
+        else:
+            logging.info("No pending files to send to {0} ".format(node_dest))
+            res = {'data':{'updated':[], 'error':[], 'invalid':[]}}
+            error = 0
+
 
         if error:
-            result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response)})
+            logging.debug(res)
+            result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
+                              'error': 1, 'files':{'updated':[], 'invalid':[], 
+                                            'error':list(map(itemgetter(0), pending_files))}})
         else:
-            result_queue.put({'node': node_dest, 'data': res})
-
-    session = requests.Session()
+            logging.debug({'updated': len(res['data']['updated']), 
+                          'error': res['data']['error'],
+                          'invalid': res['data']['invalid']})
+            result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
 
     config_cluster = read_config()
     if not config_cluster:
@@ -386,24 +393,30 @@ def sync(debug, start_node=None, output_file=False, force=None):
     # Get own items status
     own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files().items()))
     own_items_names = own_items.keys()
-    all_nodes = get_nodes(session)['items']
+    all_nodes = get_nodes()['items']
 
     # Get connected nodes in the cluster
     cluster = [n['url'] for n in filter(lambda x: x['status'] == 'connected', 
                 all_nodes)]
     # search the index of the localhost in the cluster
-    localhost_index = cluster.index('localhost')
+    try:
+        localhost_index = cluster.index('localhost')
+    except ValueError as e:
+        logging.error("Cluster nodes are not correctly configured at ossec.conf.")
+        exit(1)
 
     logging.info("Starting to sync {0}'s files".format(cluster[localhost_index]))
 
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
 
+    logging.debug("Connected to cluster database socket")
+
     # for each connected manager, check its files. If the manager is not on database add it
     # with all files marked as pending
     all_nodes_files = {}
     remote_nodes = list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
-    logging.debug(str(cluster))
+    logging.debug("Nodes to sync: {0}".format(str(remote_nodes)))
     for node in remote_nodes:
         # check files in database
         count_query = "count {0}".format(node)
@@ -460,12 +473,13 @@ def sync(debug, start_node=None, output_file=False, force=None):
     thread_results = {}
     for node in remote_nodes:
         t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node],node,
-                                                                    config_cluster, session,
+                                                                    config_cluster,
                                                                     result_queue))
         threads.append(t)
         t.start()
         result = result_queue.get()
-        thread_results[result['node']] = result['data']
+        thread_results[result['node']] = {'files': result['files'], 'error': result['error'],
+                                          'reason': result['reason']}
 
     for t in threads:
         t.join()
@@ -476,7 +490,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
     before = time()
     for node,data in thread_results.items():
         logging.info("Updating {0}'s file status in DB".format(node))
-        for updated in divide_list(data['data']['updated']):
+        for updated in divide_list(data['files']['updated']):
             update_sql = "update2"
             for u in updated:
                 update_sql += " synchronized {0} /{1}".format(node, u)
@@ -484,15 +498,18 @@ def sync(debug, start_node=None, output_file=False, force=None):
             cluster_socket.send(update_sql)
             received = cluster_socket.recv(10000)
 
-        for failed in divide_list(data['data']['error']):
+        for failed in divide_list(data['files']['error']):
             update_sql = "update2"
             for f in failed:
-                update_sql += " failed {0} /{1}".format(node, f['item'])
+                if isinstance(f, dict):
+                    update_sql += " failed {0} /{1}".format(node, f['item'])
+                else:
+                    update_sql += " failed {0} {1}".format(node, f)
 
             cluster_socket.send(update_sql)
             received = cluster_socket.recv(10000)
 
-        for invalid in divide_list(data['data']['invalid']):
+        for invalid in divide_list(data['files']['invalid']):
             update_sql = "update2"
             for i in invalid:
                 update_sql += " invalid {0} {1}".format(node, i)
@@ -508,8 +525,10 @@ def sync(debug, start_node=None, output_file=False, force=None):
     if debug:
         return thread_results
     else:
-        return {node:{'updated': len(data['data']['updated']), 
-                      'error': data['data']['error'],
-                      'invalid': data['data']['invalid']} 
+        return {node:{'updated': len(data['files']['updated']), 
+                      'error': data['files']['error'],
+                      'invalid': data['files']['invalid'],
+                      'error': data['error'],
+                      'reason': data['reason']} 
                       for node,data in thread_results.items()}
 

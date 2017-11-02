@@ -6,6 +6,7 @@
 import re
 from operator import mul
 from functools import reduce
+from wazuh import common
 
 class InputValidator:
     """
@@ -37,3 +38,26 @@ class InputValidator:
             return reduce(mul, map(lambda x: check_single_group_name(x), group_name))
         else:
             return check_single_group_name(group_name)
+
+    def check_cluster_cmd(self, cmd):
+        # cmd must be a list
+        if not isinstance(cmd, list):
+            return False
+
+        # check command type
+        if not cmd[0] in ['zip', 'node']:
+            return False
+
+        # check cmd len list
+        if len(cmd) != 2:
+            return False
+
+        # check cmd len
+        if len(' '.join(cmd)) != common.cluster_sync_msg_size:
+            return False
+
+        # second argument of zip is a number
+        if cmd[0] == 'zip' and not re.compile('\d+').match(cmd[1]):
+            return False
+
+        return True
