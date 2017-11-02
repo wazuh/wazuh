@@ -27,7 +27,12 @@ int LogCollectorConfig(const char *cfgfile)
     loop_timeout = getDefine_Int("logcollector", "loop_timeout", 1, 120);
     open_file_attempts = getDefine_Int("logcollector", "open_attempts", 2, 998);
     vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
-    maximum_lines = getDefine_Int("logcollector", "max_lines", 100, 100000);
+    maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
+
+    if (maximum_lines > 0 && maximum_lines < 100) {
+        merror("Definition 'logcollector.max_lines' must be 0 or 100..1000000.");
+        return OS_INVALID;
+    }
 
     if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
         return (OS_INVALID);

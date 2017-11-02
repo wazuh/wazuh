@@ -65,7 +65,7 @@ void *read_audit(int pos, int *rc, int drop_it) {
 
     *rc = 0;
 
-    while (fgets(buffer, OS_MAXSTR, logff[pos].fp) && lines < maximum_lines){
+    while (fgets(buffer, OS_MAXSTR, logff[pos].fp) && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         if ((p = strchr(buffer, '\n')))
