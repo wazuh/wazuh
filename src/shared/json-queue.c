@@ -18,7 +18,7 @@ void jqueue_init(file_queue * queue) {
  * Open queue with the JSON alerts log file.
  * Returns 0 on success or -1 on error.
  */
-int jqueue_open(file_queue * queue) {
+int jqueue_open(file_queue * queue, int tail) {
     strncpy(queue->file_name, isChroot() ? ALERTSJSON_DAILY : DEFAULTDIR ALERTSJSON_DAILY, MAX_FQUEUE);
 
     if (queue->fp) {
@@ -31,7 +31,7 @@ int jqueue_open(file_queue * queue) {
     }
 
     /* Position file queue to end of the file */
-    if (fseek(queue->fp, 0, SEEK_END) == -1) {
+    if (tail && fseek(queue->fp, 0, SEEK_END) == -1) {
         merror(FOPEN_ERROR, queue->file_name, errno, strerror(errno));
         fclose(queue->fp);
         queue->fp = NULL;
@@ -58,7 +58,7 @@ cJSON * jqueue_next(file_queue * queue) {
     char buffer[OS_MAXSTR + 1];
     char *end;
 
-    if (!queue->fp && jqueue_open(queue) < 0) {
+    if (!queue->fp && jqueue_open(queue, 1) < 0) {
         return NULL;
     }
 
@@ -82,7 +82,7 @@ cJSON * jqueue_next(file_queue * queue) {
         if (buf.st_ino != queue->f_status.st_ino) {
             mdebug2("jqueue_next(): Alert file inode changed. Reloading.");
 
-            if (jqueue_open(queue) < 0) {
+            if (jqueue_open(queue, 0) < 0) {
                 return NULL;
             }
 

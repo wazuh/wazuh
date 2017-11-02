@@ -230,7 +230,7 @@ static void OS_Run(MailConfig *mail)
         minfo("Getting alerts in JSON format.");
         jqueue_init(fileq);
 
-        if (jqueue_open(fileq) < 0) {
+        if (jqueue_open(fileq, 1) < 0) {
             merror("Could not open JSON alerts file.");
         }
 
