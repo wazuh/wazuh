@@ -10,11 +10,14 @@ from distutils.util import strtobool
 from sys import argv, exit, path
 from os.path import dirname
 from subprocess import check_call, CalledProcessError, check_output
-from os import devnull, seteuid, setgid, getpid
+from os import devnull, seteuid, setgid, getpid, kill
 from multiprocessing import Process
 from re import search
 from time import sleep
 from pwd import getpwnam
+from signal import signal, SIGINT
+import ctypes
+import ctypes.util
 
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
@@ -29,6 +32,8 @@ parser.add_argument('-V', help="Print version", action='store_true')
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
 
+child_pid = 0
+
 # Import framework
 try:
     from wazuh import Wazuh
@@ -37,7 +42,7 @@ try:
     from wazuh.exception import WazuhException
     from wazuh.InputValidator import InputValidator
     from wazuh.utils import send_request
-    from wazuh.pyDaemonModule import pyDaemon, create_pid
+    from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
     iv = InputValidator()
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -128,6 +133,30 @@ def crontab_sync(interval):
         sync(False)
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
+def signal_handler(n_signal, frame):
+    def strsignal(n_signal):
+        libc = ctypes.CDLL(ctypes.util.find_library('c'))
+        strsignal_proto = ctypes.CFUNCTYPE(ctypes.c_char_p, ctypes.c_int)
+        strsignal_c = strsignal_proto(("strsignal", libc), ((1,),))
+
+        return strsignal_c(n_signal)
+
+    logging.info("Signal [{0}-{1}] received. Exit cleaning...".format(n_signal, 
+                                                               strsignal(n_signal)))
+    # received Cntrl+C
+    if n_signal == SIGINT:
+        # kill C daemon if it's running
+        try:
+            pid = int(check_output(["pidof","{0}/framework/cluster_daemon".format(ossec_path)]))
+            kill(pid, SIGINT)
+        except CalledProcessError:
+            pass
+
+        if child_pid != 0:
+            # remove pid files
+            delete_pid("wazuh-clusterd", getpid())
+    exit(1)
+
 if __name__ == '__main__':
     # Drop privileges to ossec
     pwdnam_ossec = getpwnam('ossec')
@@ -138,6 +167,9 @@ if __name__ == '__main__':
     if args.V:
         check_output(["{0}/framework/cluster_daemon".format(ossec_path), '-V'])
         exit(0)
+
+    # Capture Cntrl + C
+    signal(SIGINT, signal_handler)
 
     if not args.f:
         res_code = pyDaemon()
@@ -172,6 +204,7 @@ if __name__ == '__main__':
     if not args.f:
         p.daemon=True
     p.start()
+    child_pid = p.pid
 
     server = WazuhClusterServer('' if not cluster_config['host'] else cluster_config['host'], 
                                 int(cluster_config['port']))

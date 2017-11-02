@@ -392,6 +392,21 @@ void* daemon_inotify() {
     return 0;
 }
 
+/* Signal handler */
+void handler(int signum) {
+    switch (signum) {
+    case SIGHUP:
+    case SIGINT:
+    case SIGTERM:
+        mtinfo(MAIN_TAG, SIGNAL_RECV, signum, strsignal(signum));
+        DeletePID("cluster_daemon");
+        break;
+    default:
+        mterror(MAIN_TAG, "unknown signal (%d)", signum);
+    }
+    exit(1);
+}
+
 int main(int argc, char * const * argv) {
     int run_foreground = 0;
     int c;
@@ -422,8 +437,17 @@ int main(int argc, char * const * argv) {
     }
 
     /* Create PID files */
+    mtdebug2(MAIN_TAG, "Creating PID file...");
     if (CreatePID("cluster_daemon", getpid()) < 0) {
         mterror_exit(MAIN_TAG, PID_ERROR);
+    }
+
+    /* Signal manipulation */
+    {
+        struct sigaction action = { .sa_handler = handler, .sa_flags = SA_RESTART };
+        sigaction(SIGTERM, &action, NULL);
+        sigaction(SIGHUP, &action, NULL);
+        sigaction(SIGINT, &action, NULL);
     }
 
     pthread_t socket_thread, inotify_thread;
