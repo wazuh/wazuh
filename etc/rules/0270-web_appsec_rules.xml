@@ -84,7 +84,7 @@
   <!-- BAD/Annoying user agents -->
   <rule id="31508" level="6">
     <if_sid>31100</if_sid>
-    <match> "ZmEu"| "libwww-perl/|"the beast"|"Morfeus|"ZmEu|"Nikto|"w3af.sourceforge.net|MJ12bot/v</match>
+    <match> "ZmEu"| "libwww-perl/|"the beast"|"Morfeus|"ZmEu|"Nikto|"w3af.sourceforge.net|MJ12bot/v| Jorgee"|"Proxy Gear Pro|"DataCha0s</match>
     <description>Blacklisted user agent (known malicious user agent).</description>
    <group>pci_dss_6.5,pci_dss_11.4,</group>
   </rule>

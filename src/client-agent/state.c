@@ -97,8 +97,8 @@ int write_state() {
         "\n"
         "# Agent status:\n"
         "# - pending:      waiting for get connected.\n"
-        "# - connected:    connection established with manager in the last 30 minutes.\n"
-        "# - disconnected: connection lost or no ACK received in the last 30 minutes.\n"
+        "# - connected:    connection established with manager in the last %d seconds.\n"
+        "# - disconnected: connection lost or no ACK received in the last %d seconds.\n"
         "status='%s'\n"
         "\n"
         "# Last time a keepalive was sent\n"
@@ -112,7 +112,7 @@ int write_state() {
         "\n"
         "# Number of messages (events + control messages) sent to the manager\n"
         "msg_sent='%u'\n"
-        , __local_name, status, last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
+        , __local_name, agt->notify_time, agt->notify_time, status, last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
 
     fclose(fp);
 

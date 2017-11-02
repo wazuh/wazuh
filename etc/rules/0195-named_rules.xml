@@ -52,7 +52,7 @@
     <if_sid>12100</if_sid>
     <match>refused notify from non-master</match>
     <description>DNS configuration error.</description>
-	<group>system_error,pci_dss_10.6.1,</group>
+	<group>system_error,pci_dss_10.6.1,gpg13_4.3,</group>
   </rule>
 
   <rule id="12107" level="0">
@@ -67,14 +67,14 @@
     <match>query (cache) denied|: query (cache)</match>
     <description>Query cache denied (probably config error).</description>
     <info type="link">http://www.reedmedia.net/misc/dns/errors.html</info>
-	<group>system_error,pci_dss_10.2.4,pci_dss_10.6.1,</group>
+	<group>system_error,pci_dss_10.2.4,pci_dss_10.6.1,gpg13_4.3,</group>
   </rule>
 
   <rule id="12109" level="12">
     <if_sid>12100</if_sid>
     <match>exiting (due to fatal error)</match>
     <description>Named fatal error. DNS service going down.</description>
-    <group>service_availability,pci_dss_10.6.1,</group>
+    <group>service_availability,pci_dss_10.6.1,gpg13_4.1,</group>
   </rule>
 
   <rule id="12110" level="8">
@@ -82,19 +82,19 @@
     <regex>\S+ \S ours (\S+)</regex>
     <description>Serial number from master is lower </description>
     <description>than stored.</description>
-    <group>system_error,</group>
+    <group>system_error,gpg13_4.3,</group>
   </rule>
 
   <rule id="12111" level="8">
     <regex>^transfer of \S+ from \S+ failed while receiving \S+ REFUSED</regex>
     <description>Unable to perform zone transfer.</description>
-    <group>system_error,pci_dss_10.6.1,</group>
+    <group>system_error,pci_dss_10.6.1,gpg13_4.3,</group>
   </rule>
 
   <rule id="12112" level="4">
     <regex>^zone \S+: expired</regex>
     <description>Zone transfer error.</description>
-    <group>pci_dss_10.6.1,</group>
+    <group>pci_dss_10.6.1,gpg13_4.3,</group>
   </rule>
 
   <rule id="12113" level="0">
@@ -121,7 +121,7 @@
     <match>syntax error near|</match>
     <match>reloading configuration failed: unexpected token</match>
     <description>Syntax error in a named configuration file.</description>
-	<group>pci_dss_10.6.1,</group>
+	<group>pci_dss_10.6.1,gpg13_4.3,</group>
   </rule>
 
 
@@ -173,7 +173,7 @@
     <if_sid>12100</if_sid>
     <match>reloading configuration failed: unexpected end of input</match>
     <description>BIND Configuration error.</description>
-	<group>pci_dss_10.6.1,</group>
+	<group>pci_dss_10.6.1,gpg13_4.3,</group>
   </rule>
 
   <rule id="12126" level="0">
@@ -296,7 +296,7 @@
     <if_sid>12100</if_sid>
     <match>reloading configuration failed: out of memory</match>
     <description>Server does not have enough memory to reload the configuration.</description>
-    <group>pci_dss_10.6.1,</group>
+    <group>pci_dss_10.6.1,gpg13_4.1,</group>
   </rule>
 
   <rule id="12145" level="1">

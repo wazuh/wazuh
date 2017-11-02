@@ -25,13 +25,32 @@ Jul 21 18:31:21 fw01 openvpn[76395]: chapolin/200.200.200.200:17777 send_push_re
 <!--
 Jul 21 18:31:19 fw01 openvpn[76395]: 200.200.200.200:17777 [chapolin] Peer Connection Initiated with [AF_INET]200.200.200.200:17777
 May 14 17:49:12 auth openvpn: Sun May 14 17:49:12 2017 200.200.200.200:17777 [chapolin] Peer Connection Initiated with [AF_INET]200.200.200.200:53230
-Aug 30 16:08:29 foo ovpn-server[107]: 192.168.178.1 [admin] Peer Connection Initiated with [AF_INET6]::ffff:192.168.178.1:44902
 -->
 <decoder name="openvpn-ip-user">
   <parent>openvpn</parent>
   <prematch>\S+:\d+ [</prematch>
   <regex>(\S+):(\d+) [(\S+)]</regex>
   <order>srcip,srcport,srcuser</order>
+</decoder>
+
+<!--
+Sep 24 10:39:30 foo ovpn-server[145]: TLS Error: cannot locate HMAC in incoming packet from [AF_INET6]::ffff:192.168.178.1:50165
+-->
+<decoder name="openvpn-ip-port">
+  <parent>openvpn</parent>
+  <prematch> [AF_INET]| [AF_INET6]</prematch>
+  <regex>](\S+):(\d+)$</regex>
+  <order>srcip,srcport</order>
+</decoder>
+
+<!--
+Aug 30 16:08:29 foo ovpn-server[107]: 192.168.178.1 [admin] Peer Connection Initiated with [AF_INET6]::ffff:192.168.178.1:44902
+-->
+<decoder name="openvpn-ip-user-port">
+  <parent>openvpn</parent>
+  <prematch>\S+ [</prematch>
+  <regex>(\S+) [(\S+)]\.+:(\d+)$</regex>
+  <order>srcip,srcuser,srcport</order>
 </decoder>
 
 <!--

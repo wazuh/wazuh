@@ -22,6 +22,7 @@
         <field name="audit.type">DAEMON_RESUME|DAEMON_START</field>
         <field name="audit.res">success</field>
         <description>Auditd: Start / Resume</description>
+        <group>gpg13_4.14,gpg13_10.1,</group>
     </rule>
 
     <rule id="80702" level="10">
@@ -29,7 +30,7 @@
         <field name="audit.type">DAEMON_RESUME|DAEMON_START</field>
         <field name="audit.res">failed</field>
         <description>Auditd: Start / Resume FAILED</description>
-        <group>audit_daemon,service_availability,pci_dss_10.6.1,</group>
+        <group>audit_daemon,service_availability,pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -40,7 +41,7 @@
         <field name="audit.type">DAEMON_END</field>
         <field name="audit.res">success</field>
         <description>Auditd: End</description>
-        <group>audit_daemon,service_availability,pci_dss_10.6.1,</group>
+        <group>audit_daemon,service_availability,pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -50,7 +51,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">DAEMON_ABORT</field>
         <description>Auditd: Abort</description>
-        <group>audit_daemon,service_availability,pci_dss_10.6.1,</group>
+        <group>audit_daemon,service_availability,pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -61,7 +62,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">CONFIG_CHANGE|DAEMON_CONFIG</field>
         <description>Auditd: Configuration changed</description>
-        <group>audit_configuration,</group>
+        <group>audit_configuration,gpg13_10.1,</group>
     </rule>
 
 
@@ -74,7 +75,7 @@
         <field name="audit.type">ANOM_PROMISCUOUS</field>
         <match>prom=256</match>
         <description>Auditd: device enables promiscuous mode</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -84,7 +85,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_ABEND</field>
         <description>Auditd: process ended abnormally</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -94,7 +95,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_EXEC</field>
         <description>Auditd: execution of a file ended abnormally</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -104,7 +105,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_MK_EXEC</field>
         <description>Auditd: file is made executable</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.6,</group>
     </rule>
 
     <!--
@@ -156,7 +157,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_ADD_ACCT</field>
         <description>Auditd: user-space account addition ended abnormally.</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,</group>
     </rule>
 
     <!--
@@ -166,7 +167,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_DEL_ACCT</field>
         <description>Auditd: user-space account deletion ended abnormally.</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,</group>
     </rule>
 
     <!--
@@ -176,7 +177,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_MOD_ACCT</field>
         <description>Auditd: user-space account modification ended abnormally.</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,</group>
     </rule>
 
     <!--
@@ -186,7 +187,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_ROOT_TRANS</field>
         <description>Auditd: user becomes root</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,</group>
     </rule>
 
     <!--
@@ -196,7 +197,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_LOGIN_ACCT</field>
         <description>Auditd: account login attempt ended abnormally.</description>
-        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,</group>
     </rule>
 
     <!--
@@ -206,7 +207,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_LOGIN_FAILURES</field>
         <description>Auditd: limit of failed login attempts reached.</description>
-        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.5,</group>
     </rule>
 
     <!--
@@ -216,7 +217,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_LOGIN_LOCATION</field>
         <description>Auditd: login attempt from a forbidden location.</description>
-        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.5,</group>
     </rule>
 
     <!--
@@ -226,7 +227,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_LOGIN_SESSIONS</field>
         <description>Auditd: login attempt reached the maximum amount of concurrent sessions.</description>
-        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.5,</group>
     </rule>
 
     <!--
@@ -236,7 +237,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_LOGIN_TIME</field>
         <description>Auditd: login attempt is made at a time when it is prevented by.</description>
-        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.5,</group>
     </rule>
 
 
@@ -258,7 +259,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">MAC_STATUS</field>
         <description>Auditd: SELinux mode (enforcing, permissive, off) is changed</description>
-        <group>audit_selinux,pci_dss_10.6.1,</group>
+        <group>audit_selinux,pci_dss_10.6.1,gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -269,7 +270,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">SELINUX_ERR|USER_SELINUX_ERR</field>
         <description>Auditd: SELinux error</description>
-        <group>audit_selinux,pci_dss_10.6.1,</group>
+        <group>audit_selinux,pci_dss_10.6.1,gpg13_4.3,</group>
     </rule>
 
 
@@ -291,7 +292,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">CHGRP_ID</field>
         <description>Auditd: group ID changed</description>
-        <group>audit_anom,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_10.6.1,gpg13_7.9,</group>
     </rule>
 
     <!--
@@ -301,7 +302,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">CHUSER_ID</field>
         <description>Auditd: user ID changed</description>
-        <group>audit_anom,pci_dss_10.6.1,</group>
+        <group>audit_anom,pci_dss_10.6.1,gpg13_7.9,</group>
     </rule>
 
 

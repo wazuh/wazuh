@@ -1,4 +1,4 @@
-** Wazuh Windows Agent v3.0.0-beta9 **
+** Wazuh Windows Agent v3.0.0-beta10 **
 ** Copyright (C) 2017 Wazuh Inc. **
 
 

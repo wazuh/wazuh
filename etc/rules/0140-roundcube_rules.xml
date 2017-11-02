@@ -17,13 +17,13 @@
     <if_sid>9400</if_sid>
     <match>failed (LOGIN)</match>
     <description>Roundcube authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
   </rule>
 
   <rule id="9402" level="3">
     <if_sid>9400</if_sid>
     <match>Successful login</match>
     <description>Roundcube authentication succeeded.</description>
-    <group>authentication_success,pci_dss_10.2.5,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,</group>
   </rule>
 </group>

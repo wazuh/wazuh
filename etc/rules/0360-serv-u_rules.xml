@@ -67,7 +67,7 @@ TypeMessage:
         <action>02</action>
         <match>logged in</match>
         <description>Serv-U: User logged in</description>
-        <group>authentication_success,pci_dss_10.2.5,</group>
+        <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,</group>
     </rule>
 
     <!--
@@ -79,6 +79,7 @@ TypeMessage:
         <action>02</action>
         <match>logged out</match>
         <description>Serv-U: User logged out</description>
+        <group>gpg13_7.1,</group>
     </rule>
 
     <!--
@@ -91,14 +92,14 @@ TypeMessage:
         <action>02</action>
         <match>Invalid login credentials|Password wrong too many times</match>
         <description>Serv-U: Invalid credentials</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
     </rule>
 
     <rule id="80506" level="10" frequency="6">
         <if_matched_sid>80505</if_matched_sid>
         <same_user />
         <description>Serv-U: Multiple authentication failures.</description>
-        <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
+        <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,</group>
     </rule>
 
     <!--
@@ -110,7 +111,7 @@ TypeMessage:
         <action>02</action>
         <match>Session idle time out</match>
         <description>Serv-U: Session timeout</description>
-        <group>pci_dss_8.1.5,</group>
+        <group>pci_dss_8.1.5,gpg13_7.1,</group>
     </rule>
 
     <!--
@@ -122,6 +123,7 @@ TypeMessage:
         <action>02</action>
         <match>Closed session</match>
         <description>Serv-U: Closed session</description>
+        <group>gpg13_7.1,</group>
     </rule>
 
     <!--
@@ -227,6 +229,7 @@ TypeMessage:
         <action>21</action>
         <match>230 User logged in, proceed</match>
         <description>Serv-U: User logged in FTP/FTPS</description>
+        <group>gpg13_7.1,gpg13_7.2,</group>
     </rule>
 
     <!--
@@ -238,6 +241,7 @@ TypeMessage:
         <action>31</action>
         <match>SSH2_MSG_USERAUTH_SUCCESS</match>
         <description>Serv-U: User logged in SFTP (SSH)</description>
+        <group>gpg13_7.1,gpg13_7.2,</group>
     </rule>
 
     <!--
@@ -249,6 +253,7 @@ TypeMessage:
         <action>41</action>
         <match>HTTP_OKAY (200): SESS_OKAY</match>
         <description>Serv-U: User logged in HTTP/HTTPS</description>
+        <group>gpg13_7.1,gpg13_7.2,</group>
     </rule>
 
     <!--
@@ -261,6 +266,7 @@ TypeMessage:
         <match>530 Sorry, no ANONYMOUS access allowed</match>
         <description>Serv-U: Attempt to login using anonymous user</description>
         <group>authentication_failures,pci_dss_10.2.4,</group>
+        <group>gpg13_7.1,</group>
     </rule>
 
     <!--
@@ -274,7 +280,7 @@ TypeMessage:
         <action>21</action>
         <match>Permission denied</match>
         <description>Serv-U: FTP/FTPS Permission denied</description>
-         <group>pci_dss_10.2.4,</group>
+        <group>pci_dss_10.2.4,gpg13_7.1,</group>
     </rule>
 
     <rule id="80523" level="4">
@@ -282,7 +288,7 @@ TypeMessage:
         <action>31</action>
         <match>Permission denied</match>
         <description>Serv-U: SFTP (SSH) Permission denied</description>
-        <group>pci_dss_10.2.4,</group>
+        <group>pci_dss_10.2.4,gpg13_7.1,</group>
     </rule>
 
     <rule id="80524" level="4">
@@ -290,7 +296,7 @@ TypeMessage:
         <action>41</action>
         <match>SESS_PERMISSION_DENIED</match>
         <description>Serv-U: HTTP/HTTPS Permission denied</description>
-        <group>pci_dss_10.2.4,</group>
+        <group>pci_dss_10.2.4,gpg13_7.1,</group>
     </rule>
 
 </group>

@@ -22,20 +22,20 @@
       <ds:component-ref id="scap_org.open-scap_cref_ssg-debian8-cpe-oval.xml" xlink:href="#scap_org.open-scap_comp_ssg-debian8-cpe-oval.xml"/>
     </ds:checks>
   </ds:data-stream>
-  <ds:component id="scap_org.open-scap_comp_ssg-debian8-oval.xml" timestamp="2017-06-29T18:34:20">
+  <ds:component id="scap_org.open-scap_comp_ssg-debian8-oval.xml" timestamp="2017-08-29T16:33:23">
     <ns0:oval_definitions xmlns:ns0="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:ns2="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:ns3="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" xmlns:ns4="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" xmlns:ns5="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-common-5 oval-common-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5 oval-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#independent independent-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#unix unix-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#linux linux-definitions-schema.xsd">
       <ns0:generator>
-        <ns2:product_name>python</ns2:product_name>
-        <ns2:product_version>2.7.13</ns2:product_version>
+        <ns2:product_name>combine-ovals.py from SCAP Security Guide</ns2:product_name>
+        <ns2:product_version>ssg: 0.1.35, python: 2.7.13</ns2:product_version>
         <ns2:schema_version>5.10</ns2:schema_version>
-        <ns2:timestamp>2017-06-29T18:34:11</ns2:timestamp>
+        <ns2:timestamp>2017-08-29T14:33:19</ns2:timestamp>
       </ns0:generator>
       <ns0:definitions>
         <ns0:definition class="compliance" id="oval:ssg-file_permissions_systemmap:def:1" version="1">
           <ns0:metadata>
             <ns0:title>Verify that System.map files are readable only by root</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_debian</ns0:platform>
+              <ns0:platform>Debian 8</ns0:platform>
             </ns0:affected>
             <ns0:description>
         Checks that /boot/System.map-* are only readable by root.
@@ -50,7 +50,7 @@
           <ns0:metadata>
             <ns0:title>Force IOMMU usage in GRUB2</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_debian</ns0:platform>
+              <ns0:platform>Debian 8</ns0:platform>
             </ns0:affected>
             <ns0:description>Look for argument iommu=force in the kernel line in /etc/default/grub.</ns0:description>
             <reference ref_id="grub2_enable_iommu_force" source="ssg"/>
@@ -67,7 +67,7 @@
           <ns0:metadata>
             <ns0:title>Debian 8</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_debian</ns0:platform>
+              <ns0:platform>Debian 8</ns0:platform>
             </ns0:affected>
             <ns0:reference ref_id="cpe:/o:debian:debian_linux:8" source="CPE"/>
             <ns0:description>The operating system installed on the system is Debian 8</ns0:description>
@@ -179,8 +179,7 @@
           <ns0:metadata>
             <ns0:title>Verify /etc/group Permissions</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>This test makes sure that /etc/group is owned by 0, group owned by 0, and has mode 0644. If
       the target file or directory has an extended ACL then it will fail the mode check.</ns0:description>
             <reference ref_id="file_permissions_etc_group" source="ssg"/>
@@ -193,8 +192,7 @@
           <ns0:metadata>
             <ns0:title>Verify /etc/gshadow Permissions</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>This test makes sure that /etc/gshadow is owned by 0, group owned by 42, and has mode 0640. If
       the target file or directory has an extended ACL then it will fail the mode check.</ns0:description>
             <reference ref_id="file_permissions_etc_gshadow" source="ssg"/>
@@ -207,8 +205,7 @@
           <ns0:metadata>
             <ns0:title>Verify /etc/passwd Permissions</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>This test makes sure that /etc/passwd is owned by 0, group owned by 0, and has mode 0644. If
       the target file or directory has an extended ACL then it will fail the mode check.</ns0:description>
             <reference ref_id="file_permissions_etc_passwd" source="ssg"/>
@@ -221,8 +218,7 @@
           <ns0:metadata>
             <ns0:title>Verify /etc/shadow Permissions</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>This test makes sure that /etc/shadow is owned by 0, group owned by 42, and has mode 0640. If
       the target file or directory has an extended ACL then it will fail the mode check.</ns0:description>
             <reference ref_id="file_permissions_etc_shadow" source="ssg"/>
@@ -235,8 +231,7 @@
           <ns0:metadata>
             <ns0:title>Add nodev Option to /home</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/home should be mounted with mount option nodev.</ns0:description>
             <reference ref_id="mount_option_home_nodev" source="ssg"/>
           </ns0:metadata>
@@ -248,8 +243,7 @@
           <ns0:metadata>
             <ns0:title>Add nosuid Option to /home</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/home should be mounted with mount option nosuid.</ns0:description>
             <reference ref_id="mount_option_home_nosuid" source="ssg"/>
           </ns0:metadata>
@@ -261,8 +255,7 @@
           <ns0:metadata>
             <ns0:title>Add nodev Option to /tmp</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/tmp should be mounted with mount option nodev.</ns0:description>
             <reference ref_id="mount_option_tmp_nodev" source="ssg"/>
           </ns0:metadata>
@@ -274,8 +267,7 @@
           <ns0:metadata>
             <ns0:title>Add nosuid Option to /tmp</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/tmp should be mounted with mount option nosuid.</ns0:description>
             <reference ref_id="mount_option_tmp_nosuid" source="ssg"/>
           </ns0:metadata>
@@ -287,8 +279,7 @@
           <ns0:metadata>
             <ns0:title>Add nodev Option to /usr</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/usr should be mounted with mount option nodev.</ns0:description>
             <reference ref_id="mount_option_usr_nodev" source="ssg"/>
           </ns0:metadata>
@@ -300,8 +291,7 @@
           <ns0:metadata>
             <ns0:title>Add nodev Option to /var/lib</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/var/lib should be mounted with mount option nodev.</ns0:description>
             <reference ref_id="mount_option_var_lib_nodev" source="ssg"/>
           </ns0:metadata>
@@ -313,8 +303,7 @@
           <ns0:metadata>
             <ns0:title>Add nosuid Option to /var/lib</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/var/lib should be mounted with mount option nosuid.</ns0:description>
             <reference ref_id="mount_option_var_lib_nosuid" source="ssg"/>
           </ns0:metadata>
@@ -326,8 +315,7 @@
           <ns0:metadata>
             <ns0:title>Add nodev Option to /var/log</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/var/log should be mounted with mount option nodev.</ns0:description>
             <reference ref_id="mount_option_var_log_nodev" source="ssg"/>
           </ns0:metadata>
@@ -339,8 +327,7 @@
           <ns0:metadata>
             <ns0:title>Add noexec Option to /var/log</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/var/log should be mounted with mount option noexec.</ns0:description>
             <reference ref_id="mount_option_var_log_noexec" source="ssg"/>
           </ns0:metadata>
@@ -352,8 +339,7 @@
           <ns0:metadata>
             <ns0:title>Add nosuid Option to /var/log</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/var/log should be mounted with mount option nosuid.</ns0:description>
             <reference ref_id="mount_option_var_log_nosuid" source="ssg"/>
           </ns0:metadata>
@@ -365,8 +351,7 @@
           <ns0:metadata>
             <ns0:title>Add nodev Option to /var</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/var should be mounted with mount option nodev.</ns0:description>
             <reference ref_id="mount_option_var_nodev" source="ssg"/>
           </ns0:metadata>
@@ -378,8 +363,7 @@
           <ns0:metadata>
             <ns0:title>Add noexec Option to /var</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/var should be mounted with mount option noexec.</ns0:description>
             <reference ref_id="mount_option_var_noexec" source="ssg"/>
           </ns0:metadata>
@@ -391,8 +375,7 @@
           <ns0:metadata>
             <ns0:title>Add nosuid Option to /var</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>/var should be mounted with mount option nosuid.</ns0:description>
             <reference ref_id="mount_option_var_nosuid" source="ssg"/>
           </ns0:metadata>
@@ -1120,8 +1103,7 @@
           <ns0:metadata>
             <ns0:title>Set All Accounts To Have Unique Names</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>All accounts on the system should have unique names for proper accountability.</ns0:description>
             <reference ref_id="account_unique_name" source="ssg"/>
           </ns0:metadata>
@@ -1133,8 +1115,7 @@
           <ns0:metadata>
             <ns0:title>Set Password Expiration Parameters</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The maximum password age policy should meet minimum requirements.</ns0:description>
             <reference ref_id="accounts_maximum_age_login_defs" source="ssg"/>
           </ns0:metadata>
@@ -1146,8 +1127,7 @@
           <ns0:metadata>
             <ns0:title>Set Password Expiration Parameters</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The minimum password age policy should be set appropriately.</ns0:description>
             <reference ref_id="accounts_minimum_age_login_defs" source="ssg"/>
           </ns0:metadata>
@@ -1159,8 +1139,7 @@
           <ns0:metadata>
             <ns0:title>UID 0 Belongs Only To Root</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Only the root account should be assigned a user id of 0.</ns0:description>
             <reference ref_id="accounts_no_uid_except_zero" source="ssg"/>
           </ns0:metadata>
@@ -1172,8 +1151,7 @@
           <ns0:metadata>
             <ns0:title>All Password Hashes Shadowed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>All password hashes should be shadowed.</ns0:description>
             <reference ref_id="accounts_password_all_shadowed" source="ssg"/>
           </ns0:metadata>
@@ -1185,8 +1163,7 @@
           <ns0:metadata>
             <ns0:title>Set Password Expiration Parameters</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The password minimum length should be set appropriately.</ns0:description>
             <reference ref_id="accounts_password_minlen_login_defs" source="ssg"/>
           </ns0:metadata>
@@ -1198,8 +1175,7 @@
           <ns0:metadata>
             <ns0:title>Set Password Expiration Parameters</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The password expiration warning age should be set appropriately.</ns0:description>
             <reference ref_id="accounts_password_warn_age_login_defs" source="ssg"/>
           </ns0:metadata>
@@ -1211,18 +1187,25 @@
           <ns0:metadata>
             <ns0:title>Lock out account after failed login attempts</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The number of allowed failed logins should be set correctly.</ns0:description>
             <reference ref_id="accounts_passwords_pam_faillock_deny" source="ssg"/>
           </ns0:metadata>
-          <ns0:criteria>
+          <ns0:criteria comment="Checks common to both scenarios" operator="AND">
             <ns0:criterion comment="pam_faillock.so preauth silent set in system-auth" test_ref="oval:ssg-test_accounts_passwords_pam_faillock_preauth_silent_system-auth:tst:1"/>
-            <ns0:criterion comment="pam_faillock.so authfail deny value set in system-auth" test_ref="oval:ssg-test_accounts_passwords_pam_faillock_authfail_deny_system-auth:tst:1"/>
             <ns0:criterion comment="pam_faillock.so set in account phase of system-auth" test_ref="oval:ssg-test_accounts_passwords_pam_faillock_account_phase_system-auth:tst:1"/>
             <ns0:criterion comment="pam_faillock.so preauth silent set in password-auth" test_ref="oval:ssg-test_accounts_passwords_pam_faillock_preauth_silent_password-auth:tst:1"/>
-            <ns0:criterion comment="pam_faillock.so authfail deny value set in password-auth" test_ref="oval:ssg-test_accounts_passwords_pam_faillock_authfail_deny_password-auth:tst:1"/>
             <ns0:criterion comment="pam_faillock.so set in account phase of password-auth" test_ref="oval:ssg-test_accounts_passwords_pam_faillock_account_phase_password-auth:tst:1"/>
+            <ns0:criteria operator="AND">
+              <ns0:criteria comment="system-auth" operator="OR">
+                <ns0:criterion comment="Perform check if pam_faillock authfail follows pam_unix even with lines skipped" test_ref="oval:ssg-test_accounts_passwords_pam_faillock_numeric_default_check_system-auth:tst:1"/>
+                <ns0:criterion comment="Perform check if pam_faillock authfail follows pam_unix with either sufficient or default=ignore" test_ref="oval:ssg-test_accounts_passwords_pam_faillock_authfail_deny_system-auth:tst:1"/>
+              </ns0:criteria>
+              <ns0:criteria comment="password-auth" operator="OR">
+                <ns0:criterion comment="Perform check if pam_faillock authfail follows pam_unix even with lines skipped" test_ref="oval:ssg-test_accounts_passwords_pam_faillock_numeric_default_check_password-auth:tst:1"/>
+                <ns0:criterion comment="pam_faillock.so authfail deny value set in password-auth" test_ref="oval:ssg-test_accounts_passwords_pam_faillock_authfail_deny_password-auth:tst:1"/>
+              </ns0:criteria>
+            </ns0:criteria>
           </ns0:criteria>
         </ns0:definition>
         <ns0:definition class="compliance" id="oval:ssg-accounts_root_path_dirs_no_write:def:1" version="2">
@@ -1230,8 +1213,7 @@
             <ns0:title>Write permissions are disabled for group and other in all
       directories in Root's Path</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Check each directory in root's path and make use it does
       not grant write permission to group and other</ns0:description>
             <reference ref_id="accounts_root_path_dirs_no_write" source="ssg"/>
@@ -1244,8 +1226,9 @@
           <ns0:metadata>
             <ns0:title>Check that no unauthenticated repository is authorized by configuration</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_debian</ns0:platform>
-              <ns0:platform>multi_platform_ubuntu</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
+              <ns0:platform>Ubuntu 1604</ns0:platform>
+              <ns0:platform>Debian 8</ns0:platform>
             </ns0:affected>
             <ns0:description>Accessing a repository should be
       allowed only when the repository is authenticated.</ns0:description>
@@ -1260,7 +1243,7 @@
           <ns0:metadata>
             <ns0:title>Only official, up-to-date distribution repositories should be used</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_debian</ns0:platform>
+              <ns0:platform>Debian 8</ns0:platform>
             </ns0:affected>
             <ns0:description>Official distribution repositories contain up-to-date distribution security and functional patches.</ns0:description>
             <reference ref_id="apt_sources_list_official" source="ssg"/>
@@ -1274,8 +1257,7 @@
           <ns0:metadata>
             <ns0:title>The syslog Plugin Of the Audit Event Multiplexor (audispd) Is Activated</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>active setting in /etc/audisp/plugins.d/syslog.conf is set to 'yes'</ns0:description>
             <reference ref_id="auditd_audispd_syslog_plugin_activated" source="ssg"/>
           </ns0:metadata>
@@ -1287,8 +1269,7 @@
           <ns0:metadata>
             <ns0:title>'log_group' Not Set To 'root' In /etc/audit/auditd.conf</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Verify 'log_group' is not set to 'root' in
       /etc/audit/auditd.conf.</ns0:description>
             <reference ref_id="auditd_conf_log_group_not_root" source="ssg"/>
@@ -1301,8 +1282,7 @@
           <ns0:metadata>
             <ns0:title>Auditd Email Account to Notify Upon Action</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>action_mail_acct setting in /etc/audit/auditd.conf is set to a certain account</ns0:description>
             <reference ref_id="auditd_data_retention_action_mail_acct" source="ssg"/>
           </ns0:metadata>
@@ -1314,8 +1294,7 @@
           <ns0:metadata>
             <ns0:title>Auditd Action to Take When Disk is Low on Space</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>admin_space_left_action setting in /etc/audit/auditd.conf is set to a certain action</ns0:description>
             <reference ref_id="auditd_data_retention_admin_space_left_action" source="ssg"/>
           </ns0:metadata>
@@ -1327,8 +1306,7 @@
           <ns0:metadata>
             <ns0:title>Auditd Maximum Log File Size</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>max_log_file setting in /etc/audit/auditd.conf is set to at least a certain value</ns0:description>
             <reference ref_id="auditd_data_retention_max_log_file" source="ssg"/>
           </ns0:metadata>
@@ -1340,8 +1318,7 @@
           <ns0:metadata>
             <ns0:title>Auditd Action to Take When Maximum Log Size Reached</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>max_log_file_action setting in /etc/audit/auditd.conf is set to a certain action</ns0:description>
             <reference ref_id="auditd_data_retention_max_log_file_action" source="ssg"/>
           </ns0:metadata>
@@ -1353,8 +1330,7 @@
           <ns0:metadata>
             <ns0:title>Auditd Maximum Number of Logs to Retain</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>num_logs setting in /etc/audit/auditd.conf is set to at least a certain value</ns0:description>
             <reference ref_id="auditd_data_retention_num_logs" source="ssg"/>
           </ns0:metadata>
@@ -1366,8 +1342,7 @@
           <ns0:metadata>
             <ns0:title>Auditd Action to Take When Disk Starting to Run Low on Space</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>space_left_action setting in /etc/audit/auditd.conf is set to a certain action</ns0:description>
             <reference ref_id="auditd_data_retention_space_left_action" source="ssg"/>
           </ns0:metadata>
@@ -1379,8 +1354,7 @@
           <ns0:metadata>
             <ns0:title>Ensure Yum gpgcheck Globally Activated</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The gpgcheck option should be used to ensure that checking
       of an RPM package's signature always occurs prior to its
       installation.</ns0:description>
@@ -1398,9 +1372,11 @@
           <ns0:metadata>
             <ns0:title>Ensure the logrotate utility performs the automatic rotation of log files on daily basis</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_rhel</ns0:platform>
-              <ns0:platform>multi_platform_debian</ns0:platform>
-              <ns0:platform>multi_platform_ubuntu</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
+              <ns0:platform>Ubuntu 1604</ns0:platform>
+              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Red Hat Enterprise Linux 7</ns0:platform>
+              <ns0:platform>Red Hat Enterprise Linux 6</ns0:platform>
             </ns0:affected>
             <ns0:description>
       The frequency of automatic log files rotation performed by the logrotate utility should be configured to run daily
@@ -1416,8 +1392,7 @@
           <ns0:metadata>
             <ns0:title>Verify /var/log/audit Ownership</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Checks that all /var/log/audit files and directories are owned by the root user and group.</ns0:description>
             <reference ref_id="file_ownership_var_log_audit" source="ssg"/>
           </ns0:metadata>
@@ -1437,8 +1412,7 @@
           <ns0:metadata>
             <ns0:title>Proper Permissions User Home Directories</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>File permissions should be set correctly for the home directories for all user accounts.</ns0:description>
             <reference ref_id="file_permissions_home_dirs" source="ssg"/>
           </ns0:metadata>
@@ -1450,8 +1424,7 @@
           <ns0:metadata>
             <ns0:title>Package Antivirus Installed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Antivirus software should be installed.</ns0:description>
             <reference ref_id="install_antivirus" source="ssg"/>
           </ns0:metadata>
@@ -1463,8 +1436,7 @@
           <ns0:metadata>
             <ns0:title>Package McAfeeVSEForLinux Installed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>McAfee Antivirus software should be installed.</ns0:description>
             <reference ref_id="install_mcafee_antivirus" source="ssg"/>
           </ns0:metadata>
@@ -1477,8 +1449,7 @@
           <ns0:metadata>
             <ns0:title>Install the McAfee Runtime Libraries and Linux Agent</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Install the McAfee Runtime Libraries (MFErt) and Linux Agent (MFEcma).</ns0:description>
             <reference ref_id="install_mcafee_cma_rt" source="ssg"/>
           </ns0:metadata>
@@ -1491,8 +1462,7 @@
           <ns0:metadata>
             <ns0:title>Install McAfee Host-Based Intrusion Detection Software (HBSS)</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>McAfee Host-Based Intrusion Detection Software (HBSS) software
       should be installed.</ns0:description>
             <reference ref_id="install_mcafee_hbss" source="ssg"/>
@@ -1508,8 +1478,7 @@
           <ns0:metadata>
             <ns0:title>Install the Asset Configuration Compliance Module (ACCM)</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Install the Asset Configuration Compliance Module (ACCM).</ns0:description>
             <reference ref_id="install_mcafee_hbss_accm" source="ssg"/>
           </ns0:metadata>
@@ -1521,8 +1490,7 @@
           <ns0:metadata>
             <ns0:title>Install the Host Intrusion Prevention System (HIPS) Module</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Install the McAfee Host Intrusion Prevention System (HIPS) Module if it is
       absolutely necessary. If SELinux is enabled, do not install or enable this module.</ns0:description>
             <reference ref_id="install_mcafee_hbss_hips" source="ssg"/>
@@ -1535,8 +1503,7 @@
           <ns0:metadata>
             <ns0:title>Install the Policy Auditor (PA) Module</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Install the Policy Auditor (PA) Module.</ns0:description>
             <reference ref_id="install_mcafee_hbss_pa" source="ssg"/>
           </ns0:metadata>
@@ -1548,8 +1515,7 @@
           <ns0:metadata>
             <ns0:title>CentOS 6</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:centos:centos:6" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       CentOS 6</ns0:description>
@@ -1564,8 +1530,7 @@
           <ns0:metadata>
             <ns0:title>CentOS 7</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:centos:centos:7" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       CentOS 7</ns0:description>
@@ -1580,12 +1545,11 @@
           <ns0:metadata>
             <ns0:title>Installed operating system is Fedora</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:22" source="CPE"/>
-            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:23" source="CPE"/>
-            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:24" source="CPE"/>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:25" source="CPE"/>
+            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:26" source="CPE"/>
+            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:27" source="CPE"/>
+            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:28" source="CPE"/>
             <ns0:description>The operating system installed on the system is Fedora</ns0:description>
             <reference ref_id="installed_OS_is_fedora" source="ssg"/>
           </ns0:metadata>
@@ -1599,8 +1563,7 @@
           <ns0:metadata>
             <ns0:title>Installed operating system is part of the Unix family</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The operating system installed on the system is part of the Unix OS family</ns0:description>
             <reference ref_id="installed_OS_is_part_of_Unix_family" source="ssg"/>
           </ns0:metadata>
@@ -1612,8 +1575,7 @@
           <ns0:metadata>
             <ns0:title>Red Hat Enterprise Linux 6</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:redhat:enterprise_linux:6" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       Red Hat Enterprise Linux 6</ns0:description>
@@ -1633,8 +1595,7 @@
           <ns0:metadata>
             <ns0:title>Red Hat Enterprise Linux 7</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:redhat:enterprise_linux:7" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       Red Hat Enterprise Linux 7</ns0:description>
@@ -1658,8 +1619,7 @@
           <ns0:metadata>
             <ns0:title>Scientific Linux 6</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:scientificlinux:scientificlinux:6" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       Scientific Linux 6</ns0:description>
@@ -1674,8 +1634,7 @@
           <ns0:metadata>
             <ns0:title>Scientific Linux 7</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:scientificlinux:scientificlinux:6" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       Scientific Linux 7</ns0:description>
@@ -1690,8 +1649,7 @@
           <ns0:metadata>
             <ns0:title>WRLinux</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:windriver:wrlinux" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       Wind River Linux</ns0:description>
@@ -1706,8 +1664,7 @@
           <ns0:metadata>
             <ns0:title>Check if the scan target is a container</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Check if file /.dockerenv exists, if it does then we consider to be a docker filesystem.</ns0:description>
             <ns0:reference ref_id="cpe:/a:container" source="CPE"/>
             <reference ref_id="installed_env_is_a_container" source="ssg"/>
@@ -1720,8 +1677,7 @@
           <ns0:metadata>
             <ns0:title>Check if the scan target is a machine</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Check if file /.dockerenv exists, if it doesn't then we consider to be host filesystem or virtual machine.</ns0:description>
             <ns0:reference ref_id="cpe:/a:machine" source="CPE"/>
             <reference ref_id="installed_env_is_a_machine" source="ssg"/>
@@ -1734,8 +1690,7 @@
           <ns0:metadata>
             <ns0:title>Direct root Logins Not Allowed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Preventing direct root logins help ensure accountability for actions
       taken on the system using the root account.</ns0:description>
             <reference ref_id="no_direct_root_logins" source="ssg"/>
@@ -1749,8 +1704,7 @@
           <ns0:metadata>
             <ns0:title>No nullok Option in /etc/pam.d/system-auth</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The file /etc/pam.d/system-auth should not contain the nullok option</ns0:description>
             <reference ref_id="no_empty_passwords" source="ssg"/>
           </ns0:metadata>
@@ -1762,8 +1716,7 @@
           <ns0:metadata>
             <ns0:title>Ensure insecure_locks is disabled</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Allowing insecure file locking could allow for sensitive 
       data to be viewed or edited by an unauthorized user.</ns0:description>
             <reference ref_id="no_insecure_locks_exports" source="ssg"/>
@@ -1776,8 +1729,7 @@
           <ns0:metadata>
             <ns0:title>Verify No netrc Files Exist</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The .netrc files contain login information used to auto-login into FTP servers and reside in the user's home directory. Any .netrc files should be removed.</ns0:description>
             <reference ref_id="no_netrc_files" source="ssg"/>
           </ns0:metadata>
@@ -1789,8 +1741,7 @@
           <ns0:metadata>
             <ns0:title>System Accounts Do Not Run a Shell</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The root account is the only system account that should have
       a login shell.</ns0:description>
             <reference ref_id="no_shelllogin_for_systemaccounts" source="ssg"/>
@@ -1813,8 +1764,7 @@
           <ns0:metadata>
             <ns0:title>Package net-snmp Removed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The RPM package net-snmp should be removed.</ns0:description>
             <reference ref_id="package_net-snmp_removed" source="ssg"/>
           </ns0:metadata>
@@ -1826,8 +1776,7 @@
           <ns0:metadata>
             <ns0:title>Package prelink Removed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The RPM package prelink should be removed.</ns0:description>
             <reference ref_id="package_prelink_removed" source="ssg"/>
           </ns0:metadata>
@@ -1839,8 +1788,7 @@
           <ns0:metadata>
             <ns0:title>Restrict Serial Port Root Logins</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Preventing direct root login to serial port interfaces helps
       ensure accountability for actions taken on the system using the root
       account.</ns0:description>
@@ -1854,9 +1802,11 @@
           <ns0:metadata>
             <ns0:title>Send Logs to a Remote Loghost</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_rhel</ns0:platform>
-              <ns0:platform>multi_platform_debian</ns0:platform>
-              <ns0:platform>multi_platform_ubuntu</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
+              <ns0:platform>Ubuntu 1604</ns0:platform>
+              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Red Hat Enterprise Linux 7</ns0:platform>
+              <ns0:platform>Red Hat Enterprise Linux 6</ns0:platform>
             </ns0:affected>
             <ns0:description>Syslog logs should be sent to a remote loghost</ns0:description>
             <reference ref_id="rsyslog_remote_loghost" source="ssg"/>
@@ -1870,8 +1820,7 @@
           <ns0:metadata>
             <ns0:title>Restrict Virtual Console Root Logins</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Preventing direct root login to virtual console devices
       helps ensure accountability for actions taken on the system using the
       root account.</ns0:description>
@@ -1885,8 +1834,7 @@
           <ns0:metadata>
             <ns0:title>SNMP default communities disabled</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>SNMP default communities must be removed.</ns0:description>
             <reference ref_id="snmpd_not_default_password" source="ssg"/>
           </ns0:metadata>
@@ -1899,8 +1847,7 @@
           <ns0:metadata>
             <ns0:title>SNMP use newer protocols</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>SNMP version 1 and 2c must not be enabled.</ns0:description>
             <reference ref_id="snmpd_use_newer_protocol" source="ssg"/>
           </ns0:metadata>
@@ -1913,9 +1860,11 @@
           <ns0:metadata>
             <ns0:title>Ensure Only Protocol 2 Connections Allowed</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_rhel</ns0:platform>
-              <ns0:platform>multi_platform_debian</ns0:platform>
-              <ns0:platform>multi_platform_ubuntu</ns0:platform>
+              <ns0:platform>Ubuntu 1404</ns0:platform>
+              <ns0:platform>Ubuntu 1604</ns0:platform>
+              <ns0:platform>Debian 8</ns0:platform>
+              <ns0:platform>Red Hat Enterprise Linux 7</ns0:platform>
+              <ns0:platform>Red Hat Enterprise Linux 6</ns0:platform>
             </ns0:affected>
             <ns0:description>The OpenSSH daemon should be running protocol 2.</ns0:description>
             <reference ref_id="sshd_allow_only_protocol2" source="ssg"/>
@@ -1930,8 +1879,7 @@
           <ns0:metadata>
             <ns0:title>Disable Empty Passwords</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Remote connections from accounts with empty passwords should
       be disabled (and dependencies are met)</ns0:description>
             <reference ref_id="sshd_disable_empty_passwords" source="ssg"/>
@@ -1945,8 +1893,7 @@
           <ns0:metadata>
             <ns0:title>Disable SSH Support for Rhosts RSA Authentication</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>SSH can allow authentication through the obsolete rsh command
       through the use of the authenticating user's SSH keys. This should be disabled.</ns0:description>
             <reference ref_id="sshd_disable_rhosts_rsa" source="ssg"/>
@@ -1960,8 +1907,7 @@
           <ns0:metadata>
             <ns0:title>Disable root Login via SSH</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Root login via SSH should be disabled (and dependencies are
       met)</ns0:description>
             <reference ref_id="sshd_disable_root_login" source="ssg"/>
@@ -1975,8 +1921,7 @@
           <ns0:metadata>
             <ns0:title>Disable SSH Support for User Known Hosts</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>SSH can allow system users host-based authentication
 to connect to systems if a cache of the remote systems public keys are available.
 This should be disabled.</ns0:description>
@@ -1991,8 +1936,7 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Enable X11 Forwarding</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Enable X11Forwarding to encrypt X11 remote connections over SSH.</ns0:description>
             <reference ref_id="sshd_enable_x11_forwarding" source="ssg"/>
           </ns0:metadata>
@@ -2005,8 +1949,7 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Set OpenSSH Idle Timeout Interval</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The SSH idle timeout interval should be set to an
       appropriate value.</ns0:description>
             <reference ref_id="sshd_set_idle_timeout" source="ssg"/>
@@ -2020,8 +1963,7 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Set ClientAliveCountMax for User Logins</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The SSH ClientAliveCountMax should be set to an appropriate
       value (and dependencies are met)</ns0:description>
             <reference ref_id="sshd_set_keepalive" source="ssg"/>
@@ -2035,8 +1977,7 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Set OpenSSH LogLevel to INFO</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The SSH LogLevel should be set to INFO.</ns0:description>
             <reference ref_id="sshd_set_loglevel_info" source="ssg"/>
           </ns0:metadata>
@@ -2049,8 +1990,7 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Set OpenSSH authentication attempt limit (MaxAuthTries)</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The SSH MaxAuthTries should be set to an
       appropriate value.</ns0:description>
             <reference ref_id="sshd_set_max_auth_tries" source="ssg"/>
@@ -2064,8 +2004,7 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Use Only Strong Ciphers</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Only use strong ciphers.</ns0:description>
             <reference ref_id="sshd_use_strong_ciphers" source="ssg"/>
           </ns0:metadata>
@@ -2078,8 +2017,7 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Use Only Strong MACs</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Only use strong MACs.</ns0:description>
             <reference ref_id="sshd_use_strong_macs" source="ssg"/>
           </ns0:metadata>
@@ -2092,9 +2030,10 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Ensure !authenticate Is Not Used in Sudo</ns0:title>
             <ns0:affected family="unix">
+              <ns0:platform>Ubuntu 1404</ns0:platform>
+              <ns0:platform>Ubuntu 1604</ns0:platform>
+              <ns0:platform>Debian 8</ns0:platform>
               <ns0:platform>Red Hat Enterprise Linux 7</ns0:platform>
-              <ns0:platform>multi_platform_debian</ns0:platform>
-              <ns0:platform>multi_platform_ubuntu</ns0:platform>
             </ns0:affected>
             <ns0:description>Checks sudo usage without authentication</ns0:description>
             <reference ref_id="sudo_remove_no_authenticate" source="ssg"/>
@@ -2108,9 +2047,10 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Ensure NOPASSWD Is Not Used in Sudo</ns0:title>
             <ns0:affected family="unix">
+              <ns0:platform>Ubuntu 1404</ns0:platform>
+              <ns0:platform>Ubuntu 1604</ns0:platform>
+              <ns0:platform>Debian 8</ns0:platform>
               <ns0:platform>Red Hat Enterprise Linux 7</ns0:platform>
-              <ns0:platform>multi_platform_debian</ns0:platform>
-              <ns0:platform>multi_platform_ubuntu</ns0:platform>
             </ns0:affected>
             <ns0:description>Checks sudo usage without password</ns0:description>
             <reference ref_id="sudo_remove_nopasswd" source="ssg"/>
@@ -2124,8 +2064,7 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Test for 64-bit Architecture</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Generic test for 64-bit architectures to be used by other tests</ns0:description>
             <reference ref_id="system_info_architecture_64bit" source="ssg"/>
           </ns0:metadata>
@@ -2138,8 +2077,7 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Test for PPC and PPCLE Architecture</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Generic test for PPC PPC64LE architecture to be used by other tests</ns0:description>
             <reference ref_id="system_info_architecture_ppc_64" source="ssg"/>
           </ns0:metadata>
@@ -2152,8 +2090,7 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Test for x86 Architecture</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Generic test for x86 architecture to be used by other tests</ns0:description>
             <reference ref_id="system_info_architecture_x86" source="ssg"/>
           </ns0:metadata>
@@ -2165,8 +2102,7 @@ This should be disabled.</ns0:description>
           <ns0:metadata>
             <ns0:title>Test for x86_64 Architecture</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Generic test for x86_64 architecture to be used by other tests</ns0:description>
             <reference ref_id="system_info_architecture_x86_64" source="ssg"/>
           </ns0:metadata>
@@ -2567,26 +2503,34 @@ This should be disabled.</ns0:description>
           <ns4:object object_ref="oval:ssg-object_last_pass_warn_age_instance_value:obj:1"/>
           <ns4:state state_ref="oval:ssg-state_last_pass_warn_age_instance_value:ste:1"/>
         </ns4:variable_test>
-        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check pam_faillock.so preauth silent present in /etc/pam.d/system-auth" id="oval:ssg-test_accounts_passwords_pam_faillock_preauth_silent_system-auth:tst:1" version="1">
+        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Checks if pam_faillock authfail is hit even if pam_unix skips lines by defaulting, and also authfail deny value" id="oval:ssg-test_accounts_passwords_pam_faillock_numeric_default_check_system-auth:tst:1" version="1">
+          <ns4:object object_ref="oval:ssg-object_accounts_passwords_pam_faillock_when_lines_skipped_system-auth:obj:1"/>
+          <ns4:state state_ref="oval:ssg-state_var_accounts_passwords_pam_faillock_deny_value:ste:1"/>
+        </ns4:textfilecontent54_test>
+        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Checks if pam_faillock authfail is hit even if pam_unix skips lines by defaulting, and also authfail deny value" id="oval:ssg-test_accounts_passwords_pam_faillock_numeric_default_check_password-auth:tst:1" version="1">
+          <ns4:object object_ref="oval:ssg-object_accounts_passwords_pam_faillock_when_lines_skipped_password-auth:obj:1"/>
+          <ns4:state state_ref="oval:ssg-state_var_accounts_passwords_pam_faillock_deny_value:ste:1"/>
+        </ns4:textfilecontent54_test>
+        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check pam_faillock.so preauth silent present, with correct deny value, and is followed by pam_unix." id="oval:ssg-test_accounts_passwords_pam_faillock_preauth_silent_system-auth:tst:1" version="1">
           <ns4:object object_ref="oval:ssg-object_accounts_passwords_pam_faillock_preauth_silent_system-auth:obj:1"/>
           <ns4:state state_ref="oval:ssg-state_var_accounts_passwords_pam_faillock_deny_value:ste:1"/>
         </ns4:textfilecontent54_test>
-        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check maximum failed login attempts allowed in /etc/pam.d/system-auth (authfail)" id="oval:ssg-test_accounts_passwords_pam_faillock_authfail_deny_system-auth:tst:1" version="1">
+        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check control values of pam_unix, that it is followed by pam_faillock.so authfail and deny value of pam_faillock.so authfail" id="oval:ssg-test_accounts_passwords_pam_faillock_authfail_deny_system-auth:tst:1" version="1">
           <ns4:object object_ref="oval:ssg-object_accounts_passwords_pam_faillock_authfail_deny_system-auth:obj:1"/>
           <ns4:state state_ref="oval:ssg-state_var_accounts_passwords_pam_faillock_deny_value:ste:1"/>
         </ns4:textfilecontent54_test>
-        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check if pam_faillock_so is called in account phase of /etc/pam.d/system-auth" id="oval:ssg-test_accounts_passwords_pam_faillock_account_phase_system-auth:tst:1" version="1">
+        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check if pam_faillock.so is called in account phase before pam_unix" id="oval:ssg-test_accounts_passwords_pam_faillock_account_phase_system-auth:tst:1" version="1">
           <ns4:object object_ref="oval:ssg-object_accounts_passwords_pam_faillock_account_phase_system-auth:obj:1"/>
         </ns4:textfilecontent54_test>
-        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check pam_faillock.so preauth silent present in /etc/pam.d/password-auth" id="oval:ssg-test_accounts_passwords_pam_faillock_preauth_silent_password-auth:tst:1" version="1">
+        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check pam_faillock.so preauth silent present in /etc/pam.d/password-auth, has correct deny value, and is followed by pam_unix" id="oval:ssg-test_accounts_passwords_pam_faillock_preauth_silent_password-auth:tst:1" version="1">
           <ns4:object object_ref="oval:ssg-object_accounts_passwords_pam_faillock_preauth_silent_password-auth:obj:1"/>
           <ns4:state state_ref="oval:ssg-state_var_accounts_passwords_pam_faillock_deny_value:ste:1"/>
         </ns4:textfilecontent54_test>
-        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check maximum failed login attempts allowed in /etc/pam.d/password-auth (authfail)" id="oval:ssg-test_accounts_passwords_pam_faillock_authfail_deny_password-auth:tst:1" version="1">
+        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check pam_faillock authfail is present after pam_unix, check pam_unix has proper control values, and authfail deny value is correct." id="oval:ssg-test_accounts_passwords_pam_faillock_authfail_deny_password-auth:tst:1" version="1">
           <ns4:object object_ref="oval:ssg-object_accounts_passwords_pam_faillock_authfail_deny_password-auth:obj:1"/>
           <ns4:state state_ref="oval:ssg-state_var_accounts_passwords_pam_faillock_deny_value:ste:1"/>
         </ns4:textfilecontent54_test>
-        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check if pam_faillock_so is called in account phase of /etc/pam.d/password-auth" id="oval:ssg-test_accounts_passwords_pam_faillock_account_phase_password-auth:tst:1" version="1">
+        <ns4:textfilecontent54_test check="all" check_existence="all_exist" comment="Check if pam_faillock_so is called in account phase before pam_unix." id="oval:ssg-test_accounts_passwords_pam_faillock_account_phase_password-auth:tst:1" version="1">
           <ns4:object object_ref="oval:ssg-object_accounts_passwords_pam_faillock_account_phase_password-auth:obj:1"/>
         </ns4:textfilecontent54_test>
         <ns3:file_test check="all" check_existence="none_exist" comment="Check if there aren't directories in root's path having write permission set for group or other" id="oval:ssg-test_accounts_root_path_dirs_no_group_other_write:tst:1" version="1">
@@ -3417,38 +3361,52 @@ This should be disabled.</ns0:description>
         <ns4:variable_object id="oval:ssg-object_last_pass_warn_age_instance_value:obj:1" version="1">
           <ns4:var_ref>oval:ssg-variable_last_pass_warn_age_instance_value:var:1</ns4:var_ref>
         </ns4:variable_object>
-        <ns4:textfilecontent54_object id="oval:ssg-object_accounts_passwords_pam_faillock_preauth_silent_system-auth:obj:1" version="1">
-          <ns4:behaviors singleline="true"/>
+        <ns4:textfilecontent54_object comment="Get number of lines pam_unix defaults to" id="oval:ssg-object_accounts_passwords_pam_faillock_lines_value_system-auth:obj:1" version="1">
           <ns4:filepath>/etc/pam.d/system-auth</ns4:filepath>
-          <ns4:pattern operation="pattern match">[\n][\s]*auth[\s]+required[\s]+pam_faillock\.so[\s]+preauth[\s]+[^\n]*silent[\s]+[^\n]*deny=([0-9]+)[\s]*(?s).*[\n][\s]*auth[\s]+(?:(?:sufficient)|(?:\[.*default=die.*\]))[\s]+pam_unix\.so[^\n]*[\n]</ns4:pattern>
+          <ns4:pattern operation="pattern match">[\n][\s]*auth[\s]+\[.*default=([0-9]+).*\][\s]+pam_unix\.so</ns4:pattern>
+          <ns4:instance datatype="int">1</ns4:instance>
+        </ns4:textfilecontent54_object>
+        <ns4:textfilecontent54_object comment="Is pam_faillock not skipped?" id="oval:ssg-object_accounts_passwords_pam_faillock_when_lines_skipped_system-auth:obj:1" version="1">
+          <ns4:filepath>/etc/pam.d/system-auth</ns4:filepath>
+          <ns4:pattern operation="pattern match" var_ref="oval:ssg-var_accounts_passwords_pam_faillock_preauth_default_lines_regex_system-auth:var:1"/>
+          <ns4:instance datatype="int" operation="equals">1</ns4:instance>
+        </ns4:textfilecontent54_object>
+        <ns4:textfilecontent54_object comment="Get number of lines pam_unix defaults to" id="oval:ssg-object_accounts_passwords_pam_faillock_lines_value_password-auth:obj:1" version="1">
+          <ns4:filepath>/etc/pam.d/password-auth</ns4:filepath>
+          <ns4:pattern operation="pattern match">[\n][\s]*auth[\s]+\[[^\]]*default=([0-9]+)[^\]]*\][\s]+pam_unix\.so</ns4:pattern>
+          <ns4:instance datatype="int">1</ns4:instance>
+        </ns4:textfilecontent54_object>
+        <ns4:textfilecontent54_object comment="Is pam_faillock not skipped?" id="oval:ssg-object_accounts_passwords_pam_faillock_when_lines_skipped_password-auth:obj:1" version="1">
+          <ns4:filepath>/etc/pam.d/password-auth</ns4:filepath>
+          <ns4:pattern operation="pattern match" var_ref="oval:ssg-var_accounts_passwords_pam_faillock_preauth_default_lines_regex_password-auth:var:1"/>
+          <ns4:instance datatype="int" operation="equals">1</ns4:instance>
+        </ns4:textfilecontent54_object>
+        <ns4:textfilecontent54_object id="oval:ssg-object_accounts_passwords_pam_faillock_preauth_silent_system-auth:obj:1" version="1">
+          <ns4:filepath>/etc/pam.d/system-auth</ns4:filepath>
+          <ns4:pattern operation="pattern match">[\n][\s]*auth[\s]+required[\s]+pam_faillock\.so[\s]+preauth[\s]+[^\n]*silent[\s]+[^\n]*deny=([0-9]+)[\s]*(?s).*[\n][\s]*auth[^\n]+pam_unix\.so[^\n]*[\n]</ns4:pattern>
           <ns4:instance datatype="int" operation="equals">1</ns4:instance>
         </ns4:textfilecontent54_object>
         <ns4:textfilecontent54_object id="oval:ssg-object_accounts_passwords_pam_faillock_authfail_deny_system-auth:obj:1" version="1">
-          <ns4:behaviors singleline="true"/>
           <ns4:filepath>/etc/pam.d/system-auth</ns4:filepath>
-          <ns4:pattern operation="pattern match">[\n][\s]*auth[\s]+(?:(?:sufficient)|(?:\[.*default=die.*\]))[\s]+pam_unix\.so[^\n]+(?s).*[\n][\s]*auth[\s]+\[default=die\][\s]+pam_faillock\.so[\s]+authfail[\s]+[^\n]*deny=([0-9]+)[^\n]*[\n]</ns4:pattern>
+          <ns4:pattern operation="pattern match">[\n][\s]*auth[\s]+(?:(?:sufficient)|(?:\[[^\]]*default=ignore[^\]]*\]))[^\n]+pam_unix\.so(?:.*[\n])*auth[\s]+\[default=die\][\s]+pam_faillock\.so[\s]+authfail[^\n]+deny=([0-9]+)</ns4:pattern>
           <ns4:instance datatype="int" operation="equals">1</ns4:instance>
         </ns4:textfilecontent54_object>
         <ns4:textfilecontent54_object id="oval:ssg-object_accounts_passwords_pam_faillock_account_phase_system-auth:obj:1" version="1">
-          <ns4:behaviors singleline="true"/>
           <ns4:filepath>/etc/pam.d/system-auth</ns4:filepath>
           <ns4:pattern operation="pattern match">[\n][\s]*account[\s]+required[\s]+pam_faillock\.so[^\n]*[\n][\s]*account[\s]+required[\s]+pam_unix\.so[^\n]*[\n]</ns4:pattern>
           <ns4:instance datatype="int" operation="equals">1</ns4:instance>
         </ns4:textfilecontent54_object>
         <ns4:textfilecontent54_object id="oval:ssg-object_accounts_passwords_pam_faillock_preauth_silent_password-auth:obj:1" version="1">
-          <ns4:behaviors singleline="true"/>
           <ns4:filepath>/etc/pam.d/password-auth</ns4:filepath>
-          <ns4:pattern operation="pattern match">[\n][\s]*auth[\s]+required[\s]+pam_faillock\.so[\s]+preauth[\s]+[^\n]*silent[\s]+[^\n]*deny=([0-9]+)[\s]*(?s).*[\n][\s]*auth[\s]+(?:(?:sufficient)|(?:\[.*default=die.*\]))[\s]+pam_unix\.so[^\n]*[\n]</ns4:pattern>
+          <ns4:pattern operation="pattern match">[\n][\s]*auth[\s]+required[\s]+pam_faillock\.so[\s]+preauth[\s]+[^\n]*silent[\s]+[^\n]*deny=([0-9]+)[\s]*(?s).*[\n][\s]*auth[^\n]+pam_unix\.so[^\n]*[\n]</ns4:pattern>
           <ns4:instance datatype="int" operation="equals">1</ns4:instance>
         </ns4:textfilecontent54_object>
         <ns4:textfilecontent54_object id="oval:ssg-object_accounts_passwords_pam_faillock_authfail_deny_password-auth:obj:1" version="1">
-          <ns4:behaviors singleline="true"/>
           <ns4:filepath>/etc/pam.d/password-auth</ns4:filepath>
-          <ns4:pattern operation="pattern match">[\n][\s]*auth[\s]+(?:(?:sufficient)|(?:\[.*default=die.*\]))[\s]+pam_unix\.so[^\n]+(?s).*[\n][\s]*auth[\s]+\[default=die\][\s]+pam_faillock\.so[\s]+authfail[\s]+[^\n]*deny=([0-9]+)[^\n]*[\n]</ns4:pattern>
+          <ns4:pattern operation="pattern match">[\n][\s]*auth[\s]+(?:(?:sufficient)|(?:\[[^\]]*default=ignore[[^\]]*\]))[\s]+pam_unix\.so(?:.*[\n])*[^\n]*auth[\s]+\[default=die\][\s]+pam_faillock\.so[\s]+authfail[\s]+[^\n]*deny=([0-9]+)</ns4:pattern>
           <ns4:instance datatype="int" operation="equals">1</ns4:instance>
         </ns4:textfilecontent54_object>
         <ns4:textfilecontent54_object id="oval:ssg-object_accounts_passwords_pam_faillock_account_phase_password-auth:obj:1" version="1">
-          <ns4:behaviors singleline="true"/>
           <ns4:filepath>/etc/pam.d/password-auth</ns4:filepath>
           <ns4:pattern operation="pattern match">[\n][\s]*account[\s]+required[\s]+pam_faillock\.so[^\n]*[\n][\s]*account[\s]+required[\s]+pam_unix\.so[^\n]*[\n]</ns4:pattern>
           <ns4:instance datatype="int" operation="equals">1</ns4:instance>
@@ -4213,6 +4171,20 @@ This should be disabled.</ns0:description>
           </ns0:regex_capture>
         </ns0:local_variable>
         <ns0:external_variable comment="password expiration warning age in days" datatype="int" id="oval:ssg-var_accounts_password_warn_age_login_defs:var:1" version="1"/>
+        <ns0:local_variable comment="Regex containing skipped lines" datatype="string" id="oval:ssg-var_accounts_passwords_pam_faillock_preauth_default_lines_regex_system-auth:var:1" version="1">
+          <ns0:concat>
+            <ns0:literal_component datatype="string">pam_unix(?:.*[\n](?:.*[\n]){</ns0:literal_component>
+            <ns0:object_component item_field="subexpression" object_ref="oval:ssg-object_accounts_passwords_pam_faillock_lines_value_system-auth:obj:1"/>
+            <ns0:literal_component datatype="string">})(?:.*[\n])*auth.*pam_faillock.so[\s]+[^\n]*deny=([0-9]+)</ns0:literal_component>
+          </ns0:concat>
+        </ns0:local_variable>
+        <ns0:local_variable comment="Regex containing skipped lines" datatype="string" id="oval:ssg-var_accounts_passwords_pam_faillock_preauth_default_lines_regex_password-auth:var:1" version="1">
+          <ns0:concat>
+            <ns0:literal_component datatype="string">pam_unix(?:.*[\n](?:.*[\n]){</ns0:literal_component>
+            <ns0:object_component item_field="subexpression" object_ref="oval:ssg-object_accounts_passwords_pam_faillock_lines_value_password-auth:obj:1"/>
+            <ns0:literal_component datatype="string">})(?:.*[\n])*auth.*pam_faillock.so[\s]+[^\n]*deny=([0-9]+)</ns0:literal_component>
+          </ns0:concat>
+        </ns0:local_variable>
         <ns0:external_variable comment="number of failed login attempts allowed" datatype="int" id="oval:ssg-var_accounts_passwords_pam_faillock_deny:var:1" version="1"/>
         <ns0:local_variable comment="Split the PATH on the : delimiter" datatype="string" id="oval:ssg-var_accounts_root_path_dirs_no_write:var:1" version="1">
           <ns0:split delimiter=":">
@@ -4294,11 +4266,13 @@ This should be disabled.</ns0:description>
       </ns0:variables>
     </ns0:oval_definitions>
   </ds:component>
-  <ds:component id="scap_org.open-scap_comp_ssg-debian8-ocil.xml" timestamp="2017-06-29T18:34:20">
+  <ds:component id="scap_org.open-scap_comp_ssg-debian8-ocil.xml" timestamp="2017-08-29T16:33:22">
     <ns0:ocil xmlns:ns0="http://scap.nist.gov/schema/ocil/2.0">
       <ns0:generator>
+        <ns0:product_name>xccdf-create-ocil.xslt from SCAP Security Guide</ns0:product_name>
+        <ns0:product_version>ssg: 0.1.35</ns0:product_version>
         <ns0:schema_version>2.0</ns0:schema_version>
-        <ns0:timestamp>2017-06-29T18:34:00Z</ns0:timestamp>
+        <ns0:timestamp>2017-08-29T16:33:15+02:00</ns0:timestamp>
       </ns0:generator>
       <ns0:questionnaires>
         <ns0:questionnaire id="ocil:ssg-file_permissions_systemmap_ocil:questionnaire:1">
@@ -5238,9 +5212,9 @@ ClientAliveCountMax 0
       </ns0:questions>
     </ns0:ocil>
   </ds:component>
-  <ds:component id="scap_org.open-scap_comp_ssg-debian8-xccdf-1.2.xml" timestamp="2017-06-29T18:34:21">
+  <ds:component id="scap_org.open-scap_comp_ssg-debian8-xccdf-1.2.xml" timestamp="2017-08-29T16:33:22">
     <Benchmark xmlns="http://checklists.nist.gov/xccdf/1.2" id="xccdf_org.ssgproject.content_benchmark_DEBIAN-8" resolved="1" xml:lang="en-US" style="SCAP_1.2">
-      <status date="2017-06-29">draft</status>
+      <status date="2017-08-29">draft</status>
       <title xml:lang="en-US">Guide to the Secure Configuration of Debian 8</title>
       <description xml:lang="en-US">This guide presents a catalog of security-relevant
 configuration settings for Debian 8. It is a rendering of
@@ -5311,7 +5285,7 @@ trademarks or trademarks of Red Hat, Inc. in the United States and other
 countries. All other names are registered trademarks or trademarks of their
 respective companies.</rear-matter>
       <platform idref="cpe:/o:debianproject:debian:8"/>
-      <version update="https://github.com/OpenSCAP/scap-security-guide/releases/latest">0.1.34</version>
+      <version update="https://github.com/OpenSCAP/scap-security-guide/releases/latest">0.1.35</version>
       <metadata>
         <dc:publisher xmlns:dc="http://purl.org/dc/elements/1.1/">SCAP Security Guide Project</dc:publisher>
         <dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">SCAP Security Guide Project</dc:creator>
@@ -5320,9 +5294,11 @@ respective companies.</rear-matter>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Gabe Alford &lt;redhatrises@gmail.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Christopher Anderson &lt;cba@fedoraproject.org&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Chuck Atkins &lt;chuck.atkins@kitware.com&gt;</dc:contributor>
+        <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Ryan Ballanger &lt;root@rballang-admin-2.fastenal.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Molly Jo Bault &lt;Molly.Jo.Bault@ballardtech.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Joseph Bisch &lt;joseph.bisch@gmail.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Jeffrey Blank &lt;blank@eclipse.ncsc.mil&gt;</dc:contributor>
+        <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Ted Brunell &lt;tbrunell@redhat.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Blake Burkhart &lt;blake.burkhart@us.af.mil&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Patrick Callahan &lt;pmc@patrickcallahan.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Nick Carboni &lt;ncarboni@redhat.com&gt;</dc:contributor>
@@ -5336,6 +5312,7 @@ respective companies.</rear-matter>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Greg Elin &lt;gregelin@gitmachines.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Andrew Gilmore &lt;agilmore2@gmail.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Joshua Glemza &lt;jglemza@nasa.gov&gt;</dc:contributor>
+        <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Loren Gordon &lt;lorengordon@users.noreply.github.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Steve Grubb &lt;sgrubb@redhat.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Marek Haicman &lt;mhaicman@redhat.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Trey Henefield &lt;thenefield@gmail.com&gt;</dc:contributor>
@@ -5363,10 +5340,12 @@ respective companies.</rear-matter>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Michele Newman &lt;mnewman@redhat.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Kaustubh Padegaonkar &lt;theTuxRacer@gmail.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Michael Palmiotto &lt;mpalmiotto@tresys.com&gt;</dc:contributor>
+        <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Max R.D. Parmer &lt;maxp@trystero.is&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">pcactr &lt;paul.c.arnold4.ctr@mail.mil&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Kenneth Peeples &lt;kennethwpeeples@gmail.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Frank Lin PIAT &lt;fpiat@klabs.be&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Martin Preisler &lt;mpreisle@redhat.com&gt;</dc:contributor>
+        <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Wesley Ceraso Prudencio &lt;wcerasop@redhat.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Raphael Sanchez Prudencio &lt;rsprudencio@redhat.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">T.O. Radzy Radzykewycz &lt;radzy@windriver.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Rick Renshaw &lt;Richard_Renshaw@xtoenergy.com&gt;</dc:contributor>
@@ -5389,7 +5368,9 @@ respective companies.</rear-matter>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Philippe Thierry &lt;phil@reseau-libre.net&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Paul Tittle &lt;ptittle@cmf.nrl.navy.mil&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Jeb Trayer &lt;jeb.d.trayer@uscg.mil&gt;</dc:contributor>
+        <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">VadimDor &lt;29509093+VadimDor@users.noreply.github.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Shawn Wells &lt;shawn@redhat.com&gt;</dc:contributor>
+        <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Roy Williams &lt;roywilli@roywilli.redhat.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Rob Wilmoth &lt;rwilmoth@redhat.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Lucas Yamanishi &lt;lucas.yamanishi@onyxpoint.com&gt;</dc:contributor>
         <dc:contributor xmlns:dc="http://purl.org/dc/elements/1.1/">Kevin Zimmerman &lt;kevin.zimmerman@kitware.com&gt;</dc:contributor>
@@ -5710,143 +5691,8 @@ respective companies.</rear-matter>
       <Group id="xccdf_org.ssgproject.content_group_remediation_functions">
         <title xml:lang="en-US">Remediation functions used by the SCAP Security Guide Project</title>
         <description xml:lang="en-US">XCCDF form of the various remediation functions as used by remediation scripts from the SCAP Security Guide Project.</description>
-        <Value id="xccdf_org.ssgproject.content_value_function_firefox_cfg_setting" hidden="true" prohibitChanges="true" operator="equals" type="string">
-          <title xml:lang="en-US">Remediation function firefox_cfg_setting</title>
-          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
-          <value># Function to replace configuration setting(s) in the Firefox preferences configuration (.cfg) file or add the
-# preference if it does not exist.
-#
-# Expects three arguments:
-#
-# config_file:          Configuration file that will be modified
-# key:                  Configuration option to change
-# value:                Value of the configuration option to change
-#
-#
-# Example Call(s):
-#
-#     Without string or variable:
-#     firefox_cfg_setting "stig.cfg" "extensions.update.enabled" "false"
-#
-#     With string:
-#     firefox_cfg_setting "stig.cfg" "security.default_personal_cert" "\"Ask Every Time\""
-#
-#     With a string variable:
-#     firefox_cfg_setting "stig.cfg" "browser.startup.homepage\" "\"${var_default_home_page}\""
-#
-function firefox_cfg_setting {
-  local firefox_cfg=$1
-  local key=$2
-  local value=$3
-  local firefox_dirs="/usr/lib/firefox /usr/lib64/firefox /usr/local/lib/firefox /usr/local/lib64/firefox"
-
-  # Check sanity of input
-  if [ $# -lt "3" ]
-  then
-        echo "Usage: firefox_cfg_setting 'config_cfg_file' 'key_to_search' 'new_value'"
-        echo
-        echo "Aborting."
-        exit 1
-  fi
-
-  # Check the possible Firefox install directories
-  for firefox_dir in ${firefox_dirs}; do
-    # If the Firefox directory exists, then Firefox is installed
-    if [ -d "${firefox_dir}" ]; then
-      # Make sure the Firefox .cfg file exists and has the appropriate permissions
-      if ! [ -f "${firefox_dir}/${firefox_cfg}" ] ; then
-        touch "${firefox_dir}/${firefox_cfg}"
-        chmod 644 "${firefox_dir}/${firefox_cfg}"
-      fi
-
-      # If the key exists, change it. Otherwise, add it to the config_file.
-      if `grep -q "^lockPref(\"${key}\", " "${firefox_dir}/${firefox_cfg}"` ; then
-        sed -i "s/lockPref(\"${key}\".*/lockPref(\"${key}\", ${value});/g" "${firefox_dir}/${firefox_cfg}"
-      else
-        echo "lockPref(\"${key}\", ${value});" &gt;&gt; "${firefox_dir}/${firefox_cfg}"
-      fi
-    fi
-  done
-}
-</value>
-        </Value>
-        <Value id="xccdf_org.ssgproject.content_value_function_service_command" hidden="true" prohibitChanges="true" operator="equals" type="string">
-          <title xml:lang="en-US">Remediation function service_command</title>
-          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
-          <value># Function to enable/disable and start/stop services on RHEL and Fedora systems.
-#
-# Example Call(s):
-#
-#     service_command enable bluetooth
-#     service_command disable bluetooth.service
-#
-#     Using xinetd:
-#     service_command disable rsh.socket xinetd=rsh
-#
-function service_command {
-
-# Load function arguments into local variables
-local service_state=$1
-local service=$2
-local xinetd=$(echo $3 | cut -d'=' -f2)
-
-# Check sanity of the input
-if [ $# -lt "2" ]
-then
-  echo "Usage: service_command 'enable/disable' 'service_name.service'"
-  echo
-  echo "To enable or disable xinetd services add \'xinetd=service_name\'"
-  echo "as the last argument"  
-  echo "Aborting."
-  exit 1
-fi
-
-# If systemctl is installed, use systemctl command; otherwise, use the service/chkconfig commands
-if [ -f "/usr/bin/systemctl" ] ; then
-  service_util="/usr/bin/systemctl"
-else
-  service_util="/sbin/service"
-  chkconfig_util="/sbin/chkconfig"
-fi
-
-# If disable is not specified in arg1, set variables to enable services.
-# Otherwise, variables are to be set to disable services.
-if [ "$service_state" != 'disable' ] ; then
-  service_state="enable"
-  service_operation="start"
-  chkconfig_state="on"
-else
-  service_state="disable"
-  service_operation="stop"
-  chkconfig_state="off"
-fi
-
-# If chkconfig_util is not empty, use chkconfig/service commands.
-if ! [ "x$chkconfig_util" = x ] ; then
-  $service_util $service $service_operation
-  $chkconfig_util --level 0123456 $service $chkconfig_state
-else
-  $service_util $service_operation $service
-  $service_util $service_state $service
-fi
-
-# Test if local variable xinetd is empty using non-bashism.
-# If empty, then xinetd is not being used.
-if ! [ "x$xinetd" = x ] ; then
-  grep -qi disable /etc/xinetd.d/$xinetd &amp;&amp; \
-
-  if ! [ "$service_operation" != 'disable' ] ; then
-    sed -i "s/disable.*/disable         = no/gI" /etc/xinetd.d/$xinetd
-  else
-    sed -i "s/disable.*/disable         = yes/gI" /etc/xinetd.d/$xinetd
-  fi
-fi
-
-}
-</value>
-        </Value>
-        <Value id="xccdf_org.ssgproject.content_value_function_rhel6_perform_audit_adjtimex_settimeofday_stime_remediation" hidden="true" prohibitChanges="true" operator="equals" type="string">
-          <title xml:lang="en-US">Remediation function rhel6_perform_audit_adjtimex_settimeofday_stime_remediation</title>
+        <Value id="xccdf_org.ssgproject.content_value_function_fix_audit_syscall_rule" hidden="true" prohibitChanges="true" operator="equals" type="string">
+          <title xml:lang="en-US">Remediation function fix_audit_syscall_rule</title>
           <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
           <value># Function to fix syscall audit rule for given system call. It is
 # based on example audit syscall rule definitions as outlined in
@@ -5912,12 +5758,14 @@ fi
 #
 declare -a files_to_inspect
 
+retval=0
+
 # First check sanity of the specified audit tool
 if [ "$tool" != 'auditctl' ] &amp;&amp; [ "$tool" != 'augenrules' ]
 then
 	echo "Unknown audit rules loading tool: $1. Aborting."
 	echo "Use either 'auditctl' or 'augenrules'!"
-	exit 1
+	return 1
 # If audit tool is 'auditctl', then add '/etc/audit/audit.rules'
 # file to the list of files to be inspected
 elif [ "$tool" == 'auditctl' ]
@@ -5931,7 +5779,11 @@ then
 	# Extract audit $key from audit rule so we can use it later
 	key=$(expr "$full_rule" : '.*-k[[:space:]]\([^[:space:]]\+\)')
 	# Check if particular audit rule is already defined
-	IFS=$'\n' matches=($(sed -s -n -e "/${pattern}/!d" -e "/${arch}/!d" -e "/${group}/!d;F" /etc/audit/rules.d/*.rules))
+	IFS=$'\n' matches=($(sed -s -n -e "\;${pattern};!d" -e "/${arch}/!d" -e "/${group}/!d;F" /etc/audit/rules.d/*.rules))
+	if [ $? -ne 0 ]
+	then
+		retval=1
+	fi
 	# Reset IFS back to default
 	unset IFS
 	for match in "${matches[@]}"
@@ -5961,7 +5813,11 @@ do
 	# * follow the rule pattern, and
 	# * meet the hardware architecture requirement, and
 	# * are current syscall group specific
-	IFS=$'\n' existing_rules=($(sed -e "/${pattern}/!d" -e "/${arch}/!d" -e "/${group}/!d"  "$audit_file"))
+	IFS=$'\n' existing_rules=($(sed -e "\;${pattern};!d" -e "/${arch}/!d" -e "/${group}/!d"  "$audit_file"))
+	if [ $? -ne 0 ]
+	then
+		retval=1
+	fi
 	# Reset IFS back to default
 	unset IFS
 
@@ -5980,7 +5836,11 @@ do
 				# Rule is covered (i.e. the list of -S syscalls for this rule is
 				# subset of -S syscalls of $full_rule =&gt; existing rule can be deleted
 				# Thus delete the rule from audit.rules &amp; our array
-				sed -i -e "/${rule}/d" "$audit_file"
+				sed -i -e "\;${rule};d" "$audit_file"
+				if [ $? -ne 0 ]
+				then
+					retval=1
+				fi
 				existing_rules=("${existing_rules[@]//$rule/}")
 			else
 				# Rule isn't covered by $full_rule - it besides -S syscall arguments
@@ -5997,7 +5857,11 @@ do
 				# if the same rule not already present
 				#
 				# 1) Delete the original rule
-				sed -i -e "/${rule}/d" "$audit_file"
+				sed -i -e "\;${rule};d" "$audit_file"
+				if [ $? -ne 0 ]
+				then
+					retval=1
+				fi
 				# 2) Delete syscalls for this group, but keep those from other groups
 				# Convert current rule syscall's string into array splitting by '-S' delimiter
 				IFS=$'-S' read -a rule_syscalls_as_array &lt;&lt;&lt; "$rule_syscalls"
@@ -6047,18 +5911,125 @@ do
 	fi
 done
 
+return $retval
+
 }
+</value>
+        </Value>
+        <Value id="xccdf_org.ssgproject.content_value_function_populate" hidden="true" prohibitChanges="true" operator="equals" type="string">
+          <title xml:lang="en-US">Remediation function populate</title>
+          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
+          <value># The populate function isn't directly used by SSG at the moment but it can be 
+# used for testing purposes and will be used in SSG Testsuite in the future.
 
+function populate {
+# code to populate environment variables needed (for unit testing)
+if [ -z "${!1}" ]; then
+	echo "$1 is not defined. Exiting."
+	exit
+fi
+}
+</value>
+        </Value>
+        <Value id="xccdf_org.ssgproject.content_value_function_replace_or_append" hidden="true" prohibitChanges="true" operator="equals" type="string">
+          <title xml:lang="en-US">Remediation function replace_or_append</title>
+          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
+          <value># Function to replace configuration setting in config file or add the configuration setting if
+# it does not exist.
+#
+# Expects four arguments:
+#
+# config_file:		Configuration file that will be modified
+# key:			Configuration option to change
+# value:		Value of the configuration option to change
+# cce:			The CCE identifier or '@CCENUM@' if no CCE identifier exists
+#
+# Optional arugments:
+#
+# format:		Optional argument to specify the format of how key/value should be
+# 			modified/appended in the configuration file. The default is key = value.
+#
+# Example Call(s):
+#
+#     With default format of 'key = value':
+#     replace_or_append '/etc/sysctl.conf' '^kernel.randomize_va_space' '2' '@CCENUM@'
+#
+#     With custom key/value format:
+#     replace_or_append '/etc/sysconfig/selinux' '^SELINUX=' 'disabled' '@CCENUM@' '%s=%s'
+#
+#     With a variable:
+#     replace_or_append '/etc/sysconfig/selinux' '^SELINUX=' $var_selinux_state '@CCENUM@' '%s=%s'
+#
+function replace_or_append {
+  local config_file=$1
+  local key=$2
+  local value=$3
+  local cce=$4
+  local format=$5
 
-# Perform the remediation for the 'adjtimex', 'settimeofday', and 'stime' audit
-# system calls on Red Hat Enterprise Linux 6 OS
-function rhel6_perform_audit_adjtimex_settimeofday_stime_remediation {
+  # Check sanity of the input
+  if [ $# -lt "3" ]
+  then
+        echo "Usage: replace_or_append 'config_file_location' 'key_to_search' 'new_value'"
+        echo
+        echo "If symlinks need to be taken into account, add yes/no to the last argument"
+        echo "to allow to 'follow_symlinks'."
+        echo "Aborting."
+        exit 1
+  fi
+
+  # Test if the config_file is a symbolic link. If so, use --follow-symlinks with sed.
+  # Otherwise, regular sed command will do.
+  if test -L $config_file; then
+    sed_command="sed -i --follow-symlinks"
+  else
+    sed_command="sed -i"
+  fi
+
+  # Test that the cce arg is not empty or does not equal @CCENUM@.
+  # If @CCENUM@ exists, it means that there is no CCE assigned.
+  if ! [ "x$cce" = x ] &amp;&amp; [ "$cce" != '@CCENUM@' ]; then
+    cce="CCE-${cce}"
+  else
+    cce="CCE"
+  fi
+
+  # Strip any search characters in the key arg so that the key can be replaced without
+  # adding any search characters to the config file.
+  stripped_key=$(sed "s/[\^=\$,;+]*//g" &lt;&lt;&lt; $key)
+
+  # If there is no print format specified in the last arg, use the default format.
+  if ! [ "x$format" = x ] ; then
+    printf -v formatted_output "$format" "$stripped_key" "$value"
+  else
+    formatted_output="$stripped_key = $value"
+  fi
+
+  # If the key exists, change it. Otherwise, add it to the config_file.
+  if `grep -qi "$key" $config_file` ; then
+    eval '$sed_command "s/$key.*/$formatted_output/g" $config_file'
+  else
+    # \n is precaution for case where file ends without trailing newline
+    echo -e "\n# Per $cce: Set $formatted_output in $config_file" &gt;&gt; $config_file
+    echo -e "$formatted_output" &gt;&gt; $config_file
+  fi
+
+}
+</value>
+        </Value>
+        <Value id="xccdf_org.ssgproject.content_value_function_rhel7_fedora_perform_audit_adjtimex_settimeofday_stime_remediation" hidden="true" prohibitChanges="true" operator="equals" type="string">
+          <title xml:lang="en-US">Remediation function rhel7_fedora_perform_audit_adjtimex_settimeofday_stime_remediation</title>
+          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
+          <value># Perform the remediation for the 'adjtimex', 'settimeofday', and 'stime' audit
+# system calls on Red Hat Enterprise Linux 7 or Fedora OSes
+function rhel7_fedora_perform_audit_adjtimex_settimeofday_stime_remediation {
 
 # Retrieve hardware architecture of the underlying system
 [ $(getconf LONG_BIT) = "32" ] &amp;&amp; RULE_ARCHS=("b32") || RULE_ARCHS=("b32" "b64")
 
 for ARCH in "${RULE_ARCHS[@]}"
 do
+
 	PATTERN="-a always,exit -F arch=${ARCH} -S .* -k *"
 	# Create expected audit group and audit rule form for particular system call &amp; architecture
 	if [ ${ARCH} = "b32" ]
@@ -6074,190 +6045,11 @@ do
 		GROUP="\(adjtimex\|settimeofday\)"
 		FULL_RULE="-a always,exit -F arch=${ARCH} -S adjtimex -S settimeofday -k audit_time_rules"
 	fi
-	# Perform the remediation itself
+	# Perform the remediation for both possible tools: 'auditctl' and 'augenrules'
 	fix_audit_syscall_rule "auditctl" "$PATTERN" "$GROUP" "$ARCH" "$FULL_RULE"
+	fix_audit_syscall_rule "augenrules" "$PATTERN" "$GROUP" "$ARCH" "$FULL_RULE"
 done
 
-}
-</value>
-        </Value>
-        <Value id="xccdf_org.ssgproject.content_value_function_package_command" hidden="true" prohibitChanges="true" operator="equals" type="string">
-          <title xml:lang="en-US">Remediation function package_command</title>
-          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
-          <value># Function to install or uninstall packages on RHEL and Fedora systems.
-#
-# Example Call(s):
-#
-#     package_command install aide
-#     package_command remove telnet-server
-#
-function package_command {
-
-# Load function arguments into local variables
-local package_operation=$1
-local package=$2
-
-# Check sanity of the input
-if [ $# -ne "2" ]
-then
-  echo "Usage: package_command 'install/uninstall' 'rpm_package_name"
-  echo "Aborting."
-  exit 1
-fi
-
-# If dnf is installed, use dnf; otherwise, use yum
-if [ -f "/usr/bin/dnf" ] ; then
-  install_util="/usr/bin/dnf"
-else
-  install_util="/usr/bin/yum"
-fi
-
-if [ "$package_operation" != 'remove' ] ; then
-  # If the rpm is not installed, install the rpm
-  if ! /bin/rpm -q --quiet $package; then
-    $install_util -y $package_operation $package
-  fi
-else
-  # If the rpm is installed, uninstall the rpm
-  if /bin/rpm -q --quiet $package; then
-    $install_util -y $package_operation $package
-  fi
-fi
-
-}
-</value>
-        </Value>
-        <Value id="xccdf_org.ssgproject.content_value_function_fix_audit_watch_rule" hidden="true" prohibitChanges="true" operator="equals" type="string">
-          <title xml:lang="en-US">Remediation function fix_audit_watch_rule</title>
-          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
-          <value># Function to fix audit file system object watch rule for given path:
-# * if rule exists, also verifies the -w bits match the requirements
-# * if rule doesn't exist yet, appends expected rule form to $files_to_inspect
-#   audit rules file, depending on the tool which was used to load audit rules
-#
-# Expects four arguments (each of them is required) in the form of:
-# * audit tool				tool used to load audit rules,
-# 					either 'auditctl', or 'augenrules'
-# * path                        	value of -w audit rule's argument
-# * required access bits        	value of -p audit rule's argument
-# * key                         	value of -k audit rule's argument
-#
-# Example call:
-#
-#       fix_audit_watch_rule "auditctl" "/etc/localtime" "wa" "audit_time_rules"
-#
-function fix_audit_watch_rule {
-
-# Load function arguments into local variables
-local tool="$1"
-local path="$2"
-local required_access_bits="$3"
-local key="$4"
-
-# Check sanity of the input
-if [ $# -ne "4" ]
-then
-	echo "Usage: fix_audit_watch_rule 'tool' 'path' 'bits' 'key'"
-	echo "Aborting."
-	exit 1
-fi
-
-# Create a list of audit *.rules files that should be inspected for presence and correctness
-# of a particular audit rule. The scheme is as follows:
-#
-# -----------------------------------------------------------------------------------------
-# Tool used to load audit rules	| Rule already defined	|  Audit rules file to inspect	  |
-# -----------------------------------------------------------------------------------------
-#	auditctl		|     Doesn't matter	|  /etc/audit/audit.rules	  |
-# -----------------------------------------------------------------------------------------
-# 	augenrules		|          Yes		|  /etc/audit/rules.d/*.rules	  |
-# 	augenrules		|          No		|  /etc/audit/rules.d/$key.rules  |
-# -----------------------------------------------------------------------------------------
-declare -a files_to_inspect
-
-# Check sanity of the specified audit tool
-if [ "$tool" != 'auditctl' ] &amp;&amp; [ "$tool" != 'augenrules' ]
-then
-	echo "Unknown audit rules loading tool: $1. Aborting."
-	echo "Use either 'auditctl' or 'augenrules'!"
-	exit 1
-# If the audit tool is 'auditctl', then add '/etc/audit/audit.rules'
-# into the list of files to be inspected
-elif [ "$tool" == 'auditctl' ]
-then
-	files_to_inspect=("${files_to_inspect[@]}" '/etc/audit/audit.rules')
-# If the audit is 'augenrules', then check if rule is already defined
-# If rule is defined, add '/etc/audit/rules.d/*.rules' to list of files for inspection.
-# If rule isn't defined, add '/etc/audit/rules.d/$key.rules' to list of files for inspection.
-elif [ "$tool" == 'augenrules' ]
-then
-	# Case when particular audit rule is already defined in some of /etc/audit/rules.d/*.rules file
-	# Get pair -- filepath : matching_row into @matches array
-	IFS=$'\n' matches=($(grep -P "[\s]*-w[\s]+$path" /etc/audit/rules.d/*.rules))
-	# Reset IFS back to default
-	unset IFS
-	# For each of the matched entries
-	for match in "${matches[@]}"
-	do
-		# Extract filepath from the match
-		rulesd_audit_file=$(echo $match | cut -f1 -d ':')
-		# Append that path into list of files for inspection
-		files_to_inspect=("${files_to_inspect[@]}" "$rulesd_audit_file")
-	done
-	# Case when particular audit rule isn't defined yet
-	if [ ${#files_to_inspect[@]} -eq "0" ]
-	then
-		# Append '/etc/audit/rules.d/$key.rules' into list of files for inspection
-		files_to_inspect="/etc/audit/rules.d/$key.rules"
-		# If the $key.rules file doesn't exist yet, create it with correct permissions
-		if [ ! -e "$files_to_inspect" ]
-		then
-			touch "$files_to_inspect"
-			chmod 0640 "$files_to_inspect"
-		fi
-	fi
-fi
-
-# Finally perform the inspection and possible subsequent audit rule
-# correction for each of the files previously identified for inspection
-for audit_rules_file in "${files_to_inspect[@]}"
-do
-
-	# Check if audit watch file system object rule for given path already present
-	if grep -q -P -- "[\s]*-w[\s]+$path" "$audit_rules_file"
-	then
-		# Rule is found =&gt; verify yet if existing rule definition contains
-		# all of the required access type bits
-
-		# Escape slashes in path for use in sed pattern below
-		local esc_path=${path//$'/'/$'\/'}
-		# Define BRE whitespace class shortcut
-		local sp="[[:space:]]"
-		# Extract current permission access types (e.g. -p [r|w|x|a] values) from audit rule
-		current_access_bits=$(sed -ne "s/$sp*-w$sp\+$esc_path$sp\+-p$sp\+\([rxwa]\{1,4\}\).*/\1/p" "$audit_rules_file")
-		# Split required access bits string into characters array
-		# (to check bit's presence for one bit at a time)
-		for access_bit in $(echo "$required_access_bits" | grep -o .)
-		do
-			# For each from the required access bits (e.g. 'w', 'a') check
-			# if they are already present in current access bits for rule.
-			# If not, append that bit at the end
-			if ! grep -q "$access_bit" &lt;&lt;&lt; "$current_access_bits"
-			then
-				# Concatenate the existing mask with the missing bit
-				current_access_bits="$current_access_bits$access_bit"
-			fi
-		done
-		# Propagate the updated rule's access bits (original + the required
-		# ones) back into the /etc/audit/audit.rules file for that rule
-		sed -i "s/\($sp*-w$sp\+$esc_path$sp\+-p$sp\+\)\([rxwa]\{1,4\}\)\(.*\)/\1$current_access_bits\3/" "$audit_rules_file"
-	else
-		# Rule isn't present yet. Append it at the end of $audit_rules_file file
-		# with proper key
-
-		echo "-w $path -p $required_access_bits -k $key" &gt;&gt; "$audit_rules_file"
-	fi
-done
 }
 </value>
         </Value>
@@ -6431,348 +6223,6 @@ done
 }	
 </value>
         </Value>
-        <Value id="xccdf_org.ssgproject.content_value_function_replace_or_append" hidden="true" prohibitChanges="true" operator="equals" type="string">
-          <title xml:lang="en-US">Remediation function replace_or_append</title>
-          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
-          <value># Function to replace configuration setting in config file or add the configuration setting if
-# it does not exist.
-#
-# Expects four arguments:
-#
-# config_file:		Configuration file that will be modified
-# key:			Configuration option to change
-# value:		Value of the configuration option to change
-# cce:			The CCE identifier or '@CCENUM@' if no CCE identifier exists
-#
-# Optional arugments:
-#
-# format:		Optional argument to specify the format of how key/value should be
-# 			modified/appended in the configuration file. The default is key = value.
-#
-# Example Call(s):
-#
-#     With default format of 'key = value':
-#     replace_or_append '/etc/sysctl.conf' '^kernel.randomize_va_space' '2' '@CCENUM@'
-#
-#     With custom key/value format:
-#     replace_or_append '/etc/sysconfig/selinux' '^SELINUX=' 'disabled' '@CCENUM@' '%s=%s'
-#
-#     With a variable:
-#     replace_or_append '/etc/sysconfig/selinux' '^SELINUX=' $var_selinux_state '@CCENUM@' '%s=%s'
-#
-function replace_or_append {
-  local config_file=$1
-  local key=$2
-  local value=$3
-  local cce=$4
-  local format=$5
-
-  # Check sanity of the input
-  if [ $# -lt "3" ]
-  then
-        echo "Usage: replace_or_append 'config_file_location' 'key_to_search' 'new_value'"
-        echo
-        echo "If symlinks need to be taken into account, add yes/no to the last argument"
-        echo "to allow to 'follow_symlinks'."
-        echo "Aborting."
-        exit 1
-  fi
-
-  # Test if the config_file is a symbolic link. If so, use --follow-symlinks with sed.
-  # Otherwise, regular sed command will do.
-  if test -L $config_file; then
-    sed_command="sed -i --follow-symlinks"
-  else
-    sed_command="sed -i"
-  fi
-
-  # Test that the cce arg is not empty or does not equal @CCENUM@.
-  # If @CCENUM@ exists, it means that there is no CCE assigned.
-  if ! [ "x$cce" = x ] &amp;&amp; [ "$cce" != '@CCENUM@' ]; then
-    cce="CCE-${cce}"
-  else
-    cce="CCE"
-  fi
-
-  # Strip any search characters in the key arg so that the key can be replaced without
-  # adding any search characters to the config file.
-  stripped_key=$(sed "s/[\^=\$,;+]*//g" &lt;&lt;&lt; $key)
-
-  # If there is no print format specified in the last arg, use the default format.
-  if ! [ "x$format" = x ] ; then
-    printf -v formatted_output "$format" "$stripped_key" "$value"
-  else
-    formatted_output="$stripped_key = $value"
-  fi
-
-  # If the key exists, change it. Otherwise, add it to the config_file.
-  if `grep -qi $key $config_file` ; then
-    eval $sed_command "s/$key.*/$formatted_output/g" $config_file
-  else
-    # \n is precaution for case where file ends without trailing newline
-    echo -e "\n# Per $cce: Set $formatted_output in $config_file" &gt;&gt; $config_file
-    echo -e "$formatted_output" &gt;&gt; $config_file
-  fi
-
-}
-</value>
-        </Value>
-        <Value id="xccdf_org.ssgproject.content_value_function_fix_audit_syscall_rule" hidden="true" prohibitChanges="true" operator="equals" type="string">
-          <title xml:lang="en-US">Remediation function fix_audit_syscall_rule</title>
-          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
-          <value># Function to fix syscall audit rule for given system call. It is
-# based on example audit syscall rule definitions as outlined in
-# /usr/share/doc/audit-2.3.7/stig.rules file provided with the audit
-# package. It will combine multiple system calls belonging to the same
-# syscall group into one audit rule (rather than to create audit rule per
-# different system call) to avoid audit infrastructure performance penalty
-# in the case of 'one-audit-rule-definition-per-one-system-call'. See:
-#
-#   https://www.redhat.com/archives/linux-audit/2014-November/msg00009.html
-#
-# for further details.
-#
-# Expects five arguments (each of them is required) in the form of:
-# * audit tool				tool used to load audit rules,
-# 					either 'auditctl', or 'augenrules
-# * audit rules' pattern		audit rule skeleton for same syscall
-# * syscall group			greatest common string this rule shares
-# 					with other rules from the same group
-# * architecture			architecture this rule is intended for
-# * full form of new rule to add	expected full form of audit rule as to be
-# 					added into audit.rules file
-#
-# Note: The 2-th up to 4-th arguments are used to determine how many existing
-# audit rules will be inspected for resemblance with the new audit rule
-# (5-th argument) the function is going to add. The rule's similarity check
-# is performed to optimize audit.rules definition (merge syscalls of the same
-# group into one rule) to avoid the "single-syscall-per-audit-rule" performance
-# penalty.
-#
-# Example call:
-#
-#	See e.g. 'audit_rules_file_deletion_events.sh' remediation script
-#
-function fix_audit_syscall_rule {
-
-# Load function arguments into local variables
-local tool="$1"
-local pattern="$2"
-local group="$3"
-local arch="$4"
-local full_rule="$5"
-
-# Check sanity of the input
-if [ $# -ne "5" ]
-then
-	echo "Usage: fix_audit_syscall_rule 'tool' 'pattern' 'group' 'arch' 'full rule'"
-	echo "Aborting."
-	exit 1
-fi
-
-# Create a list of audit *.rules files that should be inspected for presence and correctness
-# of a particular audit rule. The scheme is as follows:
-# 
-# -----------------------------------------------------------------------------------------
-#  Tool used to load audit rules | Rule already defined  |  Audit rules file to inspect    |
-# -----------------------------------------------------------------------------------------
-#        auditctl                |     Doesn't matter    |  /etc/audit/audit.rules         |
-# -----------------------------------------------------------------------------------------
-#        augenrules              |          Yes          |  /etc/audit/rules.d/*.rules     |
-#        augenrules              |          No           |  /etc/audit/rules.d/$key.rules  |
-# -----------------------------------------------------------------------------------------
-#
-declare -a files_to_inspect
-
-# First check sanity of the specified audit tool
-if [ "$tool" != 'auditctl' ] &amp;&amp; [ "$tool" != 'augenrules' ]
-then
-	echo "Unknown audit rules loading tool: $1. Aborting."
-	echo "Use either 'auditctl' or 'augenrules'!"
-	exit 1
-# If audit tool is 'auditctl', then add '/etc/audit/audit.rules'
-# file to the list of files to be inspected
-elif [ "$tool" == 'auditctl' ]
-then
-	files_to_inspect=("${files_to_inspect[@]}" '/etc/audit/audit.rules' )
-# If audit tool is 'augenrules', then check if the audit rule is defined
-# If rule is defined, add '/etc/audit/rules.d/*.rules' to the list for inspection
-# If rule isn't defined yet, add '/etc/audit/rules.d/$key.rules' to the list for inspection
-elif [ "$tool" == 'augenrules' ]
-then
-	# Extract audit $key from audit rule so we can use it later
-	key=$(expr "$full_rule" : '.*-k[[:space:]]\([^[:space:]]\+\)')
-	# Check if particular audit rule is already defined
-	IFS=$'\n' matches=($(sed -s -n -e "/${pattern}/!d" -e "/${arch}/!d" -e "/${group}/!d;F" /etc/audit/rules.d/*.rules))
-	# Reset IFS back to default
-	unset IFS
-	for match in "${matches[@]}"
-	do
-		files_to_inspect=("${files_to_inspect[@]}" "${match}")
-	done
-	# Case when particular rule isn't defined in /etc/audit/rules.d/*.rules yet
-	if [ ${#files_to_inspect[@]} -eq "0" ]
-	then
-		files_to_inspect="/etc/audit/rules.d/$key.rules"
-		if [ ! -e "$files_to_inspect" ]
-		then
-			touch "$files_to_inspect"
-			chmod 0640 "$files_to_inspect"
-		fi
-	fi
-fi
-
-#
-# Indicator that we want to append $full_rule into $audit_file by default
-local append_expected_rule=0
-
-for audit_file in "${files_to_inspect[@]}"
-do
-
-	# Filter existing $audit_file rules' definitions to select those that:
-	# * follow the rule pattern, and
-	# * meet the hardware architecture requirement, and
-	# * are current syscall group specific
-	IFS=$'\n' existing_rules=($(sed -e "/${pattern}/!d" -e "/${arch}/!d" -e "/${group}/!d"  "$audit_file"))
-	# Reset IFS back to default
-	unset IFS
-
-	# Process rules found case-by-case
-	for rule in "${existing_rules[@]}"
-	do
-		# Found rule is for same arch &amp; key, but differs (e.g. in count of -S arguments)
-		if [ "${rule}" != "${full_rule}" ]
-		then
-			# If so, isolate just '(-S \w)+' substring of that rule
-			rule_syscalls=$(echo $rule | grep -o -P '(-S \w+ )+')
-			# Check if list of '-S syscall' arguments of that rule is subset
-			# of '-S syscall' list of expected $full_rule
-			if grep -q -- "$rule_syscalls" &lt;&lt;&lt; "$full_rule"
-			then
-				# Rule is covered (i.e. the list of -S syscalls for this rule is
-				# subset of -S syscalls of $full_rule =&gt; existing rule can be deleted
-				# Thus delete the rule from audit.rules &amp; our array
-				sed -i -e "/${rule}/d" "$audit_file"
-				existing_rules=("${existing_rules[@]//$rule/}")
-			else
-				# Rule isn't covered by $full_rule - it besides -S syscall arguments
-				# for this group contains also -S syscall arguments for other syscall
-				# group. Example: '-S lchown -S fchmod -S fchownat' =&gt; group='chown'
-				# since 'lchown' &amp; 'fchownat' share 'chown' substring
-				# Therefore:
-				# * 1) delete the original rule from audit.rules
-				# (original '-S lchown -S fchmod -S fchownat' rule would be deleted)
-				# * 2) delete the -S syscall arguments for this syscall group, but
-				# keep those not belonging to this syscall group
-				# (original '-S lchown -S fchmod -S fchownat' would become '-S fchmod'
-				# * 3) append the modified (filtered) rule again into audit.rules
-				# if the same rule not already present
-				#
-				# 1) Delete the original rule
-				sed -i -e "/${rule}/d" "$audit_file"
-				# 2) Delete syscalls for this group, but keep those from other groups
-				# Convert current rule syscall's string into array splitting by '-S' delimiter
-				IFS=$'-S' read -a rule_syscalls_as_array &lt;&lt;&lt; "$rule_syscalls"
-				# Reset IFS back to default
-				unset IFS
-				# Declare new empty string to hold '-S syscall' arguments from other groups
-				new_syscalls_for_rule=''
-				# Walk through existing '-S syscall' arguments
-				for syscall_arg in "${rule_syscalls_as_array[@]}"
-				do
-					# Skip empty $syscall_arg values
-					if [ "$syscall_arg" == '' ]
-					then
-						continue
-					fi
-					# If the '-S syscall' doesn't belong to current group add it to the new list
-					# (together with adding '-S' delimiter back for each of such item found)
-					if grep -q -v -- "$group" &lt;&lt;&lt; "$syscall_arg"
-					then
-						new_syscalls_for_rule="$new_syscalls_for_rule -S $syscall_arg"
-					fi
-				done
-				# Replace original '-S syscall' list with the new one for this rule
-				updated_rule=${rule//$rule_syscalls/$new_syscalls_for_rule}
-				# Squeeze repeated whitespace characters in rule definition (if any) into one
-				updated_rule=$(echo "$updated_rule" | tr -s '[:space:]')
-				# 3) Append the modified / filtered rule again into audit.rules
-				#    (but only in case it's not present yet to prevent duplicate definitions)
-				if ! grep -q -- "$updated_rule" "$audit_file"
-				then
-					echo "$updated_rule" &gt;&gt; "$audit_file"
-				fi
-			fi
-		else
-			# $audit_file already contains the expected rule form for this
-			# architecture &amp; key =&gt; don't insert it second time
-			append_expected_rule=1
-		fi
-	done
-
-	# We deleted all rules that were subset of the expected one for this arch &amp; key.
-	# Also isolated rules containing system calls not from this system calls group.
-	# Now append the expected rule if it's not present in $audit_file yet
-	if [[ ${append_expected_rule} -eq "0" ]]
-	then
-		echo "$full_rule" &gt;&gt; "$audit_file"
-	fi
-done
-
-}
-</value>
-        </Value>
-        <Value id="xccdf_org.ssgproject.content_value_function_rhel7_fedora_perform_audit_adjtimex_settimeofday_stime_remediation" hidden="true" prohibitChanges="true" operator="equals" type="string">
-          <title xml:lang="en-US">Remediation function rhel7_fedora_perform_audit_adjtimex_settimeofday_stime_remediation</title>
-          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
-          <value># Perform the remediation for the 'adjtimex', 'settimeofday', and 'stime' audit
-# system calls on Red Hat Enterprise Linux 7 or Fedora OSes
-function rhel7_fedora_perform_audit_adjtimex_settimeofday_stime_remediation {
-
-# Retrieve hardware architecture of the underlying system
-[ $(getconf LONG_BIT) = "32" ] &amp;&amp; RULE_ARCHS=("b32") || RULE_ARCHS=("b32" "b64")
-
-for ARCH in "${RULE_ARCHS[@]}"
-do
-
-	PATTERN="-a always,exit -F arch=${ARCH} -S .* -k *"
-	# Create expected audit group and audit rule form for particular system call &amp; architecture
-	if [ ${ARCH} = "b32" ]
-	then
-		# stime system call is known at 32-bit arch (see e.g "$ ausyscall i386 stime" 's output)
-		# so append it to the list of time group system calls to be audited
-		GROUP="\(adjtimex\|settimeofday\|stime\)"
-		FULL_RULE="-a always,exit -F arch=${ARCH} -S adjtimex -S settimeofday -S stime -k audit_time_rules"
-	elif [ ${ARCH} = "b64" ]
-	then
-		# stime system call isn't known at 64-bit arch (see "$ ausyscall x86_64 stime" 's output)
-		# therefore don't add it to the list of time group system calls to be audited
-		GROUP="\(adjtimex\|settimeofday\)"
-		FULL_RULE="-a always,exit -F arch=${ARCH} -S adjtimex -S settimeofday -k audit_time_rules"
-	fi
-	# Perform the remediation for both possible tools: 'auditctl' and 'augenrules'
-	fix_audit_syscall_rule "auditctl" "$PATTERN" "$GROUP" "$ARCH" "$FULL_RULE"
-	fix_audit_syscall_rule "augenrules" "$PATTERN" "$GROUP" "$ARCH" "$FULL_RULE"
-done
-
-}
-</value>
-        </Value>
-        <Value id="xccdf_org.ssgproject.content_value_function_populate" hidden="true" prohibitChanges="true" operator="equals" type="string">
-          <title xml:lang="en-US">Remediation function populate</title>
-          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
-          <value># The populate function isn't directly used by SSG at the moment but it can be 
-# used for testing purposes and will be used in SSG Testsuite in the future.
-
-function populate {
-# code to populate environment variables needed (for unit testing)
-if [ -z "${!1}" ]; then
-	echo "$1 is not defined. Exiting."
-	exit
-fi
-}
-</value>
-        </Value>
         <Value id="xccdf_org.ssgproject.content_value_function_firefox_js_setting" hidden="true" prohibitChanges="true" operator="equals" type="string">
           <title xml:lang="en-US">Remediation function firefox_js_setting</title>
           <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
@@ -6842,6 +6292,577 @@ function firefox_js_setting {
       fi
     fi
   done
+
+}
+</value>
+        </Value>
+        <Value id="xccdf_org.ssgproject.content_value_function_rhel6_perform_audit_adjtimex_settimeofday_stime_remediation" hidden="true" prohibitChanges="true" operator="equals" type="string">
+          <title xml:lang="en-US">Remediation function rhel6_perform_audit_adjtimex_settimeofday_stime_remediation</title>
+          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
+          <value># Function to fix syscall audit rule for given system call. It is
+# based on example audit syscall rule definitions as outlined in
+# /usr/share/doc/audit-2.3.7/stig.rules file provided with the audit
+# package. It will combine multiple system calls belonging to the same
+# syscall group into one audit rule (rather than to create audit rule per
+# different system call) to avoid audit infrastructure performance penalty
+# in the case of 'one-audit-rule-definition-per-one-system-call'. See:
+#
+#   https://www.redhat.com/archives/linux-audit/2014-November/msg00009.html
+#
+# for further details.
+#
+# Expects five arguments (each of them is required) in the form of:
+# * audit tool				tool used to load audit rules,
+# 					either 'auditctl', or 'augenrules
+# * audit rules' pattern		audit rule skeleton for same syscall
+# * syscall group			greatest common string this rule shares
+# 					with other rules from the same group
+# * architecture			architecture this rule is intended for
+# * full form of new rule to add	expected full form of audit rule as to be
+# 					added into audit.rules file
+#
+# Note: The 2-th up to 4-th arguments are used to determine how many existing
+# audit rules will be inspected for resemblance with the new audit rule
+# (5-th argument) the function is going to add. The rule's similarity check
+# is performed to optimize audit.rules definition (merge syscalls of the same
+# group into one rule) to avoid the "single-syscall-per-audit-rule" performance
+# penalty.
+#
+# Example call:
+#
+#	See e.g. 'audit_rules_file_deletion_events.sh' remediation script
+#
+function fix_audit_syscall_rule {
+
+# Load function arguments into local variables
+local tool="$1"
+local pattern="$2"
+local group="$3"
+local arch="$4"
+local full_rule="$5"
+
+# Check sanity of the input
+if [ $# -ne "5" ]
+then
+	echo "Usage: fix_audit_syscall_rule 'tool' 'pattern' 'group' 'arch' 'full rule'"
+	echo "Aborting."
+	exit 1
+fi
+
+# Create a list of audit *.rules files that should be inspected for presence and correctness
+# of a particular audit rule. The scheme is as follows:
+# 
+# -----------------------------------------------------------------------------------------
+#  Tool used to load audit rules | Rule already defined  |  Audit rules file to inspect    |
+# -----------------------------------------------------------------------------------------
+#        auditctl                |     Doesn't matter    |  /etc/audit/audit.rules         |
+# -----------------------------------------------------------------------------------------
+#        augenrules              |          Yes          |  /etc/audit/rules.d/*.rules     |
+#        augenrules              |          No           |  /etc/audit/rules.d/$key.rules  |
+# -----------------------------------------------------------------------------------------
+#
+declare -a files_to_inspect
+
+retval=0
+
+# First check sanity of the specified audit tool
+if [ "$tool" != 'auditctl' ] &amp;&amp; [ "$tool" != 'augenrules' ]
+then
+	echo "Unknown audit rules loading tool: $1. Aborting."
+	echo "Use either 'auditctl' or 'augenrules'!"
+	return 1
+# If audit tool is 'auditctl', then add '/etc/audit/audit.rules'
+# file to the list of files to be inspected
+elif [ "$tool" == 'auditctl' ]
+then
+	files_to_inspect=("${files_to_inspect[@]}" '/etc/audit/audit.rules' )
+# If audit tool is 'augenrules', then check if the audit rule is defined
+# If rule is defined, add '/etc/audit/rules.d/*.rules' to the list for inspection
+# If rule isn't defined yet, add '/etc/audit/rules.d/$key.rules' to the list for inspection
+elif [ "$tool" == 'augenrules' ]
+then
+	# Extract audit $key from audit rule so we can use it later
+	key=$(expr "$full_rule" : '.*-k[[:space:]]\([^[:space:]]\+\)')
+	# Check if particular audit rule is already defined
+	IFS=$'\n' matches=($(sed -s -n -e "\;${pattern};!d" -e "/${arch}/!d" -e "/${group}/!d;F" /etc/audit/rules.d/*.rules))
+	if [ $? -ne 0 ]
+	then
+		retval=1
+	fi
+	# Reset IFS back to default
+	unset IFS
+	for match in "${matches[@]}"
+	do
+		files_to_inspect=("${files_to_inspect[@]}" "${match}")
+	done
+	# Case when particular rule isn't defined in /etc/audit/rules.d/*.rules yet
+	if [ ${#files_to_inspect[@]} -eq "0" ]
+	then
+		files_to_inspect="/etc/audit/rules.d/$key.rules"
+		if [ ! -e "$files_to_inspect" ]
+		then
+			touch "$files_to_inspect"
+			chmod 0640 "$files_to_inspect"
+		fi
+	fi
+fi
+
+#
+# Indicator that we want to append $full_rule into $audit_file by default
+local append_expected_rule=0
+
+for audit_file in "${files_to_inspect[@]}"
+do
+
+	# Filter existing $audit_file rules' definitions to select those that:
+	# * follow the rule pattern, and
+	# * meet the hardware architecture requirement, and
+	# * are current syscall group specific
+	IFS=$'\n' existing_rules=($(sed -e "\;${pattern};!d" -e "/${arch}/!d" -e "/${group}/!d"  "$audit_file"))
+	if [ $? -ne 0 ]
+	then
+		retval=1
+	fi
+	# Reset IFS back to default
+	unset IFS
+
+	# Process rules found case-by-case
+	for rule in "${existing_rules[@]}"
+	do
+		# Found rule is for same arch &amp; key, but differs (e.g. in count of -S arguments)
+		if [ "${rule}" != "${full_rule}" ]
+		then
+			# If so, isolate just '(-S \w)+' substring of that rule
+			rule_syscalls=$(echo $rule | grep -o -P '(-S \w+ )+')
+			# Check if list of '-S syscall' arguments of that rule is subset
+			# of '-S syscall' list of expected $full_rule
+			if grep -q -- "$rule_syscalls" &lt;&lt;&lt; "$full_rule"
+			then
+				# Rule is covered (i.e. the list of -S syscalls for this rule is
+				# subset of -S syscalls of $full_rule =&gt; existing rule can be deleted
+				# Thus delete the rule from audit.rules &amp; our array
+				sed -i -e "\;${rule};d" "$audit_file"
+				if [ $? -ne 0 ]
+				then
+					retval=1
+				fi
+				existing_rules=("${existing_rules[@]//$rule/}")
+			else
+				# Rule isn't covered by $full_rule - it besides -S syscall arguments
+				# for this group contains also -S syscall arguments for other syscall
+				# group. Example: '-S lchown -S fchmod -S fchownat' =&gt; group='chown'
+				# since 'lchown' &amp; 'fchownat' share 'chown' substring
+				# Therefore:
+				# * 1) delete the original rule from audit.rules
+				# (original '-S lchown -S fchmod -S fchownat' rule would be deleted)
+				# * 2) delete the -S syscall arguments for this syscall group, but
+				# keep those not belonging to this syscall group
+				# (original '-S lchown -S fchmod -S fchownat' would become '-S fchmod'
+				# * 3) append the modified (filtered) rule again into audit.rules
+				# if the same rule not already present
+				#
+				# 1) Delete the original rule
+				sed -i -e "\;${rule};d" "$audit_file"
+				if [ $? -ne 0 ]
+				then
+					retval=1
+				fi
+				# 2) Delete syscalls for this group, but keep those from other groups
+				# Convert current rule syscall's string into array splitting by '-S' delimiter
+				IFS=$'-S' read -a rule_syscalls_as_array &lt;&lt;&lt; "$rule_syscalls"
+				# Reset IFS back to default
+				unset IFS
+				# Declare new empty string to hold '-S syscall' arguments from other groups
+				new_syscalls_for_rule=''
+				# Walk through existing '-S syscall' arguments
+				for syscall_arg in "${rule_syscalls_as_array[@]}"
+				do
+					# Skip empty $syscall_arg values
+					if [ "$syscall_arg" == '' ]
+					then
+						continue
+					fi
+					# If the '-S syscall' doesn't belong to current group add it to the new list
+					# (together with adding '-S' delimiter back for each of such item found)
+					if grep -q -v -- "$group" &lt;&lt;&lt; "$syscall_arg"
+					then
+						new_syscalls_for_rule="$new_syscalls_for_rule -S $syscall_arg"
+					fi
+				done
+				# Replace original '-S syscall' list with the new one for this rule
+				updated_rule=${rule//$rule_syscalls/$new_syscalls_for_rule}
+				# Squeeze repeated whitespace characters in rule definition (if any) into one
+				updated_rule=$(echo "$updated_rule" | tr -s '[:space:]')
+				# 3) Append the modified / filtered rule again into audit.rules
+				#    (but only in case it's not present yet to prevent duplicate definitions)
+				if ! grep -q -- "$updated_rule" "$audit_file"
+				then
+					echo "$updated_rule" &gt;&gt; "$audit_file"
+				fi
+			fi
+		else
+			# $audit_file already contains the expected rule form for this
+			# architecture &amp; key =&gt; don't insert it second time
+			append_expected_rule=1
+		fi
+	done
+
+	# We deleted all rules that were subset of the expected one for this arch &amp; key.
+	# Also isolated rules containing system calls not from this system calls group.
+	# Now append the expected rule if it's not present in $audit_file yet
+	if [[ ${append_expected_rule} -eq "0" ]]
+	then
+		echo "$full_rule" &gt;&gt; "$audit_file"
+	fi
+done
+
+return $retval
+
+}
+
+
+# Perform the remediation for the 'adjtimex', 'settimeofday', and 'stime' audit
+# system calls on Red Hat Enterprise Linux 6 OS
+function rhel6_perform_audit_adjtimex_settimeofday_stime_remediation {
+
+# Retrieve hardware architecture of the underlying system
+[ $(getconf LONG_BIT) = "32" ] &amp;&amp; RULE_ARCHS=("b32") || RULE_ARCHS=("b32" "b64")
+
+for ARCH in "${RULE_ARCHS[@]}"
+do
+	PATTERN="-a always,exit -F arch=${ARCH} -S .* -k *"
+	# Create expected audit group and audit rule form for particular system call &amp; architecture
+	if [ ${ARCH} = "b32" ]
+	then
+		# stime system call is known at 32-bit arch (see e.g "$ ausyscall i386 stime" 's output)
+		# so append it to the list of time group system calls to be audited
+		GROUP="\(adjtimex\|settimeofday\|stime\)"
+		FULL_RULE="-a always,exit -F arch=${ARCH} -S adjtimex -S settimeofday -S stime -k audit_time_rules"
+	elif [ ${ARCH} = "b64" ]
+	then
+		# stime system call isn't known at 64-bit arch (see "$ ausyscall x86_64 stime" 's output)
+		# therefore don't add it to the list of time group system calls to be audited
+		GROUP="\(adjtimex\|settimeofday\)"
+		FULL_RULE="-a always,exit -F arch=${ARCH} -S adjtimex -S settimeofday -k audit_time_rules"
+	fi
+	# Perform the remediation itself
+	fix_audit_syscall_rule "auditctl" "$PATTERN" "$GROUP" "$ARCH" "$FULL_RULE"
+done
+
+}
+</value>
+        </Value>
+        <Value id="xccdf_org.ssgproject.content_value_function_fix_audit_watch_rule" hidden="true" prohibitChanges="true" operator="equals" type="string">
+          <title xml:lang="en-US">Remediation function fix_audit_watch_rule</title>
+          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
+          <value># Function to fix audit file system object watch rule for given path:
+# * if rule exists, also verifies the -w bits match the requirements
+# * if rule doesn't exist yet, appends expected rule form to $files_to_inspect
+#   audit rules file, depending on the tool which was used to load audit rules
+#
+# Expects four arguments (each of them is required) in the form of:
+# * audit tool				tool used to load audit rules,
+# 					either 'auditctl', or 'augenrules'
+# * path                        	value of -w audit rule's argument
+# * required access bits        	value of -p audit rule's argument
+# * key                         	value of -k audit rule's argument
+#
+# Example call:
+#
+#       fix_audit_watch_rule "auditctl" "/etc/localtime" "wa" "audit_time_rules"
+#
+function fix_audit_watch_rule {
+
+# Load function arguments into local variables
+local tool="$1"
+local path="$2"
+local required_access_bits="$3"
+local key="$4"
+
+# Check sanity of the input
+if [ $# -ne "4" ]
+then
+	echo "Usage: fix_audit_watch_rule 'tool' 'path' 'bits' 'key'"
+	echo "Aborting."
+	exit 1
+fi
+
+# Create a list of audit *.rules files that should be inspected for presence and correctness
+# of a particular audit rule. The scheme is as follows:
+#
+# -----------------------------------------------------------------------------------------
+# Tool used to load audit rules	| Rule already defined	|  Audit rules file to inspect	  |
+# -----------------------------------------------------------------------------------------
+#	auditctl		|     Doesn't matter	|  /etc/audit/audit.rules	  |
+# -----------------------------------------------------------------------------------------
+# 	augenrules		|          Yes		|  /etc/audit/rules.d/*.rules	  |
+# 	augenrules		|          No		|  /etc/audit/rules.d/$key.rules  |
+# -----------------------------------------------------------------------------------------
+declare -a files_to_inspect
+
+# Check sanity of the specified audit tool
+if [ "$tool" != 'auditctl' ] &amp;&amp; [ "$tool" != 'augenrules' ]
+then
+	echo "Unknown audit rules loading tool: $1. Aborting."
+	echo "Use either 'auditctl' or 'augenrules'!"
+	exit 1
+# If the audit tool is 'auditctl', then add '/etc/audit/audit.rules'
+# into the list of files to be inspected
+elif [ "$tool" == 'auditctl' ]
+then
+	files_to_inspect=("${files_to_inspect[@]}" '/etc/audit/audit.rules')
+# If the audit is 'augenrules', then check if rule is already defined
+# If rule is defined, add '/etc/audit/rules.d/*.rules' to list of files for inspection.
+# If rule isn't defined, add '/etc/audit/rules.d/$key.rules' to list of files for inspection.
+elif [ "$tool" == 'augenrules' ]
+then
+	# Case when particular audit rule is already defined in some of /etc/audit/rules.d/*.rules file
+	# Get pair -- filepath : matching_row into @matches array
+	IFS=$'\n' matches=($(grep -P "[\s]*-w[\s]+$path" /etc/audit/rules.d/*.rules))
+	# Reset IFS back to default
+	unset IFS
+	# For each of the matched entries
+	for match in "${matches[@]}"
+	do
+		# Extract filepath from the match
+		rulesd_audit_file=$(echo $match | cut -f1 -d ':')
+		# Append that path into list of files for inspection
+		files_to_inspect=("${files_to_inspect[@]}" "$rulesd_audit_file")
+	done
+	# Case when particular audit rule isn't defined yet
+	if [ ${#files_to_inspect[@]} -eq "0" ]
+	then
+		# Append '/etc/audit/rules.d/$key.rules' into list of files for inspection
+		files_to_inspect="/etc/audit/rules.d/$key.rules"
+		# If the $key.rules file doesn't exist yet, create it with correct permissions
+		if [ ! -e "$files_to_inspect" ]
+		then
+			touch "$files_to_inspect"
+			chmod 0640 "$files_to_inspect"
+		fi
+	fi
+fi
+
+# Finally perform the inspection and possible subsequent audit rule
+# correction for each of the files previously identified for inspection
+for audit_rules_file in "${files_to_inspect[@]}"
+do
+
+	# Check if audit watch file system object rule for given path already present
+	if grep -q -P -- "[\s]*-w[\s]+$path" "$audit_rules_file"
+	then
+		# Rule is found =&gt; verify yet if existing rule definition contains
+		# all of the required access type bits
+
+		# Escape slashes in path for use in sed pattern below
+		local esc_path=${path//$'/'/$'\/'}
+		# Define BRE whitespace class shortcut
+		local sp="[[:space:]]"
+		# Extract current permission access types (e.g. -p [r|w|x|a] values) from audit rule
+		current_access_bits=$(sed -ne "s/$sp*-w$sp\+$esc_path$sp\+-p$sp\+\([rxwa]\{1,4\}\).*/\1/p" "$audit_rules_file")
+		# Split required access bits string into characters array
+		# (to check bit's presence for one bit at a time)
+		for access_bit in $(echo "$required_access_bits" | grep -o .)
+		do
+			# For each from the required access bits (e.g. 'w', 'a') check
+			# if they are already present in current access bits for rule.
+			# If not, append that bit at the end
+			if ! grep -q "$access_bit" &lt;&lt;&lt; "$current_access_bits"
+			then
+				# Concatenate the existing mask with the missing bit
+				current_access_bits="$current_access_bits$access_bit"
+			fi
+		done
+		# Propagate the updated rule's access bits (original + the required
+		# ones) back into the /etc/audit/audit.rules file for that rule
+		sed -i "s/\($sp*-w$sp\+$esc_path$sp\+-p$sp\+\)\([rxwa]\{1,4\}\)\(.*\)/\1$current_access_bits\3/" "$audit_rules_file"
+	else
+		# Rule isn't present yet. Append it at the end of $audit_rules_file file
+		# with proper key
+
+		echo "-w $path -p $required_access_bits -k $key" &gt;&gt; "$audit_rules_file"
+	fi
+done
+}
+</value>
+        </Value>
+        <Value id="xccdf_org.ssgproject.content_value_function_firefox_cfg_setting" hidden="true" prohibitChanges="true" operator="equals" type="string">
+          <title xml:lang="en-US">Remediation function firefox_cfg_setting</title>
+          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
+          <value># Function to replace configuration setting(s) in the Firefox preferences configuration (.cfg) file or add the
+# preference if it does not exist.
+#
+# Expects three arguments:
+#
+# config_file:          Configuration file that will be modified
+# key:                  Configuration option to change
+# value:                Value of the configuration option to change
+#
+#
+# Example Call(s):
+#
+#     Without string or variable:
+#     firefox_cfg_setting "stig.cfg" "extensions.update.enabled" "false"
+#
+#     With string:
+#     firefox_cfg_setting "stig.cfg" "security.default_personal_cert" "\"Ask Every Time\""
+#
+#     With a string variable:
+#     firefox_cfg_setting "stig.cfg" "browser.startup.homepage\" "\"${var_default_home_page}\""
+#
+function firefox_cfg_setting {
+  local firefox_cfg=$1
+  local key=$2
+  local value=$3
+  local firefox_dirs="/usr/lib/firefox /usr/lib64/firefox /usr/local/lib/firefox /usr/local/lib64/firefox"
+
+  # Check sanity of input
+  if [ $# -lt "3" ]
+  then
+        echo "Usage: firefox_cfg_setting 'config_cfg_file' 'key_to_search' 'new_value'"
+        echo
+        echo "Aborting."
+        exit 1
+  fi
+
+  # Check the possible Firefox install directories
+  for firefox_dir in ${firefox_dirs}; do
+    # If the Firefox directory exists, then Firefox is installed
+    if [ -d "${firefox_dir}" ]; then
+      # Make sure the Firefox .cfg file exists and has the appropriate permissions
+      if ! [ -f "${firefox_dir}/${firefox_cfg}" ] ; then
+        touch "${firefox_dir}/${firefox_cfg}"
+        chmod 644 "${firefox_dir}/${firefox_cfg}"
+      fi
+
+      # If the key exists, change it. Otherwise, add it to the config_file.
+      if `grep -q "^lockPref(\"${key}\", " "${firefox_dir}/${firefox_cfg}"` ; then
+        sed -i "s/lockPref(\"${key}\".*/lockPref(\"${key}\", ${value});/g" "${firefox_dir}/${firefox_cfg}"
+      else
+        echo "lockPref(\"${key}\", ${value});" &gt;&gt; "${firefox_dir}/${firefox_cfg}"
+      fi
+    fi
+  done
+}
+</value>
+        </Value>
+        <Value id="xccdf_org.ssgproject.content_value_function_service_command" hidden="true" prohibitChanges="true" operator="equals" type="string">
+          <title xml:lang="en-US">Remediation function service_command</title>
+          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
+          <value># Function to enable/disable and start/stop services on RHEL and Fedora systems.
+#
+# Example Call(s):
+#
+#     service_command enable bluetooth
+#     service_command disable bluetooth.service
+#
+#     Using xinetd:
+#     service_command disable rsh.socket xinetd=rsh
+#
+function service_command {
+
+# Load function arguments into local variables
+local service_state=$1
+local service=$2
+local xinetd=$(echo $3 | cut -d'=' -f2)
+
+# Check sanity of the input
+if [ $# -lt "2" ]
+then
+  echo "Usage: service_command 'enable/disable' 'service_name.service'"
+  echo
+  echo "To enable or disable xinetd services add \'xinetd=service_name\'"
+  echo "as the last argument"  
+  echo "Aborting."
+  exit 1
+fi
+
+# If systemctl is installed, use systemctl command; otherwise, use the service/chkconfig commands
+if [ -f "/usr/bin/systemctl" ] ; then
+  service_util="/usr/bin/systemctl"
+else
+  service_util="/sbin/service"
+  chkconfig_util="/sbin/chkconfig"
+fi
+
+# If disable is not specified in arg1, set variables to enable services.
+# Otherwise, variables are to be set to disable services.
+if [ "$service_state" != 'disable' ] ; then
+  service_state="enable"
+  service_operation="start"
+  chkconfig_state="on"
+else
+  service_state="disable"
+  service_operation="stop"
+  chkconfig_state="off"
+fi
+
+# If chkconfig_util is not empty, use chkconfig/service commands.
+if ! [ "x$chkconfig_util" = x ] ; then
+  $service_util $service $service_operation
+  $chkconfig_util --level 0123456 $service $chkconfig_state
+else
+  $service_util $service_operation $service
+  $service_util $service_state $service
+fi
+
+# Test if local variable xinetd is empty using non-bashism.
+# If empty, then xinetd is not being used.
+if ! [ "x$xinetd" = x ] ; then
+  grep -qi disable /etc/xinetd.d/$xinetd &amp;&amp; \
+
+  if ! [ "$service_operation" != 'disable' ] ; then
+    sed -i "s/disable.*/disable         = no/gI" /etc/xinetd.d/$xinetd
+  else
+    sed -i "s/disable.*/disable         = yes/gI" /etc/xinetd.d/$xinetd
+  fi
+fi
+
+}
+</value>
+        </Value>
+        <Value id="xccdf_org.ssgproject.content_value_function_package_command" hidden="true" prohibitChanges="true" operator="equals" type="string">
+          <title xml:lang="en-US">Remediation function package_command</title>
+          <description xml:lang="en-US">Shared bash remediation function. Not intended to be changed by tailoring.</description>
+          <value># Function to install or uninstall packages on RHEL and Fedora systems.
+#
+# Example Call(s):
+#
+#     package_command install aide
+#     package_command remove telnet-server
+#
+function package_command {
+
+# Load function arguments into local variables
+local package_operation=$1
+local package=$2
+
+# Check sanity of the input
+if [ $# -ne "2" ]
+then
+  echo "Usage: package_command 'install/uninstall' 'rpm_package_name"
+  echo "Aborting."
+  exit 1
+fi
+
+# If dnf is installed, use dnf; otherwise, use yum
+if [ -f "/usr/bin/dnf" ] ; then
+  install_util="/usr/bin/dnf"
+else
+  install_util="/usr/bin/yum"
+fi
+
+if [ "$package_operation" != 'remove' ] ; then
+  # If the rpm is not installed, install the rpm
+  if ! /bin/rpm -q --quiet $package; then
+    $install_util -y $package_operation $package
+  fi
+else
+  # If the rpm is installed, uninstall the rpm
+  if /bin/rpm -q --quiet $package; then
+    $install_util -y $package_operation $package
+  fi
+fi
 
 }
 </value>
@@ -7063,7 +7084,7 @@ give structural informations for local exploits.</description>
     <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chmod 0600 /boot/System.map-*</html:pre>
     
     To properly set the owner of <html:code xmlns:html="http://www.w3.org/1999/xhtml">/boot/System.map-*</html:code>, run the command:
-    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chown root /boot/System.map-*</html:pre>
+    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chown root /boot/System.map-* </html:pre>
   </description>
                 <reference href="http://www.ssi.gouv.fr/administration/bonnes-pratiques/">NT28(R13)</reference>
                 <rationale xml:lang="en-US">The <html:code xmlns:html="http://www.w3.org/1999/xhtml">System.map</html:code> file contains information about kernel symbols and
@@ -7093,10 +7114,10 @@ passwords, and should never be enabled.</description>
     <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chmod 0640 /etc/shadow</html:pre>
               
     To properly set the owner of <html:code xmlns:html="http://www.w3.org/1999/xhtml">/etc/shadow</html:code>, run the command:
-    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chown root /etc/shadow</html:pre>
+    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chown root /etc/shadow </html:pre>
               
     To properly set the group owner of <html:code xmlns:html="http://www.w3.org/1999/xhtml">/etc/shadow</html:code>, run the command:
-    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chgrp shadow /etc/shadow</html:pre>
+    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chgrp shadow /etc/shadow </html:pre>
             </description>
                 <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">AC-6</reference>
                 <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx"/>
@@ -7117,7 +7138,12 @@ which could weaken the system security posture.</rationale>
     - /etc/shadow
   tags:
     - file_permissions_etc_shadow
-    - medium
+    - medium_severity
+    - configure_strategy
+    - low_complexity
+    - low_disruption
+    - NIST-800-53-AC-6
+    - PCI-DSS-Req-8.7.c
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
@@ -7135,10 +7161,10 @@ which could weaken the system security posture.</rationale>
     <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chmod 0640 /etc/gshadow</html:pre>
               
     To properly set the owner of <html:code xmlns:html="http://www.w3.org/1999/xhtml">/etc/gshadow</html:code>, run the command:
-    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chown root /etc/gshadow</html:pre>
+    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chown root /etc/gshadow </html:pre>
               
     To properly set the group owner of <html:code xmlns:html="http://www.w3.org/1999/xhtml">/etc/gshadow</html:code>, run the command:
-    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chgrp shadow /etc/gshadow</html:pre>
+    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chgrp shadow /etc/gshadow </html:pre>
             </description>
                 <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">AC-6</reference>
                 <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx"/>
@@ -7155,7 +7181,11 @@ is critical for system security.</rationale>
     - /etc/gshadow
   tags:
     - file_permissions_etc_gshadow
-    - medium
+    - medium_severity
+    - configure_strategy
+    - low_complexity
+    - low_disruption
+    - NIST-800-53-AC-6
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
@@ -7173,10 +7203,10 @@ is critical for system security.</rationale>
     <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chmod 0644 /etc/passwd</html:pre>
               
     To properly set the owner of <html:code xmlns:html="http://www.w3.org/1999/xhtml">/etc/passwd</html:code>, run the command:
-    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chown root /etc/passwd</html:pre>
+    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chown root /etc/passwd </html:pre>
               
     To properly set the group owner of <html:code xmlns:html="http://www.w3.org/1999/xhtml">/etc/passwd</html:code>, run the command:
-    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chgrp root /etc/passwd</html:pre>
+    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chgrp root /etc/passwd </html:pre>
             </description>
                 <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">AC-6</reference>
                 <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx"/>
@@ -7192,7 +7222,11 @@ the system. Protection of this file is critical for system security.</rationale>
     - /etc/passwd
   tags:
     - file_permissions_etc_passwd
-    - medium
+    - medium_severity
+    - configure_strategy
+    - low_complexity
+    - low_disruption
+    - NIST-800-53-AC-6
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
@@ -7210,10 +7244,10 @@ the system. Protection of this file is critical for system security.</rationale>
     <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chmod 0644 /etc/passwd</html:pre>
               
     To properly set the owner of <html:code xmlns:html="http://www.w3.org/1999/xhtml">/etc/passwd</html:code>, run the command:
-    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chown root /etc/passwd</html:pre>
+    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chown root /etc/passwd </html:pre>
               
     To properly set the group owner of <html:code xmlns:html="http://www.w3.org/1999/xhtml">/etc/passwd</html:code>, run the command:
-    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chgrp root /etc/passwd</html:pre>
+    <html:pre xmlns:html="http://www.w3.org/1999/xhtml" xml:space="preserve">$ sudo chgrp root /etc/passwd </html:pre>
             </description>
                 <reference href="http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r4.pdf">AC-6</reference>
                 <reference href="http://iase.disa.mil/stigs/cci/Pages/index.aspx"/>
@@ -7229,7 +7263,11 @@ the system. Protection of this file is critical for system security.</rationale>
     - /etc/group
   tags:
     - file_permissions_etc_group
-    - medium
+    - medium_severity
+    - configure_strategy
+    - low_complexity
+    - low_disruption
+    - NIST-800-53-AC-6
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
@@ -7294,7 +7332,11 @@ of such data.</rationale>
     reload: yes
   tags:
     - sysctl_fs_suid_dumpable
-    - low
+    - low_severity
+    - disable_strategy
+    - low_complexity
+    - medium_disruption
+    - NIST-800-53-SI-11
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
@@ -7344,7 +7386,11 @@ in order to re-purpose it using return oriented programming (ROP) techniques.
     reload: yes
   tags:
     - sysctl_kernel_randomize_va_space
-    - medium
+    - medium_severity
+    - disable_strategy
+    - low_complexity
+    - medium_disruption
+    - NIST-800-53-SC-30(2)
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
@@ -7379,7 +7425,10 @@ replacing them with 0.
     reload: yes
   tags:
     - sysctl_kernel_kptr_restrict
-    - low
+    - low_severity
+    - disable_strategy
+    - low_complexity
+    - medium_disruption
 
 </fix>
                 <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
@@ -7579,7 +7628,11 @@ accessed by privilegied programs, avoiding an exploitation vector exploiting uns
     reload: yes
   tags:
     - sysctl_fs_protected_symlinks
-    - low
+    - low_severity
+    - disable_strategy
+    - low_complexity
+    - medium_disruption
+    - NIST-800-53-SI-11
 
 </fix>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
@@ -7613,7 +7666,11 @@ accessed by privilegied programs, avoiding an exploitation vector exploiting uns
     reload: yes
   tags:
     - sysctl_fs_protected_hardlinks
-    - low
+    - low_severity
+    - disable_strategy
+    - low_complexity
+    - medium_disruption
+    - NIST-800-53-SI-11
 
 </fix>
               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
@@ -7764,7 +7821,11 @@ apt-get install rsyslog
     - rsyslog
   tags:
     - package_rsyslog_installed
-    - medium
+    - medium_severity
+    - enable_strategy
+    - low_complexity
+    - low_disruption
+    - NIST-800-53-AU-9(2)
 
 </fix>
             <fix id="package_rsyslog_installed" system="urn:xccdf:fix:script:puppet" complexity="low" disruption="low" strategy="enable">include install_rsyslog
@@ -8182,8 +8243,13 @@ apt-get remove --purge telnetd
     - telnetd
   tags:
     - package_telnetd_removed
-    - high
+    - high_severity
+    - disable_strategy
+    - low_complexity
+    - low_disruption
     - CCE-
+    - NIST-800-53-AC-17(8)
+    - NIST-800-53-CM-7
 
 </fix>
             <fix id="package_telnetd_removed" system="urn:xccdf:fix:script:puppet" complexity="low" disruption="low" strategy="disable">include remove_telnetd
@@ -8227,8 +8293,13 @@ apt-get remove --purge inetutils-telnetd
     - inetutils-telnetd
   tags:
     - package_inetutils-telnetd_removed
-    - high
+    - high_severity
+    - disable_strategy
+    - low_complexity
+    - low_disruption
     - CCE-
+    - NIST-800-53-AC-17(8)
+    - NIST-800-53-CM-7
 
 </fix>
             <fix id="package_inetutils-telnetd_removed" system="urn:xccdf:fix:script:puppet" complexity="low" disruption="low" strategy="disable">include remove_inetutils-telnetd
@@ -8271,8 +8342,13 @@ apt-get remove --purge telnetd-ssl
     - telnetd-ssl
   tags:
     - package_telnetd-ssl_removed
-    - high
+    - high_severity
+    - disable_strategy
+    - low_complexity
+    - low_disruption
     - CCE-
+    - NIST-800-53-AC-17(8)
+    - NIST-800-53-CM-7
 
 </fix>
             <fix id="package_telnetd-ssl_removed" system="urn:xccdf:fix:script:puppet" complexity="low" disruption="low" strategy="disable">include remove_telnetd-ssl
@@ -8313,7 +8389,10 @@ apt-get remove --purge nis
     - nis
   tags:
     - package_nis_removed
-    - low
+    - low_severity
+    - disable_strategy
+    - low_complexity
+    - low_disruption
     - CCE-
 
 </fix>
@@ -8354,7 +8433,10 @@ apt-get remove --purge ntpdate
     - ntpdate
   tags:
     - package_ntpdate_removed
-    - low
+    - low_severity
+    - disable_strategy
+    - low_complexity
+    - low_disruption
     - CCE-
 
 </fix>
@@ -8399,7 +8481,10 @@ apt-get install auditd
     - auditd
   tags:
     - package_auditd_installed
-    - medium
+    - medium_severity
+    - enable_strategy
+    - low_complexity
+    - low_disruption
     - CCE-
 
 </fix>
@@ -8477,8 +8562,12 @@ apt-get install cron
     - cron
   tags:
     - package_cron_installed
-    - medium
+    - medium_severity
+    - enable_strategy
+    - low_complexity
+    - low_disruption
     - CCE-
+    - NIST-800-53-CM-7
 
 </fix>
             <fix id="package_cron_installed" system="urn:xccdf:fix:script:puppet" complexity="low" disruption="low" strategy="enable">include install_cron
@@ -8529,8 +8618,13 @@ apt-get install ntp
     - ntp
   tags:
     - package_ntp_installed
-    - high
+    - high_severity
+    - enable_strategy
+    - low_complexity
+    - low_disruption
     - CCE-
+    - NIST-800-53-AU-8(1)
+    - PCI-DSS-Req-10.4
 
 </fix>
             <fix id="package_ntp_installed" system="urn:xccdf:fix:script:puppet" complexity="low" disruption="low" strategy="enable">include install_ntp
@@ -8633,7 +8727,10 @@ remote access.
     - ssh
   tags:
     - service_sshd_disabled
-    - low
+    - low_severity
+    - disable_strategy
+    - low_complexity
+    - low_disruption
 
 </fix>
             <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
@@ -8780,20 +8877,20 @@ even in the event of misconfiguration elsewhere.
       </Group>
     </Benchmark>
   </ds:component>
-  <ds:component id="scap_org.open-scap_comp_ssg-debian8-cpe-oval.xml" timestamp="2017-06-29T18:34:20">
+  <ds:component id="scap_org.open-scap_comp_ssg-debian8-cpe-oval.xml" timestamp="2017-08-29T16:33:22">
     <ns0:oval_definitions xmlns:ns0="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:ns2="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:ns3="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" xmlns:ns4="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" xmlns:ns5="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-common-5 oval-common-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5 oval-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#independent independent-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#unix unix-definitions-schema.xsd         http://oval.mitre.org/XMLSchema/oval-definitions-5#linux linux-definitions-schema.xsd">
       <ns0:generator>
-        <ns2:product_name>python</ns2:product_name>
-        <ns2:product_version>2.7.13</ns2:product_version>
+        <ns2:product_name>combine-ovals.py from SCAP Security Guide</ns2:product_name>
+        <ns2:product_version>ssg: 0.1.35, python: 2.7.13</ns2:product_version>
         <ns2:schema_version>5.10</ns2:schema_version>
-        <ns2:timestamp>2017-06-29T18:34:11</ns2:timestamp>
+        <ns2:timestamp>2017-08-29T14:33:19</ns2:timestamp>
       </ns0:generator>
       <ns0:definitions>
         <ns0:definition class="inventory" id="oval:ssg-installed_OS_is_debian8:def:1" version="3">
           <ns0:metadata>
             <ns0:title>Debian 8</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_debian</ns0:platform>
+              <ns0:platform>Debian 8</ns0:platform>
             </ns0:affected>
             <ns0:reference ref_id="cpe:/o:debian:debian_linux:8" source="CPE"/>
             <ns0:description>The operating system installed on the system is Debian 8</ns0:description>
@@ -8808,8 +8905,7 @@ even in the event of misconfiguration elsewhere.
           <ns0:metadata>
             <ns0:title>CentOS 6</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:centos:centos:6" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       CentOS 6</ns0:description>
@@ -8823,8 +8919,7 @@ even in the event of misconfiguration elsewhere.
           <ns0:metadata>
             <ns0:title>CentOS 7</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:centos:centos:7" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       CentOS 7</ns0:description>
@@ -8838,12 +8933,11 @@ even in the event of misconfiguration elsewhere.
           <ns0:metadata>
             <ns0:title>Installed operating system is Fedora</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
-            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:22" source="CPE"/>
-            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:23" source="CPE"/>
-            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:24" source="CPE"/>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:25" source="CPE"/>
+            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:26" source="CPE"/>
+            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:27" source="CPE"/>
+            <ns0:reference ref_id="cpe:/o:fedoraproject:fedora:28" source="CPE"/>
             <ns0:description>The operating system installed on the system is Fedora</ns0:description>
           </ns0:metadata>
           <ns0:criteria operator="AND">
@@ -8856,8 +8950,7 @@ even in the event of misconfiguration elsewhere.
           <ns0:metadata>
             <ns0:title>Installed operating system is part of the Unix family</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>The operating system installed on the system is part of the Unix OS family</ns0:description>
           </ns0:metadata>
           <ns0:criteria>
@@ -8868,8 +8961,7 @@ even in the event of misconfiguration elsewhere.
           <ns0:metadata>
             <ns0:title>Red Hat Enterprise Linux 6</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:redhat:enterprise_linux:6" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       Red Hat Enterprise Linux 6</ns0:description>
@@ -8888,8 +8980,7 @@ even in the event of misconfiguration elsewhere.
           <ns0:metadata>
             <ns0:title>Red Hat Enterprise Linux 7</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:redhat:enterprise_linux:7" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       Red Hat Enterprise Linux 7</ns0:description>
@@ -8912,8 +9003,7 @@ even in the event of misconfiguration elsewhere.
           <ns0:metadata>
             <ns0:title>Scientific Linux 6</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:scientificlinux:scientificlinux:6" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       Scientific Linux 6</ns0:description>
@@ -8927,8 +9017,7 @@ even in the event of misconfiguration elsewhere.
           <ns0:metadata>
             <ns0:title>Scientific Linux 7</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:scientificlinux:scientificlinux:6" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       Scientific Linux 7</ns0:description>
@@ -8942,8 +9031,7 @@ even in the event of misconfiguration elsewhere.
           <ns0:metadata>
             <ns0:title>WRLinux</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:reference ref_id="cpe:/o:windriver:wrlinux" source="CPE"/>
             <ns0:description>The operating system installed on the system is
       Wind River Linux</ns0:description>
@@ -8957,8 +9045,7 @@ even in the event of misconfiguration elsewhere.
           <ns0:metadata>
             <ns0:title>Check if the scan target is a container</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Check if file /.dockerenv exists, if it does then we consider to be a docker filesystem.</ns0:description>
             <ns0:reference ref_id="cpe:/a:container" source="CPE"/>
           </ns0:metadata>
@@ -8970,8 +9057,7 @@ even in the event of misconfiguration elsewhere.
           <ns0:metadata>
             <ns0:title>Check if the scan target is a machine</ns0:title>
             <ns0:affected family="unix">
-              <ns0:platform>multi_platform_all</ns0:platform>
-            </ns0:affected>
+        </ns0:affected>
             <ns0:description>Check if file /.dockerenv exists, if it doesn't then we consider to be host filesystem or virtual machine.</ns0:description>
             <ns0:reference ref_id="cpe:/a:machine" source="CPE"/>
           </ns0:metadata>
@@ -9196,7 +9282,7 @@ even in the event of misconfiguration elsewhere.
       </ns0:states>
     </ns0:oval_definitions>
   </ds:component>
-  <ds:component id="scap_org.open-scap_comp_ssg-debian8-cpe-dictionary.xml" timestamp="2017-06-29T18:34:20">
+  <ds:component id="scap_org.open-scap_comp_ssg-debian8-cpe-dictionary.xml" timestamp="2017-08-29T16:33:22">
     <ns0:cpe-list xmlns:ns0="http://cpe.mitre.org/dictionary/2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cpe.mitre.org/dictionary/2.0 http://cpe.mitre.org/files/cpe-dictionary_2.1.xsd">
       <ns0:cpe-item name="cpe:/o:debianproject:debian:8">
         <ns0:title xml:lang="en-us">Debian release 8 (Jessie)</ns0:title>

@@ -639,7 +639,7 @@ wazuh_db/%.o: wazuh_db/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-analysisd\" -c $^ -o $@
 
 ${EXTERNAL_SQLITE}sqlite3.o: ${EXTERNAL_SQLITE}sqlite3.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@ -fPIC
+	${OSSEC_CC} ${OSSEC_CFLAGS} -w -c $^ -o $@ -fPIC
 
 #### Config ##########
 
@@ -1195,7 +1195,7 @@ win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.c addagent/validat
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows clean-framework
+clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1262,3 +1262,7 @@ clean-windows:
 	rm -f win32/ossec-luac.exe
 	rm -f win32/wazuh-agent-*.exe
 	rm -f win32/libwinpthread-1.dll
+
+clean-config:
+	rm -f ../etc/ossec.mc
+	rm -f Config.OS

@@ -16,14 +16,14 @@
     <if_sid>9500</if_sid>
     <match>User authentication failed</match>
     <description>Wordpress authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
   </rule>
 
   <rule id="9502" level="3">
     <if_sid>9500</if_sid>
     <match>User logged in</match>
     <description>Wordpress authentication succeeded.</description>
-    <group>authentication_success,pci_dss_10.2.5,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,</group>
   </rule>
 
   <rule id="9503" level="3">
@@ -55,7 +55,7 @@
     <if_matched_sid>9501</if_matched_sid>
     <same_source_ip />
     <description>Multiple wordpress authentication failures.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,</group>
   </rule>
 
 </group>
