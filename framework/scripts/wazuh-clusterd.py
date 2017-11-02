@@ -147,7 +147,7 @@ def signal_handler(n_signal, frame):
     if n_signal == SIGINT:
         # kill C daemon if it's running
         try:
-            pid = int(check_output(["pidof","{0}/framework/cluster_daemon".format(ossec_path)]))
+            pid = int(check_output(["pidof","{0}/framework/wazuh-clusterd-internal".format(ossec_path)]))
             kill(pid, SIGINT)
         except CalledProcessError:
             pass
@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     if args.V:
-        check_output(["{0}/framework/cluster_daemon".format(ossec_path), '-V'])
+        check_output(["{0}/bin/wazuh-clusterd-internal".format(ossec_path), '-V'])
         exit(0)
 
     # Capture Cntrl + C
@@ -191,9 +191,9 @@ if __name__ == '__main__':
 
     # execute C cluster daemon (database & inotify) if it's not running
     try:
-        exit_code = check_call(["ps", "-C", "cluster_daemon"], stdout=open(devnull, 'w'))
+        exit_code = check_call(["ps", "-C", "wazuh-clusterd-internal"], stdout=open(devnull, 'w'))
     except CalledProcessError:
-        check_call(["{0}/framework/cluster_daemon".format(ossec_path)])
+        check_call(["{0}/bin/wazuh-clusterd-internal".format(ossec_path)])
     
     # Initialize framework
     myWazuh = Wazuh(get_init=True)

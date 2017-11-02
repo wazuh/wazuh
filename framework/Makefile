@@ -35,7 +35,7 @@ ERROR_MSGS       = ../src/error_messages
 DEBUG_OP_DEPS    = $(DEBUG_OP) $(JSON_LIB) $(XML_LIB) $(XML_ACCESS) $(STRBREAK) $(STRING_OP) $(FILE_OP) $(PRIVSEP_OP) $(REGEX_OP) $(HELP_O)
 
 ifeq (${uname_S},Linux)
-BUILD_TARGET           = cluster_daemon libsqlite3.o.0
+BUILD_TARGET           = wazuh-clusterd-internal libsqlite3.so.0
 endif
 
 .PHONY: all build install examples clean
@@ -50,7 +50,7 @@ install:
 	$(INSTALL_EXEC) wazuh/*.py ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib/
 ifeq (${uname_S},Linux)
-	$(INSTALL_EXEC) cluster_daemon ${PREFIX}/framework
+	$(INSTALL_EXEC) wazuh-clusterd-internal ${PREFIX}/bin
 endif
 
 #	Install scripts/%.py on $(PREFIX)/bin/%
@@ -66,12 +66,12 @@ libsqlite3.so.0: $(SQLITE_DIR)/sqlite3.o
 	$(CC) $(LFLAGS) -shared -o $@ $^
 
 ifeq (${uname_S},Linux)
-cluster_daemon: cluster_daemon.o $(SQLITE_DIR)/sqlite3.o $(DEBUG_OP_DEPS)
+wazuh-clusterd-internal: wazuh-clusterd-internal.o $(SQLITE_DIR)/sqlite3.o $(DEBUG_OP_DEPS)
 	$(CC) $(THREAD_FLAGS) -o $@ $^ -ldl
 endif
 
 ifeq (${uname_S},Linux)
-cluster_daemon.o: wazuh/cluster_daemon.c
+wazuh-clusterd-internal.o: wazuh/wazuh-clusterd-internal.c
 	$(CC) $(CFLAGS) $(THREAD_FLAGS) -c $^ -o $@ -I $(SQLITE_DIR) -I $(HEADERS_DIR) -I $(ERROR_MSGS) -ldl
 endif
 

@@ -29,7 +29,7 @@
 #include <file_op.h>
 #include <error_messages.h>
 
-#define DB_PATH "/stats/cluster_db"
+#define DB_PATH "/var/db/cluster_db"
 #define SOCKET_PATH "/queue/ossec/cluster_db"
 #define IN_BUFFER_SIZE sizeof(struct inotify_event) + 256
 #define AGENT_INFO_PATH "/queue/agent-info/"
@@ -38,7 +38,7 @@
 #define LOG_FILE "/logs/cluster_debug_socket.log"
 #define LOG_FILE_I "/logs/cluster_debug_inotify.log"
 
-#define MAIN_TAG "cluster_daemon"
+#define MAIN_TAG "wazuh-clusterd-internal"
 #define INOTIFY_TAG "cluster_inotify"
 #define DB_TAG "cluster_db_socket"
 
@@ -399,7 +399,7 @@ void handler(int signum) {
     case SIGINT:
     case SIGTERM:
         mtinfo(MAIN_TAG, SIGNAL_RECV, signum, strsignal(signum));
-        DeletePID("cluster_daemon");
+        DeletePID(MAIN_TAG);
         break;
     default:
         mterror(MAIN_TAG, "unknown signal (%d)", signum);
@@ -438,7 +438,7 @@ int main(int argc, char * const * argv) {
 
     /* Create PID files */
     mtdebug2(MAIN_TAG, "Creating PID file...");
-    if (CreatePID("cluster_daemon", getpid()) < 0) {
+    if (CreatePID(MAIN_TAG, getpid()) < 0) {
         mterror_exit(MAIN_TAG, PID_ERROR);
     }
 
