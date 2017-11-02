@@ -19,9 +19,6 @@ void jqueue_init(file_queue * queue) {
  * Returns 0 on success or -1 on error.
  */
 int jqueue_open(file_queue * queue) {
-    time_t now = time(NULL);
-    struct tm tm = *localtime(&now);
-
     strncpy(queue->file_name, isChroot() ? ALERTSJSON_DAILY : DEFAULTDIR ALERTSJSON_DAILY, MAX_FQUEUE);
 
     if (queue->fp) {
@@ -41,17 +38,23 @@ int jqueue_open(file_queue * queue) {
         return -1;
     }
 
-    queue->day = tm.tm_mday;
+    /* File inode time */
+    if (fstat(fileno(queue->fp), &queue->f_status) < 0) {
+        merror(FSTAT_ERROR, queue->file_name, errno, strerror(errno));
+        fclose(queue->fp);
+        queue->fp = NULL;
+        return -1;
+    }
+
     return 0;
 }
 
 /*
  * Return next JSON object from the queue, or NULL if it is not available.
- * If no more data is available and the day has changed, queue is reloaded.
+ * If no more data is available and the inode has changed, queue is reloaded.
  */
 cJSON * jqueue_next(file_queue * queue) {
-    time_t now;
-    struct tm tm;
+    struct stat buf;
     char buffer[OS_MAXSTR + 1];
     char *end;
 
@@ -66,12 +69,19 @@ cJSON * jqueue_next(file_queue * queue) {
 
         return cJSON_Parse(buffer);
     } else {
-        now = time(NULL);
-        tm = *localtime(&now);
 
-        // If the day has changed, reopen and retry to open
+        if (stat(queue->file_name, &buf) < 0) {
+            merror(FSTAT_ERROR, queue->file_name, errno, strerror(errno));
+            fclose(queue->fp);
+            queue->fp = NULL;
+            return NULL;
+        }
 
-        if (tm.tm_mday != queue->day) {
+        // If the inode has changed, reopen and retry to open
+
+        if (buf.st_ino != queue->f_status.st_ino) {
+            mdebug2("jqueue_next(): Alert file inode changed. Reloading.");
+
             if (jqueue_open(queue) < 0) {
                 return NULL;
             }
