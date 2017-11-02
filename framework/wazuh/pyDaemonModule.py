@@ -6,6 +6,8 @@
 import errno
 import os
 import sys
+from wazuh import common
+from wazuh.exception import WazuhException
 
 def pyDaemon():
     """
@@ -48,3 +50,13 @@ def pyDaemon():
     
     # Decouple from parent environment
     os.chdir('/')
+
+def create_pid(name, pid):
+    filename = "{0}{1}/{2}-{3}.pid".format(common.ossec_path, common.os_pidfile, name, pid)
+
+    with open(filename, 'a') as fp:
+        try:
+            fp.write("{0}\n".format(pid))
+            os.chmod(filename, 0640)
+        except OSError as e:
+            raise WazuhException(3002, str(e))

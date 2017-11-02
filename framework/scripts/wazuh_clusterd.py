@@ -10,7 +10,7 @@ from distutils.util import strtobool
 from sys import argv, exit, path
 from os.path import dirname
 from subprocess import check_call, CalledProcessError, check_output
-from os import devnull, seteuid, setgid
+from os import devnull, seteuid, setgid, getpid
 from multiprocessing import Process
 from re import search
 from time import sleep
@@ -37,7 +37,7 @@ try:
     from wazuh.exception import WazuhException
     from wazuh.InputValidator import InputValidator
     from wazuh.utils import send_request
-    from wazuh.pyDaemonModule import pyDaemon
+    from wazuh.pyDaemonModule import pyDaemon, create_pid
     iv = InputValidator()
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -151,6 +151,8 @@ if __name__ == '__main__':
         console.setFormatter(formatter)
         # add the handler to the root logger
         logging.getLogger('').addHandler(console)
+
+    create_pid("wazuh-clusterd", getpid())
 
     if not args.d:
         logging.getLogger('').setLevel(logging.INFO)
