@@ -1678,7 +1678,7 @@ class Agent:
         return [wpk_file, sha1hash]
 
 
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None):
+    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1):
         """
         Sends WPK file to agent.
         """
@@ -1704,6 +1704,21 @@ class Agent:
             print("RESPONSE: {0}".format(data))
         if data != 'ok':
             raise WazuhException(1715, data.replace("err ",""))
+
+        # Sending reset lock timeout
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.connect(common.ossec_path + "/queue/ossec/request")
+        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
+        s.send(msg.encode())
+        if debug:
+            print("MSG SENT: {0}".format(str(msg)))
+        data = s.recv(1024).decode()
+        s.close()
+        if debug:
+            print("RESPONSE: {0}".format(data))
+        if data != 'ok':
+            raise WazuhException(1715, data.replace("err ",""))
+
 
         # Sending file to agent
         if debug:
@@ -1768,7 +1783,7 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
 
-    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None):
+    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1):
         """
         Upgrade agent using a WPK file.
         """
@@ -1799,7 +1814,7 @@ class Agent:
             raise WazuhException(1720)
 
         # Send file to agent
-        sending_result = self._send_wpk_file(wpk_repo, debug, version, force, show_progress, chunk_size)
+        sending_result = self._send_wpk_file(wpk_repo, debug, version, force, show_progress, chunk_size, rl_timeout)
         if debug:
             print(sending_result[0])
 
@@ -1894,7 +1909,7 @@ class Agent:
         return Agent(agent_id).upgrade_result(timeout=int(timeout))
 
 
-    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None):
+    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
         """
         Sends custom WPK file to agent.
         """
@@ -1914,6 +1929,20 @@ class Agent:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(common.ossec_path + "/queue/ossec/request")
         msg = "{0} com open w {1}".format(str(self.id).zfill(3), wpk_file)
+        s.send(msg.encode())
+        if debug:
+            print("MSG SENT: {0}".format(str(msg)))
+        data = s.recv(1024).decode()
+        s.close()
+        if debug:
+            print("RESPONSE: {0}".format(data))
+        if data != 'ok':
+            raise WazuhException(1715, data.replace("err ",""))
+
+        # Sending reset lock timeout
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.connect(common.ossec_path + "/queue/ossec/request")
+        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
@@ -1988,7 +2017,7 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
 
-    def upgrade_custom(self, file_path, installer, debug=False, show_progress=None, chunk_size=None):
+    def upgrade_custom(self, file_path, installer, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
         """
         Upgrade agent using a custom WPK file.
         """
@@ -1999,7 +2028,7 @@ class Agent:
             raise WazuhException(1720)
 
         # Send file to agent
-        sending_result = self._send_custom_wpk_file(file_path, debug, show_progress, chunk_size)
+        sending_result = self._send_custom_wpk_file(file_path, debug, show_progress, chunk_size, rl_timeout)
         if debug:
             print(sending_result[0])
 

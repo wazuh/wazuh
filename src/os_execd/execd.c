@@ -14,6 +14,7 @@
 #include "execd.h"
 
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
+time_t pending_upg = 0;
 
 #ifndef WIN32
 

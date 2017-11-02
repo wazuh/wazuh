@@ -168,6 +168,29 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         }
     } else if (strcmp(rcv_comm, "restart") == 0) {
         return wcom_restart(output);
+    } else if (strcmp(rcv_comm, "lock_restart") == 0) {
+        static int max_restart_lock = 0;
+        int timeout;
+
+        if (!max_restart_lock) {
+                max_restart_lock = getDefine_Int("execd", "max_restart_lock", 0, 3600);
+        };
+        timeout = atoi(rcv_args);
+
+        if (timeout < -1) {
+            strcpy(output, "err Invalid timeout");
+        } else {
+            strcpy(output, "ok");
+            if (timeout == -1 || timeout > max_restart_lock) {
+                if (timeout > max_restart_lock) {
+                    mwarn("Timeout exceeds the maximum allowed.");
+                }
+                timeout = max_restart_lock;
+            }
+        }
+        lock_restart(timeout);
+
+        return strlen(output);
     } else {
         merror("WCOM Unrecognized command '%s'.", rcv_comm);
         strcpy(output, "err Unrecognized command");
@@ -473,35 +496,37 @@ size_t wcom_upgrade_result(char *output){
 }
 
 size_t wcom_restart(char *output) {
-    #ifndef WIN32
+    time_t lock = pending_upg - time(NULL);
 
-    char *exec_cmd[3] = { DEFAULTDIR "/bin/ossec-control", "restart", NULL};
-    if (isChroot()) {
-        strcpy(exec_cmd[0], "/bin/ossec-control");
+    if (lock <= 0) {
+#ifndef WIN32
+        char *exec_cmd[3] = { DEFAULTDIR "/bin/ossec-control", "restart", NULL};
+        if (isChroot()) {
+            strcpy(exec_cmd[0], "/bin/ossec-control");
+        }
+
+        switch (fork()) {
+            case -1:
+                merror("At WCOM upgrade_result: Cannot fork");
+            break;
+            case 0:
+                sleep(1);
+                if (execv(exec_cmd[0], exec_cmd) < 0) {
+                    merror(EXEC_CMDERROR, *exec_cmd, strerror(errno));
+                    return strlen(output);
+                }
+            break;
+            default:
+                strcpy(output, "ok");
+            break;
+        }
+#else
+        char exec_cm[] = {"\"" AR_BINDIR "/restart-ossec.cmd\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
+        ExecCmd_Win32(exec_cm);
+#endif
+    } else {
+        minfo(LOCK_RES, (int)lock);
     }
-
-    switch (fork()) {
-        case -1:
-            merror("At WCOM upgrade_result: Cannot fork");
-        break;
-        case 0:
-            sleep(1);
-            if (execv(exec_cmd[0], exec_cmd) < 0) {
-                merror(EXEC_CMDERROR, *exec_cmd, strerror(errno));
-                return strlen(output);
-            }
-        break;
-        default:
-            strcpy(output, "ok");
-        break;
-    }
-
-    #else
-
-    char exec_cm[] = {"\"" AR_BINDIR "/restart-ossec.cmd\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
-    ExecCmd_Win32(exec_cm);
-
-    #endif
 
     return strlen(output);
 }
@@ -696,5 +721,10 @@ int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1
     }
 
     unlink(source);
+    return 0;
+}
+
+size_t lock_restart(int timeout) {
+    pending_upg = time(NULL) + (time_t) timeout;
     return 0;
 }
