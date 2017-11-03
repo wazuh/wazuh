@@ -11,6 +11,8 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+static pthread_mutex_t send_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Send a message to the server */
 int send_msg(const char *msg, ssize_t msg_length)
 {
@@ -28,7 +30,9 @@ int send_msg(const char *msg, ssize_t msg_length)
     if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
         retval = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
     } else {
+        w_mutex_lock(&send_mutex);
         retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
+        w_mutex_unlock(&send_mutex);
     }
 
     if (!retval) {

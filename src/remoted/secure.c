@@ -48,9 +48,6 @@ void HandleSecure()
     struct epoll_event *events = NULL;
 #endif /* __MACH__ || __FreeBSD__ || __OpenBSD__ */
 
-    /* Initialize key mutex */
-    keyupdate_init();
-
     /* Initialize manager */
     manager_init();
 

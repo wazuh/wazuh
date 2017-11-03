@@ -470,13 +470,10 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 /* Send win32 info to server */
 void send_win32_info(time_t curr_time)
 {
-    int msg_size;
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
-    char crypt_msg[OS_MAXSTR + 2];
     char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
 
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
-    crypt_msg[OS_MAXSTR + 1] = '\0';
 
     mdebug1("Sending keep alive message.");
 
@@ -535,24 +532,8 @@ void send_win32_info(time_t curr_time)
 
     /* Create message */
     mdebug2("Sending keep alive: %s", tmp_msg);
+    send_msg(tmp_msg, -1);
 
-    msg_size = CreateSecMSG(&keys, tmp_msg, strlen(tmp_msg), crypt_msg, 0);
-
-    if (msg_size == 0) {
-        merror(SEC_ERROR);
-        return;
-    }
-
-    /* Send UDP message */
-    if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
-        if (OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0) {
-            merror(SEND_ERROR, "server", strerror(errno));
-            sleep(1);
-        }
-    } else if (OS_SendSecureTCP(agt->sock, msg_size, crypt_msg) < 0) {
-        merror(SEND_ERROR, "server", strerror(errno));
-        sleep(1);
-    }
 
     update_keepalive(curr_time);
 

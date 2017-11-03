@@ -14,28 +14,21 @@
 #include "os_net/os_net.h"
 
 /* pthread key update mutex */
-static pthread_mutex_t keyupdate_mutex;
+static pthread_rwlock_t keyupdate_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
-
-/* Initializes mutex */
-void keyupdate_init()
+void key_lock_read()
 {
-    /* Initialize mutex */
-    pthread_mutex_init(&keyupdate_mutex, NULL);
+    w_rwlock_rdlock(&keyupdate_rwlock);
 }
 
-void key_lock()
+void key_lock_write()
 {
-    if (pthread_mutex_lock(&keyupdate_mutex) != 0) {
-        merror(MUTEX_ERROR);
-    }
+    w_rwlock_wrlock(&keyupdate_rwlock);
 }
 
 void key_unlock()
 {
-    if (pthread_mutex_unlock(&keyupdate_mutex) != 0) {
-        merror(MUTEX_ERROR);
-    }
+    w_rwlock_unlock(&keyupdate_rwlock);
 }
 
 /* Check for key updates */
@@ -48,7 +41,7 @@ int check_keyupdate()
         return (0);
     }
 
-    key_lock();
+    key_lock_write();
 
     if (OS_UpdateKeys(&keys)) {
         retval = 1;
@@ -65,13 +58,11 @@ int check_keyupdate()
 int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 {
     int key_id;
-    int sock = -1;
     ssize_t msg_size;
     char crypt_msg[OS_MAXSTR + 1];
-    struct sockaddr_in peer_info;
     int retval = 0;
 
-    key_lock();
+    key_lock_read();
     key_id = OS_IsAllowedID(&keys, agent_id);
 
     if (key_id < 0) {
@@ -89,30 +80,26 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, key_id);
 
-    if (logr.proto[logr.position] == UDP_PROTO) {
-        memcpy(&peer_info, &keys.keyentries[key_id]->peer_info, sizeof(peer_info));
-    } else {
-        sock = keys.keyentries[key_id]->sock;
-    }
-
-    key_unlock();
-
     if (msg_size == 0) {
+        key_unlock();
         merror(SEC_ERROR);
         return (-1);
     }
 
     /* Send initial message */
     if (logr.proto[logr.position] == UDP_PROTO) {
-        retval = sendto(logr.sock, crypt_msg, msg_size, 0,
-               (struct sockaddr *)&peer_info,
-               logr.peer_size);
-    } else if (sock >= 0) {
-        retval = OS_SendSecureTCP(sock, msg_size, crypt_msg);
+        retval = sendto(logr.sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size);
+    } else if (keys.keyentries[key_id]->sock >= 0) {
+        w_mutex_lock(&keys.keyentries[key_id]->mutex);
+        retval = OS_SendSecureTCP(keys.keyentries[key_id]->sock, msg_size, crypt_msg);
+        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
     } else {
+        key_unlock();
         mdebug1("Send operation cancelled due to closed socket.");
         return -1;
     }
+
+    key_unlock();
 
     if (retval < 0) {
         switch (errno) {

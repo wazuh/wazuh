@@ -96,6 +96,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->global = 0;
     keys->keyentries[keys->keysize]->fp = NULL;
     keys->keyentries[keys->keysize]->sock = -1;
+    w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
     if (keys->flags.rehash_keys) {
         /** Generate final symmetric key **/
@@ -340,6 +341,7 @@ void OS_FreeKey(keyentry *key) {
         fclose(key->fp);
     }
 
+    pthread_mutex_destroy(&key->mutex);
     free(key);
 }
 
@@ -603,6 +605,7 @@ keystore* OS_DupKeys(const keystore *keys) {
         }
 
         copy->keyentries[i]->sock = keys->keyentries[i]->sock;
+        copy->keyentries[i]->mutex = keys->keyentries[i]->mutex;
         copy->keyentries[i]->peer_info = keys->keyentries[i]->peer_info;
     }
 

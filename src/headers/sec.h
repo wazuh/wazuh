@@ -11,6 +11,7 @@
 #define __SEC_H
 
 #include <time.h>
+#include <pthread.h>
 
 typedef struct keystore_flags_t {
     unsigned int rehash_keys:1;     // Flag: rehash keys on adding
@@ -30,6 +31,7 @@ typedef struct _keyentry {
 
     os_ip *ip;
     int sock;
+    pthread_mutex_t mutex;
     struct sockaddr_in peer_info;
     FILE *fp;
 } keyentry;
