@@ -47,6 +47,7 @@ CLUSTER_ITEMS = [
         "umask": 0o117, # Allowed Permissions rw-rw----
         "format":"plain",
         "type": "file",
+        "source": "master",
         "write_mode": "atomic",
         "conditions": {
             "higher_remote_time": True,
@@ -59,6 +60,7 @@ CLUSTER_ITEMS = [
         "umask": 0o117, # Allowed Permissions rw-rw----
         "format":"plain",
         "type": "directory",
+        "source": "all",
         "write_mode": "atomic",
         "conditions": {
             "higher_remote_time": True,
@@ -71,6 +73,7 @@ CLUSTER_ITEMS = [
         "umask": 0o117, # Allowed Permissions rw-rw----
         "format":"plain",
         "type": "directory",
+        "source": "master",
         "write_mode": "atomic",
         "conditions": {
             "higher_remote_time": True,
@@ -196,22 +199,24 @@ def get_node(name=None):
     return data
 
 
-def get_files():
+def get_files(node_type):
     # Expand directory
     expanded_items = []
     for item in CLUSTER_ITEMS:
-        file_path = item['file_name']
+        if item['source'] == node_type or \
+           item['source'] == 'all':
+            file_path = item['file_name']
 
-        if item["type"] == "file":
-            new_item = dict(item)
-            new_item["path"] = file_path
-            expanded_items.append(new_item)
-        else:
-            fullpath = common.ossec_path + file_path
-            for entry in listdir(fullpath):
+            if item["type"] == "file":
                 new_item = dict(item)
-                new_item["path"] = path.join(file_path, entry)
+                new_item["path"] = file_path
                 expanded_items.append(new_item)
+            else:
+                fullpath = common.ossec_path + file_path
+                for entry in listdir(fullpath):
+                    new_item = dict(item)
+                    new_item["path"] = path.join(file_path, entry)
+                    expanded_items.append(new_item)
 
     final_items = {}
     for new_item in expanded_items:
@@ -391,7 +396,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
 
     before = time()
     # Get own items status
-    own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files().items()))
+    own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files(config_cluster['node_type']).items()))
     own_items_names = own_items.keys()
     all_nodes = get_nodes()['items']
 
