@@ -119,14 +119,14 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                 unsigned int i;
 
                 /* Lock use of keys */
-                key_lock();
+                key_lock_read();
 
                 for (i = 0; i < keys.keysize; i++) {
                     if (keys.keyentries[i]->rcvd >= (time(0) - DISCON_TIME)) {
                         strncpy(agent_id, keys.keyentries[i]->id, KEYSIZE);
                         key_unlock();
                         send_msg(agent_id, msg_to_send, -1);
-                        key_lock();
+                        key_lock_read();
                     }
                 }
 
@@ -135,7 +135,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
 
             /* Send to the remote agent that generated the event */
             else if ((ar_location & REMOTE_AGENT) && (location != NULL)) {
-                key_lock();
+                key_lock_read();
                 key_id = OS_IsAllowedName(&keys, location);
 
                 if (key_id < 0) {
