@@ -111,6 +111,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         retval = OS_SendSecureTCP(sock, msg_size, crypt_msg);
     } else {
         mdebug1("Send operation cancelled due to closed socket.");
+        return -1;
     }
 
     if (retval < 0) {
