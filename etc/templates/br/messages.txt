@@ -86,6 +86,11 @@ yessyslog="Syslog habilitado"
 # Parte 3.4/3.5
 readlogs="Ajustando a configuração para analisar os seguintes logs:"
 
+# Part 3.7
+runauthd="Deseja habilitar Authd?"
+norunauthd="Auth desabilitado"
+yesrunauthd="Auth habilitado"
+
 # Parte 5
 installing="Instalando o sistema"
 runningmake="Executando o Makefile"

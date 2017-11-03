@@ -84,6 +84,11 @@ yessyslog="远程机器syslog将被接收"
 # Part 3.4/3.5
 readlogs="设置配置文件以分析一下日志:"
 
+# Part 3.7
+runauthd="你要运行Auth守护进程吗？"
+norunauthd="不运行Auth守护进程"
+yesrunauthd="运行Auth守护进程"
+
 # Part 5
 installing="正在安装系统"
 runningmake="正在运行Makefile"

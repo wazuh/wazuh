@@ -84,6 +84,11 @@ yessyslog="Uzak syslog etkin kılındı"
 # Part 3.4/3.5
 readlogs="Bu dosyaları incelemek için yapılandırma oluşturuluyor:"
 
+# Part 3.7
+runauthd="Auth servisini çalıştırmak istiyor musunuz?"
+norunauthd="Auth hizmeti çalışmıyor"
+yesrunauthd="Auth servisi çalıştırıyor"
+
 # Part 5
 installing="Sistem kuruluyor"
 runningmake="Makefile çalıştırılıyor"

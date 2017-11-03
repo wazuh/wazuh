@@ -84,6 +84,11 @@ yessyslog="Zdalny syslog włączony"
 # Część 3.4/3.5
 readlogs="Ustawianie konfiguracji do analizy następujących logów:"
 
+# Part 3.7
+runauthd="Czy chcesz uruchomić usługę Auth?"
+norunauthd="Nie działa usługa Auth"
+yesrunauthd="Uruchamianie usługi Auth"
+
 # Część 5
 installing="Instaluje system"
 runningmake="Uruchomiono Makefile"

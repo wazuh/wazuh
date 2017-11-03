@@ -84,6 +84,11 @@ yessyslog="Távoli rendszernaplózás bekapcsolva"
 # Part 3.4/3.5
 readlogs="A konfiguráció beállítása a következő naplók elemzéséhez:"
 
+# Part 3.7
+runauthd="Szeretné futtatni az Auth szolgáltatást?"
+norunauthd="Nem működik Auth szolgáltatás"
+yesrunauthd="Auth szolgáltatás futtatása"
+
 # Part 5
 installing="A rendszer telepítése"
 runningmake="A Make fájl futtatása"

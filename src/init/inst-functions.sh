@@ -129,6 +129,21 @@ InstallOpenSCAPFiles()
 }
 
 ##########
+# GenerateAuthCert()
+##########
+GenerateAuthCert()
+{
+    # Generation auto-signed certificate if not exists
+    if type openssl >/dev/null 2>&1 && [ ! -f "${INSTALLDIR}/etc/sslmanager.key" ] && [ ! -f "${INSTALLDIR}/etc/sslmanager.cert" ]; then
+        echo "Generating self-signed certificate for ossec-authd..."
+        openssl req -x509 -batch -nodes -days 365 -newkey rsa:2048 -subj "/C=US/ST=California/CN=Wazuh/" -keyout ${INSTALLDIR}/etc/sslmanager.key -out ${INSTALLDIR}/etc/sslmanager.cert
+        chmod 640 ${INSTALLDIR}/etc/sslmanager.key
+        chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
+    fi
+
+}
+
+##########
 # WriteLogs()
 ##########
 WriteLogs()
@@ -418,7 +433,12 @@ WriteManager()
     echo "" >> $NEWCONFIG
 
     # Writting auth configuration
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
+    if [ "X${AUTHD}" = "Xno" ]; then
+        AUTH_DISABLED="yes"
+    else
+        AUTH_DISABLED="no"
+    fi
+    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g;s|<disabled>no</disabled>|<disabled>$AUTH_DISABLED</disabled>|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Writting cluster configuration
