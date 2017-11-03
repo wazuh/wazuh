@@ -659,7 +659,6 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
         if ((data = OSHash_Get(pending_data, pending_queue[queue_j]))) {
             strncpy(agent_id, pending_queue[queue_j], 8);
             strncpy(msg, data->message, OS_SIZE_1024);
-            data->changed = 0;
         } else {
             merror("Couldn't get pending data from hash table for agent ID '%s'.", pending_queue[queue_j]);
             *agent_id = '\0';
@@ -674,6 +673,11 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
         if (*agent_id) {
             read_controlmsg(agent_id, msg);
         }
+
+        // Mark message as dispatched
+        w_mutex_lock(&lastmsg_mutex);
+        data->changed = 0;
+        w_mutex_unlock(&lastmsg_mutex);
     }
 
     return (NULL);
