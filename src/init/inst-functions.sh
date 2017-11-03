@@ -129,6 +129,26 @@ InstallOpenSCAPFiles()
 }
 
 ##########
+# GenerateAuthCert()
+##########
+GenerateAuthCert()
+{
+    # Generation auto-signed certificate if not exists
+    if [ ! -f "${INSTALLDIR}/etc/sslmanager.key" ] && [ ! -f "${INSTALLDIR}/etc/sslmanager.cert" ]; then
+        if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
+            if type openssl >/dev/null 2>&1; then
+                echo "Generating self-signed certificate for ossec-authd..."
+                openssl req -x509 -batch -nodes -days 365 -newkey rsa:2048 -subj "/C=US/ST=California/CN=Wazuh/" -keyout ${INSTALLDIR}/etc/sslmanager.key -out ${INSTALLDIR}/etc/sslmanager.cert
+                chmod 640 ${INSTALLDIR}/etc/sslmanager.key
+                chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
+            else
+                echo "ERROR: OpenSSL not found. Cannot generate certificate for ossec-authd."
+            fi
+        fi
+    fi
+}
+
+##########
 # WriteLogs()
 ##########
 WriteLogs()
@@ -748,6 +768,8 @@ InstallServer(){
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
 
     rm -f ${PREFIX}/etc/shared/merged.mg
+
+    GenerateAuthCert
 }
 
 InstallAgent(){

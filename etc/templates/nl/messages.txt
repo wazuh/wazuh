@@ -84,6 +84,11 @@ yessyslog="Externe systeem logging ingeschakeld"
 # Part 3.4/3.5
 readlogs="Systeem instellen om de volgende logbestanden te controleren:"
 
+# Part 3.7
+runauthd="Wilt u de Auth-service uitvoeren?"
+norunauthd="Niet uitgevoerd Auth service"
+yesrunauthd="Starten Auth service"
+
 # Part 5
 installing="Bezig met installeren van het systeem"
 runningmake="Uitvoeren van Makefile"

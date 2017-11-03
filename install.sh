@@ -226,6 +226,33 @@ UseOpenSCAP()
     esac
 }
 
+##########
+# EnableAuthd()
+##########
+EnableAuthd()
+{
+    # Authd config
+    NB=$1
+    echo ""
+    $ECHO "  $NB - ${runauthd} ($yes/$no) [$no]: "
+    if [ "X${USER_ENABLE_AUTHD}" = "X" ]; then
+        read AS
+    else
+        AS=${USER_ENABLE_AUTHD}
+    fi
+    echo ""
+    case $AS in
+        $yesmatch)
+            AUTHD="yes"
+            echo "   - ${yesrunauthd}."
+            ;;
+        *)
+            AUTHD="no"
+            echo "   - ${norunauthd}."
+            ;;
+    esac
+}
+
 
 ##########
 # SetupLogs()
@@ -308,6 +335,7 @@ ConfigureClient()
         *)
             ACTIVERESPONSE="yes"
             echo ""
+            echo "   - ${yesactive}."
             ;;
     esac
 
@@ -318,7 +346,7 @@ ConfigureClient()
     # Set up the log files
     SetupLogs "3.7"
 
-    # echo "</ossec_config>" >> $NEWCONFIG
+    # Write configuration
     WriteAgent
 }
 
@@ -462,9 +490,10 @@ ConfigureServer()
       SLOG="yes"
     fi
 
-    # Setting up the logs
+    # Setting up the auth daemon & logs
     if [ "X$INSTYPE" = "Xserver" ]; then
-        SetupLogs "3.7"
+        EnableAuthd "3.7"
+        SetupLogs "3.8"
         WriteManager
     else
         SetupLogs "3.6"
@@ -912,6 +941,12 @@ main()
     # Installing (calls the respective script
     # -- InstallAgent.sh or InstallServer.sh
     Install
+
+
+    # Enable auth if selected
+    if [ "X$INSTYPE" = "Xserver" ] && [ "X${AUTHD}" = "Xyes" ]; then
+        $INSTALLDIR/bin/ossec-control enable auth
+    fi
 
     # User messages
     echo ""
