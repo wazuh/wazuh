@@ -776,7 +776,10 @@ InstallServer(){
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
 
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
-    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
+
+    if [ ! -f ${PREFIX}/etc/shared/default/agent.conf ]; then
+        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
+    fi
 
     GenerateAuthCert
 }
