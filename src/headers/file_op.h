@@ -81,6 +81,9 @@ int rmdir_ex(const char *path);
 // Delete directory content
 int cldir_ex(const char *name);
 
+// Delete directory content with exception list
+int cldir_ex_ignore(const char * name, const char ** ignore);
+
 // Make directory recursively
 int mkdir_ex(const char * path);
 

@@ -174,3 +174,21 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
         cJSON_AddStringToObject(root, key, value);
     }
 }
+
+// Searches haystack for needle. Returns 1 if needle is found in haystack.
+
+int w_str_in_array(const char * needle, const char ** haystack) {
+    int i;
+
+    if (!(needle && haystack)) {
+        return 0;
+    }
+
+    for (i = 0; haystack[i]; i++) {
+        if (strcmp(needle, haystack[i]) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
