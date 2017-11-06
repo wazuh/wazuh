@@ -33,7 +33,7 @@
 #define SOCKET_PATH "/queue/ossec/cluster_db"
 #define IN_BUFFER_SIZE sizeof(struct inotify_event) + 256
 #define AGENT_INFO_PATH "/queue/agent-info/"
-#define CLIENT_KEYS_PATH "/etc/client.keys"
+#define CLIENT_KEYS_PATH "/etc/"
 #define AGENT_GROUPS_PATH "/queue/agent-groups/"
 #define LOG_FILE "/logs/cluster_debug_socket.log"
 #define LOG_FILE_I "/logs/cluster_debug_inotify.log"
@@ -342,9 +342,11 @@ void* daemon_inotify() {
                     continue;
                 }
             } else if (event->wd == wd_client_keys) {
+                if (!strcmp(event->name, "client.keys")) continue;
                 if (event->mask & IN_MODIFY) {
                     strcpy(cmd, "update1 ");
                     strcat(cmd, CLIENT_KEYS_PATH);
+                    strcat(cmd, "client.keys");
                 } else if (event->mask & IN_IGNORED) {
                     inotify_rm_watch(fd, wd_client_keys);
                     wd_client_keys = inotify_add_watch(fd, client_keys_path , IN_MODIFY);
