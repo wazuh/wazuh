@@ -179,8 +179,10 @@ def get_nodes():
             data.append({'error': response, 'status':'disconnected', 'url':url})
             continue
 
-        data.append({'url':url, 'node':response['node'],
-                     'status':'connected', 'cluster':response['cluster']})
+        if config_cluster['node_type'] == 'master' or \
+           response['type'] == 'master' or url == "localhost":
+            data.append({'url':url, 'node':response['node'],
+                         'status':'connected', 'cluster':response['cluster']})
 
     return {'items': data, 'totalItems': len(data)}
 
@@ -193,8 +195,9 @@ def get_node(name=None):
         if not config_cluster:
             raise WazuhException(3000, "No config found")
 
-        data["node"] = config_cluster["node_name"]
+        data["node"]    = config_cluster["node_name"]
         data["cluster"] = config_cluster["name"]
+        data["type"]    = config_cluster["node_type"]
 
     return data
 
