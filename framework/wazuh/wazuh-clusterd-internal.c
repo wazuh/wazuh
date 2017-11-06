@@ -310,7 +310,7 @@ void* daemon_inotify() {
             char cmd[80];
 
             event = (struct inotify_event*)&buffer[i];
-            mtdebug2(DB_TAG,"inotify: i='%d', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
+            mtdebug2(INOTIFY_TAG,"inotify: i='%d', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
             if (event->wd == wd_agent_info) {
                 if (event->mask & IN_MODIFY) {
                     strcpy(cmd, "update1 ");
@@ -320,10 +320,10 @@ void* daemon_inotify() {
                     inotify_rm_watch(fd, wd_agent_info);
                     wd_agent_info = inotify_add_watch(fd, agent_info_path , IN_MODIFY);
                 } else if (event->mask & IN_Q_OVERFLOW) {
-                    mtinfo(DB_TAG, "Inotify event queue overflowed");
+                    mtinfo(INOTIFY_TAG, "Inotify event queue overflowed");
                     continue;
                 } else {
-                    mtinfo(DB_TAG, "Unknown inotify event");
+                    mtinfo(INOTIFY_TAG, "Unknown inotify event");
                     continue;
                 }
             } else if (event->wd == wd_agent_groups) {
@@ -335,10 +335,10 @@ void* daemon_inotify() {
                     inotify_rm_watch(fd, wd_agent_groups);
                     wd_agent_groups = inotify_add_watch(fd, agent_groups_path , IN_MODIFY);
                 } else if (event->mask & IN_Q_OVERFLOW) {
-                    mtinfo(DB_TAG, "Inotify event queue overflowed");
+                    mtinfo(INOTIFY_TAG, "Inotify event queue overflowed");
                     continue;
                 } else {
-                    mtinfo(DB_TAG, "Unknown inotify event");
+                    mtinfo(INOTIFY_TAG, "Unknown inotify event");
                     continue;
                 }
             } else if (event->wd == wd_client_keys) {
@@ -349,10 +349,10 @@ void* daemon_inotify() {
                     inotify_rm_watch(fd, wd_client_keys);
                     wd_client_keys = inotify_add_watch(fd, client_keys_path , IN_MODIFY);
                 } else if (event->mask & IN_Q_OVERFLOW) {
-                    mtinfo(DB_TAG, "Inotify event queue overflowed");
+                    mtinfo(INOTIFY_TAG, "Inotify event queue overflowed");
                     continue;
                 } else {
-                    mtinfo(DB_TAG, "Unknown inotify event");
+                    mtinfo(INOTIFY_TAG, "Unknown inotify event");
                     continue;
                 }
             } 
