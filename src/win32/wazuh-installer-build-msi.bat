@@ -8,3 +8,4 @@ light.exe "wazuh-installer.wixobj" -out "wazuh-agent-3.0.0-1.msi"  -ext WixUtilE
 
 signtool sign /a /tr http://rfc3161timestamp.globalsign.com/advanced /td SHA256 "wazuh-agent-3.0.0-1.msi"
 
+pause
