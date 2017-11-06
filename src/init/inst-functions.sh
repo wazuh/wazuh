@@ -738,6 +738,7 @@ InstallServer(){
 
     InstallLocal
 
+    ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
     ${INSTALL} -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
 
