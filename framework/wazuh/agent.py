@@ -606,13 +606,14 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Gets a list of available agents with basic attributes.
 
         :param status: Filters by agent status: Active, Disconnected or Never connected.
         :param os_platform: Filters by OS platform.
         :param os_version: Filters by OS version.
+        :param manager_host: Filters by manager hostname to which agents are connected.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
@@ -628,9 +629,9 @@ class Agent:
 
         # Query
         query = "SELECT {0} FROM agent"
-        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive', 'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform', 'version': 'version' }
-        select = ["id", "name", "ip", "last_keepalive", "os_name", "os_version", "os_platform", "version"]
-        search_fields = ["id", "name", "ip", "os_name", "os_version", "os_platform"]
+        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive', 'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform', 'version': 'version', 'manager_host': 'manager_host'}
+        select = ["id", "name", "ip", "last_keepalive", "os_name", "os_version", "os_platform", "version", "manager_host"]
+        search_fields = ["id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host"]
         request = {}
 
         if status != "all":
@@ -651,6 +652,9 @@ class Agent:
         if os_version != "all":
             request['os_version'] = os_version
             query += ' AND os_version = :os_version'
+        if manager_host != "all":
+            request['manager_host'] = manager_host
+            query += ' AND manager_host = :manager_host'
 
         # Search
         if search:
@@ -730,6 +734,9 @@ class Agent:
             if tuple[7] != None:
                 data_tuple['version'] = tuple[7]
                 pending = False if data_tuple['version'] != "" else True
+
+            if tuple[8] != None:
+                data_tuple['manager_host'] = tuple[8]
 
             if os:
                 os_no_empty = dict((k, v) for k, v in os.items() if v)
