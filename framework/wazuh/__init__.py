@@ -3,15 +3,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-# Check that requests module is installed
-from imp import find_module
-from wazuh.exception import WazuhException
-
-try:
-    find_module('requests')
-except ImportError:
-    raise WazuhException(4000)
-
 from wazuh import common
 from wazuh.utils import execute
 from wazuh.database import Connection

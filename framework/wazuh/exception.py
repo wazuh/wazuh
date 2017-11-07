@@ -99,9 +99,7 @@ class WazuhException(Exception):
         3000: 'Cluster',
         3001: 'Error creating zip file',
         3002: 'Error creating PID file',
-        3003: 'Error deleting PID file',
-
-        4000: 'Package requests not installed. Install it with pip (requests) or with yum/apt: (python-requests).'
+        3003: 'Error deleting PID file'
 
         # > 9000: Authd
     }
