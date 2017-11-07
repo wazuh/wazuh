@@ -18,6 +18,7 @@ from pwd import getpwnam
 from signal import signal, SIGINT
 import ctypes
 import ctypes.util
+from cryptography.fernet import Fernet
 
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
@@ -49,9 +50,10 @@ except Exception as e:
     exit()
 
 class WazuhClusterHandler(asyncore.dispatcher_with_send):
-    def __init__(self, sock, addr):
+    def __init__(self, sock, addr, key):
         asyncore.dispatcher_with_send.__init__(self, sock)
         self.addr = addr
+        self.f = Fernet(key.encode('base64','strict'))
 
     def handle_close(self):
         self.close()
@@ -60,7 +62,7 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
         error = 0
         res = ""
         try:
-            recv_command = self.recv(common.cluster_sync_msg_size).decode()
+            recv_command = self.f.decrypt(self.recv(common.cluster_sync_msg_size).decode())
 
             if recv_command == '':
                 self.handle_close()
@@ -79,7 +81,7 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
                 if command[0] == "node":
                     res = get_node()
                 elif command[0] == "zip":
-                    zip_bytes = self.recv(int(command[1]))
+                    zip_bytes = self.f.decrypt(self.recv(int(command[1])))
                     if not zip_bytes:
                         raise "Received empty zip file"
                         return
@@ -94,16 +96,17 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
             logging.error("Error handling client request: {0}".format(str(e)))
             data = json.dumps({'error': 1, 'data': str(e)})
         
-        self.send(data + '\n')
+        self.send(self.f.encrypt(data + '\n'))
         logging.debug("Data sent to {0}".format(self.addr))
         # self.handle_close()
 
 class WazuhClusterServer(asyncore.dispatcher):
 
-    def __init__(self, host, port):
+    def __init__(self, host, port, key):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
+        self.key = key
         try:
             self.bind((host, port))
         except socket.error as e:
@@ -117,7 +120,7 @@ class WazuhClusterServer(asyncore.dispatcher):
         if pair is not None:
             sock, addr = pair
             logging.info("Accepted connection from host {0}".format(addr[0]))
-            handler = WazuhClusterHandler(sock, addr[0])
+            handler = WazuhClusterHandler(sock, addr[0], self.key)
         return
 
     def handle_error(self):
@@ -210,5 +213,5 @@ if __name__ == '__main__':
     child_pid = p.pid
 
     server = WazuhClusterServer('' if not cluster_config['host'] else cluster_config['host'], 
-                                int(cluster_config['port']))
+                                int(cluster_config['port']), cluster_config['key'])
     asyncore.loop()
