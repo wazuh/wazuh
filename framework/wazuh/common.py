@@ -52,9 +52,6 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global database_path_agents
     database_path_agents = database_path + '/agents'
 
-    global cluster_sync_msg_size
-    cluster_sync_msg_size = 14
-
     global os_pidfile
     os_pidfile = "/var/run"
 
@@ -79,6 +76,20 @@ agent_info_sleep = 2 # Seconds between retries
 
 # Common variables
 database_limit = 500
+
+# Cluster protocol
+global cluster_protocol_plain_size
+cluster_protocol_plain_size = 14
+
+def get_encrypted_size(plain_size):
+    # Token format: https://github.com/fernet/spec/blob/master/Spec.md
+    encrypted_size = 57+(16*(((plain_size/16 + 1)*16)/16))
+    return ((4 * encrypted_size / 3) + 3) & ~3 # base64 length
+
+# token encrypted with base64
+global cluster_sync_msg_size
+cluster_sync_msg_size = get_encrypted_size(cluster_protocol_plain_size)
+
 
 # Common variables based on ossec path (/var/ossec by default)
 set_paths_based_on_ossec()

@@ -62,11 +62,11 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
         error = 0
         res = ""
         try:
-            recv_command = self.f.decrypt(self.recv(common.cluster_sync_msg_size).decode())
-
-            if recv_command == '':
+            ecnrypted_data = self.recv(common.cluster_sync_msg_size)
+            if ecnrypted_data == '':
                 self.handle_close()
                 return
+            recv_command = self.f.decrypt(ecnrypted_data).decode()
 
             command = recv_command.split(" ")
 
@@ -81,7 +81,7 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
                 if command[0] == "node":
                     res = get_node()
                 elif command[0] == "zip":
-                    zip_bytes = self.f.decrypt(self.recv(int(command[1])))
+                    zip_bytes = self.f.decrypt(self.recv(get_encrypted_size(int(command[1]))))
                     if not zip_bytes:
                         raise "Received empty zip file"
                         return

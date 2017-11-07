@@ -366,15 +366,18 @@ class WazuhClusterClient(asynchat.async_chat):
         raise t(v)
 
     def collect_incoming_data(self, data):
-        self.received_data.append(data)
+        plain_data = self.f.decrypt(data)
+        self.received_data.append(plain_data)
+        if '\n' in plain_data:
+            self.found_terminator()
 
     def found_terminator(self):
-        self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
+        self.response = json.loads(''.join(self.received_data))
         self.close()
 
     def handle_write(self):
         if self.file is not None:
-            self.send(self.f.encrypt(self.data.encode() + self.file))
+            self.send(self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file))
         else:
             self.send(self.f.encrypt(self.data.encode()))
         self.can_read=True

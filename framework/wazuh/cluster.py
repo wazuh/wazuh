@@ -166,7 +166,7 @@ def get_nodes():
     for url in config_cluster["nodes"]:
         if not url in localhost_ips:
             error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
-                                data="node {0}".format('a'*(common.cluster_sync_msg_size - len("node "))))
+                                data="node {0}".format('a'*(common.cluster_protocol_plain_size - len("node "))))
             if error == 0:
                 response = response['data']
         else:
@@ -366,7 +366,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
             
             error, response = send_request(host=node_dest, port=config_cluster['port'],
                                            data="zip {0}".format(str(len(zip_file)).
-                                            zfill(common.cluster_sync_msg_size - len("zip "))), 
+                                            zfill(common.cluster_protocol_plain_size - len("zip "))), 
                                            file=zip_file, key=config_cluster['key'])
             
             try:
