@@ -239,7 +239,7 @@ void* daemon_socket() {
             mterror_exit(DB_TAG, "Error reading in socket: %s", strerror(errno));
         }
         else if (rc == 0) {
-            mtinfo(DB_TAG,"Closed connection from %d", cl);
+            mtdebug2(DB_TAG,"Closed connection from %d", cl);
             if (close(cl) < 0) {
                 mterror_exit(DB_TAG, "Error closing connection from %d: %s", cl, strerror(errno));
             }
