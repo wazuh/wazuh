@@ -1057,7 +1057,7 @@ wazuh-modulesd: ${wmodulesd_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 
 ### wazuh-framework ##
 
-wazuh-framework:
+wazuh-framework: ${sqlite_o}
 	${MAKE} -C ../framework build PREFIX=${PREFIX}
 
 

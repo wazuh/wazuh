@@ -35,8 +35,6 @@
 #define AGENT_INFO_PATH "/queue/agent-info/"
 #define CLIENT_KEYS_PATH "/etc/"
 #define AGENT_GROUPS_PATH "/queue/agent-groups/"
-#define LOG_FILE "/logs/cluster_debug_socket.log"
-#define LOG_FILE_I "/logs/cluster_debug_inotify.log"
 
 #define MAIN_TAG "wazuh-clusterd-internal"
 #define INOTIFY_TAG "cluster_inotify"

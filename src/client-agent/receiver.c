@@ -19,6 +19,7 @@
 static FILE *fp = NULL;
 static char file_sum[34] = "";
 static char file[OS_SIZE_1024 + 1] = "";
+static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
 
 // TODO: Remove calls for WIN32
 
@@ -228,6 +229,10 @@ int receive_msg()
                         final_file = strrchr(file, '/');
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
+                                if (cldir_ex_ignore(SHAREDCFG_DIR, IGNORE_LIST)) {
+                                    mwarn("Could not clean up shared directory.");
+                                }
+
                                 UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
 
                                 if (!verifyRemoteConf()) {

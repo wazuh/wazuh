@@ -1979,6 +1979,12 @@ int rmdir_ex(const char *name) {
 // Delete directory content
 
 int cldir_ex(const char *name) {
+    return cldir_ex_ignore(name, NULL);
+}
+
+// Delete directory content with exception list
+
+int cldir_ex_ignore(const char * name, const char ** ignore) {
     DIR *dir;
     struct dirent *dirent;
     char path[PATH_MAX + 1];
@@ -1993,7 +1999,7 @@ int cldir_ex(const char *name) {
 
     while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
-        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+        if ((dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) || w_str_in_array(dirent->d_name, ignore)) {
             continue;
         }
 

@@ -83,6 +83,11 @@ yessyslog="Syslog remoto habilitado"
 # Part 3.4/3.5
 readlogs="Estableciendo la configuración para analizar los siguientes registros:"
 
+# Part 3.7
+runauthd="¿Desea habilitar el servicio de autenticación (Authd)?"
+norunauthd="No se ejecutará Authd"
+yesrunauthd="Ejecutando Authd"
+
 # Part 5
 installing="Instalando el sistema"
 runningmake="Ejecutando el Makefile"

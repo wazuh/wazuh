@@ -84,6 +84,11 @@ yessyslog="Udaljeni syslog osposobljen"
 # Part 3.4/3.5
 readlogs="Postavlja konfiguraciju da analizira sledeće logove:"
 
+# Part 3.7
+runauthd="Da li želite da pokrenete Auth uslugu?"
+norunauthd="Ne radi Auth servis"
+yesrunauthd="Pokretanje Auth usluge"
+
 # Part 5
 installing="Instalira sistem"
 runningmake="Vrši Makefile"
