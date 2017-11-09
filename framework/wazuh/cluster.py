@@ -40,48 +40,7 @@ if is_py2:
 else:
     from queue import Queue as queue
 
-CLUSTER_ITEMS = [
-    {
-        "file_name":"/etc/client.keys",
-        "umask": 0o117, # Allowed Permissions rw-rw----
-        "format":"plain",
-        "type": "file",
-        "source": "master",
-        "write_mode": "atomic",
-        "conditions": {
-            "higher_remote_time": True,
-            "different_md5": True,
-            "larger_remote_size": True
-        }
-    },
-    {
-        "file_name":"/queue/agent-info",
-        "umask": 0o117, # Allowed Permissions rw-rw----
-        "format":"plain",
-        "type": "directory",
-        "source": "all",
-        "write_mode": "atomic",
-        "conditions": {
-            "higher_remote_time": True,
-            "different_md5": False,
-            "larger_remote_size": False
-            }
-    },
-    {
-        "file_name":"/queue/agent-groups",
-        "umask": 0o117, # Allowed Permissions rw-rw----
-        "format":"plain",
-        "type": "directory",
-        "source": "master",
-        "write_mode": "atomic",
-        "conditions": {
-            "higher_remote_time": True,
-            "different_md5": False,
-            "larger_remote_size": False
-            }
-    }
-    # {"file_name":"/etc/ossec.conf", "format":"xml"},
-]
+CLUSTER_ITEMS = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
 
 import zipfile
 
@@ -102,7 +61,7 @@ def get_file_info(filename):
     st_mtime = stat_obj.st_mtime
     st_size = stat_obj.st_size
 
-    new_item = CLUSTER_ITEMS[0] if filename == CLUSTER_ITEMS[0]['file_name'] else CLUSTER_ITEMS[1]
+    new_item = CLUSTER_ITEMS[path.dirname(filename)+'/']
 
     file_item = {
         "umask" : new_item['umask'],
@@ -204,21 +163,17 @@ def get_node(name=None):
 def get_files(node_type):
     # Expand directory
     expanded_items = []
-    for item in CLUSTER_ITEMS:
+    for file_path, item in CLUSTER_ITEMS.items():
         if item['source'] == node_type or \
            item['source'] == 'all':
-            file_path = item['file_name']
-
-            if item["type"] == "file":
+            
+            fullpath = common.ossec_path + file_path
+            for entry in listdir(fullpath):
+                if file_path == '/etc/' and entry != 'client.keys':
+                    continue
                 new_item = dict(item)
-                new_item["path"] = file_path
+                new_item["path"]     = path.join(file_path, entry)
                 expanded_items.append(new_item)
-            else:
-                fullpath = common.ossec_path + file_path
-                for entry in listdir(fullpath):
-                    new_item = dict(item)
-                    new_item["path"] = path.join(file_path, entry)
-                    expanded_items.append(new_item)
 
     final_items = {}
     for new_item in expanded_items:
@@ -331,10 +286,8 @@ def receive_zip(zip_file):
     for name,content in zip_file.items():
         try:
             file_path = common.ossec_path + '/' + name
-            remote_umask = CLUSTER_ITEMS[0]['umask'] if name in \
-                           CLUSTER_ITEMS[0]['file_name'] else CLUSTER_ITEMS[1]['umask']
-            remote_write_mode = CLUSTER_ITEMS[0]['write_mode'] if name in \
-                           CLUSTER_ITEMS[0]['file_name'] else CLUSTER_ITEMS[1]['write_mode']
+            remote_umask = int(CLUSTER_ITEMS[path.dirname(file_path)]['umask'], base=0)
+            remote_write_mode = CLUSTER_ITEMS[path.dirname(file_path)]['write_mode']
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],
