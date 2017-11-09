@@ -119,10 +119,12 @@ void* wm_database_main(wm_database *data) {
         while (1) {
             path = wm_inotify_pop();
 
-
+#ifndef LOCAL
             if (!strcmp(path, KEYSFILE_PATH)) {
                 wm_sync_agents();
-            } else {
+            } else
+#endif // !LOCAL
+            {
                 if (file = strrchr(path, '/'), file) {
                     *(file++) = '\0';
                     wm_sync_file(path, file);
@@ -133,7 +135,6 @@ void* wm_database_main(wm_database *data) {
 
             free(path);
         }
-
     } else {
 #endif // INOTIFY_ENABLED
 
@@ -1070,8 +1071,6 @@ int set_max_queued_events(int size) {
 // Setup inotify reader
 void wm_inotify_setup(wm_database * data) {
     int old_max_queued_events = -1;
-    char keysfile_path[] = KEYSFILE_PATH;
-    char * keysfile_dir = dirname(keysfile_path);
 
     // Create hash table
 
@@ -1118,6 +1117,9 @@ void wm_inotify_setup(wm_database * data) {
     // First synchronization and add watch for client.keys, Agent info, Syscheck and Rootcheck directories
 
 #ifndef LOCAL
+
+    char keysfile_path[] = KEYSFILE_PATH;
+    char * keysfile_dir = dirname(keysfile_path);
 
     if (data->sync_agents) {
         if ((wd_agents = inotify_add_watch(inotify_fd, keysfile_dir, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)
