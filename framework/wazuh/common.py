@@ -71,6 +71,9 @@ wpk_repo_url = "https://packages.wazuh.com/wpk/"
 
 wpk_chunk_size = 512
 
+open_retries = 10 # Retries until get open ok message
+open_sleep = 5 # Seconds between retries
+
 upgrade_result_retries = 60 # Retries until get upgrade_result ok message
 upgrade_result_sleep = 5 # Seconds between retries
 
