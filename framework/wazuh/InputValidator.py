@@ -7,6 +7,7 @@ import re
 from operator import mul
 from functools import reduce
 from wazuh import common
+from wazuh.exception import WazuhException
 
 class InputValidator:
     """
@@ -61,3 +62,14 @@ class InputValidator:
             return False
 
         return True
+
+    def check_cluster_config(self, config):
+        if config['key'] == None:
+            raise WazuhException(3004, 'Unspecified key')
+
+        if config['node_type'] != 'master' and config['node_type'] != 'slave':
+            raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and slave'.format(config['node_type']))
+        if not re.compile("\d+[m|s]").match(config['interval']):
+            raise WazuhException(3004, 'Invalid interval specification. Please, specify it with format <number>s or <number>m')
+        if config['nodes'][0] == 'localhost' and len(config['nodes']) == 1:
+            raise WazuhException(3004, 'Please specify IPs of all cluster nodes')

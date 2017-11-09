@@ -192,11 +192,18 @@ if __name__ == '__main__':
     if not args.d:
         logging.getLogger('').setLevel(logging.INFO)
 
+    cluster_config = read_config()
+    try:
+        iv.check_cluster_config(cluster_config)
+    except WazuhException as e:
+        logging.error(str(e))
+        exit(1)
+
     # execute C cluster daemon (database & inotify) if it's not running
     try:
         exit_code = check_call(["ps", "-C", "wazuh-clusterd-internal"], stdout=open(devnull, 'w'))
     except CalledProcessError:
-        call_list = ["{0}/bin/wazuh-clusterd-internal".format(ossec_path)]
+        call_list = ["{0}/bin/wazuh-clusterd-internal".format(ossec_path), "-t {0}".format(cluster_config['node_type'])]
         if args.d:
             call_list.append("-ddd")
         check_call(call_list)
@@ -204,7 +211,6 @@ if __name__ == '__main__':
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
     
-    cluster_config = read_config()
     # execute an independent process to "crontab" the sync interval
     p = Process(target=crontab_sync, args=(cluster_config['interval'],))
     if not args.f:
