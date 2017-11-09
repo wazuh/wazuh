@@ -310,21 +310,23 @@ void* daemon_inotify(void * args) {
 
     mtdebug1(INOTIFY_TAG, "Preparing inotify watchers");
     /* prepare inotify */
-    int fd;
+    int fd, wd_client_keys = -1;
     int watchers[n_files_to_watch];
     fd = inotify_init ();
 
     for (i = 0; i < n_files_to_watch; i++) {
-        watchers[i] = inotify_add_watch(fd, paths[i], IN_MODIFY);
+        watchers[i] = inotify_add_watch(fd, paths[i], IN_MOVED_TO | IN_MODIFY);
         if (watchers[i] < 0)
             mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 
                 paths[i], strerror(errno));
+
+        if (strcmp(names[i], "/etc/")) wd_client_keys = watchers[i];
     }
 
     char buffer[IN_BUFFER_SIZE];
     struct inotify_event *event = (struct inotify_event *)buffer;
     ssize_t count;
-
+    bool ignore = false;
     while (1) {
         if ((count = read(fd, buffer, IN_BUFFER_SIZE)) < 0) {
             if (errno != EAGAIN)
@@ -343,19 +345,28 @@ void* daemon_inotify(void * args) {
             unsigned int j;
             for (j = 0; j < n_files_to_watch; j++) {
                 if (event->wd == watchers[j]) {
-                    strcpy(cmd, "update1 ");
-                    strcat(cmd, names[j]);
-                    strcat(cmd, event->name);
-                } else if (event->mask & IN_IGNORED) {
-                    inotify_rm_watch(fd, watchers[j]);
-                    watchers[j] = inotify_add_watch(fd, paths[j], IN_MODIFY);
-                } else if (event->mask & IN_Q_OVERFLOW) {
-                    mtinfo(INOTIFY_TAG, "Inotify event queue overflowed");
-                    continue;
-                } else {
-                    mtinfo(INOTIFY_TAG, "Unknown inotify event");
-                    continue;
+                    if (watchers[j] == wd_client_keys && strstr(event->name, "client.keys") == NULL) {
+                        ignore = true;
+                        continue;
+                    } else mtdebug2(INOTIFY_TAG, "Client keys modification");
+
+                    if (event->mask & IN_MOVED_TO || event->mask & IN_MODIFY) {
+                        strcpy(cmd, "update1 ");
+                        strcat(cmd, names[j]);
+                        strcat(cmd, event->name);
+                    } else if (event->mask & IN_Q_OVERFLOW) {
+                        mtinfo(INOTIFY_TAG, "Inotify event queue overflowed");
+                        continue;
+                    } else {
+                        mtinfo(INOTIFY_TAG, "Unknown inotify event");
+                        continue;
+                    }
                 }
+            }
+
+            if (ignore) {
+                ignore = false;
+                continue;
             }
 
             if ((db_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {

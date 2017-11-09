@@ -203,7 +203,7 @@ if __name__ == '__main__':
     try:
         exit_code = check_call(["ps", "-C", "wazuh-clusterd-internal"], stdout=open(devnull, 'w'))
     except CalledProcessError:
-        call_list = ["{0}/bin/wazuh-clusterd-internal".format(ossec_path), "-t {0}".format(cluster_config['node_type'])]
+        call_list = ["{0}/bin/wazuh-clusterd-internal".format(ossec_path), "-t{0}".format(cluster_config['node_type'])]
         if args.d:
             call_list.append("-ddd")
         check_call(call_list)

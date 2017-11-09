@@ -1,5 +1,5 @@
 {
-    "/etc/client.keys": {
+    "/etc/": {
         "umask": "0o117",
         "format":"plain",
         "type": "file",
