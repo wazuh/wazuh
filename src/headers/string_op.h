@@ -33,4 +33,7 @@ char * w_strtrim(char * string);
 // Add a dynamic field with object nesting
 void W_JSON_AddField(cJSON *root, const char *key, const char *value);
 
+// Searches haystack for needle. Returns 1 if needle is found in haystack.
+int w_str_in_array(const char * needle, const char ** haystack);
+
 #endif

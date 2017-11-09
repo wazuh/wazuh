@@ -86,6 +86,11 @@ yessyslog="Remote syslog empfang eingeschaltet"
 # Part 3.4/3.5
 readlogs="Die folgenden Log-Files werden analysiert:"
 
+# Part 3.7
+runauthd="Möchten Sie den Auth-Dienst ausführen?"
+norunauthd="Auth-Dienst wird nicht ausgeführt."
+yesrunauthd="Auth-Dienst ausführen"
+
 # Part 5
 installing="Installiere das System"
 runningmake="make wird ausgeführt"

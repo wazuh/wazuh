@@ -88,7 +88,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 
     /* Send initial message */
     if (logr.proto[logr.position] == UDP_PROTO) {
-        retval = sendto(logr.sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size);
+        retval = sendto(logr.sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
     } else if (keys.keyentries[key_id]->sock >= 0) {
         w_mutex_lock(&keys.keyentries[key_id]->mutex);
         retval = OS_SendSecureTCP(keys.keyentries[key_id]->sock, msg_size, crypt_msg);

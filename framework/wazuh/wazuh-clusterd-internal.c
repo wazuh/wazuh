@@ -34,9 +34,7 @@
 #define DB_PATH DEFAULTDIR "/var/db/cluster_db"
 #define SOCKET_PATH DEFAULTDIR "/queue/ossec/cluster_db"
 #define IN_BUFFER_SIZE sizeof(struct inotify_event) + 256
-#define AGENT_INFO_PATH DEFAULTDIR "/queue/agent-info/"
-#define CLIENT_KEYS_PATH DEFAULTDIR "/etc/"
-#define AGENT_GROUPS_PATH DEFAULTDIR "/queue/agent-groups/"
+
 #define CLUSTER_JSON DEFAULTDIR "/framework/wazuh/cluster.json"
 
 #define MAIN_TAG "wazuh-clusterd-internal"

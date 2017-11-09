@@ -68,6 +68,8 @@ yesrunopenscap="Running OpenSCAP (policy monitoring checks)"
 # Part 3.5/server/local
 enable_ar="Do you want to enable active response?"
 noactive="Active response disabled"
+yesactive="Active response enabled"
+
 nohosts="host-deny disabled"
 yeshosts="host-deny enabled (local) for levels >= 6"
 firewallar="Do you want to enable the firewall-drop response?"
@@ -84,6 +86,11 @@ yessyslog="Remote syslog enabled"
 
 # Part 3.4/3.5
 readlogs="Setting the configuration to analyze the following logs:"
+
+# Part 3.7
+runauthd="Do you want to run the Auth daemon?"
+norunauthd="Not running Auth daemon"
+yesrunauthd="Running Auth daemon"
 
 # Part 5
 installing="Installing the system"

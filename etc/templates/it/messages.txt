@@ -83,6 +83,11 @@ yessyslog="Syslog remoto attivato"
 # Part 3.4/3.5
 readlogs="Imposto la configurazione per l'analisi dei seguenti logs:"
 
+# Part 3.7
+runauthd="Vuoi eseguire il servizio Auth?"
+norunauthd="Non eseguire l'autenticazione"
+yesrunauthd="Running Auth servizio"
+
 # Part 5
 installing="Installo il sistema"
 runningmake="Eseguo il Makefile"

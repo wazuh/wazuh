@@ -84,6 +84,11 @@ yessyslog="Удалённое сохранение логов включено"
 # Part 3.4/3.5
 readlogs="Устанавливается конфигурация для анализа следующих логов"
 
+# Part 3.7
+runauthd="Вы хотите запустить службу Auth?"
+norunauthd="Не работает служба Auth"
+yesrunauthd="Запуск службы Auth"
+
 # Part 5
 installing="Производится установка"
 runningmake="Исполняется Makefile"
