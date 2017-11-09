@@ -1,0 +1,40 @@
+{
+    "/etc/client.keys": {
+        "umask": "0o117",
+        "format":"plain",
+        "type": "file",
+        "source": "master",
+        "write_mode": "atomic",
+        "conditions": {
+            "higher_remote_time": true,
+            "different_md5": true,
+            "larger_remote_size": true
+        }
+    },
+
+    "/queue/agent-info/": {
+        "umask": "0o117",
+        "format":"plain",
+        "type": "directory",
+        "source": "all",
+        "write_mode": "atomic",
+        "conditions": {
+            "higher_remote_time": true,
+            "different_md5": false,
+            "larger_remote_size": false
+        }
+    },
+
+    "/queue/agent-groups/": {
+        "umask": "0o117",
+        "format":"plain",
+        "type": "directory",
+        "source": "master",
+        "write_mode": "atomic",
+        "conditions": {
+            "higher_remote_time": true,
+            "different_md5": false,
+            "larger_remote_size": false
+        }
+    }
+}
