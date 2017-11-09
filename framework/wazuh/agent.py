@@ -1685,7 +1685,7 @@ class Agent:
         return [wpk_file, sha1hash]
 
 
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1):
+    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries):
         """
         Sends WPK file to agent.
         """
@@ -1709,6 +1709,20 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
+        counter = 0
+        while data.startswith('err') and counter < timeout:
+            sleep(common.open_sleep)
+            counter = counter + 1
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(common.ossec_path + "/queue/ossec/request")
+            msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
+            s.send(msg.encode())
+            if debug:
+                print("MSG SENT: {0}".format(str(msg)))
+            data = s.recv(1024).decode()
+            s.close()
+            if debug:
+                print("RESPONSE: {0}".format(data))
         if data != 'ok':
             raise WazuhException(1715, data.replace("err ",""))
 
@@ -1916,7 +1930,7 @@ class Agent:
         return Agent(agent_id).upgrade_result(timeout=int(timeout))
 
 
-    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
+    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries):
         """
         Sends custom WPK file to agent.
         """
@@ -1943,6 +1957,20 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
+        counter = 0
+        while data.startswith('err') and counter < timeout:
+            sleep(common.open_sleep)
+            counter = counter + 1
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(common.ossec_path + "/queue/ossec/request")
+            msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
+            s.send(msg.encode())
+            if debug:
+                print("MSG SENT: {0}".format(str(msg)))
+            data = s.recv(1024).decode()
+            s.close()
+            if debug:
+                print("RESPONSE: {0}".format(data))
         if data != 'ok':
             raise WazuhException(1715, data.replace("err ",""))
 
