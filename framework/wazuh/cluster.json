@@ -5,6 +5,7 @@
         "type": "file",
         "source": "master",
         "write_mode": "atomic",
+        "flags": ["IN_MOVED_TO"],
         "conditions": {
             "higher_remote_time": true,
             "different_md5": true,
@@ -18,6 +19,7 @@
         "type": "directory",
         "source": "all",
         "write_mode": "atomic",
+        "flags": ["IN_CLOSE_WRITE", "IN_ATTRIB", "IN_MOVED_TO"],
         "conditions": {
             "higher_remote_time": true,
             "different_md5": false,
@@ -31,6 +33,7 @@
         "type": "directory",
         "source": "master",
         "write_mode": "atomic",
+        "flags": ["IN_CLOSE_WRITE", "IN_MOVED_TO"],
         "conditions": {
             "higher_remote_time": true,
             "different_md5": false,

@@ -54,6 +54,7 @@ static void help_cluster_daemon(char * name)
     exit(1);
 }
 
+/* function to get the size of a file */
 off_t fsize(char *file) {
     struct stat filestat;
     if (stat(file, &filestat) == 0) {
@@ -62,6 +63,7 @@ off_t fsize(char *file) {
     return 0;
 }
 
+/* function to read a file and load it into a char * buffer */
 void read_file(char * pathname, char * buffer, off_t size) {
     FILE * pFile;
     size_t result;
@@ -266,6 +268,44 @@ void* daemon_socket() {
     return 0;
 }
 
+
+/* structure to save all info required for inotify daemon */
+struct inotify_watch_file {
+    char name[50];
+    char path[80];
+    uint32_t flags;
+    int watcher;
+};
+
+uint32_t get_flag_mask(cJSON * flags) {
+    unsigned int i;
+    uint32_t mask = 0;
+    for (i = 0; i < cJSON_GetArraySize(flags); i++) {
+        char * flag = cJSON_GetArrayItem(flags, i)->valuestring;
+        if (strcmp(flag, "IN_ACCESS") == 0) mask |= IN_ACCESS;
+        else if (strcmp(flag, "IN_ATTRIB") == 0) mask |= IN_ATTRIB;
+        else if (strcmp(flag, "IN_CLOSE_WRITE") == 0) mask |= IN_CLOSE_WRITE;
+        else if (strcmp(flag, "IN_CLOSE_NOWRITE") == 0) mask |= IN_CLOSE_NOWRITE;
+        else if (strcmp(flag, "IN_CREATE") == 0) mask |= IN_CREATE;
+        else if (strcmp(flag, "IN_DELETE") == 0) mask |= IN_DELETE;
+        else if (strcmp(flag, "IN_DELETE_SELF") == 0) mask |= IN_DELETE_SELF;
+        else if (strcmp(flag, "IN_MODIFY") == 0) mask |= IN_MODIFY;
+        else if (strcmp(flag, "IN_MOVE_SELF") == 0) mask |= IN_MOVE_SELF;
+        else if (strcmp(flag, "IN_MOVED_FROM") == 0) mask |= IN_MOVED_FROM;
+        else if (strcmp(flag, "IN_MOVED_TO") == 0) mask |= IN_MOVED_TO;
+        else if (strcmp(flag, "IN_OPEN") == 0) mask |= IN_OPEN;
+        else if (strcmp(flag, "IN_ALL_EVENTS") == 0) mask |= IN_ALL_EVENTS;
+        else if (strcmp(flag, "IN_DONT_FOLLOW") == 0) mask |= IN_DONT_FOLLOW;
+        else if (strcmp(flag, "IN_EXCL_UNLINK") == 0) mask |= IN_EXCL_UNLINK;
+        else if (strcmp(flag, "IN_MASK_ADD") == 0) mask |= IN_MASK_ADD;
+        else if (strcmp(flag, "IN_ONESHOT") == 0) mask |= IN_ONESHOT;
+        else if (strcmp(flag, "IN_ONLYDIR") == 0) mask |= IN_ONLYDIR;
+        else if (strcmp(flag, "IN_MOVE") == 0) mask |= IN_MOVE;
+        else if (strcmp(flag, "IN_CLOSE") == 0) mask |= IN_CLOSE;
+    }
+    return mask;
+}
+
 void* daemon_inotify(void * args) {
     char * node_type = args;
     mtinfo(INOTIFY_TAG,"Preparing client socket");
@@ -285,23 +325,24 @@ void* daemon_inotify(void * args) {
     cJSON * root = cJSON_Parse(cluster_json);
     unsigned int i = 0, n_files_to_watch = 0;
 
-    char paths[10][50];
-    char names[10][35];
+    struct inotify_watch_file files[10];
 
     for (i = 0; i < cJSON_GetArraySize(root); i++) {
         cJSON *subitem = cJSON_GetArrayItem(root, i);
-        mtdebug2(INOTIFY_TAG, "File %s", subitem->string);
         cJSON *source_item = cJSON_GetObjectItemCaseSensitive(subitem, "source");
-        mtinfo(INOTIFY_TAG, "Source: %s", source_item->valuestring);
+
         if (strcmp(source_item->valuestring, node_type) == 0 ||
             strcmp(source_item->valuestring, "all") == 0) {
 
-            strcpy(paths[n_files_to_watch], DEFAULTDIR);
-            strcat(paths[n_files_to_watch], subitem->string);
+            char aux_path[80];
+            strcpy(aux_path, DEFAULTDIR);
+            strcat(aux_path, subitem->string);
 
-            strcpy(names[n_files_to_watch], subitem->string);
+            strcpy(files[n_files_to_watch].path, aux_path);
+            strcpy(files[n_files_to_watch].name, subitem->string);
+            files[n_files_to_watch].flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
 
-            mtdebug1(INOTIFY_TAG, "Adding file %s to watch list", names[n_files_to_watch]);
+            mtdebug1(INOTIFY_TAG, "Adding file %s to watch list", files[n_files_to_watch].name);
             n_files_to_watch++;
         }
     }
@@ -309,16 +350,15 @@ void* daemon_inotify(void * args) {
     mtdebug1(INOTIFY_TAG, "Preparing inotify watchers");
     /* prepare inotify */
     int fd, wd_client_keys = -1;
-    int watchers[n_files_to_watch];
     fd = inotify_init ();
 
     for (i = 0; i < n_files_to_watch; i++) {
-        watchers[i] = inotify_add_watch(fd, paths[i], IN_MOVED_TO | IN_MODIFY);
-        if (watchers[i] < 0)
+        files[i].watcher = inotify_add_watch(fd, files[i].path, files[i].flags);
+        if (files[i].watcher < 0)
             mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 
-                paths[i], strerror(errno));
+                files[i].path, strerror(errno));
 
-        if (strcmp(names[i], "/etc/")) wd_client_keys = watchers[i];
+        if (strcmp(files[i].name, "/etc/")) wd_client_keys = files[i].watcher;
     }
 
     char buffer[IN_BUFFER_SIZE];
@@ -342,21 +382,23 @@ void* daemon_inotify(void * args) {
             mtdebug2(INOTIFY_TAG,"inotify: i='%d', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
             unsigned int j;
             for (j = 0; j < n_files_to_watch; j++) {
-                if (event->wd == watchers[j]) {
-                    if (watchers[j] == wd_client_keys && strstr(event->name, "client.keys") == NULL) {
+                if (event->wd == files[j].watcher) {
+                    if (files[j].watcher == wd_client_keys && strcmp(event->name, "client.keys") != 0) {
                         ignore = true;
                         continue;
-                    } else mtdebug2(INOTIFY_TAG, "Client keys modification");
+                    }
 
-                    if (event->mask & IN_MOVED_TO || event->mask & IN_MODIFY) {
+                    if (event->mask & files[j].flags) {
                         strcpy(cmd, "update1 ");
-                        strcat(cmd, names[j]);
+                        strcat(cmd, files[j].name);
                         strcat(cmd, event->name);
                     } else if (event->mask & IN_Q_OVERFLOW) {
                         mtinfo(INOTIFY_TAG, "Inotify event queue overflowed");
+                        ignore = true;
                         continue;
                     } else {
                         mtinfo(INOTIFY_TAG, "Unknown inotify event");
+                        ignore = true;
                         continue;
                     }
                 }
@@ -394,7 +436,7 @@ void* daemon_inotify(void * args) {
 
     mtdebug1(INOTIFY_TAG,"Removing watchers");
     /*removing the directory from the watch list.*/
-    for (i = 0; i < n_files_to_watch; i++) inotify_rm_watch(fd, watchers[i]);
+    for (i = 0; i < n_files_to_watch; i++) inotify_rm_watch(fd, files[i].watcher);
 
     close(fd);
 
