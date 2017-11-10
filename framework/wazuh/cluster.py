@@ -78,9 +78,9 @@ def get_file_info(filename):
     return file_item
 
 
-def compress_files(list_path, conditions={'/etc/client.keys'}):
+def compress_files(list_path):
     zipped_file = BytesIO()
-    conds = json.dumps({c:get_file_info(c) for c in conditions & list_path})
+    # conds = json.dumps({c:get_file_info(c) for c in conditions & list_path})
     with zipfile.ZipFile(zipped_file, 'w') as zf:
         # write files
         for f in list_path:
@@ -88,12 +88,6 @@ def compress_files(list_path, conditions={'/etc/client.keys'}):
                 zf.write(filename = common.ossec_path + f, arcname = f, compress_type=compression)
             except Exception as e:
                 raise WazuhException(3001, str(e))
-
-        # write conditions
-        try:
-            zf.writestr("conditions.txt", conds, compression)
-        except Exception as e:
-            raise WazuhException(3001, str(e))
 
     return zipped_file.getvalue()
 
@@ -245,43 +239,6 @@ def receive_zip(zip_file):
     logging.info("Receiving zip with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'invalid': []}
-    # before saving files to disk, check conditions
-    conditions = json.loads(zip_file['conditions.txt']['data'])
-    del zip_file['conditions.txt']
-
-    for filename, conds in conditions.items():
-        local_conds = get_file_info(filename)
-
-        checked_conditions = filter(lambda x: conds['conditions'][x],
-                                              conds['conditions'].keys())
-        try:
-            remote_file_time = datetime.strptime(conds["modification_time"],
-                                                "%Y-%m-%d %H:%M:%S.%f")
-        except:
-            remote_file_time = datetime.strptime(conds["modification_time"],
-                                                "%Y-%m-%d %H:%M:%S")
-        try:
-            local_file_time = datetime.strptime(local_conds["modification_time"],
-                                                "%Y-%m-%d %H:%M:%S.%f")
-        except:
-            local_file_time = datetime.strptime(local_conds["modification_time"],
-                                                "%Y-%m-%d %H:%M:%S")
-        conditions = {}
-        for condition in checked_conditions:
-            if condition == 'different_md5':  
-                conditions[condition] = local_conds['md5'] != conds['md5']
-            elif condition == 'higher_remote_time':
-                conditions[condition] = remote_file_time > local_file_time
-            else:
-                conditions[condition] = conds['size'] > local_conds['size']
-
-        logging.debug("Evaluated conditions for file {0}: {1}".format(filename, conditions))
-
-        if not all(conditions.values()):
-            # don't download remote file
-            logging.info("File {0} does not meet conditions to be updated".format(filename))
-            final_dict['invalid'].append(filename)
-            del zip_file[filename[1:]]
 
     for name,content in zip_file.items():
         try:
