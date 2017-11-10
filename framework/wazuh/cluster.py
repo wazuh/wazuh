@@ -285,15 +285,18 @@ def receive_zip(zip_file):
 
     for name,content in zip_file.items():
         try:
-            file_path = common.ossec_path + '/' + name
-            remote_umask = int(CLUSTER_ITEMS[path.dirname(file_path)]['umask'], base=0)
-            remote_write_mode = CLUSTER_ITEMS[path.dirname(file_path)]['write_mode']
+            fixed_name = '/' + name
+            dir_name = path.dirname(fixed_name) + '/'
+            file_path = common.ossec_path + fixed_name
+            remote_umask = int(CLUSTER_ITEMS[dir_name]['umask'], base=0)
+            remote_write_mode = CLUSTER_ITEMS[dir_name]['write_mode']
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],
                             w_mode=remote_write_mode)
 
         except Exception as e:
+            logging.error("Error extracting zip file: {0}".format(str(e)))
             final_dict['error'].append({'item': name, 'reason': str(e)})
             continue
 
