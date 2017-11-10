@@ -145,6 +145,9 @@
                                 <File Id="ROUTE_NULL.CMD" Name="route-null.cmd" Source="route-null.cmd" />
                             </Component>
                         </Directory>
+                        <Component Id="ACTIVE_RESPONSES.LOG" DiskId="1" Guid="249F3287-B69D-46F0-8888-3FED24998E07">
+                            <File Id="ACTIVE_RESPONSES.LOG" Name="active-responses.log" Source="active-responses.log" />
+                        </Component>
                     </Directory>
                     <Directory Id="SHARED" Name="shared">
                         <Component Id="ROOTKIT_FILES.TXT" DiskId="1" Guid="FE45C8B7-CD37-4E13-B6CA-5838771DF2C2">
@@ -280,6 +283,7 @@
             <ComponentRef Id="VISTA_SEC.TXT" />
             <ComponentRef Id="RESTART_OSSEC.CMD" />
             <ComponentRef Id="ROUTE_NULL.CMD" />
+            <ComponentRef Id="ACTIVE_RESPONSES.LOG" />
             <ComponentRef Id="ROOTKIT_FILES.TXT" />
             <ComponentRef Id="ROOTKIT_TROJANS.TXT" />
             <ComponentRef Id="WIN_APPLICATIONS_RCL.TXT" />

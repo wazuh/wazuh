@@ -24,6 +24,7 @@ public function config()
 
 home_dir = Session.Property("APPLICATIONFOLDER")
 
+
 ' Custom parameters
 ' Wazuh 3.0.0
 ' address       = Session.Property("ADDRESS")
@@ -112,7 +113,7 @@ If server_ip <> "" or server_hostname <> "" or server_port <> "1514" or protocol
 
 
         If server_port <> "1514" Then ' manager server_port
-            strNewText = Replace(strNewText, "</client>", "  <server_port>" & server_port & "</server_port>"& vbCrLf &"  </client>")
+            strNewText = Replace(strNewText, "</client>", "  <port>" & server_port & "</port>"& vbCrLf &"  </client>")
         End If
 
 
