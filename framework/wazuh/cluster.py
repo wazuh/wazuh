@@ -67,8 +67,6 @@ def get_file_info(filename):
         "umask" : new_item['umask'],
         "format" : new_item['format'],
         "write_mode" : new_item['write_mode'],
-        "conditions" : new_item['conditions'],
-
         "md5": md5(fullpath),
         "modification_time" : str(datetime.utcfromtimestamp(st_mtime)),
         "size" : st_size,
@@ -80,7 +78,6 @@ def get_file_info(filename):
 
 def compress_files(list_path):
     zipped_file = BytesIO()
-    # conds = json.dumps({c:get_file_info(c) for c in conditions & list_path})
     with zipfile.ZipFile(zipped_file, 'w') as zf:
         # write files
         for f in list_path:
