@@ -22,22 +22,22 @@ On Error Resume Next
 
 public function config()
 
-home_dir = Session.Property("APPLICATIONFOLDER")
-
 ' Custom parameters
-address       = Session.Property("ADDRESS")
-server_port     = Session.Property("SERVER_PORT")
-protocol        = Session.Property("PROTOCOL")
-notify_time     = Session.Property("NOTIFY_TIME")
-time_reconnect  = Session.Property("TIME_RECONNECT")
-
+strArgs = Session.Property("CustomActionData")
+args = Split(strArgs, ",")
+home_dir        = Replace(args(0), Chr(34), "") 'APPLICATIONFOLDER
+address         = Replace(args(1), Chr(34), "") 'ADDRESS
+server_port     = Replace(args(2), Chr(34), "") 'SERVER_PORT
+protocol        = Replace(args(3), Chr(34), "") 'PROTOCOL
+notify_time     = Replace(args(4), Chr(34), "") 'NOTIFY_TIME
+time_reconnect  = Replace(args(5), Chr(34), "") 'TIME_RECONNECT
 
 ' Only try to set the configuration if variables are setted
-If address <> "" or server_port <> "1514" or protocol = "tcp" or notify_time <> "" or time_reconnect <> "" Then
+If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or time_reconnect <> "" Then
 
     Set objFSO = CreateObject("Scripting.FileSystemObject")
 
-    If objFSO.fileExists(home_dir & "\ossec.conf") Then
+    If objFSO.fileExists(home_dir & "ossec.conf") Then
 
         ' Reading ossec.conf file
         Const ForReading = 1
@@ -59,25 +59,66 @@ If address <> "" or server_port <> "1514" or protocol = "tcp" or notify_time <> 
             strNewText = Replace(strNewText, "    <address>0.0.0.0</address>", formatted_list)
 
         ElseIf address <> "" Then 'single address
-
+            ' Fix for the legacy server-ip and server-hostname keynames
+            Set re = new regexp
+            re.Pattern = "<server-ip>.*</server-ip>"
+            re.Global = True
+            strNewText = re.Replace(strNewText, "<server-ip>" & address & "</server-ip>")
+            re.Pattern = "<server-hostname>.*</server-hostname>"
+            re.Global = True
+            strNewText = re.Replace(strNewText, "<server-hostname>" & address & "</server-hostname>")
             strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
+        End If
+
+        If server_port <> "" Then ' manager server_port
+
+            If InStr(strNewText, "<port>") > 0 Then
+                Set re = new regexp
+                re.Pattern = "<port>.*</port>"
+                re.Global = True
+                strNewText = re.Replace(strNewText, "<port>" & server_port & "</port>")
+            Else
+                ' Fix for the legacy files (not including the key)
+                strNewText = Replace(strNewText, "</client>", "  <port>" & server_port & "</port>"& vbCrLf &"  </client>")
+            End If
 
         End If
 
-        If server_port <> "1514" Then ' manager server_port
-            strNewText = Replace(strNewText, "</client>", "  <server_port>" & server_port & "</server_port>"& vbCrLf &"  </client>")
-        End If
-
-        If protocol = "tcp" Then
-            strNewText = Replace(strNewText, "</client>", "  <protocol>tcp</protocol>"& vbCrLf &"  </client>")
+        If protocol <> "" Then
+            If InStr(strNewText, "<protocol>") > 0 Then
+                Set re = new regexp
+                re.Pattern = "<protocol>.*</protocol>"
+                re.Global = True
+                strNewText = re.Replace(strNewText, "<protocol>" & protocol & "</protocol>")
+            Else
+            ' Fix for the legacy files (not including the key)
+                strNewText = Replace(strNewText, "</client>", "   <protocol>" & protocol & "</protocol>"& vbCrLf &"  </client>")
+            End If
         End If
 
         If notify_time <> "" Then
-            strNewText = Replace(strNewText, "</client>", "  <notify_time>" & notify_time & "</notify_time>"& vbCrLf &"  </client>")
+            If InStr(strNewText, "<notify_time>") > 0 Then
+                Set re = new regexp
+                re.Pattern = "<notify_time>.*</notify_time>"
+                re.Global = True
+                strNewText = re.Replace(strNewText, "<notify_time>" & notify_time & "</notify_time>")
+            Else
+                ' Fix for the legacy files (not including the key)
+                strNewText = Replace(strNewText, "</client>", "   <notify_time>" & notify_time & "</notify_time>"& vbCrLf &"  </client>")
+            End If
         End If
 
         If time_reconnect <> "" Then 'TODO fix the - and use _
-            strNewText = Replace(strNewText, "</client>", "  <time-reconnect>" & time_reconnect & "</time-reconnect>"& vbCrLf &"  </client>")
+            If InStr(strNewText, "<time-reconnect>") > 0 Then
+                Set re = new regexp
+                re.Pattern = "<time-reconnect>.*</time-reconnect>"
+                re.Global = True
+                strNewText = re.Replace(strNewText, "<time-reconnect>" & time_reconnect & "</time-reconnect>")
+            Else
+                ' Fix for the legacy files (not including the key)
+                strNewText = Replace(strNewText, "</client>", "   <time-reconnect>" & time_reconnect & "</time-reconnect>"& vbCrLf &"  </client>")
+
+            End If
         End If
 
         ' Writing the ossec.conf file
