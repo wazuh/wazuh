@@ -73,9 +73,9 @@ class WazuhClusterHandler(asyncore.dispatcher_with_send):
             logging.debug("Command received: {0}".format(command))
 
             if not iv.check_cluster_cmd(command):
-                logging.error("received unvalid cluster command {0} from {1}".format(command[0], self.addr))
+                logging.error("received invalid cluster command {0} from {1}".format(command[0], self.addr))
                 error = 1
-                res = "Received unvalid cluster command {0}".format(command[0])
+                res = "Received invalid cluster command {0}".format(command[0])
 
             if error == 0:
                 if command[0] == "node":
