@@ -12,6 +12,11 @@
 #ifndef WIN32
 #include "shared.h"
 
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
 void gettime(struct timespec *ts) {
 #ifdef __MACH__
     clock_serv_t cclock;
