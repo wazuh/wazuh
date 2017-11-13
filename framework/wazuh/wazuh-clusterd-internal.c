@@ -278,6 +278,7 @@ struct inotify_watch_file {
     int watcher;
 };
 
+/* Convert a inotify flag string to int mask */
 uint32_t get_flag_mask(cJSON * flags) {
     unsigned int i;
     uint32_t mask = 0;
@@ -307,6 +308,7 @@ uint32_t get_flag_mask(cJSON * flags) {
     return mask;
 }
 
+/* Store subdirectories names in subdirs array */
 unsigned int get_subdirs(char * path, char *subdirs[30]) {
     struct dirent *direntp;
     DIR *dirp;
@@ -329,6 +331,20 @@ unsigned int get_subdirs(char * path, char *subdirs[30]) {
         }
     }
     return found_subdirs;
+}
+
+/* Check if event filename is on ignore list */
+bool check_if_ignore(cJSON * exclude_files, char * event_filename) {
+    unsigned int i;
+    bool exclude = false;
+    for (i = 0; i < cJSON_GetArraySize(exclude_files); i++) {
+        char * filename = cJSON_GetArrayItem(exclude_files, i)->valuestring;
+        if (strstr(event_filename, filename) != NULL) {
+            exclude = true;
+            break;
+        }
+    }
+    return exclude;
 }
 
 void* daemon_inotify(void * args) {
@@ -392,7 +408,7 @@ void* daemon_inotify(void * args) {
 
     mtdebug1(INOTIFY_TAG, "Preparing inotify watchers");
     /* prepare inotify */
-    int fd, wd_client_keys = -1;
+    int fd;
     fd = inotify_init ();
 
     for (i = 0; i < n_files_to_watch; i++) {
@@ -401,8 +417,6 @@ void* daemon_inotify(void * args) {
         if (files[i].watcher < 0)
             mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 
                 files[i].path, strerror(errno));
-
-        if (strcmp(files[i].name, "/etc/")) wd_client_keys = files[i].watcher;
     }
 
     char buffer[IN_BUFFER_SIZE];
@@ -427,7 +441,7 @@ void* daemon_inotify(void * args) {
             unsigned int j;
             for (j = 0; j < n_files_to_watch; j++) {
                 if (event->wd == files[j].watcher) {
-                    if (files[j].watcher == wd_client_keys && strcmp(event->name, "client.keys") != 0) {
+                    if (check_if_ignore(cJSON_GetObjectItemCaseSensitive(root, "excluded_files"), event->name)) {
                         ignore = true;
                         continue;
                     }
