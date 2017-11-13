@@ -1030,6 +1030,8 @@ CLMEM:
              */
             if (lf->generated_rule == NULL) {
                 Free_Eventinfo(lf);
+            } else if (lf->generated_rule->last_events) {
+                lf->generated_rule->last_events[0] = NULL;
             }
         } else {
             free(lf->fields);
