@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <error_messages.h>
 #include <cJSON.h>
+#include <dirent.h>
 
 #define DB_PATH DEFAULTDIR "/var/db/cluster_db"
 #define SOCKET_PATH DEFAULTDIR "/queue/ossec/cluster_db"
@@ -271,8 +272,8 @@ void* daemon_socket() {
 
 /* structure to save all info required for inotify daemon */
 struct inotify_watch_file {
-    char name[50];
-    char path[80];
+    char *name;
+    char *path;
     uint32_t flags;
     int watcher;
 };
@@ -306,6 +307,30 @@ uint32_t get_flag_mask(cJSON * flags) {
     return mask;
 }
 
+unsigned int get_subdirs(char * path, char *subdirs[30]) {
+    struct dirent *direntp;
+    DIR *dirp;
+    unsigned int found_subdirs = 0;
+    int i=0;
+    for (i=0; i<30; i++) if (subdirs[i] == 0) break;
+
+    if ((dirp = opendir(path)) == NULL) 
+        mterror_exit(INOTIFY_TAG, "Error listing subdirectories of %s: %s", path, strerror(errno));
+
+    while ((direntp = readdir(dirp)) != NULL) {
+        if (strcmp(direntp->d_name, ".") == 0 || strcmp(direntp->d_name, "..") == 0) continue;
+
+        if (direntp->d_type == DT_DIR) {
+            subdirs[found_subdirs+i] = (char *) malloc(sizeof(path) + sizeof(direntp->d_name));
+            strcpy(subdirs[found_subdirs+i], path);
+            strcat(subdirs[found_subdirs+i], direntp->d_name);
+            strcat(subdirs[found_subdirs+i], "/");
+            found_subdirs += get_subdirs(subdirs[found_subdirs+i], subdirs) + 1;
+        }
+    }
+    return found_subdirs;
+}
+
 void* daemon_inotify(void * args) {
     char * node_type = args;
     mtinfo(INOTIFY_TAG,"Preparing client socket");
@@ -325,24 +350,42 @@ void* daemon_inotify(void * args) {
     cJSON * root = cJSON_Parse(cluster_json);
     unsigned int i = 0, n_files_to_watch = 0;
 
-    struct inotify_watch_file files[10];
-
+    struct inotify_watch_file files[30];
     for (i = 0; i < cJSON_GetArraySize(root); i++) {
         cJSON *subitem = cJSON_GetArrayItem(root, i);
+        if (strcmp(subitem->string, "excluded_files") == 0) continue;
         cJSON *source_item = cJSON_GetObjectItemCaseSensitive(subitem, "source");
 
         if (strcmp(source_item->valuestring, node_type) == 0 ||
             strcmp(source_item->valuestring, "all") == 0) {
 
-            char aux_path[80];
+            char * aux_path;
+            aux_path = (char *) malloc(strlen(DEFAULTDIR) + strlen(subitem->string));
             strcpy(aux_path, DEFAULTDIR);
             strcat(aux_path, subitem->string);
 
-            strcpy(files[n_files_to_watch].path, aux_path);
-            strcpy(files[n_files_to_watch].name, subitem->string);
-            files[n_files_to_watch].flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
+            char * subdirs[30] = {0};
+            unsigned int found_subdirs = get_subdirs(aux_path, subdirs);
+            int j;
+            uint32_t flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
+            for (j = 0; j < found_subdirs; j++) {
+                unsigned int len = strlen(subdirs[j]) + 1;
+                files[n_files_to_watch].path = (char *) malloc(len);
+                strcpy(files[n_files_to_watch].path, subdirs[j]);
+                files[n_files_to_watch].name = (char *) malloc(len);
+                strncpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string), len);
+                files[n_files_to_watch].name[len-1] = '\0';
+                files[n_files_to_watch].flags = flags;
+                n_files_to_watch++;
+            }
 
-            mtdebug1(INOTIFY_TAG, "Adding file %s to watch list", files[n_files_to_watch].name);
+            files[n_files_to_watch].path = (char *) malloc(strlen(aux_path)+1);
+            strcpy(files[n_files_to_watch].path, aux_path);
+            free(aux_path);
+            files[n_files_to_watch].name = (char *) malloc(strlen(subitem->string)+1);
+            strcpy(files[n_files_to_watch].name, subitem->string);
+            files[n_files_to_watch].flags = flags;
+
             n_files_to_watch++;
         }
     }
@@ -353,6 +396,7 @@ void* daemon_inotify(void * args) {
     fd = inotify_init ();
 
     for (i = 0; i < n_files_to_watch; i++) {
+        mtinfo(INOTIFY_TAG, "Adding file %s to watch list", files[i].name);
         files[i].watcher = inotify_add_watch(fd, files[i].path, files[i].flags);
         if (files[i].watcher < 0)
             mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 

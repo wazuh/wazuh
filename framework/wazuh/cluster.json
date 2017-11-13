@@ -5,7 +5,7 @@
         "type": "file",
         "source": "master",
         "write_mode": "atomic",
-        "flags": ["IN_MOVED_TO"]
+        "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE"]
     },
 
     "/queue/agent-info/": {
