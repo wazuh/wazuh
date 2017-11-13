@@ -25,7 +25,7 @@
 #define MAX_ARGS    32
 
 /* Execd select timeout -- in seconds */
-#define EXECD_TIMEOUT   90
+#define EXECD_TIMEOUT   1
 
 extern int repeated_offenders_timeout[];
 extern char ** wcom_ca_store;

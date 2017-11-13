@@ -53,11 +53,16 @@ void *receiver_thread(__attribute__((unused)) void *none)
             continue;
         }
 
+        /* Run timeout commands */
+        if (agt->execdq >= 0) {
+            WinTimeoutRun(available_server);
+        }
+
         FD_ZERO(&fdset);
         FD_SET(agt->sock, &fdset);
 
-        /* Wait for 30 seconds */
-        selecttime.tv_sec = 30;
+        /* Wait for 1 second */
+        selecttime.tv_sec = 1;
         selecttime.tv_usec = 0;
 
         /* Wait with a timeout for any descriptor */
@@ -132,11 +137,6 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 /* This is the only thread that modifies it */
                 available_server = (int)time(NULL);
                 update_ack(available_server);
-
-                /* Run timeout commands */
-                if (agt->execdq >= 0) {
-                    WinTimeoutRun(available_server);
-                }
 
                 /* If it is an active response message */
                 if (strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0) {
