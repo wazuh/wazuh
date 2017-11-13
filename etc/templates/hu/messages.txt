@@ -89,8 +89,11 @@ runauthd="Szeretné futtatni az Auth szolgáltatást?"
 norunauthd="Nem működik Auth szolgáltatás"
 yesrunauthd="Auth szolgáltatás futtatása"
 
-# Part 5
+# Part 4
 installing="A rendszer telepítése"
+startwazuh="Szeretné elindítani a Wazuh-ot a telepítés után?"
+nowazuhstart="A Wazuh nem indul el a telepítés végén."
+yeswazuhstart="A Wazuh a telepítés végén kezdődik."
 runningmake="A Make fájl futtatása"
 
 # Final

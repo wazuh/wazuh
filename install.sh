@@ -62,6 +62,7 @@ Install()
     echo ""
     echo "4- ${installing}"
 
+    echo ""
     echo "DIR=\"${INSTALLDIR}\"" > ${LOCATION}
 
     # Changing Config.OS with the new C flags
@@ -93,6 +94,8 @@ Install()
 
     # Makefile
     echo " - ${runningmake}"
+    echo ""
+
     cd ./src
 
     # Binary install will use the previous generated code.
@@ -253,6 +256,37 @@ EnableAuthd()
     esac
 }
 
+##########
+# ConfigureBoot()
+##########
+ConfigureBoot()
+{
+    NB=$1
+    if [ "X$INSTYPE" != "Xagent" ]; then
+
+        echo ""
+        $ECHO "  $NB- ${startwazuh} ($yes/$no) [$yes]: "
+
+        if [ "X${AUTO_START}" = "X" ]; then
+            read ANSWER
+        else
+            ANSWER=${AUTO_START}
+        fi
+
+        echo ""
+        case $ANSWER in
+            $nomatch)
+                echo ""
+                echo "   - ${nowazuhstart}"
+                ;;
+            *)
+                echo ""
+                START_WAZUH="yes"
+                echo "   - ${yeswazuhstart}"
+                ;;
+        esac
+    fi
+}
 
 ##########
 # SetupLogs()
@@ -493,10 +527,12 @@ ConfigureServer()
     # Setting up the auth daemon & logs
     if [ "X$INSTYPE" = "Xserver" ]; then
         EnableAuthd "3.7"
-        SetupLogs "3.8"
+        ConfigureBoot "3.8"
+        SetupLogs "3.9"
         WriteManager
     else
-        SetupLogs "3.6"
+        ConfigureBoot "3.6"
+        SetupLogs "3.7"
         WriteLocal
     fi
 }
@@ -1065,6 +1101,10 @@ if [ "x$HYBID" = "xgo" ]; then
    cd src && ${MAKEBIN} clean && cd ..
    ./install.sh
    rm etc/preloaded-vars.conf
+fi
+
+if [ "X${update_only}" = "Xyes" ] || [ "X$START_WAZUH" = "Xyes" ]; then
+    UpdateStartOSSEC
 fi
 
 exit 0

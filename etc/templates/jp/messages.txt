@@ -94,8 +94,11 @@ runauthd="認証サービスを実行しますか？"
 norunauthd="認証サービスを実行していない"
 yesrunauthd="実行中の認証サービス"
 
-# Part 5
+# Part 4
 installing="システムをインストールします"
+startwazuh="インストール後にWazuhを開始しますか？"
+nowazuhstart="Wazuhはインストールの最後に開始されません。"
+yeswazuhstart="Wazuhはインストールの最後に始まります。"
 runningmake="Makefile を実行します"
 
 

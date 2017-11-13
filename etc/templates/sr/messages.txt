@@ -89,8 +89,11 @@ runauthd="Da li želite da pokrenete Auth uslugu?"
 norunauthd="Ne radi Auth servis"
 yesrunauthd="Pokretanje Auth usluge"
 
-# Part 5
+# Part 4
 installing="Instalira sistem"
+startwazuh="Želite li pokrenuti Wazuh nakon instalacije?"
+nowazuhstart="Wazuh neće početi na kraju instalacije."
+yeswazuhstart="Wazuh će započeti na kraju instalacije."
 runningmake="Vrši Makefile"
 
 # Final

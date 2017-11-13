@@ -89,8 +89,11 @@ runauthd="Czy chcesz uruchomić usługę Auth?"
 norunauthd="Nie działa usługa Auth"
 yesrunauthd="Uruchamianie usługi Auth"
 
-# Część 5
+# Część 4
 installing="Instaluje system"
+startwazuh="Chcete spustit aplikaci Wazuh po instalaci?"
+nowazuhstart="Wazuh nezačne na konci instalace."
+yeswazuhstart="Wazuh začne na konci instalace."
 runningmake="Uruchomiono Makefile"
 
 # Finał
