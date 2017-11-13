@@ -14,7 +14,7 @@ from os import path, listdir, rename, utime, environ, umask, stat
 from subprocess import check_output
 from shutil import rmtree
 from io import BytesIO
-from itertools import compress
+from itertools import compress, chain
 from operator import itemgetter
 from ast import literal_eval
 import socket
@@ -61,7 +61,8 @@ def get_file_info(filename):
     st_mtime = stat_obj.st_mtime
     st_size = stat_obj.st_size
 
-    new_item = CLUSTER_ITEMS[path.dirname(filename)+'/']
+    directory = path.dirname(filename)+'/'
+    new_item = CLUSTER_ITEMS[directory] if directory in CLUSTER_ITEMS.keys() else CLUSTER_ITEMS['/etc/']
 
     file_item = {
         "umask" : new_item['umask'],
@@ -152,19 +153,29 @@ def get_node(name=None):
 
 
 def get_files(node_type):
+    def get_files_from_dir(dirname):
+        items = []
+        for entry in listdir(dirname):
+            if entry not in CLUSTER_ITEMS['excluded_files'] and entry[-1] != '~':
+                full_path = path.join(dirname, entry)
+                if not path.isdir(full_path):
+                    new_item = dict(item)
+                    new_item["path"] = full_path.replace(common.ossec_path, "")
+                    items.append(new_item)
+                else:
+                    items = list(chain.from_iterable([items, get_files_from_dir(full_path)]))
+        return items
+
     # Expand directory
     expanded_items = []
     for file_path, item in CLUSTER_ITEMS.items():
+        if file_path == "excluded_files":
+            continue
         if item['source'] == node_type or \
            item['source'] == 'all':
             
             fullpath = common.ossec_path + file_path
-            for entry in listdir(fullpath):
-                if file_path == '/etc/' and entry != 'client.keys':
-                    continue
-                new_item = dict(item)
-                new_item["path"]     = path.join(file_path, entry)
-                expanded_items.append(new_item)
+            expanded_items = chain.from_iterable([expanded_items, get_files_from_dir(fullpath)])
 
     final_items = {}
     for new_item in expanded_items:

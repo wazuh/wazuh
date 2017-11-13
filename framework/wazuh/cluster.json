@@ -24,5 +24,10 @@
         "source": "master",
         "write_mode": "atomic",
         "flags": ["IN_CLOSE_WRITE", "IN_MOVED_TO"]
-    }
+    },
+
+    "excluded_files": [
+        "ar.conf",
+        "merged.mg"
+    ]
 }
