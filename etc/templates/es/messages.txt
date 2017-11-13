@@ -88,8 +88,11 @@ runauthd="¿Desea habilitar el servicio de autenticación (Authd)?"
 norunauthd="No se ejecutará Authd"
 yesrunauthd="Ejecutando Authd"
 
-# Part 5
+# Part 4
 installing="Instalando el sistema"
+startwazuh="¿Desea iniciar Wazuh al finalizar la instalación?"
+nowazuhstart="Wazuh no se inicializará al finalizar la instalación."
+yeswazuhstart="Wazuh se inicializará al finalizar la instalación."
 runningmake="Ejecutando el Makefile"
 
 # Final

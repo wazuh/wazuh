@@ -92,8 +92,11 @@ runauthd="Do you want to run the Auth daemon?"
 norunauthd="Not running Auth daemon"
 yesrunauthd="Running Auth daemon"
 
-# Part 5
+# Part 4
 installing="Installing the system"
+startwazuh="Do you want to start Wazuh after the installation?"
+nowazuhstart="Wazuh will not start at the end of installation."
+yeswazuhstart="Wazuh will start at the end of installation."
 runningmake="Running the Makefile"
 
 # Final
