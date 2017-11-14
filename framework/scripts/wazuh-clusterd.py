@@ -4,6 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncore
+import asynchat
 import socket
 import json
 from distutils.util import strtobool
@@ -49,56 +50,54 @@ except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
 
-class WazuhClusterHandler(asyncore.dispatcher_with_send):
+class WazuhClusterHandler(asynchat.async_chat):
     def __init__(self, sock, addr, key):
-        asyncore.dispatcher_with_send.__init__(self, sock)
+        asynchat.async_chat.__init__(self, sock)
         self.addr = addr
         self.f = Fernet(key.encode('base64','strict'))
+        self.buf_size = 8192
+        self.set_terminator('\n')
+        self.received_data=[]
+        self.data=""
 
-    def handle_close(self):
-        self.close()
+    def collect_incoming_data(self, data):
+        self.received_data.append(data)
 
-    def handle_read(self):
+    def found_terminator(self):
+        response = ''.join(self.received_data)
         error = 0
-        res = ""
         try:
-            ecnrypted_data = self.recv(common.cluster_sync_msg_size)
-            if ecnrypted_data == '':
-                self.handle_close()
-                return
-            recv_command = self.f.decrypt(ecnrypted_data).decode()
-
-            command = recv_command.split(" ")
+            cmd = self.f.decrypt(response[:common.cluster_sync_msg_size]).decode()
+            command = cmd.split(" ")
 
             logging.debug("Command received: {0}".format(command))
 
             if not iv.check_cluster_cmd(command):
-                logging.error("received invalid cluster command {0} from {1}".format(command[0], self.addr))
+                logging.error("Received invalid cluster command {0} from {1}".format(
+                                command[0], self.addr))
                 error = 1
                 res = "Received invalid cluster command {0}".format(command[0])
 
             if error == 0:
-                if command[0] == "node":
+                if command[0] == 'node':
                     res = get_node()
-                elif command[0] == "zip":
-                    zip_bytes = self.f.decrypt(self.recv(get_encrypted_size(int(command[1]))))
-                    if not zip_bytes:
-                        raise "Received empty zip file"
-                        return
-                    logging.debug("Zip file received from {0}".format(self.addr))
+                elif command[0] == 'zip':
+                    zip_bytes = self.f.decrypt(response[:int(command[1])])
                     res = extract_zip(zip_bytes)
 
                 logging.debug("Command {0} executed for {1}".format(command[0], self.addr))
 
-            data = json.dumps({'error': error, 'data': res})
+            self.data = json.dumps({'error': error, 'data': res})
 
         except Exception as e:
             logging.error("Error handling client request: {0}".format(str(e)))
-            data = json.dumps({'error': 1, 'data': str(e)})
-        
-        self.send(self.f.encrypt(data + '\n'))
+            self.data = json.dumps({'error': 1, 'data': str(e)})
+
+        self.handle_write()
+
+    def handle_write(self):
+        self.send(self.f.encrypt(self.data + '\n'))
         logging.debug("Data sent to {0}".format(self.addr))
-        # self.handle_close()
 
 class WazuhClusterServer(asyncore.dispatcher):
 

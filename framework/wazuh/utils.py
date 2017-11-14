@@ -377,9 +377,9 @@ class WazuhClusterClient(asynchat.async_chat):
 
     def handle_write(self):
         if self.file is not None:
-            self.send(self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file))
+            self.send(self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file) + '\n')
         else:
-            self.send(self.f.encrypt(self.data.encode()))
+            self.send(self.f.encrypt(self.data.encode()) + '\n')
         self.can_read=True
         self.can_write=False
 

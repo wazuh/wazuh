@@ -297,7 +297,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
 
         else:
             logging.info("No pending files to send to {0} ".format(node_dest))
-            res = {'data':{'updated':[], 'error':[], 'invalid':[]}}
+            res = {'error': 0, 'data':{'updated':[], 'error':[], 'invalid':[]}}
             error = 0
 
 
