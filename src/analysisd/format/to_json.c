@@ -237,9 +237,16 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
     }
 
-    if(lf->program_name) {
+    if (lf->program_name || lf->dec_timestamp) {
         cJSON_AddItemToObject(root, "predecoder", predecoder = cJSON_CreateObject());
-        cJSON_AddStringToObject(predecoder, "program_name", lf->program_name);
+
+        if (lf->program_name) {
+            cJSON_AddStringToObject(predecoder, "program_name", lf->program_name);
+        }
+
+        if (lf->dec_timestamp) {
+            cJSON_AddStringToObject(predecoder, "timestamp", lf->dec_timestamp);
+        }
     }
 
     if(lf->id)
