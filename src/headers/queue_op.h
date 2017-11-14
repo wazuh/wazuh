@@ -17,13 +17,13 @@ typedef struct queue_t {
     size_t begin;
     size_t end;
     size_t size;
-} queue_t;
+} w_queue_t;
 
-queue_t * queue_init(size_t n);
-void queue_free(queue_t * queue);
-int queue_full(const queue_t * queue);
-int queue_empty(const queue_t * queue);
-int queue_push(queue_t * queue, void * data);
-void * queue_pop(queue_t * queue);
+w_queue_t * queue_init(size_t n);
+void queue_free(w_queue_t * queue);
+int queue_full(const w_queue_t * queue);
+int queue_empty(const w_queue_t * queue);
+int queue_push(w_queue_t * queue, void * data);
+void * queue_pop(w_queue_t * queue);
 
 #endif // QUEUE_OP_H

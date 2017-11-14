@@ -23,7 +23,7 @@
 
 static volatile unsigned int queue_i;
 static volatile unsigned int queue_j;
-static queue_t * queue;                 // Queue for pending files
+static w_queue_t * queue;                 // Queue for pending files
 static OSHash * ptable;                 // Table for pending paths
 static pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
