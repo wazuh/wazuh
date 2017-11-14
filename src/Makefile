@@ -515,7 +515,15 @@ else
 ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure hpux-ia64-gcc && ${MAKE} build_libs
 else
+ifeq (${uname_S},SunOS)
+ifeq ($(uname -a),i386)
+	cd ${EXTERNAL_OPENSSL} && ./Configure solaris-x86-gcc && ${MAKE} build_libs
+else
+	cd ${EXTERNAL_OPENSSL} && ./Configure solaris-sparcv9-gcc && ${MAKE} build_libs
+endif
+else
 	cd ${EXTERNAL_OPENSSL} && ./config && ${MAKE} build_libs
+endif
 endif
 endif
 endif
