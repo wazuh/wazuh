@@ -462,6 +462,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->program_name = NULL;
     lf->location = NULL;
     lf->comment = NULL;
+    lf->dec_timestamp = NULL;
 
     lf->srcip = NULL;
     lf->srcgeoip = NULL;
