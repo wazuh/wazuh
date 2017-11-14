@@ -154,7 +154,7 @@ def get_node(name=None):
 
 
 def get_files(node_type):
-    def get_files_from_dir(dirname):
+    def get_files_from_dir(dirname, recursive):
         items = []
         for entry in listdir(dirname):
             if entry not in CLUSTER_ITEMS['excluded_files'] and entry[-1] != '~':
@@ -163,8 +163,8 @@ def get_files(node_type):
                     new_item = dict(item)
                     new_item["path"] = full_path.replace(common.ossec_path, "")
                     items.append(new_item)
-                else:
-                    items = list(chain.from_iterable([items, get_files_from_dir(full_path)]))
+                elif recursive:
+                    items = list(chain.from_iterable([items, get_files_from_dir(full_path, recursive)]))
         return items
 
     # Expand directory
@@ -176,7 +176,7 @@ def get_files(node_type):
            item['source'] == 'all':
             
             fullpath = common.ossec_path + file_path
-            expanded_items = chain.from_iterable([expanded_items, get_files_from_dir(fullpath)])
+            expanded_items = chain.from_iterable([expanded_items, get_files_from_dir(fullpath, item['recursive'])])
 
     final_items = {}
     for new_item in expanded_items:

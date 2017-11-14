@@ -380,19 +380,21 @@ void* daemon_inotify(void * args) {
             strcpy(aux_path, DEFAULTDIR);
             strcat(aux_path, subitem->string);
 
-            char * subdirs[30] = {0};
-            unsigned int found_subdirs = get_subdirs(aux_path, subdirs);
-            int j;
             uint32_t flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
-            for (j = 0; j < found_subdirs; j++) {
-                unsigned int len = strlen(subdirs[j]) + 1;
-                files[n_files_to_watch].path = (char *) malloc(len);
-                strcpy(files[n_files_to_watch].path, subdirs[j]);
-                files[n_files_to_watch].name = (char *) malloc(len);
-                strncpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string), len);
-                files[n_files_to_watch].name[len-1] = '\0';
-                files[n_files_to_watch].flags = flags;
-                n_files_to_watch++;
+            if (cJSON_GetObjectItemCaseSensitive(subitem, "recursive")->type == cJSON_True) {
+                char * subdirs[30] = {0};
+                unsigned int found_subdirs = get_subdirs(aux_path, subdirs);
+                int j;
+                for (j = 0; j < found_subdirs; j++) {
+                    unsigned int len = strlen(subdirs[j]) + 1;
+                    files[n_files_to_watch].path = (char *) malloc(len);
+                    strcpy(files[n_files_to_watch].path, subdirs[j]);
+                    files[n_files_to_watch].name = (char *) malloc(len);
+                    strncpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string), len);
+                    files[n_files_to_watch].name[len-1] = '\0';
+                    files[n_files_to_watch].flags = flags;
+                    n_files_to_watch++;
+                }
             }
 
             files[n_files_to_watch].path = (char *) malloc(strlen(aux_path)+1);

@@ -5,7 +5,8 @@
         "type": "file",
         "source": "master",
         "write_mode": "atomic",
-        "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE"]
+        "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE"],
+        "recursive": false
     },
 
     "/queue/agent-info/": {
@@ -14,7 +15,8 @@
         "type": "directory",
         "source": "all",
         "write_mode": "atomic",
-        "flags": ["IN_CLOSE_WRITE", "IN_ATTRIB", "IN_MOVED_TO"]
+        "flags": ["IN_CLOSE_WRITE", "IN_ATTRIB", "IN_MOVED_TO"],
+        "recursive": false
     },
 
     "/queue/agent-groups/": {
@@ -23,7 +25,8 @@
         "type": "directory",
         "source": "master",
         "write_mode": "atomic",
-        "flags": ["IN_CLOSE_WRITE", "IN_MOVED_TO"]
+        "flags": ["IN_CLOSE_WRITE", "IN_MOVED_TO"],
+        "recursive": false
     },
 
     "excluded_files": [
