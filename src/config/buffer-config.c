@@ -18,7 +18,7 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
     int i = 0;
 
     /* XML definitions */
-    const char *xml_buffer_disabled = "disable";
+    const char *xml_buffer_disabled = "disabled";
     const char *xml_buffer_queue_size = "queue_size";
     const char *xml_events_per_second = "events_per_second";
 
