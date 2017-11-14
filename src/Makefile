@@ -67,6 +67,7 @@ ifeq (${uname_S},SunOS)
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
 		OSSEC_LDFLAGS+=-pthread -lrt
+		uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 else
 ifeq (${uname_S},Darwin)
 		DEFINES+=-DDarwin
@@ -516,7 +517,7 @@ ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure hpux-ia64-gcc && ${MAKE} build_libs
 else
 ifeq (${uname_S},SunOS)
-ifeq ($(uname -a),i386)
+ifeq ($(uname_M),i86pc)
 	cd ${EXTERNAL_OPENSSL} && ./Configure solaris-x86-gcc && ${MAKE} build_libs
 else
 	cd ${EXTERNAL_OPENSSL} && ./Configure solaris-sparcv9-gcc && ${MAKE} build_libs
