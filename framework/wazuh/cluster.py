@@ -253,8 +253,12 @@ def receive_zip(zip_file):
             fixed_name = '/' + name
             dir_name = path.dirname(fixed_name) + '/'
             file_path = common.ossec_path + fixed_name
-            remote_umask = int(CLUSTER_ITEMS[dir_name]['umask'], base=0)
-            remote_write_mode = CLUSTER_ITEMS[dir_name]['write_mode']
+            try:
+                remote_umask = int(CLUSTER_ITEMS[dir_name]['umask'], base=0)
+                remote_write_mode = CLUSTER_ITEMS[dir_name]['write_mode']
+            except KeyError:
+                remote_umask = int(CLUSTER_ITEMS['/etc/']['umask'], base=0)
+                remote_write_mode = CLUSTER_ITEMS['/etc/']['write_mode']
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],

@@ -61,8 +61,6 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.counter = 0
 
     def collect_incoming_data(self, data):
-        self.counter += len(data)
-        print str(self.counter)
         self.received_data.append(data)
 
     def found_terminator(self):
@@ -84,7 +82,6 @@ class WazuhClusterHandler(asynchat.async_chat):
                 if command[0] == 'node':
                     res = get_node()
                 elif command[0] == 'zip':
-                    print "{0} {1}".format(len(response), command[1])
                     zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                     res = extract_zip(zip_bytes)
 
@@ -99,7 +96,14 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.handle_write()
 
     def handle_write(self):
-        self.send(self.f.encrypt(self.data + '\n'))
+        msg = self.f.encrypt(self.data + '\n')
+        i = 0
+        while i < len(msg): 
+            next_i = i+4096 if i+4096 < len(msg) else len(msg)
+            sent = self.send(msg[i:next_i])
+            if sent == 4096 or next_i == len(msg):
+                i = next_i
+
         logging.debug("Data sent to {0}".format(self.addr))
 
 class WazuhClusterServer(asyncore.dispatcher):
@@ -163,6 +167,11 @@ def signal_handler(n_signal, frame):
     exit(1)
 
 if __name__ == '__main__':
+    # Drop privileges to ossec
+    pwdnam_ossec = getpwnam('ossec')
+    setgid(pwdnam_ossec.pw_gid)
+    seteuid(pwdnam_ossec.pw_uid)
+    
     args = parser.parse_args()
     if args.V:
         check_output(["{0}/bin/wazuh-clusterd-internal".format(ossec_path), '-V'])
@@ -181,11 +190,6 @@ if __name__ == '__main__':
         if args.d:
             call_list.append("-ddd")
         check_call(call_list)
-
-    # Drop privileges to ossec
-    pwdnam_ossec = getpwnam('ossec')
-    setgid(pwdnam_ossec.pw_gid)
-    seteuid(pwdnam_ossec.pw_uid)
     
     if not args.f:
         res_code = pyDaemon()
@@ -223,4 +227,4 @@ if __name__ == '__main__':
 
     server = WazuhClusterServer('' if not cluster_config['host'] else cluster_config['host'], 
                                 int(cluster_config['port']), cluster_config['key'])
-    asyncore.loop(timeout=1000)
+    asyncore.loop()

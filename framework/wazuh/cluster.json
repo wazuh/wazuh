@@ -28,6 +28,7 @@
 
     "excluded_files": [
         "ar.conf",
-        "merged.mg"
+        "merged.mg",
+        "ossec.conf"
     ]
 }
