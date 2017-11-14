@@ -377,9 +377,14 @@ class WazuhClusterClient(asynchat.async_chat):
 
     def handle_write(self):
         if self.file is not None:
-            self.send(self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file) + '\n')
+            msg = self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file) + '\n\t\t\n'
         else:
-            self.send(self.f.encrypt(self.data.encode()) + '\n')
+            msg = self.f.encrypt(self.data.encode()) + '\n\t\t\n'
+
+        for i in range(0,len(msg),4096):
+            next_i = i+4096 if i+4096 < len(msg) else len(msg)
+            sent = self.send(msg[i:next_i])
+
         self.can_read=True
         self.can_write=False
 
@@ -387,7 +392,7 @@ def send_request(host, port, key, data, file=None):
     error = 0
     try:
         client = WazuhClusterClient(host, int(port), key, data, file)
-        asyncore.loop()
+        asyncore.loop(timeout=1000)
         data = client.response
     except Exception as e:
         error = 1

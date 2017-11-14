@@ -55,16 +55,18 @@ class WazuhClusterHandler(asynchat.async_chat):
         asynchat.async_chat.__init__(self, sock)
         self.addr = addr
         self.f = Fernet(key.encode('base64','strict'))
-        self.buf_size = 8192
-        self.set_terminator('\n')
+        self.set_terminator('\n\t\t\n')
         self.received_data=[]
         self.data=""
+        self.counter = 0
 
     def collect_incoming_data(self, data):
+        self.counter += len(data)
+        print str(self.counter)
         self.received_data.append(data)
 
     def found_terminator(self):
-        response = ''.join(self.received_data)
+        response = b''.join(self.received_data)
         error = 0
         try:
             cmd = self.f.decrypt(response[:common.cluster_sync_msg_size]).decode()
@@ -82,7 +84,8 @@ class WazuhClusterHandler(asynchat.async_chat):
                 if command[0] == 'node':
                     res = get_node()
                 elif command[0] == 'zip':
-                    zip_bytes = self.f.decrypt(response[:int(command[1])])
+                    print "{0} {1}".format(len(response), command[1])
+                    zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                     res = extract_zip(zip_bytes)
 
                 logging.debug("Command {0} executed for {1}".format(command[0], self.addr))
@@ -160,11 +163,6 @@ def signal_handler(n_signal, frame):
     exit(1)
 
 if __name__ == '__main__':
-    # Drop privileges to ossec
-    pwdnam_ossec = getpwnam('ossec')
-    setgid(pwdnam_ossec.pw_gid)
-    seteuid(pwdnam_ossec.pw_uid)
-
     args = parser.parse_args()
     if args.V:
         check_output(["{0}/bin/wazuh-clusterd-internal".format(ossec_path), '-V'])
@@ -173,6 +171,22 @@ if __name__ == '__main__':
     # Capture Cntrl + C
     signal(SIGINT, signal_handler)
 
+    cluster_config = read_config()
+
+    # execute C cluster daemon (database & inotify) if it's not running
+    try:
+        exit_code = check_call(["ps", "-C", "wazuh-clusterd-internal"], stdout=open(devnull, 'w'))
+    except CalledProcessError:
+        call_list = ["{0}/bin/wazuh-clusterd-internal".format(ossec_path), "-t{0}".format(cluster_config['node_type'])]
+        if args.d:
+            call_list.append("-ddd")
+        check_call(call_list)
+
+    # Drop privileges to ossec
+    pwdnam_ossec = getpwnam('ossec')
+    setgid(pwdnam_ossec.pw_gid)
+    seteuid(pwdnam_ossec.pw_uid)
+    
     if not args.f:
         res_code = pyDaemon()
     else:
@@ -191,21 +205,11 @@ if __name__ == '__main__':
     if not args.d:
         logging.getLogger('').setLevel(logging.INFO)
 
-    cluster_config = read_config()
     try:
         iv.check_cluster_config(cluster_config)
     except WazuhException as e:
         logging.error(str(e))
         exit(1)
-
-    # execute C cluster daemon (database & inotify) if it's not running
-    try:
-        exit_code = check_call(["ps", "-C", "wazuh-clusterd-internal"], stdout=open(devnull, 'w'))
-    except CalledProcessError:
-        call_list = ["{0}/bin/wazuh-clusterd-internal".format(ossec_path), "-t{0}".format(cluster_config['node_type'])]
-        if args.d:
-            call_list.append("-ddd")
-        check_call(call_list)
 
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
@@ -219,4 +223,4 @@ if __name__ == '__main__':
 
     server = WazuhClusterServer('' if not cluster_config['host'] else cluster_config['host'], 
                                 int(cluster_config['port']), cluster_config['key'])
-    asyncore.loop()
+    asyncore.loop(timeout=1000)

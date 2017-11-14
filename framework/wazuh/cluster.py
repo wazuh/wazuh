@@ -301,7 +301,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
             error = 0
 
 
-        if response['error'] != 0:
+        if res['error'] != 0:
             logging.debug(res)
             result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
                               'error': 1, 'files':{'updated':[], 'invalid':[], 
