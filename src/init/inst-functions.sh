@@ -568,7 +568,7 @@ InstallCommon(){
         PREFIX=${INSTALLDIR}
     fi
 
-    if [ ${DIST_NAME} = "SunOS" ]; then
+    if [ ${DIST_NAME} = "sunos" ]; then
         INSTALL="ginstall"
     elif [ ${DIST_NAME} = "HP-UX" ]; then
         INSTALL="/usr/local/coreutils/bin/install"
