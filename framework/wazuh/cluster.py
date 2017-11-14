@@ -10,7 +10,7 @@ import sqlite3
 from datetime import datetime
 from hashlib import sha512
 from time import time, mktime
-from os import path, listdir, rename, utime, environ, umask, stat
+from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod
 from subprocess import check_output
 from shutil import rmtree
 from io import BytesIO
@@ -20,6 +20,7 @@ from ast import literal_eval
 import socket
 import json
 import threading
+from stat import S_IRWXG, S_IRWXU
 from sys import version
 # import the C accelerated API of ElementTree
 try:
@@ -219,7 +220,14 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None)
     if umask_int:
         oldumask = umask(umask_int)
 
-    dest_file = open(f_temp, "w")
+    try:
+        dest_file = open(f_temp, "w")
+    except IOError:
+        dirpath = path.dirname(fullpath) 
+        mkdir(dirpath)
+        chmod(dirpath, S_IRWXU | S_IRWXG)
+        dest_file = open(f_temp, "a+")
+
     dest_file.write(new_content)
 
     if umask_int:
