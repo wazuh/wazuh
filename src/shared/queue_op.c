@@ -11,30 +11,30 @@
 
 #include <shared.h>
 
-queue_t * queue_init(size_t size) {
-    queue_t * queue;
-    os_calloc(1, sizeof(queue_t), queue);
+w_queue_t * queue_init(size_t size) {
+    w_queue_t * queue;
+    os_calloc(1, sizeof(w_queue_t), queue);
     os_malloc(size * sizeof(void *), queue->data);
     queue->size = size;
     return queue;
 }
 
-void queue_free(queue_t * queue) {
+void queue_free(w_queue_t * queue) {
     if (queue) {
         free(queue->data);
         free(queue);
     }
 }
 
-int queue_full(const queue_t * queue) {
+int queue_full(const w_queue_t * queue) {
     return (queue->begin + 1) % queue->size == queue->end;
 }
 
-int queue_empty(const queue_t * queue) {
+int queue_empty(const w_queue_t * queue) {
     return queue->begin == queue->end;
 }
 
-int queue_push(queue_t * queue, void * data) {
+int queue_push(w_queue_t * queue, void * data) {
     if (queue_full(queue)) {
         return -1;
     } else {
@@ -44,7 +44,7 @@ int queue_push(queue_t * queue, void * data) {
     }
 }
 
-void * queue_pop(queue_t * queue) {
+void * queue_pop(w_queue_t * queue) {
     void * data;
 
     if (queue_empty(queue)) {
