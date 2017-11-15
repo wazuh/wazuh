@@ -21,10 +21,6 @@ import ctypes
 import ctypes.util
 from cryptography.fernet import Fernet
 
-import logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
-                    filename="/var/ossec/logs/cluster.log")
-
 import argparse
 parser =argparse.ArgumentParser()
 parser.add_argument('-f', help="Run in foreground", action='store_true')
@@ -53,6 +49,10 @@ try:
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
+
+import logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
+                    filename="{0}/logs/cluster.log".format(common.ossec_path))
 
 class WazuhClusterHandler(asynchat.async_chat):
     def __init__(self, sock, addr, key):
