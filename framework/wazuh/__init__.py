@@ -89,6 +89,7 @@ class Wazuh:
                             # It could mean that get_init is True and ossec_path is not used.
                             if self.path == '/var/ossec':
                                 self.path = match.group(2)
+                                common.set_paths_based_on_ossec(self.path)
                         elif key == "date":
                             self.installation_date = match.group(2)
                         elif key == "type":
