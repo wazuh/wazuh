@@ -276,6 +276,7 @@ struct inotify_watch_file {
     char *path;
     uint32_t flags;
     int watcher;
+    cJSON * files;
 };
 
 /* Convert a inotify flag string to int mask */
@@ -339,6 +340,10 @@ bool check_if_ignore(cJSON * exclude_files, char * event_filename) {
     bool exclude = false;
     for (i = 0; i < cJSON_GetArraySize(exclude_files); i++) {
         char * filename = cJSON_GetArrayItem(exclude_files, i)->valuestring;
+        if (strcmp(filename, "all") == 0) {
+            exclude = true;
+            break;
+        }
         if (strstr(event_filename, filename) != NULL) {
             exclude = true;
             break;
@@ -403,6 +408,7 @@ void* daemon_inotify(void * args) {
             files[n_files_to_watch].name = (char *) malloc(strlen(subitem->string)+1);
             strcpy(files[n_files_to_watch].name, subitem->string);
             files[n_files_to_watch].flags = flags;
+            files[n_files_to_watch].files = cJSON_GetObjectItemCaseSensitive(subitem, "files");
 
             n_files_to_watch++;
         }
@@ -443,7 +449,8 @@ void* daemon_inotify(void * args) {
             unsigned int j;
             for (j = 0; j < n_files_to_watch; j++) {
                 if (event->wd == files[j].watcher) {
-                    if (check_if_ignore(cJSON_GetObjectItemCaseSensitive(root, "excluded_files"), event->name)) {
+                    if (check_if_ignore(cJSON_GetObjectItemCaseSensitive(root, "excluded_files"), event->name) ||
+                        !check_if_ignore(files[j].files, event->name)) {
                         ignore = true;
                         continue;
                     }

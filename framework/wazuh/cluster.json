@@ -6,6 +6,7 @@
         "source": "master",
         "write_mode": "atomic",
         "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE"],
+        "files": ["client.keys"],
         "recursive": false
     },
 
@@ -16,6 +17,7 @@
         "source": "all",
         "write_mode": "atomic",
         "flags": ["IN_CLOSE_WRITE", "IN_ATTRIB", "IN_MOVED_TO"],
+        "files": ["all"],
         "recursive": false
     },
 
@@ -26,6 +28,7 @@
         "source": "master",
         "write_mode": "atomic",
         "flags": ["IN_CLOSE_WRITE", "IN_MOVED_TO"],
+        "files": ["all"],
         "recursive": false
     },
 
