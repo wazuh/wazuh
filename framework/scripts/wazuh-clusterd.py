@@ -177,11 +177,6 @@ def run_internal_daemon(debug):
     check_call(call_list)
 
 if __name__ == '__main__':
-    # Drop privileges to ossec
-    pwdnam_ossec = getpwnam('ossec')
-    setgid(pwdnam_ossec.pw_gid)
-    seteuid(pwdnam_ossec.pw_uid)
-    
     args = parser.parse_args()
     if args.V:
         check_output(["{0}/bin/wazuh-clusterd-internal".format(ossec_path), '-V'])
@@ -203,6 +198,11 @@ if __name__ == '__main__':
     except CalledProcessError:
         run_internal_daemon(args.d)
     
+    # Drop privileges to ossec
+    pwdnam_ossec = getpwnam('ossec')
+    setgid(pwdnam_ossec.pw_gid)
+    seteuid(pwdnam_ossec.pw_uid)
+
     if not args.f:
         res_code = pyDaemon()
     else:
