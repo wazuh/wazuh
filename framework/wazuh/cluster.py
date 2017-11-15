@@ -41,8 +41,6 @@ if is_py2:
 else:
     from queue import Queue as queue
 
-CLUSTER_ITEMS = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
-
 import zipfile
 
 try:
@@ -52,7 +50,7 @@ except:
     compression = zipfile.ZIP_STORED
 
 
-def get_file_info(filename):
+def get_file_info(filename, cluster_items):
     fullpath = common.ossec_path + filename
     
     if not path.isfile(fullpath):
@@ -63,7 +61,7 @@ def get_file_info(filename):
     st_size = stat_obj.st_size
 
     directory = path.dirname(filename)+'/'
-    new_item = CLUSTER_ITEMS[directory] if directory in CLUSTER_ITEMS.keys() else CLUSTER_ITEMS['/etc/']
+    new_item = cluster_items[directory] if directory in cluster_items.keys() else cluster_items['/etc/']
 
     file_item = {
         "umask" : new_item['umask'],
@@ -153,11 +151,11 @@ def get_node(name=None):
     return data
 
 
-def get_files(node_type):
-    def get_files_from_dir(dirname, recursive, files):
+def get_files(node_type, cluster_items):
+    def get_files_from_dir(dirname, recursive, files, cluster_items):
         items = []
         for entry in listdir(dirname):
-            if entry not in CLUSTER_ITEMS['excluded_files'] and entry[-1] != '~' \
+            if entry not in cluster_items['excluded_files'] and entry[-1] != '~' \
                 and entry in files or files == ["all"]:
 
                 full_path = path.join(dirname, entry)
@@ -167,12 +165,12 @@ def get_files(node_type):
                     items.append(new_item)
                 elif recursive:
                     items = list(chain.from_iterable([items, 
-                                    get_files_from_dir(full_path, recursive, files)]))
+                                    get_files_from_dir(full_path, recursive, files, cluster_items)]))
         return items
 
     # Expand directory
     expanded_items = []
-    for file_path, item in CLUSTER_ITEMS.items():
+    for file_path, item in cluster_items.items():
         if file_path == "excluded_files":
             continue
         if item['source'] == node_type or \
@@ -181,12 +179,12 @@ def get_files(node_type):
             fullpath = common.ossec_path + file_path
             expanded_items = chain.from_iterable([expanded_items, 
                                    get_files_from_dir(fullpath, item['recursive'], 
-                                                      item['files'])])
+                                                      item['files'], cluster_items)])
 
     final_items = {}
     for new_item in expanded_items:
         try:
-            final_items[new_item['path']] = get_file_info(new_item['path'])
+            final_items[new_item['path']] = get_file_info(new_item['path'], cluster_items)
         except Exception as e:
             continue
 
@@ -257,6 +255,8 @@ def extract_zip(zip_bytes):
     return receive_zip(zip_json)
 
 def receive_zip(zip_file):
+    cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
+
     logging.info("Receiving zip with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'invalid': []}
@@ -267,11 +267,11 @@ def receive_zip(zip_file):
             dir_name = path.dirname(fixed_name) + '/'
             file_path = common.ossec_path + fixed_name
             try:
-                remote_umask = int(CLUSTER_ITEMS[dir_name]['umask'], base=0)
-                remote_write_mode = CLUSTER_ITEMS[dir_name]['write_mode']
+                remote_umask = int(cluster_items[dir_name]['umask'], base=0)
+                remote_write_mode = cluster_items[dir_name]['write_mode']
             except KeyError:
-                remote_umask = int(CLUSTER_ITEMS['/etc/']['umask'], base=0)
-                remote_write_mode = CLUSTER_ITEMS['/etc/']['write_mode']
+                remote_umask = int(cluster_items['/etc/']['umask'], base=0)
+                remote_write_mode = cluster_items['/etc/']['write_mode']
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],
@@ -334,9 +334,10 @@ def sync(debug, start_node=None, output_file=False, force=None):
         raise WazuhException(3000, "No config found")
 
 
+        cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
     before = time()
     # Get own items status
-    own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files(config_cluster['node_type']).items()))
+    own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files(config_cluster['node_type'], cluster_items).items()))
     own_items_names = own_items.keys()
     all_nodes = get_nodes()['items']
 
