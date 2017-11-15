@@ -267,20 +267,18 @@ ConfigureBoot()
         echo ""
         $ECHO "  $NB- ${startwazuh} ($yes/$no) [$yes]: "
 
-        if [ "X${AUTO_START}" = "X" ]; then
+        if [ "X${USER_AUTO_START}" = "X" ]; then
             read ANSWER
         else
-            ANSWER=${AUTO_START}
+            ANSWER=${USER_AUTO_START}
         fi
 
         echo ""
         case $ANSWER in
             $nomatch)
-                echo ""
                 echo "   - ${nowazuhstart}"
                 ;;
             *)
-                echo ""
                 START_WAZUH="yes"
                 echo "   - ${yeswazuhstart}"
                 ;;
