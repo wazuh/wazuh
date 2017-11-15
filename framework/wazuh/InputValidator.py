@@ -67,8 +67,8 @@ class InputValidator:
         if config['key'] == None:
             raise WazuhException(3004, 'Unspecified key')
 
-        if config['node_type'] != 'master' and config['node_type'] != 'slave':
-            raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and slave'.format(config['node_type']))
+        if config['node_type'] != 'master' and config['node_type'] != 'client':
+            raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
         if not re.compile("\d+[m|s]").match(config['interval']):
             raise WazuhException(3004, 'Invalid interval specification. Please, specify it with format <number>s or <number>m')
         if config['nodes'][0] == 'localhost' and len(config['nodes']) == 1:
