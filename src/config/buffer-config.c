@@ -24,7 +24,7 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
 
     /* Old XML definition */
     const char *xml_buffer_length = "length";
-    const char *xml_buffer_disabled = "disable";
+    const char *xml_buffer_disable = "disable";
 
     agent *logr;
 
