@@ -18,12 +18,13 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
     int i = 0;
 
     /* XML definitions */
-    const char *xml_buffer_disabled = "disabled";
+    const char *xml_buffer_disable = "disable";
     const char *xml_buffer_queue_size = "queue_size";
     const char *xml_events_per_second = "events_per_second";
 
     /* Old XML definition */
     const char *xml_buffer_length = "length";
+    const char *xml_buffer_disabled = "disabled";
 
     agent *logr;
 
@@ -36,7 +37,7 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
-        } else if (strcmp(node[i]->element, xml_buffer_disabled) == 0) {
+        } else if (strcmp(node[i]->element, xml_buffer_disabled) == 0) || (strcmp(node[i]->element, xml_buffer_disable) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 logr->buffer = 0;
             } else if (strcmp(node[i]->content, "no") == 0) {
