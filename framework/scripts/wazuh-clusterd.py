@@ -112,13 +112,13 @@ class WazuhClusterHandler(asynchat.async_chat):
 
 class WazuhClusterServer(asyncore.dispatcher):
 
-    def __init__(self, host, port, key):
+    def __init__(self, bind_addr, port, key):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
         self.key = key
         try:
-            self.bind((host, port))
+            self.bind((bind_addr, port))
         except socket.error as e:
             logging.error("Can't bind socket: {0}".format(str(e)))
             raise e
@@ -226,6 +226,6 @@ if __name__ == '__main__':
     p.start()
     child_pid = p.pid
 
-    server = WazuhClusterServer('' if not cluster_config['host'] else cluster_config['host'], 
+    server = WazuhClusterServer('' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr'], 
                                 int(cluster_config['port']), cluster_config['key'])
     asyncore.loop()

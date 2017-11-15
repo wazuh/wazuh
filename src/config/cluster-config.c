@@ -23,7 +23,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *nodes = "nodes";
     static const char *hidden = "hidden";
     static const char *port = "port";
-    static const char *host = "host";
+    static const char *bind_addr = "bind_addr";
 
 
     _Config *Config;
@@ -48,7 +48,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
          } else if (!strcmp(node[i]->element, interval)) {
          } else if (!strcmp(node[i]->element, nodes)) {
          } else if (!strcmp(node[i]->element, port)) {
-         } else if (!strcmp(node[i]->element, host)) {
+         } else if (!strcmp(node[i]->element, bind_addr)) {
          } else {
              merror(XML_INVELEM, node[i]->element);
              return OS_INVALID;

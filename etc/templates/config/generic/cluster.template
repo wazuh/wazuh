@@ -5,7 +5,7 @@
     <key></key>
     <interval>2m</interval>
     <port>1516</port>
-    <host></host>
+    <bind_addr>0.0.0.0</bind_addr>
     <nodes>
         <node>localhost</node>
     </nodes>
