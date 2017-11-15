@@ -170,6 +170,12 @@ def signal_handler(n_signal, frame):
             delete_pid("wazuh-clusterd", getpid())
     exit(1)
 
+def run_internal_daemon(debug):
+    call_list = ["{0}/bin/wazuh-clusterd-internal".format(ossec_path), "-t{0}".format(cluster_config['node_type'])]
+    if debug:
+        call_list.append("-ddd")
+    check_call(call_list)
+
 if __name__ == '__main__':
     # Drop privileges to ossec
     pwdnam_ossec = getpwnam('ossec')
@@ -189,11 +195,13 @@ if __name__ == '__main__':
     # execute C cluster daemon (database & inotify) if it's not running
     try:
         exit_code = check_call(["ps", "-C", "wazuh-clusterd-internal"], stdout=open(devnull, 'w'))
+        pid = check_output(["pidof", "{0}/bin/wazuh-clusterd-internal".format(common.ossec_path)]).split(" ")
+        for p in pid:
+            p = p[:-1] if '\n' in p else p
+            check_call(["kill", p])
+        run_internal_daemon(args.d)
     except CalledProcessError:
-        call_list = ["{0}/bin/wazuh-clusterd-internal".format(ossec_path), "-t{0}".format(cluster_config['node_type'])]
-        if args.d:
-            call_list.append("-ddd")
-        check_call(call_list)
+        run_internal_daemon(args.d)
     
     if not args.f:
         res_code = pyDaemon()
