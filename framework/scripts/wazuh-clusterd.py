@@ -39,6 +39,10 @@ child_pid = 0
 # Import framework
 try:
     from wazuh import Wazuh
+
+    # Initialize framework
+    myWazuh = Wazuh(get_init=True)
+    
     from wazuh.common import *
     from wazuh.cluster import *
     from wazuh.exception import WazuhException
@@ -214,9 +218,6 @@ if __name__ == '__main__':
     except WazuhException as e:
         logging.error(str(e))
         exit(1)
-
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
     
     # execute an independent process to "crontab" the sync interval
     p = Process(target=crontab_sync, args=(cluster_config['interval'],))
