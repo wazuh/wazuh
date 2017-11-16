@@ -111,7 +111,9 @@ Install()
 
     # If update, stop ossec
     if [ "X${update_only}" = "Xyes" ]; then
+        echo "Stopping Wazuh..."
         UpdateStopOSSEC
+        sleep 2
     fi
 
     # Install
@@ -138,6 +140,7 @@ Install()
         WazuhUpgrade
         # Update versions previous to Wazuh 1.2
         UpdateOldVersions
+        echo "Starting Wazuh..."
         UpdateStartOSSEC
     fi
 
@@ -146,6 +149,9 @@ Install()
         runInit $INSTYPE
         if [ $? = 1 ]; then
             notmodified="yes"
+        elif [ "X$START_WAZUH" = "Xyes" ]; then
+            echo "Starting Wazuh..."
+            UpdateStartOSSEC
         fi
     fi
 
@@ -1099,10 +1105,6 @@ if [ "x$HYBID" = "xgo" ]; then
    cd src && ${MAKEBIN} clean && cd ..
    ./install.sh
    rm etc/preloaded-vars.conf
-fi
-
-if [ "X${update_only}" = "Xyes" ] || [ "X$START_WAZUH" = "Xyes" ]; then
-    UpdateStartOSSEC
 fi
 
 exit 0
