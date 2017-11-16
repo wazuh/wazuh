@@ -34,7 +34,11 @@ void *read_syslog(int pos, int *rc, int drop_it)
         /* Get the last occurrence of \n */
         if ((p = strrchr(str, '\n')) != NULL) {
             *p = '\0';
-        }
+         /* From issue #913 @ybonnamy */
+         } else if((p = strchr(str, '\0')) != NULL) {
+             /* Replace NUL with a space */
+             *p = ' ';
+         }
 
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
