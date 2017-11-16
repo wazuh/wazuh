@@ -47,10 +47,11 @@ static void help_cluster_daemon(char * name)
 {
     print_header();
     print_out("  %s: -[Vhdf]", name);
-    print_out("    -V          Version and license message.");
-    print_out("    -h          This help message.");
-    print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
-    print_out("    -f          Run in foreground.");
+    print_out("    -V                   Version and license message.");
+    print_out("    -h                   This help message.");
+    print_out("    -d                   Debug mode. Use this parameter multiple times to increase the debug level.");
+    print_out("    -f                   Run in foreground.");
+    print_out("    -t<node_type>        Specify node type.");
     print_out(" ");
     exit(1);
 }
