@@ -5,6 +5,7 @@
 
 from wazuh.utils import cut_array, sort_array, search_array, md5, send_request
 from wazuh.exception import WazuhException
+from wazuh.agent import Agent
 from wazuh import common
 import sqlite3
 from datetime import datetime
@@ -22,6 +23,8 @@ import json
 import threading
 from stat import S_IRWXG, S_IRWXU
 from sys import version
+from difflib import unified_diff
+import re
 # import the C accelerated API of ElementTree
 try:
     import xml.etree.cElementTree as ET
@@ -209,10 +212,28 @@ def _check_token(other_token):
     else:
         return False
 
+def _check_removed_agents(new_client_keys):
+    with open("{0}/etc/client.keys".format(common.ossec_path)) as ck:
+        client_keys = ck.readlines()
+
+    regex = re.compile('+\d{3} !\w+ (any|\d+.\d+.\d+.\d+) \w+')
+    for removed_line in filter(lambda x: x.startswith('+'), unified_diff(client_keys, new_client_keys)):
+        if regex.match(removed_line):
+            agent_id, agent_name, _, _, = removed_line[1:].split(" ")
+
+            try:
+                Agent(agent_id).remove()
+                logging.info("Agent {0} deleted successfully".format(agent_id))
+            except WazuhException as e:
+                logging.error("Error deleting agent {0}: {1}".format(agent_id, str(e)))
+
 
 def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None):
     # Set Timezone to epoch converter
     # environ['TZ']='UTC'
+
+    if path.basename(fullpath) == 'client.keys':
+        _check_removed_agents(new_content)
 
     # Write
     if w_mode == "atomic":
@@ -334,7 +355,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
         raise WazuhException(3000, "No config found")
 
 
-        cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
+    cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
     before = time()
     # Get own items status
     own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files(config_cluster['node_type'], cluster_items).items()))
