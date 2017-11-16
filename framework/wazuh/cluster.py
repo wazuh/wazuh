@@ -216,7 +216,7 @@ def _check_removed_agents(new_client_keys):
     with open("{0}/etc/client.keys".format(common.ossec_path)) as ck:
         client_keys = ck.readlines()
 
-    regex = re.compile('+\d{3} !\w+ (any|\d+.\d+.\d+.\d+) \w+')
+    regex = re.compile('\+\d{3} \!\w+ (any|\d+.\d+.\d+.\d+) \w+')
     for removed_line in filter(lambda x: x.startswith('+'), unified_diff(client_keys, new_client_keys)):
         if regex.match(removed_line):
             agent_id, agent_name, _, _, = removed_line[1:].split(" ")
@@ -233,7 +233,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None)
     # environ['TZ']='UTC'
 
     if path.basename(fullpath) == 'client.keys':
-        _check_removed_agents(new_content)
+        _check_removed_agents(new_content.split('\n'))
 
     # Write
     if w_mode == "atomic":
