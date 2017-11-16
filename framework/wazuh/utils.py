@@ -15,7 +15,8 @@ import stat
 import socket
 import asyncore
 import asynchat
-from cryptography.fernet import Fernet
+if common.check_cluster_status():
+    from cryptography.fernet import Fernet
 
 try:
     from subprocess import check_output
