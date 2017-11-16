@@ -98,7 +98,10 @@ def check_cluster_status():
         # the osec directory is the first line of ossec-init.conf
         directory = f.readline().split("=")[1][:-1].replace('"', "")
 
-    process_list = check_output(["tac", "{0}/bin/.process_list".format(directory)]).split('\n')
+    try:
+        process_list = check_output(["tac", "{0}/bin/.process_list".format(directory)]).split('\n')
+    except:
+        return False
     for process in process_list:
         if process == 'CLUSTER_DAEMON=""':
             return False
