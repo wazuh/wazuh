@@ -201,6 +201,12 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
+    /* Create location hash */
+    db_config.location_hash = OSHash_Create();
+    if (!db_config.location_hash) {
+        merror_exit(MEM_ERROR, errno, strerror(errno));
+    }
+
     /* chroot */
     if (Privsep_Chroot(dir) < 0) {
         merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
