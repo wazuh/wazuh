@@ -746,6 +746,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 }
             }
 
+            OS_RotateLogs(lf);
 
             /* Increment number of events received */
             hourly_events++;

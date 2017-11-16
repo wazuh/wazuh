@@ -11,6 +11,7 @@
 #define __GETLL_H
 
 #include "eventinfo.h"
+#include "analysisd.h"
 
 /* Start the log location (need to be called before getlog) */
 void OS_InitLog(void);
@@ -29,5 +30,6 @@ extern FILE *_fflog;
 extern FILE *_jflog;
 extern FILE *_ejflog;
 
-#endif /* __GETLL_H */
+void OS_RotateLogs(const Eventinfo *lf);
 
+#endif /* __GETLL_H */
