@@ -71,7 +71,6 @@ If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or 
         End If
 
         If server_port <> "" Then ' manager server_port
-
             If InStr(strNewText, "<port>") > 0 Then
                 Set re = new regexp
                 re.Pattern = "<port>.*</port>"
@@ -134,4 +133,3 @@ End If
 config = 0
 
 End Function
-

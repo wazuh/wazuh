@@ -128,6 +128,9 @@ int main(int argc, char **argv)
     /* Start daemon */
     mdebug1(STARTED_MSG);
 
+    /* Setup random */
+    srandom_init();
+
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
