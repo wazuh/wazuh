@@ -123,7 +123,7 @@ void* daemon_socket() {
     unlink(SOCKET_PATH);
 
     if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
-        mterror_exit(DB_TAG, "Error binding socket: %s", strerror(errno));
+        mterror_exit(DB_TAG, "Error binding socket: %s (%s)", strerror(errno), SOCKET_PATH);
     }
 
     /* Change permissions */

@@ -69,12 +69,12 @@ libsqlite3.so.0: $(SQLITE_DIR)/sqlite3.o
 
 ifeq (${uname_S},Linux)
 wazuh-clusterd-internal: wazuh-clusterd-internal.o $(SQLITE_DIR)/sqlite3.o $(DEBUG_OP_DEPS)
-	$(CC) $(THREAD_FLAGS) -o $@ $^ -ldl
+	$(CC) $(THREAD_FLAGS) -DDEFAULTDIR=\"${PREFIX}\" -o $@ $^ -ldl
 endif
 
 ifeq (${uname_S},Linux)
 wazuh-clusterd-internal.o: wazuh/wazuh-clusterd-internal.c
-	$(CC) $(CFLAGS) $(THREAD_FLAGS) -c $^ -o $@ -I $(SQLITE_DIR) -I $(JSON_DIR) -I $(HEADERS_DIR) -I $(ERROR_MSGS) -ldl
+	$(CC) $(CFLAGS) $(THREAD_FLAGS) -DDEFAULTDIR=\"${PREFIX}\" -c $^ -o $@ -I $(SQLITE_DIR) -I $(JSON_DIR) -I $(HEADERS_DIR) -I $(ERROR_MSGS) -ldl
 endif
 
 clean:
