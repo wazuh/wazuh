@@ -151,6 +151,7 @@ void* daemon_socket() {
     // sql sentence to perform a select query
     char *sql_sel = "SELECT * FROM manager_file_status WHERE id_manager = ? LIMIT ? OFFSET ?";
     char *sql_count = "SELECT Count(*) FROM manager_file_status WHERE id_manager = ?";
+    char *sql_del1 = "DELETE FROM manager_file_status WHERE id_file = ?";
 
     char *sql;
     bool has2, has3, select, count;
@@ -176,6 +177,12 @@ void* daemon_socket() {
             mtdebug2(DB_TAG,"Received %s command", cmd);
             if (cmd != NULL && strcmp(cmd, "update1") == 0) {
                 sql = sql_upd1;
+                count = false;
+                has2 = false;
+                has3 = false;
+                select = false;
+            }else if (cmd != NULL && strcmp(cmd, "delete1") == 0) {
+                sql = sql_del1;
                 count = false;
                 has2 = false;
                 has3 = false;
@@ -456,7 +463,12 @@ void* daemon_inotify(void * args) {
                         continue;
                     }
 
-                    if (event->mask & files[j].flags) {
+                    if (event->mask & IN_DELETE) {
+                        strcpy(cmd, "delete1 ");
+                        strcat(cmd, files[j].name);
+                        strcat(cmd, event->name);
+                    }
+                    else if (event->mask & files[j].flags) {
                         strcpy(cmd, "update1 ");
                         strcat(cmd, files[j].name);
                         strcat(cmd, event->name);

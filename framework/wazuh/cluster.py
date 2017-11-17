@@ -87,7 +87,7 @@ def compress_files(list_path):
             try:
                 zf.write(filename = common.ossec_path + f, arcname = f, compress_type=compression)
             except Exception as e:
-                raise WazuhException(3001, str(e))
+                logging.error(str(WazuhException(3001, str(e))))
 
     return zipped_file.getvalue()
 
@@ -216,10 +216,10 @@ def _check_removed_agents(new_client_keys):
     with open("{0}/etc/client.keys".format(common.ossec_path)) as ck:
         client_keys = ck.readlines()
 
-    regex = re.compile('\+\d{3} \!\w+ (any|\d+.\d+.\d+.\d+) \w+')
-    for removed_line in filter(lambda x: x.startswith('+'), unified_diff(client_keys, new_client_keys)):
+    regex = re.compile('-\d{3} \w+ (any|\d+.\d+.\d+.\d+) \w+')
+    for removed_line in filter(lambda x: x.startswith('-'), unified_diff(client_keys, new_client_keys)):
         if regex.match(removed_line):
-            agent_id, agent_name, _, _, = removed_line[1:].split(" ")
+            agent_id, _, _, _, = removed_line[1:].split(" ")
 
             try:
                 Agent(agent_id).remove()

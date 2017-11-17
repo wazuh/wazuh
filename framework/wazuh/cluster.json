@@ -24,7 +24,7 @@
         "format":"plain",
         "source": "all",
         "write_mode": "atomic",
-        "flags": ["IN_CLOSE_WRITE", "IN_ATTRIB", "IN_MOVED_TO"],
+        "flags": ["IN_CLOSE_WRITE", "IN_ATTRIB", "IN_MOVED_TO", "IN_DELETE"],
         "files": ["all"],
         "recursive": false
     },
@@ -34,7 +34,7 @@
         "format":"plain",
         "source": "master",
         "write_mode": "atomic",
-        "flags": ["IN_CLOSE_WRITE", "IN_MOVED_TO"],
+        "flags": ["IN_CLOSE_WRITE", "IN_MOVED_TO", "IN_DELETE"],
         "files": ["all"],
         "recursive": false
     },
