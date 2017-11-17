@@ -51,7 +51,11 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip, int for
     }
 
     output = cJSON_PrintUnformatted(request);
-    send(sock, output, strlen(output), 0);
+
+    if (send(sock, output, strlen(output), 0) < 0) {
+        merror_exit("send(): %s", strerror(errno));
+    }
+
     cJSON_Delete(request);
     free(output);
 
@@ -123,7 +127,11 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
     cJSON_AddStringToObject(arguments, "id", id);
 
     output = cJSON_PrintUnformatted(request);
-    send(sock, output, strlen(output), 0);
+
+    if (send(sock, output, strlen(output), 0) < 0) {
+        merror_exit("send(): %s", strerror(errno));
+    }
+
     cJSON_Delete(request);
     free(output);
 
