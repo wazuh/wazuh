@@ -34,8 +34,10 @@ HELP_O           = ../src/shared/help.o
 ERROR_MSGS       = ../src/error_messages
 DEBUG_OP_DEPS    = $(DEBUG_OP) $(JSON_LIB) $(XML_LIB) $(XML_ACCESS) $(STRBREAK) $(STRING_OP) $(FILE_OP) $(PRIVSEP_OP) $(REGEX_OP) $(HELP_O)
 
+BUILD_TARGET     = libsqlite3.so.0
+
 ifeq (${uname_S},Linux)
-BUILD_TARGET           = wazuh-clusterd-internal libsqlite3.so.0
+BUILD_TARGET     += wazuh-clusterd-internal
 endif
 
 .PHONY: all build install examples clean

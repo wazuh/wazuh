@@ -94,9 +94,9 @@ UpdateStartOSSEC()
        TYPE="manager"
    fi
 
-   if [ `stat /proc/1/exe | grep "systemd" | wc -l` -ne 0 ]; then
+   if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
        systemctl start wazuh-$TYPE
-   elif [ `stat /proc/1/exe | grep "init.d" | wc -l` -ne 0 ]; then
+   elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
        service wazuh-$TYPE start
    else
        $DIRECTORY/bin/ossec-control start
@@ -111,9 +111,9 @@ UpdateStopOSSEC()
        TYPE="manager"
    fi
 
-   if [ `stat /proc/1/exe | grep "systemd" | wc -l` -ne 0 ]; then
+   if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
        systemctl stop wazuh-$TYPE
-   elif [ `stat /proc/1/exe | grep "init.d" | wc -l` -ne 0 ]; then
+   elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
        service wazuh-$TYPE stop
    else
        $DIRECTORY/bin/ossec-control stop
