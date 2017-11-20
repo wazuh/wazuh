@@ -231,6 +231,14 @@ def get_file_status_all_managers(file_list, manager):
     cluster_socket.close()
     return files
 
+def get_agents_status(agent_list):
+    """
+    Return a nested list where each element has the following structure
+    [agent_id, agent_name, agent_status, manager_hostname]
+    """
+    return [[agent['id'], agent['name'], agent['status'], agent['manager_host']] 
+            for agent in Agent.get_agents_overview()['items']
+            if int(agent['id']) > 0]
 
 def get_token():
     config_cluster = read_config()

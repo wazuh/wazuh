@@ -33,7 +33,7 @@ def pprint_table(data, headers, show_header=False):
         """
         For each column of the table, return the size of the biggest element
         """
-        return map(lambda x: max(map(len, x)), map(list, zip(*l)))
+        return map(lambda x: max(map(lambda x: len(x)+2, x)), map(list, zip(*l)))
 
     if show_header:
         table = list(chain.from_iterable([[headers], data]))
@@ -42,11 +42,11 @@ def pprint_table(data, headers, show_header=False):
 
     sizes = get_max_size_cols(table)
     
-    header_str = "{0}\n".format("-"*(sum(sizes) + 1 + len(sizes)))
+    header_str = "{0}\n".format("-"*(sum(sizes)-2))
     table_str = header_str
     for row in table:
         for col, max_size in zip(row, sizes):
-            table_str += "{0}{1} ".format(col, " "*(max_size+1-len(col)))
+            table_str += "{0}{1}".format(col, " "*(max_size-len(col)))
         table_str += "\n"
         if show_header and row[0] == headers[0]:
             table_str += header_str
@@ -59,6 +59,9 @@ def _get_file_status(file_list, manager):
     all_files = get_file_status_all_managers(file_list, manager)
     print pprint_table(data=all_files, headers=["Manager","Filename","Status"], show_header=True)
 
+def _get_agents_status(agent_list):
+    print pprint_table(data=get_agents_status(agent_list), headers=["ID", "Name", "Status", "Manager hostname"], show_header=True)
+
 if __name__ == '__main__':
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
@@ -70,3 +73,6 @@ if __name__ == '__main__':
 
     elif args.files is not None:
         _get_file_status(args.files, args.manager)
+
+    elif args.agents is not None:
+        _get_agents_status(args.agents)
