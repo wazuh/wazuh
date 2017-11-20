@@ -307,6 +307,8 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
     mdebug2("Attempting to send message to server.");
 
+    os_wait();
+
     /* Using a mutex to synchronize the writes */
     while (1) {
         dwWaitResult = WaitForSingleObject(hMutex, 1000000L);
