@@ -31,12 +31,7 @@ try:
 except ImportError:
     import xml.etree.ElementTree as ET
 
-try:
-    import logging
-    logging.basicConfig(filename=common.ossec_path+'/logs/cluster.log',level=logging.DEBUG,
-                        format='%(asctime)s %(levelname)s: %(message)s')
-except:
-    pass
+import logging
 
 is_py2 = version[0] == '2'
 if is_py2:
@@ -193,6 +188,49 @@ def get_files(node_type, cluster_items):
 
     return final_items
 
+def get_file_status(manager, cluster_socket):
+    count_query = "count {0}".format(manager)
+    cluster_socket.send(count_query)
+    n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
+
+    # limit = 100 
+    query = "select {0} 100 ".format(manager)
+    file_status = ""
+    for offset in range(0,n_files,100):
+        query += str(offset)
+        cluster_socket.send(query)
+        file_status += filter(lambda x: x != '\x00', cluster_socket.recv(10000))
+        
+    # retrieve all files for a node in database with its status
+    all_files = {f[0]:f[1] for f in map(lambda x: x.split('*'), filter(lambda x: x != '', file_status.split(' ')))}
+
+    return all_files
+
+def get_file_status_all_managers(file_list, manager):
+    """
+    Return a nested list where each element has the following structure
+    [manager, filename, status]
+    """
+    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+    files = []
+
+    nodes = get_remote_nodes(False)
+    if manager:
+        remote_nodes = filter(lambda x: x in manager, nodes)
+    else:
+        remote_nodes = nodes
+
+    for node in remote_nodes:
+        all_files = get_file_status(node, cluster_socket)
+        if file_list == []:
+            file_list = all_files.keys()
+
+        files.extend([[node, file, all_files[file]] for file in file_list]) 
+
+    cluster_socket.close()
+    return files
+
 
 def get_token():
     config_cluster = read_config()
@@ -213,6 +251,16 @@ def _check_token(other_token):
         return False
 
 def _check_removed_agents(new_client_keys):
+    """
+    Function to delete agents that have been deleted in a synchronized
+    client.keys.
+
+    It makes a diff of the old client keys and the new one and search for
+    deleted or changed lines (in the diff those lines start with -).
+
+    If a line starting with - matches the regex structure of a client.keys line
+    that agent is deleted.
+    """
     with open("{0}/etc/client.keys".format(common.ossec_path)) as ck:
         client_keys = ck.readlines()
 
@@ -311,7 +359,26 @@ def receive_zip(zip_file):
 def divide_list(l, size=1000):
     return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
 
-def sync(debug, start_node=None, output_file=False, force=None):
+def get_remote_nodes(connected=True):
+    all_nodes = get_nodes()['items']
+
+    # Get connected nodes in the cluster
+    if connected:
+        cluster = [n['url'] for n in filter(lambda x: x['status'] == 'connected', 
+                    all_nodes)]
+    else:
+        cluster = [n['url'] for n in all_nodes]
+    # search the index of the localhost in the cluster
+    try:
+        localhost_index = cluster.index('localhost')
+    except ValueError as e:
+        logging.error("Cluster nodes are not correctly configured at ossec.conf.")
+        exit(1)
+
+    return list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
+
+
+def sync(debug, force=None):
     """
     Sync this node with others
     :return: Files synced.
@@ -360,29 +427,18 @@ def sync(debug, start_node=None, output_file=False, force=None):
     # Get own items status
     own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files(config_cluster['node_type'], cluster_items).items()))
     own_items_names = own_items.keys()
-    all_nodes = get_nodes()['items']
-
-    # Get connected nodes in the cluster
-    cluster = [n['url'] for n in filter(lambda x: x['status'] == 'connected', 
-                all_nodes)]
-    # search the index of the localhost in the cluster
-    try:
-        localhost_index = cluster.index('localhost')
-    except ValueError as e:
-        logging.error("Cluster nodes are not correctly configured at ossec.conf.")
-        exit(1)
-
-    logging.info("Starting to sync {0}'s files".format(cluster[localhost_index]))
+    
+    remote_nodes = get_remote_nodes()
+    logging.info("Starting to sync localhost's files")
 
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
-
     logging.debug("Connected to cluster database socket")
 
     # for each connected manager, check its files. If the manager is not on database add it
     # with all files marked as pending
     all_nodes_files = {}
-    remote_nodes = list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
+    
     logging.debug("Nodes to sync: {0}".format(str(remote_nodes)))
     for node in remote_nodes:
         # check files in database
@@ -407,17 +463,7 @@ def sync(debug, start_node=None, output_file=False, force=None):
 
         else:
             logging.debug("Retrieving {0}'s files from database".format(node))
-            # check node is in database
-            # limit = 100 
-            query = "select {0} 100 ".format(node)
-            file_status = ""
-            for offset in range(0,n_files,100):
-                query += str(offset)
-                cluster_socket.send(query)
-                file_status += filter(lambda x: x != '\x00', cluster_socket.recv(10000))
-                
-            # retrieve all files for a node in database with its status
-            all_files = {f[0]:f[1] for f in map(lambda x: x.split('*'), filter(lambda x: x != '', file_status.split(' ')))}
+            all_files = get_file_status(node, cluster_socket)
             # if there are missing files that are not being controled in database
             # add them as pending
             for missing in divide_list(set(own_items_names) - set(all_files.keys())):
