@@ -47,15 +47,15 @@ void *receiver_thread(__attribute__((unused)) void *none)
     memset(file_sum, '\0', 34);
 
     while (1) {
+        /* Run timeout commands */
+        if (agt->execdq >= 0) {
+            WinTimeoutRun();
+        }
+
         /* sock must be set */
         if (agt->sock == -1) {
             sleep(5);
             continue;
-        }
-
-        /* Run timeout commands */
-        if (agt->execdq >= 0) {
-            WinTimeoutRun(available_server);
         }
 
         FD_ZERO(&fdset);

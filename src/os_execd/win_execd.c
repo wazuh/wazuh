@@ -60,8 +60,10 @@ int WinExecd_Start()
     return (1);
 }
 
-void WinTimeoutRun(int curr_time)
+void WinTimeoutRun()
 {
+    time_t curr_time = time(NULL);
+
     /* Check if there is any timed out command to execute */
     timeout_node = OSList_GetFirstNode(timeout_list);
     while (timeout_node) {
