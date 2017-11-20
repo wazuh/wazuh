@@ -19,6 +19,7 @@ int send_msg(const char *msg, ssize_t msg_length)
     ssize_t msg_size;
     char crypt_msg[OS_MAXSTR + 1];
     int retval;
+    int error;
 
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, 0);
     if (msg_size == 0) {
@@ -29,16 +30,18 @@ int send_msg(const char *msg, ssize_t msg_length)
     /* Send msg_size of crypt_msg */
     if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
         retval = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
+        error = errno;
     } else {
         w_mutex_lock(&send_mutex);
         retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
+        error = errno;
         w_mutex_unlock(&send_mutex);
     }
 
     if (!retval) {
         agent_state.msg_sent++;
     } else {
-        merror(SEND_ERROR, "server", strerror(errno));
+        merror(SEND_ERROR, "server", strerror(error));
         sleep(1);
     }
 
