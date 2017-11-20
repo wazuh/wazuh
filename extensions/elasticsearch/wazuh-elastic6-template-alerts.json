@@ -5,7 +5,7 @@
     "index.refresh_interval": "5s"
   },
   "mappings": {
-    "wazuh-alert": {
+    "wazuh": {
       "dynamic_templates": [
         {
           "string_as_keyword": {
