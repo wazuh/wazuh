@@ -86,5 +86,6 @@ void key_unlock(void);
 
 extern keystore keys;
 extern remoted logr;
+extern char* node_name;
 
 #endif /* __LOGREMOTE_H */

@@ -193,6 +193,12 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
                     fprintf(fp, "#\"manager_hostname\":%s\n", hostname);
                 }
 
+                /* Write Cluster's node name to the agent-info file */
+                char nodename[OS_MAXSTR];
+
+                snprintf(nodename, OS_MAXSTR - 1, "#\"node_name\":%s\n", node_name);
+                fprintf(fp, "%s", nodename);
+
                 fclose(fp);
             } else {
                 merror(FOPEN_ERROR, data->keep_alive, errno, strerror(errno));
