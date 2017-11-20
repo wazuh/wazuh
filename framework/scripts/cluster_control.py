@@ -8,10 +8,16 @@ from os.path import dirname, basename
 import argparse
 from itertools import chain
 parser = argparse.ArgumentParser(description="Wazuh Cluster control interface")
-parser.add_argument('-p', '--push', const='push', action='store_const', help="Send all not syncrhonized files")
-parser.add_argument('-f', '--files', dest='files', nargs='*', type=str, help="List the status of specified files (all if not specified)")
-parser.add_argument('-m', '--manager', dest='manager', nargs='*', type=str, help="List the status of the files of that manager")
-parser.add_argument('-a', '--agents', dest='agents', nargs='*', type=bool, help="List all agents")
+
+push_group = parser.add_argument_group('Push updates')
+push_group.add_argument('-p', '--push', const='push', action='store_const', help="Send all not synchronized files")
+
+files_group = parser.add_argument_group('Retrieve file status')
+files_group.add_argument('-f', '--files', metavar='FILE', dest='files', nargs='*', type=str, help="List the status of specified files (all if not specified)")
+files_group.add_argument('-m', '--manager', dest='manager', nargs='*', type=str, help="List the status of the files of that manager")
+
+agents_group = parser.add_argument_group('Retrieve agent status')
+agents_group.add_argument('-a', '--agents', metavar='AGENT', dest='agents', nargs='*', type=bool, help="List all agents")
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
