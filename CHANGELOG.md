@@ -35,8 +35,13 @@ All notable changes to this project will be documented in this file.
 - New option for rotating internal logs by size.
 - Added internal option to enable or disable daily rotation of internal logs.
 - Added command option for Monitord to overwrite 'day_wait' parameter.
-
-
+- Adding templates and sample alert for Elasticsearch 6.0.
+- Added restart of services when updating.
+- Add option to enable/disable Authd on install and auto-generate certificates.
+- Pack secure TCP messages into a single packet.
+- Add function to install SCAP policies depending on OS version.
+- Added integration with Virustotal.
+- Add timeout option for TCP sockets in Remoted and Agentd.
 
 ### Changed
 
@@ -59,7 +64,7 @@ All notable changes to this project will be documented in this file.
 - Changed 'message' field to 'data' for successful agent removing response in Authd API.
 - Changed critical error to standard error in Syslog Remoted when no access list has been configured.
 - Ignore hidden files in shared folder for merged file.
-- Changed agent notification time values: notify time to 10 seconds and reconnect time to one minute.
+- Changed agent notification time values: notify time to 1 minute and reconnect time to 5 minutes.
 - Prevent data field from being inserted into JSON alerts when it's empty.
 - Spelling corrections (by Josh Soref).
 - Moved debug messages when updating shared files to level 2.
@@ -71,6 +76,19 @@ All notable changes to this project will be documented in this file.
 - Enabled Active Response by default in both Windows and UNIX.
 - Make Monitord 'day_wait' internal option affect log rotation.
 - Extend Monitord 'day_wait' internal option range.
+- Prevent Windows agent from log error when the manager disconnected.
+- Added option to auto-start the manager after installing.
+- Improve Active Response filtering.
+- Added restart of services when updating.
+- Added possibility of filtering agents by manager hostname in the Framework.
+- Prevent installer from overwriting agent.conf file.
+- Cancel file sending operation when agent socket is closed.
+- Clean up agent shared folder before unmerging shared configuration.
+- Print descriptive error when request socket refuses connection due to AR disabled.
+- Extend Logcollector line burst limit range.
+- Fix JSON alert file reloading when the file is rotated.
+- Added more descriptive WCOM request error messages.
+- Merge IP and Hostname server configuration into "Address" field.
 
 ### Fixed
 
@@ -97,6 +115,10 @@ All notable changes to this project will be documented in this file.
 - Fixed log group permission when created by a daemon running as root.
 - Prevented Agentd from logging too many errors when restarted while receiving the merged file.
 - Prevented Remoted from sending data to disconnected agents in TCP mode.
+- Fixed alerts storage in PostgreSQL databases.
+- Fixed invalid previous output data in JSON alerts.
+- Fixed memory error in modulesd for invalid configurations.
+- Fixed default Auth configuration to support custom install directory.
 
 ### Removed
 
