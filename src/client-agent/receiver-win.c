@@ -91,8 +91,11 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 // Manager disconnected or error
 
                 if (recv_b <= 0) {
+                    if (recv_b < 0) {
+                        merror("Receiver: %s [%d]", strerror(errno), errno);
+                    }
+
                     update_status(GA_STATUS_NACTIVE);
-                    merror("Receiver: %s [%d]", strerror(errno), errno);
                     merror(LOST_ERROR);
                     os_setwait();
                     start_agent(0);
