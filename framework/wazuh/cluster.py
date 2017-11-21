@@ -6,6 +6,7 @@
 from wazuh.utils import cut_array, sort_array, search_array, md5, send_request
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
+from wazuh.InputValidator import InputValidator 
 from wazuh import common
 import sqlite3
 from datetime import datetime
@@ -16,6 +17,7 @@ from subprocess import check_output
 from shutil import rmtree
 from io import BytesIO
 from itertools import compress, chain
+import operator
 from operator import itemgetter
 from ast import literal_eval
 import socket
@@ -46,6 +48,45 @@ try:
     compression = zipfile.ZIP_DEFLATED
 except:
     compression = zipfile.ZIP_STORED
+
+
+def check_cluster_cmd(cmd):
+    # cmd must be a list
+    if not isinstance(cmd, list):
+        return False
+
+    # check command type
+    if not cmd[0] in ['zip', 'node']:
+        return False
+
+    # check cmd len list
+    if len(cmd) != 2:
+        return False
+
+    # check cmd len
+    if len(' '.join(cmd)) != common.cluster_protocol_plain_size:
+        return False
+
+    # second argument of zip is a number
+    if cmd[0] == 'zip' and not re.compile('\d+').match(cmd[1]):
+        return False
+
+    return True
+
+def check_cluster_config(config):
+    iv = InputValidator()
+
+    if config['key'] == None:
+        raise WazuhException(3004, 'Unspecified key')
+    elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, operator.eq):
+        raise WazuhException(3004, 'Key must be 32 characters long and only have alphanumeric characters')
+
+    if config['node_type'] != 'master' and config['node_type'] != 'client':
+        raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
+    if not re.compile("\d+[m|s]").match(config['interval']):
+        raise WazuhException(3004, 'Invalid interval specification. Please, specify it with format <number>s or <number>m')
+    if config['nodes'][0] == 'localhost' and len(config['nodes']) == 1:
+        raise WazuhException(3004, 'Please specify IPs of all cluster nodes')
 
 
 def get_file_info(filename, cluster_items):

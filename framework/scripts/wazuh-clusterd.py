@@ -42,10 +42,8 @@ try:
     from wazuh.common import *
     from wazuh.cluster import *
     from wazuh.exception import WazuhException
-    from wazuh.InputValidator import InputValidator
     from wazuh.utils import send_request
     from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
-    iv = InputValidator()
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
@@ -76,7 +74,7 @@ class WazuhClusterHandler(asynchat.async_chat):
 
             logging.debug("Command received: {0}".format(command))
 
-            if not iv.check_cluster_cmd(command):
+            if not check_cluster_cmd(command):
                 logging.error("Received invalid cluster command {0} from {1}".format(
                                 command[0], self.addr))
                 error = 1
@@ -206,9 +204,8 @@ if __name__ == '__main__':
         pwdnam_ossec = getpwnam('ossec')
         setgid(pwdnam_ossec.pw_gid)
         seteuid(pwdnam_ossec.pw_uid)
-        
+
         run_internal_daemon(args.d)
-    
 
     if not args.f:
         res_code = pyDaemon()
@@ -229,7 +226,7 @@ if __name__ == '__main__':
         logging.getLogger('').setLevel(logging.INFO)
 
     try:
-        iv.check_cluster_config(cluster_config)
+        check_cluster_config(cluster_config)
     except WazuhException as e:
         logging.error(str(e))
         exit(1)
