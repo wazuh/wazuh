@@ -194,14 +194,21 @@ if __name__ == '__main__':
         for p in pid:
             p = p[:-1] if '\n' in p else p
             check_call(["kill", p])
+        
+        # Drop privileges to ossec
+        pwdnam_ossec = getpwnam('ossec')
+        setgid(pwdnam_ossec.pw_gid)
+        seteuid(pwdnam_ossec.pw_uid)
+
         run_internal_daemon(args.d)
     except CalledProcessError:
+        # Drop privileges to ossec
+        pwdnam_ossec = getpwnam('ossec')
+        setgid(pwdnam_ossec.pw_gid)
+        seteuid(pwdnam_ossec.pw_uid)
+        
         run_internal_daemon(args.d)
     
-    # Drop privileges to ossec
-    pwdnam_ossec = getpwnam('ossec')
-    setgid(pwdnam_ossec.pw_gid)
-    seteuid(pwdnam_ossec.pw_uid)
 
     if not args.f:
         res_code = pyDaemon()
