@@ -6,6 +6,7 @@
 from wazuh.utils import cut_array, sort_array, search_array, md5
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
+from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator 
 from wazuh import common
 import sqlite3
@@ -227,10 +228,7 @@ def compress_files(list_path):
 def read_config():
     # Get api/configuration/config.js content
     try:
-        cluster_xml = ET.parse(common.ossec_conf).find('cluster')
-        config_cluster={child.tag:child.text for child in cluster_xml}
-        config_cluster['nodes'] = [child.text for child in
-                                   cluster_xml.find('nodes')]
+        config_cluster = get_ossec_conf('cluster')
 
     except Exception as e:
         raise WazuhException(3000, str(e))
