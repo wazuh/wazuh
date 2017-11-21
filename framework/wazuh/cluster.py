@@ -231,6 +231,28 @@ def get_file_status_all_managers(file_list, manager):
     cluster_socket.close()
     return files
 
+def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
+    """
+    Return a nested list where each element has the following structure
+    {
+        manager: {
+            status: [
+                files
+            ]
+        }
+    }
+    """
+    files = get_file_status_all_managers(file_list['fields'], manager['fields'])
+    cluster_dict = {}
+    for manager, file, status in files:
+        try:
+            cluster_dict[manager][status].append(file)
+        except KeyError:
+            cluster_dict[manager] = {}
+            cluster_dict[manager][status] = [file]
+
+    return cluster_dict
+
 def get_agents_status(agent_list):
     """
     Return a nested list where each element has the following structure
