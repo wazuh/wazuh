@@ -31,17 +31,17 @@ All notable changes to this project will be documented in this file.
 - Added internal option to disable real-time DB synchronization.
 - Allow multiple manager stanzas in Agentd settings.
 - New internal option to limit the receiving time in TCP mode.
-- Add manager hostname data to agent information.
+- Added manager hostname data to agent information.
 - New option for rotating internal logs by size.
 - Added internal option to enable or disable daily rotation of internal logs.
 - Added command option for Monitord to overwrite 'day_wait' parameter.
 - Adding templates and sample alert for Elasticsearch 6.0.
-- Added restart of services when updating.
-- Add option to enable/disable Authd on install and auto-generate certificates.
+- Added option to enable/disable Authd on install and auto-generate certificates.
 - Pack secure TCP messages into a single packet.
-- Add function to install SCAP policies depending on OS version.
+- Added function to install SCAP policies depending on OS version.
 - Added integration with Virustotal.
-- Add timeout option for TCP sockets in Remoted and Agentd.
+- Added timeout option for TCP sockets in Remoted and Agentd.
+- Added option to start the manager after installing.
 
 ### Changed
 
@@ -77,9 +77,8 @@ All notable changes to this project will be documented in this file.
 - Make Monitord 'day_wait' internal option affect log rotation.
 - Extend Monitord 'day_wait' internal option range.
 - Prevent Windows agent from log error when the manager disconnected.
-- Added option to auto-start the manager after installing.
-- Improve Active Response filtering.
-- Added restart of services when updating.
+- Improve Active Response filtering options.
+- Use init system (Systemd/SysVinit) to restart Wazuh when upgrading.
 - Added possibility of filtering agents by manager hostname in the Framework.
 - Prevent installer from overwriting agent.conf file.
 - Cancel file sending operation when agent socket is closed.
@@ -87,8 +86,8 @@ All notable changes to this project will be documented in this file.
 - Print descriptive error when request socket refuses connection due to AR disabled.
 - Extend Logcollector line burst limit range.
 - Fix JSON alert file reloading when the file is rotated.
-- Added more descriptive WCOM request error messages.
 - Merge IP and Hostname server configuration into "Address" field.
+- Improved TCP transmission performance by packing secure messages.
 
 ### Fixed
 
@@ -119,6 +118,9 @@ All notable changes to this project will be documented in this file.
 - Fixed invalid previous output data in JSON alerts.
 - Fixed memory error in modulesd for invalid configurations.
 - Fixed default Auth configuration to support custom install directory.
+- Fixed directory transversal vulnerability in Active response commands.
+- Fixed Active response timeout accuracy.
+- Fixed race conditions in concurrent transmissions over TCP.
 
 ### Removed
 
