@@ -19,10 +19,11 @@ INSTALL_EXEC = install -o root -g ${OSSEC_GROUP} -m 0750
 INSTALL_FILE = install -o root -g ${OSSEC_GROUP} -m 0640
 
 SQLITE_DIR       = ../src/external/sqlite
+JSON_DIR         = ../src/external/cJSON
 HEADERS_DIR      = ../src/headers
 
 DEBUG_OP         = ../src/shared/debug_op.o
-JSON_LIB         = ../src/external/cJSON/cJSON.o
+JSON_LIB         = $(JSON_DIR)/cJSON.o
 XML_LIB          = ../src/os_xml/os_xml.o
 XML_ACCESS       = ../src/os_xml/os_xml_access.o
 STRBREAK         = ../src/os_regex/os_regex_strbreak.o
@@ -50,6 +51,7 @@ install:
 	$(INSTALL_DIR) $(PREFIX)/framework/lib
 
 	$(INSTALL_EXEC) wazuh/*.py ${PREFIX}/framework/wazuh
+	$(INSTALL_FILE) wazuh/*.json ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib/
 ifeq (${uname_S},Linux)
 	$(INSTALL_EXEC) wazuh-clusterd-internal ${PREFIX}/bin
@@ -69,12 +71,12 @@ libsqlite3.so.0: $(SQLITE_DIR)/sqlite3.o
 
 ifeq (${uname_S},Linux)
 wazuh-clusterd-internal: wazuh-clusterd-internal.o $(SQLITE_DIR)/sqlite3.o $(DEBUG_OP_DEPS)
-	$(CC) $(THREAD_FLAGS) -o $@ $^ -ldl
+	$(CC) $(THREAD_FLAGS) -DDEFAULTDIR=\"${PREFIX}\" -o $@ $^ -ldl
 endif
 
 ifeq (${uname_S},Linux)
 wazuh-clusterd-internal.o: wazuh/wazuh-clusterd-internal.c
-	$(CC) $(CFLAGS) $(THREAD_FLAGS) -c $^ -o $@ -I $(SQLITE_DIR) -I $(HEADERS_DIR) -I $(ERROR_MSGS) -ldl
+	$(CC) $(CFLAGS) $(THREAD_FLAGS) -DDEFAULTDIR=\"${PREFIX}\" -c $^ -o $@ -I $(SQLITE_DIR) -I $(JSON_DIR) -I $(HEADERS_DIR) -I $(ERROR_MSGS) -ldl
 endif
 
 clean:

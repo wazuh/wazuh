@@ -12,9 +12,6 @@ from datetime import datetime, timedelta
 import hashlib
 import json
 import stat
-import socket
-import asyncore
-import asynchat
 
 try:
     from subprocess import check_output
@@ -333,58 +330,3 @@ def md5(fname):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
-
-class WazuhClusterClient(asynchat.async_chat):
-    def __init__(self, host, port, data, file):
-        asynchat.async_chat.__init__(self)
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connect((host, port))
-        self.data = data
-        self.file = file
-        self.set_terminator('\n')
-        self.response = ""
-        self.can_read = False
-        self.can_write = True
-        self.received_data = []
-
-    def handle_connect(self):
-        pass
-
-    def handle_close(self):
-        self.close()
-
-    def readable(self):
-        return self.can_read
-
-    def writable(self):
-        return self.can_write
-
-    def handle_error(self):
-        nil, t, v, tbinfo = asyncore.compact_traceback()
-        raise t(v)
-
-    def collect_incoming_data(self, data):
-        self.received_data.append(data)
-
-    def found_terminator(self):
-        self.response = json.loads(''.join(self.received_data))
-        self.close()
-
-    def handle_write(self):
-        if self.file is not None:
-            self.send(self.data.encode() + self.file)
-        else:
-            self.send(self.data.encode())
-        self.can_read=True
-        self.can_write=False
-
-def send_request(host, port, data, file=None):
-    error = 0
-    try:
-        client = WazuhClusterClient(host, int(port), data, file)
-        asyncore.loop()
-        data = client.response
-    except Exception as e:
-        error = 1
-        data = str(e)
-    return error, data
