@@ -92,22 +92,5 @@ def get_encrypted_size(plain_size):
 global cluster_sync_msg_size
 cluster_sync_msg_size = get_encrypted_size(cluster_protocol_plain_size)
 
-
-def check_cluster_status():
-    with open("/etc/ossec-init.conf") as f:
-        # the osec directory is the first line of ossec-init.conf
-        directory = f.readline().split("=")[1][:-1].replace('"', "")
-
-    try:
-        process_list = check_output(["tac", "{0}/bin/.process_list".format(directory)]).split('\n')
-    except:
-        return False
-    for process in process_list:
-        if process == 'CLUSTER_DAEMON=""':
-            return False
-        elif process == 'CLUSTER_DAEMON=wazuh-clusterd':
-            return True
-    return False
-
 # Common variables based on ossec path (/var/ossec by default)
 set_paths_based_on_ossec()

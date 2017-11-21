@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import cut_array, sort_array, search_array, md5, send_request
+from wazuh.utils import cut_array, sort_array, search_array, md5
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh.InputValidator import InputValidator 
@@ -27,6 +27,9 @@ from stat import S_IRWXG, S_IRWXU
 from sys import version
 from difflib import unified_diff
 import re
+import socket
+import asyncore
+import asynchat
 # import the C accelerated API of ElementTree
 try:
     import xml.etree.cElementTree as ET
@@ -48,6 +51,99 @@ try:
     compression = zipfile.ZIP_DEFLATED
 except:
     compression = zipfile.ZIP_STORED
+
+def check_cluster_status():
+    """
+    Function to check if cluster is enabled in ossec-control
+    """
+    with open("/etc/ossec-init.conf") as f:
+        # the osec directory is the first line of ossec-init.conf
+        directory = f.readline().split("=")[1][:-1].replace('"', "")
+
+    try:
+        process_list = check_output(["tac", "{0}/bin/.process_list".format(directory)]).split('\n')
+    except:
+        return False
+    for process in process_list:
+        if process == 'CLUSTER_DAEMON=""':
+            return False
+        elif process == 'CLUSTER_DAEMON=wazuh-clusterd':
+            return True
+    return False
+
+# import python-cryptography lib only if cluster is enabled at ossec-control
+if check_cluster_status():
+    from cryptography.fernet import Fernet
+
+
+class WazuhClusterClient(asynchat.async_chat):
+    def __init__(self, host, port, key, data, file):
+        asynchat.async_chat.__init__(self)
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connect((host, port))
+        self.data = data
+        self.file = file
+        self.set_terminator('\n')
+        self.response = ""
+        self.can_read = False
+        self.can_write = True
+        self.received_data = []
+        self.f = Fernet(key.encode('base64','strict'))
+
+    def handle_connect(self):
+        pass
+
+    def handle_close(self):
+        self.close()
+
+    def readable(self):
+        return self.can_read
+
+    def writable(self):
+        return self.can_write
+
+    def handle_error(self):
+        nil, t, v, tbinfo = asyncore.compact_traceback()
+        raise t(v)
+
+    def collect_incoming_data(self, data):
+        plain_data = self.f.decrypt(data)
+        self.received_data.append(plain_data)
+        if '\n' in plain_data:
+            self.found_terminator()
+
+    def found_terminator(self):
+        self.response = json.loads(''.join(self.received_data))
+        self.close()
+
+    def handle_write(self):
+        if self.file is not None:
+            msg = self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file) + '\n\t\t\n'
+        else:
+            msg = self.f.encrypt(self.data.encode()) + '\n\t\t\n'
+
+        i = 0
+        while i < len(msg): 
+            next_i = i+4096 if i+4096 < len(msg) else len(msg)
+            sent = self.send(msg[i:next_i])
+            if sent == 4096 or next_i == len(msg):
+                i = next_i
+
+
+        self.can_read=True
+        self.can_write=False
+
+
+def send_request(host, port, key, data, file=None):
+    error = 0
+    try:
+        client = WazuhClusterClient(host, int(port), key, data, file)
+        asyncore.loop()
+        data = client.response
+    except Exception as e:
+        error = 1
+        data = str(e)
+    return error, data
 
 
 def check_cluster_cmd(cmd):
@@ -72,6 +168,7 @@ def check_cluster_cmd(cmd):
         return False
 
     return True
+
 
 def check_cluster_config(config):
     iv = InputValidator()

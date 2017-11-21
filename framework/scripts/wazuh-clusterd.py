@@ -42,7 +42,6 @@ try:
     from wazuh.common import *
     from wazuh.cluster import *
     from wazuh.exception import WazuhException
-    from wazuh.utils import send_request
     from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))

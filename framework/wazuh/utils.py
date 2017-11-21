@@ -12,11 +12,6 @@ from datetime import datetime, timedelta
 import hashlib
 import json
 import stat
-import socket
-import asyncore
-import asynchat
-if common.check_cluster_status():
-    from cryptography.fernet import Fernet
 
 try:
     from subprocess import check_output
@@ -335,71 +330,3 @@ def md5(fname):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
-
-class WazuhClusterClient(asynchat.async_chat):
-    def __init__(self, host, port, key, data, file):
-        asynchat.async_chat.__init__(self)
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connect((host, port))
-        self.data = data
-        self.file = file
-        self.set_terminator('\n')
-        self.response = ""
-        self.can_read = False
-        self.can_write = True
-        self.received_data = []
-        self.f = Fernet(key.encode('base64','strict'))
-
-    def handle_connect(self):
-        pass
-
-    def handle_close(self):
-        self.close()
-
-    def readable(self):
-        return self.can_read
-
-    def writable(self):
-        return self.can_write
-
-    def handle_error(self):
-        nil, t, v, tbinfo = asyncore.compact_traceback()
-        raise t(v)
-
-    def collect_incoming_data(self, data):
-        plain_data = self.f.decrypt(data)
-        self.received_data.append(plain_data)
-        if '\n' in plain_data:
-            self.found_terminator()
-
-    def found_terminator(self):
-        self.response = json.loads(''.join(self.received_data))
-        self.close()
-
-    def handle_write(self):
-        if self.file is not None:
-            msg = self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file) + '\n\t\t\n'
-        else:
-            msg = self.f.encrypt(self.data.encode()) + '\n\t\t\n'
-
-        i = 0
-        while i < len(msg): 
-            next_i = i+4096 if i+4096 < len(msg) else len(msg)
-            sent = self.send(msg[i:next_i])
-            if sent == 4096 or next_i == len(msg):
-                i = next_i
-
-
-        self.can_read=True
-        self.can_write=False
-
-def send_request(host, port, key, data, file=None):
-    error = 0
-    try:
-        client = WazuhClusterClient(host, int(port), key, data, file)
-        asyncore.loop()
-        data = client.response
-    except Exception as e:
-        error = 1
-        data = str(e)
-    return error, data
