@@ -18,6 +18,7 @@ typedef struct authd_flags_t {
     unsigned short register_limit:1;
     unsigned short verify_host:1;
     unsigned short auto_negotiate:1;
+    unsigned short reuse_key:1;
 } authd_flags_t;
 
 typedef struct authd_config_t {

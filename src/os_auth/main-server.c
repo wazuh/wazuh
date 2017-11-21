@@ -83,6 +83,7 @@ static void help_authd()
     print_out("    -F <time>   Force insertion: remove old agent with same name or IP if its keepalive has more than <time> seconds.");
     print_out("    -F no       Disable force insertion.");
     print_out("    -r          Do not keep removed agents (purge).");
+    print_out("    -R          Reuse agent key if IP and Name already exists.");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
@@ -186,13 +187,14 @@ int main(int argc, char **argv)
         int clear_removed = 0;
         int force_insert = -2;
         int no_limit = 0;
+        int reuse_key = 0;
         const char *ciphers = NULL;
         const char *ca_cert = NULL;
         const char *server_cert = NULL;
         const char *server_key = NULL;
         unsigned short port = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfig:D:p:c:v:sx:k:PF:ar:L"), c != -1) {
+        while (c = getopt(argc, argv, "VdhtfRig:D:p:c:v:sx:k:PF:ar:L"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -307,6 +309,9 @@ int main(int argc, char **argv)
                     no_limit = 1;
                     break;
 
+                case 'R':
+                    reuse_key = 1;
+                    break;
                 default:
                     help_authd();
                     break;
@@ -385,6 +390,14 @@ int main(int argc, char **argv)
         if (no_limit) {
             config.flags.register_limit = 0;
         }
+
+        if (reuse_key) {
+            config.flags.reuse_key = 1;
+        }
+
+        // Don't allow reuse_key and force_insert same time
+        if(config.flags.reuse_key && config.flags.force_insert)
+            config.flags.reuse_key = 0;  
     }
 
     /* Exit here if test config is set */
@@ -620,6 +633,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *id_exist = NULL;
     char buf[4096 + 1];
     int index;
+    int reuse_key_pair_match = 0;
+    int reuse_key_index_ip = -1;
+    int reuse_key_index_name = -1;
 
     authd_sigblock();
 
@@ -678,6 +694,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             continue;
         }
 
+        reuse_key_pair_match = 0;
+        reuse_key_index_ip = -1;
+        reuse_key_index_name = -1;
         parseok = 0;
         tmpstr = buf;
 
@@ -745,11 +764,13 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             if (config.flags.use_source_ip) {
                 if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
-                    if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
+                    if (!config.flags.reuse_key && config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
                         minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
                         add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist);
+                    } else if (config.flags.reuse_key && !config.flags.force_insert){
+                        reuse_key_index_ip = index;
                     } else {
                         pthread_mutex_unlock(&mutex_keys);
                         merror("Duplicated IP %s", srcip);
@@ -781,11 +802,17 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             /* Check for duplicated names */
 
             if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
-                if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
+                if(config.flags.reuse_key && !config.flags.force_insert && config.flags.use_source_ip){
+                    reuse_key_index_name = index;
+                    if(reuse_key_index_ip >= 0 && reuse_key_index_name == reuse_key_index_ip){
+                        reuse_key_pair_match = 1;
+                    }
+                } else if (!config.flags.reuse_key && config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                     id_exist = keys.keyentries[index]->id;
                     minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
                     add_backup(keys.keyentries[index]);
                     OS_DeleteKey(&keys, id_exist);
+
                 } else {
                     strncpy(fname, agentname, 2048);
 
@@ -825,23 +852,68 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 close(client.socket);
                 continue;
             }
+            /* Reuse key: Checks */ 
+            if(config.flags.reuse_key && !reuse_key_pair_match && config.flags.use_source_ip){
+                // IP is already present but agent name does not match
+                if(reuse_key_index_ip >= 0 && reuse_key_index_name < 0){
+                    pthread_mutex_unlock(&mutex_keys);
+                    merror("IP already exists but agent name does not match. Can't reuse key.");
+                    snprintf(response, 2048, "ERROR: IP already exists but agent name does not match. Can't reuse key.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    continue;
+                }
+                // Agent name is already present but IP does not match
+                if(reuse_key_index_name >= 0 && reuse_key_index_ip < 0){
+                    pthread_mutex_unlock(&mutex_keys);
+                    merror("Agent name already exists but IP does not match. Can't reuse key.");
+                    snprintf(response, 2048, "ERROR: Agent name already exists but IP does not match. Can't reuse key.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    continue;
+                }
+                // Name and IP address already exists but they belong to different agents
+                if(reuse_key_index_ip != reuse_key_index_name){
+                    pthread_mutex_unlock(&mutex_keys);
+                    merror("Name and IP address exist for different agents. Can't reuse key.");
+                    snprintf(response, 2048, "ERROR: Name and IP address exist for different agents. Can't reuse key.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    continue;
+                }
+            }
 
             /* Add the new agent */
-
-            if (index = OS_AddNewAgent(&keys, NULL, agentname, config.flags.use_source_ip ? srcip : NULL, NULL), index < 0) {
-                pthread_mutex_unlock(&mutex_keys);
-                merror("Unable to add agent: %s (internal error)", agentname);
-                snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
-                SSL_write(ssl, response, strlen(response));
-                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                SSL_write(ssl, response, strlen(response));
-                SSL_free(ssl);
-                close(client.socket);
-                continue;
+            if(!reuse_key_pair_match){
+                if (index = OS_AddNewAgent(&keys, NULL, agentname, config.flags.use_source_ip ? srcip : NULL, NULL), index < 0) {
+                    pthread_mutex_unlock(&mutex_keys);
+                    merror("Unable to add agent: %s (internal error)", agentname);
+                    snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    continue;
+                }
             }
 
             snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, config.flags.use_source_ip ? srcip : "any", keys.keyentries[index]->key);
-            minfo("Agent key generated for '%s' (requested by %s)", agentname, srcip);
+
+            if(reuse_key_pair_match)        
+                minfo("Agent key reused for '%s' (requested by %s)", agentname, srcip);
+            else
+                minfo("Agent key generated for '%s' (requested by %s)", agentname, srcip);
+
             ret = SSL_write(ssl, response, strlen(response));
 
             if (ret < 0) {
