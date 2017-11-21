@@ -7,6 +7,9 @@ from sys import path, argv, exit
 from os.path import dirname, basename
 import argparse
 from itertools import chain
+import logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
+
 parser = argparse.ArgumentParser(description="Wazuh Cluster control interface")
 
 push_group = parser.add_argument_group('Push updates')
