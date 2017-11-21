@@ -65,8 +65,8 @@ def _get_file_status(file_list, manager):
     all_files = get_file_status_all_managers(file_list, manager)
     print pprint_table(data=all_files, headers=["Manager","Filename","Status"], show_header=True)
 
-def _get_agents_status(agent_list):
-    print pprint_table(data=get_agents_status(agent_list), headers=["ID", "Name", "Status", "Manager hostname"], show_header=True)
+def _get_agents_status():
+    print pprint_table(data=get_agents_status(), headers=["ID", "IP", "Name", "Status", "Manager hostname"], show_header=True)
 
 if __name__ == '__main__':
     # Initialize framework
@@ -81,4 +81,4 @@ if __name__ == '__main__':
         _get_file_status(args.files, args.manager)
 
     elif args.agents is not None:
-        _get_agents_status(args.agents)
+        _get_agents_status()

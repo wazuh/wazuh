@@ -253,14 +253,54 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
 
     return cluster_dict
 
-def get_agents_status(agent_list):
+def get_agents_status():
     """
     Return a nested list where each element has the following structure
     [agent_id, agent_name, agent_status, manager_hostname]
     """
-    return [[agent['id'], agent['name'], agent['status'], agent['manager_host']] 
-            for agent in Agent.get_agents_overview()['items']
-            if int(agent['id']) > 0]
+    agent_list = []
+    for agent in Agent.get_agents_overview()['items']:
+        if int(agent['id']) == 0:
+            continue
+        try:
+            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['manager_host']])
+        except KeyError:
+            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "None"])
+
+    return agent_list
+
+
+def get_agent_status_json():
+    """
+    Return a nested list where each element has the following structure
+    {
+        manager: {
+            status: [
+                id: name
+            ]
+        }
+    }
+    """
+    agents = get_agents_status()
+    cluster_dict = {}
+    for agent_id, agent_ip, name, status, manager in agents:
+        try:
+            cluster_dict[manager].append({
+                'id': agent_id,
+                'ip': agent_ip,
+                'name': name,
+                'status': status
+            })
+        except KeyError:
+            cluster_dict[manager] = [{
+                'id': agent_id,
+                'ip': agent_ip,
+                'name': name,
+                'status': status
+            }]
+
+    return cluster_dict
+
 
 def get_token():
     config_cluster = read_config()
