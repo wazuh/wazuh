@@ -97,7 +97,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.handle_write()
 
     def handle_write(self):
-        msg = self.f.encrypt(self.data + '\n')
+        msg = self.f.encrypt(self.data) + '\n'
         i = 0
         while i < len(msg): 
             next_i = i+4096 if i+4096 < len(msg) else len(msg)

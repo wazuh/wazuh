@@ -108,13 +108,10 @@ class WazuhClusterClient(asynchat.async_chat):
         raise t(v)
 
     def collect_incoming_data(self, data):
-        plain_data = self.f.decrypt(data)
-        self.received_data.append(plain_data)
-        if '\n' in plain_data:
-            self.found_terminator()
+        self.received_data.append(data)
 
     def found_terminator(self):
-        self.response = json.loads(''.join(self.received_data))
+        self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
         self.close()
 
     def handle_write(self):
@@ -127,8 +124,7 @@ class WazuhClusterClient(asynchat.async_chat):
         while i < len(msg): 
             next_i = i+4096 if i+4096 < len(msg) else len(msg)
             sent = self.send(msg[i:next_i])
-            if sent == 4096 or next_i == len(msg):
-                i = next_i
+            i += sent
 
 
         self.can_read=True
