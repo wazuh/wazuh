@@ -307,7 +307,6 @@ uint32_t get_flag_mask(cJSON * flags) {
         else if (strcmp(flag, "IN_OPEN") == 0) mask |= IN_OPEN;
         else if (strcmp(flag, "IN_ALL_EVENTS") == 0) mask |= IN_ALL_EVENTS;
         else if (strcmp(flag, "IN_DONT_FOLLOW") == 0) mask |= IN_DONT_FOLLOW;
-        else if (strcmp(flag, "IN_EXCL_UNLINK") == 0) mask |= IN_EXCL_UNLINK;
         else if (strcmp(flag, "IN_MASK_ADD") == 0) mask |= IN_MASK_ADD;
         else if (strcmp(flag, "IN_ONESHOT") == 0) mask |= IN_ONESHOT;
         else if (strcmp(flag, "IN_ONLYDIR") == 0) mask |= IN_ONLYDIR;
