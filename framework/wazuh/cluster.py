@@ -391,11 +391,11 @@ def get_agents_status():
     [agent_id, agent_name, agent_status, manager_hostname]
     """
     agent_list = []
-    for agent in Agent.get_agents_overview()['items']:
+    for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']})['items']:
         if int(agent['id']) == 0:
             continue
         try:
-            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['manager_host']])
+            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
         except KeyError:
             agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "None"])
 
