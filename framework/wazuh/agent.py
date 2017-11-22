@@ -1343,7 +1343,7 @@ class Agent:
         ar_path = "{0}/ar.conf".format(common.shared_path, entry)
         with open(ar_path, 'rb') as f:
             hash_ar = hashlib.md5(f.read()).hexdigest()
-        data.append({'filename': "../ar.conf", 'hash': hash_ar})
+        data.append({'filename': "ar.conf", 'hash': hash_ar})
 
         if search:
             data = search_array(data, search['value'], search['negation'])
