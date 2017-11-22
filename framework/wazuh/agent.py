@@ -631,7 +631,7 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None):
         """
         Gets a list of available agents with basic attributes.
 
@@ -642,6 +642,7 @@ class Agent:
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
@@ -657,9 +658,22 @@ class Agent:
         fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive',
                   'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
                   'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add'}
-        select = ["id", "name", "ip", "last_keepalive", "os_name", "os_version", "os_platform", "version", "manager_host", "date_add"]
-        search_fields = ["id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host"]
+        valid_select_fields = {"id", "name", "ip", "last_keepalive", "os_name", "os_version", "node_name",
+                               "os_platform", "version", "manager_host", "date_add", 'status'}
+        select_fields = {'id', 'version', 'last_keepalive'}
+        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host"}
         request = {}
+        if select:
+            if not set(select['fields']).issubset(valid_select_fields):
+                incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
+                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
+                                    format(valid_select_fields, incorrect_fields))
+            select_fields |= set(select['fields'])
+        else:
+            valid_select_fields.remove('node_name') # only return node_type if asked
+            select_fields = valid_select_fields
+
+        set_select_fields = set(select['fields']) if select else select_fields
 
         if status != "all":
             limit_seconds = 600*3 + 30
@@ -730,54 +744,60 @@ class Agent:
             request['offset'] = offset
             request['limit'] = limit
 
-        conn.execute(query.format(','.join(select)), request)
+        conn.execute(query.format(','.join(select_fields)), request)
 
         data['items'] = []
 
         for tuple in conn:
             data_tuple = {}
-            os = {}
-            pending = True
+            lastKeepAlive = 0
+            for field, value in zip(select_fields, tuple):
+                os = {}
+                pending = True
 
-            if tuple[0] != None:
-                data_tuple['id'] = str(tuple[0]).zfill(3)
-            if tuple[1] != None:
-                data_tuple['name'] = tuple[1]
-            if tuple[2] != None:
-                data_tuple['ip'] = tuple[2]
+                if value != None and field == 'id':
+                    data_tuple['id'] = str(value).zfill(3)
+                if value != None and field == 'name' and field in set_select_fields:
+                    data_tuple['name'] = value
+                if value != None and field == 'ip' and field in set_select_fields:
+                    data_tuple['ip'] = value
 
-            if tuple[3] != None:
-                lastKeepAlive = tuple[3]
-            else:
-                lastKeepAlive = 0
+                if value != None and field == 'last_keepalive' and field in set_select_fields:
+                    lastKeepAlive = value
 
-            if tuple[4] != None:
-                os['name'] = tuple[4]
-            if tuple[5] != None:
-                os['version'] = tuple[5]
-            if tuple[6] != None:
-                os['platform'] = tuple[6]
+                if value != None and field == 'os_name' and field in set_select_fields:
+                    os['name'] = value
+                if value != None and field == 'os_version' and field in set_select_fields:
+                    os['version'] = value
+                if value != None and field == 'os_platform' and field in set_select_fields:
+                    os['platform'] = value
 
-            if tuple[7] != None:
-                data_tuple['version'] = tuple[7]
-                pending = False if data_tuple['version'] != "" else True
+                if value != None and field == 'version' and field in set_select_fields:
+                    data_tuple['version'] = value
+                    pending = False if data_tuple['version'] != "" else True
 
-            if tuple[8] != None:
-                data_tuple['manager_host'] = tuple[8]
+                if value != None and field == 'manager_host' and field in set_select_fields:
+                    data_tuple['manager_host'] = value
 
-            if tuple[9] != None:
-                data_tuple['dateAdd'] = tuple[9]
+                if value != None and field == 'date_add' and field in set_select_fields:
+                    data_tuple['dateAdd'] = value
 
-            if os:
-                os_no_empty = dict((k, v) for k, v in os.items() if v)
-                if os_no_empty:
-                    data_tuple['os'] = os_no_empty
+                if value != None and field == 'node_name' and field in set_select_fields:
+                    data_tuple['node_name'] = value
 
-            if data_tuple['id'] == "000":
-                data_tuple['status'] = "Active"
+                if os:
+                    os_no_empty = dict((k, v) for k, v in os.items() if v)
+                    if os_no_empty:
+                        data_tuple['os'] = os_no_empty
+
+            if 'status' in set_select_fields:
+                if data_tuple['id'] == "000":
+                    data_tuple['status'] = "Active"
+                else:
+                    data_tuple['status'] = Agent.calculate_status(lastKeepAlive, pending)
+
+            if 'ip' in set_select_fields and data_tuple['id'] == "000":
                 data_tuple['ip'] = '127.0.0.1'
-            else:
-                data_tuple['status'] = Agent.calculate_status(lastKeepAlive, pending)
 
             data['items'].append(data_tuple)
 
