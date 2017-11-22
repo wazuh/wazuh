@@ -42,6 +42,7 @@ All notable changes to this project will be documented in this file.
 - Added integration with Virustotal.
 - Added timeout option for TCP sockets in Remoted and Agentd.
 - Added option to start the manager after installing.
+- Added a cluster of managers (`wazuh-clusterd`) and a script to control it (`cluster_control`).
 
 ### Changed
 
