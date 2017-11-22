@@ -74,3 +74,4 @@ r:HKLM\SOFTWARE\Microsoft\WindowsNT\CurrentVersion\Winlogon -> AutoAdminLogon ->
 
 [Winpcap packet filter driver found {PCI_DSS: 10.6.1}] [any] []
 f:%WINDIR%\System32\drivers\npf.sys;
+f:%WINDIR%\Sysnative\drivers\npf.sys;

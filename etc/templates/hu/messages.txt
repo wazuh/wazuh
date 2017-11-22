@@ -84,8 +84,16 @@ yessyslog="Távoli rendszernaplózás bekapcsolva"
 # Part 3.4/3.5
 readlogs="A konfiguráció beállítása a következő naplók elemzéséhez:"
 
-# Part 5
+# Part 3.7
+runauthd="Szeretné futtatni az Auth szolgáltatást?"
+norunauthd="Nem működik Auth szolgáltatás"
+yesrunauthd="Auth szolgáltatás futtatása"
+
+# Part 4
 installing="A rendszer telepítése"
+startwazuh="Szeretné elindítani a Wazuh-ot a telepítés után?"
+nowazuhstart="A Wazuh nem indul el a telepítés végén."
+yeswazuhstart="A Wazuh a telepítés végén kezdődik."
 runningmake="A Make fájl futtatása"
 
 # Final

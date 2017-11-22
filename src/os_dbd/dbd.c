@@ -33,12 +33,6 @@ void OS_DBD(DBConfig *db_config)
     os_calloc(1, sizeof(file_queue), fileq);
     Init_FileQueue(fileq, p, 0);
 
-    /* Create location hash */
-    db_config->location_hash = OSHash_Create();
-    if (!db_config->location_hash) {
-        merror_exit(MEM_ERROR, errno, strerror(errno));
-    }
-
     /* Get maximum ID */
     db_config->alert_id = OS_SelectMaxID(db_config);
     db_config->alert_id++;
@@ -61,4 +55,3 @@ void OS_DBD(DBConfig *db_config)
         FreeAlertData(al_data);
     }
 }
-

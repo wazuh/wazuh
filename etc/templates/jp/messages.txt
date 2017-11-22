@@ -89,8 +89,16 @@ yessyslog="リモート syslog を有効にしました"
 # Part 3.4/3.5
 readlogs="以下のログを解析するための設定を準備しています:"
 
-# Part 5
+# Part 3.7
+runauthd="認証サービスを実行しますか？"
+norunauthd="認証サービスを実行していない"
+yesrunauthd="実行中の認証サービス"
+
+# Part 4
 installing="システムをインストールします"
+startwazuh="インストール後にWazuhを開始しますか？"
+nowazuhstart="Wazuhはインストールの最後に開始されません。"
+yeswazuhstart="Wazuhはインストールの最後に始まります。"
 runningmake="Makefile を実行します"
 
 

@@ -18,6 +18,7 @@
 /* Global variables */
 keystore keys;
 remoted logr;
+char* node_name;
 
 
 /* Handle remote connections */

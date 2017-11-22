@@ -105,6 +105,48 @@ WriteOpenSCAP()
     fi
 }
 
+##########
+# InstallOpenSCAPFiles()
+##########
+InstallOpenSCAPFiles()
+{
+    cd ..
+    OPENSCAP_FILES_PATH=$(GetTemplate "openscap.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    cd ./src
+    if [ "$OPENSCAP_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
+        echo "SCAP security policies not available for this OS version."
+    else
+        echo "Installing SCAP security policies..."
+        OPENSCAP_FILES=$(cat .$OPENSCAP_FILES_PATH)
+        for file in $OPENSCAP_FILES; do
+            if [ -f "../wodles/oscap/content/$file" ]; then
+                ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/$file ${PREFIX}/wodles/oscap/content
+            else
+                echo "ERROR: SCAP security policy not found: ./wodles/oscap/content/$file"
+            fi
+        done
+    fi
+}
+
+##########
+# GenerateAuthCert()
+##########
+GenerateAuthCert()
+{
+    # Generation auto-signed certificate if not exists
+    if [ ! -f "${INSTALLDIR}/etc/sslmanager.key" ] && [ ! -f "${INSTALLDIR}/etc/sslmanager.cert" ]; then
+        if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
+            if type openssl >/dev/null 2>&1; then
+                echo "Generating self-signed certificate for ossec-authd..."
+                openssl req -x509 -batch -nodes -days 365 -newkey rsa:2048 -subj "/C=US/ST=California/CN=Wazuh/" -keyout ${INSTALLDIR}/etc/sslmanager.key -out ${INSTALLDIR}/etc/sslmanager.cert
+                chmod 640 ${INSTALLDIR}/etc/sslmanager.key
+                chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
+            else
+                echo "ERROR: OpenSSL not found. Cannot generate certificate for ossec-authd."
+            fi
+        fi
+    fi
+}
 
 ##########
 # WriteLogs()
@@ -226,8 +268,8 @@ WriteAgent()
         fi
       fi
     fi
-    echo "    <notify_time>10</notify_time>" >> $NEWCONFIG
-    echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
+    echo "    <notify_time>60</notify_time>" >> $NEWCONFIG
+    echo "    <time-reconnect>300</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -526,7 +568,7 @@ InstallCommon(){
         PREFIX=${INSTALLDIR}
     fi
 
-    if [ ${DIST_NAME} = "SunOS" ]; then
+    if [ ${DIST_NAME} = "sunos" ]; then
         INSTALL="ginstall"
     elif [ ${DIST_NAME} = "HP-UX" ]; then
         INSTALL="/usr/local/coreutils/bin/install"
@@ -572,11 +614,7 @@ InstallCommon(){
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
 
-    if [ -d "../wodles/oscap/content" ]; then
-        if [ $(ls ../wodles/oscap/content | wc -l) -gt 0 ]; then
-            ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/* ${PREFIX}/wodles/oscap/content
-        fi
-    fi
+	InstallOpenSCAPFiles
 
 	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
 
@@ -649,7 +687,6 @@ InstallLocal(){
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rootcheck
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
 
     ${INSTALL} -m 0750 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-analysisd ${PREFIX}/bin
@@ -679,11 +716,9 @@ InstallLocal(){
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b update/ruleset/RULESET_VERSION ${PREFIX}/ruleset/VERSION
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
-    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/rootcheck
-    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
 
-    ${MAKEBIN} -C ../framework install PREFIX=${PREFIX}
+    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX}
 
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
@@ -706,7 +741,7 @@ InstallLocal(){
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
-
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
 
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
@@ -716,20 +751,37 @@ InstallLocal(){
     chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
 }
 
+TransferShared() {
+    rm -f ${PREFIX}/etc/shared/merged.mg
+    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec cp -pf {} ${PREFIX}/backup/shared \;
+    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec mv -f {} ${PREFIX}/etc/shared/default \;
+}
+
 InstallServer(){
 
     InstallLocal
 
+    ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
+    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
+
+    TransferShared
+
     ${INSTALL} -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
 
-    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-groups
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
 
-    rm -f ${PREFIX}/etc/shared/merged.mg
+    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
+
+    if [ ! -f ${PREFIX}/etc/shared/default/agent.conf ]; then
+        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
+    fi
+
+    GenerateAuthCert
 }
 
 InstallAgent(){

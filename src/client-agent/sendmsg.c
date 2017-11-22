@@ -11,13 +11,15 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+static pthread_mutex_t send_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Send a message to the server */
 int send_msg(const char *msg, ssize_t msg_length)
 {
     ssize_t msg_size;
-    uint32_t length;
     char crypt_msg[OS_MAXSTR + 1];
-    int recv_b;
+    int retval;
+    int error;
 
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, 0);
     if (msg_size == 0) {
@@ -27,19 +29,21 @@ int send_msg(const char *msg, ssize_t msg_length)
 
     /* Send msg_size of crypt_msg */
     if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
-        recv_b = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
+        retval = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
+        error = errno;
     } else {
-        length = wnet_order(msg_size);
-        OS_SendTCPbySize(agt->sock, sizeof(length), (char *)&length);
-        recv_b = OS_SendTCPbySize(agt->sock, msg_size, crypt_msg);
+        w_mutex_lock(&send_mutex);
+        retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
+        error = errno;
+        w_mutex_unlock(&send_mutex);
     }
 
-    if (recv_b < 0) {
-        merror(SEND_ERROR, "server", strerror(errno));
+    if (!retval) {
+        agent_state.msg_sent++;
+    } else {
+        merror(SEND_ERROR, "server", strerror(error));
         sleep(1);
-        return (-1);
     }
 
-    agent_state.msg_sent++;
-    return (0);
+    return retval;
 }

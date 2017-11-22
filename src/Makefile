@@ -67,6 +67,7 @@ ifeq (${uname_S},SunOS)
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
 		OSSEC_LDFLAGS+=-pthread -lrt
+		uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 else
 ifeq (${uname_S},Darwin)
 		DEFINES+=-DDarwin
@@ -429,6 +430,7 @@ BUILD_SERVER+=ossec-makelists
 BUILD_SERVER+=ossec-dbd
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
+BUILD_SERVER+=wazuh-framework
 
 BUILD_AGENT+=ossec-agentd
 BUILD_AGENT+=agent-auth
@@ -514,7 +516,15 @@ else
 ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure hpux-ia64-gcc && ${MAKE} build_libs
 else
+ifeq (${uname_S},SunOS)
+ifeq ($(uname_M),i86pc)
+	cd ${EXTERNAL_OPENSSL} && ./Configure solaris-x86-gcc && ${MAKE} build_libs
+else
+	cd ${EXTERNAL_OPENSSL} && ./Configure solaris-sparcv9-gcc && ${MAKE} build_libs
+endif
+else
 	cd ${EXTERNAL_OPENSSL} && ./config && ${MAKE} build_libs
+endif
 endif
 endif
 endif
@@ -638,7 +648,7 @@ wazuh_db/%.o: wazuh_db/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-analysisd\" -c $^ -o $@
 
 ${EXTERNAL_SQLITE}sqlite3.o: ${EXTERNAL_SQLITE}sqlite3.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -w -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -w -c $^ -o $@ -fPIC
 
 #### Config ##########
 
@@ -1054,6 +1064,12 @@ wmodulesd_o := $(wmodulesd_c:.c=.o)
 wazuh-modulesd: ${wmodulesd_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
+### wazuh-framework ##
+
+wazuh-framework: ${sqlite_o} ${shared_o}
+	${MAKE} -C ../framework build PREFIX=${PREFIX}
+
+
 ####################
 #### test ##########
 ####################
@@ -1188,7 +1204,7 @@ win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.c addagent/validat
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows clean-config
+clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1233,6 +1249,9 @@ clean-internals:
 	rm -f ${integrator_o} ossec-integratord
 	rm -f ${wmodulesd_o} ${wmodules_o} wazuh-modulesd wmodules.a
 	rm -f ${sqlite_o} sqlite.a
+
+clean-framework:
+	${MAKE} -C ../framework clean
 
 clean-windows:
 	rm -f win32/LICENSE.txt

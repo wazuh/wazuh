@@ -84,8 +84,16 @@ yessyslog="Externe systeem logging ingeschakeld"
 # Part 3.4/3.5
 readlogs="Systeem instellen om de volgende logbestanden te controleren:"
 
-# Part 5
+# Part 3.7
+runauthd="Wilt u de Auth-service uitvoeren?"
+norunauthd="Niet uitgevoerd Auth service"
+yesrunauthd="Starten Auth service"
+
+# Part 4
 installing="Bezig met installeren van het systeem"
+startwazuh="Wilt u na de installatie Wazuh starten?"
+nowazuhstart="Wazuh start niet aan het einde van de installatie."
+yeswazuhstart="Wazuh start aan het einde van de installatie."
 runningmake="Uitvoeren van Makefile"
 
 # Final

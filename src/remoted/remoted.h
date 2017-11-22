@@ -76,15 +76,16 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length);
 
 int check_keyupdate(void);
 
-void key_lock(void);
+void key_lock_read(void);
+
+void key_lock_write(void);
 
 void key_unlock(void);
-
-void keyupdate_init(void);
 
 /** Global variables **/
 
 extern keystore keys;
 extern remoted logr;
+extern char* node_name;
 
 #endif /* __LOGREMOTE_H */

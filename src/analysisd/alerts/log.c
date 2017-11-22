@@ -257,7 +257,6 @@ void OS_LogOutput(Eventinfo *lf)
             printf("%.1256s\n", *lasts);
             lasts++;
         }
-        lf->generated_rule->last_events[0] = NULL;
     }
 
     printf("\n");
@@ -425,7 +424,6 @@ void OS_Log(Eventinfo *lf)
             fprintf(_aflog, "%.1256s\n", *lasts);
             lasts++;
         }
-        lf->generated_rule->last_events[0] = NULL;
     }
 
     fprintf(_aflog, "\n");

@@ -4,7 +4,7 @@
     <interval>1d</interval>
     <scan-on-start>yes</scan-on-start>
 
-    <content type="xccdf" path="ssg-fedora-ds.xml">
+    <content type="xccdf" path="ssg-fedora-24-ds.xml">
       <profile>xccdf_org.ssgproject.content_profile_common</profile>
     </content>
   </wodle>

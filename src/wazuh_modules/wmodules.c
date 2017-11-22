@@ -30,9 +30,26 @@ void wm_add(wmodule *module) {
 // Check general configuration
 
 void wm_check() {
-    wmodule *i;
+    wmodule *i = wmodules;
     wmodule *j;
     wmodule *next;
+
+    // Discard empty configurations
+
+    while (i) {
+        if (i->context) {
+            i = i->next;
+        } else {
+            next = i->next;
+            free(i);
+
+            if (i == wmodules) {
+                wmodules = next;
+            }
+
+            i = next;
+        }
+    }
 
     // Check that a configuration exists
 

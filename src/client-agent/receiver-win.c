@@ -15,6 +15,7 @@
 #include "os_net/os_net.h"
 #include "agentd.h"
 
+static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
 
 /* Receive events from the server */
 void *receiver_thread(__attribute__((unused)) void *none)
@@ -46,6 +47,11 @@ void *receiver_thread(__attribute__((unused)) void *none)
     memset(file_sum, '\0', 34);
 
     while (1) {
+        /* Run timeout commands */
+        if (agt->execdq >= 0) {
+            WinTimeoutRun();
+        }
+
         /* sock must be set */
         if (agt->sock == -1) {
             sleep(5);
@@ -55,8 +61,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
         FD_ZERO(&fdset);
         FD_SET(agt->sock, &fdset);
 
-        /* Wait for 30 seconds */
-        selecttime.tv_sec = 30;
+        /* Wait for 1 second */
+        selecttime.tv_sec = 1;
         selecttime.tv_usec = 0;
 
         /* Wait with a timeout for any descriptor */
@@ -85,8 +91,11 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 // Manager disconnected or error
 
                 if (recv_b <= 0) {
+                    if (recv_b < 0) {
+                        merror("Receiver: %s [%d]", strerror(errno), errno);
+                    }
+
                     update_status(GA_STATUS_NACTIVE);
-                    merror("Receiver: %s [%d]", strerror(errno), errno);
                     merror(LOST_ERROR);
                     os_setwait();
                     start_agent(0);
@@ -131,11 +140,6 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 /* This is the only thread that modifies it */
                 available_server = (int)time(NULL);
                 update_ack(available_server);
-
-                /* Run timeout commands */
-                if (agt->execdq >= 0) {
-                    WinTimeoutRun(available_server);
-                }
 
                 /* If it is an active response message */
                 if (strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0) {
@@ -246,6 +250,10 @@ void *receiver_thread(__attribute__((unused)) void *none)
                             final_file = strrchr(file, '/');
                             if (final_file) {
                                 if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
+                                    if (cldir_ex_ignore(SHAREDCFG_DIR, IGNORE_LIST)) {
+                                        mwarn("Could not clean up shared directory.");
+                                    }
+
                                     UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
 
                                     if (!verifyRemoteConf()) {

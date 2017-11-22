@@ -84,8 +84,16 @@ yessyslog="Fonctionnalité syslog activé"
 # Part 3.4/3.5
 readlogs="Mise en place de la configuration pour analyser les logs suivants :"
 
-# Part 5
+# Part 3.7
+runauthd="Voulez-vous exécuter le service Auth?"
+norunauthd="Ne pas exécuter le service Auth"
+yesrunauthd="Exécution du service Auth"
+
+# Part 4
 installing="Installation du système"
+startwazuh="Voulez-vous démarrer Wazuh après l'installation?"
+nowazuhstart="Wazuh ne démarrera pas à la fin de l'installation."
+yeswazuhstart="Wazuh démarrera pas à la fin de l'installation."
 runningmake="Exécution du Makefile"
 
 # Final

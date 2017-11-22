@@ -13,7 +13,7 @@
 #include "os_net/os_net.h"
 #include <pthread.h>
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__MACH__)
 #define HOST_NAME_MAX 64
 #endif
 
@@ -192,6 +192,12 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
                 } else {
                     fprintf(fp, "#\"manager_hostname\":%s\n", hostname);
                 }
+
+                /* Write Cluster's node name to the agent-info file */
+                char nodename[OS_MAXSTR];
+
+                snprintf(nodename, OS_MAXSTR - 1, "#\"node_name\":%s\n", node_name);
+                fprintf(fp, "%s", nodename);
 
                 fclose(fp);
             } else {
@@ -659,7 +665,6 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
         if ((data = OSHash_Get(pending_data, pending_queue[queue_j]))) {
             strncpy(agent_id, pending_queue[queue_j], 8);
             strncpy(msg, data->message, OS_SIZE_1024);
-            data->changed = 0;
         } else {
             merror("Couldn't get pending data from hash table for agent ID '%s'.", pending_queue[queue_j]);
             *agent_id = '\0';
@@ -674,6 +679,11 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
         if (*agent_id) {
             read_controlmsg(agent_id, msg);
         }
+
+        // Mark message as dispatched
+        w_mutex_lock(&lastmsg_mutex);
+        data->changed = 0;
+        w_mutex_unlock(&lastmsg_mutex);
     }
 
     return (NULL);

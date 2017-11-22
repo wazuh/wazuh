@@ -74,14 +74,14 @@
     <if_sid>35002</if_sid>
     <id>^5|^6</id>
     <description>Squid: 500/600 error code (server error).</description>
-    <group>pci_dss_10.6.1,</group>
+    <group>pci_dss_10.6.1,gpg13_4.3,</group>
   </rule>
 
   <rule id="35010" level="4">
     <if_sid>35009</if_sid>
     <id>^503</id>
     <description>Squid: 503 error code (server unavailable).</description>
-    <group>pci_dss_10.6.1,</group>
+    <group>pci_dss_10.6.1,gpg13_4.3,</group>
   </rule>
 
   <!-- Special rules for 403/404 errors -->
@@ -178,7 +178,7 @@
     <same_source_ip />
     <description>Squid: Multiple attempts to access a worm/trojan/virus </description>
     <description>related web site. System probably infected.</description>
-    <group>pci_dss_10.2.4,pci_dss_11.4,</group>
+    <group>pci_dss_10.2.4,pci_dss_11.4,gpg13_4.2,</group>
   </rule>
 
   <rule id="35057" level="10" frequency="$SQUID_FREQ" timeframe="240">

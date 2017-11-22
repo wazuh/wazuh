@@ -86,8 +86,16 @@ yessyslog="Syslog habilitado"
 # Parte 3.4/3.5
 readlogs="Ajustando a configuração para analisar os seguintes logs:"
 
-# Parte 5
+# Part 3.7
+runauthd="Deseja habilitar Authd?"
+norunauthd="Auth desabilitado"
+yesrunauthd="Auth habilitado"
+
+# Parte 4
 installing="Instalando o sistema"
+startwazuh="Deseja iniciar o Wazuh após a instalação?"
+nowazuhstart="Wazuh não iniciará no final da instalação."
+yeswazuhstart="Wazuh começará no final da instalação."
 runningmake="Executando o Makefile"
 
 # Final

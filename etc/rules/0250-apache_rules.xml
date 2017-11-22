@@ -37,7 +37,7 @@
     <match>exit signal Segmentation Fault</match>
     <description>Apache: segmentation fault.</description>
     <info type="link">http://www.securityfocus.com/infocus/1633</info>
-    <group>service_availability,pci_dss_6.5.2,pci_dss_6.6,</group>
+    <group>service_availability,pci_dss_6.5.2,pci_dss_6.6,gpg13_4.14,</group>
   </rule>
 
   <rule id="30105" level="5">
@@ -67,21 +67,21 @@
     <if_sid>30102</if_sid>
     <match>authentication failed</match>
     <description>Apache: User authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
   </rule>
 
   <rule id="30109" level="9">
     <if_sid>30101</if_sid>
     <regex>user \S+ not found|user \S+ in realm \.* not found</regex>
     <description>Apache: Attempt to login using a non-existent user.</description>
-    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
   </rule>
 
   <rule id="30110" level="5">
     <if_sid>30101</if_sid>
     <match>authentication failure</match>
     <description>Apache: User authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
   </rule>
 
   <rule id="30112" level="0">
@@ -182,7 +182,7 @@
     <match>exit signal Segmentation Fault</match>
     <description>Apache: segmentation fault.</description>
     <info type="link">http://www.securityfocus.com/infocus/1633</info>
-    <group>service_availability,pci_dss_6.5.2,pci_dss_6.6,</group>
+    <group>service_availability,pci_dss_6.5.2,pci_dss_6.6,gpg13_4.14,</group>
   </rule>
 
   <rule id="30305" level="5">
@@ -212,14 +212,14 @@
     <if_sid>30302</if_sid>
     <id>AH01617|AH01807|AH01694|AH01695|AH02009|AH02010</id>
     <description>Apache: User authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
   </rule>
 
   <rule id="30309" level="5">
     <if_sid>30301</if_sid>
     <id>AH01618|AH01808|AH01790</id>
     <description>Apache: Attempt to login using a non-existent user.</description>
-    <group>invalid_login,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+    <group>invalid_login,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
   </rule>
 
   <rule id="30310" level="10" frequency="10" timeframe="160">
@@ -284,14 +284,14 @@
     <if_sid>30301</if_sid>
     <match>ModSecurity: Audit log:</match>
     <description>ModSecurity Audit log messages grouped</description>
-    <group>modsecurity,</group>
+    <group>modsecurity,gpg13_10.1,</group>
   </rule>
 
   <rule id="30411" level="7">
     <if_sid>30402</if_sid>
     <match>with code 403</match>
     <description>ModSecurity rejected a query</description>
-    <group>modsecurity,</group>
+    <group>modsecurity,gpg13_10.1,</group>
   </rule>
 
     <!--

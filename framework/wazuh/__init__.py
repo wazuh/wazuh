@@ -3,15 +3,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-# Check that requests module is installed
-from imp import find_module
-from wazuh.exception import WazuhException
-
-try:
-    find_module('requests')
-except ImportError:
-    raise WazuhException(4000)
-
 from wazuh import common
 from wazuh.utils import execute
 from wazuh.database import Connection
@@ -26,7 +17,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '3.0.0-beta10'
+__version__ = '3.0.0-beta12'
 
 
 msg = "\n\nPython 2.7 or newer not found."
@@ -98,6 +89,7 @@ class Wazuh:
                             # It could mean that get_init is True and ossec_path is not used.
                             if self.path == '/var/ossec':
                                 self.path = match.group(2)
+                                common.set_paths_based_on_ossec(self.path)
                         elif key == "date":
                             self.installation_date = match.group(2)
                         elif key == "type":

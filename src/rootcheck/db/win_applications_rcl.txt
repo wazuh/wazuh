@@ -76,6 +76,7 @@ f:\Documents and Settings\All Users\Start Menu\Programs\kazaa;
 f:\Documents and Settings\All Users\DESKTOP\Kazaa Media Desktop.lnk;
 f:\Documents and Settings\All Users\DESKTOP\Kazaa Promotions.lnk;
 f:%WINDIR%\System32\Cd_clint.dll;
+f:%WINDIR%\Sysnative\Cd_clint.dll;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\KAZAA;
 r:HKEY_CURRENT_USER\SOFTWARE\KAZAA;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\MICROSOFT\WINDOWS\CURRENTVERSION\RUN\KAZAA;
@@ -120,6 +121,7 @@ f:\Program Files\ExploreAnywhere\SpyBuddy\sb32mon.exe;
 f:\Program Files\ExploreAnywhere\SpyBuddy;
 f:\Program Files\ExploreAnywhere;
 f:%WINDIR%\System32\sysicept.dll;
+f:%WINDIR%\Sysnative\sysicept.dll;
 r:HKEY_LOCAL_MACHINE\Software\ExploreAnywhere Software\SpyBuddy;
 
 [Spyware - InternetOptimizer {PCI_DSS: 11.4}] [any] []

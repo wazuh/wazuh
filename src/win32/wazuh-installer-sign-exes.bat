@@ -6,3 +6,5 @@ signtool.exe sign /a /tr http://rfc3161timestamp.globalsign.com/advanced /td SHA
 signtool.exe sign /a /tr http://rfc3161timestamp.globalsign.com/advanced /td SHA256 "manage_agents.exe"
 signtool.exe sign /a /tr http://rfc3161timestamp.globalsign.com/advanced /td SHA256 "ossec-agent.exe"
 signtool.exe sign /a /tr http://rfc3161timestamp.globalsign.com/advanced /td SHA256 "os_win32ui.exe"
+
+pause

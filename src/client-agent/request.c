@@ -96,7 +96,14 @@ int req_push(char * buffer, size_t length) {
         snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
 
         if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-            merror("At req_push(): Could not connect to socket '%s': %s (%d). Is Active Response enabled?", sockname, strerror(errno), errno);
+            switch (errno) {
+            case ECONNREFUSED:
+                merror("At req_push(): Target '%s' refused connection. Is Active Response enabled?", target);
+                break;
+
+            default:
+                merror("At req_push(): Could not connect to socket '%s': %s (%d).", target, strerror(errno), errno);
+            }
 
             // Example: #!-req 16 err Permission denied
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err %s", counter, errno == ENOENT ? "Invalid target" : strerror(errno));

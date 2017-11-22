@@ -90,14 +90,34 @@ UpdateStartOSSEC()
 {
    . ${OSSEC_INIT}
 
-   $DIRECTORY/bin/ossec-control start
+   if [ "X$TYPE" != "Xagent" ]; then
+       TYPE="manager"
+   fi
+
+   if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
+       systemctl start wazuh-$TYPE
+   elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
+       service wazuh-$TYPE start
+   else
+       $DIRECTORY/bin/ossec-control start
+   fi
 }
 
 UpdateStopOSSEC()
 {
    . ${OSSEC_INIT}
 
-   $DIRECTORY/bin/ossec-control stop
+   if [ "X$TYPE" != "Xagent" ]; then
+       TYPE="manager"
+   fi
+
+   if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
+       systemctl stop wazuh-$TYPE
+   elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
+       service wazuh-$TYPE stop
+   else
+       $DIRECTORY/bin/ossec-control stop
+   fi
 
    # We also need to remove all syscheck queue file (format changed)
    if [ "X$VERSION" = "X0.9-3" ]; then

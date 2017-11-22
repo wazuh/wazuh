@@ -621,13 +621,14 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Gets a list of available agents with basic attributes.
 
         :param status: Filters by agent status: Active, Disconnected or Never connected.
         :param os_platform: Filters by OS platform.
         :param os_version: Filters by OS version.
+        :param manager_host: Filters by manager hostname to which agents are connected.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
@@ -643,9 +644,11 @@ class Agent:
 
         # Query
         query = "SELECT {0} FROM agent"
-        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive', 'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform', 'version': 'version' }
-        select = ["id", "name", "ip", "last_keepalive", "os_name", "os_version", "os_platform", "version"]
-        search_fields = ["id", "name", "ip", "os_name", "os_version", "os_platform"]
+        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive', 
+                  'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform', 
+                  'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add'}
+        select = ["id", "name", "ip", "last_keepalive", "os_name", "os_version", "os_platform", "version", "manager_host", "date_add"]
+        search_fields = ["id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host"]
         request = {}
 
         if status != "all":
@@ -666,6 +669,9 @@ class Agent:
         if os_version != "all":
             request['os_version'] = os_version
             query += ' AND os_version = :os_version'
+        if manager_host != "all":
+            request['manager_host'] = manager_host
+            query += ' AND manager_host = :manager_host'
 
         # Search
         if search:
@@ -745,6 +751,12 @@ class Agent:
             if tuple[7] != None:
                 data_tuple['version'] = tuple[7]
                 pending = False if data_tuple['version'] != "" else True
+
+            if tuple[8] != None:
+                data_tuple['manager_host'] = tuple[8]
+
+            if tuple[9] != None:
+                data_tuple['dateAdd'] = tuple[9]
 
             if os:
                 os_no_empty = dict((k, v) for k, v in os.items() if v)
@@ -1693,7 +1705,7 @@ class Agent:
         return [wpk_file, sha1hash]
 
 
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None):
+    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries):
         """
         Sends WPK file to agent.
         """
@@ -1717,8 +1729,37 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
+        counter = 0
+        while data.startswith('err') and counter < timeout:
+            sleep(common.open_sleep)
+            counter = counter + 1
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(common.ossec_path + "/queue/ossec/request")
+            msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
+            s.send(msg.encode())
+            if debug:
+                print("MSG SENT: {0}".format(str(msg)))
+            data = s.recv(1024).decode()
+            s.close()
+            if debug:
+                print("RESPONSE: {0}".format(data))
         if data != 'ok':
             raise WazuhException(1715, data.replace("err ",""))
+
+        # Sending reset lock timeout
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.connect(common.ossec_path + "/queue/ossec/request")
+        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
+        s.send(msg.encode())
+        if debug:
+            print("MSG SENT: {0}".format(str(msg)))
+        data = s.recv(1024).decode()
+        s.close()
+        if debug:
+            print("RESPONSE: {0}".format(data))
+        if data != 'ok':
+            raise WazuhException(1715, data.replace("err ",""))
+
 
         # Sending file to agent
         if debug:
@@ -1783,7 +1824,7 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
 
-    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None):
+    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1):
         """
         Upgrade agent using a WPK file.
         """
@@ -1814,7 +1855,7 @@ class Agent:
             raise WazuhException(1720)
 
         # Send file to agent
-        sending_result = self._send_wpk_file(wpk_repo, debug, version, force, show_progress, chunk_size)
+        sending_result = self._send_wpk_file(wpk_repo, debug, version, force, show_progress, chunk_size, rl_timeout)
         if debug:
             print(sending_result[0])
 
@@ -1909,7 +1950,7 @@ class Agent:
         return Agent(agent_id).upgrade_result(timeout=int(timeout))
 
 
-    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None):
+    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries):
         """
         Sends custom WPK file to agent.
         """
@@ -1929,6 +1970,34 @@ class Agent:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(common.ossec_path + "/queue/ossec/request")
         msg = "{0} com open w {1}".format(str(self.id).zfill(3), wpk_file)
+        s.send(msg.encode())
+        if debug:
+            print("MSG SENT: {0}".format(str(msg)))
+        data = s.recv(1024).decode()
+        s.close()
+        if debug:
+            print("RESPONSE: {0}".format(data))
+        counter = 0
+        while data.startswith('err') and counter < timeout:
+            sleep(common.open_sleep)
+            counter = counter + 1
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(common.ossec_path + "/queue/ossec/request")
+            msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
+            s.send(msg.encode())
+            if debug:
+                print("MSG SENT: {0}".format(str(msg)))
+            data = s.recv(1024).decode()
+            s.close()
+            if debug:
+                print("RESPONSE: {0}".format(data))
+        if data != 'ok':
+            raise WazuhException(1715, data.replace("err ",""))
+
+        # Sending reset lock timeout
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.connect(common.ossec_path + "/queue/ossec/request")
+        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
@@ -2003,7 +2072,7 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
 
-    def upgrade_custom(self, file_path, installer, debug=False, show_progress=None, chunk_size=None):
+    def upgrade_custom(self, file_path, installer, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
         """
         Upgrade agent using a custom WPK file.
         """
@@ -2014,7 +2083,7 @@ class Agent:
             raise WazuhException(1720)
 
         # Send file to agent
-        sending_result = self._send_custom_wpk_file(file_path, debug, show_progress, chunk_size)
+        sending_result = self._send_custom_wpk_file(file_path, debug, show_progress, chunk_size, rl_timeout)
         if debug:
             print(sending_result[0])
 

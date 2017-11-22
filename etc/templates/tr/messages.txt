@@ -84,8 +84,16 @@ yessyslog="Uzak syslog etkin kılındı"
 # Part 3.4/3.5
 readlogs="Bu dosyaları incelemek için yapılandırma oluşturuluyor:"
 
-# Part 5
+# Part 3.7
+runauthd="Auth servisini çalıştırmak istiyor musunuz?"
+norunauthd="Auth hizmeti çalışmıyor"
+yesrunauthd="Auth servisi çalıştırıyor"
+
+# Part 4
 installing="Sistem kuruluyor"
+startwazuh="Kurulumdan sonra Wazuh'u başlatmak istiyor musunuz?"
+nowazuhstart="Wazuh kurulumun sonunda başlamaz."
+yeswazuhstart="Wazuh kurulumun sonunda başlayacak."
 runningmake="Makefile çalıştırılıyor"
 
 # Final
