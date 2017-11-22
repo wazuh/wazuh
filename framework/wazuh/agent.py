@@ -116,29 +116,38 @@ class Agent:
         query = "SELECT {0} FROM agent WHERE id = :id"
         request = {'id': self.id}
 
-        valid_select_fields = ["id", "name", "ip", "key", "version", "date_add", "last_keepalive", "config_sum", "merged_sum", "group", "manager_host", "os_name", "os_version", "os_major", "os_minor", "os_codename", "os_build", "os_platform", "os_uname"]
+        valid_select_fields = {"id", "name", "ip", "key", "version", "date_add",
+                               "last_keepalive", "config_sum", "merged_sum",
+                               "group", "manager_host", "os_name", "os_version",
+                               "os_major", "os_minor", "os_codename", "os_build",
+                               "os_platform", "os_uname"}
+        # we need to retrieve the fields that are used to compute other fields from the DB
+        select_fields = {'id', 'version', 'last_keepalive'}
 
         # Select
         if select:
             if not set(select['fields']).issubset(valid_select_fields):
-                incorrect_fields = map(lambda x: str(x), set(select['fields']) - set(valid_select_fields))
+                incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                         format(valid_select_fields, incorrect_fields))
-            select_fields = select['fields']
+            select_fields |= set(select['fields'])
         else:
             select_fields = valid_select_fields
 
+        select_fields = list(select_fields)
         try:
             select_fields[select_fields.index("group")] = "`group`"
         except ValueError as e:
             pass
 
         conn.execute(query.format(','.join(select_fields)), request)
+        db_data = conn.fetch()
+        if db_data is None:
+            raise WazuhException(1701)
 
         no_result = True
-        for field,value in zip(select_fields, conn.fetch()):
+        for field,value in zip(select_fields, db_data):
             no_result = False
-            data_tuple = {}
 
             if field == 'id' and value != None:
                 self.id = str(value).zfill(3)
@@ -153,10 +162,8 @@ class Agent:
                 pending = False if self.version != "" else True
             if field == 'dateAdd' and value != None:
                 self.dateAdd = value
-            if field == 'lastKeepAlive' and value != None:
+            if field == 'last_keepalive' and value != None:
                 self.lastKeepAlive = value
-            else:
-                self.lastKeepAlive = 0
             if field == 'configSum' and value != None:
                 self.configSum = value
             if field == 'mergedSum' and value != None:
@@ -200,14 +207,15 @@ class Agent:
                 elif "armv7" in self.os['uname']:
                     self.os['arch'] = "armv7"
 
-            if self.id != "000":
-                self.status = Agent.calculate_status(self.lastKeepAlive, pending)
-            else:
-                self.status = 'Active'
-                self.ip = '127.0.0.1'
+        if self.id != "000":
+            self.status = Agent.calculate_status(self.lastKeepAlive, pending)
+        else:
+            self.status = 'Active'
+            self.ip = '127.0.0.1'
 
         if no_result:
             raise WazuhException(1701, self.id)
+
 
     def get_basic_information(self, select=None):
         """
@@ -215,9 +223,11 @@ class Agent:
         """
         self._load_info_from_DB(select)
 
+        select_fields = {'id', 'last_keepalive', 'status'} if select is None else select['fields']
+
         info = {}
 
-        if self.id:
+        if self.id and 'id' in select_fields:
             info['id'] = self.id
         if self.name:
             info['name'] = self.name
@@ -229,13 +239,13 @@ class Agent:
             os_no_empty = dict((k, v) for k, v in self.os.items() if v)
             if os_no_empty:
                 info['os'] = os_no_empty
-        if self.version:
+        if self.version and 'version' in select_fields:
             info['version'] = self.version
         if self.dateAdd:
             info['dateAdd'] = self.dateAdd
-        if self.lastKeepAlive:
+        if self.lastKeepAlive and 'last_keepalive' in select_fields:
             info['lastKeepAlive'] = self.lastKeepAlive
-        if self.status:
+        if self.status and 'status' in select_fields:
             info['status'] = self.status
         if self.configSum:
             info['configSum'] = self.configSum
@@ -644,8 +654,8 @@ class Agent:
 
         # Query
         query = "SELECT {0} FROM agent"
-        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive', 
-                  'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform', 
+        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive',
+                  'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
                   'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add'}
         select = ["id", "name", "ip", "last_keepalive", "os_name", "os_version", "os_platform", "version", "manager_host", "date_add"]
         search_fields = ["id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host"]
