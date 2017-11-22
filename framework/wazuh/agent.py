@@ -100,7 +100,7 @@ class Agent:
             else:
                 return "Disconnected"
 
-    def _load_info_from_DB(self):
+    def _load_info_from_DB(self, select=None):
         """
         Gets attributes of existing agent.
         """
@@ -116,56 +116,78 @@ class Agent:
         query = "SELECT {0} FROM agent WHERE id = :id"
         request = {'id': self.id}
 
-        select = ["id", "name", "ip", "key", "version", "date_add", "last_keepalive", "config_sum", "merged_sum", "`group`", "manager_host", "os_name", "os_version", "os_major", "os_minor", "os_codename", "os_build", "os_platform", "os_uname"]
+        valid_select_fields = {"id", "name", "ip", "key", "version", "date_add",
+                               "last_keepalive", "config_sum", "merged_sum",
+                               "group", "manager_host", "os_name", "os_version",
+                               "os_major", "os_minor", "os_codename", "os_build",
+                               "os_platform", "os_uname"}
+        # we need to retrieve the fields that are used to compute other fields from the DB
+        select_fields = {'id', 'version', 'last_keepalive'}
 
-        conn.execute(query.format(','.join(select)), request)
+        # Select
+        if select:
+            if not set(select['fields']).issubset(valid_select_fields):
+                incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
+                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
+                        format(valid_select_fields, incorrect_fields))
+            select_fields |= set(select['fields'])
+        else:
+            select_fields = valid_select_fields
+
+        select_fields = list(select_fields)
+        try:
+            select_fields[select_fields.index("group")] = "`group`"
+        except ValueError as e:
+            pass
+
+        conn.execute(query.format(','.join(select_fields)), request)
+        db_data = conn.fetch()
+        if db_data is None:
+            raise WazuhException(1701)
 
         no_result = True
-        for tuple in conn:
+        for field,value in zip(select_fields, db_data):
             no_result = False
-            data_tuple = {}
 
-            if tuple[0] != None:
-                self.id = str(tuple[0]).zfill(3)
-            if tuple[1] != None:
-                self.name = tuple[1]
-            if tuple[2] != None:
-                self.ip = tuple[2]
-            if tuple[3] != None:
-                self.internal_key = tuple[3]
-            if tuple[4] != None:
-                self.version = tuple[4]
+            if field == 'id' and value != None:
+                self.id = str(value).zfill(3)
+            if field == 'name' and value != None:
+                self.name = value
+            if field == 'ip' and value != None:
+                self.ip = value
+            if field == 'internal_key' and value != None:
+                self.internal_key = value
+            if field == 'version' and value != None:
+                self.version = value
                 pending = False if self.version != "" else True
-            if tuple[5] != None:
-                self.dateAdd = tuple[5]
-            if tuple[6] != None:
-                self.lastKeepAlive = tuple[6]
-            else:
-                self.lastKeepAlive = 0
-            if tuple[7] != None:
-                self.configSum = tuple[7]
-            if tuple[8] != None:
-                self.mergedSum = tuple[8]
-            if tuple[9] != None:
-                self.group = tuple[9]
-            if tuple[10] != None:
-                self.manager_host = tuple[10]
-            if tuple[11] != None:
-                self.os['name'] = tuple[11]
-            if tuple[12] != None:
-                self.os['version'] = tuple[12]
-            if tuple[13] != None:
-                self.os['major'] = tuple[13]
-            if tuple[14] != None:
-                self.os['minor'] = tuple[14]
-            if tuple[15] != None:
-                self.os['codename'] = tuple[15]
-            if tuple[16] != None:
-                self.os['build'] = tuple[16]
-            if tuple[17] != None:
-                self.os['platform'] = tuple[17]
-            if tuple[18] != None:
-                self.os['uname'] = tuple[18]
+            if field == 'dateAdd' and value != None:
+                self.dateAdd = value
+            if field == 'last_keepalive' and value != None:
+                self.lastKeepAlive = value
+            if field == 'configSum' and value != None:
+                self.configSum = value
+            if field == 'mergedSum' and value != None:
+                self.mergedSum = value
+            if field == '`group`' and value != None:
+                self.group = value
+            if field == 'manager_host' and value != None:
+                self.manager_host = value
+            if field == 'os_name' and value != None:
+                self.os['name'] = value
+            if field == 'os_version' and value != None:
+                self.os['version'] = value
+            if field == 'os_major' and value != None:
+                self.os['major'] = value
+            if field == 'os_minor' and value != None:
+                self.os['minor'] = value
+            if field == 'os_codename' and value != None:
+                self.os['codename'] = value
+            if field == 'os_build' and value != None:
+                self.os['build'] = value
+            if field == 'os_platform' and value != None:
+                self.os['platform'] = value
+            if field == 'os_uname' and value != None:
+                self.os['uname'] = value
                 if "x86_64" in self.os['uname']:
                     self.os['arch'] = "x86_64"
                 elif "i386" in self.os['uname']:
@@ -185,24 +207,27 @@ class Agent:
                 elif "armv7" in self.os['uname']:
                     self.os['arch'] = "armv7"
 
-            if self.id != "000":
-                self.status = Agent.calculate_status(self.lastKeepAlive, pending)
-            else:
-                self.status = 'Active'
-                self.ip = '127.0.0.1'
+        if self.id != "000":
+            self.status = Agent.calculate_status(self.lastKeepAlive, pending)
+        else:
+            self.status = 'Active'
+            self.ip = '127.0.0.1'
 
         if no_result:
             raise WazuhException(1701, self.id)
 
-    def get_basic_information(self):
+
+    def get_basic_information(self, select=None):
         """
         Gets public attributes of existing agent.
         """
-        self._load_info_from_DB()
+        self._load_info_from_DB(select)
+
+        select_fields = {'id', 'last_keepalive', 'status'} if select is None else select['fields']
 
         info = {}
 
-        if self.id:
+        if self.id and 'id' in select_fields:
             info['id'] = self.id
         if self.name:
             info['name'] = self.name
@@ -214,13 +239,13 @@ class Agent:
             os_no_empty = dict((k, v) for k, v in self.os.items() if v)
             if os_no_empty:
                 info['os'] = os_no_empty
-        if self.version:
+        if self.version and 'version' in select_fields:
             info['version'] = self.version
         if self.dateAdd:
             info['dateAdd'] = self.dateAdd
-        if self.lastKeepAlive:
+        if self.lastKeepAlive and 'last_keepalive' in select_fields:
             info['lastKeepAlive'] = self.lastKeepAlive
-        if self.status:
+        if self.status and 'status' in select_fields:
             info['status'] = self.status
         if self.configSum:
             info['configSum'] = self.configSum
@@ -629,8 +654,8 @@ class Agent:
 
         # Query
         query = "SELECT {0} FROM agent"
-        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive', 
-                  'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform', 
+        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive',
+                  'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
                   'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add'}
         select = ["id", "name", "ip", "last_keepalive", "os_name", "os_version", "os_platform", "version", "manager_host", "date_add"]
         search_fields = ["id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host"]
@@ -906,7 +931,7 @@ class Agent:
             return final_dict
 
     @staticmethod
-    def get_agent(agent_id):
+    def get_agent(agent_id, select=None):
         """
         Gets an existing agent.
 
@@ -914,7 +939,7 @@ class Agent:
         :return: The agent.
         """
 
-        return Agent(agent_id).get_basic_information()
+        return Agent(agent_id).get_basic_information(select)
 
     @staticmethod
     def get_agent_key(agent_id):
