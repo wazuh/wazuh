@@ -366,10 +366,11 @@ def get_ossec_conf(section=None, field=None):
 
     try:
         # wrap the data
-        f = open(common.ossec_conf)
-        txt_data = f.read()
+        with open(common.ossec_conf) as f:
+            txt_data = f.read()
+
+        txt_data = re.sub("(<!--.*?-->)", "", txt_data, flags=re.MULTILINE | re.DOTALL)
         txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
-        f.close()
         txt_data = '<root_tag>' + txt_data + '</root_tag>'
 
         # Read XML
@@ -377,8 +378,8 @@ def get_ossec_conf(section=None, field=None):
 
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
-    except:
-        raise WazuhException(1101)
+    except Exception as e:
+        raise WazuhException(1101, str(e))
 
     if section:
         try:
