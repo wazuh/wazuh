@@ -75,9 +75,9 @@ void read_file(char * pathname, char * buffer, off_t size) {
         mterror_exit(MAIN_TAG, "Error opening file: %s", strerror(errno));
 
     // copy the file into the buffer
-    result = fread(buffer, 1, size, pFile);
+    result = fread(buffer, sizeof(char), size-1, pFile);
     buffer[size] = '\0';
-    if (result != size)
+    if (result != size-1)
         mterror_exit(MAIN_TAG, "Error reading file: %s", strerror(errno));
 
     // terminte
@@ -378,9 +378,9 @@ void* daemon_inotify(void * args) {
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path)-1);
 
-    off_t size = fsize(CLUSTER_JSON);
+    off_t size = fsize(CLUSTER_JSON)+1;
     char * cluster_json;
-    cluster_json = (char *) malloc (sizeof(char) *size);
+    cluster_json = (char *) malloc (sizeof(char) *size+1);
     read_file(CLUSTER_JSON, cluster_json, size);
 
     cJSON * root = cJSON_Parse(cluster_json);
@@ -396,9 +396,10 @@ void* daemon_inotify(void * args) {
             strcmp(source_item->valuestring, "all") == 0) {
 
             char * aux_path;
-            aux_path = (char *) malloc(strlen(DEFAULTDIR) + strlen(subitem->string));
-            strcpy(aux_path, DEFAULTDIR);
-            strcat(aux_path, subitem->string);
+            size_t path_len = strlen(DEFAULTDIR) + strlen(subitem->string) + 1;
+            aux_path = (char *) malloc(path_len);
+            if (snprintf(aux_path, path_len, "%s%s", DEFAULTDIR, subitem->string) >= path_len)
+                mterror(INOTIFY_TAG, "Overflow error copying %s's name in memory", subitem->string);
 
             uint32_t flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
             if (cJSON_GetObjectItemCaseSensitive(subitem, "recursive")->type == cJSON_True) {
