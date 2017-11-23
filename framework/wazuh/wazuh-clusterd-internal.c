@@ -31,6 +31,7 @@
 #include <error_messages.h>
 #include <cJSON.h>
 #include <dirent.h>
+#include <pwd.h>
 
 #define DB_PATH DEFAULTDIR "/var/db/cluster_db"
 #define SOCKET_PATH DEFAULTDIR "/queue/ossec/cluster_db"
@@ -132,6 +133,14 @@ void* daemon_socket() {
         close(fd);
         mterror_exit(DB_TAG, "Error changing socket permissions: %s", strerror(errno));
     }
+
+    /* Change user and group to ossec */
+    struct passwd *pwd;
+    if ((pwd = getpwnam("ossec")) == NULL)
+        mterror_exit(DB_TAG, "Could not get uid for user ossec: %s", strerror(errno));
+
+    if (chown(SOCKET_PATH, pwd->pw_uid, pwd->pw_gid) < 0)
+        mterror_exit(DB_TAG, "Could not change owner of file %s: %s", SOCKET_PATH, strerror(errno));
 
 
     mtdebug1(DB_TAG, "Opening database %s", DB_PATH);
