@@ -751,9 +751,9 @@ class Agent:
         for tuple in conn:
             data_tuple = {}
             lastKeepAlive = 0
+            pending = True
             for field, value in zip(select_fields, tuple):
                 os = {}
-                pending = True
 
                 if value != None and field == 'id':
                     data_tuple['id'] = str(value).zfill(3)
@@ -762,7 +762,7 @@ class Agent:
                 if value != None and field == 'ip' and field in set_select_fields:
                     data_tuple['ip'] = value
 
-                if value != None and field == 'last_keepalive' and field in set_select_fields:
+                if value != None and field == 'last_keepalive':
                     lastKeepAlive = value
 
                 if value != None and field == 'os_name' and field in set_select_fields:
@@ -772,9 +772,10 @@ class Agent:
                 if value != None and field == 'os_platform' and field in set_select_fields:
                     os['platform'] = value
 
-                if value != None and field == 'version' and field in set_select_fields:
-                    data_tuple['version'] = value
-                    pending = False if data_tuple['version'] != "" else True
+                if value != None and field == 'version':
+                    pending = False if value != "" else True
+                    if field in set_select_fields:
+                        data_tuple['version'] = value
 
                 if value != None and field == 'manager_host' and field in set_select_fields:
                     data_tuple['manager_host'] = value
