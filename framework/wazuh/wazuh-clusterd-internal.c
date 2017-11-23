@@ -76,6 +76,7 @@ void read_file(char * pathname, char * buffer, off_t size) {
 
     // copy the file into the buffer
     result = fread(buffer, 1, size, pFile);
+    buffer[size] = '\0';
     if (result != size)
         mterror_exit(MAIN_TAG, "Error reading file: %s", strerror(errno));
 
@@ -255,7 +256,8 @@ void* daemon_socket() {
             sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL);
 
             transaction_done:
-            send(cl,response,sizeof(response),0);
+            if (send(cl,response,sizeof(response),0) < 0)
+                mterror(DB_TAG, "Error sending response: %s", strerror(errno));
 
             memset(buf, 0, sizeof(buf));
             memset(response, 0, sizeof(response));
@@ -317,12 +319,12 @@ uint32_t get_flag_mask(cJSON * flags) {
 }
 
 /* Store subdirectories names in subdirs array */
-unsigned int get_subdirs(char * path, char *subdirs[30]) {
+unsigned int get_subdirs(char * path, char **subdirs) {
     struct dirent *direntp;
     DIR *dirp;
     unsigned int found_subdirs = 0;
     int i=0;
-    for (i=0; i<30; i++) if (subdirs[i] == 0) break;
+    for (i=0; i<sizeof(subdirs); i++) if (subdirs[i] == 0) break;
 
     if ((dirp = opendir(path)) == NULL) 
         mterror_exit(INOTIFY_TAG, "Error listing subdirectories of %s: %s", path, strerror(errno));
@@ -331,6 +333,8 @@ unsigned int get_subdirs(char * path, char *subdirs[30]) {
         if (strcmp(direntp->d_name, ".") == 0 || strcmp(direntp->d_name, "..") == 0) continue;
 
         if (direntp->d_type == DT_DIR) {
+            if (found_subdirs == sizeof(subdirs))
+                subdirs = (char **) realloc(subdirs, found_subdirs+30 * sizeof(char*));
             subdirs[found_subdirs+i] = (char *) malloc(sizeof(path) + sizeof(direntp->d_name));
             strcpy(subdirs[found_subdirs+i], path);
             strcat(subdirs[found_subdirs+i], direntp->d_name);
@@ -338,6 +342,10 @@ unsigned int get_subdirs(char * path, char *subdirs[30]) {
             found_subdirs += get_subdirs(subdirs[found_subdirs+i], subdirs) + 1;
         }
     }
+
+    if (closedir(dirp) < 0) 
+        mterror(INOTIFY_TAG, "Error closing directory %s: %s", path, strerror(errno));
+
     return found_subdirs;
 }
 
@@ -394,7 +402,7 @@ void* daemon_inotify(void * args) {
 
             uint32_t flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
             if (cJSON_GetObjectItemCaseSensitive(subitem, "recursive")->type == cJSON_True) {
-                char * subdirs[30] = {0};
+                char ** subdirs = (char **) malloc(30 * sizeof(char*));
                 unsigned int found_subdirs = get_subdirs(aux_path, subdirs);
                 int j;
                 for (j = 0; j < found_subdirs; j++) {
@@ -501,7 +509,9 @@ void* daemon_inotify(void * args) {
             }
 
             char data[10000];
-            recv(db_socket, data, sizeof(data),0);
+            if (recv(db_socket, data, sizeof(data),0) < 0)
+                mterror(INOTIFY_TAG, "Error receving data from DB socket: %s", strerror(errno));
+
             if (shutdown(db_socket, SHUT_RDWR) < 0) {
                 mterror(INOTIFY_TAG, "Error in shutdown: %s", strerror(errno));
             }
