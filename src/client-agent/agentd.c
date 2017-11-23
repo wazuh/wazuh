@@ -113,7 +113,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         rc++;
     }
 
-    write_state();
+    w_create_thread(state_main, NULL);
 
     /* Try to connect to the server */
     if (!connect_server(0)) {

@@ -104,10 +104,10 @@ void * restartAgent();
 int verifyRemoteConf();
 
 // Agent status functions
-int update_status(agent_status_t status);
-int update_keepalive(time_t curr_time);
-int update_ack(time_t curr_time);
-int write_state();
+void * state_main(void * args);
+void update_status(agent_status_t status);
+void update_keepalive(time_t curr_time);
+void update_ack(time_t curr_time);
 
 /*** Global variables ***/
 

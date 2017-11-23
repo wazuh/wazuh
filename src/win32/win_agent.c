@@ -207,7 +207,15 @@ int local_start()
     srandom(time(0));
     os_random();
 
-    write_state();
+    /* Launch rotation thread */
+    if (CreateThread(NULL,
+                     0,
+                     (LPTHREAD_START_ROUTINE)state_main,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID) == NULL) {
+        merror(THREAD_ERROR);
+    }
 
     /* Socket connection */
     agt->sock = -1;

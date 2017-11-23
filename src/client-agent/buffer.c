@@ -132,7 +132,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
     while(1){
         pthread_mutex_lock(&mutex_lock);
-        write_state();
 
         while(empty(i, j)){
             mdebug2("Agent buffer empty.");
@@ -216,11 +215,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         delay(wait_ms);
         send_msg(msg_output, -1);
         free(msg_output);
-
-        if (ms_slept >= 1000) {
-            write_state();
-            ms_slept %= 1000;
-        }
     }
 }
 

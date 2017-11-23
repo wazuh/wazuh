@@ -16,19 +16,36 @@
 agent_state_t agent_state = { .status = GA_STATUS_PENDING };
 pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int update_status(agent_status_t status) {
+static int write_state();
+
+void * state_main(__attribute__((unused)) void * args) {
+    int interval = getDefine_Int("agent", "state_interval", 0, 86400);
+
+    if (!interval) {
+        minfo("State file is disabled.");
+        return NULL;
+    }
+
+    mdebug1("State file updating thread started.");
+
+    while (1) {
+        write_state();
+        sleep(interval);
+    }
+
+    return NULL;
+}
+
+void update_status(agent_status_t status) {
     agent_state.status = status;
-    return write_state();
 }
 
-int update_keepalive(time_t curr_time) {
+void update_keepalive(time_t curr_time) {
     agent_state.last_keepalive = curr_time;
-    return write_state();
 }
 
-int update_ack(time_t curr_time) {
+void update_ack(time_t curr_time) {
     agent_state.last_ack = curr_time;
-    return write_state();
 }
 
 int write_state() {
