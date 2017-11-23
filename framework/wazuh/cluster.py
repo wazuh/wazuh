@@ -391,7 +391,7 @@ def get_agents_status():
     [agent_id, agent_name, agent_status, manager_hostname]
     """
     agent_list = []
-    for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']})['items']:
+    for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']}, limit=None)['items']:
         if int(agent['id']) == 0:
             continue
         try:
