@@ -170,7 +170,7 @@ def check_cluster_cmd(cmd):
 def check_cluster_config(config):
     iv = InputValidator()
 
-    if config['key'] == None:
+    if not 'key' in config.keys():
         raise WazuhException(3004, 'Unspecified key')
     elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, operator.eq):
         raise WazuhException(3004, 'Key must be 32 characters long and only have alphanumeric characters')
