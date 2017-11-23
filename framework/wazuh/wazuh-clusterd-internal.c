@@ -344,10 +344,12 @@ unsigned int get_subdirs(char * path, char **subdirs) {
         if (direntp->d_type == DT_DIR) {
             if (found_subdirs == sizeof(subdirs))
                 subdirs = (char **) realloc(subdirs, found_subdirs+30 * sizeof(char*));
-            subdirs[found_subdirs+i] = (char *) malloc(sizeof(path) + sizeof(direntp->d_name));
-            strcpy(subdirs[found_subdirs+i], path);
-            strcat(subdirs[found_subdirs+i], direntp->d_name);
-            strcat(subdirs[found_subdirs+i], "/");
+            
+            size_t name_size = (sizeof(path) + sizeof(direntp->d_name) + sizeof("/")  + 1) * sizeof(char);
+            subdirs[found_subdirs+i] = (char *) malloc(name_size);
+            if (snprintf(subdirs[found_subdirs+i], name_size, "%s%s/", path, direntp->d_name) >= name_size)
+                mterror(INOTIFY_TAG, "String overflow in directory name %s%s", path, direntp->d_name);
+
             found_subdirs += get_subdirs(subdirs[found_subdirs+i], subdirs) + 1;
         }
     }
@@ -412,7 +414,7 @@ void* daemon_inotify(void * args) {
 
             uint32_t flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
             if (cJSON_GetObjectItemCaseSensitive(subitem, "recursive")->type == cJSON_True) {
-                char ** subdirs = (char **) malloc(30 * sizeof(char*));
+                char ** subdirs = (char **) calloc(30, sizeof(char*));
                 unsigned int found_subdirs = get_subdirs(aux_path, subdirs);
                 int j;
                 for (j = 0; j < found_subdirs; j++) {
@@ -420,6 +422,7 @@ void* daemon_inotify(void * args) {
                     files[n_files_to_watch].path = (char *) malloc(len);
                     strcpy(files[n_files_to_watch].path, subdirs[j]);
                     files[n_files_to_watch].name = (char *) malloc(len);
+                    mtinfo(INOTIFY_TAG, "%s", subdirs[j]);
                     strncpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string), len);
                     files[n_files_to_watch].name[len-1] = '\0';
                     files[n_files_to_watch].flags = flags;
