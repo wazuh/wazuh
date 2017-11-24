@@ -95,5 +95,9 @@ def get_encrypted_size(plain_size):
 global cluster_sync_msg_size
 cluster_sync_msg_size = get_encrypted_size(cluster_protocol_plain_size)
 
+# timeout of the cluster server & client
+global cluster_timeout
+cluster_timeout = 30 
+
 # Common variables based on ossec path (/var/ossec by default)
 set_paths_based_on_ossec()

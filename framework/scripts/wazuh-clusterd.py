@@ -234,4 +234,4 @@ if __name__ == '__main__':
 
     server = WazuhClusterServer('' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr'], 
                                 int(cluster_config['port']), cluster_config['key'])
-    asyncore.loop()
+    asyncore.loop(timeout=common.cluster_timeout)

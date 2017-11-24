@@ -135,7 +135,7 @@ def send_request(host, port, key, data, file=None):
     error = 0
     try:
         client = WazuhClusterClient(host, int(port), key, data, file)
-        asyncore.loop()
+        asyncore.loop(timeout=common.cluster_timeout)
         data = client.response
     except Exception as e:
         error = 1
