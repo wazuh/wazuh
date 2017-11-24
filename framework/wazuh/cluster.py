@@ -7,7 +7,7 @@ from wazuh.utils import cut_array, sort_array, search_array, md5
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh.configuration import get_ossec_conf
-from wazuh.InputValidator import InputValidator 
+from wazuh.InputValidator import InputValidator
 from wazuh import common
 import sqlite3
 from datetime import datetime
@@ -125,7 +125,7 @@ class WazuhClusterClient(asynchat.async_chat):
             msg = self.f.encrypt(self.data.encode()) + '\n\t\t\n'
 
         i = 0
-        while i < len(msg): 
+        while i < len(msg):
             next_i = i+4096 if i+4096 < len(msg) else len(msg)
             sent = self.send(msg[i:next_i])
             i += sent
@@ -195,7 +195,7 @@ def check_cluster_config(config):
 
 def get_file_info(filename, cluster_items):
     fullpath = common.ossec_path + filename
-    
+
     if not path.isfile(fullpath):
         raise WazuhException(3000, "Could not open file {0}".format(filename))
 
@@ -266,7 +266,7 @@ def get_nodes():
 
         if error:
             logging.warning("The node with IP {0} is disconnected".format(url))
-            data.append({'error': response, 'status':'disconnected', 'url':url})
+            data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
             continue
 
         if config_cluster['node_type'] == 'master' or \
@@ -305,7 +305,7 @@ def get_files(node_type, cluster_items):
                     new_item["path"] = full_path.replace(common.ossec_path, "")
                     items.append(new_item)
                 elif recursive:
-                    items = list(chain.from_iterable([items, 
+                    items = list(chain.from_iterable([items,
                                     get_files_from_dir(full_path, recursive, files, cluster_items)]))
         return items
 
@@ -316,10 +316,10 @@ def get_files(node_type, cluster_items):
             continue
         if item['source'] == node_type or \
            item['source'] == 'all':
-            
+
             fullpath = common.ossec_path + file_path
-            expanded_items = chain.from_iterable([expanded_items, 
-                                   get_files_from_dir(fullpath, item['recursive'], 
+            expanded_items = chain.from_iterable([expanded_items,
+                                   get_files_from_dir(fullpath, item['recursive'],
                                                       item['files'], cluster_items)])
 
     final_items = {}
@@ -336,14 +336,14 @@ def get_file_status(manager, cluster_socket):
     cluster_socket.send(count_query)
     n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
 
-    # limit = 100 
+    # limit = 100
     query = "select {0} 100 ".format(manager)
     file_status = ""
     for offset in range(0,n_files,100):
         query += str(offset)
         cluster_socket.send(query)
         file_status += filter(lambda x: x != '\x00', cluster_socket.recv(10000))
-        
+
     # retrieve all files for a node in database with its status
     all_files = {f[0]:f[1] for f in map(lambda x: x.split('*'), filter(lambda x: x != '', file_status.split(' ')))}
 
@@ -369,7 +369,7 @@ def get_file_status_all_managers(file_list, manager):
         if file_list == []:
             file_list = all_files.keys()
 
-        files.extend([[node, file, all_files[file]] for file in file_list]) 
+        files.extend([[node, file, all_files[file]] for file in file_list])
 
     cluster_socket.close()
     return files
@@ -508,7 +508,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None)
     try:
         dest_file = open(f_temp, "w")
     except IOError:
-        dirpath = path.dirname(fullpath) 
+        dirpath = path.dirname(fullpath)
         mkdir(dirpath)
         chmod(dirpath, S_IRWXU | S_IRWXG)
         dest_file = open(f_temp, "a+")
@@ -577,7 +577,7 @@ def get_remote_nodes(connected=True):
 
     # Get connected nodes in the cluster
     if connected:
-        cluster = [n['url'] for n in filter(lambda x: x['status'] == 'connected', 
+        cluster = [n['url'] for n in filter(lambda x: x['status'] == 'connected',
                     all_nodes)]
     else:
         cluster = [n['url'] for n in all_nodes]
@@ -602,12 +602,12 @@ def sync(debug, force=None):
         if len(pending_files) > 0:
             logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
             zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
-            
+
             error, response = send_request(host=node_dest, port=config_cluster['port'],
                                            data="zip {0}".format(str(len(zip_file)).
-                                            zfill(common.cluster_protocol_plain_size - len("zip "))), 
+                                            zfill(common.cluster_protocol_plain_size - len("zip "))),
                                            file=zip_file, key=config_cluster['key'])
-            
+
             try:
                 res = literal_eval(response)
             except Exception as e:
@@ -622,10 +622,10 @@ def sync(debug, force=None):
         if res['error'] != 0:
             logging.debug(res)
             result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
-                              'error': 1, 'files':{'updated':[], 'invalid':[], 
+                              'error': 1, 'files':{'updated':[], 'invalid':[],
                                             'error':list(map(itemgetter(0), pending_files))}})
         else:
-            logging.debug({'updated': len(res['data']['updated']), 
+            logging.debug({'updated': len(res['data']['updated']),
                           'error': res['data']['error'],
                           'invalid': res['data']['invalid']})
             result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
@@ -640,7 +640,7 @@ def sync(debug, force=None):
     # Get own items status
     own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files(config_cluster['node_type'], cluster_items).items()))
     own_items_names = own_items.keys()
-    
+
     remote_nodes = get_remote_nodes()
     logging.info("Starting to sync localhost's files")
 
@@ -651,7 +651,7 @@ def sync(debug, force=None):
     # for each connected manager, check its files. If the manager is not on database add it
     # with all files marked as pending
     all_nodes_files = {}
-    
+
     logging.debug("Nodes to sync: {0}".format(str(remote_nodes)))
     for node in remote_nodes:
         # check files in database
@@ -684,7 +684,7 @@ def sync(debug, force=None):
                 for m in missing:
                     all_files[m] = 'pending'
                     insert_sql += " {0} {1}".format(node,m)
-            
+
                 cluster_socket.send(insert_sql)
                 data = cluster_socket.recv(10000)
 
@@ -710,7 +710,7 @@ def sync(debug, force=None):
     for t in threads:
         t.join()
     after = time()
-    
+
     logging.debug("Time sending info: {0}".format(after-before))
 
     before = time()
@@ -720,7 +720,7 @@ def sync(debug, force=None):
             update_sql = "update2"
             for u in updated:
                 update_sql += " synchronized {0} /{1}".format(node, u)
-        
+
             cluster_socket.send(update_sql)
             received = cluster_socket.recv(10000)
 
@@ -751,10 +751,9 @@ def sync(debug, force=None):
     if debug:
         return thread_results
     else:
-        return {node:{'updated': len(data['files']['updated']), 
+        return {node:{'updated': len(data['files']['updated']),
                       'error': data['files']['error'],
                       'invalid': data['files']['invalid'],
                       'error': data['error'],
-                      'reason': data['reason']} 
+                      'reason': data['reason']}
                       for node,data in thread_results.items()}
-

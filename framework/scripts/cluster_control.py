@@ -22,6 +22,9 @@ files_group.add_argument('-m', '--manager', dest='manager', nargs='*', type=str,
 agents_group = parser.add_argument_group('Retrieve agent status')
 agents_group.add_argument('-a', '--agents', metavar='AGENT', dest='agents', nargs='*', type=bool, help="List all agents")
 
+nodes_group = parser.add_argument_group('Retrieve node status')
+nodes_group.add_argument('-l', '--list', metavar='NODE', dest='nodes', nargs='*', type=str, help="List the status of nodes (all if not specified)")
+
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
 
@@ -50,7 +53,7 @@ def pprint_table(data, headers, show_header=False):
         table = data
 
     sizes = get_max_size_cols(table)
-    
+
     header_str = "{0}\n".format("-"*(sum(sizes)-2))
     table_str = header_str
     for row in table:
@@ -71,6 +74,18 @@ def _get_file_status(file_list, manager):
 def _get_agents_status():
     print pprint_table(data=get_agents_status(), headers=["ID", "IP", "Name", "Status", "Node name"], show_header=True)
 
+def _get_nodes_status(node_list):
+    logging.disable(logging.WARNING)
+    all_nodes = get_nodes()
+
+    if node_list:
+        node_info = [[y['node'], y['status'], y['url']] for y in all_nodes['items'] if y['node'] in node_list]
+    else:
+        node_info = [[x['node'], x['status'], x['url']] for x in all_nodes['items']]
+
+    print pprint_table(data=node_info, headers=["Node","Status","Address"], show_header=True)
+
+
 if __name__ == '__main__':
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
@@ -85,3 +100,6 @@ if __name__ == '__main__':
 
     elif args.agents is not None:
         _get_agents_status()
+
+    elif args.nodes is not None:
+        _get_nodes_status(args.nodes)
