@@ -136,6 +136,7 @@ class WazuhClusterServer(asyncore.dispatcher):
 
     def handle_error(self):
         nil, t, v, tbinfo = asyncore.compact_traceback()
+        self.close()
         raise t(v)
 
 
