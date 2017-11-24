@@ -49,6 +49,10 @@ conf_sections = {
     'cluster': {
         'type': 'simple',
         'list_options': ['nodes']
+    },
+    'auth': {
+  	    'type': 'simple',
+        'list_options': []
     }
 }
 
