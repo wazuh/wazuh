@@ -216,7 +216,7 @@ def main():
             arguments['remove-group'] = True
             arguments['n_actions'] += 1
         elif o in ("-i", "--agent-id"):
-            arguments['agent-id'] = a
+            arguments['agent-id'] = a.zfill(3)
         elif o in ("-g", "--group"):
             arguments['group'] = a
         elif o in ("-q", "--quiet"):
