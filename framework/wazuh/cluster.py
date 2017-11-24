@@ -74,7 +74,11 @@ def check_cluster_status():
 
 # import python-cryptography lib only if cluster is enabled at ossec-control
 if check_cluster_status():
-    from cryptography.fernet import Fernet
+    try:
+        from cryptography.fernet import Fernet
+    except ImportError as e:
+        print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
+        exit(-1)
 
 
 class WazuhClusterClient(asynchat.async_chat):
@@ -89,7 +93,7 @@ class WazuhClusterClient(asynchat.async_chat):
         self.can_read = False
         self.can_write = True
         self.received_data = []
-        self.f = Fernet(key.encode('base64','strict'))
+        self.f = key
 
     def handle_connect(self):
         pass
@@ -134,9 +138,15 @@ class WazuhClusterClient(asynchat.async_chat):
 def send_request(host, port, key, data, file=None):
     error = 0
     try:
-        client = WazuhClusterClient(host, int(port), key, data, file)
+        fernet_key = Fernet(key.encode('base64','strict'))
+        client = WazuhClusterClient(host, int(port), fernet_key, data, file)
         asyncore.loop(timeout=common.cluster_timeout)
         data = client.response
+
+    except NameError as e:
+        data = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"
+        error = 1
+
     except Exception as e:
         error = 1
         data = str(e)
