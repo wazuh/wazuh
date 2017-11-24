@@ -162,8 +162,11 @@ class Agent:
                 pending = False if self.version != "" else True
             if field == 'dateAdd' and value != None:
                 self.dateAdd = value
-            if field == 'last_keepalive' and value != None:
-                self.lastKeepAlive = value
+            if field == 'last_keepalive':
+                if value == None:
+                	self.lastKeepAlive = 0
+                else:
+                    self.lastKeepAlive = value
             if field == 'configSum' and value != None:
                 self.configSum = value
             if field == 'mergedSum' and value != None:
@@ -1514,9 +1517,15 @@ class Agent:
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
         if path.exists(agent_group_path):
             # remove(agent_group_path)
-            fo = open(agent_group_path, "rw+")
-            fo.truncate()
-            fo.close()
+
+            # if agent is in 'never connected' state has not 'lastKeepAlive' key
+            if 'lastKeepAlive' in Agent(agent_id).get_basic_information():
+                fo = open(agent_group_path, "rw+")
+                fo.truncate()
+                fo.write("default")
+                fo.close()
+            else:
+                remove(agent_group_path)
 
         return "Group unset for agent '{0}'.".format(agent_id)
 
