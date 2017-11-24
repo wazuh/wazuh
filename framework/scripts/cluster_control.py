@@ -95,6 +95,9 @@ if __name__ == '__main__':
     if args.push:
         sync(debug=False)
 
+    elif args.manager is not None and args.files is None:
+        logging.error("Invalid argument: -m parameter requires -f")
+
     elif args.files is not None:
         _get_file_status(args.files, args.manager)
 
