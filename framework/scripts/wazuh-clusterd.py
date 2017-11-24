@@ -19,7 +19,11 @@ from pwd import getpwnam
 from signal import signal, SIGINT
 import ctypes
 import ctypes.util
-from cryptography.fernet import Fernet
+try:
+    from cryptography.fernet import Fernet
+except ImportError as e:
+    print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
+    exit(-1)
 
 import argparse
 parser =argparse.ArgumentParser()
