@@ -113,7 +113,6 @@ Install()
     if [ "X${update_only}" = "Xyes" ]; then
         echo "Stopping Wazuh..."
         UpdateStopOSSEC
-        sleep 2
     fi
 
     # Install
@@ -592,9 +591,8 @@ setEnv()
 
         case $ANSWER in
             $yesmatch)
-                UpdateStopOSSEC > /dev/null 2>&1
                 echo "      Stopping Wazuh..."
-                sleep 2
+                UpdateStopOSSEC > /dev/null 2>&1
                 rm -rf $INSTALLDIR
                 if [ ! $? = 0 ]; then
                     echo "Error deleting ${INSTALLDIR}"
