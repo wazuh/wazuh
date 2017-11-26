@@ -349,7 +349,6 @@ int get_ossec_server()
 
     ret:
     OS_ClearXML(&xml);
-    free(str);
     return success;
 }
 
