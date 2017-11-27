@@ -85,7 +85,9 @@ class Agent:
         """
         Calculates state based on last keep alive
         """
-        if last_keep_alive == 0:
+	if not last_keep_alive:
+            return None
+        elif last_keep_alive == 0:
             return "Never connected"
         else:
             limit_seconds = 600*3 + 30
