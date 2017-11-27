@@ -13,11 +13,10 @@ from os.path import dirname
 from subprocess import check_call, CalledProcessError, check_output
 from os import devnull, seteuid, setgid, getpid, kill
 from multiprocessing import Process
-from multiprocessing.sharedctypes import Value
 from re import search
 from time import sleep
 from pwd import getpwnam
-from signal import signal, SIGINT
+from signal import signal, SIGINT, SIGUSR1
 import ctypes
 import ctypes.util
 try:
@@ -36,7 +35,6 @@ parser.add_argument('-V', help="Print version", action='store_true')
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
 
 child_pid = 0
-master_ready = Value('i', 0)
 
 # Import framework
 try:
@@ -178,14 +176,13 @@ def crontab_sync_master(interval):
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
 def crontab_sync_client():
-    while True:
-        while not master_ready.value:
-            continue
-
+    def sync_handler(n_signal, frame):
         master = get_remote_nodes()[0]
         sync_one_node(False, master)
-        with master_ready.get_lock():
-            master_ready.value = 0
+        
+    signal(SIGUSR1, sync_handler)
+    while True:
+        sleep(30)
 
 
 def signal_handler(n_signal, frame):
