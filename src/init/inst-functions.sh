@@ -585,7 +585,12 @@ InstallCommon(){
 	${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.json
 	${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
+    if [ ${INSTYPE} = 'agent' ]; then
+        ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/bin
+    else
+        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
+    fi
+
 	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua
 	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/native
 	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/compiled
