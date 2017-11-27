@@ -12,6 +12,8 @@ import json
 import sys
 import time
 import os
+import urllib
+import urllib2
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
 
@@ -56,7 +58,7 @@ def main(args):
 	debug(alert_file_location)
 
 	# Load alert. Parse JSON object.
-	with open(alert_file_location) as alert_file:    
+	with open(alert_file_location) as alert_file:
 		json_alert = json.load(alert_file)
 	debug("# Processing alert")
 	debug(json_alert)
@@ -89,7 +91,7 @@ def collect(data):
 
 def in_database(data, hash):
   result = data['response_code']
-  if result == 0: 
+  if result == 0:
     return False
   return True
 
@@ -99,35 +101,39 @@ def query_api(hash, apikey):
   "Accept-Encoding": "gzip, deflate",
   "User-Agent" : "gzip,  Python library-client-VirusTotal"
   }
-  response = requests.get('https://www.virustotal.com/vtapi/v2/file/report',params=params, headers=headers)
-  if response.status_code == 200:
-	  json_response = response.json()
-	  data = json_response
-	  return data
+
+  url = 'https://www.virustotal.com/vtapi/v2/file/report'
+  data = urllib.urlencode(params, headers)
+  req = urllib2.Request(url, data)
+  response = urllib2.urlopen(req)
+
+  if response.getcode() == 200:
+      data = json.loads(response.read())
+      return data
   else:
 	  alert_output = {}
 	  alert_output["virustotal"] = {}
 	  alert_output["integration"] = "virustotal"
 
-	  if response.status_code == 204:
+	  if response.getcode() == 204:
 	    debug("# Error: VirusTotal Public API request rate limit reached")
-	    alert_output["virustotal"]["error"] = response.status_code
+	    alert_output["virustotal"]["error"] = response.getcode
 	    alert_output["virustotal"]["description"] = "Error: Public API request rate limit reached"
 	    send_event(alert_output)
 	    exit(0)
-	  elif response.status_code == 403:
+	  elif response.getcode() == 403:
 	    debug("# Error: VirusTotal credentials, required privileges error")
-	    alert_output["virustotal"]["error"] = response.status_code
+	    alert_output["virustotal"]["error"] = response.getcode
 	    alert_output["virustotal"]["description"] = "Error: Check credentials"
 	    send_event(alert_output)
 	    exit(0)
 	  else:
 	    debug("# Error when conecting VirusTotal API")
-	    alert_output["virustotal"]["error"] = response.status_code
+	    alert_output["virustotal"]["error"] = response.getcode
 	    alert_output["virustotal"]["description"] = "Error: API request fail"
 	    send_event(alert_output)
 	    response.raise_for_status()
-	    exit(0)	
+	    exit(0)
 
 def request_virustotal_info(alert, apikey):
 	alert_output = {}
@@ -135,7 +141,7 @@ def request_virustotal_info(alert, apikey):
 	# If there is no a md5 checksum present in the alert. Exit.
 	if not "md5_after" in alert["syscheck"]:
 	  return(0)
-	
+
 	# Request info using VirusTotal API
 	data = query_api(alert["syscheck"]["md5_after"], apikey)
 
@@ -169,7 +175,7 @@ def request_virustotal_info(alert, apikey):
 		alert_output["virustotal"]["positives"] = positives
 		alert_output["virustotal"]["total"] = total
 		alert_output["virustotal"]["permalink"] = permalink
-	
+
 
 	debug(alert_output)
 
@@ -193,7 +199,6 @@ if __name__ == "__main__":
         else:
             msg = '{0} Wrong arguments'.format(now)
             bad_arguments = True
-
 
         # Logging the call
         f = open(log_file, 'a')
