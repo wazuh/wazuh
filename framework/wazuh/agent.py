@@ -1,4 +1,4 @@
-ç#!/usr/bin/env python
+#!/usr/bin/env python
 
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -165,7 +165,7 @@ class Agent:
             if field == 'last_keepalive':
 		if value != None:
                     self.lastKeepAlive = value
-		else
+		else:
 		    self.lastKeepAlive = 0
             if field == 'configSum' and value != None:
                 self.configSum = value
