@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import hashlib
 import json
 import stat
+import re
 
 try:
     from subprocess import check_output
@@ -134,7 +135,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     if sort_by:  # array should be a dictionary or a Class
         if type(array[0]) is dict:
             check_sort_fields(set(array[0].keys()), set(sort_by))
-            
+
             return sorted(array, key=lambda o: tuple(o.get(a) for a in sort_by), reverse=order_desc)
         else:
             return sorted(array, key=lambda o: tuple(getattr(o, a) for a in sort_by), reverse=order_desc)
@@ -330,3 +331,73 @@ def md5(fname):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
+
+class WazuhVersion:
+
+    def __init__(self, version):
+
+        pattern = "v?(\d)\.(\d)\.(\d)\-?(alpha|beta|rc)?(\d*)"
+        m = re.match(pattern, version)
+
+        if m:
+            self.__mayor = m.group(1)
+            self.__minor = m.group(2)
+            self.__patch = m.group(3)
+            self.__dev = m.group(4)
+            self.__dev_ver = m.group(5)
+        else:
+            raise ValueError("Invalid version format.")
+
+    def to_array(self):
+        array = [self.__mayor]
+        array.extend(self.__minor)
+        array.extend(self.__patch)
+        if self.__dev:
+            array.append(self.__dev)
+        if self.__dev_ver:
+            array.append(self.__dev_ver)
+        return array
+
+    def __to_string(self):
+        ver_string = "{0}.{1}.{2}".format(self.__mayor, self.__minor, self.__patch)
+        if self.__dev:
+            ver_string = "{0}-{1}{2}".format(ver_string, self.__dev, self.__dev_ver)
+        return ver_string
+
+    def __str__(self):
+        return self.__to_string()
+
+    def __eq__(self, new_version):
+        return (self.__to_string() == new_version.__to_string())
+
+    def __ne__(self, new_version):
+        return (self.__to_string() != new_version.__to_string())
+
+    def __ge__(self, new_version):
+        if self.__mayor < new_version.__mayor:
+            return False
+        elif self.__minor < new_version.__minor:
+            return False
+        elif self.__patch < new_version.__patch:
+            return False
+        elif (self.__dev) and not (new_version.__dev):
+            return False
+        elif (self.__dev) and (new_version.__dev):
+            if ord(self.__dev[0]) < ord(new_version.__dev[0]):
+                return False
+            elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
+                return False
+            else:
+                return True
+        else:
+            return True
+
+    def __lt__(self, new_version):
+        return not (self >= new_version)
+
+    def __gt__(self, new_version):
+        return (self >= new_version and self != new_version)
+
+    def __le__(self, new_version):
+        return (not (self < new_version) or self == new_version)
