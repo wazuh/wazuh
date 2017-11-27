@@ -123,7 +123,6 @@ Install()
     # Generate the /etc/ossec-init.conf
     VERSION=`cat ${VERSION_FILE}`
     REVISION=`cat ${REVISION_FILE}`
-    chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
     GenerateInitConf > ${OSSEC_INIT}
     chmod 640 ${OSSEC_INIT}
     chown root:ossec ${OSSEC_INIT}
@@ -144,6 +143,7 @@ Install()
     fi
 
     # Calling the init script  to start ossec hids during boot
+    notmodified=""
     if [ "X${update_only}" = "X" ]; then
         runInit $INSTYPE
         if [ $? = 1 ]; then

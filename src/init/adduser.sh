@@ -1,7 +1,6 @@
 #!/bin/sh
 
 set -e
-set -u
 
 if ! [ $# -eq 6 ]; then
     echo "Usage: ${0} USERNAME_DEFAULT USERNAME_MAIL USERNAME_REMOTE GROUPNAME DIRECTORY INSTYPE.";
@@ -96,4 +95,4 @@ else
 fi
 
 echo "success";
-exit 0;
+return 0;

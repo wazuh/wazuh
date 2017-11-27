@@ -576,7 +576,7 @@ InstallCommon(){
 	INSTALL="/opt/freeware/bin/install"
     fi
 
-    ./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX} ${INSTYPE}
+   . ./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX} ${INSTYPE}
 
 	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/
 	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
@@ -671,7 +671,7 @@ InstallCommon(){
 
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 
-	./init/fw-check.sh execute
+	. ./init/fw-check.sh execute
 }
 
 InstallLocal(){

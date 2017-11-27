@@ -1,7 +1,6 @@
 #!/bin/sh
 
 set -e
-set -u
 
 # Checking which firewall to use.
 UNAME=$(uname);
@@ -49,4 +48,4 @@ if [ ! "X$FILE" = "X" ]; then
     fi
 fi
 
-exit 0;
+return 0;

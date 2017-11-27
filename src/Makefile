@@ -61,6 +61,7 @@ ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-std=gnu99
+		OSSEC_LDFLAGS+=-z relax=secadj
 		OSSEC_LDFLAGS+=-lsocket -lnsl -lresolv
 		LUA_PLAT=solaris
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
