@@ -483,7 +483,7 @@ def _check_removed_agents(new_client_keys):
         # can't use readlines function since it leaves a \n at the end of each item of the list
         client_keys = ck.read().split('\n')
 
-    regex = re.compile('-\d{3} \w+ (any|\d+.\d+.\d+.\d+) \w+')
+    regex = re.compile('-\d{3} \w+ (any|\d+.\d+.\d+.\d+|\d+.\d+.\d+.\d+\/\d+) \w+')
     for removed_line in filter(lambda x: x.startswith('-'), unified_diff(client_keys, new_client_keys)):
         if regex.match(removed_line):
             agent_id, _, _, _, = removed_line[1:].split(" ")
@@ -725,7 +725,7 @@ def sync_one_node(debug, node):
     before = time()
     result_queue = queue()
     push_updates_single_node(all_files, node, config_cluster, result_queue)
-    
+
     after = time()
     logging.debug("Time sending info: {0}".format(after-before))
     before = time()
