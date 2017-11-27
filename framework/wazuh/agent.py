@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r
+from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -23,7 +23,7 @@ from grp import getgrnam
 from time import time, sleep
 import socket
 import hashlib
-from distutils.version import StrictVersion
+
 try:
     from urllib2 import urlopen, URLError, HTTPError
 except ImportError:
@@ -1661,16 +1661,13 @@ class Agent:
             print("Agent version: {0}".format(agent_ver.split(" ")[1]))
             print("Agent new version: {0}".format(agent_new_ver))
 
-        r_manager_ver = manager_ver.split(" ")[1].replace("v","").replace("-","").replace("alpha","a").replace("beta","b")
-        r_agent_ver = agent_ver.split(" ")[1].replace("v","").replace("-","").replace("alpha","a").replace("beta","b")
-        r_agent_new_ver = agent_new_ver.replace("v","").replace("-","").replace("alpha","a").replace("beta","b")
-
-        if StrictVersion(r_manager_ver) < StrictVersion(r_agent_new_ver):
+        if WazuhVersion(manager_ver.split(" ")[1]) < WazuhVersion(agent_new_ver):
             raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver.split(" ")[1], agent_ver.split(" ")[1], agent_new_ver))
 
-        if (StrictVersion(r_agent_ver) >= StrictVersion(r_agent_new_ver) and not force):
+        if (WazuhVersion(agent_ver.split(" ")[1]) >= WazuhVersion(agent_new_ver) and not force):
             raise WazuhException(1716, "Agent ver: {0} / Agent new ver: {1}".format(agent_ver.split(" ")[1], agent_new_ver))
 
+        # Generating file name
         if self.os['platform']=="windows":
             wpk_file = "wazuh_agent_{0}_{1}.wpk".format(agent_new_ver, self.os['platform'])
         else:
@@ -1864,13 +1861,9 @@ class Agent:
 
         self._load_info_from_DB()
 
-        ver = self.version.split(" ")[1].replace("v","").replace("-","").replace("alpha","a").replace("beta","b")
-
-        try:
-            if not StrictVersion(ver) >= '3.0.0a4':
-                raise WazuhException(1719, self.version)
-        except ValueError:
-            raise WazuhException(1719, self.version)
+        # Check if remote upgrade is available for the selected agent version
+        if WazuhVersion(self.version.split(' ')[1]) < WazuhVersion("3.0.0-alpha4"):
+            raise WazuhException(1719, version)
 
         if self.os['platform']=="windows" and int(self.os['major']) < 6:
             raise WazuhException(1721, self.os['name'])
