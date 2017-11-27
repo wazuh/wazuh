@@ -134,7 +134,12 @@ class WazuhClusterServer(asyncore.dispatcher):
             logging.error("Can't bind socket: {0}".format(str(e)))
             raise e
         self.listen(50)
+	cluster_info = read_config()
+	logging.info("Starting cluster {0}".format(cluster_info['name']))
         logging.info("Listening on port {0}.".format(port))
+        logging.info("{0} nodes found in configuration".format(len(cluster_info['nodes'])))
+        logging.info("Synchronization time: {0}".format(cluster_info['interval']))
+
 
     def handle_accept(self):
         pair = self.accept()

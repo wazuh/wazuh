@@ -545,7 +545,7 @@ def extract_zip(zip_bytes):
 def receive_zip(zip_file):
     cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
 
-    logging.info("Receiving zip with {0} files".format(len(zip_file)))
+    logging.info("Receiving package with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'invalid': []}
 
@@ -761,7 +761,8 @@ def sync(debug, force=None):
     own_items_names = own_items.keys()
 
     remote_nodes = get_remote_nodes()
-    logging.info("Starting to sync localhost's files")
+    local_node = get_node()['node']
+    logging.info("Starting to sync {0}'s files".format(local_node))
 
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
