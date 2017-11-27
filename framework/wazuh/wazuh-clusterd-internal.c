@@ -40,8 +40,8 @@
 #define CLUSTER_JSON DEFAULTDIR "/framework/wazuh/cluster.json"
 
 #define MAIN_TAG "wazuh-clusterd-internal"
-#define INOTIFY_TAG "cluster_inotify"
-#define DB_TAG "cluster_db_socket"
+#define INOTIFY_TAG "wazuh-clusterd-internal:inotify"
+#define DB_TAG "wazuh-clusterd-internal:db_socket"
 
 /* Print help statement */
 static void help_cluster_daemon(char * name)
