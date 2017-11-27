@@ -75,7 +75,7 @@ def check_cluster_status():
 # import python-cryptography lib only if cluster is enabled at ossec-control
 if check_cluster_status():
     try:
-        from cryptography.fernet import Fernet
+        from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
     except ImportError as e:
         print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
         exit(-1)
@@ -110,7 +110,12 @@ class WazuhClusterClient(asynchat.async_chat):
     def handle_error(self):
         nil, t, v, tbinfo = asyncore.compact_traceback()
         self.close()
-        raise t(v)
+        if InvalidToken == t:
+            raise InvalidToken("Could not decrypt message from {0}".format(self.addr[0]))
+        elif InvalidSignature == t:
+            raise InvalidSignature("Could not decrypt message from {0}".format(self.addr[0]))
+        else:
+            raise t(v)
 
     def collect_incoming_data(self, data):
         self.received_data.append(data)
@@ -566,7 +571,7 @@ def receive_zip(zip_file):
 
     cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
 
-    logging.info("Receiving zip with {0} files".format(len(zip_file)))
+    logging.info("Receiving package with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'invalid': []}
 
@@ -787,7 +792,8 @@ def sync(debug, force=None):
     own_items_names = own_items.keys()
 
     remote_nodes = get_remote_nodes()
-    logging.info("Starting to sync localhost's files")
+    local_node = get_node()['node']
+    logging.info("Starting to sync {0}'s files".format(local_node))
 
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
@@ -798,6 +804,8 @@ def sync(debug, force=None):
     all_nodes_files = {}
 
     logging.debug("Nodes to sync: {0}".format(str(remote_nodes)))
+    logging.info("Found {0} connected nodes".format(len(remote_nodes)))
+
     for node in remote_nodes:
         all_nodes_files[node] = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 

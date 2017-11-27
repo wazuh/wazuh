@@ -20,7 +20,7 @@ from signal import signal, SIGINT, SIGUSR1
 import ctypes
 import ctypes.util
 try:
-    from cryptography.fernet import Fernet
+    from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
 except ImportError as e:
     print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
     exit(-1)
@@ -72,39 +72,47 @@ class WazuhClusterHandler(asynchat.async_chat):
     def found_terminator(self):
         response = b''.join(self.received_data)
         error = 0
-        try:
-            cmd = self.f.decrypt(response[:common.cluster_sync_msg_size]).decode()
-            command = cmd.split(" ")
+        cmd = self.f.decrypt(response[:common.cluster_sync_msg_size]).decode()
+        command = cmd.split(" ")
 
-            logging.debug("Command received: {0}".format(command))
+        logging.debug("Command received: {0}".format(command))
 
-            if not check_cluster_cmd(command, self.node_type):
-                logging.error("Received invalid cluster command {0} from {1}".format(
-                                command[0], self.addr))
-                error = 1
-                res = "Received invalid cluster command {0}".format(command[0])
+        if not check_cluster_cmd(command, self.node_type):
+            logging.error("Received invalid cluster command {0} from {1}".format(
+                            command[0], self.addr))
+            error = 1
+            res = "Received invalid cluster command {0}".format(command[0])
 
-            if error == 0:
-                if command[0] == 'node':
-                    res = get_node()
-                elif command[0] == 'zip':
-                    zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
-                    res = extract_zip(zip_bytes)
-                elif command[0] == 'ready':
-                    # sync_one_node(False, self.addr)
-                    res = "Starting to sync client's files"
-                    # execute an independent process to "crontab" the sync interval
-                    kill(child_pid, SIGUSR1)
+        if error == 0:
+            if command[0] == 'node':
+                res = get_node()
+            elif command[0] == 'zip':
+                zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                res = extract_zip(zip_bytes)
+            elif command[0] == 'ready':
+                # sync_one_node(False, self.addr)
+                res = "Starting to sync client's files"
+                # execute an independent process to "crontab" the sync interval
+                with master_ready.get_lock():
+                    master_ready.value = 1
 
-                logging.debug("Command {0} executed for {1}".format(command[0], self.addr))
+            logging.debug("Command {0} executed for {1}".format(command[0], self.addr))
 
-            self.data = json.dumps({'error': error, 'data': res})
-
-        except Exception as e:
-            logging.error("Error handling client request: {0}".format(str(e)))
-            self.data = json.dumps({'error': 1, 'data': str(e)})
+        self.data = json.dumps({'error': error, 'data': res})
 
         self.handle_write()
+
+    def handle_error(self):
+        nil, t, v, tbinfo = asyncore.compact_traceback()
+        if t == InvalidToken or t == InvalidSignature:
+            error = "Could not decrypt message from {0}".format(self.addr)
+        else:
+            error = str(t)
+        
+        logging.error("Error handling client request: {0}".format(error))
+        self.data = json.dumps({'error': 1, 'data': error})
+        self.handle_write()
+
 
     def handle_write(self):
         msg = self.f.encrypt(self.data) + '\n'
@@ -131,7 +139,12 @@ class WazuhClusterServer(asyncore.dispatcher):
             logging.error("Can't bind socket: {0}".format(str(e)))
             raise e
         self.listen(50)
+        cluster_info = read_config()
+        logging.info("Starting cluster {0}".format(cluster_info['name']))
         logging.info("Listening on port {0}.".format(port))
+        logging.info("{0} nodes found in configuration".format(len(cluster_info['nodes'])))
+        logging.info("Synchronization interval: {0}".format(cluster_info['interval']))
+
 
     def handle_accept(self):
         pair = self.accept()
