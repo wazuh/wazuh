@@ -224,7 +224,7 @@ def get_file_info(filename, cluster_items):
     return file_item
 
 
-def compress_files(list_path):
+def compress_files(list_path, node_type):
     zipped_file = BytesIO()
     with zipfile.ZipFile(zipped_file, 'w') as zf:
         # write files
@@ -233,6 +233,14 @@ def compress_files(list_path):
                 zf.write(filename = common.ossec_path + f, arcname = f, compress_type=compression)
             except Exception as e:
                 logging.error(str(WazuhException(3001, str(e))))
+
+        # write a file with the name of all the groups only if the node type is master
+        if node_type == 'master':
+            try:
+                local_groups = [x['name'] for x in Agent.get_all_groups(limit=None)['items']]
+                zf.writestr("remote_groups.txt", '\n'.join(local_groups), compression)
+            except Exception as e:
+                raise WazuhException(3001, str(e))
 
     return zipped_file.getvalue()
 
@@ -543,11 +551,28 @@ def extract_zip(zip_bytes):
     return receive_zip(zip_json)
 
 def receive_zip(zip_file):
+    def check_groups(remote_group_set):
+        """
+        Function to remove the groups that are on the local node and not in the remote node
+        """
+        local_groups = {x['name'] for x in Agent.get_all_groups(limit=None)['items']}
+        for removed_group in local_groups - remote_group_set:
+            try:
+                Agent.remove_group(removed_group)
+                logging.info("Group {0} removed successfully".format(removed_group))
+            except Exception as e:
+                logging.error("Error deleting group {0}: {1}".format(removed_group, str(e)))
+
+
     cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
 
     logging.info("Receiving zip with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'invalid': []}
+
+    if 'remote_groups.txt' in zip_file.keys():
+        check_groups(set(zip_file['remote_groups.txt']['data'].split('\n')))
+        del zip_file['remote_groups.txt']
 
     for name,content in zip_file.items():
         try:
@@ -639,7 +664,8 @@ def push_updates_single_node(all_files, node_dest, config_cluster, result_queue)
     pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
     if len(pending_files) > 0:
         logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
-        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
+        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)), 
+                                  node_type=config_cluster['node_type'])
 
         error, response = send_request(host=node_dest, port=config_cluster['port'],
                                        data="zip {0}".format(str(len(zip_file)).
