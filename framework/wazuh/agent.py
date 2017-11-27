@@ -85,7 +85,7 @@ class Agent:
         """
         Calculates state based on last keep alive
         """
-        if last_keep_alive == 0:
+        if last_keep_alive == 0 or not last_keep_alive:
             return "Never connected"
         else:
             limit_seconds = 600*3 + 30
@@ -162,8 +162,11 @@ class Agent:
                 pending = False if self.version != "" else True
             if field == 'dateAdd' and value != None:
                 self.dateAdd = value
-            if field == 'last_keepalive' and value != None:
-                self.lastKeepAlive = value
+            if field == 'last_keepalive':
+		if value != None:
+                    self.lastKeepAlive = value
+		else:
+		    self.lastKeepAlive = 0
             if field == 'configSum' and value != None:
                 self.configSum = value
             if field == 'mergedSum' and value != None:
