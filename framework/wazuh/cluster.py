@@ -266,7 +266,7 @@ def get_nodes():
             response = get_node()
 
         if error:
-            logging.warning("The node with IP {0} is disconnected".format(url))
+            logging.warning("Error connecting with {0}: {1}".format(url, response))
             data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
             continue
 
