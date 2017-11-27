@@ -106,3 +106,7 @@ if __name__ == '__main__':
 
     elif args.nodes is not None:
         _get_nodes_status(args.nodes)
+
+    else:
+        parser.print_help()
+        exit()
