@@ -476,7 +476,8 @@ def _check_removed_agents(new_client_keys):
     that agent is deleted.
     """
     with open("{0}/etc/client.keys".format(common.ossec_path)) as ck:
-        client_keys = ck.readlines()
+        # can't use readlines function since it leaves a \n at the end of each item of the list
+        client_keys = ck.read().split('\n')
 
     regex = re.compile('-\d{3} \w+ (any|\d+.\d+.\d+.\d+) \w+')
     for removed_line in filter(lambda x: x.startswith('-'), unified_diff(client_keys, new_client_keys)):
