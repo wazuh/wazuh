@@ -154,13 +154,9 @@ def send_request(host, port, key, data, file=None):
     return error, data
 
 
-def check_cluster_cmd(cmd):
+def check_cluster_cmd(cmd, node_type):
     # cmd must be a list
     if not isinstance(cmd, list):
-        return False
-
-    # check command type
-    if not cmd[0] in ['zip', 'node']:
         return False
 
     # check cmd len list
@@ -169,6 +165,14 @@ def check_cluster_cmd(cmd):
 
     # check cmd len
     if len(' '.join(cmd)) != common.cluster_protocol_plain_size:
+        return False
+
+    # 'ready' cmd can only be sent by a master node to a client node
+    if cmd[0] == 'ready' and node_type == 'client':
+        return True
+
+    # check command type
+    if not cmd[0] in ['zip', 'node']:
         return False
 
     # second argument of zip is a number
@@ -592,50 +596,163 @@ def get_remote_nodes(connected=True):
 
     return list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
 
+def get_file_status_of_one_node(node, own_items_names, cluster_socket):
+    # check files in database
+    count_query = "count {0}".format(node)
+    cluster_socket.send(count_query)
+    n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
+    if n_files == 0:
+        logging.info("New manager found: {0}".format(node))
+        logging.debug("Adding {0}'s files to database".format(node))
+
+        # if the manager is not in the database, add it with all files
+        for files in divide_list(own_items_names):
+
+            insert_sql = "insert"
+            for file in files:
+                insert_sql += " {0} {1}".format(node, file)
+
+            cluster_socket.send(insert_sql)
+            data = cluster_socket.recv(10000)
+
+        all_files = {file:'pending' for file in own_items_names}
+
+    else:
+        logging.debug("Retrieving {0}'s files from database".format(node))
+        all_files = get_file_status(node, cluster_socket)
+        # if there are missing files that are not being controled in database
+        # add them as pending
+        for missing in divide_list(set(own_items_names) - set(all_files.keys())):
+            insert_sql = "insert"
+            for m in missing:
+                all_files[m] = 'pending'
+                insert_sql += " {0} {1}".format(node,m)
+
+            cluster_socket.send(insert_sql)
+            data = cluster_socket.recv(10000)
+
+    return all_files
+
+
+def push_updates_single_node(all_files, node_dest, config_cluster, result_queue):
+    # filter to send only pending files
+    pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
+    if len(pending_files) > 0:
+        logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
+        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
+
+        error, response = send_request(host=node_dest, port=config_cluster['port'],
+                                       data="zip {0}".format(str(len(zip_file)).
+                                        zfill(common.cluster_protocol_plain_size - len("zip "))),
+                                       file=zip_file, key=config_cluster['key'])
+
+        try:
+            res = literal_eval(response)
+        except Exception as e:
+            res = response
+
+    else:
+        logging.info("No pending files to send to {0} ".format(node_dest))
+        res = {'error': 0, 'data':{'updated':[], 'error':[], 'invalid':[]}}
+        error = 0
+
+
+    if res['error'] != 0:
+        logging.debug(res)
+        result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
+                          'error': 1, 'files':{'updated':[], 'invalid':[],
+                                        'error':list(map(itemgetter(0), pending_files))}})
+    else:
+        logging.debug({'updated': len(res['data']['updated']),
+                      'error': res['data']['error'],
+                      'invalid': res['data']['invalid']})
+        result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
+
+
+def update_node_db_after_sync(data, node, cluster_socket):
+    logging.info("Updating {0}'s file status in DB".format(node))
+    for updated in divide_list(data['files']['updated']):
+        update_sql = "update2"
+        for u in updated:
+            update_sql += " synchronized {0} /{1}".format(node, u)
+
+        cluster_socket.send(update_sql)
+        received = cluster_socket.recv(10000)
+
+    for failed in divide_list(data['files']['error']):
+        update_sql = "update2"
+        for f in failed:
+            if isinstance(f, dict):
+                update_sql += " failed {0} /{1}".format(node, f['item'])
+            else:
+                update_sql += " failed {0} {1}".format(node, f)
+
+        cluster_socket.send(update_sql)
+        received = cluster_socket.recv(10000)
+
+    for invalid in divide_list(data['files']['invalid']):
+        update_sql = "update2"
+        for i in invalid:
+            update_sql += " invalid {0} {1}".format(node, i)
+
+        cluster_socket.send(update_sql)
+        received = cluster_socket.recv(10000)
+
+
+def sync_one_node(debug, node):
+    """
+    Sync files with only one node
+    """
+    config_cluster = read_config()
+    if not config_cluster:
+        raise WazuhException(3000, "No config found")
+
+    cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
+    before = time()
+    # Get own items status
+    own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files(config_cluster['node_type'], cluster_items).items()))
+    own_items_names = own_items.keys()
+
+    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+    logging.debug("Connected to cluster database socket")
+
+    all_files = get_file_status_of_one_node(node, own_items_names, cluster_socket)
+
+    after = time()
+    logging.debug("Time retrieving info from DB: {0}".format(after-before))
+
+    before = time()
+    result_queue = queue()
+    push_updates_single_node(all_files, node, config_cluster, result_queue)
+    
+    after = time()
+    logging.debug("Time sending info: {0}".format(after-before))
+    before = time()
+
+    result = result_queue.get()
+    update_node_db_after_sync(result, node, cluster_socket)
+    after = time()
+    logging.debug("Time updating DB: {0}".format(after-before))
+
+    if debug:
+        return result
+    else:
+        return {'updated': len(result['files']['updated']),
+                  'error': result['files']['error'],
+                  'invalid': result['files']['invalid'],
+                  'error': result['error'],
+                  'reason': result['reason']}
+
 
 def sync(debug, force=None):
     """
     Sync this node with others
     :return: Files synced.
     """
-    def push_updates_single_node(all_files, node_dest, config_cluster, result_queue):
-        # filter to send only pending files
-        pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
-        if len(pending_files) > 0:
-            logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
-            zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)))
-
-            error, response = send_request(host=node_dest, port=config_cluster['port'],
-                                           data="zip {0}".format(str(len(zip_file)).
-                                            zfill(common.cluster_protocol_plain_size - len("zip "))),
-                                           file=zip_file, key=config_cluster['key'])
-
-            try:
-                res = literal_eval(response)
-            except Exception as e:
-                res = response
-
-        else:
-            logging.info("No pending files to send to {0} ".format(node_dest))
-            res = {'error': 0, 'data':{'updated':[], 'error':[], 'invalid':[]}}
-            error = 0
-
-
-        if res['error'] != 0:
-            logging.debug(res)
-            result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
-                              'error': 1, 'files':{'updated':[], 'invalid':[],
-                                            'error':list(map(itemgetter(0), pending_files))}})
-        else:
-            logging.debug({'updated': len(res['data']['updated']),
-                          'error': res['data']['error'],
-                          'invalid': res['data']['invalid']})
-            result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
-
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
-
 
     cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
     before = time()
@@ -656,41 +773,7 @@ def sync(debug, force=None):
 
     logging.debug("Nodes to sync: {0}".format(str(remote_nodes)))
     for node in remote_nodes:
-        # check files in database
-        count_query = "count {0}".format(node)
-        cluster_socket.send(count_query)
-        n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
-        if n_files == 0:
-            logging.info("New manager found: {0}".format(node))
-            logging.debug("Adding {0}'s files to database".format(node))
-
-            # if the manager is not in the database, add it with all files
-            for files in divide_list(own_items_names):
-
-                insert_sql = "insert"
-                for file in files:
-                    insert_sql += " {0} {1}".format(node, file)
-
-                cluster_socket.send(insert_sql)
-                data = cluster_socket.recv(10000)
-
-            all_files = {file:'pending' for file in own_items_names}
-
-        else:
-            logging.debug("Retrieving {0}'s files from database".format(node))
-            all_files = get_file_status(node, cluster_socket)
-            # if there are missing files that are not being controled in database
-            # add them as pending
-            for missing in divide_list(set(own_items_names) - set(all_files.keys())):
-                insert_sql = "insert"
-                for m in missing:
-                    all_files[m] = 'pending'
-                    insert_sql += " {0} {1}".format(node,m)
-
-                cluster_socket.send(insert_sql)
-                data = cluster_socket.recv(10000)
-
-        all_nodes_files[node] = all_files
+        all_nodes_files[node] = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 
     after = time()
     logging.debug("Time retrieving info from DB: {0}".format(after-before))
@@ -717,33 +800,7 @@ def sync(debug, force=None):
 
     before = time()
     for node,data in thread_results.items():
-        logging.info("Updating {0}'s file status in DB".format(node))
-        for updated in divide_list(data['files']['updated']):
-            update_sql = "update2"
-            for u in updated:
-                update_sql += " synchronized {0} /{1}".format(node, u)
-
-            cluster_socket.send(update_sql)
-            received = cluster_socket.recv(10000)
-
-        for failed in divide_list(data['files']['error']):
-            update_sql = "update2"
-            for f in failed:
-                if isinstance(f, dict):
-                    update_sql += " failed {0} /{1}".format(node, f['item'])
-                else:
-                    update_sql += " failed {0} {1}".format(node, f)
-
-            cluster_socket.send(update_sql)
-            received = cluster_socket.recv(10000)
-
-        for invalid in divide_list(data['files']['invalid']):
-            update_sql = "update2"
-            for i in invalid:
-                update_sql += " invalid {0} {1}".format(node, i)
-
-            cluster_socket.send(update_sql)
-            received = cluster_socket.recv(10000)
+        update_node_db_after_sync(data, node, cluster_socket)
 
     cluster_socket.close()
     after = time()

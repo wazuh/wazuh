@@ -13,6 +13,7 @@ from os.path import dirname
 from subprocess import check_call, CalledProcessError, check_output
 from os import devnull, seteuid, setgid, getpid, kill
 from multiprocessing import Process
+from multiprocessing.sharedctypes import Value
 from re import search
 from time import sleep
 from pwd import getpwnam
@@ -35,6 +36,7 @@ parser.add_argument('-V', help="Print version", action='store_true')
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
 
 child_pid = 0
+master_ready = Value('i', 0)
 
 # Import framework
 try:
@@ -56,7 +58,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(me
                     filename="{0}/logs/cluster.log".format(common.ossec_path))
 
 class WazuhClusterHandler(asynchat.async_chat):
-    def __init__(self, sock, addr, key):
+    def __init__(self, sock, addr, key, node_type):
         asynchat.async_chat.__init__(self, sock)
         self.addr = addr
         self.f = Fernet(key.encode('base64','strict'))
@@ -64,6 +66,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.received_data=[]
         self.data=""
         self.counter = 0
+        self.node_type = node_type
 
     def collect_incoming_data(self, data):
         self.received_data.append(data)
@@ -77,7 +80,7 @@ class WazuhClusterHandler(asynchat.async_chat):
 
             logging.debug("Command received: {0}".format(command))
 
-            if not check_cluster_cmd(command):
+            if not check_cluster_cmd(command, self.node_type):
                 logging.error("Received invalid cluster command {0} from {1}".format(
                                 command[0], self.addr))
                 error = 1
@@ -89,6 +92,12 @@ class WazuhClusterHandler(asynchat.async_chat):
                 elif command[0] == 'zip':
                     zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                     res = extract_zip(zip_bytes)
+                elif command[0] == 'ready':
+                    # sync_one_node(False, self.addr)
+                    res = "Starting to sync client's files"
+                    # execute an independent process to "crontab" the sync interval
+                    with master_ready.get_lock():
+                        master_ready.value = 1
 
                 logging.debug("Command {0} executed for {1}".format(command[0], self.addr))
 
@@ -113,11 +122,12 @@ class WazuhClusterHandler(asynchat.async_chat):
 
 class WazuhClusterServer(asyncore.dispatcher):
 
-    def __init__(self, bind_addr, port, key):
+    def __init__(self, bind_addr, port, key, node_type):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
         self.key = key
+        self.node_type = node_type
         try:
             self.bind((bind_addr, port))
         except socket.error as e:
@@ -131,7 +141,7 @@ class WazuhClusterServer(asyncore.dispatcher):
         if pair is not None:
             sock, addr = pair
             logging.info("Accepted connection from host {0}".format(addr[0]))
-            handler = WazuhClusterHandler(sock, addr[0], self.key)
+            handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type)
         return
 
     def handle_error(self):
@@ -140,13 +150,31 @@ class WazuhClusterServer(asyncore.dispatcher):
         raise t(v)
 
 
-def crontab_sync(interval):
+def crontab_sync_master(interval):
     interval_number  = int(search('\d+', interval).group(0))
     interval_measure = interval[-1]
     while True:
         logging.debug("Crontab: starting to sync")
         sync(False)
+
+        config_cluster = read_config()
+        for node in get_remote_nodes():
+            # ask clients to send updates
+            error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
+                                data="ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready "))))
+
         sleep(interval_number if interval_measure == 's' else interval_number*60)
+
+def crontab_sync_client():
+    while True:
+        while not master_ready.value:
+            continue
+
+        master = get_remote_nodes()[0]
+        sync_one_node(False, master)
+        with master_ready.get_lock():
+            master_ready.value = 0
+
 
 def signal_handler(n_signal, frame):
     def strsignal(n_signal):
@@ -230,13 +258,21 @@ if __name__ == '__main__':
         logging.error(str(e))
         exit(1)
     
-    # execute an independent process to "crontab" the sync interval
-    p = Process(target=crontab_sync, args=(cluster_config['interval'],))
-    if not args.f:
-        p.daemon=True
-    p.start()
-    child_pid = p.pid
+    if cluster_config['node_type'] == 'master':
+        # execute an independent process to "crontab" the sync interval
+        p = Process(target=crontab_sync_master, args=(cluster_config['interval'],))
+        if not args.f:
+            p.daemon=True
+        p.start()
+        child_pid = p.pid
+    else:
+        # execute an independent process to "crontab" the sync interval
+        p = Process(target=crontab_sync_client)
+        if not args.f:
+            p.daemon=True
+        p.start()
+        child_pid = p.pid
 
     server = WazuhClusterServer('' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr'], 
-                                int(cluster_config['port']), cluster_config['key'])
+                                int(cluster_config['port']), cluster_config['key'], cluster_config['node_type'])
     asyncore.loop(timeout=common.cluster_timeout)
