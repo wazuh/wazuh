@@ -45,7 +45,14 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
          } else if (!strcmp(node[i]->element, node_type)) {
          } else if (!strcmp(node[i]->element, key)) {
          } else if (!strcmp(node[i]->element, hidden)) {
-             Config->hide_cluster_info = 1;
+             if (strcmp(node[i]->content, "yes") == 0) {
+                 Config->hide_cluster_info = 1;
+             } else if (strcmp(node[i]->content, "no") == 0) {
+                 Config->hide_cluster_info = 0;
+             } else {
+                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                 return OS_INVALID;
+             }
          } else if (!strcmp(node[i]->element, interval)) {
          } else if (!strcmp(node[i]->element, nodes)) {
          } else if (!strcmp(node[i]->element, port)) {

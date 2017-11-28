@@ -9,4 +9,5 @@
     <nodes>
         <node>localhost</node>
     </nodes>
+    <hidden>no</hidden>
   </cluster>
