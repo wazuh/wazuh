@@ -164,7 +164,11 @@ def crontab_sync_master(interval):
     interval_measure = interval[-1]
     while True:
         logging.debug("Crontab: starting to sync")
-        sync(False)
+        try:
+            sync(False)
+        except Exception as e:
+            logging.error(str(e))
+            kill(child_pid, SIGINT)
 
         config_cluster = read_config()
         for node in get_remote_nodes():
@@ -200,7 +204,7 @@ def signal_handler(n_signal, frame):
         try:
             pid = int(check_output(["pidof","{0}/bin/wazuh-clusterd-internal".format(ossec_path)]))
             kill(pid, SIGINT)
-        except CalledProcessError:
+        except Exception:
             pass
 
         if child_pid != 0:

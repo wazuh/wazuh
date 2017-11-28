@@ -203,6 +203,13 @@ def check_cluster_config(config):
         raise WazuhException(3004, 'Please specify IPs of all cluster nodes')
 
 
+def get_cluster_items():
+    try:
+        cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
+        return cluster_items
+    except Exception as e:
+        raise WazuhException(3005, str(e))
+
 def get_file_info(filename, cluster_items):
     fullpath = common.ossec_path + filename
 
@@ -569,7 +576,7 @@ def receive_zip(zip_file):
                 logging.error("Error deleting group {0}: {1}".format(removed_group, str(e)))
 
 
-    cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
+    cluster_items = get_cluster_items()
 
     logging.info("Receiving package with {0} files".format(len(zip_file)))
 
@@ -738,7 +745,8 @@ def sync_one_node(debug, node):
     if not config_cluster:
         raise WazuhException(3000, "No config found")
 
-    cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
+    cluster_items = get_cluster_items()
+
     before = time()
     # Get own items status
     own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files(config_cluster['node_type'], cluster_items).items()))
@@ -785,7 +793,7 @@ def sync(debug, force=None):
     if not config_cluster:
         raise WazuhException(3000, "No config found")
 
-    cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
+    cluster_items = get_cluster_items()
     before = time()
     # Get own items status
     own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files(config_cluster['node_type'], cluster_items).items()))
