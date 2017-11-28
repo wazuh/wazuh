@@ -93,8 +93,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                 # sync_one_node(False, self.addr)
                 res = "Starting to sync client's files"
                 # execute an independent process to "crontab" the sync interval
-                with master_ready.get_lock():
-                    master_ready.value = 1
+                kill(child_pid, SIGUSR1)
 
             logging.debug("Command {0} executed for {1}".format(command[0], self.addr))
 
@@ -107,7 +106,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         if t == InvalidToken or t == InvalidSignature:
             error = "Could not decrypt message from {0}".format(self.addr)
         else:
-            error = str(t)
+            error = str(v)
         
         logging.error("Error handling client request: {0}".format(error))
         self.data = json.dumps({'error': 1, 'data': error})
