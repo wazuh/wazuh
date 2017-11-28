@@ -33,7 +33,7 @@
 #include <dirent.h>
 #include <pwd.h>
 
-#define DB_PATH DEFAULTDIR "/var/db/cluster_db"
+#define DB_PATH DEFAULTDIR "/var/db/cluster.db"
 #define SOCKET_PATH DEFAULTDIR "/queue/ossec/cluster_db"
 #define IN_BUFFER_SIZE sizeof(struct inotify_event) + 256
 
