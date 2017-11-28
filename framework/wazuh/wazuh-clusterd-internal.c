@@ -422,7 +422,6 @@ void* daemon_inotify(void * args) {
                     files[n_files_to_watch].path = (char *) malloc(len);
                     strcpy(files[n_files_to_watch].path, subdirs[j]);
                     files[n_files_to_watch].name = (char *) malloc(len);
-                    mtinfo(INOTIFY_TAG, "%s", subdirs[j]);
                     strncpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string), len);
                     files[n_files_to_watch].name[len-1] = '\0';
                     files[n_files_to_watch].flags = flags;
@@ -430,14 +429,23 @@ void* daemon_inotify(void * args) {
                 }
             }
 
-            files[n_files_to_watch].path = (char *) malloc(strlen(aux_path)+1);
-            strcpy(files[n_files_to_watch].path, aux_path);
+            size_t len;
+            len = strlen(aux_path)+1;
+            files[n_files_to_watch].path = (char *) malloc(len);
+            if (snprintf(files[n_files_to_watch].path, len, "%s", aux_path) >= len)
+                mterror(INOTIFY_TAG, "String overflow in filepath %s", files[n_files_to_watch].path);
             free(aux_path);
-            files[n_files_to_watch].name = (char *) malloc(strlen(subitem->string)+1);
-            strcpy(files[n_files_to_watch].name, subitem->string);
+
+            len = strlen(subitem->string)+1;
+            files[n_files_to_watch].name = (char *) malloc(len);
+            if (snprintf(files[n_files_to_watch].name, len, "%s", subitem->string) >= len)
+                mterror(INOTIFY_TAG, "String overflow in file name %s", subitem->string);
+
             files[n_files_to_watch].flags = flags;
+
             files[n_files_to_watch].files = cJSON_GetObjectItemCaseSensitive(subitem, "files");
 
+            mtinfo(INOTIFY_TAG, "Monitoring %s", cJSON_GetObjectItemCaseSensitive(subitem, "description")->valuestring);
             n_files_to_watch++;
         }
     }
@@ -446,9 +454,9 @@ void* daemon_inotify(void * args) {
     /* prepare inotify */
     int fd;
     fd = inotify_init ();
-
     for (i = 0; i < n_files_to_watch; i++) {
-        mtinfo(INOTIFY_TAG, "Adding file %s to watch list", files[i].name);
+        files[i].files = files[i].files == NULL ? cJSON_Parse("[\"all\"]") : files[i].files;
+        mtdebug1(INOTIFY_TAG, "Monitoring %s files from directory %s", cJSON_Print(files[i].files), files[i].name);
         files[i].watcher = inotify_add_watch(fd, files[i].path, files[i].flags);
         if (files[i].watcher < 0)
             mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 

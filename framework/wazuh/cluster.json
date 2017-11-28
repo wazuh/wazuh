@@ -6,7 +6,8 @@
         "write_mode": "atomic",
         "flags": ["IN_MOVED_TO"],
         "files": ["client.keys"],
-        "recursive": false
+        "recursive": false,
+        "description": "client keys file database"
     },
 
     "/etc/shared/": {
@@ -16,7 +17,8 @@
         "write_mode": "atomic",
         "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE", "IN_DELETE"],
         "files": ["all"],
-        "recursive": true
+        "recursive": true,
+        "description": "shared configuration files"
     },
 
     "/queue/agent-info/": {
@@ -26,7 +28,8 @@
         "write_mode": "atomic",
         "flags": ["IN_CLOSE_WRITE", "IN_ATTRIB", "IN_MOVED_TO", "IN_DELETE"],
         "files": ["all"],
-        "recursive": false
+        "recursive": false,
+        "description": "agent status"
     },
 
     "/queue/agent-groups/": {
@@ -36,7 +39,8 @@
         "write_mode": "atomic",
         "flags": ["IN_CLOSE_WRITE", "IN_MOVED_TO", "IN_DELETE"],
         "files": ["all"],
-        "recursive": false
+        "recursive": false,
+        "description": "agents group configuration"
     },
 
     "excluded_files": [
