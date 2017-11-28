@@ -13,7 +13,7 @@ import sqlite3
 from datetime import datetime
 from hashlib import sha512
 from time import time, mktime
-from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod
+from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull
 from subprocess import check_output
 from shutil import rmtree
 from io import BytesIO
@@ -62,7 +62,7 @@ def check_cluster_status():
         directory = f.readline().split("=")[1][:-1].replace('"', "")
 
     try:
-        process_list = check_output(["tac", "{0}/bin/.process_list".format(directory)]).split('\n')
+        process_list = check_output(["tac", "{0}/bin/.process_list".format(directory)], stderr=open(devnull, 'w')).split('\n')
     except:
         return False
     for process in process_list:
