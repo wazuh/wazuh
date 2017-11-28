@@ -198,7 +198,7 @@ def signal_handler(n_signal, frame):
     if n_signal == SIGINT:
         # kill C daemon if it's running
         try:
-            pid = int(check_output(["pidof","{0}/framework/wazuh-clusterd-internal".format(ossec_path)]))
+            pid = int(check_output(["pidof","{0}/bin/wazuh-clusterd-internal".format(ossec_path)]))
             kill(pid, SIGINT)
         except CalledProcessError:
             pass
@@ -264,7 +264,7 @@ if __name__ == '__main__':
         check_cluster_config(cluster_config)
     except WazuhException as e:
         logging.error(str(e))
-        exit(1)
+        kill(getpid(), SIGINT)
     
     if cluster_config['node_type'] == 'master':
         # execute an independent process to "crontab" the sync interval
