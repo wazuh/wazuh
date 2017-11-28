@@ -755,8 +755,8 @@ class Agent:
             data_tuple = {}
             lastKeepAlive = 0
             pending = True
+            os = {}
             for field, value in zip(select_fields, tuple):
-                os = {}
 
                 if value != None and field == 'id':
                     data_tuple['id'] = str(value).zfill(3)
@@ -789,10 +789,10 @@ class Agent:
                 if value != None and field == 'node_name' and field in set_select_fields:
                     data_tuple['node_name'] = value
 
-                if os:
-                    os_no_empty = dict((k, v) for k, v in os.items() if v)
-                    if os_no_empty:
-                        data_tuple['os'] = os_no_empty
+            if os:
+                os_no_empty = dict((k, v) for k, v in os.items() if v)
+                if os_no_empty:
+                    data_tuple['os'] = os_no_empty
 
             if 'status' in set_select_fields:
                 if data_tuple['id'] == "000":
