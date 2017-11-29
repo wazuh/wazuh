@@ -13,6 +13,7 @@ import hashlib
 import json
 import stat
 import re
+from itertools import groupby, chain
 
 try:
     from subprocess import check_output
@@ -332,6 +333,67 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
+def plain_dict_to_nested_dict(data):
+    """
+    Turns an input dictionary with "nested" fields in form
+                field_subfield
+    into a real nested dictionary in form
+                field {subfield}
+
+    For example, the following input dictionary
+    data = {
+       "ram_free": "1669524",
+       "board_serial": "BSS-0123456789",
+       "cpu_name": "Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz",
+       "cpu_cores": "4",
+       "ram_total": "2045956",
+       "cpu_mhz": "2394.464"
+    }
+    will output this way:
+    data = {
+      "ram": {
+         "total": "2045956",
+         "free": "1669524"
+      },
+      "cpu": {
+         "cores": "4",
+         "mhz": "2394.464",
+         "name": "Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz"
+      },
+      "board_serial": "BSS-0123456789"
+    }
+    """
+    # separate fields and subfields:
+    # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
+    nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g))) 
+             for k,g in groupby(map(lambda x: x.split('_'), sorted(data.keys())), 
+             key=lambda x:x[0])}
+
+    # create a nested dictionary with those fields that have subfields
+    # (board_serial won't be added because it only has one subfield)
+    #  nested_dict = {
+    #       'cpu': {
+    #           'cores': '4', 
+    #           'mhz': '2394.464',
+    #           'name': 'Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz'
+    #       }, 
+    #       'ram': {
+    #           'free': '1669524', 
+    #           'total': '2045956'
+    #       }
+    #    }
+    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl} for f,sfl 
+                  in nested.items() if len(sfl) > 1}
+
+    # create a dictionary with the non nested fields
+    # non_nested_dict = {'board_serial': 'BSS-0123456789'}
+    non_nested_dict = {f:data[f] for f in data.keys() if f.split('_')[0] 
+                       not in nested_dict.keys()}
+
+    # append both dictonaries
+    nested_dict.update(non_nested_dict)
+
+    return nested_dict
 
 class WazuhVersion:
 
