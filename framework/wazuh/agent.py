@@ -160,7 +160,7 @@ class Agent:
             if field == 'version' and value != None:
                 self.version = value
                 pending = False if self.version != "" else True
-            if field == 'dateAdd' and value != None:
+            if field == 'date_add' and value != None:
                 self.dateAdd = value
             if field == 'last_keepalive':
                 if value != None:
@@ -226,7 +226,7 @@ class Agent:
         """
         self._load_info_from_DB(select)
 
-        select_fields = {'id', 'last_keepalive', 'status'} if select is None else select['fields']
+        select_fields = {'id', 'last_keepalive', 'status', 'version'} if select is None else select['fields']
 
         info = {}
 
