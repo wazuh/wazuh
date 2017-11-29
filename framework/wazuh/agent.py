@@ -1332,7 +1332,7 @@ class Agent:
                 in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
 
         nested_data = [plain_dict_to_nested_dict(d, ['os']) for d in data]
-        return {'data': nested_data, 'totalItems': len(nested_data)}
+        return {'items': nested_data, 'totalItems': len(nested_data)}
 
     @staticmethod
     def get_group_files(group_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
