@@ -262,7 +262,7 @@ def read_config():
         config_cluster = get_ossec_conf('cluster')
 
     except Exception as e:
-        raise WazuhException(3000, str(e))
+        raise WazuhException(3006, e.message)
 
     return config_cluster
 

@@ -101,7 +101,8 @@ class WazuhException(Exception):
         3002: 'Error creating PID file',
         3003: 'Error deleting PID file',
         3004: 'Error in cluster configuration',
-        3005: 'Error reading cluster JSON file'
+        3005: 'Error reading cluster JSON file',
+        3006: 'Error reading cluster configuration'
 
         # > 9000: Authd
     }
