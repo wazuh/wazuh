@@ -1328,11 +1328,12 @@ class Agent:
         # Data query
         conn.execute(query.format(','.join(select_fields)), request)
 
-        data = [{field:str(tuple_elem).zfill(3) for field,tuple_elem \
+        non_nested = [{field:str(tuple_elem).zfill(3) for field,tuple_elem \
                 in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
 
-        nested_data = [plain_dict_to_nested_dict(d, ['os']) for d in data]
-        return {'items': nested_data, 'totalItems': len(nested_data)}
+        data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
+
+        return data
 
     @staticmethod
     def get_group_files(group_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
