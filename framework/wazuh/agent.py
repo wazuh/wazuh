@@ -1331,7 +1331,7 @@ class Agent:
         data = [{field:str(tuple_elem).zfill(3) for field,tuple_elem \
                 in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
 
-        nested_data = [plain_dict_to_nested_dict(d) for d in data]
+        nested_data = [plain_dict_to_nested_dict(d, ['os']) for d in data]
         return {'data': nested_data, 'totalItems': len(nested_data)}
 
     @staticmethod

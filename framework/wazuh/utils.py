@@ -333,7 +333,7 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def plain_dict_to_nested_dict(data):
+def plain_dict_to_nested_dict(data, force_fields):
     """
     Turns an input dictionary with "nested" fields in form
                 field_subfield
@@ -362,6 +362,9 @@ def plain_dict_to_nested_dict(data):
       },
       "board_serial": "BSS-0123456789"
     }
+
+    :param data: dictionary to nest
+    :param force_fields: fields to force nesting in
     """
     # separate fields and subfields:
     # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
@@ -383,7 +386,7 @@ def plain_dict_to_nested_dict(data):
     #       }
     #    }
     nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl} for f,sfl 
-                  in nested.items() if len(sfl) > 1}
+                  in nested.items() if len(sfl) > 1 or f in force_fields}
 
     # create a dictionary with the non nested fields
     # non_nested_dict = {'board_serial': 'BSS-0123456789'}
