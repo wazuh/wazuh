@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion
+from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -1328,10 +1328,11 @@ class Agent:
         # Data query
         conn.execute(query.format(','.join(select_fields)), request)
 
-        data['items'] = [{field:str(tuple_elem).zfill(3) for field,tuple_elem \
-                        in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
+        data = [{field:str(tuple_elem).zfill(3) for field,tuple_elem \
+                in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
 
-        return data
+        nested_data = [plain_dict_to_nested_dict(d) for d in data]
+        return {'data': nested_data, 'totalItems': len(nested_data)}
 
     @staticmethod
     def get_group_files(group_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
