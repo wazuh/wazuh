@@ -16,7 +16,7 @@ from multiprocessing import Process
 from re import search
 from time import sleep
 from pwd import getpwnam
-from signal import signal, SIGINT, SIGUSR1
+from signal import signal, SIGINT, SIGTERM, SIGUSR1
 import ctypes
 import ctypes.util
 try:
@@ -199,7 +199,7 @@ def signal_handler(n_signal, frame):
     logging.info("Signal [{0}-{1}] received. Exit cleaning...".format(n_signal, 
                                                                strsignal(n_signal)))
     # received Cntrl+C
-    if n_signal == SIGINT:
+    if n_signal == SIGINT or n_signal == SIGTERM:
         # kill C daemon if it's running
         try:
             pid = int(check_output(["pidof","{0}/bin/wazuh-clusterd-internal".format(ossec_path)]))
@@ -208,6 +208,8 @@ def signal_handler(n_signal, frame):
             pass
 
         if child_pid != 0:
+            # kill child
+            kill(child_pid, SIGTERM)
             # remove pid files
             delete_pid("wazuh-clusterd", getpid())
     exit(1)
@@ -226,6 +228,7 @@ if __name__ == '__main__':
 
     # Capture Cntrl + C
     signal(SIGINT, signal_handler)
+    signal(SIGTERM, signal_handler)
 
     cluster_config = read_config()
 
