@@ -163,10 +163,10 @@ class Agent:
             if field == 'dateAdd' and value != None:
                 self.dateAdd = value
             if field == 'last_keepalive':
-		if value != None:
+                if value != None:
                     self.lastKeepAlive = value
-		else:
-		    self.lastKeepAlive = 0
+                else:
+                    self.lastKeepAlive = 0
             if field == 'configSum' and value != None:
                 self.configSum = value
             if field == 'mergedSum' and value != None:
