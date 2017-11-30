@@ -1278,6 +1278,7 @@ class Agent:
         valid_select_fiels = ["id", "name", "ip", "last_keepalive", "os_name",
                              "os_version", "os_platform", "version",
                              "config_sum", "merged_sum", "manager_host"]
+        search_fields = {"id", "name", "os_name"}
 
         # Init query
         query = "SELECT {0} FROM agent WHERE `group` = :group_id"
@@ -1297,7 +1298,7 @@ class Agent:
         # Search
         if search:
             query += " AND NOT" if bool(search['negation']) else ' AND'
-            query += " (" + " OR ".join(x + ' LIKE :search' for x in ('id', 'name')) + " )"
+            query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
             request['search'] = '%{0}%'.format(search['value'])
 
         # Count
