@@ -23,6 +23,7 @@ from grp import getgrnam
 from time import time, sleep
 import socket
 import hashlib
+from operator import setitem
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -1328,8 +1329,9 @@ class Agent:
         # Data query
         conn.execute(query.format(','.join(select_fields)), request)
 
-        non_nested = [{field:str(tuple_elem).zfill(3) for field,tuple_elem \
+        non_nested = [{field:tuple_elem for field,tuple_elem \
                 in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
+        map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
 
         data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
 
