@@ -123,7 +123,11 @@ if __name__ == '__main__':
                 sync_one_node(debug=False, node=node, force=True)
 
     elif args.scan is not None:
-        scan_for_new_files()
+        try:
+            scan_for_new_files()
+        except socket.error as e:
+            print("Error connecting to wazuh cluster service: {0}".format(str(e)))
+            exit(1)
 
     else:
         parser.print_help()
