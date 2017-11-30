@@ -316,7 +316,58 @@ def get_node(name=None):
     return data
 
 
-def get_files(node_type, cluster_items):
+def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket=None, own_items=None):
+    if not own_items:
+        own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
+    own_items_names = own_items.keys()
+
+    # check files in database
+    count_query = "count {0}".format(node)
+    cluster_socket.send(count_query)
+    n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
+    if n_files == 0:
+        logging.info("New manager found: {0}".format(node))
+        logging.debug("Adding {0}'s files to database".format(node))
+
+        # if the manager is not in the database, add it with all files
+        for files in divide_list(own_items_names):
+
+            insert_sql = "insert"
+            for file in files:
+                insert_sql += " {0} {1}".format(node, file)
+
+            cluster_socket.send(insert_sql)
+            data = cluster_socket.recv(10000)
+
+    else:
+        logging.debug("Retrieving {0}'s files from database".format(node))
+        all_files = get_file_status(node, cluster_socket)
+        # if there are missing files that are not being controled in database
+        # add them as pending
+        for missing in divide_list(set(own_items_names) - set(all_files.keys())):
+            insert_sql = "insert"
+            for m in missing:
+                all_files[m] = 'pending'
+                insert_sql += " {0} {1}".format(node,m)
+
+            cluster_socket.send(insert_sql)
+            data = cluster_socket.recv(10000)
+
+
+def scan_for_new_files():
+    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+    cluster_items = get_cluster_items()
+    cluster_config = read_config()
+    own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
+
+    for node in get_remote_nodes():
+        scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket, own_items)
+
+    cluster_socket.close()
+
+
+def list_files_from_filesystem(node_type, cluster_items):
     def get_files_from_dir(dirname, recursive, files, cluster_items):
         items = []
         for entry in listdir(dirname):
@@ -353,7 +404,7 @@ def get_files(node_type, cluster_items):
         except Exception as e:
             continue
 
-    return final_items
+    return dict(filter(lambda x: not x[1]['is_synced'], final_items.items()))
 
 def get_file_status(manager, cluster_socket):
     count_query = "count {0}".format(manager)
@@ -763,7 +814,7 @@ def sync_one_node(debug, node, force=False):
 
     before = time()
     # Get own items status
-    own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files(config_cluster['node_type'], cluster_items).items()))
+    own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     own_items_names = own_items.keys()
 
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -812,7 +863,7 @@ def sync(debug, force=False):
     cluster_items = get_cluster_items()
     before = time()
     # Get own items status
-    own_items = dict(filter(lambda x: not x[1]['is_synced'], get_files(config_cluster['node_type'], cluster_items).items()))
+    own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     own_items_names = own_items.keys()
 
     remote_nodes = get_remote_nodes()

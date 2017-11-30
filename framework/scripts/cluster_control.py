@@ -20,6 +20,7 @@ push_group.add_argument('--force', const='force', action='store_const', help="Fo
 files_group = parser.add_argument_group('Retrieve file status')
 files_group.add_argument('-f', '--files', metavar='FILE', dest='files', nargs='*', type=str, help="List the status of specified files (all if not specified)")
 files_group.add_argument('-m', '--manager', dest='manager', nargs='*', type=str, help="List the status of the files of that manager")
+files_group.add_argument('-s', '--scan', const='scan', action='store_const', help="Scan for new files in the manager")
 
 agents_group = parser.add_argument_group('Retrieve agent status')
 agents_group.add_argument('-a', '--agents', metavar='AGENT', dest='agents', nargs='*', type=bool, help="List all agents")
@@ -120,6 +121,9 @@ if __name__ == '__main__':
         else:
             for node in args.manager:
                 sync_one_node(debug=False, node=node, force=True)
+
+    elif args.scan is not None:
+        scan_for_new_files()
 
     else:
         parser.print_help()
