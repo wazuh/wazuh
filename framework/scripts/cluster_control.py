@@ -8,6 +8,7 @@ from os.path import dirname, basename
 import argparse
 from itertools import chain
 import logging
+import socket
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 
 parser = argparse.ArgumentParser(description="Wazuh Cluster control interface")
@@ -69,7 +70,12 @@ def pprint_table(data, headers, show_header=False):
 
 
 def _get_file_status(file_list, manager):
-    all_files = get_file_status_all_managers(file_list, manager)
+    try:
+        all_files = get_file_status_all_managers(file_list, manager)
+    except socket.error as e:
+        print("Error connecting to wazuh cluster service: {0}".format(str(e)))
+        exit(1)
+
     print pprint_table(data=all_files, headers=["Manager","Filename","Status"], show_header=True)
 
 def _get_agents_status():
