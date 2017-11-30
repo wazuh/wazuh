@@ -1276,7 +1276,7 @@ class Agent:
 
         conn = Connection(db_global[0])
         valid_select_fiels = ["id", "name", "ip", "last_keepalive", "os_name",
-                             "os_version", "os_platform", "version",
+                             "os_version", "os_platform", "os_uname", "version",
                              "config_sum", "merged_sum", "manager_host"]
         search_fields = {"id", "name", "os_name"}
 
