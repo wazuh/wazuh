@@ -15,10 +15,10 @@ parser = argparse.ArgumentParser(description="Wazuh Cluster control interface")
 
 push_group = parser.add_argument_group('Push updates')
 push_group.add_argument('-p', '--push', const='push', action='store_const', help="Send all not synchronized files")
-push_group.add_argument('--force', const='force', action='store_const', help="Force synchronization of all files (use with -m to only force in one node)")
+push_group.add_argument('-f', '--force', const='force', action='store_const', help="Force synchronization of all files (use with -m to only force in one node)")
 
 files_group = parser.add_argument_group('Retrieve file status')
-files_group.add_argument('-f', '--files', metavar='FILE', dest='files', nargs='*', type=str, help="List the status of specified files (all if not specified)")
+files_group.add_argument('-l', '--files', metavar='FILE', dest='files', nargs='*', type=str, help="List the status of specified files (all if not specified)")
 files_group.add_argument('-m', '--manager', dest='manager', nargs='*', type=str, help="List the status of the files of that manager")
 files_group.add_argument('-s', '--scan', const='scan', action='store_const', help="Scan for new files in the manager")
 
@@ -26,7 +26,7 @@ agents_group = parser.add_argument_group('Retrieve agent status')
 agents_group.add_argument('-a', '--agents', metavar='AGENT', dest='agents', nargs='*', type=bool, help="List all agents")
 
 nodes_group = parser.add_argument_group('Retrieve node status')
-nodes_group.add_argument('-l', '--list', metavar='NODE', dest='nodes', nargs='*', type=str, help="List the status of nodes (all if not specified)")
+nodes_group.add_argument('-n', '--nodes', metavar='NODE', dest='nodes', nargs='*', type=str, help="List the status of nodes (all if not specified)")
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
