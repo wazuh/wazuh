@@ -157,6 +157,9 @@ def send_request(host, port, key, data, file=None):
         data = str(e)
     return error, data
 
+def get_status_json():
+    return "Enabled" if check_cluster_status() else "Disabled"
+
 
 def check_cluster_cmd(cmd, node_type):
     # cmd must be a list
