@@ -450,7 +450,7 @@ def get_file_status_all_managers(file_list, manager):
     return files
 
 
-def clear_file_status(manager, cluster_socket):
+def clear_file_status_one_node(manager, cluster_socket):
     """
     Function to set the status of all manager's files to pending
     """
@@ -462,6 +462,18 @@ def clear_file_status(manager, cluster_socket):
 
         cluster_socket.send(update_sql)
         received = cluster_socket.recv(10000)
+
+def clear_file_status():
+    """
+    Function to set all database files' status to pending
+    """
+    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+
+    cluster_socket.send("clear ")
+    received = cluster_socket.recv(10000)
+
+    cluster_socket.close()    
 
 
 def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
@@ -822,7 +834,7 @@ def sync_one_node(debug, node, force=False):
     logging.debug("Connected to cluster database socket")
 
     if force:
-        clear_file_status(node, cluster_socket)
+        clear_file_status_one_node(node, cluster_socket)
     all_files = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 
     after = time()
@@ -883,7 +895,7 @@ def sync(debug, force=False):
 
     for node in remote_nodes:
         if force:
-            clear_file_status(node, cluster_socket)
+            clear_file_status_one_node(node, cluster_socket)
         all_nodes_files[node] = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 
     after = time()

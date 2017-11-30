@@ -156,6 +156,7 @@ void* daemon_socket() {
     // sql sentences to update file status
     char *sql_upd2 = "UPDATE manager_file_status SET status = ? WHERE id_manager = ? AND id_file = ?";
     char *sql_upd1 = "UPDATE manager_file_status SET status = 'pending' WHERE id_file = ?";
+    char *sql_clr  = "UPDATE manager_file_status SET status = 'pending'";
     // sql sentence to insert new row
     char *sql_ins = "INSERT INTO manager_file_status VALUES (?,?,'pending')";
     // sql sentence to perform a select query
@@ -164,7 +165,7 @@ void* daemon_socket() {
     char *sql_del1 = "DELETE FROM manager_file_status WHERE id_file = ?";
 
     char *sql;
-    bool has2, has3, select, count;
+    bool has1, has2, has3, select, count;
 
     if (listen(fd, 5) == -1) {
         mterror_exit(DB_TAG, "Error listening in socket: %s", strerror(errno));
@@ -188,24 +189,28 @@ void* daemon_socket() {
             if (cmd != NULL && strcmp(cmd, "update1") == 0) {
                 sql = sql_upd1;
                 count = false;
+                has1 = true;
                 has2 = false;
                 has3 = false;
                 select = false;
             }else if (cmd != NULL && strcmp(cmd, "delete1") == 0) {
                 sql = sql_del1;
                 count = false;
+                has1 = true;
                 has2 = false;
                 has3 = false;
                 select = false;
             } else if (cmd != NULL && strcmp(cmd, "update2") == 0) {
                 sql = sql_upd2;
                 count = false;
+                has1 = true;
                 has2 = true;
                 has3 = true;
                 select = false;
             } else if (cmd != NULL && strcmp(cmd, "insert") == 0) {
                 sql = sql_ins;
                 count = false;
+                has1 = true;
                 has2 = true;
                 has3 = false;
                 select = false;
@@ -213,6 +218,7 @@ void* daemon_socket() {
                 sql = sql_sel;
                 select = true;
                 count = false;
+                has1 = true;
                 has2 = true;
                 has3 = true;
                 strcpy(response, " ");
@@ -220,49 +226,67 @@ void* daemon_socket() {
                 sql = sql_count;
                 select = false;
                 count = true;
+                has1 = true;
                 has2 = false;
                 has3 = false;
+            } else if (cmd != NULL && strcmp(cmd, "clear") == 0) {
+                sql = sql_clr;
+                count = false;
+                has1 = false;
+                has2 = false;
+                has3 = false;
+                select = false;
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
             }
             
             int step;
-            prepare_db(db, &res, sql);
-            sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
-            while (cmd != NULL) {
-                cmd = strtok(NULL, " ");
-                if (cmd == NULL) break;
-                sqlite3_bind_text(res,1,cmd,-1,0);
-                if (has2) {
+            if (has1) {
+                prepare_db(db, &res, sql);
+                sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+                while (cmd != NULL) {
                     cmd = strtok(NULL, " ");
-                    sqlite3_bind_text(res,2,cmd,-1,0);
-                } 
-                if (has3) {
-                    cmd = strtok(NULL, " ");
-                    sqlite3_bind_text(res,3,cmd,-1,0);
-                }
-                
-                do {
-                    step = sqlite3_step(res);
-                    if (step != SQLITE_ROW) break;
-                    if (select) {
-                        strcat(response, (char *)sqlite3_column_text(res, 1));
-                        strcat(response, "*");
-                        strcat(response, (char *)sqlite3_column_text(res, 2));
-                        strcat(response, " ");
-                    } else if (count) {
-                        char str[10];
-                        sprintf(str, "%d", sqlite3_column_int(res, 0));
-                        strcpy(response, str);
-                    } else 
-                        strcpy(response, "Command OK");
-                } while (step == SQLITE_ROW);
-                sqlite3_clear_bindings(res);
-                sqlite3_reset(res);
+                    if (cmd == NULL) break;
+                    sqlite3_bind_text(res,1,cmd,-1,0);
+                    if (has2) {
+                        cmd = strtok(NULL, " ");
+                        sqlite3_bind_text(res,2,cmd,-1,0);
+                    } 
+                    if (has3) {
+                        cmd = strtok(NULL, " ");
+                        sqlite3_bind_text(res,3,cmd,-1,0);
+                    }
+                    
+                    do {
+                        step = sqlite3_step(res);
+                        if (step != SQLITE_ROW) break;
+                        if (select) {
+                            strcat(response, (char *)sqlite3_column_text(res, 1));
+                            strcat(response, "*");
+                            strcat(response, (char *)sqlite3_column_text(res, 2));
+                            strcat(response, " ");
+                        } else if (count) {
+                            char str[10];
+                            sprintf(str, "%d", sqlite3_column_int(res, 0));
+                            strcpy(response, str);
+                        } else 
+                            strcpy(response, "Command OK");
+                    } while (step == SQLITE_ROW);
+                    sqlite3_clear_bindings(res);
+                    sqlite3_reset(res);
 
+                }
+                sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL);
+            } else {
+                sqlite3_exec(db, sql, NULL, NULL, NULL);
+                sqlite_rc = sqlite3_exec(db, sql, NULL, NULL, NULL);
+                if (sqlite_rc != SQLITE_OK) {
+                    sqlite3_close(db);
+                    mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
+                }
+                strcpy(response, "Command OK");
             }
-            sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL);
 
             transaction_done:
             if (send(cl,response,sizeof(response),0) < 0)
