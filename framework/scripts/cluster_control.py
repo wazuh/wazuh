@@ -101,6 +101,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.push:
+        try:
+            check_cluster_config(read_config())
+        except WazuhException as e:
+            print("Error doing synchronization: {0}".format(str(e)))
+            exit(1)
+
         sync(debug=False)
 
     elif args.manager is not None and args.files is None and args.force is None:
@@ -116,6 +122,12 @@ if __name__ == '__main__':
         _get_nodes_status(args.nodes)
 
     elif args.force is not None:
+        try:
+            check_cluster_config(read_config())
+        except WazuhException as e:
+            print("Error doing synchronization: {0}".format(str(e)))
+            exit(1)
+
         if args.manager is None:
             sync(debug=False, force=True)
         else:
