@@ -18,8 +18,7 @@ from subprocess import check_output
 from shutil import rmtree
 from io import BytesIO
 from itertools import compress, chain
-import operator
-from operator import itemgetter
+from operator import itemgetter, eq
 from ast import literal_eval
 import socket
 import json
@@ -192,7 +191,7 @@ def check_cluster_config(config):
 
     if not 'key' in config.keys():
         raise WazuhException(3004, 'Unspecified key')
-    elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, operator.eq):
+    elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
         raise WazuhException(3004, 'Key must be 32 characters long and only have alphanumeric characters')
 
     if config['node_type'] != 'master' and config['node_type'] != 'client':
