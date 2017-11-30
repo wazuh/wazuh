@@ -273,6 +273,10 @@ if __name__ == '__main__':
         logging.error(str(e))
         kill(getpid(), SIGINT)
     
+
+    logging.info("Cleaning database before starting service...")
+    clear_file_status()
+
     if cluster_config['node_type'] == 'master':
         # execute an independent process to "crontab" the sync interval
         p = Process(target=crontab_sync_master, args=(cluster_config['interval'],))
