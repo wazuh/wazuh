@@ -398,6 +398,21 @@ def get_file_status_all_managers(file_list, manager):
     cluster_socket.close()
     return files
 
+
+def clear_file_status(manager, cluster_socket):
+    """
+    Function to set the status of all manager's files to pending
+    """
+    files = get_file_status(manager, cluster_socket).keys()
+
+    update_sql = "update2"
+    for file in files:
+        update_sql += " pending {0} {1}".format(manager, file)
+
+        cluster_socket.send(update_sql)
+        received = cluster_socket.recv(10000)
+
+
 def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
     """
     Return a nested list where each element has the following structure
@@ -736,7 +751,7 @@ def update_node_db_after_sync(data, node, cluster_socket):
         received = cluster_socket.recv(10000)
 
 
-def sync_one_node(debug, node):
+def sync_one_node(debug, node, force=False):
     """
     Sync files with only one node
     """
@@ -755,6 +770,8 @@ def sync_one_node(debug, node):
     cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
     logging.debug("Connected to cluster database socket")
 
+    if force:
+        clear_file_status(node, cluster_socket)
     all_files = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 
     after = time()
@@ -783,7 +800,7 @@ def sync_one_node(debug, node):
                   'reason': result['reason']}
 
 
-def sync(debug, force=None):
+def sync(debug, force=False):
     """
     Sync this node with others
     :return: Files synced.
@@ -814,6 +831,8 @@ def sync(debug, force=None):
     logging.info("Found {0} connected nodes".format(len(remote_nodes)))
 
     for node in remote_nodes:
+        if force:
+            clear_file_status(node, cluster_socket)
         all_nodes_files[node] = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 
     after = time()

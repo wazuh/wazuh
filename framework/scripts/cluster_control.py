@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser(description="Wazuh Cluster control interface")
 
 push_group = parser.add_argument_group('Push updates')
 push_group.add_argument('-p', '--push', const='push', action='store_const', help="Send all not synchronized files")
+push_group.add_argument('--force', const='force', action='store_const', help="Force synchronization of all files (use with -m to only force in one node)")
 
 files_group = parser.add_argument_group('Retrieve file status')
 files_group.add_argument('-f', '--files', metavar='FILE', dest='files', nargs='*', type=str, help="List the status of specified files (all if not specified)")
@@ -95,8 +96,8 @@ if __name__ == '__main__':
     if args.push:
         sync(debug=False)
 
-    elif args.manager is not None and args.files is None:
-        logging.error("Invalid argument: -m parameter requires -f")
+    elif args.manager is not None and args.files is None and args.force is None:
+        logging.error("Invalid argument: -m parameter requires -f or --force")
 
     elif args.files is not None:
         _get_file_status(args.files, args.manager)
@@ -106,6 +107,13 @@ if __name__ == '__main__':
 
     elif args.nodes is not None:
         _get_nodes_status(args.nodes)
+
+    elif args.force is not None:
+        if args.manager is None:
+            sync(debug=False, force=True)
+        else:
+            for node in args.manager:
+                sync_one_node(debug=False, node=node, force=True)
 
     else:
         parser.print_help()
