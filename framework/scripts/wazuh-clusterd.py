@@ -19,11 +19,6 @@ from pwd import getpwnam
 from signal import signal, SIGINT, SIGTERM, SIGUSR1
 import ctypes
 import ctypes.util
-try:
-    from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
-except ImportError as e:
-    print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
-    exit(-1)
 
 import argparse
 parser =argparse.ArgumentParser()
@@ -50,6 +45,13 @@ try:
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
+
+if check_cluster_status():
+    try:
+        from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
+    except ImportError as e:
+        print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
+        exit(-1)
 
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
