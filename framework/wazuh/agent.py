@@ -2152,3 +2152,30 @@ class Agent:
             raise WazuhException(1307)
 
         return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
+
+
+    @staticmethod
+    def purge_agents(timeframe, backup=False):
+        """
+        Purge agents that have been disconnected in the last timeframe seconds.
+
+        :param timeframe: Time margin, in seconds.
+        :param backup: Whether making a backup before deleting.
+        :return: Result.
+        """
+
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+
+        query = "SELECT id FROM agent WHERE last_keepalive IS NULL OR CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :timeframe"
+        conn.execute(query, {'timeframe': timeframe})
+        items = 0
+
+        for item in conn:
+            Agent(item[0]).remove(backup)
+            items += 1
+
+        return {'totalItems': items}
