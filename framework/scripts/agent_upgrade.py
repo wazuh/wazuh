@@ -72,7 +72,7 @@ def main():
     # Custom WPK file
     if args.file:
         if args.execute:
-            upgrade_command_result = agent.upgrade_custom(file_path=args.file, installer=args.execute, debug=args.debug, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=args.timeout)
+            upgrade_command_result = agent.upgrade_custom(file_path=args.file, installer=args.execute, debug=args.debug, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=-1 if args.timeout == None else args.timeout)
             if not args.silent:
                 if not args.debug:
                     print("\n{0}... Please wait.".format(upgrade_command_result))
@@ -99,7 +99,7 @@ def main():
     # WPK upgrade file
     else:
         prev_ver = agent.version
-        upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=args.version, force=args.force, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=args.timeout)
+        upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=args.version, force=args.force, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=-1 if args.timeout == None else args.timeout)
         if not args.silent:
             if not args.debug:
                 print("\n{0}... Please wait.".format(upgrade_command_result))

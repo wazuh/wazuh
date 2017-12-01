@@ -13,16 +13,18 @@
 #include "config.h"
 #include "global-config.h"
 
+
 int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     static const char *cluster_name = "name";
     static const char *node_name = "node_name";
+    static const char *node_type = "node_type";
     static const char *key = "key";
     static const char *interval = "interval";
     static const char *nodes = "nodes";
     static const char *hidden = "hidden";
     static const char *port = "port";
-    static const char *host = "host";
+    static const char *bind_addr = "bind_addr";
 
 
     _Config *Config;
@@ -40,13 +42,21 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
              os_strdup(node[i]->content, Config->cluster_name);
          } else if (!strcmp(node[i]->element, node_name)) {
              os_strdup(node[i]->content, Config->node_name);
+         } else if (!strcmp(node[i]->element, node_type)) {
          } else if (!strcmp(node[i]->element, key)) {
          } else if (!strcmp(node[i]->element, hidden)) {
-             Config->hide_cluster_info = 1;
+             if (strcmp(node[i]->content, "yes") == 0) {
+                 Config->hide_cluster_info = 1;
+             } else if (strcmp(node[i]->content, "no") == 0) {
+                 Config->hide_cluster_info = 0;
+             } else {
+                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                 return OS_INVALID;
+             }
          } else if (!strcmp(node[i]->element, interval)) {
          } else if (!strcmp(node[i]->element, nodes)) {
          } else if (!strcmp(node[i]->element, port)) {
-         } else if (!strcmp(node[i]->element, host)) {
+         } else if (!strcmp(node[i]->element, bind_addr)) {
          } else {
              merror(XML_INVELEM, node[i]->element);
              return OS_INVALID;

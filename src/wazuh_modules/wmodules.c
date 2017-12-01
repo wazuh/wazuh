@@ -31,26 +31,24 @@ void wm_add(wmodule *module) {
 // Check general configuration
 
 void wm_check() {
-    wmodule *i;
+    wmodule *i = wmodules;
     wmodule *j;
     wmodule *next;
-    wmodule ** ptr = &wmodules;
 
     // Discard empty configurations
 
-    for (i = wmodules; i; i = i->next) {
-        if (!i->context) {
-            *ptr = i->next;
+    while (i) {
+        if (i->context) {
+            i = i->next;
+        } else {
+            next = i->next;
             free(i);
 
-            if (*ptr) {
-                i = *ptr;
-            } else {
-                break;
+            if (i == wmodules) {
+                wmodules = next;
             }
 
-        } else {
-            ptr = &i->next;
+            i = next;
         }
     }
 

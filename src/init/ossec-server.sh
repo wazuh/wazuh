@@ -110,7 +110,7 @@ enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator, authentication, cluster"
         echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth|cluster]"
         exit 1;
     fi
@@ -133,7 +133,7 @@ enable()
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator, authentication, cluster"
         echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth|cluster]"
         exit 1;
     fi
@@ -144,7 +144,7 @@ disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator, authentication, cluster"
         echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth|cluster]"
         exit 1;
     fi
@@ -167,7 +167,7 @@ disable()
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator, authentication, cluster"
         echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth|cluster]"
         exit 1;
     fi
@@ -230,7 +230,7 @@ testconfig()
 # Start function
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
+    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} ${CLUSTER_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
 
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
@@ -413,7 +413,7 @@ restart)
     unlock
     ;;
 reload)
-    DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+    DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} ${CLUSTER_DAEMON}"
     lock
     stopa
     start

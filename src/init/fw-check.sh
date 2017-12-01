@@ -12,24 +12,24 @@ if [ "X${UNAME}" = "XFreeBSD" ]; then
     if grep 'firewall_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         # Firewall is IPFW
         FILE="ipfw.sh";
-        echo "IPFW";
+        echo "Firewall detected: IPFW";
     fi
 
     # if pf enabled?
     if grep 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         # Firewall is PF
         FILE="pf.sh";
-        echo "PF";
+        echo "Firewall detected: PF";
     fi
 
 # Darwin
 elif [ "X${UNAME}" = "XDarwin" ]; then
     # Is pfctl present?
-    if which pfctl; then
-        echo "PF";
+    if which pfctl > /dev/null; then
+        echo "Firewall detected: PF";
         FILE="pf.sh";
     else
-        echo "IPFW";
+        echo "Firewall detected: IPFW";
         FILE="ipfw_mac.sh";
     fi
 
@@ -37,7 +37,7 @@ elif [ "X${UNAME}" = "XOpenBSD" ]; then
     if grep 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         # Firewall is PF
         FILE="pf.sh";
-        echo "PF";
+        echo "Firewall detected: PF";
     fi
 fi
 

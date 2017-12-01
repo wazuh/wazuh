@@ -89,8 +89,11 @@ runauthd="Θέλετε να εκτελέσετε την υπηρεσία Auth;"
 norunauthd="Δεν εκτελείται υπηρεσία Auth"
 yesrunauthd="τρέχουσα υπηρεσία Auth"
 
-# Part 5
+# Part 4
 installing="Το σύστημα εγκαθίσταται"
+startwazuh="Θέλετε να ξεκινήσετε το Wazuh μετά την εγκατάσταση;"
+nowazuhstart="Το Wazuh δεν θα ξεκινήσει στο τέλος της εγκατάστασης."
+yeswazuhstart="Το Wazuh θα ξεκινήσει στο τέλος της εγκατάστασης."
 runningmake="Το Makefile εκτελείται"
 
 # Final

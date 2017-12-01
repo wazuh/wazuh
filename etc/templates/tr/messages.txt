@@ -89,8 +89,11 @@ runauthd="Auth servisini çalıştırmak istiyor musunuz?"
 norunauthd="Auth hizmeti çalışmıyor"
 yesrunauthd="Auth servisi çalıştırıyor"
 
-# Part 5
+# Part 4
 installing="Sistem kuruluyor"
+startwazuh="Kurulumdan sonra Wazuh'u başlatmak istiyor musunuz?"
+nowazuhstart="Wazuh kurulumun sonunda başlamaz."
+yeswazuhstart="Wazuh kurulumun sonunda başlayacak."
 runningmake="Makefile çalıştırılıyor"
 
 # Final

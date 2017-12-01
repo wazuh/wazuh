@@ -25,7 +25,7 @@
 #define MAX_ARGS    32
 
 /* Execd select timeout -- in seconds */
-#define EXECD_TIMEOUT   90
+#define EXECD_TIMEOUT   1
 
 extern int repeated_offenders_timeout[];
 extern char ** wcom_ca_store;
@@ -40,7 +40,7 @@ void ExecCmd(char *const *cmd) __attribute__((nonnull));
 void ExecCmd_Win32(char *cmd);
 int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
 int WinExecd_Start(void);
-void WinTimeoutRun(int timeout);
+void WinTimeoutRun(void);
 
 size_t wcom_open(const char *file_path, const char *mode, char *output);
 size_t wcom_write(const char *file_path, char *buffer, size_t length, char *output);

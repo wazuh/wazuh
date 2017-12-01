@@ -1,4 +1,4 @@
-  <!-- Choose between plain or json format (or both) for internal logs -->
+  <!-- Choose between "plain", "json", or "plain,json" for the format of internal logs -->
   <logging>
     <log_format>plain</log_format>
   </logging>

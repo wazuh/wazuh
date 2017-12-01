@@ -568,7 +568,7 @@ InstallCommon(){
         PREFIX=${INSTALLDIR}
     fi
 
-    if [ ${DIST_NAME} = "SunOS" ]; then
+    if [ ${DIST_NAME} = "sunos" ]; then
         INSTALL="ginstall"
     elif [ ${DIST_NAME} = "HP-UX" ]; then
         INSTALL="/usr/local/coreutils/bin/install"
@@ -585,7 +585,12 @@ InstallCommon(){
 	${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.json
 	${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 
-	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/bin
+    if [ ${INSTYPE} = 'agent' ]; then
+        ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/bin
+    else
+        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
+    fi
+
 	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua
 	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/native
 	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/compiled
@@ -741,7 +746,7 @@ InstallLocal(){
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
-
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
 
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
@@ -761,6 +766,7 @@ InstallServer(){
 
     InstallLocal
 
+    ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
 
@@ -769,7 +775,6 @@ InstallServer(){
     ${INSTALL} -m 0750 -o root -g 0 ossec-remoted ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-authd ${PREFIX}/bin
 
-    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-groups
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents

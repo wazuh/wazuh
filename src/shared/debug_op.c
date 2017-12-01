@@ -201,12 +201,13 @@ void os_logging_config(){
   const char * xmlf[] = {"ossec_config", "logging", "log_format", NULL};
   char * logformat;
   char ** parts = NULL;
-  int i, j;
+  int i;
+
+  flags.read = 1;
 
   if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
     flags.log_plain = 1;
     flags.log_json = 0;
-    flags.read = 1;
     OS_ClearXML(&xml);
     merror_exit(XML_ERROR, "/etc/ossec.conf", xml.err, xml.err_line);
   }
@@ -217,7 +218,6 @@ void os_logging_config(){
 
     flags.log_plain = 1;
     flags.log_json = 0;
-    flags.read = 1;
 
     free(logformat);
     OS_ClearXML(&xml);
@@ -237,14 +237,7 @@ void os_logging_config(){
         }else{
           flags.log_plain = 1;
           flags.log_json = 0;
-          flags.read = 1;
-          for (j=0; parts[j]; j++){
-            free(parts[j]);
-          }
-          free(parts);
-          free(logformat);
-          OS_ClearXML(&xml);
-          merror(CONFIG_ERROR, DEFAULTCPATH);
+          merror_exit(XML_VALUEERR, "log_format", part);
         }
       }
       for (i=0; parts[i]; i++){
@@ -255,7 +248,6 @@ void os_logging_config(){
 
     free(logformat);
     OS_ClearXML(&xml);
-    flags.read = 1;
   }
 }
 

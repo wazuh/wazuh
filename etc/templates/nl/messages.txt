@@ -89,8 +89,11 @@ runauthd="Wilt u de Auth-service uitvoeren?"
 norunauthd="Niet uitgevoerd Auth service"
 yesrunauthd="Starten Auth service"
 
-# Part 5
+# Part 4
 installing="Bezig met installeren van het systeem"
+startwazuh="Wilt u na de installatie Wazuh starten?"
+nowazuhstart="Wazuh start niet aan het einde van de installatie."
+yeswazuhstart="Wazuh start aan het einde van de installatie."
 runningmake="Uitvoeren van Makefile"
 
 # Final

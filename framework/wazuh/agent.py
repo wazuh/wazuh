@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r
+from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -23,7 +23,8 @@ from grp import getgrnam
 from time import time, sleep
 import socket
 import hashlib
-from distutils.version import StrictVersion
+from operator import setitem
+
 try:
     from urllib2 import urlopen, URLError, HTTPError
 except ImportError:
@@ -85,7 +86,7 @@ class Agent:
         """
         Calculates state based on last keep alive
         """
-        if last_keep_alive == 0:
+        if last_keep_alive == 0 or not last_keep_alive:
             return "Never connected"
         else:
             limit_seconds = 600*3 + 30
@@ -100,7 +101,7 @@ class Agent:
             else:
                 return "Disconnected"
 
-    def _load_info_from_DB(self):
+    def _load_info_from_DB(self, select=None):
         """
         Gets attributes of existing agent.
         """
@@ -116,56 +117,81 @@ class Agent:
         query = "SELECT {0} FROM agent WHERE id = :id"
         request = {'id': self.id}
 
-        select = ["id", "name", "ip", "key", "version", "date_add", "last_keepalive", "config_sum", "merged_sum", "`group`", "manager_host", "os_name", "os_version", "os_major", "os_minor", "os_codename", "os_build", "os_platform", "os_uname"]
+        valid_select_fields = {"id", "name", "ip", "key", "version", "date_add",
+                               "last_keepalive", "config_sum", "merged_sum",
+                               "group", "manager_host", "os_name", "os_version",
+                               "os_major", "os_minor", "os_codename", "os_build",
+                               "os_platform", "os_uname"}
+        # we need to retrieve the fields that are used to compute other fields from the DB
+        select_fields = {'id', 'version', 'last_keepalive'}
 
-        conn.execute(query.format(','.join(select)), request)
+        # Select
+        if select:
+            if not set(select['fields']).issubset(valid_select_fields):
+                incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
+                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
+                        format(valid_select_fields, incorrect_fields))
+            select_fields |= set(select['fields'])
+        else:
+            select_fields = valid_select_fields
+
+        select_fields = list(select_fields)
+        try:
+            select_fields[select_fields.index("group")] = "`group`"
+        except ValueError as e:
+            pass
+
+        conn.execute(query.format(','.join(select_fields)), request)
+        db_data = conn.fetch()
+        if db_data is None:
+            raise WazuhException(1701)
 
         no_result = True
-        for tuple in conn:
+        for field,value in zip(select_fields, db_data):
             no_result = False
-            data_tuple = {}
 
-            if tuple[0] != None:
-                self.id = str(tuple[0]).zfill(3)
-            if tuple[1] != None:
-                self.name = tuple[1]
-            if tuple[2] != None:
-                self.ip = tuple[2]
-            if tuple[3] != None:
-                self.internal_key = tuple[3]
-            if tuple[4] != None:
-                self.version = tuple[4]
+            if field == 'id' and value != None:
+                self.id = str(value).zfill(3)
+            if field == 'name' and value != None:
+                self.name = value
+            if field == 'ip' and value != None:
+                self.ip = value
+            if field == 'internal_key' and value != None:
+                self.internal_key = value
+            if field == 'version' and value != None:
+                self.version = value
                 pending = False if self.version != "" else True
-            if tuple[5] != None:
-                self.dateAdd = tuple[5]
-            if tuple[6] != None:
-                self.lastKeepAlive = tuple[6]
-            else:
-                self.lastKeepAlive = 0
-            if tuple[7] != None:
-                self.configSum = tuple[7]
-            if tuple[8] != None:
-                self.mergedSum = tuple[8]
-            if tuple[9] != None:
-                self.group = tuple[9]
-            if tuple[10] != None:
-                self.manager_host = tuple[10]
-            if tuple[11] != None:
-                self.os['name'] = tuple[11]
-            if tuple[12] != None:
-                self.os['version'] = tuple[12]
-            if tuple[13] != None:
-                self.os['major'] = tuple[13]
-            if tuple[14] != None:
-                self.os['minor'] = tuple[14]
-            if tuple[15] != None:
-                self.os['codename'] = tuple[15]
-            if tuple[16] != None:
-                self.os['build'] = tuple[16]
-            if tuple[17] != None:
-                self.os['platform'] = tuple[17]
-            if tuple[18] != None:
-                self.os['uname'] = tuple[18]
+            if field == 'date_add' and value != None:
+                self.dateAdd = value
+            if field == 'last_keepalive':
+                if value != None:
+                    self.lastKeepAlive = value
+                else:
+                    self.lastKeepAlive = 0
+            if field == 'configSum' and value != None:
+                self.configSum = value
+            if field == 'mergedSum' and value != None:
+                self.mergedSum = value
+            if field == '`group`' and value != None:
+                self.group = value
+            if field == 'manager_host' and value != None:
+                self.manager_host = value
+            if field == 'os_name' and value != None:
+                self.os['name'] = value
+            if field == 'os_version' and value != None:
+                self.os['version'] = value
+            if field == 'os_major' and value != None:
+                self.os['major'] = value
+            if field == 'os_minor' and value != None:
+                self.os['minor'] = value
+            if field == 'os_codename' and value != None:
+                self.os['codename'] = value
+            if field == 'os_build' and value != None:
+                self.os['build'] = value
+            if field == 'os_platform' and value != None:
+                self.os['platform'] = value
+            if field == 'os_uname' and value != None:
+                self.os['uname'] = value
                 if "x86_64" in self.os['uname']:
                     self.os['arch'] = "x86_64"
                 elif "i386" in self.os['uname']:
@@ -185,24 +211,27 @@ class Agent:
                 elif "armv7" in self.os['uname']:
                     self.os['arch'] = "armv7"
 
-            if self.id != "000":
-                self.status = Agent.calculate_status(self.lastKeepAlive, pending)
-            else:
-                self.status = 'Active'
-                self.ip = '127.0.0.1'
+        if self.id != "000":
+            self.status = Agent.calculate_status(self.lastKeepAlive, pending)
+        else:
+            self.status = 'Active'
+            self.ip = '127.0.0.1'
 
         if no_result:
             raise WazuhException(1701, self.id)
 
-    def get_basic_information(self):
+
+    def get_basic_information(self, select=None):
         """
         Gets public attributes of existing agent.
         """
-        self._load_info_from_DB()
+        self._load_info_from_DB(select)
+
+        select_fields = {'id', 'last_keepalive', 'status', 'version'} if select is None else select['fields']
 
         info = {}
 
-        if self.id:
+        if self.id and 'id' in select_fields:
             info['id'] = self.id
         if self.name:
             info['name'] = self.name
@@ -214,13 +243,13 @@ class Agent:
             os_no_empty = dict((k, v) for k, v in self.os.items() if v)
             if os_no_empty:
                 info['os'] = os_no_empty
-        if self.version:
+        if self.version and 'version' in select_fields:
             info['version'] = self.version
         if self.dateAdd:
             info['dateAdd'] = self.dateAdd
-        if self.lastKeepAlive:
+        if self.lastKeepAlive and 'last_keepalive' in select_fields:
             info['lastKeepAlive'] = self.lastKeepAlive
-        if self.status:
+        if self.status and 'status' in select_fields:
             info['status'] = self.status
         if self.configSum:
             info['configSum'] = self.configSum
@@ -297,7 +326,7 @@ class Agent:
         :return: Message.
         """
 
-        msg = { "function": "remove", "arguments": { "id": str(self.id) } }
+        msg = { "function": "remove", "arguments": { "id": str(self.id).zfill(3) } }
 
         authd_socket = OssecSocket(common.AUTHD_SOCKET)
         authd_socket.send(msg)
@@ -606,7 +635,7 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None):
         """
         Gets a list of available agents with basic attributes.
 
@@ -617,6 +646,7 @@ class Agent:
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
@@ -629,10 +659,25 @@ class Agent:
 
         # Query
         query = "SELECT {0} FROM agent"
-        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive', 'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform', 'version': 'version', 'manager_host': 'manager_host'}
-        select = ["id", "name", "ip", "last_keepalive", "os_name", "os_version", "os_platform", "version", "manager_host"]
-        search_fields = ["id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host"]
+        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive',
+                  'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
+                  'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add'}
+        valid_select_fields = {"id", "name", "ip", "last_keepalive", "os_name", "os_version", "node_name",
+                               "os_platform", "version", "manager_host", "date_add", 'status'}
+        select_fields = {'id', 'version', 'last_keepalive'}
+        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host"}
         request = {}
+        if select:
+            if not set(select['fields']).issubset(valid_select_fields):
+                incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
+                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
+                                    format(valid_select_fields, incorrect_fields))
+            select_fields |= set(select['fields'])
+        else:
+            valid_select_fields.remove('node_name') # only return node_type if asked
+            select_fields = valid_select_fields
+
+        set_select_fields = set(select['fields']) if select else select_fields
 
         if status != "all":
             limit_seconds = 600*3 + 30
@@ -703,51 +748,61 @@ class Agent:
             request['offset'] = offset
             request['limit'] = limit
 
-        conn.execute(query.format(','.join(select)), request)
+        conn.execute(query.format(','.join(select_fields)), request)
 
         data['items'] = []
 
         for tuple in conn:
             data_tuple = {}
-            os = {}
+            lastKeepAlive = 0
             pending = True
+            os = {}
+            for field, value in zip(select_fields, tuple):
 
-            if tuple[0] != None:
-                data_tuple['id'] = str(tuple[0]).zfill(3)
-            if tuple[1] != None:
-                data_tuple['name'] = tuple[1]
-            if tuple[2] != None:
-                data_tuple['ip'] = tuple[2]
+                if value != None and field == 'id':
+                    data_tuple['id'] = str(value).zfill(3)
+                if value != None and field == 'name' and field in set_select_fields:
+                    data_tuple['name'] = value
+                if value != None and field == 'ip' and field in set_select_fields:
+                    data_tuple['ip'] = value
 
-            if tuple[3] != None:
-                lastKeepAlive = tuple[3]
-            else:
-                lastKeepAlive = 0
+                if value != None and field == 'last_keepalive':
+                    lastKeepAlive = value
 
-            if tuple[4] != None:
-                os['name'] = tuple[4]
-            if tuple[5] != None:
-                os['version'] = tuple[5]
-            if tuple[6] != None:
-                os['platform'] = tuple[6]
+                if value != None and field == 'os_name' and field in set_select_fields:
+                    os['name'] = value
+                if value != None and field == 'os_version' and field in set_select_fields:
+                    os['version'] = value
+                if value != None and field == 'os_platform' and field in set_select_fields:
+                    os['platform'] = value
 
-            if tuple[7] != None:
-                data_tuple['version'] = tuple[7]
-                pending = False if data_tuple['version'] != "" else True
+                if value != None and field == 'version':
+                    pending = False if value != "" else True
+                    if field in set_select_fields:
+                        data_tuple['version'] = value
 
-            if tuple[8] != None:
-                data_tuple['manager_host'] = tuple[8]
+                if value != None and field == 'manager_host' and field in set_select_fields:
+                    data_tuple['manager_host'] = value
+
+                if value != None and field == 'date_add' and field in set_select_fields:
+                    data_tuple['dateAdd'] = value
+
+                if value != None and field == 'node_name' and field in set_select_fields:
+                    data_tuple['node_name'] = value
 
             if os:
                 os_no_empty = dict((k, v) for k, v in os.items() if v)
                 if os_no_empty:
                     data_tuple['os'] = os_no_empty
 
-            if data_tuple['id'] == "000":
-                data_tuple['status'] = "Active"
+            if 'status' in set_select_fields:
+                if data_tuple['id'] == "000":
+                    data_tuple['status'] = "Active"
+                else:
+                    data_tuple['status'] = Agent.calculate_status(lastKeepAlive, pending)
+
+            if 'ip' in set_select_fields and data_tuple['id'] == "000":
                 data_tuple['ip'] = '127.0.0.1'
-            else:
-                data_tuple['status'] = Agent.calculate_status(lastKeepAlive, pending)
 
             data['items'].append(data_tuple)
 
@@ -901,7 +956,7 @@ class Agent:
             return final_dict
 
     @staticmethod
-    def get_agent(agent_id):
+    def get_agent(agent_id, select=None):
         """
         Gets an existing agent.
 
@@ -909,7 +964,7 @@ class Agent:
         :return: The agent.
         """
 
-        return Agent(agent_id).get_basic_information()
+        return Agent(agent_id).get_basic_information(select)
 
     @staticmethod
     def get_agent_key(agent_id):
@@ -1221,8 +1276,9 @@ class Agent:
 
         conn = Connection(db_global[0])
         valid_select_fiels = ["id", "name", "ip", "last_keepalive", "os_name",
-                             "os_version", "os_platform", "version",
+                             "os_version", "os_platform", "os_uname", "version",
                              "config_sum", "merged_sum", "manager_host"]
+        search_fields = {"id", "name", "os_name"}
 
         # Init query
         query = "SELECT {0} FROM agent WHERE `group` = :group_id"
@@ -1242,7 +1298,7 @@ class Agent:
         # Search
         if search:
             query += " AND NOT" if bool(search['negation']) else ' AND'
-            query += " (" + " OR ".join(x + ' LIKE :search' for x in ('id', 'name')) + " )"
+            query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
             request['search'] = '%{0}%'.format(search['value'])
 
         # Count
@@ -1274,8 +1330,11 @@ class Agent:
         # Data query
         conn.execute(query.format(','.join(select_fields)), request)
 
-        data['items'] = [{field:str(tuple_elem).zfill(3) for field,tuple_elem \
-                        in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
+        non_nested = [{field:tuple_elem for field,tuple_elem \
+                in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
+        map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+
+        data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
 
         return data
 
@@ -1313,7 +1372,7 @@ class Agent:
         ar_path = "{0}/ar.conf".format(common.shared_path, entry)
         with open(ar_path, 'rb') as f:
             hash_ar = hashlib.md5(f.read()).hexdigest()
-        data.append({'filename': "../ar.conf", 'hash': hash_ar})
+        data.append({'filename': "ar.conf", 'hash': hash_ar})
 
         if search:
             data = search_array(data, search['value'], search['negation'])
@@ -1610,16 +1669,13 @@ class Agent:
             print("Agent version: {0}".format(agent_ver.split(" ")[1]))
             print("Agent new version: {0}".format(agent_new_ver))
 
-        r_manager_ver = manager_ver.split(" ")[1].replace("v","").replace("-","").replace("alpha","a").replace("beta","b")
-        r_agent_ver = agent_ver.split(" ")[1].replace("v","").replace("-","").replace("alpha","a").replace("beta","b")
-        r_agent_new_ver = agent_new_ver.replace("v","").replace("-","").replace("alpha","a").replace("beta","b")
-
-        if StrictVersion(r_manager_ver) < StrictVersion(r_agent_new_ver):
+        if WazuhVersion(manager_ver.split(" ")[1]) < WazuhVersion(agent_new_ver):
             raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver.split(" ")[1], agent_ver.split(" ")[1], agent_new_ver))
 
-        if (StrictVersion(r_agent_ver) >= StrictVersion(r_agent_new_ver) and not force):
+        if (WazuhVersion(agent_ver.split(" ")[1]) >= WazuhVersion(agent_new_ver) and not force):
             raise WazuhException(1716, "Agent ver: {0} / Agent new ver: {1}".format(agent_ver.split(" ")[1], agent_new_ver))
 
+        # Generating file name
         if self.os['platform']=="windows":
             wpk_file = "wazuh_agent_{0}_{1}.wpk".format(agent_new_ver, self.os['platform'])
         else:
@@ -1685,7 +1741,7 @@ class Agent:
         return [wpk_file, sha1hash]
 
 
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1):
+    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries):
         """
         Sends WPK file to agent.
         """
@@ -1709,6 +1765,20 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
+        counter = 0
+        while data.startswith('err') and counter < timeout:
+            sleep(common.open_sleep)
+            counter = counter + 1
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(common.ossec_path + "/queue/ossec/request")
+            msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
+            s.send(msg.encode())
+            if debug:
+                print("MSG SENT: {0}".format(str(msg)))
+            data = s.recv(1024).decode()
+            s.close()
+            if debug:
+                print("RESPONSE: {0}".format(data))
         if data != 'ok':
             raise WazuhException(1715, data.replace("err ",""))
 
@@ -1799,13 +1869,9 @@ class Agent:
 
         self._load_info_from_DB()
 
-        ver = self.version.split(" ")[1].replace("v","").replace("-","").replace("alpha","a").replace("beta","b")
-
-        try:
-            if not StrictVersion(ver) >= '3.0.0a4':
-                raise WazuhException(1719, self.version)
-        except ValueError:
-            raise WazuhException(1719, self.version)
+        # Check if remote upgrade is available for the selected agent version
+        if WazuhVersion(self.version.split(' ')[1]) < WazuhVersion("3.0.0-alpha4"):
+            raise WazuhException(1719, version)
 
         if self.os['platform']=="windows" and int(self.os['major']) < 6:
             raise WazuhException(1721, self.os['name'])
@@ -1916,7 +1982,7 @@ class Agent:
         return Agent(agent_id).upgrade_result(timeout=int(timeout))
 
 
-    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
+    def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries):
         """
         Sends custom WPK file to agent.
         """
@@ -1943,6 +2009,20 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
+        counter = 0
+        while data.startswith('err') and counter < timeout:
+            sleep(common.open_sleep)
+            counter = counter + 1
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(common.ossec_path + "/queue/ossec/request")
+            msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
+            s.send(msg.encode())
+            if debug:
+                print("MSG SENT: {0}".format(str(msg)))
+            data = s.recv(1024).decode()
+            s.close()
+            if debug:
+                print("RESPONSE: {0}".format(data))
         if data != 'ok':
             raise WazuhException(1715, data.replace("err ",""))
 

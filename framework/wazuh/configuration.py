@@ -45,6 +45,14 @@ conf_sections = {
     'syscheck': {
         'type': 'simple',
         'list_options': ['directories', 'ignore', 'nodiff']
+    },
+    'cluster': {
+        'type': 'simple',
+        'list_options': ['nodes']
+    },
+    'auth': {
+  	    'type': 'simple',
+        'list_options': []
     }
 }
 
@@ -123,6 +131,8 @@ def _read_option(section_name, opt):
             json_path = json_attribs.copy()
             json_path['path'] = path.strip()
             opt_value.append(json_path)
+    elif section_name == 'cluster' and opt_name == 'nodes':
+        opt_value = [child.text for child in opt]
     else:
         if opt.attrib:
             opt_value = {}
@@ -347,6 +357,14 @@ def _rootkit_trojans2json(filepath):
 
     return data
 
+def _ar_conf2json(file_path):
+    """
+    Returns the lines of the ar.conf file
+    """
+    with open(file_path) as f:
+        data = [line.strip('\n') for line in f.readlines()]
+    return data
+
 
 # Main functions
 def get_ossec_conf(section=None, field=None):
@@ -360,10 +378,11 @@ def get_ossec_conf(section=None, field=None):
 
     try:
         # wrap the data
-        f = open(common.ossec_conf)
-        txt_data = f.read()
+        with open(common.ossec_conf) as f:
+            txt_data = f.read()
+
+        txt_data = re.sub("(<!--.*?-->)", "", txt_data, flags=re.MULTILINE | re.DOTALL)
         txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
-        f.close()
         txt_data = '<root_tag>' + txt_data + '</root_tag>'
 
         # Read XML
@@ -371,8 +390,8 @@ def get_ossec_conf(section=None, field=None):
 
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
-    except:
-        raise WazuhException(1101)
+    except Exception as e:
+        raise WazuhException(1101, str(e))
 
     if section:
         try:
@@ -442,7 +461,10 @@ def get_file_conf(filename, group_id=None, type_conf=None):
     if group_id:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
-        file_path = "{0}/{1}/{2}".format(common.shared_path, group_id, filename)
+
+        file_path = "{0}/{1}".format(common.shared_path, filename) \
+                    if filename == 'ar.conf' else \
+                    "{0}/{1}/{2}".format(common.shared_path, group_id, filename)
     else:
         file_path = "{0}/{1}".format(common.shared_path, filename)
 
@@ -472,6 +494,8 @@ def get_file_conf(filename, group_id=None, type_conf=None):
             data = _rootkit_files2json(file_path)
         elif filename == "rootkit_trojans.txt":
             data = _rootkit_trojans2json(file_path)
+        elif filename == "ar.conf":
+            data = _ar_conf2json(file_path)
         else:
             data = _rcl2json(file_path)
 

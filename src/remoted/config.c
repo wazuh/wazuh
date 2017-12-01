@@ -32,5 +32,17 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
         return (OS_INVALID);
     }
 
+    const char *(xmlf[]) = {"ossec_config", "cluster", "node_name", NULL};
+
+    OS_XML xml;
+
+    if (OS_ReadXML(cfgfile, &xml) < 0){
+        merror_exit(XML_ERROR, cfgfile, xml.err, xml.err_line);
+    }
+
+    node_name = OS_GetOneContentforElement(&xml, xmlf);
+
+    OS_ClearXML(&xml);
+
     return (1);
 }

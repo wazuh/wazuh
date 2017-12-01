@@ -23,7 +23,7 @@
 
 static volatile unsigned int queue_i;
 static volatile unsigned int queue_j;
-static queue_t * queue;                 // Queue for pending files
+static w_queue_t * queue;                 // Queue for pending files
 static OSHash * ptable;                 // Table for pending paths
 static pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
@@ -119,10 +119,12 @@ void* wm_database_main(wm_database *data) {
         while (1) {
             path = wm_inotify_pop();
 
-
+#ifndef LOCAL
             if (!strcmp(path, KEYSFILE_PATH)) {
                 wm_sync_agents();
-            } else {
+            } else
+#endif // !LOCAL
+            {
                 if (file = strrchr(path, '/'), file) {
                     *(file++) = '\0';
                     wm_sync_file(path, file);
@@ -133,7 +135,6 @@ void* wm_database_main(wm_database *data) {
 
             free(path);
         }
-
     } else {
 #endif // INOTIFY_ENABLED
 
@@ -203,6 +204,21 @@ void wm_sync_manager() {
     else
         mterror(WM_DATABASE_LOGTAG, "Couldn't get manager's hostname: %s.", strerror(errno));
 
+    /* Get node name of the manager in cluster */
+    char* node_name;
+
+    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
+
+    OS_XML xml;
+
+    if (OS_ReadXML(DEFAULTCPATH, &xml) < 0){
+        merror_exit(XML_ERROR, DEFAULTCPATH, xml.err, xml.err_line);
+    }
+
+    node_name = OS_GetOneContentforElement(&xml, xml_node);
+
+    OS_ClearXML(&xml);
+
     if ((os_uname = getuname())) {
         char *ptr;
 
@@ -248,8 +264,9 @@ void wm_sync_manager() {
             }
         }
 
-        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __ossec_version, NULL, NULL, hostname);
+        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __ossec_version, NULL, NULL, hostname, node_name);
 
+        free(node_name);
         free(os_major);
         free(os_minor);
     }
@@ -398,8 +415,10 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char *config_sum = NULL;
     char *merged_sum = NULL;
     char manager_host[512] = "";
+    char node_name[512] = "";
     char *end;
     char *end_manager;
+    char *end_node;
     char *end_line;
     FILE *fp;
     int result;
@@ -527,9 +546,11 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
             merged_sum = NULL;
         }
 
-        // Search for manager hostname connected to the agent
+        // Search for manager hostname connected to the agent and the node name of the cluster
 
         const char * MANAGER_HOST = "#\"manager_hostname\":";
+        const char * NODE_NAME = "#\"node_name\":";
+
         while (fgets(file, OS_MAXSTR, fp)) {
             if (!strncmp(file, MANAGER_HOST, strlen(MANAGER_HOST))) {
                 strncpy(manager_host, file + strlen(MANAGER_HOST), sizeof(manager_host) - 1);
@@ -539,10 +560,19 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
                     *end_manager = '\0';
                 }
             }
+            if (!strncmp(file, NODE_NAME, strlen(NODE_NAME))) {
+                strncpy(node_name, file + strlen(NODE_NAME), sizeof(node_name) - 1);
+                node_name[sizeof(node_name) - 1] = '\0';
+
+                if (end_node = strchr(node_name, '\n'), end_node){
+                    *end_node = '\0';
+                }
+            }
         }
     }
 
-    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, version, config_sum, merged_sum, manager_host);
+
+    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, version, config_sum, merged_sum, manager_host, node_name);
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agentinfo(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 
     free(os_major);
@@ -1070,8 +1100,6 @@ int set_max_queued_events(int size) {
 // Setup inotify reader
 void wm_inotify_setup(wm_database * data) {
     int old_max_queued_events = -1;
-    char keysfile_path[] = KEYSFILE_PATH;
-    char * keysfile_dir = dirname(keysfile_path);
 
     // Create hash table
 
@@ -1118,6 +1146,9 @@ void wm_inotify_setup(wm_database * data) {
     // First synchronization and add watch for client.keys, Agent info, Syscheck and Rootcheck directories
 
 #ifndef LOCAL
+
+    char keysfile_path[] = KEYSFILE_PATH;
+    char * keysfile_dir = dirname(keysfile_path);
 
     if (data->sync_agents) {
         if ((wd_agents = inotify_add_watch(inotify_fd, keysfile_dir, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)

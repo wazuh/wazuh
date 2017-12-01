@@ -108,7 +108,7 @@ int receive_msg()
 #ifdef WIN32
             /* Run timeout commands */
             if (agt->execdq >= 0) {
-                WinTimeoutRun(available_server);
+                WinTimeoutRun();
             }
 #endif
 

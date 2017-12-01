@@ -1,0 +1,51 @@
+{
+    "/etc/": {
+        "umask": "0o117",
+        "format":"plain",
+        "source": "master",
+        "write_mode": "atomic",
+        "flags": ["IN_MOVED_TO"],
+        "files": ["client.keys"],
+        "recursive": false,
+        "description": "client keys file database"
+    },
+
+    "/etc/shared/": {
+        "umask": "0o117",
+        "format": "plain",
+        "source": "master",
+        "write_mode": "atomic",
+        "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE", "IN_DELETE"],
+        "files": ["all"],
+        "recursive": true,
+        "description": "shared configuration files"
+    },
+
+    "/queue/agent-info/": {
+        "umask": "0o117",
+        "format":"plain",
+        "source": "client",
+        "write_mode": "atomic",
+        "flags": ["IN_CLOSE_WRITE", "IN_ATTRIB", "IN_MOVED_TO", "IN_DELETE"],
+        "files": ["all"],
+        "recursive": false,
+        "description": "agent status"
+    },
+
+    "/queue/agent-groups/": {
+        "umask": "0o117",
+        "format":"plain",
+        "source": "master",
+        "write_mode": "atomic",
+        "flags": ["IN_CLOSE_WRITE", "IN_MOVED_TO", "IN_DELETE"],
+        "files": ["all"],
+        "recursive": false,
+        "description": "agents group configuration"
+    },
+
+    "excluded_files": [
+        "ar.conf",
+        "merged.mg",
+        "ossec.conf"
+    ]
+}

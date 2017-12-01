@@ -207,7 +207,15 @@ int local_start()
     srandom(time(0));
     os_random();
 
-    write_state();
+    /* Launch rotation thread */
+    if (CreateThread(NULL,
+                     0,
+                     (LPTHREAD_START_ROUTINE)state_main,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID) == NULL) {
+        merror(THREAD_ERROR);
+    }
 
     /* Socket connection */
     agt->sock = -1;
@@ -306,6 +314,8 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
     tmpstr[OS_MAXSTR + 1] = '\0';
 
     mdebug2("Attempting to send message to server.");
+
+    os_wait();
 
     /* Using a mutex to synchronize the writes */
     while (1) {

@@ -12,9 +12,8 @@ from datetime import datetime, timedelta
 import hashlib
 import json
 import stat
-import socket
-import asyncore
-import asynchat
+import re
+from itertools import groupby, chain
 
 try:
     from subprocess import check_output
@@ -137,7 +136,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     if sort_by:  # array should be a dictionary or a Class
         if type(array[0]) is dict:
             check_sort_fields(set(array[0].keys()), set(sort_by))
-            
+
             return sorted(array, key=lambda o: tuple(o.get(a) for a in sort_by), reverse=order_desc)
         else:
             return sorted(array, key=lambda o: tuple(getattr(o, a) for a in sort_by), reverse=order_desc)
@@ -334,57 +333,136 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-class WazuhClusterClient(asynchat.async_chat):
-    def __init__(self, host, port, data, file):
-        asynchat.async_chat.__init__(self)
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connect((host, port))
-        self.data = data
-        self.file = file
-        self.set_terminator('\n')
-        self.response = ""
-        self.can_read = False
-        self.can_write = True
-        self.received_data = []
+def plain_dict_to_nested_dict(data, force_fields):
+    """
+    Turns an input dictionary with "nested" fields in form
+                field_subfield
+    into a real nested dictionary in form
+                field {subfield}
 
-    def handle_connect(self):
-        pass
+    For example, the following input dictionary
+    data = {
+       "ram_free": "1669524",
+       "board_serial": "BSS-0123456789",
+       "cpu_name": "Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz",
+       "cpu_cores": "4",
+       "ram_total": "2045956",
+       "cpu_mhz": "2394.464"
+    }
+    will output this way:
+    data = {
+      "ram": {
+         "total": "2045956",
+         "free": "1669524"
+      },
+      "cpu": {
+         "cores": "4",
+         "mhz": "2394.464",
+         "name": "Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz"
+      },
+      "board_serial": "BSS-0123456789"
+    }
 
-    def handle_close(self):
-        self.close()
+    :param data: dictionary to nest
+    :param force_fields: fields to force nesting in
+    """
+    # separate fields and subfields:
+    # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
+    nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g))) 
+             for k,g in groupby(map(lambda x: x.split('_'), sorted(data.keys())), 
+             key=lambda x:x[0])}
 
-    def readable(self):
-        return self.can_read
+    # create a nested dictionary with those fields that have subfields
+    # (board_serial won't be added because it only has one subfield)
+    #  nested_dict = {
+    #       'cpu': {
+    #           'cores': '4', 
+    #           'mhz': '2394.464',
+    #           'name': 'Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz'
+    #       }, 
+    #       'ram': {
+    #           'free': '1669524', 
+    #           'total': '2045956'
+    #       }
+    #    }
+    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl} for f,sfl 
+                  in nested.items() if len(sfl) > 1 or f in force_fields}
 
-    def writable(self):
-        return self.can_write
+    # create a dictionary with the non nested fields
+    # non_nested_dict = {'board_serial': 'BSS-0123456789'}
+    non_nested_dict = {f:data[f] for f in data.keys() if f.split('_')[0] 
+                       not in nested_dict.keys()}
 
-    def handle_error(self):
-        nil, t, v, tbinfo = asyncore.compact_traceback()
-        raise t(v)
+    # append both dictonaries
+    nested_dict.update(non_nested_dict)
 
-    def collect_incoming_data(self, data):
-        self.received_data.append(data)
+    return nested_dict
 
-    def found_terminator(self):
-        self.response = json.loads(''.join(self.received_data))
-        self.close()
+class WazuhVersion:
 
-    def handle_write(self):
-        if self.file is not None:
-            self.send(self.data.encode() + self.file)
+    def __init__(self, version):
+
+        pattern = "v?(\d)\.(\d)\.(\d)\-?(alpha|beta|rc)?(\d*)"
+        m = re.match(pattern, version)
+
+        if m:
+            self.__mayor = m.group(1)
+            self.__minor = m.group(2)
+            self.__patch = m.group(3)
+            self.__dev = m.group(4)
+            self.__dev_ver = m.group(5)
         else:
-            self.send(self.data.encode())
-        self.can_read=True
-        self.can_write=False
+            raise ValueError("Invalid version format.")
 
-def send_request(host, port, data, file=None):
-    error = 0
-    try:
-        client = WazuhClusterClient(host, int(port), data, file)
-        asyncore.loop()
-        data = client.response
-    except Exception as e:
-        error = 1
-        data = str(e)
-    return error, data
+    def to_array(self):
+        array = [self.__mayor]
+        array.extend(self.__minor)
+        array.extend(self.__patch)
+        if self.__dev:
+            array.append(self.__dev)
+        if self.__dev_ver:
+            array.append(self.__dev_ver)
+        return array
+
+    def __to_string(self):
+        ver_string = "{0}.{1}.{2}".format(self.__mayor, self.__minor, self.__patch)
+        if self.__dev:
+            ver_string = "{0}-{1}{2}".format(ver_string, self.__dev, self.__dev_ver)
+        return ver_string
+
+    def __str__(self):
+        return self.__to_string()
+
+    def __eq__(self, new_version):
+        return (self.__to_string() == new_version.__to_string())
+
+    def __ne__(self, new_version):
+        return (self.__to_string() != new_version.__to_string())
+
+    def __ge__(self, new_version):
+        if self.__mayor < new_version.__mayor:
+            return False
+        elif self.__minor < new_version.__minor:
+            return False
+        elif self.__patch < new_version.__patch:
+            return False
+        elif (self.__dev) and not (new_version.__dev):
+            return False
+        elif (self.__dev) and (new_version.__dev):
+            if ord(self.__dev[0]) < ord(new_version.__dev[0]):
+                return False
+            elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
+                return False
+            else:
+                return True
+        else:
+            return True
+
+    def __lt__(self, new_version):
+        return not (self >= new_version)
+
+    def __gt__(self, new_version):
+        return (self >= new_version and self != new_version)
+
+    def __le__(self, new_version):
+        return (not (self < new_version) or self == new_version)
