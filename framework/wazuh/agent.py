@@ -326,7 +326,7 @@ class Agent:
         :return: Message.
         """
 
-        msg = { "function": "remove", "arguments": { "id": str(self.id) } }
+        msg = { "function": "remove", "arguments": { "id": str(self.id).zfill(3) } }
 
         authd_socket = OssecSocket(common.AUTHD_SOCKET)
         authd_socket.send(msg)
