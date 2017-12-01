@@ -10,4 +10,5 @@
         <node>localhost</node>
     </nodes>
     <hidden>no</hidden>
+    <disabled>yes</disabled>
   </cluster>
