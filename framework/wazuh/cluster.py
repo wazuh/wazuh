@@ -265,8 +265,13 @@ def read_config():
     try:
         config_cluster = get_ossec_conf('cluster')
 
+    except WazuhException as e:
+        if e.code == 1102:
+            raise WazuhException(3006, "Cluster configuration not present in ossec.conf")
+        else:
+            raise WazuhException(3006, e.message)
     except Exception as e:
-        raise WazuhException(3006, e.message)
+        raise WazuhException(3006, str(e))
 
     return config_cluster
 
