@@ -6,6 +6,7 @@
 from wazuh.utils import cut_array, sort_array, search_array, md5
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
+from wazuh.manager import status
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh import common
@@ -158,7 +159,8 @@ def send_request(host, port, key, data, file=None):
     return error, data
 
 def get_status_json():
-    return "Enabled" if check_cluster_status() else "Disabled"
+    return {"enabled": "yes" if check_cluster_status() else "no",
+            "running": "yes" if status()['wazuh-clusterd'] == 'running' else "no"}
 
 
 def check_cluster_cmd(cmd, node_type):
