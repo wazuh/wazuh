@@ -595,12 +595,16 @@ def _check_removed_agents(new_client_keys):
                 logging.error("Error deleting agent {0}: {1}".format(agent_id, str(e)))
 
 
-def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None):
+def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master'):
     # Set Timezone to epoch converter
     # environ['TZ']='UTC'
 
     if path.basename(fullpath) == 'client.keys':
-        _check_removed_agents(new_content.split('\n'))
+        if node_type=='client':
+            _check_removed_agents(new_content.split('\n'))
+        else:
+            logging.warning("Client.keys file received in a master node.")
+            raise WazuhException(3007)
 
     # Write
     if w_mode == "atomic":
@@ -633,6 +637,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None)
     if w_mode == "atomic":
         rename(f_temp, fullpath)
 
+
 def extract_zip(zip_bytes):
     zip_json = {}
     with zipfile.ZipFile(BytesIO(zip_bytes)) as zipf:
@@ -657,7 +662,7 @@ def receive_zip(zip_file):
 
 
     cluster_items = get_cluster_items()
-
+    config = read_config()
     logging.info("Receiving package with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'invalid': []}
@@ -677,10 +682,12 @@ def receive_zip(zip_file):
             except KeyError:
                 remote_umask = int(cluster_items['/etc/']['umask'], base=0)
                 remote_write_mode = cluster_items['/etc/']['write_mode']
+            
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],
-                            w_mode=remote_write_mode)
+                            w_mode=remote_write_mode,
+                            node_type=config['node_type'])
 
         except Exception as e:
             logging.error("Error extracting zip file: {0}".format(str(e)))
