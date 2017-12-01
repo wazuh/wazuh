@@ -31,39 +31,46 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     _Config *Config;
     Config = (_Config *)d1;
     int i;
+    int disable_cluster_info = 0;
 
-     for (i = 0; node[i]; i++) {
-         if (!node[i]->element) {
-             merror(XML_ELEMNULL);
-             return OS_INVALID;
-         } else if (!node[i]->content) {
-             merror(XML_VALUENULL, node[i]->element);
-             return OS_INVALID;
-         } else if (!strcmp(node[i]->element, cluster_name)) {
-             os_strdup(node[i]->content, Config->cluster_name);
-         } else if (!strcmp(node[i]->element, node_name)) {
-             os_strdup(node[i]->content, Config->node_name);
-         } else if (!strcmp(node[i]->element, node_type)) {
-         } else if (!strcmp(node[i]->element, key)) {
-         } else if (!strcmp(node[i]->element, disabled)) {
-         } else if (!strcmp(node[i]->element, hidden)) {
-             if (strcmp(node[i]->content, "yes") == 0) {
-                 Config->hide_cluster_info = 1;
-             } else if (strcmp(node[i]->content, "no") == 0) {
-                 Config->hide_cluster_info = 0;
-             } else {
-                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                 return OS_INVALID;
-             }
-         } else if (!strcmp(node[i]->element, interval)) {
-         } else if (!strcmp(node[i]->element, nodes)) {
-         } else if (!strcmp(node[i]->element, port)) {
-         } else if (!strcmp(node[i]->element, bind_addr)) {
-         } else {
-             merror(XML_INVELEM, node[i]->element);
-             return OS_INVALID;
-         }
-     }
+    for (i = 0; node[i]; i++) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return OS_INVALID;
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return OS_INVALID;
+        } else if (!strcmp(node[i]->element, cluster_name)) {
+            os_strdup(node[i]->content, Config->cluster_name);
+        } else if (!strcmp(node[i]->element, node_name)) {
+            os_strdup(node[i]->content, Config->node_name);
+        } else if (!strcmp(node[i]->element, node_type)) {
+        } else if (!strcmp(node[i]->element, key)) {
+        } else if (!strcmp(node[i]->element, disabled)) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                disable_cluster_info = 1;
+            }
+        } else if (!strcmp(node[i]->element, hidden)) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                Config->hide_cluster_info = 1;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                Config->hide_cluster_info = 0;
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(node[i]->element, interval)) {
+        } else if (!strcmp(node[i]->element, nodes)) {
+        } else if (!strcmp(node[i]->element, port)) {
+        } else if (!strcmp(node[i]->element, bind_addr)) {
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return OS_INVALID;
+        }
+    }
 
-     return 0;
+    if (disable_cluster_info)
+        Config->hide_cluster_info = 1;
+
+    return 0;
  }
