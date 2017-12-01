@@ -282,7 +282,6 @@ if __name__ == '__main__':
 
 
     logging.info("Cleaning database before starting service...")
-    sleep(2) # wait 2 seconds so the internal daemon is started before calling this function
     clear_file_status()
 
     if cluster_config['node_type'] == 'master':

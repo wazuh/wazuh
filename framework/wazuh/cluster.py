@@ -31,6 +31,7 @@ import re
 import socket
 import asyncore
 import asynchat
+from time import sleep
 # import the C accelerated API of ElementTree
 try:
     import xml.etree.cElementTree as ET
@@ -482,7 +483,14 @@ def clear_file_status():
     Function to set all database files' status to pending
     """
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+    max_retries = 100
+    for i in range(max_retries):
+        try:
+            cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+        except socket.error:
+            sleep(1)
+            continue
+        break
 
     cluster_socket.send("clear ")
     received = cluster_socket.recv(10000)
