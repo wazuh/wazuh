@@ -55,24 +55,28 @@ except:
 
 def check_cluster_status():
     """
-    Function to check if cluster is enabled in ossec-control
+    Function to check if cluster is enabled
     """
     with open("/etc/ossec-init.conf") as f:
         # the osec directory is the first line of ossec-init.conf
         directory = f.readline().split("=")[1][:-1].replace('"', "")
 
     try:
-        process_list = check_output(["tac", "{0}/bin/.process_list".format(directory)], stderr=open(devnull, 'w')).split('\n')
+        # wrap the data
+        with open("{0}/etc/ossec.conf".format(directory)) as f:
+            txt_data = f.read()
+
+        txt_data = re.sub("(<!--.*?-->)", "", txt_data, flags=re.MULTILINE | re.DOTALL)
+        txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
+        txt_data = '<root_tag>' + txt_data + '</root_tag>'
+
+        conf = ET.fromstring(txt_data)
+
+        return conf.find('ossec_config').find('cluster').find('disabled').text == 'no'
     except:
         return False
-    for process in process_list:
-        if process == 'CLUSTER_DAEMON=""':
-            return False
-        elif process == 'CLUSTER_DAEMON=wazuh-clusterd':
-            return True
-    return False
 
-# import python-cryptography lib only if cluster is enabled at ossec-control
+# import python-cryptography lib only if cluster is enabled
 if check_cluster_status():
     try:
         from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
