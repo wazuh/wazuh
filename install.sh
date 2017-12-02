@@ -143,6 +143,11 @@ Install()
         UpdateStartOSSEC
     fi
 
+    # Enable auth if selected
+    if [ "X$INSTYPE" = "Xserver" ] && [ "X${AUTHD}" = "Xyes" ]; then
+        $INSTALLDIR/bin/ossec-control enable auth
+    fi
+
     # Calling the init script  to start ossec hids during boot
     if [ "X${update_only}" = "X" ]; then
         runInit $INSTYPE
@@ -979,12 +984,6 @@ main()
     # Installing (calls the respective script
     # -- InstallAgent.sh or InstallServer.sh
     Install
-
-
-    # Enable auth if selected
-    if [ "X$INSTYPE" = "Xserver" ] && [ "X${AUTHD}" = "Xyes" ]; then
-        $INSTALLDIR/bin/ossec-control enable auth
-    fi
 
     # User messages
     echo ""
