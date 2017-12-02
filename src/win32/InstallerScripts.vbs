@@ -36,9 +36,7 @@ time_reconnect  = Replace(args(5), Chr(34), "") 'TIME_RECONNECT
 If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or time_reconnect <> "" Then
 
     Set objFSO = CreateObject("Scripting.FileSystemObject")
-
     If objFSO.fileExists(home_dir & "ossec.conf") Then
-
         ' Reading ossec.conf file
         Const ForReading = 1
         Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForReading)
@@ -50,13 +48,15 @@ If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or 
         strNewText = Replace(strText, "<teststring>", "<teststring>")
 
         If address <> "" and InStr(address,",") > 0 Then 'list of address
-
             list=Split(address,",")
             formatted_list =""
             for each ip in list
                 formatted_list = formatted_list & "    <address>" & ip & "</address>" & vbCrLf
             next
-            strNewText = Replace(strNewText, "    <address>0.0.0.0</address>", formatted_list)
+            strNewText = Replace(strNewText, "      <address>0.0.0.0</address>", formatted_list)
+
+        ElseIf address <> "" and InStr(strText,"<address>") > 0 Then
+            strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")            
 
         ElseIf address <> "" Then 'single address
             ' Fix for the legacy server-ip and server-hostname keynames
