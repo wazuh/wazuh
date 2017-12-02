@@ -13,7 +13,8 @@
         <!-- Default configuration values -->
         <Property Id="ADDRESS" Secure="yes">
         </Property>
-        <Property Id="SERVER_PORT" Secure="yes">1514</Property>
+        <Property Id="SERVER_PORT" Secure="yes">
+        </Property>
         <Property Id="NOTIFY_TIME" Secure="yes">
         </Property>
         <Property Id="TIME_RECONNECT" Secure="yes">
@@ -21,7 +22,8 @@
         <Property Id="AUTHD_SERVER" Secure="yes">
         </Property>
         <Property Id="AUTHD_PORT" Secure="yes">1515</Property>
-        <Property Id="PROTOCOL" Secure="yes">udp</Property>
+        <Property Id="PROTOCOL" Secure="yes">
+        </Property>
         <Property Id="PASSWORD" Secure="yes">
         </Property>
         <Property Id="CERTIFICATE" Secure="yes">
