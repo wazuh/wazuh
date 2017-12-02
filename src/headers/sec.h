@@ -95,7 +95,7 @@ void OS_PassEmptyKeyfile();
 int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key) __attribute((nonnull));
 
 /* Delete a key */
-int OS_DeleteKey(keystore *keys, const char *id);
+int OS_DeleteKey(keystore *keys, const char *id, int purge);
 
 /* Write keystore on client keys file */
 int OS_WriteKeys(const keystore *keys);
