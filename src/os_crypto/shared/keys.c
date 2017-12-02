@@ -500,7 +500,7 @@ void OS_PassEmptyKeyfile() {
 }
 
 /* Delete a key */
-int OS_DeleteKey(keystore *keys, const char *id) {
+int OS_DeleteKey(keystore *keys, const char *id, int purge) {
     int i = OS_IsAllowedID(keys, id);
 
 
@@ -509,7 +509,7 @@ int OS_DeleteKey(keystore *keys, const char *id) {
 
     /* Save removed key */
 
-    if (keys->flags.save_removed) {
+    if (keys->flags.save_removed && !purge) {
         char buffer[OS_BUFFER_SIZE + 1];
         keyentry *entry = keys->keyentries[i];
         snprintf(buffer, OS_BUFFER_SIZE, "%s !%s %s %s", entry->id, entry->name, entry->ip->ip, entry->key);
