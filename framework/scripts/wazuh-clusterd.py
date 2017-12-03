@@ -246,9 +246,15 @@ if __name__ == '__main__':
         # add the handler to the root logger
         logging.getLogger('').addHandler(console)
 
-    cluster_config = read_config()
+    try:
+        cluster_config = read_config()
+    except WazuhException as e:
+        if e.code == 3006:
+            cluster_config = None
+        else:
+            raise e
 
-    if cluster_config['disabled'] == 'yes':
+    if not cluster_config or cluster_config['disabled'] == 'yes':
         logging.info("Cluster disabled. Exiting...")
         exit(0)
 
