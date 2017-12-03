@@ -47,11 +47,11 @@ If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or 
         ' Modifying values in ossec.conf
         strNewText = Replace(strText, "<teststring>", "<teststring>")
 
-        If address <> "" and InStr(address,",") > 0 Then 'list of address
-            list=Split(address,",")
+        If address <> "" and InStr(address,";") > 0 Then 'list of address
+            list=Split(address,";")
             formatted_list =""
             for each ip in list
-                formatted_list = formatted_list & "    <address>" & ip & "</address>" & vbCrLf
+                formatted_list = formatted_list & "      <address>" & ip & "</address>" & vbCrLf
             next
             strNewText = Replace(strNewText, "      <address>0.0.0.0</address>", formatted_list)
 
