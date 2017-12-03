@@ -10,7 +10,7 @@ import json
 from distutils.util import strtobool
 from sys import argv, exit, path
 from os.path import dirname
-from subprocess import check_call, CalledProcessError, check_output
+from subprocess import check_call, CalledProcessError
 from os import devnull, seteuid, setgid, getpid, kill
 from multiprocessing import Process
 from re import search
@@ -41,6 +41,7 @@ try:
     from wazuh.common import *
     from wazuh.cluster import *
     from wazuh.exception import WazuhException
+    from wazuh.utils import check_output
     from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
