@@ -2,61 +2,64 @@
 
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-import asyncore
-import asynchat
-import socket
-import json
-from distutils.util import strtobool
-from sys import argv, exit, path
-from os.path import dirname
-from subprocess import check_call, CalledProcessError
-from os import devnull, seteuid, setgid, getpid, kill
-from multiprocessing import Process
-from re import search
-from time import sleep
-from pwd import getpwnam
-from signal import signal, SIGINT, SIGTERM, SIGUSR1
-import ctypes
-import ctypes.util
-
-import argparse
-parser =argparse.ArgumentParser()
-parser.add_argument('-f', help="Run in foreground", action='store_true')
-parser.add_argument('-d', help="Enable debug messages", action='store_true')
-parser.add_argument('-V', help="Print version", action='store_true')
-
-# Set framework path
-path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
-
-child_pid = 0
-
-# Import framework
 try:
-    from wazuh import Wazuh
+    import asyncore
+    import asynchat
+    import socket
+    import json
+    from distutils.util import strtobool
+    from sys import argv, exit, path
+    from os.path import dirname
+    from subprocess import check_call, CalledProcessError
+    from os import devnull, seteuid, setgid, getpid, kill
+    from multiprocessing import Process
+    from re import search
+    from time import sleep
+    from pwd import getpwnam
+    from signal import signal, SIGINT, SIGTERM, SIGUSR1
+    import ctypes
+    import ctypes.util
 
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
+    import argparse
+    parser =argparse.ArgumentParser()
+    parser.add_argument('-f', help="Run in foreground", action='store_true')
+    parser.add_argument('-d', help="Enable debug messages", action='store_true')
+    parser.add_argument('-V', help="Print version", action='store_true')
 
-    from wazuh.common import *
-    from wazuh.cluster import *
-    from wazuh.exception import WazuhException
-    from wazuh.utils import check_output
-    from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
-except Exception as e:
-    print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
-    exit()
+    # Set framework path
+    path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
 
-if check_cluster_status():
+    child_pid = 0
+
+    # Import framework
     try:
-        from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
-    except ImportError as e:
-        print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
-        exit(-1)
+        from wazuh import Wazuh
 
-import logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
-                    filename="{0}/logs/cluster.log".format(common.ossec_path))
+        # Initialize framework
+        myWazuh = Wazuh(get_init=True)
+
+        from wazuh.common import *
+        from wazuh.cluster import *
+        from wazuh.exception import WazuhException
+        from wazuh.utils import check_output
+        from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
+    except Exception as e:
+        print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
+        exit()
+
+    if check_cluster_status():
+        try:
+            from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
+        except ImportError as e:
+            print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
+            exit(-1)
+
+    import logging
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
+                        filename="{0}/logs/cluster.log".format(common.ossec_path))
+except:
+    print("wazuh-clusterd: Python 2.7 required. Exiting.")
+    exit()
 
 class WazuhClusterHandler(asynchat.async_chat):
     def __init__(self, sock, addr, key, node_type):
