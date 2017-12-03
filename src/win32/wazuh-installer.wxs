@@ -149,6 +149,9 @@
                     <Component Id="REVISION" DiskId="1" Guid="89440258-B50F-4926-8068-D1444E31F8E0">
                         <File Id="REVISION" Name="REVISION" Source="REVISION" />
                     </Component>
+                    <Component Id="WPK_ROOT.PEM" DiskId="1" Guid="EABF8773-57B9-4CD8-A862-87B0E060DBF8">
+                        <File Id="WPK_ROOT.PEM" Name="wpk_root.pem" Source="..\..\etc\wpk_root.pem" />
+                    </Component>
                     <Directory Id="ACTIVE_RESPONSE" Name="active-response">
                         <Directory Id="BIN" Name="bin">
                             <Component Id="RESTART_OSSEC.CMD" DiskId="1" Guid="5A405DD9-F4FF-4313-B242-A28DE03611CA">
@@ -318,6 +321,7 @@
             <ComponentRef Id="HELP_WIN.TXT" />
             <ComponentRef Id="VERSION" />
             <ComponentRef Id="REVISION" />
+            <ComponentRef Id="WPK_ROOT.PEM" />
         </Feature>
         <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
     </Product>
