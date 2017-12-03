@@ -173,7 +173,7 @@ void init_config()
 int config_read(__attribute__((unused)) HWND hwnd)
 {
     char *tmp_str;
-    char *delim = " - ";
+    char buffer[4096];
 
     /* Clear config */
     config_clear();
@@ -186,19 +186,15 @@ int config_read(__attribute__((unused)) HWND hwnd)
     }
 
     /* Get version/revision */
-    config_inst.version = cat_file(VERSION_FILE, NULL);
-    if (config_inst.version) {
-        config_inst.revision = strstr(config_inst.version, delim);
-        if (config_inst.revision) {
-            *config_inst.revision = '\0';
-            config_inst.revision += strlen(delim);
 
-            // Remove " - Installed on ..."
+    if (tmp_str = cat_file(VERSION_FILE, NULL), tmp_str) {
+        snprintf(buffer, sizeof(buffer), "Wazuh %s", tmp_str);
+        os_strdup(buffer, config_inst.version);
+    }
 
-            if (tmp_str = strstr(config_inst.revision, delim), tmp_str) {
-                *tmp_str = '\0';
-            }
-        }
+    if (tmp_str = cat_file(REVISION_FILE, NULL), tmp_str) {
+        snprintf(buffer, sizeof(buffer), "Revision %s", tmp_str);
+        os_strdup(buffer, config_inst.revision);
     }
 
     /* Get number of messages sent */
