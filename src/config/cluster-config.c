@@ -27,11 +27,12 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *port = "port";
     static const char *bind_addr = "bind_addr";
 
-
     _Config *Config;
     Config = (_Config *)d1;
     int i;
     int disable_cluster_info = 0;
+
+    Config->hide_cluster_info = 0;
 
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
