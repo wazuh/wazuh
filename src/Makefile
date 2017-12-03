@@ -1273,8 +1273,8 @@ clean-windows:
 	rm -f win32/ossec-luac.exe
 	rm -f win32/wazuh-agent-*.exe
 	rm -f win32/libwinpthread-1.dll
-	rm -f VERSION
-	rm -f REVISION
+	rm -f win32/VERSION
+	rm -f win32/REVISION
 
 clean-config:
 	rm -f ../etc/ossec.mc
