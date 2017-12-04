@@ -32,6 +32,10 @@ if [ "$DIST_NAME" = "CentOS" ]; then
     if [ "$DIST_VER" = "5" ]; then
         DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
     fi
+elif [ "$DIST_NAME" = "Red" ]; then
+    if [ "$DIST_VER" = "5" ]; then
+        DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+    fi
 else
     DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd wazuh-clusterd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
 fi
@@ -262,6 +266,15 @@ start()
                 echo "Cluster daemon is incompatible with CentOS 5... Skipping wazuh-clusterd."
             fi
         fi
+    elif [ "$DIST_NAME" = "Red" ]; then
+        if [ "$DIST_VER" = "5" ]; then
+            SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
+            if [ $USE_JSON = true ]; then
+                echo -n '{"error":22,"message:"Cluster daemon is incompatible with Red Hat 5... Skipping wazuh-clusterd."}'
+            else
+                echo "Cluster daemon is incompatible with Red Hat 5... Skipping wazuh-clusterd."
+            fi
+        fi
     else
         SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} wazuh-clusterd wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
     fi
@@ -437,6 +450,10 @@ reload)
     if [ "$DIST_NAME" = "CentOS" ]; then
         if [ "$DIST_VER" = "5" ]; then
             DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+        fi
+    elif [ "$DIST_NAME" = "Red" ]; then
+        if [ "$DIST_VER" = "5" ]; then
+            DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
         fi
     else
         DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd wazuh-clusterd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
