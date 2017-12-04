@@ -146,17 +146,22 @@ disable()
         echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
-
+    daemon=''
     if [ "X$2" = "Xdatabase" ]; then
         echo "DB_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-dbd'
     elif [ "X$2" = "Xclient-syslog" ]; then
         echo "CSYSLOG_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-csyslogd'
     elif [ "X$2" = "Xagentless" ]; then
         echo "AGENTLESS_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-agentlessd'
     elif [ "X$2" = "Xintegrator" ]; then
         echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-integratord'
     elif [ "X$2" = "Xauth" ]; then
         echo "AUTH_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-authd'
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
@@ -166,6 +171,16 @@ disable()
         echo "Disable options: database, client-syslog, agentless, debug, integrator, authentication"
         echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
+    fi
+    if [ $daemon != '' ]; then
+        pstatus ${daemon};
+        if [ $? = 1 ]; then
+            kill `cat $DIR/var/run/$daemon*`
+            rm $DIR/var/run/$daemon*
+            echo "Killing ${daemon}...";
+        else
+            echo "${daemon} not running..."
+        fi
     fi
 }
 
@@ -307,7 +322,6 @@ start()
 pstatus()
 {
     pfile=$1;
-
     # pfile must be set
     if [ "X${pfile}" = "X" ]; then
         return 0;
@@ -319,7 +333,7 @@ pstatus()
             ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
-                    echo "${pfile}: Process $j not used by ossec, removing .."
+                    echo "${pfile}: Process $j not used by ossec, removing..."
                 fi
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
                 continue;
@@ -353,14 +367,14 @@ stopa()
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"killed"}'
             else
-                echo "Killing ${i} .. ";
+                echo "Killing ${i}... ";
             fi
             kill `cat ${DIR}/var/run/${i}*.pid`;
         else
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
             else
-                echo "${i} not running ..";
+                echo "${i} not running...";
             fi
         fi
         rm -f ${DIR}/var/run/${i}*.pid
