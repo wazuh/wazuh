@@ -103,7 +103,8 @@ class WazuhException(Exception):
         3004: 'Error in cluster configuration',
         3005: 'Error reading cluster JSON file',
         3006: 'Error reading cluster configuration',
-        3007: 'Client.keys file received in master node'
+        3007: 'Client.keys file received in master node',
+        3008: 'Error importing cryptography module'
 
         # > 9000: Authd
     }

@@ -82,8 +82,7 @@ if check_cluster_status():
     try:
         from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
     except ImportError as e:
-        print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
-        exit(-1)
+        raise WazuhException(3008, str(e))
 
 
 class WazuhClusterClient(asynchat.async_chat):
