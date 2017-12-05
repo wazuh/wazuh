@@ -480,6 +480,8 @@ winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a win32/libwinpthread
 	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
 	cd win32/ && ./unix2dos.pl ../../active-response/win/route-null.cmd > route-null.cmd
 	cd win32/ && ./unix2dos.pl ../../active-response/win/restart-ossec.cmd > restart-ossec.cmd
+	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
+	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis ossec-installer.nsi
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
@@ -1271,6 +1273,8 @@ clean-windows:
 	rm -f win32/ossec-luac.exe
 	rm -f win32/wazuh-agent-*.exe
 	rm -f win32/libwinpthread-1.dll
+	rm -f win32/VERSION
+	rm -f win32/REVISION
 
 clean-config:
 	rm -f ../etc/ossec.mc

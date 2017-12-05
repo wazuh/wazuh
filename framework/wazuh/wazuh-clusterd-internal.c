@@ -242,8 +242,8 @@ void* daemon_socket() {
             }
             
             int step;
+            prepare_db(db, &res, sql);
             if (has1) {
-                prepare_db(db, &res, sql);
                 sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
                 while (cmd != NULL) {
                     cmd = strtok(NULL, " ");

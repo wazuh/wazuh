@@ -59,8 +59,8 @@ cd $(dirname $0)
 VERSION_FILE="../src/VERSION"
 REVISION_FILE="../src/REVISION"
 DEFS_FILE="../src/headers/defs.h"
-HELP_FILE="../src/win32/help.txt"
 NSIS_FILE="../src/win32/ossec-installer.nsi"
+MSI_FILE="../src/win32/wazuh-installer.wxs"
 FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
 
@@ -83,18 +83,6 @@ then
 
     sed -E -i'' "s/^(#define __ossec_version +)\"v.*\"/\1\"$version\"/" $DEFS_FILE
 
-    # File help.txt
-
-    egrep "^\*\* .+ \*\*" $HELP_FILE > /dev/null
-
-    if [ $? != 0 ]
-    then
-        echo "Error: no suitable version definition found at file $HELP_FILE"
-        exit 1
-    fi
-
-    sed -E -i'' "s/^(\*\* .+ )v.+ \*\*/\1$version \*\*/g" $HELP_FILE
-
     # File ossec-installer.nsi
 
     egrep "^\!define VERSION \".+\"" $NSIS_FILE > /dev/null
@@ -106,6 +94,18 @@ then
     fi
 
     sed -E -i'' "s/^(\!define VERSION \").+\"/\1${version:1}\"/g" $NSIS_FILE
+
+    # File wazuh-installer.wxs
+
+    egrep '<Product Id="\*" Name="Wazuh Agent .+" Language="1033" Version=".+" Manufacturer=' $MSI_FILE > /dev/null
+
+    if [ $? != 0 ]
+    then
+        echo "Error: no suitable version definition found at file $MSI_FILE"
+        exit 1
+    fi
+
+    sed -E -i'' "s/(<Product Id=\"\*\" Name=\"Wazuh Agent ).+(\" Language=\"1033\" Version=\").+(\" Manufacturer=)/\1${version:1}\2${version:1}\3/g" $MSI_FILE
 
     # Framework
 

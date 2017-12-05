@@ -19,7 +19,7 @@ if [ $? = 0 ]; then
 fi
 
 AUTHOR="Wazuh Inc."
-DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} ${CLUSTER_DAEMON}"
+DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd wazuh-clusterd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
 
@@ -110,8 +110,8 @@ enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator, authentication, cluster"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth|cluster]"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator, authentication"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
 
@@ -125,16 +125,14 @@ enable()
         echo "INTEGRATOR_DAEMON=ossec-integratord" >> ${PLIST};
     elif [ "X$2" = "Xauth" ]; then
         echo "AUTH_DAEMON=ossec-authd" >> ${PLIST};
-    elif [ "X$2" = "Xcluster" ]; then
-        echo "CLUSTER_DAEMON=wazuh-clusterd" >> ${PLIST};
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator, authentication, cluster"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth|cluster]"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator, authentication"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
 }
@@ -144,8 +142,8 @@ disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator, authentication, cluster"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth|cluster]"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator, authentication"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
 
@@ -159,16 +157,14 @@ disable()
         echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
     elif [ "X$2" = "Xauth" ]; then
         echo "AUTH_DAEMON=\"\"" >> ${PLIST};
-    elif [ "X$2" = "Xcluster" ]; then
-        echo "CLUSTER_DAEMON=\"\"" >> ${PLIST};
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator, authentication, cluster"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth|cluster]"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator, authentication"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
 }
@@ -230,7 +226,7 @@ testconfig()
 # Start function
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} ${CLUSTER_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
+    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} wazuh-clusterd wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
 
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
@@ -413,7 +409,7 @@ restart)
     unlock
     ;;
 reload)
-    DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} ${CLUSTER_DAEMON}"
+    DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd wazuh-clusterd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
     lock
     stopa
     start

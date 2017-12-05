@@ -6,6 +6,7 @@
 from wazuh.utils import cut_array, sort_array, search_array, md5
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
+from wazuh.manager import status
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh import common
@@ -30,6 +31,7 @@ import re
 import socket
 import asyncore
 import asynchat
+from time import sleep
 # import the C accelerated API of ElementTree
 try:
     import xml.etree.cElementTree as ET
@@ -54,30 +56,33 @@ except:
 
 def check_cluster_status():
     """
-    Function to check if cluster is enabled in ossec-control
+    Function to check if cluster is enabled
     """
     with open("/etc/ossec-init.conf") as f:
         # the osec directory is the first line of ossec-init.conf
         directory = f.readline().split("=")[1][:-1].replace('"', "")
 
     try:
-        process_list = check_output(["tac", "{0}/bin/.process_list".format(directory)], stderr=open(devnull, 'w')).split('\n')
+        # wrap the data
+        with open("{0}/etc/ossec.conf".format(directory)) as f:
+            txt_data = f.read()
+
+        txt_data = re.sub("(<!--.*?-->)", "", txt_data, flags=re.MULTILINE | re.DOTALL)
+        txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
+        txt_data = '<root_tag>' + txt_data + '</root_tag>'
+
+        conf = ET.fromstring(txt_data)
+
+        return conf.find('ossec_config').find('cluster').find('disabled').text == 'no'
     except:
         return False
-    for process in process_list:
-        if process == 'CLUSTER_DAEMON=""':
-            return False
-        elif process == 'CLUSTER_DAEMON=wazuh-clusterd':
-            return True
-    return False
 
-# import python-cryptography lib only if cluster is enabled at ossec-control
+# import python-cryptography lib only if cluster is enabled
 if check_cluster_status():
     try:
         from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
     except ImportError as e:
-        print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
-        exit(-1)
+        raise WazuhException(3008, str(e))
 
 
 class WazuhClusterClient(asynchat.async_chat):
@@ -158,7 +163,8 @@ def send_request(host, port, key, data, file=None):
     return error, data
 
 def get_status_json():
-    return "Enabled" if check_cluster_status() else "Disabled"
+    return {"enabled": "yes" if check_cluster_status() else "no",
+            "running": "yes" if status()['wazuh-clusterd'] == 'running' else "no"}
 
 
 def check_cluster_cmd(cmd, node_type):
@@ -263,8 +269,13 @@ def read_config():
     try:
         config_cluster = get_ossec_conf('cluster')
 
+    except WazuhException as e:
+        if e.code == 1102:
+            raise WazuhException(3006, "Cluster configuration not present in ossec.conf")
+        else:
+            raise WazuhException(3006, e.message)
     except Exception as e:
-        raise WazuhException(3006, e.message)
+        raise WazuhException(3006, str(e))
 
     return config_cluster
 
@@ -471,7 +482,14 @@ def clear_file_status():
     Function to set all database files' status to pending
     """
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+    max_retries = 100
+    for i in range(max_retries):
+        try:
+            cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+        except socket.error:
+            sleep(1)
+            continue
+        break
 
     cluster_socket.send("clear ")
     received = cluster_socket.recv(10000)
@@ -595,12 +613,16 @@ def _check_removed_agents(new_client_keys):
                 logging.error("Error deleting agent {0}: {1}".format(agent_id, str(e)))
 
 
-def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None):
+def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master'):
     # Set Timezone to epoch converter
     # environ['TZ']='UTC'
 
     if path.basename(fullpath) == 'client.keys':
-        _check_removed_agents(new_content.split('\n'))
+        if node_type=='client':
+            _check_removed_agents(new_content.split('\n'))
+        else:
+            logging.warning("Client.keys file received in a master node.")
+            raise WazuhException(3007)
 
     # Write
     if w_mode == "atomic":
@@ -633,6 +655,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None)
     if w_mode == "atomic":
         rename(f_temp, fullpath)
 
+
 def extract_zip(zip_bytes):
     zip_json = {}
     with zipfile.ZipFile(BytesIO(zip_bytes)) as zipf:
@@ -657,7 +680,7 @@ def receive_zip(zip_file):
 
 
     cluster_items = get_cluster_items()
-
+    config = read_config()
     logging.info("Receiving package with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'invalid': []}
@@ -677,10 +700,12 @@ def receive_zip(zip_file):
             except KeyError:
                 remote_umask = int(cluster_items['/etc/']['umask'], base=0)
                 remote_write_mode = cluster_items['/etc/']['write_mode']
+            
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],
-                            w_mode=remote_write_mode)
+                            w_mode=remote_write_mode,
+                            node_type=config['node_type'])
 
         except Exception as e:
             logging.error("Error extracting zip file: {0}".format(str(e)))

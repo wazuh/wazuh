@@ -19,7 +19,10 @@ def status():
     :return: Array of dictionaries (keys: status, daemon).
     """
 
-    processes = ['ossec-monitord', 'ossec-logcollector', 'ossec-remoted', 'ossec-syscheckd', 'ossec-analysisd', 'ossec-maild', 'ossec-execd', 'wazuh-modulesd', 'ossec-authd']
+    processes = ['ossec-monitord', 'ossec-logcollector', 'ossec-remoted', 
+                 'ossec-syscheckd', 'ossec-analysisd', 'ossec-maild', 
+                 'ossec-execd', 'wazuh-modulesd', 'ossec-authd', 
+                 'wazuh-clusterd']
 
     data = {}
     for process in processes:

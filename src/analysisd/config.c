@@ -62,7 +62,7 @@ int GlobalConf(const char *cfgfile)
 
     Config.cluster_name = NULL;
     Config.node_name = NULL;
-    Config.hide_cluster_info = 0;
+    Config.hide_cluster_info = 1;
 
     os_calloc(1, sizeof(wlabel_t), Config.labels);
 
