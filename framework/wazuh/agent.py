@@ -961,6 +961,24 @@ class Agent:
             return final_dict
 
     @staticmethod
+    def get_agent_by_name(agent_name, select=None):
+        """
+        Gets an existing agent called agent_name.
+
+        :param agent_name: Agent name.
+        :return: The agent.
+        """
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+        conn.execute("SELECT id FROM agent WHERE name = :name", {'name': agent_name})
+        agent_id = str(conn.fetch()[0]).zfill(3)
+        
+        return Agent(agent_id).get_basic_information(select)
+
+    @staticmethod
     def get_agent(agent_id, select=None):
         """
         Gets an existing agent.
