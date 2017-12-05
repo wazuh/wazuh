@@ -215,7 +215,7 @@ class Agent:
             self.status = Agent.calculate_status(self.lastKeepAlive, pending)
         else:
             self.status = 'Active'
-            self.ip = '127.0.0.1'
+            self.ip = '127.0.0.1' if 'ip' in select_fields else None
 
         if no_result:
             raise WazuhException(1701, self.id)
