@@ -489,7 +489,8 @@ class Agent:
         data = authd_socket.receive()
         authd_socket.close()
 
-        self.id = data['id']
+        self.id  = data['id']
+        self.key = data['key']
 
     def _add_manual(self, name, ip, id=None, key=None, force=-1):
         """
@@ -605,6 +606,7 @@ class Agent:
         chmod(common.client_keys, 0o640)
 
         self.id = agent_id
+        self.key = agent_key
 
     def _remove_single_group(self, group_id):
         """
@@ -1030,7 +1032,8 @@ class Agent:
         :return: Agent ID.
         """
 
-        return Agent(name=name, ip=ip, force=force).id
+        new_agent = Agent(name=name, ip=ip, force=force)
+        return {'id': new_agent.id, 'key': new_agent.key}
 
     @staticmethod
     def insert_agent(name, id, key, ip='any', force=-1):
@@ -1045,7 +1048,8 @@ class Agent:
         :return: Agent ID.
         """
 
-        return Agent(name=name, ip=ip, id=id, key=key, force=force).id
+        new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force)
+        return {'id': new_agent.id, 'key': key}
 
     @staticmethod
     def check_if_delete_agent(id, seconds):
