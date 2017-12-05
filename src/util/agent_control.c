@@ -21,20 +21,22 @@ static void helpmsg()
 {
     printf("\n%s %s: Control remote agents.\n", __ossec_name, ARGV0);
     printf("Available options:\n");
-    printf("\t-h          This help message.\n");
-    printf("\t-l          List available (active or not) agents.\n");
-    printf("\t-lc         List active agents.\n");
-    printf("\t-i <id>     Extracts information from an agent.\n");
-    printf("\t-R -a       Restart all agents.\n");
-    printf("\t-R -u <id>  Restart the specified agent.\n");
-    printf("\t-r -a       Runs the integrity/rootkit checking on all agents now.\n");
-    printf("\t-r -u <id>  Runs the integrity/rootkit checking on one agent now.\n\n");
-    printf("\t-b <ip>     Blocks the specified ip address.\n");
-    printf("\t-f <ar>     Used with -b, specifies which response to run.\n");
-    printf("\t-L          List available active responses.\n");
-    printf("\t-m          Show the limit of agents that can be added.\n");
-    printf("\t-s          Changes the output to CSV (comma delimited).\n");
-	printf("\t-j          Changes the output to JSON .\n");
+    printf("\t-h                This help message.\n");
+    printf("\t-l                List available (active or not) agents.\n");
+    printf("\t-lc               List active agents.\n");
+    printf("\t-i <id>           Extracts information from an agent.\n");
+    printf("\t-R -a             Restart all agents.\n");
+    printf("\t-R -u <id>        Restart the specified agent.\n");
+    printf("\t-r -a             Runs the integrity/rootkit checking on all agents now.\n");
+    printf("\t-r -u <id>        Runs the integrity/rootkit checking on one agent now.\n\n");
+    printf("Available options for active response:\n");
+    printf("\t-b <ip>           Blocks the specified ip address.\n");
+    printf("\t-f <ar> -a        Used with -b, specifies which response to run. Apply AR on all agents.\n");
+    printf("\t-f <ar> -u <id>   Used with -b, specifies which response to run. Apply AR on specified agent.\n");
+    printf("\t-L                List available active responses.\n");
+    printf("\t-m                Show the limit of agents that can be added.\n");
+    printf("\t-s                Changes the output to CSV (comma delimited).\n");
+    printf("\t-j                Changes the output to JSON .\n");
     exit(1);
 }
 
@@ -605,6 +607,8 @@ int main(int argc, char **argv)
     /* Run active response on the specified agent id */
     if (ip_address && ar && (agent_id || restart_all_agents)) {
         /* Connect to remoted */
+        FILE *fp;
+        int pass= 0;
         mdebug1("Connecting to remoted...");
         arq = connect_to_remoted();
         if (arq < 0) {
@@ -612,8 +616,49 @@ int main(int argc, char **argv)
             exit(1);
         }
         mdebug1("Connected...");
+        fp = fopen(DEFAULTAR, "r");
+        if (fp) {
+            char buffer[256];
 
-        if (send_msg_to_agent(arq, ar, agent_id, ip_address) == 0) {
+            while (fgets(buffer, 255, fp) != NULL) {
+                char *r_name;
+                char *r_cmd;
+                char *r_timeout;
+                r_name = buffer;
+                r_cmd = strchr(buffer, ' ');
+                if (!r_cmd) {
+                    continue;
+                }
+                *r_cmd = '\0';
+                r_cmd++;
+                if (*r_cmd == '-') {
+                    r_cmd++;
+                }
+                if (*r_cmd == ' ') {
+                    r_cmd++;
+                }
+
+                r_timeout = strchr(r_cmd, ' ');
+                if (!r_timeout) {
+                    continue;
+                }
+                *r_timeout = '\0';
+                if (strcmp(r_name, ar) == 0) {
+                    pass = 1;
+                    continue;
+                }
+            }
+            printf("\n\n");
+            fclose(fp);
+        } else {
+            printf("\n   No active response available.\n\n");
+        }
+
+        if (pass == 0) {
+            printf("Selected active response does not exist.\n");
+
+        }
+        else if (send_msg_to_agent(arq, ar, agent_id, ip_address) == 0) {
             printf("\n%s %s: Running active response '%s' on: %s\n",
                    __ossec_name, ARGV0, ar, agent_id ? agent_id : "all");
         } else {
