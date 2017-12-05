@@ -705,7 +705,8 @@ class Agent:
         if search:
             query += " AND NOT" if bool(search['negation']) else ' AND'
             query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
-            request['search'] = '%{0}%'.format(search['value'])
+            request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
+                                                                    else search['value'])
 
         if "FROM agent AND" in query:
             query = query.replace("FROM agent AND", "FROM agent WHERE")
@@ -1299,7 +1300,8 @@ class Agent:
         if search:
             query += " AND NOT" if bool(search['negation']) else ' AND'
             query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
-            request['search'] = '%{0}%'.format(search['value'])
+            request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit() 
+                                                                    else search['value'])
 
         # Count
         conn.execute(query.format('COUNT(*)'), request)
