@@ -264,6 +264,11 @@ class Agent:
 
         return info
 
+    def compute_key(self):
+        str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
+        return b64encode(str_key.encode()).decode()
+        
+
     def get_key(self):
         """
         Gets agent key.
@@ -273,8 +278,7 @@ class Agent:
 
         self._load_info_from_DB()
         if self.id != "000":
-            str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
-            self.key = b64encode(str_key.encode()).decode()
+            self.key = self.compute_key()
         else:
             self.key = ""
 
@@ -490,7 +494,8 @@ class Agent:
         authd_socket.close()
 
         self.id  = data['id']
-        self.key = data['key']
+        self.internal_key = data['key']
+        self.key = self.compute_key()
 
     def _add_manual(self, name, ip, id=None, key=None, force=-1):
         """
@@ -606,7 +611,8 @@ class Agent:
         chmod(common.client_keys, 0o640)
 
         self.id = agent_id
-        self.key = agent_key
+        self.internal_key = agent_key
+        self.key = self.compute_key()
 
     def _remove_single_group(self, group_id):
         """
