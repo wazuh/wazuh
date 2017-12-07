@@ -8,7 +8,6 @@ from os import listdir, path as os_path
 import re
 from ast import literal_eval
 from wazuh.exception import WazuhException
-# from wazuh.agent import Agent
 from wazuh import common
 from wazuh.utils import cut_array
 import json
