@@ -10,6 +10,7 @@ from wazuh.ossec_socket import OssecSocket
 from wazuh.database import Connection
 from wazuh.InputValidator import InputValidator
 from wazuh import manager
+from wazuh.configuration import read_api_configuration
 from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
@@ -312,7 +313,13 @@ class Agent:
         """
 
         manager_status = manager.status()
-        if 'ossec-authd' not in manager_status or manager_status['ossec-authd'] != 'running':
+        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
+        
+        if read_api_configuration()['use_only_authd']:
+            if not is_authd_running:
+                raise WazuhException(1725)
+                
+        if not is_authd_running:
             data = self._remove_manual(backup, purge)
         else:
             data = self._remove_authd(purge)
@@ -444,7 +451,13 @@ class Agent:
         :return: Agent ID.
         """
         manager_status = manager.status()
-        if 'ossec-authd' not in manager_status or manager_status['ossec-authd'] != 'running':
+        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
+
+        if read_api_configuration()['use_only_authd']:
+            if not is_authd_running:
+                raise WazuhException(1725)
+                
+        if not is_authd_running:
             data = self._add_manual(name, ip, id, key, force)
         else:
             data = self._add_authd(name, ip, id, key, force)
