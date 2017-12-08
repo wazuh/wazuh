@@ -349,6 +349,13 @@ class Agent:
         self._load_info_from_DB()
 
         f_keys_temp = '{0}.tmp'.format(common.client_keys)
+        open(f_keys_temp, 'a').close()
+
+        ossec_uid = getpwnam("ossec").pw_uid
+        ossec_gid = getgrnam("ossec").gr_gid
+        f_keys_st = stat(common.client_keys)
+        chown(f_keys_temp, ossec_uid, ossec_gid)
+        chmod(f_keys_temp, f_keys_st.st_mode)
 
         f_tmp = open(f_keys_temp, 'w')
         agent_found = False
@@ -371,10 +378,6 @@ class Agent:
 
         # Overwrite client.keys
         move(f_keys_temp, common.client_keys)
-        root_uid = getpwnam("ossec").pw_uid
-        ossec_gid = getgrnam("ossec").gr_gid
-        chown(common.client_keys, root_uid, ossec_gid)
-        chmod(common.client_keys, 0o640)
 
         # Remove rid file
         rids_file = '{0}/queue/rids/{1}'.format(common.ossec_path, self.id)
@@ -591,6 +594,14 @@ class Agent:
 
         # Tmp file
         f_keys_temp = '{0}.tmp'.format(common.client_keys)
+        open(f_keys_temp, 'a').close()
+
+        ossec_uid = getpwnam("ossec").pw_uid
+        ossec_gid = getgrnam("ossec").gr_gid
+        f_keys_st = stat(common.client_key)
+        chown(f_keys_temp, ossec_uid, ossec_gid)
+        chmod(f_keys_temp, f_keys_st.st_mode)
+
         copyfile(common.client_keys, f_keys_temp)
 
         # Write key
@@ -599,10 +610,6 @@ class Agent:
 
         # Overwrite client.keys
         move(f_keys_temp, common.client_keys)
-        root_uid = getpwnam("ossec").pw_uid
-        ossec_gid = getgrnam("ossec").gr_gid
-        chown(common.client_keys, root_uid, ossec_gid)
-        chmod(common.client_keys, 0o640)
 
         self.id = agent_id
 

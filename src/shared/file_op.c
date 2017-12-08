@@ -2034,7 +2034,15 @@ int TempFile(File *file, const char *source, int copy) {
     }
 
 #ifndef WIN32
-    if (fchmod(fd, 0640) < 0) {
+    struct stat buf;
+
+    if (stat(source, &buf) < 0) {
+        close(fd);
+        unlink(template);
+        return -1;
+    }
+
+    if (fchmod(fd, buf.st_mode) < 0) {
         close(fd);
         unlink(template);
         return -1;
