@@ -17,8 +17,8 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, i
 static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_counter,
                                    int csv_output, cJSON *json_output) __attribute__((nonnull(1)));
 static int _do_print_syscheck(FILE *fp, int all_files, int csv_output, cJSON *json_output) __attribute__((nonnull(1)));
-static int _do_get_rootcheckscan(FILE *fp) __attribute__((nonnull));
-static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
+static void _do_get_rootcheckscan(FILE *fp, time_t values[2]) __attribute__((nonnull));
+static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_scan[2],
                                int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
 #endif /* !WIN32*/
 
@@ -512,28 +512,24 @@ int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname,
     return (0);
 }
 
-static int _do_get_rootcheckscan(FILE *fp)
+static void _do_get_rootcheckscan(FILE *fp, time_t values[2])
 {
     char *tmp_str;
     char buf[OS_MAXSTR + 1];
 
+    values[0] = values[1] = time(NULL);
+
     while (fgets(buf, OS_MAXSTR, fp) != NULL) {
-        tmp_str = strstr(buf, "Starting rootcheck scan");
-        if (tmp_str) {
-            time_t s_time = 0;
-            tmp_str = buf + 1;
-
-            s_time = (time_t)atoi(tmp_str);
-
-            return ((int)s_time);
+        if (tmp_str = strstr(buf, "Starting rootcheck scan"), tmp_str) {
+            values[0] = (time_t)atol(buf + 1);
+        } else if (tmp_str = strstr(buf, "Ending rootcheck scan"), tmp_str) {
+            values[1] = (time_t)atol(buf + 1);
         }
     }
-
-    return ((int)time(NULL));
 }
 
 /* Print rootcheck db */
-static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
+static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_scan[2],
                                int csv_output, cJSON *json_output, int show_last)
 {
     int i = 0;
@@ -570,7 +566,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
 
     if (!(csv_output || json_output)) {
         if (show_last) {
-            tm_time = localtime(&time_last_scan);
+            tm_time = localtime(time_last_scan);
             strftime(read_day, 23, "%Y %h %d %T", tm_time);
 
             printf("\nLast scan: %s\n\n", read_day);
@@ -609,7 +605,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
         tmp_str++;
 
         /* Check for resolved */
-        if (time_last_scan > (s_time + 86400)) {
+        if (s_time < time_last_scan[0] && s_time < time_last_scan[1]) {
             if (!resolved) {
                 continue;
             }
@@ -686,7 +682,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
 int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname,
                     int resolved, int csv_output, cJSON *json_output, int show_last)
 {
-    int ltime = 0;
+    time_t ltime[2];
     FILE *fp;
     char tmp_file[513];
 
@@ -710,7 +706,8 @@ int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname,
 
     if (fp) {
         /* Get last time of scan */
-        ltime = _do_get_rootcheckscan(fp);
+        _do_get_rootcheckscan(fp, ltime);
+
         if (!fname) {
             if (resolved == 1) {
                 _do_print_rootcheck(fp, 1, ltime, csv_output, json_output, 0);
