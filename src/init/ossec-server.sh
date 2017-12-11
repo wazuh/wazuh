@@ -17,26 +17,17 @@ ls -la ${PLIST} > /dev/null 2>&1
 if [ $? = 0 ]; then
 . ${PLIST};
 fi
-RPM_RELEASE="/etc/redhat-release"
 
 is_rhel_le_5() {
-    # If SO is not RHEL, return 1 (false)
-    if [ -r $RPM_RELEASE ]
-    then
-        DIST_NAME=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\1/p' /etc/redhat-release)
-        DIST_VER=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\2/p' /etc/redhat-release)
-        if [[ "$DIST_NAME" =~ ^CentOS ]] || [[ "$DIST_NAME" =~ ^"Red Hat" ]]
-        then
-            if [ -n "$DIST_VER" ]
-            then
-                if [ $DIST_VER -le 5 ]
-                then
-                    return 0
-                fi
-            fi
-	fi
-    fi
-    return 1
+    RPM_RELEASE="/etc/redhat-release"
+
+    # If SO is not RHEL, return (false)
+    [ -r $RPM_RELEASE ] || return
+
+    DIST_NAME=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\1/p' /etc/redhat-release)
+    DIST_VER=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\2/p' /etc/redhat-release)
+
+    [[ "$DIST_NAME" =~ ^CentOS ]] || [[ "$DIST_NAME" =~ ^"Red Hat" ]] && [ -n "$DIST_VER" ] && [ $DIST_VER -le 5 ]
 }
 
 
@@ -46,7 +37,7 @@ INITCONF="/etc/ossec-init.conf"
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
 
 if ! is_rhel_le_5
-then    
+then
     DAEMONS="$DAEMONS wazuh-clusterd"
 fi
 
@@ -309,7 +300,7 @@ start()
                 ${DIR}/bin/${i} ${DEBUG_CLI};
             fi
             if [ $? != 0 ]; then
-                if [ $USE_JSON = true ]; then 
+                if [ $USE_JSON = true ]; then
                     echo -n '{"daemon":"'${i}'","status":"error"}'
                 else
                     echo "${i} did not start correctly.";
