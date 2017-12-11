@@ -17,7 +17,7 @@ ls -la ${PLIST} > /dev/null 2>&1
 if [ $? = 0 ]; then
 . ${PLIST};
 fi
-    RPM_RELEASE="/etc/redhat-release"
+RPM_RELEASE="/etc/redhat-release"
 
 is_rhel_le_5() {
     # If SO is not RHEL, return 1 (false)
@@ -25,18 +25,29 @@ is_rhel_le_5() {
     then
         DIST_NAME=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\1/p' /etc/redhat-release)
         DIST_VER=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\2/p' /etc/redhat-release)
-
-        return [ [ "$DIST_NAME" =~ "CentOS" ] || [ "$DIST_NAME" =~ "Red Hat" ] ] && [ -n "$DIST_VER" ] && [ $DIST_VER -le 5 ]
+        echo "$DIST_NAME $DIST_VER"
+        if [[ "$DIST_NAME" =~ ^CentOS ]] || [[ "$DIST_NAME" =~ ^"Red Hat" ]]
+        then
+            if [ -n "$DIST_VER" ]
+            then
+                if [ $DIST_VER -le 5 ]
+                then
+                    return 0
+                fi
+            fi
+	fi
     fi
     return 1
 }
+
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
 
-if [ ! is_rhel_le_5 ]; then    
+if ! is_rhel_le_5
+then    
     DAEMONS="$DAEMONS wazuh-clusterd"
 fi
 
@@ -243,7 +254,7 @@ testconfig()
 # Start function
 start()
 {
-
+    incompatible=false
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     fi
@@ -258,10 +269,11 @@ start()
     fi
 
 
-    if [ is_rhel_le_5 ]; then  
+    if is_rhel_le_5
+    	then
         SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
         if [ $USE_JSON = true ]; then
-            echo -n '{"error":22,"message:"Cluster daemon is incompatible with CentOS 5 and RHEL 5... Skipping wazuh-clusterd."}'
+            incompatible=true
         else
             echo "Cluster daemon is incompatible with CentOS 5 and RHEL 5... Skipping wazuh-clusterd."
         fi
@@ -277,18 +289,17 @@ start()
         echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
-        if [ $USE_JSON = true ] && [ $first = false ]; then
-            echo -n ','
-        else
-            first=false
-        fi
-
         ## If ossec-maild is disabled, don't try to start it.
         if [ X"$i" = "Xossec-maild" ]; then
              grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
              if [ $? = 0 ]; then
                  continue
              fi
+        fi
+        if [ $USE_JSON = true ] && [ $first = false ]; then
+            echo -n ','
+        else
+            first=false
         fi
 
         pstatus ${i};
@@ -299,7 +310,7 @@ start()
                 ${DIR}/bin/${i} ${DEBUG_CLI};
             fi
             if [ $? != 0 ]; then
-                if [ $USE_JSON = true ]; then
+                if [ $USE_JSON = true ]; then 
                     echo -n '{"daemon":"'${i}'","status":"error"}'
                 else
                     echo "${i} did not start correctly.";
@@ -320,7 +331,10 @@ start()
             fi
         fi
     done
-
+    if $incompatible
+    then
+        echo -n '{"daemon":"wazuh-clusterd","status":"incompatible"}'
+    fi
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
@@ -437,7 +451,8 @@ restart)
     unlock
     ;;
 reload)
-    if [ is_rhel_le_5 ]; then
+    if is_rhel_le_5
+    then
         DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
     else
         DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd wazuh-clusterd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
