@@ -26,7 +26,7 @@ is_rhel_le_5() {
         DIST_NAME=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\1/p' /etc/redhat-release)
         DIST_VER=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\2/p' /etc/redhat-release)
 
-        return ([[ "$DIST_NAME" =~ ^CentOS ]] || [[ "$DIST_NAME" =~ ^"Red Hat" ]]) && [ -n "$DIST_VER" ] && [ $DIST_VER -le 5 ]
+        return [ [ "$DIST_NAME" =~ "CentOS" ] || [ "$DIST_NAME" =~ "Red Hat" ] ] && [ -n "$DIST_VER" ] && [ $DIST_VER -le 5 ]
     fi
     return 1
 }
@@ -36,8 +36,7 @@ USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
 
-if ! is_rhel_le_5() 
-then    
+if [ ! is_rhel_le_5 ]; then    
     DAEMONS="$DAEMONS wazuh-clusterd"
 fi
 
@@ -259,7 +258,7 @@ start()
     fi
 
 
-    if is_rhel_le_5
+    if [ is_rhel_le_5 ]; then  
         SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
         if [ $USE_JSON = true ]; then
             echo -n '{"error":22,"message:"Cluster daemon is incompatible with CentOS 5 and RHEL 5... Skipping wazuh-clusterd."}'
@@ -438,7 +437,7 @@ restart)
     unlock
     ;;
 reload)
-    if is_rhel_le_5() ; then
+    if [ is_rhel_le_5 ]; then
         DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
     else
         DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd wazuh-clusterd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
