@@ -13,7 +13,7 @@ from wazuh import common
 import sqlite3
 from datetime import datetime
 from hashlib import sha512
-from time import time, mktime
+from time import time, mktime, sleep
 from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull
 from subprocess import check_output
 from shutil import rmtree
@@ -31,7 +31,6 @@ import re
 import socket
 import asyncore
 import asynchat
-from time import sleep
 # import the C accelerated API of ElementTree
 try:
     import xml.etree.cElementTree as ET
@@ -846,6 +845,9 @@ def sync_one_node(debug, node, force=False):
     """
     Sync files with only one node
     """
+    synchronization_date = time()
+    synchronization_duration = 0.0
+
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
@@ -866,6 +868,7 @@ def sync_one_node(debug, node, force=False):
     all_files = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 
     after = time()
+    synchronization_duration += after-before
     logging.debug("Time retrieving info from DB: {0}".format(after-before))
 
     before = time()
@@ -873,12 +876,17 @@ def sync_one_node(debug, node, force=False):
     push_updates_single_node(all_files, node, config_cluster, result_queue)
 
     after = time()
+    synchronization_duration += after-before
     logging.debug("Time sending info: {0}".format(after-before))
     before = time()
 
     result = result_queue.get()
     update_node_db_after_sync(result, node, cluster_socket)
     after = time()
+    synchronization_duration += after-before
+    cluster_socket.send("clearlast")
+    cluster_socket.send("updatelast {0} {1}".format(synchronization_date, int(synchronization_duration)))
+    cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 
     if debug:
@@ -896,6 +904,9 @@ def sync(debug, force=False):
     Sync this node with others
     :return: Files synced.
     """
+    synchronization_date = time()
+    synchronization_duration = 0.0
+
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
@@ -927,6 +938,7 @@ def sync(debug, force=False):
         all_nodes_files[node] = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 
     after = time()
+    synchronization_duration += after-before
     logging.debug("Time retrieving info from DB: {0}".format(after-before))
 
     before = time()
@@ -946,16 +958,18 @@ def sync(debug, force=False):
     for t in threads:
         t.join()
     after = time()
-
+    synchronization_duration += after-before
     logging.debug("Time sending info: {0}".format(after-before))
 
     before = time()
     for node,data in thread_results.items():
         update_node_db_after_sync(data, node, cluster_socket)
 
-    cluster_socket.close()
     after = time()
-
+    synchronization_duration += after-before
+    cluster_socket.send("clearlast")
+    cluster_socket.send("updatelast {0} {1}".format(int(synchronization_date), synchronization_duration))
+    cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 
     if debug:
