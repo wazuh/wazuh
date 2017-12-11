@@ -172,14 +172,12 @@ disable()
         echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
-    if [ $daemon != '' ]; then
+    if [ "$daemon" != '' ]; then
         pstatus ${daemon};
         if [ $? = 1 ]; then
             kill `cat $DIR/var/run/$daemon*`
             rm $DIR/var/run/$daemon*
             echo "Killing ${daemon}...";
-        else
-            echo "${daemon} not running..."
         fi
     fi
 }
