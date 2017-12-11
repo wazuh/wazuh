@@ -24,6 +24,7 @@ from time import time, sleep
 import socket
 import hashlib
 from operator import setitem
+import fcntl
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -535,6 +536,7 @@ class Agent:
         # Check if ip, name or id exist in client.keys
         last_id = 0
         with open(common.client_keys) as f_k:
+            fcntl.flock(f_k, fcntl.LOCK_EX)
             for line in f_k.readlines():
                 if not line.strip():  # ignore empty lines
                     continue
@@ -574,42 +576,44 @@ class Agent:
                         else:
                             raise WazuhException(1706, ip)
 
-        if not id:
-            agent_id = str(last_id + 1).zfill(3)
-        else:
-            agent_id = id
 
-        if not key:
-            # Generate key
-            epoch_time = int(time())
-            str1 = "{0}{1}{2}".format(epoch_time, name, platform())
-            str2 = "{0}{1}".format(ip, agent_id)
-            hash1 = hashlib.md5(str1.encode())
-            hash1.update(urandom(64))
-            hash2 = hashlib.md5(str2.encode())
-            hash1.update(urandom(64))
-            agent_key = hash1.hexdigest() + hash2.hexdigest()
-        else:
-            agent_key = key
+            if not id:
+                agent_id = str(last_id + 1).zfill(3)
+            else:
+                agent_id = id
 
-        # Tmp file
-        f_keys_temp = '{0}.tmp'.format(common.client_keys)
-        open(f_keys_temp, 'a').close()
+            if not key:
+                # Generate key
+                epoch_time = int(time())
+                str1 = "{0}{1}{2}".format(epoch_time, name, platform())
+                str2 = "{0}{1}".format(ip, agent_id)
+                hash1 = hashlib.md5(str1.encode())
+                hash1.update(urandom(64))
+                hash2 = hashlib.md5(str2.encode())
+                hash1.update(urandom(64))
+                agent_key = hash1.hexdigest() + hash2.hexdigest()
+            else:
+                agent_key = key
 
-        ossec_uid = getpwnam("ossec").pw_uid
-        ossec_gid = getgrnam("ossec").gr_gid
-        f_keys_st = stat(common.client_key)
-        chown(f_keys_temp, ossec_uid, ossec_gid)
-        chmod(f_keys_temp, f_keys_st.st_mode)
+            # Tmp file
+            f_keys_temp = '{0}.tmp'.format(common.client_keys)
+            open(f_keys_temp, 'a').close()
 
-        copyfile(common.client_keys, f_keys_temp)
+            ossec_uid = getpwnam("ossec").pw_uid
+            ossec_gid = getgrnam("ossec").gr_gid
+            f_keys_st = stat(common.client_key)
+            chown(f_keys_temp, ossec_uid, ossec_gid)
+            chmod(f_keys_temp, f_keys_st.st_mode)
 
-        # Write key
-        with open(f_keys_temp, 'a') as f_kt:
-            f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
+            copyfile(common.client_keys, f_keys_temp)
 
-        # Overwrite client.keys
-        move(f_keys_temp, common.client_keys)
+            # Write key
+            with open(f_keys_temp, 'a') as f_kt:
+                f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
+
+            # Overwrite client.keys
+            move(f_keys_temp, common.client_keys)
+            fcntl.flock(f_k, fcntl.LOCK_UN)
 
         self.id = agent_id
 
