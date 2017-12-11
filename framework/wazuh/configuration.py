@@ -6,11 +6,10 @@
 from xml.etree.ElementTree import fromstring
 from os import listdir, path as os_path
 import re
-from ast import literal_eval
 from wazuh.exception import WazuhException
+from wazuh.agent import Agent
 from wazuh import common
 from wazuh.utils import cut_array
-import json
 
 # Aux functions
 
@@ -460,7 +459,7 @@ def get_file_conf(filename, group_id=None, type_conf=None):
     """
 
     if group_id:
-        if not path.exists("{0}/{1}".format(common.shared_path, group_id)):
+        if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
 
         file_path = "{0}/{1}".format(common.shared_path, filename) \
@@ -501,40 +500,3 @@ def get_file_conf(filename, group_id=None, type_conf=None):
             data = _rcl2json(file_path)
 
     return data
-
-def read_api_configuration():
-    def eval_config(value):
-        value = value.replace('config.ossec_path','common.ossec_path')
-        try:
-            return json.loads(eval(value))
-        except:
-            try:
-                # jsons in config.js files don't are like this:
-                # {bin: "python", lib: ""}
-                # but python needs them to be like this:
-                # {"bin": "python", "lib": ""}
-                return json.loads(literal_eval(re.sub(r"{\s*(\w)", r'{"\1', re.sub(r",\s*(\w)", r',"\1', 
-                                               re.sub(r"(\w):", r'\1":', value)))))
-            except:
-                return value
-
-    try:
-        with open(common.api_config_path) as api_config_file:
-            configfile = '\n'.join(filter(lambda x:  not (x.strip().startswith('//') or 
-                                                x.startswith('/*') or x == '\n' or 
-                                                x.strip().startswith('var') or
-                                                x.strip().startswith('const') or
-                                                x.strip().startswith('module') or 
-                                                x.strip().startswith('try') or
-                                                x.strip().startswith('} catch') or
-                                                x.strip().startswith('console')), 
-                                            api_config_file.readlines())).split(';')
-
-        # remove \n and "" characters
-        configfile = map(lambda x: x.replace('\n','').replace(' ',''), configfile)[:-1]
-
-        # divide variable name and variable value and evaluate
-        return {name.split('config.')[1]: eval_config(value) for name, value 
-                in map(lambda x: x.split('='), configfile)}
-    except Exception as e:
-        raise WazuhException(1105, str(e))

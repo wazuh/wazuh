@@ -10,7 +10,6 @@ from wazuh.ossec_socket import OssecSocket
 from wazuh.database import Connection
 from wazuh.InputValidator import InputValidator
 from wazuh import manager
-from wazuh.configuration import read_api_configuration
 from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
@@ -25,6 +24,7 @@ from time import time, sleep
 import socket
 import hashlib
 from operator import setitem
+from json import loads
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -303,6 +303,16 @@ class Agent:
 
         return ret_msg
 
+    def use_only_authd(self):
+        """
+        Function to know the value of the option "use_only_authd" in API configuration
+        """
+        with open(common.api_config_path) as f:
+            data = f.readlines()
+
+        return loads(filter(lambda x: x.startswith('config.use_only_authd'), 
+                                            data)[0][:-2].split(' = ')[1])
+
     def remove(self, backup=False, purge=False):
         """
         Deletes the agent.
@@ -315,7 +325,7 @@ class Agent:
         manager_status = manager.status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
         
-        if read_api_configuration()['use_only_authd']:
+        if self.use_only_authd():
             if not is_authd_running:
                 raise WazuhException(1725)
                 
@@ -453,7 +463,7 @@ class Agent:
         manager_status = manager.status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
-        if read_api_configuration()['use_only_authd']:
+        if self.use_only_authd():
             if not is_authd_running:
                 raise WazuhException(1725)
                 
