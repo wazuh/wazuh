@@ -199,7 +199,8 @@ testconfig()
 
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
+    # Reverse order of daemons
+    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
     echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
@@ -309,6 +310,14 @@ stop)
     ;;
 restart)
     testconfig
+    lock
+    stopa
+    sleep 1
+    start
+    unlock
+    ;;
+reload)
+    DAEMONS=$(echo $DAEMONS | sed 's/ossec-execd//')
     lock
     stopa
     sleep 1
