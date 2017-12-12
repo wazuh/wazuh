@@ -29,14 +29,14 @@ static void helpmsg()
     printf("\t-R -u <id>        Restart the specified agent.\n");
     printf("\t-r -a             Runs the integrity/rootkit checking on all agents now.\n");
     printf("\t-r -u <id>        Runs the integrity/rootkit checking on one agent now.\n\n");
+    printf("\t-s                Changes the output to CSV (comma delimited).\n");
+    printf("\t-j                Changes the output to JSON .\n");
+    printf("\t-m                Show the limit of agents that can be added.\n");
     printf("Available options for active response:\n");
     printf("\t-b <ip>           Blocks the specified ip address.\n");
     printf("\t-f <ar> -a        Used with -b, specifies which response to run. Apply AR on all agents.\n");
     printf("\t-f <ar> -u <id>   Used with -b, specifies which response to run. Apply AR on specified agent.\n");
     printf("\t-L                List available active responses.\n");
-    printf("\t-m                Show the limit of agents that can be added.\n");
-    printf("\t-s                Changes the output to CSV (comma delimited).\n");
-    printf("\t-j                Changes the output to JSON .\n");
     exit(1);
 }
 
