@@ -88,17 +88,31 @@ void read_file(char * pathname, char * buffer, off_t size) {
 int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
     int rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
     if (rc != SQLITE_OK) {
-        char *create = "CREATE TABLE IF NOT EXISTS manager_file_status (" \
+        char *create1 = "CREATE TABLE IF NOT EXISTS manager_file_status (" \
                        "id_manager TEXT," \
                         "id_file   TEXT," \
                         "status    TEXT NOT NULL CHECK (status IN ('synchronized', 'pending', 'failed', 'invalid')),"\
                         "PRIMARY KEY (id_manager, id_file))";
-        rc = sqlite3_exec(db, create, NULL, NULL, NULL);
+        rc = sqlite3_exec(db, create1, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
             mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
         }
-        int rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
+        rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
+        if (rc != SQLITE_OK) {
+            sqlite3_close(db);
+            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
+        }
+
+        char *create2 = "CREATE TABLE IF NOT EXISTS last_sync (" \
+                        "date     INTEGER PRIMARY KEY," \
+                        "duration REAL";
+        rc = sqlite3_exec(db, create2, NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            sqlite3_close(db);
+            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
+        }
+        rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
             mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
@@ -163,6 +177,9 @@ void* daemon_socket() {
     char *sql_sel = "SELECT * FROM manager_file_status WHERE id_manager = ? LIMIT ? OFFSET ?";
     char *sql_count = "SELECT Count(*) FROM manager_file_status WHERE id_manager = ?";
     char *sql_del1 = "DELETE FROM manager_file_status WHERE id_file = ?";
+    // sql sentence to insert a new row in the last_sync table
+    char *sql_del_lastsync = "DELETE FROM last_sync";
+    char *sql_last_sync = "INSERT INTO last_sync(date, duration) VALUES (?,?)";
 
     char *sql;
     bool has1, has2, has3, select, count;
@@ -171,7 +188,7 @@ void* daemon_socket() {
         mterror_exit(DB_TAG, "Error listening in socket: %s", strerror(errno));
     }
 
-    char *cmd;
+    char *cmd, *endptr;
     while (1) {
         if ( (cl = accept(fd, NULL, NULL)) == -1) {
             mterror(DB_TAG, "Error accepting connection: %s", strerror(errno));
@@ -236,6 +253,20 @@ void* daemon_socket() {
                 has2 = false;
                 has3 = false;
                 select = false;
+            } else if (cmd != NULL && strcmp(cmd, "clearlast") == 0) {
+                sql = sql_del_lastsync;
+                count = false;
+                has1 = false;
+                has2 = false;
+                has3 = false;
+                select = false;
+            } else if (cmd != NULL && strcmp(cmd, "updatelast") == 0) {
+                sql = sql_last_sync;
+                count = false;
+                has1 = true;
+                has2 = true;
+                has3 = false;
+                select = false;
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
@@ -248,10 +279,22 @@ void* daemon_socket() {
                 while (cmd != NULL) {
                     cmd = strtok(NULL, " ");
                     if (cmd == NULL) break;
-                    sqlite3_bind_text(res,1,cmd,-1,0);
+                    if (strcmp(sql, sql_last_sync) == 0) {
+                        long int value = strtol(cmd, &endptr, 10);
+                        if (endptr == cmd) mterror_exit(DB_TAG, "No integer found in database request. Found: %s", cmd);
+                        rc = sqlite3_bind_int(res,1,value);
+                        if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind int: %s", sqlite3_errmsg(db));
+                    }
+                    else sqlite3_bind_text(res,1,cmd,-1,0);
                     if (has2) {
                         cmd = strtok(NULL, " ");
-                        sqlite3_bind_text(res,2,cmd,-1,0);
+                        if (strcmp(sql, sql_last_sync) == 0) {
+                            double value = strtod(cmd, &endptr);
+                            if (endptr == cmd) mterror_exit(DB_TAG, "No floating number found in database request. Found: %s", cmd);
+                            rc = sqlite3_bind_double(res,2,value);
+                            if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind double: %s", sqlite3_errmsg(db));
+                        }
+                        else sqlite3_bind_text(res,2,cmd,-1,0);
                     } 
                     if (has3) {
                         cmd = strtok(NULL, " ");
