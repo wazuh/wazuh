@@ -88,6 +88,8 @@ class WazuhClusterClient(asynchat.async_chat):
     def __init__(self, host, port, key, data, file):
         asynchat.async_chat.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setblocking(0)
+        self.socket.settimeout(common.cluster_timeout)
         self.connect((host, port))
         self.data = data
         self.file = file
@@ -149,7 +151,7 @@ def send_request(host, port, key, data, file=None):
     try:
         fernet_key = Fernet(key.encode('base64','strict'))
         client = WazuhClusterClient(host, int(port), fernet_key, data, file)
-        asyncore.loop(timeout=common.cluster_timeout)
+        asyncore.loop()
         data = client.response
 
     except NameError as e:

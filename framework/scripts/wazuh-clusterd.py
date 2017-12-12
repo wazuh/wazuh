@@ -135,6 +135,7 @@ class WazuhClusterServer(asyncore.dispatcher):
     def __init__(self, bind_addr, port, key, node_type):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.settimeout(common.cluster_timeout)
         self.set_reuse_addr()
         self.key = key
         self.node_type = node_type
@@ -311,4 +312,4 @@ if __name__ == '__main__':
 
     server = WazuhClusterServer('' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr'],
                                 int(cluster_config['port']), cluster_config['key'], cluster_config['node_type'])
-    asyncore.loop(timeout=common.cluster_timeout)
+    asyncore.loop()
