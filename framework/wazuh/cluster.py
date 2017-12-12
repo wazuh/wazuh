@@ -463,6 +463,22 @@ def get_file_status_all_managers(file_list, manager):
     return files
 
 
+def get_last_sync():
+    """
+    Function to retrieve information about the last synchronization
+    """
+    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+
+    cluster_socket.send("sellast")
+    
+    date, duration = filter(lambda x: x != '\x00', cluster_socket.recv(10000)).split(" ")
+
+    cluster_socket.close()
+
+    return str(datetime.fromtimestamp(int(date))), float(duration)
+
+
 def clear_file_status_one_node(manager, cluster_socket):
     """
     Function to set the status of all manager's files to pending
