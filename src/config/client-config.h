@@ -12,6 +12,7 @@
 
 typedef struct agent_flags_t {
     unsigned int auto_restart:1;
+    unsigned int remote_conf:1;
 } agent_flags_t;
 
 typedef struct agent_server {
