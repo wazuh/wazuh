@@ -194,9 +194,12 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             }
 
             /* Check for the first format: p_name: */
-            if ((*pieces == ':') && (pieces[1] == ' ')) {
+            if (*pieces == ':') {
                 *pieces = '\0';
-                pieces += 2;
+                pieces++;
+
+                // The space after ':' is optional
+                pieces += pieces[1] == ' ';
             }
 
             /* Check for the second format: p_name[pid]: */
@@ -207,8 +210,11 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                     pieces++;
                 }
 
-                if ((*pieces == ']') && (pieces[1] == ':') && (pieces[2] == ' ')) {
-                    pieces += 3;
+                if ((*pieces == ']') && (pieces[1] == ':')) {
+                    pieces += 2;
+
+                    // The space after ':' is optional
+                    pieces += pieces[1] == ' ';
                 }
                 /* Some systems are not terminating the program name with
                  * a ':'. Working around this in here...
