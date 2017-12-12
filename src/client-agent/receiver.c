@@ -235,7 +235,7 @@ int receive_msg()
 
                                 UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
 
-                                if (!verifyRemoteConf()) {
+                                if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                     if (agt->flags.auto_restart) {
                                         minfo("Agent is restarting due to shared configuration changes.");
                                         restartAgent();
