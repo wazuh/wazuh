@@ -386,17 +386,17 @@ def list_files_from_filesystem(node_type, cluster_items):
     def get_files_from_dir(dirname, recursive, files, cluster_items):
         items = []
         for entry in listdir(dirname):
-            if entry not in cluster_items['excluded_files'] and entry[-1] != '~' \
-                and entry in files or files == ["all"]:
+            if entry in cluster_items['excluded_files'] or entry[-1] == '~':
+                continue
+
+            if entry in files or files == ["all"]:
 
                 full_path = path.join(dirname, entry)
                 if not path.isdir(full_path):
-                    new_item = dict(item)
-                    new_item["path"] = full_path.replace(common.ossec_path, "")
-                    items.append(new_item)
+                    items.append(full_path.replace(common.ossec_path, ""))
                 elif recursive:
-                    items = list(chain.from_iterable([items,
-                                    get_files_from_dir(full_path, recursive, files, cluster_items)]))
+                    items.extend(get_files_from_dir(full_path, recursive, files, cluster_items))
+
         return items
 
     # Expand directory
@@ -406,16 +406,13 @@ def list_files_from_filesystem(node_type, cluster_items):
             continue
         if item['source'] == node_type or \
            item['source'] == 'all':
-
             fullpath = common.ossec_path + file_path
-            expanded_items = chain.from_iterable([expanded_items,
-                                   get_files_from_dir(fullpath, item['recursive'],
-                                                      item['files'], cluster_items)])
+            expanded_items.extend(get_files_from_dir(fullpath, item['recursive'],item['files'], cluster_items))
 
     final_items = {}
     for new_item in expanded_items:
         try:
-            final_items[new_item['path']] = get_file_info(new_item['path'], cluster_items)
+            final_items[new_item] = get_file_info(new_item, cluster_items)
         except Exception as e:
             continue
 
