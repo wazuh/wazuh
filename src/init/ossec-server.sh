@@ -18,10 +18,28 @@ if [ $? = 0 ]; then
 . ${PLIST};
 fi
 
+is_rhel_le_5() {
+    RPM_RELEASE="/etc/redhat-release"
+
+    # If SO is not RHEL, return (false)
+    [ -r $RPM_RELEASE ] || return
+
+    DIST_NAME=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\1/p' /etc/redhat-release)
+    DIST_VER=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\2/p' /etc/redhat-release)
+
+    [[ "$DIST_NAME" =~ ^CentOS ]] || [[ "$DIST_NAME" =~ ^"Red Hat" ]] && [ -n "$DIST_VER" ] && [ $DIST_VER -le 5 ]
+}
+
+
 AUTHOR="Wazuh Inc."
-DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd wazuh-clusterd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
+DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+
+if ! is_rhel_le_5
+then
+    DAEMONS="$DAEMONS wazuh-clusterd"
+fi
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
@@ -226,8 +244,7 @@ testconfig()
 # Start function
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} wazuh-clusterd wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
-
+    incompatible=false
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     fi
@@ -241,6 +258,19 @@ start()
         exit 1;
     fi
 
+
+    if is_rhel_le_5
+    	then
+        SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
+        if [ $USE_JSON = true ]; then
+            incompatible=true
+        else
+            echo "Cluster daemon is incompatible with CentOS 5 and RHEL 5... Skipping wazuh-clusterd."
+        fi
+    else
+        SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} wazuh-clusterd wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
+    fi
+
     checkpid;
 
     # We actually start them now.
@@ -249,18 +279,17 @@ start()
         echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
-        if [ $USE_JSON = true ] && [ $first = false ]; then
-            echo -n ','
-        else
-            first=false
-        fi
-
         ## If ossec-maild is disabled, don't try to start it.
         if [ X"$i" = "Xossec-maild" ]; then
              grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
              if [ $? = 0 ]; then
                  continue
              fi
+        fi
+        if [ $USE_JSON = true ] && [ $first = false ]; then
+            echo -n ','
+        else
+            first=false
         fi
 
         pstatus ${i};
@@ -292,7 +321,10 @@ start()
             fi
         fi
     done
-
+    if $incompatible
+    then
+        echo -n '{"daemon":"wazuh-clusterd","status":"incompatible"}'
+    fi
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
@@ -409,7 +441,12 @@ restart)
     unlock
     ;;
 reload)
-    DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd wazuh-clusterd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+    if is_rhel_le_5
+    then
+        DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+    else
+        DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd wazuh-clusterd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+    fi
     lock
     stopa
     start
