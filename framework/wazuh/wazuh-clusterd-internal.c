@@ -106,8 +106,24 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
 
         char *create2 = "CREATE TABLE IF NOT EXISTS last_sync (" \
                         "date     INTEGER PRIMARY KEY," \
-                        "duration REAL";
+                        "duration REAL)";
         rc = sqlite3_exec(db, create2, NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            sqlite3_close(db);
+            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
+        }
+        rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
+        if (rc != SQLITE_OK) {
+            sqlite3_close(db);
+            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
+        }
+
+        char *create3 = "CREATE TABLE IF NOT EXISTS file_integrity (" \
+                        "filename TEXT PRIMARY KEY," \
+                        "md5      TEXT," \
+                        "mod_date INTEGER," \
+                        "size     INTEGER)";
+        rc = sqlite3_exec(db, create3, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
             mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
