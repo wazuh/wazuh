@@ -40,6 +40,45 @@ def create_exception_dic(id, e):
     exception_dic['error'] = {'message': e.message, 'code': e.code}
     return exception_dic
 
+    
+def get_timeframe_int(timeframe):
+
+    if not isinstance(timeframe, int):
+        regex_days = re.compile('\d*d')
+        regex_hours = re.compile('\d*h')
+        regex_minutes = re.compile('\d*m')
+        regex_seconds = re.compile('\d*s')
+
+        timeframe_str = timeframe
+        timeframe = 0
+
+        days = regex_days.search(timeframe_str)
+        if days is not None:
+            days = days.group().replace("d", "")
+            timeframe += int(days) * 86400
+
+        hours = regex_hours.search(timeframe_str)
+        if hours is not None:
+            hours = hours.group().replace("h", "")
+            timeframe += int(hours) * 3600
+
+        minutes = regex_minutes.search(timeframe_str)
+        if minutes is not None:
+            minutes = minutes.group().replace("m", "")
+            timeframe += int(minutes) * 60
+
+        seconds = regex_seconds.search(timeframe_str)
+        if seconds is not None:
+            seconds = seconds.group().replace("s", "")
+            timeframe += int(seconds)
+
+        # If user sends an integer as string:
+        if timeframe == 0:
+            timeframe = int(timeframe_str)
+
+    return timeframe
+
+
 class Agent:
     """
     OSSEC Agent object.
@@ -2156,59 +2195,68 @@ class Agent:
 
 
     @staticmethod
-    def purge_agents(timeframe, backup=False):
+    def purge_agents(timeframe, backup=False, verbose=False):
         """
         Purge agents that have been disconnected in the last timeframe seconds.
 
-        :param timeframe: Time margin, in seconds or [n_days]d[n_hours]h[n_minutes]m[n_seconds]s
+        :param timeframe: Time margin, in seconds or [n_days]d[n_hours]h[n_minutes]m[n_seconds]s.
         :param backup: Whether making a backup before deleting.
-        :return: Result.
+        :param verbose: Get a list of agents purgeds.
+        :return: Amount of agents purgeds. Optional: list of agents and timeframe.
         """
 
-        if not isinstance(timeframe, int):
-            regex_days = re.compile('\d*d')
-            regex_hours = re.compile('\d*h')
-            regex_minutes = re.compile('\d*m')
-            regex_seconds = re.compile('\d*s')
+        timeframe = get_timeframe_int(timeframe)
+        purgeable_agents = list(Agent.get_purgeable_agents(timeframe))
 
-            timeframe_str = timeframe
-            timeframe = 0
+        items = 0
+        for item in purgeable_agents:
+            Agent(item[0]).remove(backup)
+            items += 1
 
-            days = regex_days.search(timeframe_str)
-            if days is not None:
-                days = days.group().replace("d", "")
-                timeframe += int(days) * 86400
+        result = {'totalItems': items}
+        if verbose is True:
+            list_ids = [{"id": str(item[0]).zfill(3), "name": item[1]} for item in purgeable_agents ]
+            result = {'totalItems': items, 'items': list_ids, 'timeframe': timeframe}
 
-            hours = regex_hours.search(timeframe_str)
-            if hours is not None:
-                hours = hours.group().replace("h", "")
-                timeframe += int(hours) * 3600
+        return result
 
-            minutes = regex_minutes.search(timeframe_str)
-            if minutes is not None:
-                minutes = minutes.group().replace("m", "")
-                timeframe += int(minutes) * 60
 
-            seconds = regex_seconds.search(timeframe_str)
-            if seconds is not None:
-                seconds = seconds.group().replace("s", "")
-                timeframe += int(seconds)
+    @staticmethod
+    def get_purgeable_agents_json(timeframe, offset=0, limit=common.database_limit):
+        """
+        Get a list of agents that can be purged.
 
-            if timeframe == 0:
-                timeframe = int(timeframe_str)
+        :param timeframe: Time margin, in seconds or [n_days]d[n_hours]h[n_minutes]m[n_seconds]s.
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :return: List of agents ids.
+        """
+        timeframe = get_timeframe_int(timeframe)
+        purgeable_agents = Agent.get_purgeable_agents(timeframe, offset, limit)
 
+        list_ids = [{"id": str(item[0]).zfill(3), "name": item[1]} for item in purgeable_agents ]
+
+        return {'timeframe': timeframe, 'items': list_ids}
+
+
+    @staticmethod
+    def get_purgeable_agents(timeframe, offset=0, limit=common.database_limit):
+        """
+        Get a list of agents that can be purged.
+
+        :param timeframe: Time margin in seconds.
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :return: List of agents ids.
+        """
+
+        # Connect DB
         db_global = glob(common.database_path_global)
         if not db_global:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
+        query = "SELECT id, name FROM agent WHERE last_keepalive IS NULL OR CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :timeframe  LIMIT :offset,:limit"
 
-        query = "SELECT id FROM agent WHERE last_keepalive IS NULL OR CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :timeframe"
-        conn.execute(query, {'timeframe': timeframe})
-        items = 0
-
-        for item in conn:
-            Agent(item[0]).remove(backup)
-            items += 1
-
-        return {'totalItems': items, 'timeframe': timeframe}
+        conn.execute(query, {'timeframe': timeframe, 'offset': offset, 'limit': limit})
+        return conn
