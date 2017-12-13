@@ -369,9 +369,31 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
             data = cluster_socket.recv(10000)
 
 
-def scan_for_new_files():
+def connect_to_db_socket(retry=False):
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+    max_retries = 100 if retry else 1
+    n_retries = 0
+    while n_retries <= max_retries:
+        try:
+            cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+        except socket.error as e:
+            error_msg = str(e)
+            n_retries += 1
+            sleep(1)
+            continue
+        break
+
+    if n_retries >= max_retries:
+        raise WazuhException(3009, error_msg)
+
+    return cluster_socket
+
+def receive_data_from_db_socket(cluster_socket):
+    return filter(lambda x: x != '\x00', cluster_socket.recv(10000))
+
+def scan_for_new_files():
+    cluster_socket = connect_to_db_socket()
+
     cluster_items = get_cluster_items()
     cluster_config = read_config()
     own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
@@ -421,7 +443,7 @@ def list_files_from_filesystem(node_type, cluster_items):
 def get_file_status(manager, cluster_socket):
     count_query = "count {0}".format(manager)
     cluster_socket.send(count_query)
-    n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
+    n_files = int(receive_data_from_db_socket(cluster_socket))
 
     # limit = 100
     query = "select {0} 100 ".format(manager)
@@ -429,7 +451,7 @@ def get_file_status(manager, cluster_socket):
     for offset in range(0,n_files,100):
         query += str(offset)
         cluster_socket.send(query)
-        file_status += filter(lambda x: x != '\x00', cluster_socket.recv(10000))
+        file_status += receive_data_from_db_socket(cluster_socket)
 
     # retrieve all files for a node in database with its status
     all_files = {f[0]:f[1] for f in map(lambda x: x.split('*'), filter(lambda x: x != '', file_status.split(' ')))}
@@ -441,8 +463,8 @@ def get_file_status_all_managers(file_list, manager):
     Return a nested list where each element has the following structure
     [manager, filename, status]
     """
-    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+    cluster_socket = connect_to_db_socket()
+
     files = []
 
     nodes = get_remote_nodes(False)
@@ -466,12 +488,11 @@ def get_last_sync():
     """
     Function to retrieve information about the last synchronization
     """
-    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+    cluster_socket = connect_to_db_socket()
 
     cluster_socket.send("sellast")
     
-    date, duration = filter(lambda x: x != '\x00', cluster_socket.recv(10000)).split(" ")
+    date, duration = receive_data_from_db_socket(cluster_socket).split(" ")
 
     cluster_socket.close()
 
@@ -489,24 +510,16 @@ def clear_file_status_one_node(manager, cluster_socket):
         update_sql += " pending {0} {1}".format(manager, file)
 
         cluster_socket.send(update_sql)
-        received = cluster_socket.recv(10000)
+        received = receive_data_from_db_socket(cluster_socket)
 
 def clear_file_status():
     """
     Function to set all database files' status to pending
     """
-    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    max_retries = 100
-    for i in range(max_retries):
-        try:
-            cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
-        except socket.error:
-            sleep(1)
-            continue
-        break
+    cluster_socket = connect_to_db_socket(retry=True)
 
     cluster_socket.send("clear ")
-    received = cluster_socket.recv(10000)
+    received = receive_data_from_db_socket(cluster_socket)
 
     cluster_socket.close()    
 
@@ -756,7 +769,7 @@ def get_file_status_of_one_node(node, own_items_names, cluster_socket):
     # check files in database
     count_query = "count {0}".format(node)
     cluster_socket.send(count_query)
-    n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
+    n_files = int(receive_data_from_db_socket(cluster_socket))
     if n_files == 0:
         logging.info("New manager found: {0}".format(node))
         logging.debug("Adding {0}'s files to database".format(node))
@@ -769,7 +782,7 @@ def get_file_status_of_one_node(node, own_items_names, cluster_socket):
                 insert_sql += " {0} {1}".format(node, file)
 
             cluster_socket.send(insert_sql)
-            data = cluster_socket.recv(10000)
+            data = receive_data_from_db_socket(cluster_socket)
 
         all_files = {file:'pending' for file in own_items_names}
 
@@ -785,7 +798,7 @@ def get_file_status_of_one_node(node, own_items_names, cluster_socket):
                 insert_sql += " {0} {1}".format(node,m)
 
             cluster_socket.send(insert_sql)
-            data = cluster_socket.recv(10000)
+            data = receive_data_from_db_socket(cluster_socket)
 
     return all_files
 
@@ -834,7 +847,7 @@ def update_node_db_after_sync(data, node, cluster_socket):
             update_sql += " synchronized {0} /{1}".format(node, u)
 
         cluster_socket.send(update_sql)
-        received = cluster_socket.recv(10000)
+        received = receive_data_from_db_socket(cluster_socket)
 
     for failed in divide_list(data['files']['error']):
         update_sql = "update2"
@@ -845,7 +858,7 @@ def update_node_db_after_sync(data, node, cluster_socket):
                 update_sql += " failed {0} {1}".format(node, f)
 
         cluster_socket.send(update_sql)
-        received = cluster_socket.recv(10000)
+        received = receive_data_from_db_socket(cluster_socket)
 
     for invalid in divide_list(data['files']['invalid']):
         update_sql = "update2"
@@ -853,7 +866,7 @@ def update_node_db_after_sync(data, node, cluster_socket):
             update_sql += " invalid {0} {1}".format(node, i)
 
         cluster_socket.send(update_sql)
-        received = cluster_socket.recv(10000)
+        received = receive_data_from_db_socket(cluster_socket)
 
 
 def sync_one_node(debug, node, force=False):
@@ -874,8 +887,7 @@ def sync_one_node(debug, node, force=False):
     own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     own_items_names = own_items.keys()
 
-    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+    cluster_socket = connect_to_db_socket()
     logging.debug("Connected to cluster database socket")
 
     if force:
@@ -900,9 +912,9 @@ def sync_one_node(debug, node, force=False):
     after = time()
     synchronization_duration += after-before
     cluster_socket.send("clearlast")
-    received = cluster_socket.recv(10000)
+    received = receive_data_from_db_socket(cluster_socket)
     cluster_socket.send("updatelast {0} {1}".format(synchronization_date, int(synchronization_duration)))
-    received = cluster_socket.recv(10000)
+    received = receive_data_from_db_socket(cluster_socket)
     cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 
@@ -938,8 +950,7 @@ def sync(debug, force=False):
     local_node = get_node()['node']
     logging.info("Starting to sync {0}'s files".format(local_node))
 
-    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+    cluster_socket = connect_to_db_socket()
     logging.debug("Connected to cluster database socket")
 
     # for each connected manager, check its files. If the manager is not on database add it
@@ -985,9 +996,9 @@ def sync(debug, force=False):
     after = time()
     synchronization_duration += after-before
     cluster_socket.send("clearlast")
-    received = cluster_socket.recv(10000)
+    received = receive_data_from_db_socket(cluster_socket)
     cluster_socket.send("updatelast {0} {1}".format(int(synchronization_date), synchronization_duration))
-    received = cluster_socket.recv(10000)
+    received = receive_data_from_db_socket(cluster_socket)
     cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 
