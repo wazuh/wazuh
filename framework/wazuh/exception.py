@@ -94,6 +94,8 @@ class WazuhException(Exception):
         # Database:
         2000: 'No such database file',
         2001: 'Incompatible version of SQLite',
+        2002: 'Maximum attempts exceeded for sqlite3 execute',
+        2003: 'Error in database request',
 
         # Cluster
         3000: 'Cluster',
