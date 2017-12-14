@@ -47,25 +47,7 @@ static void GetFile_Queue(file_queue *fileq)
     fileq->file_name[0] = '\0';
     fileq->file_name[MAX_FQUEUE] = '\0';
 
-    if (fileq->flags & CRALERT_FP_SET) {
-        snprintf(fileq->file_name, MAX_FQUEUE,
-                 "<stdin>");
-    } else if (isChroot()) {
-        snprintf(fileq->file_name, MAX_FQUEUE,
-                 "%s/%d/%s/ossec-alerts-%02d.log",
-                 isChroot() ? ALERTS : ALERTS_PATH,
-                 fileq->year,
-                 fileq->mon,
-                 fileq->day);
-    } else {
-        snprintf(fileq->file_name, MAX_FQUEUE,
-                 "%s/%s/%d/%s/ossec-alerts-%02d.log",
-                 DEFAULTDIR,
-                 ALERTS,
-                 fileq->year,
-                 fileq->mon,
-                 fileq->day);
-    }
+    snprintf(fileq->file_name, MAX_FQUEUE, fileq->flags & CRALERT_FP_SET ? "<stdin>" : isChroot() ? ALERTS_DAILY : DEFAULTDIR ALERTS_DAILY);
 }
 
 /* Re Handle the file queue */
@@ -159,25 +141,20 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int tim
         }
     }
 
-    /* Get current file */
-    if (p->tm_mday != fileq->day) {
-        /* If the day changes, get all remaining alerts */
-        al_data = GetAlertData(fileq->flags, fileq->fp);
-        if (!al_data) {
-            fileq->day = p->tm_mday;
-            fileq->year = p->tm_year + 1900;
-            strncpy(fileq->mon, s_month[p->tm_mon], 3);
+    if (al_data = GetAlertData(fileq->flags, fileq->fp), al_data) {
+        return al_data;
+    }
 
-            /* Get latest file */
-            GetFile_Queue(fileq);
+    fileq->day = p->tm_mday;
+    fileq->year = p->tm_year + 1900;
+    strncpy(fileq->mon, s_month[p->tm_mon], 3);
 
-            if (Handle_Queue(fileq, 0) != 1) {
-                file_sleep();
-                return (NULL);
-            }
-        } else {
-            return (al_data);
-        }
+    /* Get latest file */
+    GetFile_Queue(fileq);
+
+    if (Handle_Queue(fileq, 0) != 1) {
+        file_sleep();
+        return (NULL);
     }
 
     /* Try up to timeout times to get an event */
