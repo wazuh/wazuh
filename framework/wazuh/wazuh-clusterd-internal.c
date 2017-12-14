@@ -121,8 +121,7 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
         char *create3 = "CREATE TABLE IF NOT EXISTS file_integrity (" \
                         "filename TEXT PRIMARY KEY," \
                         "md5      TEXT," \
-                        "mod_date INTEGER," \
-                        "size     INTEGER)";
+                        "mod_date INTEGER)";
         rc = sqlite3_exec(db, create3, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
@@ -188,15 +187,17 @@ void* daemon_socket() {
     char *sql_upd1 = "UPDATE manager_file_status SET status = 'pending' WHERE id_file = ?";
     char *sql_clr  = "UPDATE manager_file_status SET status = 'pending'";
     // sql sentence to insert new row
-    char *sql_ins = "INSERT INTO manager_file_status VALUES (?,?,'pending')";
+    char *sql_ins = "INSERT OR REPLACE INTO manager_file_status VALUES (?,?,'pending')";
     // sql sentence to perform a select query
     char *sql_sel = "SELECT * FROM manager_file_status WHERE id_manager = ? LIMIT ? OFFSET ?";
     char *sql_count = "SELECT Count(*) FROM manager_file_status WHERE id_manager = ?";
     char *sql_del1 = "DELETE FROM manager_file_status WHERE id_file = ?";
-    // sql sentence to insert a new row in the last_sync table
+    // sql sentences to insert a new row in the last_sync table
     char *sql_del_lastsync = "DELETE FROM last_sync";
     char *sql_last_sync = "INSERT INTO last_sync(date, duration) VALUES (?,?)";
     char *sql_sel_sync = "SELECT * FROM last_sync";
+    // sql sentences to insert or update a new row in the file_integrity table
+    char *sql_ins_fi = "INSERT OR REPLACE INTO file_integrity VALUES (?,?,?)";
 
     char *sql;
     bool has1, has2, has3, select, count, select_last_sync;
@@ -212,96 +213,59 @@ void* daemon_socket() {
             continue;
         }
 
+
         mtdebug2(DB_TAG,"Accepted connection from %d", cl);
 
         memset(buf, 0, sizeof(buf));
         memset(response, 0, sizeof(response));
         while ( (rc=recv(cl,buf,sizeof(buf),0)) > 0) {
+            has1=false; has2=false; has3=false; select=false; count=false; select_last_sync=false;
 
             cmd = strtok(buf, " ");
             mtdebug2(DB_TAG,"Received %s command", cmd);
             if (cmd != NULL && strcmp(cmd, "update1") == 0) {
                 sql = sql_upd1;
-                count = false;
                 has1 = true;
-                has2 = false;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
             }else if (cmd != NULL && strcmp(cmd, "delete1") == 0) {
                 sql = sql_del1;
-                count = false;
                 has1 = true;
-                has2 = false;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "update2") == 0) {
                 sql = sql_upd2;
-                count = false;
                 has1 = true;
                 has2 = true;
                 has3 = true;
-                select = false;
-                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "insert") == 0) {
                 sql = sql_ins;
-                count = false;
                 has1 = true;
                 has2 = true;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "select") == 0) {
                 sql = sql_sel;
                 select = true;
-                select_last_sync = false;
-                count = false;
                 has1 = true;
                 has2 = true;
                 has3 = true;
                 strcpy(response, " ");
             } else if (cmd != NULL && strcmp(cmd, "sellast") == 0) {
                 sql = sql_sel_sync;
-                select = false;
                 select_last_sync = true;
-                count = false;
-                has1 = false;
-                has2 = false;
-                has3 = false;
                 strcpy(response, " ");
             } else if (cmd != NULL && strcmp(cmd, "count") == 0) {
                 sql = sql_count;
-                select = false;
-                select_last_sync = false;
                 count = true;
                 has1 = true;
-                has2 = false;
-                has3 = false;
             } else if (cmd != NULL && strcmp(cmd, "clear") == 0) {
                 sql = sql_clr;
-                count = false;
-                has1 = false;
-                has2 = false;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "clearlast") == 0) {
                 sql = sql_del_lastsync;
-                count = false;
-                has1 = false;
-                has2 = false;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "updatelast") == 0) {
                 sql = sql_last_sync;
-                count = false;
                 has1 = true;
                 has2 = true;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
+            } else if (cmd != NULL && strcmp(cmd, "insertfile") == 0) {
+                sql = sql_ins_fi;
+                has1 = true;
+                has2 = true;
+                has3 = true;
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
@@ -314,31 +278,44 @@ void* daemon_socket() {
                 while (cmd != NULL) {
                     cmd = strtok(NULL, " ");
                     if (cmd == NULL) break;
+
                     if (strcmp(sql, sql_last_sync) == 0) {
                         long int value = strtol(cmd, &endptr, 10);
                         if (endptr == cmd) mterror_exit(DB_TAG, "No integer found in database request. Found: %s", cmd);
                         rc = sqlite3_bind_int(res,1,value);
-                        if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind int: %s", sqlite3_errmsg(db));
                     }
-                    else sqlite3_bind_text(res,1,cmd,-1,0);
+                    else rc = sqlite3_bind_text(res,1,cmd,-1,0);
+                    if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 1st parameter of query: %s", sqlite3_errmsg(db));
+
                     if (has2) {
                         cmd = strtok(NULL, " ");
                         if (strcmp(sql, sql_last_sync) == 0) {
                             double value = strtod(cmd, &endptr);
                             if (endptr == cmd) mterror_exit(DB_TAG, "No floating number found in database request. Found: %s", cmd);
                             rc = sqlite3_bind_double(res,2,value);
-                            if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind double: %s", sqlite3_errmsg(db));
                         }
-                        else sqlite3_bind_text(res,2,cmd,-1,0);
+                        else rc = sqlite3_bind_text(res,2,cmd,-1,0);
+                        if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 2nd parameter of query: %s", sqlite3_errmsg(db));
                     } 
                     if (has3) {
                         cmd = strtok(NULL, " ");
-                        sqlite3_bind_text(res,3,cmd,-1,0);
+                        if (strcmp(sql, sql_ins_fi) == 0) {
+                            long int value = strtol(cmd, &endptr, 10);
+                            if (endptr == cmd) mterror_exit(DB_TAG, "No integer found in database request. Found: %s", cmd);
+                            rc = sqlite3_bind_int(res,3,value);
+                        }
+                        else rc = sqlite3_bind_text(res,3,cmd,-1,0);
+                        if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 3rd parameter of query: %s", sqlite3_errmsg(db));
                     }
                     
                     do {
                         step = sqlite3_step(res);
-                        if (step != SQLITE_ROW) break;
+                        if (step == SQLITE_DONE && !count && !select) {
+                            strcpy(response, "Command OK");
+                            break;
+                        }
+                        else if (step != SQLITE_ROW && step != SQLITE_OK) break;
+
                         if (select) {
                             strcat(response, (char *)sqlite3_column_text(res, 1));
                             strcat(response, "*");
@@ -350,7 +327,7 @@ void* daemon_socket() {
                             strcpy(response, str);
                         } else 
                             strcpy(response, "Command OK");
-                    } while (step == SQLITE_ROW);
+                    } while (step == SQLITE_ROW || step == SQLITE_OK);
                     sqlite3_clear_bindings(res);
                     sqlite3_reset(res);
 
@@ -366,9 +343,9 @@ void* daemon_socket() {
                 if (select_last_sync) {
                     do {
                         step = sqlite3_step(res);
-                        if (step != SQLITE_ROW) break;
+                        if (step != SQLITE_ROW && step != SQLITE_OK) break;
                         sprintf(response, "%d %lf", sqlite3_column_int(res, 0), sqlite3_column_double(res, 1));
-                    } while (step == SQLITE_ROW);
+                    } while (step == SQLITE_ROW || step == SQLITE_OK);
                 }
                 else strcpy(response, "Command OK");
             }
