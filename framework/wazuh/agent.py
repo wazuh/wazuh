@@ -311,7 +311,7 @@ class Agent:
             data = f.readlines()
 
         return loads(filter(lambda x: x.startswith('config.use_only_authd'), 
-                                            data)[0][:-2].split(' = ')[1])
+                                            data)[0][:-2].split(' = ')[1].strip())
 
     def remove(self, backup=False, purge=False):
         """
