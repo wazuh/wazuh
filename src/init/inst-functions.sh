@@ -33,6 +33,8 @@ LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
+CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
+
 ##########
 # WriteSyscheck()
 ##########
@@ -288,6 +290,11 @@ WriteAgent()
     # OpenSCAP
     WriteOpenSCAP "agent"
 
+
+    # CIS-CAT configuration
+    cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Syscheck
     WriteSyscheck "agent"
 
@@ -381,6 +388,10 @@ WriteManager()
 
     # Write OpenSCAP
     WriteOpenSCAP "manager"
+
+    # CIS-CAT configuration
+    cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # Write syscheck
     WriteSyscheck "manager"
@@ -624,6 +635,7 @@ InstallCommon(){
 	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/vuls/go
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/vuls.py ${PREFIX}/wodles/vuls
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/deploy_vuls.sh ${PREFIX}/wodles/vuls
+	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/ciscat
 
 	InstallOpenSCAPFiles
 

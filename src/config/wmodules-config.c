@@ -67,6 +67,11 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             OS_ClearNode(children);
             return OS_INVALID;
         }
+    } else if (!strcmp(node->values[0], WM_CISCAT_CONTEXT.name)){
+        if (wm_ciscat_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
     } else {
         merror("Unknown module '%s'", node->values[0]);
     }
