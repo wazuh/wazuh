@@ -628,7 +628,7 @@ InstallCommon(){
 	       ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
     fi
 
-	${INSTALL} -d -m 1750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
+	${INSTALL} -d -m 1770 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
     if [ -f /etc/TIMEZONE ]; then
 	       ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
