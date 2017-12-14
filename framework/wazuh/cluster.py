@@ -513,6 +513,22 @@ def clear_file_status_one_node(manager, cluster_socket):
         cluster_socket.send(update_sql)
         received = receive_data_from_db_socket(cluster_socket)
 
+
+def update_file_info_bd(cluster_socket, files):
+    """
+    Function to update the files' information in database 
+    """
+    query = "insertfile "
+    for file in divide_list(files.items()):
+        for fname, finfo in file:
+            timestamp = mktime(datetime.strptime(finfo['modification_time'], 
+                                        '%Y-%m-%d %H:%M:%S.%f').utctimetuple())
+            query += "{} {} {} ".format(fname, finfo['md5'], timestamp)
+
+        cluster_socket.send(query)
+        received = receive_data_from_db_socket(cluster_socket)
+
+
 def clear_file_status():
     """
     Function to set all database files' status to pending
