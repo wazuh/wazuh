@@ -198,9 +198,10 @@ void* daemon_socket() {
     char *sql_sel_sync = "SELECT * FROM last_sync";
     // sql sentences to insert or update a new row in the file_integrity table
     char *sql_ins_fi = "INSERT OR REPLACE INTO file_integrity VALUES (?,?,?)";
+    char *sql_sel_fi = "SELECT * FROM file_integrity LIMIT ? OFFSET ?";
 
     char *sql;
-    bool has1, has2, has3, select, count, select_last_sync;
+    bool has1, has2, has3, select, count, select_last_sync, select_files;
 
     if (listen(fd, 5) == -1) {
         mterror_exit(DB_TAG, "Error listening in socket: %s", strerror(errno));
@@ -219,7 +220,7 @@ void* daemon_socket() {
         memset(buf, 0, sizeof(buf));
         memset(response, 0, sizeof(response));
         while ( (rc=recv(cl,buf,sizeof(buf),0)) > 0) {
-            has1=false; has2=false; has3=false; select=false; count=false; select_last_sync=false;
+            has1=false; has2=false; has3=false; select=false; count=false; select_last_sync=false; select_files=false;
 
             cmd = strtok(buf, " ");
             mtdebug2(DB_TAG,"Received %s command", cmd);
@@ -266,6 +267,12 @@ void* daemon_socket() {
                 has1 = true;
                 has2 = true;
                 has3 = true;
+            } else if (cmd != NULL && strcmp(cmd, "selfiles") == 0) {
+                sql = sql_sel_fi;
+                has1 = true;
+                has2 = true;
+                select_files = true;
+                strcpy(response, " ");
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
@@ -310,7 +317,7 @@ void* daemon_socket() {
                     
                     do {
                         step = sqlite3_step(res);
-                        if (step == SQLITE_DONE && !count && !select) {
+                        if (step == SQLITE_DONE && !count && !select && !select_files) {
                             strcpy(response, "Command OK");
                             break;
                         }
@@ -325,6 +332,10 @@ void* daemon_socket() {
                             char str[10];
                             sprintf(str, "%d", sqlite3_column_int(res, 0));
                             strcpy(response, str);
+                        } else if (select_files) {
+                            char str[100];
+                            sprintf(str, "%s*%s*%d ", (char *)sqlite3_column_text(res, 0), (char *)sqlite3_column_text(res, 1), sqlite3_column_int(res, 2));
+                            strcat(response, str);
                         } else 
                             strcpy(response, "Command OK");
                     } while (step == SQLITE_ROW || step == SQLITE_OK);
