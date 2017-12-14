@@ -535,9 +535,9 @@ class Agent:
 
         # Check if ip, name or id exist in client.keys
         last_id = 0
+        lock_file = open("{}/tmp/.api_lock".format(common.ossec_path), 'a+')
+        fcntl.lockf(lock_file, fcntl.LOCK_EX)
         with open(common.client_keys) as f_k:
-            fcntl.flock(f_k, fcntl.LOCK_EX)
-
             try:
                 for line in f_k.readlines():
                     if not line.strip():  # ignore empty lines
@@ -617,14 +617,17 @@ class Agent:
                 # Overwrite client.keys
                 move(f_keys_temp, common.client_keys)
             except WazuhException as ex:
-                fcntl.flock(f_k, fcntl.LOCK_UN)
+                fcntl.lockf(lock_file, fcntl.LOCK_UN)
+                lock_file.close()
                 raise ex
             except Exception as ex:
-                fcntl.flock(f_k, fcntl.LOCK_UN)
+                fcntl.lockf(lock_file, fcntl.LOCK_UN)
+                lock_file.close()
                 raise WazuhException(1725, str(e))
 
 
-            fcntl.flock(f_k, fcntl.LOCK_UN)
+            fcntl.lockf(lock_file, fcntl.LOCK_UN)
+            lock_file.close()
 
         self.id = agent_id
 
