@@ -199,6 +199,7 @@ void* daemon_socket() {
     // sql sentences to insert or update a new row in the file_integrity table
     char *sql_ins_fi = "INSERT OR REPLACE INTO file_integrity VALUES (?,?,?)";
     char *sql_sel_fi = "SELECT * FROM file_integrity LIMIT ? OFFSET ?";
+    char *sql_count_fi = "SELECT Count(*) FROM file_integrity";
 
     char *sql;
     bool has1, has2, has3, select, count, select_last_sync, select_files;
@@ -273,6 +274,9 @@ void* daemon_socket() {
                 has2 = true;
                 select_files = true;
                 strcpy(response, " ");
+            } else if (cmd != NULL && strcmp(cmd, "countfiles") == 0) {
+                sql = sql_count_fi;
+                count = true;
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
@@ -351,14 +355,14 @@ void* daemon_socket() {
                     sqlite3_close(db);
                     mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
                 }
-                if (select_last_sync) {
+                if (select_last_sync || count) {
                     do {
                         step = sqlite3_step(res);
                         if (step != SQLITE_ROW && step != SQLITE_OK) break;
-                        sprintf(response, "%d %lf", sqlite3_column_int(res, 0), sqlite3_column_double(res, 1));
+                        if (select_last_sync) sprintf(response, "%d %lf", sqlite3_column_int(res, 0), sqlite3_column_double(res, 1));
+                        else if (count) sprintf(response, "%d", sqlite3_column_int(res, 0));
                     } while (step == SQLITE_ROW || step == SQLITE_OK);
-                }
-                else strcpy(response, "Command OK");
+                } else strcpy(response, "Command OK");
             }
 
             transaction_done:
