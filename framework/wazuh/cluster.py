@@ -14,7 +14,7 @@ import sqlite3
 from datetime import datetime
 from hashlib import sha512
 from time import time, mktime, sleep
-from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull
+from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror
 from subprocess import check_output
 from shutil import rmtree
 from io import BytesIO
@@ -31,6 +31,7 @@ import re
 import socket
 import asyncore
 import asynchat
+
 # import the C accelerated API of ElementTree
 try:
     import xml.etree.cElementTree as ET
@@ -87,21 +88,21 @@ if check_cluster_status():
 class WazuhClusterClient(asynchat.async_chat):
     def __init__(self, host, port, key, data, file):
         asynchat.async_chat.__init__(self)
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.setblocking(0)
-        self.socket.settimeout(common.cluster_timeout)
-        self.connect((host, port))
-        self.data = data
-        self.file = file
-        self.set_terminator('\n')
-        self.response = ""
         self.can_read = False
         self.can_write = True
         self.received_data = []
+        self.response = ""
         self.f = key
-
-    def handle_connect(self):
-        pass
+        self.data = data
+        self.file = file
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.settimeout(common.cluster_timeout)
+        try:
+            self.connect((host, port))
+        except socket.error as e:
+            self.close()
+            raise WazuhException(3010, strerror(e[0]))
+        self.set_terminator('\n')
 
     def handle_close(self):
         self.close()
@@ -115,12 +116,10 @@ class WazuhClusterClient(asynchat.async_chat):
     def handle_error(self):
         nil, t, v, tbinfo = asyncore.compact_traceback()
         self.close()
-        if InvalidToken == t:
-            raise InvalidToken("Could not decrypt message from {0}".format(self.addr[0]))
-        elif InvalidSignature == t:
-            raise InvalidSignature("Could not decrypt message from {0}".format(self.addr[0]))
+        if InvalidToken == t or InvalidSignature == t:
+            raise WazuhException(3010, "Could not decrypt message from {0}".format(self.addr[0]))
         else:
-            raise t(v)
+            raise WazuhException(3010, str(v))
 
     def collect_incoming_data(self, data):
         self.received_data.append(data)
@@ -130,6 +129,7 @@ class WazuhClusterClient(asynchat.async_chat):
         self.close()
 
     def handle_write(self):
+        logging.debug("Sending {0} to {1}".format(self.data, self.addr))
         if self.file is not None:
             msg = self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file) + '\n\t\t\n'
         else:
@@ -158,9 +158,10 @@ def send_request(host, port, key, data, file=None):
         data = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"
         error = 1
 
-    except Exception as e:
+    except WazuhException as e:
         error = 1
         data = str(e)
+
     return error, data
 
 def get_status_json():
