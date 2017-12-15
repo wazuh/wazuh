@@ -535,7 +535,7 @@ class Agent:
 
         # Check if ip, name or id exist in client.keys
         last_id = 0
-        lock_file = open("{}/tmp/.api_lock".format(common.ossec_path), 'a+')
+        lock_file = open("{}/var/run/.api_lock".format(common.ossec_path), 'a+')
         fcntl.lockf(lock_file, fcntl.LOCK_EX)
         with open(common.client_keys) as f_k:
             try:
