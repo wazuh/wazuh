@@ -238,6 +238,7 @@ def get_file_info(filename, cluster_items):
         "write_mode" : new_item['write_mode'],
         "md5": md5(fullpath),
         "modification_time" : str(datetime.utcfromtimestamp(st_mtime)),
+        'timestamp': st_mtime,
         "size" : st_size,
         'is_synced': st_mtime.is_integer()
     }
@@ -520,9 +521,7 @@ def update_file_info_bd(cluster_socket, files):
     query = "insertfile "
     for file in divide_list(files.items()):
         for fname, finfo in file:
-            timestamp = mktime(datetime.strptime(finfo['modification_time'], 
-                                        '%Y-%m-%d %H:%M:%S.%f').utctimetuple())
-            query += "{} {} {} ".format(fname, finfo['md5'], timestamp)
+            query += "{} {} {} ".format(fname, finfo['md5'], finfo['timestamp'])
 
         cluster_socket.send(query)
         received = receive_data_from_db_socket(cluster_socket)
@@ -554,14 +553,16 @@ def clear_file_status():
             cluster_socket.send(query)
             file_status += receive_data_from_db_socket(cluster_socket)
         
-        db_items = {filename:md5 for filename, md5, _ in map(lambda x: x.split('*'), 
-                                filter(lambda x: x != '', file_status.split(' ')))}
+        db_items = {filename:{'md5': md5, 'timestamp': timestamp} for filename, 
+                    md5, timestamp in map(lambda x: x.split('*'), 
+                    filter(lambda x: x != '', file_status.split(' ')))}
 
         # Update status
         query = "update1 "
         new_items = {}
         for files_slice in divide_list(own_items.items()):
-            local_items = dict(filter(lambda x: db_items[x[0]] != x[1]['md5'], files_slice))
+            local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5'] 
+                            or int(db_items[x[0]]['timestamp']) < x[1]['timestamp'], files_slice))
             query += ' '.join(local_items.keys())
             cluster_socket.send(query)
             received = receive_data_from_db_socket(cluster_socket)
