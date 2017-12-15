@@ -19,6 +19,7 @@ static const char *(monthss[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
 {
     int s = 0;
+    int i;
 
     if (!mond.smtpserver) {
         return;
@@ -58,32 +59,38 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
                     continue;
                 }
 
-                /* Open the log file */
-                snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.log",
-                         ALERTS, cyear, monthss[cmon], "alerts", cday);
-                os_strdup(aname, mond.reports[s]->r_filter.filename);
+                snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.log", ALERTS, cyear, monthss[cmon], "alerts", cday);
 
-                /* Start report */
-                os_ReportdStart(&mond.reports[s]->r_filter);
-                fflush(mond.reports[s]->r_filter.fp);
+                for (i = 1; !IsFile(aname); i++) {
+                    /* Open the log file */
+                    snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.log", ALERTS, cyear, monthss[cmon], "alerts", cday);
+                    os_strdup(aname, mond.reports[s]->r_filter.filename);
 
-                if (ftell(mond.reports[s]->r_filter.fp) < 10) {
-                    minfo("Report '%s' empty.", mond.reports[s]->title);
-                } else if (OS_SendCustomEmail(mond.reports[s]->emailto,
-                                              mond.reports[s]->title,
-                                              mond.smtpserver,
-                                              mond.emailfrom,
-                                              NULL,
-                                              mond.emailidsname,
-                                              mond.reports[s]->r_filter.fp,
-                                              p)
-                           != 0) {
-                    mwarn("Unable to send report email.");
+                    /* Start report */
+                    os_ReportdStart(&mond.reports[s]->r_filter);
+                    fflush(mond.reports[s]->r_filter.fp);
+
+                    if (ftell(mond.reports[s]->r_filter.fp) < 10) {
+                        minfo("Report '%s' empty.", mond.reports[s]->title);
+                    } else if (OS_SendCustomEmail(mond.reports[s]->emailto,
+                                                  mond.reports[s]->title,
+                                                  mond.smtpserver,
+                                                  mond.emailfrom,
+                                                  NULL,
+                                                  mond.emailidsname,
+                                                  mond.reports[s]->r_filter.fp,
+                                                  p)
+                               != 0) {
+                        mwarn("Unable to send report email.");
+                    }
+
+                    fclose(mond.reports[s]->r_filter.fp);
+                    unlink(fname);
+                    free(mond.reports[s]->r_filter.filename);
+                    mond.reports[s]->r_filter.filename = NULL;
+
+                    snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d-%.3d.log", ALERTS, cyear, monthss[cmon], "alerts", cday, i);
                 }
-                fclose(mond.reports[s]->r_filter.fp);
-                unlink(fname);
-                free(mond.reports[s]->r_filter.filename);
-                mond.reports[s]->r_filter.filename = NULL;
 
                 exit(0);
             } else {
