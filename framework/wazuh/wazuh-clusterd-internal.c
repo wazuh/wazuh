@@ -96,12 +96,7 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
         rc = sqlite3_exec(db, create1, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
-            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
-        }
-        rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
-        if (rc != SQLITE_OK) {
-            sqlite3_close(db);
-            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
+            mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
         }
 
         char *create2 = "CREATE TABLE IF NOT EXISTS last_sync (" \
@@ -110,12 +105,7 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
         rc = sqlite3_exec(db, create2, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
-            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
-        }
-        rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
-        if (rc != SQLITE_OK) {
-            sqlite3_close(db);
-            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
+            mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
         }
 
         char *create3 = "CREATE TABLE IF NOT EXISTS file_integrity (" \
@@ -125,7 +115,7 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
         rc = sqlite3_exec(db, create3, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
-            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
+            mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
         }
         rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
         if (rc != SQLITE_OK) {
