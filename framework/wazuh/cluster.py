@@ -532,13 +532,41 @@ def update_file_info_bd(cluster_socket, files):
 def clear_file_status():
     """
     Function to set all database files' status to pending
-    """
+    """    
+    # Get information of files from filesystem
+    config_cluster = read_config()
+    if not config_cluster:
+        raise WazuhException(3000, "No config found")
+    own_items = list_files_from_filesystem(config_cluster['node_type'], get_cluster_items())  
+       
     cluster_socket = connect_to_db_socket(retry=True)
 
-    cluster_socket.send("clear ")
-    received = receive_data_from_db_socket(cluster_socket)
+    # n files DB
+    cluster_socket.send("countfiles")
+    n_files_db = int(receive_data_from_db_socket(cluster_socket))
 
-    cluster_socket.close()    
+    # Only update status for modified files
+    if n_files_db > 0: 
+        # Get information of files from DB (limit = 100)
+        query = "selfiles 100 0"
+        file_status = ""
+        for offset in range(0, n_files_db, 100):
+            query += str(offset)
+            cluster_socket.send(query)
+            file_status += receive_data_from_db_socket(cluster_socket)
+        
+        db_items = {f[0]:f[1] for f in map(lambda x: x.split('*'), filter(lambda x: x != '', file_status.split(' ')))}
+
+        # Update status
+        query = "update1 "
+        for file_name in db_items:
+            if db_items[file_name] == own_items[file_name]['md5']:
+                own_items.pop(file_name)
+            else:
+                cluster_socket.send(query + file_name)
+    
+    update_file_info_bd(cluster_socket, own_items)
+    cluster_socket.close()  
 
 
 def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
