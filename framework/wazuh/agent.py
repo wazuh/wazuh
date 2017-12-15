@@ -156,7 +156,7 @@ class Agent:
                 self.name = value
             if field == 'ip' and value != None:
                 self.ip = value
-            if field == 'internal_key' and value != None:
+            if field == 'key' and value != None:
                 self.internal_key = value
             if field == 'version' and value != None:
                 self.version = value
