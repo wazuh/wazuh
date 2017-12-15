@@ -225,7 +225,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     wm_strcat(&command, "-t", ' ');
 
-    // Not to create HTML report
+    // Do not create HTML report
 
     wm_strcat(&command, "-n", ' ');
 
@@ -352,7 +352,7 @@ void wm_ciscat_parser(wm_ciscat_eval *eval){
                 data = cJSON_CreateObject();
                 cJSON_AddStringToObject(object, "type", "scan_start");
                 cJSON_AddNumberToObject(object, "scan_id", ID);
-                cJSON_AddItemToObject(object, "data", data);
+                cJSON_AddItemToObject(object, "cis-data", data);
                 char benchmark[OS_MAXSTR];
                 snprintf(benchmark, OS_MAXSTR - 1, "%s", string);
                 cJSON_AddStringToObject(data, "benchmark", benchmark);
@@ -402,7 +402,7 @@ void wm_ciscat_parser(wm_ciscat_eval *eval){
                 data = cJSON_CreateObject();
                 cJSON_AddStringToObject(object, "type", "scan_end");
                 cJSON_AddNumberToObject(object, "scan_id", ID);
-                cJSON_AddItemToObject(object, "data", data);
+                cJSON_AddItemToObject(object, "cis-data", data);
 
             } else if (line == 6 && final){
 
@@ -509,7 +509,7 @@ void wm_ciscat_parser(wm_ciscat_eval *eval){
                 data = cJSON_CreateObject();
                 cJSON_AddStringToObject(object, "type", "scan_result");
                 cJSON_AddNumberToObject(object, "scan_id", ID);
-                cJSON_AddItemToObject(object, "data", data);
+                cJSON_AddItemToObject(object, "cis-data", data);
 
                 char ** parts = NULL;
 
