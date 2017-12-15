@@ -18,7 +18,8 @@ static void* wm_ciscat_main(wm_ciscat *ciscat);        // Module main function. 
 static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
 static void wm_ciscat_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_ciscat_check();                       // Check configuration, disable flag
-static void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int *first);      // Run a CIS-CAT policy
+static void wm_ciscat_run(wm_ciscat_eval *eval, char *path);      // Run a CIS-CAT policy
+static void wm_ciscat_parser(wm_ciscat_eval *eval);  // Parse CIS-CAT reports
 static void wm_ciscat_info();                        // Show module info
 static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
 
@@ -38,7 +39,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     wm_ciscat_eval *eval;
     time_t time_start = 0;
     time_t time_sleep = 0;
-    int first = 1;
     char *cis_path;
 
     os_calloc(OS_MAXSTR, sizeof(char), cis_path);
@@ -85,7 +85,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
         for (eval = ciscat->evals; eval; eval = eval->next)
             if (!eval->flags.error)
-                wm_ciscat_run(eval, cis_path, &first);
+                wm_ciscat_run(eval, cis_path);
 
         time_sleep = time(NULL) - time_start;
 
@@ -152,20 +152,12 @@ void wm_ciscat_cleanup() {
 
 // Run a CIS-CAT policy
 
-void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int *first) {
+void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     char *command = NULL;
     int status, child_status;
     char *output = NULL;
     char msg[OS_MAXSTR];
     char *ciscat_script = "./CIS-CAT.sh";
-    char *reports_location;
-
-    os_calloc(OS_MAXSTR, sizeof(char), reports_location);
-
-
-    // Define path to store reports
-
-    snprintf(reports_location, OS_MAXSTR - 1, "%s", WM_CISCAT_REPORTS);
 
     // Define time to sleep between messages sent
 
@@ -176,11 +168,9 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int *first) {
 
     wm_strcat(&command, ciscat_script, '\0');
 
-    // Accepting Terms of Use in first call
-    if (*first){
-        wm_strcat(&command, "-a", ' ');
-        *first = 0;
-    }
+    // Accepting Terms of Use
+
+    wm_strcat(&command, "-a", ' ');
 
     switch (eval->type) {
     case WM_CISCAT_XCCDF:
@@ -224,16 +214,16 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int *first) {
     // Specify directory where saving reports
 
     wm_strcat(&command, "-r", ' ');
-    wm_strcat(&command, reports_location, ' ');
+    wm_strcat(&command, WM_CISCAT_REPORTS, ' ');
 
     // Set reports file name
 
     wm_strcat(&command, "-rn", ' ');
     wm_strcat(&command, "ciscat-report", ' ');
 
-    // Get CSV reports
+    // Get txt reports
 
-    wm_strcat(&command, "-csv", ' ');
+    wm_strcat(&command, "-t", ' ');
 
     // Not to create HTML report
 
@@ -248,59 +238,63 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int *first) {
 
     pid_t pid;
 
-    pid = fork();
-
-    if (CreatePID(ARGV0, getpid()) < 0)
-        mterror_exit(WM_CISCAT_LOGTAG, "Couldn't create PID file for child process: (%s)", strerror(errno));
-
-    if (pid < 0){
-        mterror(WM_CISCAT_LOGTAG, FORK_ERROR, errno, strerror(errno));
-        pthread_exit(NULL);
-    } else if (pid == 0){
-
-        if (chdir(path) < 0) {
-            mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
-            pthread_exit(NULL);
-        } else
-            mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
-
-        mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
-
-        switch (wm_exec(command, &output, &status, eval->timeout)) {
+    switch(pid = fork(), pid) {
+        case -1:
+            mterror(WM_CISCAT_LOGTAG, FORK_ERROR, errno, strerror(errno));
+            exit(1);
         case 0:
-            if (status > 0) {
-                mtwarn(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
-                mtdebug2(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
-                exit(1);
+            // Child process
+            if (CreatePID("wazuh-modulesd:ciscat", getpid()) < 0)
+                mterror_exit(WM_CISCAT_LOGTAG, "Couldn't create PID file for child process: (%s)", strerror(errno));
+
+            if (chdir(path) < 0) {
+                mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
+                pthread_exit(NULL);
+            } else
+                mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
+
+            mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
+
+            switch (wm_exec(command, &output, &status, eval->timeout)) {
+                case 0:
+                    if (status > 0) {
+                        mtwarn(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+                        mtdebug2(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+                        exit(1);
+                    }
+
+                    mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
+
+                    break;
+
+                case WM_ERROR_TIMEOUT:
+                    free(output);
+                    output = NULL;
+                    wm_strcat(&output, "ciscat: ERROR: Timeout expired.", '\0');
+                    mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
+                    break;
+
+                default:
+                    mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
+                    exit(0);
+                    pthread_exit(NULL);
             }
 
-            mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
+            if (DeletePID("wazuh-modulesd:ciscat") < 0)
+                mterror_exit(WM_CISCAT_LOGTAG, "Couldn't delete PID file for child process: (%s)", strerror(errno));
 
-            break;
-
-        case WM_ERROR_TIMEOUT:
-            free(output);
-            output = NULL;
-            wm_strcat(&output, "ciscat: ERROR: Timeout expired.", '\0');
-            mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
-            break;
+            _exit(0);
 
         default:
-            mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
-            exit(0);
-            pthread_exit(NULL);
-        }
-
-        exit(0);
-    }
-
-    switch(waitpid(-1, &child_status, 0)) {
-        case -1:
-            mterror(WM_CISCAT_LOGTAG, WAITPID_ERROR, errno, strerror(errno));
-            break;
-        default:
-            if (WEXITSTATUS(child_status) == 1)
-                eval->flags.error = 1;
+            // Parent process
+            switch(waitpid(-1, &child_status, 0)) {
+                case -1:
+                    mterror(WM_CISCAT_LOGTAG, WAITPID_ERROR, errno, strerror(errno));
+                    break;
+                default:
+                    if (WEXITSTATUS(child_status) == 1)
+                        eval->flags.error = 1;
+            }
     }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
@@ -308,8 +302,246 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int *first) {
     select(0 , NULL, NULL, NULL, &timeout);
     SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
 
+    wm_ciscat_parser(eval);
+
     free(output);
     free(command);
+}
+
+void wm_ciscat_parser(wm_ciscat_eval *eval){
+
+    char file[OS_MAXSTR];
+    FILE *fp;
+    char string[OS_MAXSTR];
+    int line = 0;
+    int last_line = 0;
+    int final = 0;
+    int i;
+    cJSON *object;
+    cJSON *data;
+
+    // Define report location
+
+    snprintf(file, OS_MAXSTR - 1, "%s%s", WM_CISCAT_REPORTS, "/ciscat-report.txt");
+
+    // Set unique ID for each scan
+
+    int ID = os_random();
+    if (ID < 0)
+        ID = -ID;
+
+    if ((fp = fopen(file, "r"))){
+
+        while (fgets(string, OS_MAXSTR, fp) != NULL){
+
+
+            // Remove '\r\n' from log lines
+
+            if (!last_line){
+                size_t length;
+                length = strlen(string);
+                string[length - 1] = '\0';
+                string[length - 2] = '\0';
+            }
+
+            line++;
+
+            if (line == 1){
+
+                object = cJSON_CreateObject();
+                data = cJSON_CreateObject();
+                cJSON_AddStringToObject(object, "type", "scan_start");
+                cJSON_AddNumberToObject(object, "scan_id", ID);
+                cJSON_AddItemToObject(object, "data", data);
+                char benchmark[OS_MAXSTR];
+                snprintf(benchmark, OS_MAXSTR - 1, "%s", string);
+                cJSON_AddStringToObject(data, "benchmark", benchmark);
+                cJSON_AddStringToObject(data, "profile", eval->profile);
+
+            } else if (line == 2) {
+
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(' ', string, 3);
+                cJSON_AddStringToObject(data, "hostname", parts[2]);
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (line == 3) {
+
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(' ', string, 2);
+                cJSON_AddStringToObject(data, "timestamp", parts[1]);
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+                char *msg;
+
+                msg = cJSON_PrintUnformatted(object);
+                mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
+                SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+                cJSON_Delete(object);
+
+                free(msg);
+
+            } else if (line == 4){
+                continue;
+
+            } else if ((strstr(string, "**********") != NULL)){
+
+                line = 5;
+                final = 1;
+                object = cJSON_CreateObject();
+                data = cJSON_CreateObject();
+                cJSON_AddStringToObject(object, "type", "scan_end");
+                cJSON_AddNumberToObject(object, "scan_id", ID);
+                cJSON_AddItemToObject(object, "data", data);
+
+            } else if (line == 6 && final){
+
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(' ', string, 2);
+                cJSON_AddStringToObject(data, "pass", parts[1]);
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (line == 7 && final){
+
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(' ', string, 2);
+                cJSON_AddStringToObject(data, "fail", parts[1]);
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (line == 8 && final){
+
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(' ', string, 2);
+                cJSON_AddStringToObject(data, "error", parts[1]);
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (line == 9 && final){
+
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(' ', string, 2);
+                cJSON_AddStringToObject(data, "unknown", parts[1]);
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (line == 10 && final){
+
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(' ', string, 3);
+                cJSON_AddStringToObject(data, "not_selected", parts[2]);
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (line == 11 && final){
+
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(' ', string, 3);
+                cJSON_AddStringToObject(data, "actual_pass", parts[2]);
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (line == 12 && final){
+
+                last_line = 1;
+
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(' ', string, 3);
+                cJSON_AddStringToObject(data, "max_possible", parts[2]);
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (line == 13 && final){
+
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(' ', string, 2);
+                cJSON_AddStringToObject(data, "score", parts[1]);
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+                char *msg;
+
+                msg = cJSON_PrintUnformatted(object);
+                mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
+                SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+                cJSON_Delete(object);
+
+                free(msg);
+
+            } else {
+
+                object = cJSON_CreateObject();
+                data = cJSON_CreateObject();
+                cJSON_AddStringToObject(object, "type", "scan_result");
+                cJSON_AddNumberToObject(object, "scan_id", ID);
+                cJSON_AddItemToObject(object, "data", data);
+
+                char ** parts = NULL;
+
+                parts = OS_StrBreak(' ', string, 3);
+
+                cJSON_AddStringToObject(data, "check_id", parts[1]);
+                cJSON_AddStringToObject(data, "description", parts[2]);
+
+                char *result = os_strip_char(parts[0], ':');
+                cJSON_AddStringToObject(data, "result", result);
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+                char *msg;
+
+                msg = cJSON_PrintUnformatted(object);
+                mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
+                SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+                cJSON_Delete(object);
+
+                free(msg);
+
+            }
+        }
+        fclose(fp);
+        unlink(file);
+    } else {
+        mterror(WM_CISCAT_LOGTAG, "Unable to read file %s: %s", file, strerror(errno));
+    }
 }
 
 // Check configuration
@@ -352,12 +584,11 @@ void wm_ciscat_info() {
 
     mtinfo(WM_CISCAT_LOGTAG, "SHOW_MODULE_CISCAT: ----");
     mtinfo(WM_CISCAT_LOGTAG, "Timeout: %d", ciscat->timeout);
-    mtinfo(WM_CISCAT_LOGTAG, "Benchmarks:");
 
     for (eval = (wm_ciscat_eval*)ciscat->evals; eval; eval = eval->next){
-        mtinfo(WM_CISCAT_LOGTAG, "[%s]", eval->path);
+        mtinfo(WM_CISCAT_LOGTAG, "Benchmark: [%s]", eval->path);
         if (eval->profile) {
-            mtinfo(WM_CISCAT_LOGTAG, "\tProfile: %s", eval->profile);
+            mtinfo(WM_CISCAT_LOGTAG, "Profile: [%s]", eval->profile);
         }
     }
 
