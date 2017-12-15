@@ -547,25 +547,31 @@ def clear_file_status():
     # Only update status for modified files
     if n_files_db > 0: 
         # Get information of files from DB (limit = 100)
-        query = "selfiles 100 0"
+        query = "selfiles 100 "
         file_status = ""
         for offset in range(0, n_files_db, 100):
             query += str(offset)
             cluster_socket.send(query)
             file_status += receive_data_from_db_socket(cluster_socket)
         
-        db_items = {f[0]:f[1] for f in map(lambda x: x.split('*'), filter(lambda x: x != '', file_status.split(' ')))}
+        db_items = {filename:md5 for filename, md5, _ in map(lambda x: x.split('*'), 
+                                filter(lambda x: x != '', file_status.split(' ')))}
 
         # Update status
         query = "update1 "
-        for file_name in db_items:
-            if db_items[file_name] == own_items[file_name]['md5']:
-                own_items.pop(file_name)
-            else:
-                cluster_socket.send(query + file_name)
-    
-    update_file_info_bd(cluster_socket, own_items)
-    cluster_socket.close()  
+        new_items = {}
+        for files_slice in divide_list(own_items.items()):
+            local_items = dict(filter(lambda x: db_items[x[0]] != x[1]['md5'], files_slice))
+            query += ' '.join(local_items.keys())
+            cluster_socket.send(query)
+            received = receive_data_from_db_socket(cluster_socket)
+            new_items.update(local_items)
+    else:
+        new_items = own_items
+
+
+    update_file_info_bd(cluster_socket, new_items)
+    cluster_socket.close()
 
 
 def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
