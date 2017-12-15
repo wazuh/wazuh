@@ -129,7 +129,6 @@ class WazuhClusterClient(asynchat.async_chat):
         self.close()
 
     def handle_write(self):
-        logging.debug("Sending {0} to {1}".format(self.data, self.addr))
         if self.file is not None:
             msg = self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file) + '\n\t\t\n'
         else:
