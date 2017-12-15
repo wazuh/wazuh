@@ -310,8 +310,8 @@ class Agent:
         with open(common.api_config_path) as f:
             data = f.readlines()
 
-        return loads(filter(lambda x: x.startswith('config.use_only_authd'), 
-                                            data)[0][:-2].split(' = ')[1].strip())
+        return loads(filter(lambda x: x.strip().startswith('config.use_only_authd'), 
+                                            data)[0][:-2].strip().split(' = ')[1])
 
     def remove(self, backup=False, purge=False):
         """
