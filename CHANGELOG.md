@@ -1,7 +1,35 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.0.0]
+## [v3.1.0]
+
+### Added
+
+- New Wazuh Module "command" for asynchronous command execution.
+- New field "predecoder.timestamp" for JSON alerts including timestamp from logs.
+- Added reload action to ossec-control in local mode.
+- Add duration control of a cluster database synchronization.
+- New internal option for agents to switch applying shared configuration.
+- Added GeoIP address finding for input logs in JSON format.
+
+### Changed
+
+- Keepping client.keys file permissions when modifying it.
+- Improve Rootcheck formula to select outstanding defects.
+- Stop related daemon when disabling components in ossec-control.
+- Prevented cluster daemon from starting on RHEL 5 or older.
+- Let Syscheck report file changes on first scan.
+
+### Fixed
+
+- Fixed netstat command in localfile configuration.
+- Fixed error when searching agents by ID.
+- Fixed syslog format pre-decoder for logs with missing (optional) space after tag.
+- Fixed alert ID when plain-text alert output disabled.
+- Fixed Monitord freezing when a sendmail-like executable SMTP server is set.
+
+
+## [v3.0.0] 2017-12-12
 
 ### Added
 
@@ -128,7 +156,7 @@ All notable changes to this project will be documented in this file.
 - Removed Picviz support (by Dan Parriott).
 
 
-## [v2.1.1]
+## [v2.1.1] - 2017-09-21
 
 ### Changed
 
