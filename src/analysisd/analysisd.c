@@ -823,12 +823,16 @@ void OS_ReadMSG_analysisd(int m_queue)
 
                     /* Alert for statistical analysis */
                     if (stats_rule->alert_opts & DO_LOGALERT) {
-                        __crt_ftell = ftell(_aflog);
                         if (Config.custom_alert_output) {
+                            __crt_ftell = ftell(_aflog);
                             OS_CustomLog(lf, Config.custom_alert_output_format);
                         } else if (Config.alerts_log) {
+                            __crt_ftell = ftell(_aflog);
                             OS_Log(lf);
+                        } else {
+                            __crt_ftell = ftell(_jflog);
                         }
+
                         /* Log to json file */
                         if (Config.jsonout_output) {
                             jsonout_output_event(lf);
@@ -915,12 +919,15 @@ void OS_ReadMSG_analysisd(int m_queue)
                 if (currently_rule->alert_opts & DO_LOGALERT) {
                     lf->comment = ParseRuleComment(lf);
                     lf->labels = labels_find(lf);
-                    __crt_ftell = ftell(_aflog);
 
                     if (Config.custom_alert_output) {
+                        __crt_ftell = ftell(_aflog);
                         OS_CustomLog(lf, Config.custom_alert_output_format);
                     } else if (Config.alerts_log) {
+                        __crt_ftell = ftell(_aflog);
                         OS_Log(lf);
+                    } else {
+                        __crt_ftell = ftell(_jflog);
                     }
                     /* Log to json file */
                     if (Config.jsonout_output) {
