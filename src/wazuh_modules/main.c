@@ -114,6 +114,7 @@ void wm_setup()
 {
     struct sigaction action = { .sa_handler = wm_handler };
     wmodule *database;
+    int agent_cfg = 0;
 
     // Get defined values from internal_options
 
@@ -123,12 +124,13 @@ void wm_setup()
 
     // Read configuration: ossec.conf
 
-    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, NULL) < 0)
+    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg) < 0)
         exit(EXIT_FAILURE);
 
 #ifdef CLIENT
     // Read configuration: agent.conf
-    ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, NULL);
+    agent_cfg = 1;
+    ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #endif
 
     if ((database = wm_database_read()))

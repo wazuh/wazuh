@@ -32,6 +32,13 @@ void * wm_command_main(wm_command_t * command) {
     int usec = 1000000 / wm_max_eps;
     struct timeval timeout = { 0, usec };
 
+#ifdef CLIENT
+    if (!getDefine_Int("wazuh_command", "remote_commands", 0, 1) && command->agent_cfg) {
+        mtwarn(WM_COMMAND_LOGTAG, "Remote commands are disabled. Ignoring '%s'.", command->tag);
+        pthread_exit(0);
+    }
+#endif
+
     mtinfo(WM_COMMAND_LOGTAG, "Module command:%s started", command->tag);
 
     // Set extended tag

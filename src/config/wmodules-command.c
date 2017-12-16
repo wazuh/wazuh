@@ -19,7 +19,7 @@ static const char *XML_RUN_ON_START = "run_on_start";
 
 // Parse XML
 
-int wm_command_read(xml_node **nodes, wmodule *module)
+int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 {
     int i;
     wm_command_t * command;
@@ -28,6 +28,7 @@ int wm_command_read(xml_node **nodes, wmodule *module)
 
     os_calloc(1, sizeof(wm_command_t), command);
     command->run_on_start = 1;
+    command->agent_cfg = agent_cfg;
     module->context = &WM_COMMAND_CONTEXT;
     module->data = command;
 
