@@ -13,6 +13,7 @@
 #define WM_COMMAND_H
 
 #define WM_COMMAND_LOGTAG ARGV0 ":command"
+#define WM_COMMAND_DEFAULT_INTERVAL 2
 
 typedef struct wm_command_state_t {
     time_t next_time;               // Absolute time for next scan
@@ -21,9 +22,10 @@ typedef struct wm_command_state_t {
 typedef struct wm_command_t {
     char * tag;
     char * command;
-    unsigned int interval;
+    unsigned long interval;
     int queue_fd;
     wm_command_state_t state;
+    unsigned int enabled:1;
     unsigned int run_on_start:1;
     unsigned int ignore_output:1;
     unsigned int agent_cfg:1;
