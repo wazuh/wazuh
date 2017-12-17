@@ -40,8 +40,10 @@
 #define CLUSTER_JSON DEFAULTDIR "/framework/wazuh/cluster.json"
 
 #define MAIN_TAG "wazuh-clusterd-internal"
-#define INOTIFY_TAG "wazuh-clusterd-internal:inotify"
-#define DB_TAG "wazuh-clusterd-internal:db_socket"
+#define INOTIFY_TAG MAIN_TAG ":inotify"
+#define DB_TAG MAIN_TAG ":db_socket"
+
+#define PATH_MAX 4096
 
 /* Print help statement */
 static void help_cluster_daemon(char * name)
@@ -66,7 +68,10 @@ off_t fsize(char *file) {
     return 0;
 }
 
-/* function to read a file and load it into a char * buffer */
+/* Read a file and store data into a byte array
+   size: length of the array
+   The funcion will read (size-1) bytes and terminate the string
+*/
 void read_file(char * pathname, char * buffer, off_t size) {
     FILE * pFile;
     size_t result;
@@ -77,7 +82,7 @@ void read_file(char * pathname, char * buffer, off_t size) {
 
     // copy the file into the buffer
     result = fread(buffer, sizeof(char), size-1, pFile);
-    buffer[size] = '\0';
+    buffer[size - 1] = '\0';
     if (result != size-1)
         mterror_exit(MAIN_TAG, "Error reading file: %s", strerror(errno));
 
@@ -381,13 +386,13 @@ void* daemon_socket() {
 
 
 /* structure to save all info required for inotify daemon */
-struct inotify_watch_file {
-    char *name;
-    char *path;
+typedef struct {
+    char name[PATH_MAX];
+    char path[PATH_MAX];
     uint32_t flags;
     int watcher;
     cJSON * files;
-};
+} inotify_watch_file;
 
 /* Convert a inotify flag string to int mask */
 uint32_t get_flag_mask(cJSON * flags) {
@@ -419,12 +424,14 @@ uint32_t get_flag_mask(cJSON * flags) {
 }
 
 /* Store subdirectories names in subdirs array */
-unsigned int get_subdirs(char * path, char **subdirs) {
+unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_to_watch) {
     struct dirent *direntp;
     DIR *dirp;
     unsigned int found_subdirs = 0;
     int i=0;
-    for (i=0; i<sizeof(subdirs); i++) if (subdirs[i] == 0) break;
+    char **subdirs = *_subdirs;
+    char **more_subdirs;
+    for (i=0; i<max_files_to_watch; i++) if (subdirs[i] == 0) break;
 
     if ((dirp = opendir(path)) == NULL) 
         mterror_exit(INOTIFY_TAG, "Error listing subdirectories of %s: %s", path, strerror(errno));
@@ -433,15 +440,22 @@ unsigned int get_subdirs(char * path, char **subdirs) {
         if (strcmp(direntp->d_name, ".") == 0 || strcmp(direntp->d_name, "..") == 0) continue;
 
         if (direntp->d_type == DT_DIR) {
-            if (found_subdirs == sizeof(subdirs))
-                subdirs = (char **) realloc(subdirs, found_subdirs+30 * sizeof(char*));
+            if (found_subdirs+i == max_files_to_watch) {
+                max_files_to_watch += 30;
+                more_subdirs = (char **) realloc(subdirs, max_files_to_watch * sizeof(char*));
+                if (more_subdirs == NULL) {
+                    free(subdirs);
+                    mterror_exit(INOTIFY_TAG, "Error reallocating memory for found subdirectories");
+                } else *_subdirs = subdirs = more_subdirs;
+                memset(subdirs + found_subdirs + i, 0, 30 * sizeof(char *));
+            }
             
             size_t name_size = (sizeof(path) + sizeof(direntp->d_name) + sizeof("/")  + 1) * sizeof(char);
             subdirs[found_subdirs+i] = (char *) malloc(name_size);
             if (snprintf(subdirs[found_subdirs+i], name_size, "%s%s/", path, direntp->d_name) >= name_size)
                 mterror(INOTIFY_TAG, "String overflow in directory name %s%s", path, direntp->d_name);
 
-            found_subdirs += get_subdirs(subdirs[found_subdirs+i], subdirs) + 1;
+            found_subdirs += get_subdirs(subdirs[found_subdirs+i], _subdirs, max_files_to_watch) + 1;
         }
     }
 
@@ -469,26 +483,23 @@ bool check_if_ignore(cJSON * exclude_files, char * event_filename) {
     return exclude;
 }
 
-void* daemon_inotify(void * args) {
-    char * node_type = args;
-    mtinfo(INOTIFY_TAG,"Preparing client socket");
-    /* prepare socket */
-    struct sockaddr_un addr;
-    int db_socket,rc;
-
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path)-1);
-
+/* read files to watch from cluster.json file */
+cJSON * read_cluster_json_file() {
     off_t size = fsize(CLUSTER_JSON)+1;
     char * cluster_json;
     cluster_json = (char *) malloc (sizeof(char) *size+1);
     read_file(CLUSTER_JSON, cluster_json, size);
 
     cJSON * root = cJSON_Parse(cluster_json);
-    unsigned int i = 0, n_files_to_watch = 0;
 
-    struct inotify_watch_file files[30];
+    return root;
+}
+
+/* get directories and subdirectories to watch with inotify */
+unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, cJSON * root) {
+    unsigned int i = 0, n_files_to_watch = 0, max_files_to_watch = 30;
+    inotify_watch_file * more_files = NULL, * files = *_files;
+
     for (i = 0; i < cJSON_GetArraySize(root); i++) {
         cJSON *subitem = cJSON_GetArrayItem(root, i);
         if (strcmp(subitem->string, "excluded_files") == 0) continue;
@@ -497,39 +508,43 @@ void* daemon_inotify(void * args) {
         if (strcmp(source_item->valuestring, node_type) == 0 ||
             strcmp(source_item->valuestring, "all") == 0) {
 
-            char * aux_path;
-            size_t path_len = strlen(DEFAULTDIR) + strlen(subitem->string) + 1;
-            aux_path = (char *) malloc(path_len);
-            if (snprintf(aux_path, path_len, "%s%s", DEFAULTDIR, subitem->string) >= path_len)
+            char aux_path[PATH_MAX];
+            if (snprintf(aux_path, PATH_MAX, "%s%s", DEFAULTDIR, subitem->string) >= PATH_MAX)
                 mterror(INOTIFY_TAG, "Overflow error copying %s's name in memory", subitem->string);
 
             uint32_t flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
             if (cJSON_GetObjectItemCaseSensitive(subitem, "recursive")->type == cJSON_True) {
                 char ** subdirs = (char **) calloc(30, sizeof(char*));
-                unsigned int found_subdirs = get_subdirs(aux_path, subdirs);
-                int j;
+                if (subdirs == NULL) mterror_exit(INOTIFY_TAG, "Error allocating memory for subdirectories watchers");
+                unsigned int found_subdirs = get_subdirs(aux_path, &subdirs, max_files_to_watch);
+                unsigned int j;
                 for (j = 0; j < found_subdirs; j++) {
-                    unsigned int len = strlen(subdirs[j]) + 1;
-                    files[n_files_to_watch].path = (char *) malloc(len);
                     strcpy(files[n_files_to_watch].path, subdirs[j]);
-                    files[n_files_to_watch].name = (char *) malloc(len);
-                    strncpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string), len);
-                    files[n_files_to_watch].name[len-1] = '\0';
+
+                    strcpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string));
+
                     files[n_files_to_watch].flags = flags;
                     n_files_to_watch++;
+                    if (n_files_to_watch >= max_files_to_watch) {
+                        mtdebug2(INOTIFY_TAG, "Reallocating memory for file structure");
+                        max_files_to_watch += 10;
+                        more_files = realloc(files, max_files_to_watch*sizeof(inotify_watch_file));
+
+                        if (more_files != NULL) *_files = files = more_files;
+                        else {
+                            free(files);
+                            mterror_exit(INOTIFY_TAG, "Error reallocating memory for cluster.json files struct");
+                        }
+                        memset(files + n_files_to_watch, 0, 10 * sizeof(char *));
+                    }
+
                 }
             }
 
-            size_t len;
-            len = strlen(aux_path)+1;
-            files[n_files_to_watch].path = (char *) malloc(len);
-            if (snprintf(files[n_files_to_watch].path, len, "%s", aux_path) >= len)
+            if (snprintf(files[n_files_to_watch].path, PATH_MAX, "%s", aux_path) >= PATH_MAX)
                 mterror(INOTIFY_TAG, "String overflow in filepath %s", files[n_files_to_watch].path);
-            free(aux_path);
 
-            len = strlen(subitem->string)+1;
-            files[n_files_to_watch].name = (char *) malloc(len);
-            if (snprintf(files[n_files_to_watch].name, len, "%s", subitem->string) >= len)
+            if (snprintf(files[n_files_to_watch].name, PATH_MAX, "%s", subitem->string) >= PATH_MAX)
                 mterror(INOTIFY_TAG, "String overflow in file name %s", subitem->string);
 
             files[n_files_to_watch].flags = flags;
@@ -538,13 +553,44 @@ void* daemon_inotify(void * args) {
 
             mtinfo(INOTIFY_TAG, "Monitoring %s", cJSON_GetObjectItemCaseSensitive(subitem, "description")->valuestring);
             n_files_to_watch++;
+            if (n_files_to_watch >= max_files_to_watch) {
+                mtdebug2(INOTIFY_TAG, "Reallocating memory for file structure");
+                max_files_to_watch += 10;
+                more_files = realloc(files, max_files_to_watch*sizeof(inotify_watch_file));
+
+                if (more_files != NULL) *_files = files = more_files;
+                else {
+                    free(files);
+                    mterror_exit(INOTIFY_TAG, "Error reallocating memory for cluster.json files struct");
+                }
+                memset(files + n_files_to_watch, 0, 10 * sizeof(char *));
+            }
         }
     }
 
+    return n_files_to_watch;
+}
+
+void* daemon_inotify(void * args) {
+    char * node_type = args;
+    mtinfo(INOTIFY_TAG,"Preparing client socket");
+    /* prepare socket to send data to cluster database */
+    struct sockaddr_un addr;
+    int db_socket,rc;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path)-1);
+
+    cJSON * root = read_cluster_json_file();
+
+    inotify_watch_file * files;
+    files = malloc(30*sizeof(inotify_watch_file));
+    unsigned int i, n_files_to_watch = get_files_to_watch(node_type, &files, root);
+
     mtdebug1(INOTIFY_TAG, "Preparing inotify watchers");
     /* prepare inotify */
-    int fd;
-    fd = inotify_init ();
+    int fd = inotify_init ();
     for (i = 0; i < n_files_to_watch; i++) {
         files[i].files = files[i].files == NULL ? cJSON_Parse("[\"all\"]") : files[i].files;
         mtdebug1(INOTIFY_TAG, "Monitoring %s files from directory %s", cJSON_Print(files[i].files), files[i].name);
@@ -638,7 +684,7 @@ void* daemon_inotify(void * args) {
     mtdebug1(INOTIFY_TAG,"Removing watchers");
     /*removing the directory from the watch list.*/
     for (i = 0; i < n_files_to_watch; i++) inotify_rm_watch(fd, files[i].watcher);
-
+    free(files);
     close(fd);
 
     return 0;
