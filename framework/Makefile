@@ -10,9 +10,8 @@ OSSEC_GROUP  = ossec
 PREFIX       = /var/ossec
 
 CC           = gcc
-CFLAGS       = -pipe -O2
-THREAD_FLAGS = -pthread -Wall
-LFLAGS       = -O2
+CFLAGS       = -pipe -Wall -Wextra
+THREAD_FLAGS = -pthread
 RM_FILE      = rm -f
 INSTALL_DIR  = install -o root -g ${OSSEC_GROUP} -m 0750  -d
 INSTALL_EXEC = install -o root -g ${OSSEC_GROUP} -m 0750
@@ -39,6 +38,14 @@ BUILD_TARGET     = libsqlite3.so.0
 
 ifeq (${uname_S},Linux)
 BUILD_TARGET     += wazuh-clusterd-internal
+endif
+
+ifdef DEBUG
+	CFLAGS+=-g
+	LFLAGS+=-Wl,-g
+else
+	CFLAGS+=-O2
+	LFLAGS+=-Wl,-O2
 endif
 
 .PHONY: all build install examples clean
@@ -71,7 +78,7 @@ libsqlite3.so.0: $(SQLITE_DIR)/sqlite3.o
 
 ifeq (${uname_S},Linux)
 wazuh-clusterd-internal: wazuh-clusterd-internal.o $(SQLITE_DIR)/sqlite3.o $(DEBUG_OP_DEPS)
-	$(CC) $(THREAD_FLAGS) -DDEFAULTDIR=\"${PREFIX}\" -o $@ $^ -ldl
+	$(CC) $(LFLAGS) $(THREAD_FLAGS) -DDEFAULTDIR=\"${PREFIX}\" -o $@ $^ -ldl
 endif
 
 ifeq (${uname_S},Linux)
