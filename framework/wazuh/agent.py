@@ -2206,7 +2206,7 @@ class Agent:
         """
 
         timeframe = get_timeframe_int(timeframe)
-        purgeable_agents = list(Agent.get_purgeable_agents(timeframe))
+        purgeable_agents = list(Agent._get_purgeable_agents(timeframe))
 
         items = 0
         for item in purgeable_agents:
@@ -2232,7 +2232,7 @@ class Agent:
         :return: List of agents ids.
         """
         timeframe = get_timeframe_int(timeframe)
-        purgeable_agents = Agent.get_purgeable_agents(timeframe, offset, limit)
+        purgeable_agents = Agent._get_purgeable_agents(timeframe, offset, limit)
 
         list_ids = [{"id": str(item[0]).zfill(3), "name": item[1]} for item in purgeable_agents ]
 
@@ -2240,7 +2240,7 @@ class Agent:
 
 
     @staticmethod
-    def get_purgeable_agents(timeframe, offset=0, limit=common.database_limit):
+    def _get_purgeable_agents(timeframe, offset=0, limit=common.database_limit):
         """
         Get a list of agents that can be purged.
 
