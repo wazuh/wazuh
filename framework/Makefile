@@ -57,7 +57,7 @@ install:
 	$(INSTALL_DIR) $(PREFIX)/framework/wazuh
 	$(INSTALL_DIR) $(PREFIX)/framework/lib
 
-	$(INSTALL_EXEC) wazuh/*.py ${PREFIX}/framework/wazuh
+	$(INSTALL_FILE) wazuh/*.py ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) wazuh/*.json ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib/
 ifeq (${uname_S},Linux)
