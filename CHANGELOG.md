@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - Add duration control of a cluster database synchronization.
 - New internal option for agents to switch applying shared configuration.
 - Added GeoIP address finding for input logs in JSON format.
+- Added alert and archive output files rotation capabilities.
 
 ### Changed
 
