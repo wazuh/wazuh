@@ -34,6 +34,7 @@
 #include <pwd.h>
 #include <hash_op.h>
 #include <queue_op.h>
+#include <md5_op.h>
 
 #define DB_PATH DEFAULTDIR "/var/db/cluster.db"
 #define SOCKET_PATH DEFAULTDIR "/queue/ossec/cluster_db"
@@ -689,6 +690,7 @@ void* inotify_reader(void * args) {
             memset(cmd,0,sizeof(cmd));
         }
     }
+    return 0;
 }
 
 char * inotify_pop() {
