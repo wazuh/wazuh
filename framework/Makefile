@@ -33,7 +33,12 @@ FILE_OP          = ../src/shared/file_op.o
 PRIVSEP_OP       = ../src/shared/privsep_op.o
 HELP_O           = ../src/shared/help.o
 ERROR_MSGS       = ../src/error_messages
+QUEUE_OP         = ../src/shared/queue_op.o
+HASH_OP          = ../src/shared/hash_op.o
+MATH_OP          = ../src/shared/math_op.o
+RANDOMBYTES      = ../src/shared/randombytes.o
 DEBUG_OP_DEPS    = $(DEBUG_OP) $(JSON_LIB) $(XML_LIB) $(XML_ACCESS) $(STRBREAK) $(STRING_OP) $(FILE_OP) $(PRIVSEP_OP) $(REGEX_OP) $(HELP_O)
+HASH_OP_DEPS     = $(HASH_OP) $(MATH_OP) $(RANDOMBYTES)
 
 BUILD_TARGET     = libsqlite3.so.0
 
@@ -70,7 +75,7 @@ libsqlite3.so.0: $(SQLITE_DIR)/sqlite3.o
 	$(CC) $(LFLAGS) -shared -o $@ $^
 
 ifeq (${uname_S},Linux)
-wazuh-clusterd-internal: wazuh-clusterd-internal.o $(SQLITE_DIR)/sqlite3.o $(DEBUG_OP_DEPS)
+wazuh-clusterd-internal: wazuh-clusterd-internal.o $(SQLITE_DIR)/sqlite3.o $(DEBUG_OP_DEPS) $(HASH_OP_DEPS) $(QUEUE_OP)
 	$(CC) $(THREAD_FLAGS) -DDEFAULTDIR=\"${PREFIX}\" -o $@ $^ -ldl
 endif
 

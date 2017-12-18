@@ -32,6 +32,8 @@
 #include <cJSON.h>
 #include <dirent.h>
 #include <pwd.h>
+#include <hash_op.h>
+#include <queue_op.h>
 
 #define DB_PATH DEFAULTDIR "/var/db/cluster.db"
 #define SOCKET_PATH DEFAULTDIR "/queue/ossec/cluster_db"
@@ -44,6 +46,11 @@
 #define DB_TAG MAIN_TAG ":db_socket"
 
 #define PATH_MAX 4096
+
+static w_queue_t * queue;                 // Queue for pending files
+static OSHash * ptable;                   // Table for pending paths
+static pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
 /* Print help statement */
 static void help_cluster_daemon(char * name)
@@ -571,39 +578,64 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
     return n_files_to_watch;
 }
 
-void* daemon_inotify(void * args) {
-    char * node_type = args;
-    mtinfo(INOTIFY_TAG,"Preparing client socket");
-    /* prepare socket to send data to cluster database */
-    struct sockaddr_un addr;
-    int db_socket,rc;
-
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path)-1);
-
-    cJSON * root = read_cluster_json_file();
-
+typedef struct {
+    int fd;
+    int n_files_to_watch;
     inotify_watch_file * files;
-    files = malloc(30*sizeof(inotify_watch_file));
-    unsigned int i, n_files_to_watch = get_files_to_watch(node_type, &files, root);
+    cJSON * root;
+} inotify_reader_arguments;
 
-    mtdebug1(INOTIFY_TAG, "Preparing inotify watchers");
-    /* prepare inotify */
-    int fd = inotify_init ();
-    for (i = 0; i < n_files_to_watch; i++) {
-        files[i].files = files[i].files == NULL ? cJSON_Parse("[\"all\"]") : files[i].files;
-        mtdebug1(INOTIFY_TAG, "Monitoring %s files from directory %s", cJSON_Print(files[i].files), files[i].name);
-        files[i].watcher = inotify_add_watch(fd, files[i].path, files[i].flags);
-        if (files[i].watcher < 0)
-            mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 
-                files[i].path, strerror(errno));
+// Insert request into internal structure
+void inotify_push_request(char * cmd) {
+    char * dup;
+    int error;
+
+    error = pthread_mutex_lock(&mutex_queue);
+    if (error) mterror_exit(INOTIFY_TAG, "Error locking queue at inotify_push_request: %s", strerror(errno));
+
+    if (queue_full(queue)) {
+        mterror(INOTIFY_TAG, "Internal queue is full (%zu)", queue->size);
+        goto end;
     }
+
+    switch (OSHash_Add(ptable, cmd, (void *)1)) {
+    case 0:
+        mterror(INOTIFY_TAG, "Could not insert key %s into table", cmd);
+        break;
+
+    case 1:
+        mtdebug2(INOTIFY_TAG, "Adding %s: command already exists at path table", cmd);
+        break;
+
+    case 2:
+        dup = strdup(cmd);
+        mtdebug2(INOTIFY_TAG, "Adding %s to inotify command table", cmd);
+
+        if (queue_push(queue, dup) < 0) {
+            mterror(INOTIFY_TAG, "Could not insert key %s into queue", dup);
+            free(dup);
+        }
+        error = pthread_cond_signal(&cond_pending);
+        if (error) mterror_exit(INOTIFY_TAG, "Error sending cond signal at inotify_push_request: %s", strerror(errno));
+    }
+end:
+    error = pthread_mutex_unlock(&mutex_queue);
+    if (error) mterror_exit(INOTIFY_TAG, "Error unlocking queue at inotify_push_request: %s", strerror(errno));
+}
+
+// Real time inotify reader thread
+void* inotify_reader(void * args) {
+    inotify_reader_arguments* reader_args = (inotify_reader_arguments*) args;
+
+    int i, fd = reader_args->fd, n_files_to_watch = reader_args->n_files_to_watch;
+    inotify_watch_file * files = reader_args->files;
+    cJSON * root = reader_args->root;
 
     char buffer[IN_BUFFER_SIZE];
     struct inotify_event *event = (struct inotify_event *)buffer;
     ssize_t count;
     bool ignore = false;
+
     while (1) {
         if ((count = read(fd, buffer, IN_BUFFER_SIZE)) < 0) {
             if (errno != EAGAIN)
@@ -653,32 +685,108 @@ void* daemon_inotify(void * args) {
                 ignore = false;
                 continue;
             }
-
-            if ((db_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-                mterror_exit(INOTIFY_TAG, "Error initializing client socket: %s", strerror(errno));
-            }
-
-            if (connect(db_socket, (struct sockaddr*)&addr , sizeof(addr)) < 0) {
-                mterror_exit(INOTIFY_TAG, "Error connecting to socket: %s", strerror(errno));
-            }
-
-            if ((rc = write(db_socket, cmd, sizeof(cmd))) < 0) {
-                mterror_exit(INOTIFY_TAG, "Error writing update in DB socket: %s", strerror(errno));
-            }
-
-            char data[10000];
-            if (recv(db_socket, data, sizeof(data),0) < 0)
-                mterror(INOTIFY_TAG, "Error receving data from DB socket: %s", strerror(errno));
-
-            if (shutdown(db_socket, SHUT_RDWR) < 0) {
-                mterror(INOTIFY_TAG, "Error in shutdown: %s", strerror(errno));
-            }
-            if (close(db_socket) < 0) {
-                mterror(INOTIFY_TAG, "Error closing client socket:  %s", strerror(errno));
-            }
+            inotify_push_request(cmd);
             memset(cmd,0,sizeof(cmd));
-            memset(data,0,sizeof(data));
         }
+    }
+}
+
+char * inotify_pop() {
+    char * cmd;
+    int error;
+
+    error = pthread_mutex_lock(&mutex_queue);
+    if (error) mterror_exit(INOTIFY_TAG, "Error locking queue at inotify_pop: %s", strerror(errno));
+
+    while (queue_empty(queue)) {
+        error = pthread_cond_wait(&cond_pending, &mutex_queue);
+        if (errno) mterror_exit(INOTIFY_TAG, "Error waiting for condition at inotify_pop: %s", strerror(errno));
+    }
+
+    cmd = queue_pop(queue);
+
+    if (!OSHash_Delete(ptable, cmd)) mterror(INOTIFY_TAG, "Could not delete key %s from table", cmd);
+
+    error = pthread_mutex_unlock(&mutex_queue);
+    if (error) mterror_exit(INOTIFY_TAG, "Error unlocking queue at inotify_pop: %s", strerror(errno));
+
+    mtdebug2(INOTIFY_TAG, "Taking %s from table", cmd);
+    return cmd;
+}
+
+void* daemon_inotify(void * args) {
+    char * node_type = args;
+    mtinfo(INOTIFY_TAG,"Preparing client socket");
+    /* prepare socket to send data to cluster database */
+    struct sockaddr_un addr;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path)-1);
+
+    // Create hash table
+    if (ptable = OSHash_Create(), !ptable) 
+        mterror_exit(INOTIFY_TAG, "At daemon_inotify(): OSHash_Create()");
+
+    // Create queue
+    if (queue = queue_init(16384), !queue)
+        mterror_exit(INOTIFY_TAG, "At daemon_inotify(): queue_init()");
+
+    cJSON * root = read_cluster_json_file();
+
+    inotify_watch_file * files;
+    files = malloc(30*sizeof(inotify_watch_file));
+    unsigned int i, n_files_to_watch = get_files_to_watch(node_type, &files, root);
+
+    mtdebug1(INOTIFY_TAG, "Preparing inotify watchers");
+    /* prepare inotify */
+    int fd = inotify_init ();
+    for (i = 0; i < n_files_to_watch; i++) {
+        files[i].files = files[i].files == NULL ? cJSON_Parse("[\"all\"]") : files[i].files;
+        mtdebug1(INOTIFY_TAG, "Monitoring %s files from directory %s", cJSON_Print(files[i].files), files[i].name);
+        files[i].watcher = inotify_add_watch(fd, files[i].path, files[i].flags);
+        if (files[i].watcher < 0)
+            mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 
+                files[i].path, strerror(errno));
+    }
+
+    pthread_t inotify_reader_thread;
+    inotify_reader_arguments thread_args;
+    thread_args.fd = fd;
+    thread_args.n_files_to_watch = n_files_to_watch;
+    thread_args.files = files;
+    thread_args.root = root;
+    pthread_create(&inotify_reader_thread, NULL, inotify_reader, &thread_args);
+
+
+    int db_socket, rc;
+    while(1) {
+        char * cmd = inotify_pop();
+
+        if ((db_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+            mterror_exit(INOTIFY_TAG, "Error initializing client socket: %s", strerror(errno));
+        }
+
+        if (connect(db_socket, (struct sockaddr*)&addr , sizeof(addr)) < 0) {
+            mterror_exit(INOTIFY_TAG, "Error connecting to socket: %s", strerror(errno));
+        }
+
+        if ((rc = write(db_socket, cmd, strlen(cmd))) < 0) {
+            mterror_exit(INOTIFY_TAG, "Error writing update in DB socket: %s", strerror(errno));
+        }
+
+        char data[10000];
+        if (recv(db_socket, data, sizeof(data),0) < 0)
+            mterror(INOTIFY_TAG, "Error receving data from DB socket: %s", strerror(errno));
+
+        if (shutdown(db_socket, SHUT_RDWR) < 0) {
+            mterror(INOTIFY_TAG, "Error in shutdown: %s", strerror(errno));
+        }
+        if (close(db_socket) < 0) {
+            mterror(INOTIFY_TAG, "Error closing client socket:  %s", strerror(errno));
+        }
+        memset(data,0,sizeof(data));
+        free(cmd);
     }
 
     mtdebug1(INOTIFY_TAG,"Removing watchers");
