@@ -4,6 +4,7 @@
 [![Email](https://img.shields.io/badge/email-join-blue.svg)](https://groups.google.com/forum/#!forum/wazuh)
 [![Documentation](https://img.shields.io/badge/docs-view-green.svg)](https://documentation.wazuh.com)
 [![Documentation](https://img.shields.io/badge/web-view-green.svg)](https://wazuh.com)
+[![Coverity](https://scan.coverity.com/projects/10992/badge.svg)](https://scan.coverity.com/projects/wazuh-wazuh)
 
 Wazuh helps you to gain deeper security visibility into your infrastructure by monitoring hosts at an operating system and application level. This solution, based on lightweight multi-platform agents, provides the following capabilities:
 
@@ -43,7 +44,6 @@ Wazuh also includes a rich web application (fully integrated as a Kibana app), f
 
 * `stable` branch on correspond to the last Wazuh stable version.
 * `master` branch contains the latest code, be aware of possible bugs on this branch.
-* `development` branch includes all the new features we're adding and testing.
 
 ## Contribute
 
