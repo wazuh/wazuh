@@ -23,6 +23,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     char *xml_integrator_group = "group";
     char *xml_integrator_location = "event_location";
     char *xml_integrator_max_log = "max_log";
+    char *xml_integrator_alert_format = "alert_format";
 
     IntegratorConfig **integrator_config = *(IntegratorConfig ***)config;
 
@@ -46,6 +47,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     integrator_config[s]->group = NULL;
     integrator_config[s]->location = NULL;
     integrator_config[s]->path = NULL;
+    integrator_config[s]->alert_format = NULL;
     integrator_config[s]->level = 0;
     integrator_config[s]->enabled = 0;
     integrator_config[s]->max_log = 165;
@@ -79,6 +81,10 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
         else if(strcmp(node[i]->element, xml_integrator_apikey) == 0)
         {
             os_strdup(node[i]->content, integrator_config[s]->apikey);
+        }
+        else if(strcmp(node[i]->element, xml_integrator_alert_format) == 0)
+        {
+            os_strdup(node[i]->content, integrator_config[s]->alert_format);
         }
         else if(strcmp(node[i]->element, xml_integrator_hookurl) == 0)
         {

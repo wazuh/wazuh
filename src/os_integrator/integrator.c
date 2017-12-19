@@ -32,6 +32,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     cJSON *json_field;
     cJSON *location;
     cJSON *rule;
+    cJSON *data;
 
     integration_path[2048] = 0;
     exec_tmp_file[2048] = 0;
@@ -244,11 +245,126 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 }
                 else
                 {
+                    if(integrator_config[s]->alert_format != NULL && strncmp(integrator_config[s]->alert_format, "json", 4) == 0){
+                        fprintf(fp, "%s", cJSON_PrintUnformatted(al_json));
+                        temp_file_created = 1;
+                        mdebug2("file %s was written.", exec_tmp_file);
+                        fclose(fp);
+                    }else{
+                        int log_count = 0;
+                        char *srcip = NULL;
+                        json_field = cJSON_GetObjectItem(al_json, "full_log");
+                        char *full_log = json_field->valuestring;
+                        char *tmpstr = full_log;
+                    
+                        while(*tmpstr != '\0')
+                        {
+                            if(*tmpstr == '\'')
+                            {
+                                *tmpstr = ' ';
+                            }
+                            else if(*tmpstr == '\\')
+                            {
+                                *tmpstr = '/';
+                            }
+                            else if(*tmpstr == '`')
+                            {
+                                *tmpstr = ' ';
+                            }
+                            else if(*tmpstr == '"')
+                            {
+                                *tmpstr = ' ';
+                            }
+                            else if(*tmpstr == ';')
+                            {
+                                *tmpstr = ',';
+                            }
+                            else if(*tmpstr == '!')
+                            {
+                                *tmpstr = ' ';
+                            }
+                            else if(*tmpstr == '$')
+                            {
+                                *tmpstr = ' ';
+                            }
 
-                    fprintf(fp, "%s", cJSON_PrintUnformatted(al_json));
-                    temp_file_created = 1;
-                    mdebug2("file %s was written.", exec_tmp_file);
-                    fclose(fp);
+                            else if(*tmpstr < 32 || *tmpstr > 122)
+                            {
+                                *tmpstr = ' ';
+                            }
+                            log_count++;
+                            tmpstr++;
+
+                            if(log_count >= (int)integrator_config[s]->max_log)
+                            {
+                                *tmpstr='\0';
+                                *(tmpstr -1)='.';
+                                *(tmpstr -2)='.';
+                                *(tmpstr -3)='.';
+                                break;
+                            }
+                        }
+                        if (data = cJSON_GetObjectItem(al_json,"data"), data) 
+                        {
+                            if (json_field = cJSON_GetObjectItem(data,"srcip"), json_field) 
+                            {
+                                srcip = json_field->valuestring;
+                                tmpstr = srcip;
+
+                                while(*tmpstr != '\0')
+                                {
+                                    if(*tmpstr == '\'')
+                                    {
+                                        *tmpstr = ' ';
+                                    }
+                                    else if(*tmpstr == '\\')
+                                    {
+                                        *tmpstr = ' ';
+                                    }
+                                    else if(*tmpstr == '`')
+                                    {
+                                        *tmpstr = ' ';
+                                    }
+                                    else if(*tmpstr == ' ')
+                                    {
+                                    }
+                                    else if(*tmpstr < 46 || *tmpstr > 122)
+                                    {
+                                        *tmpstr = ' ';
+                                    }
+
+                                    tmpstr++;
+                                }
+                            }
+                        }
+                        char *date = NULL;
+                        char *location = NULL;
+                        char *rule_id = NULL;
+                        int alert_level;
+                        char *rule_description = NULL;
+
+                        json_field = cJSON_GetObjectItem(al_json,"timestamp");
+                        date = json_field->valuestring;
+
+                        json_field = cJSON_GetObjectItem(al_json,"location");
+                        location = json_field->valuestring;
+
+                        json_field = cJSON_GetObjectItem(rule,"id");
+                        rule_id = json_field->valuestring;
+
+                        json_field = cJSON_GetObjectItem(rule,"level");
+                        alert_level = json_field->valueint;
+
+                        json_field = cJSON_GetObjectItem(rule,"description");
+                        rule_description = json_field->valuestring;
+
+                
+                        fprintf(fp, "alertdate='%s'\nalertlocation='%s'\nruleid='%s'\nalertlevel='%d'\nruledescription='%s'\nalertlog='%s'\nsrcip='%s'", date, location, rule_id, alert_level, rule_description, full_log, srcip == NULL?"":srcip);
+                        temp_file_created = 1;
+                        mdebug2("file %s was written.", exec_tmp_file);
+                        fclose(fp);
+
+                    }
                 }
             }
 
