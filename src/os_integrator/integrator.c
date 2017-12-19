@@ -23,7 +23,6 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     char integration_path[2048 + 1];
     char exec_tmp_file[2048 + 1];
     char exec_full_cmd[4096 + 1];
-    char *json_str;
     FILE *fp;
 
     file_queue jfileq;
@@ -184,19 +183,32 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(integrator_config[s]->group)
             {
                 int found = 0;
+                char * group;
+                char * end;
+
                 if (json_object = cJSON_GetObjectItem(rule,"groups"), json_object) {
-                    cJSON_ArrayForEach(json_field, json_object) {
-                        json_str = json_field->valuestring;
-                        if (OSMatch_Execute(json_str, strlen(json_str), integrator_config[s]->group)) {
-                            found++;
+                    for (group = integrator_config[s]->group; group && *group && !found; group = end ? end + 1 : NULL) {
+                        if (end = strchr(group, ','), end) {
+                            *end = '\0';
+                        }
+
+                        cJSON_ArrayForEach(json_field, json_object) {
+                            if (strcmp(json_field->valuestring, group) == 0) {
+                                found++;
+                                break;
+                            }
+                        }
+
+                        if (end) {
+                            *end = ',';
                         }
                     }
                 }
+
                 if (!found) {
                     mdebug2("skipping: group doesn't match");
                     s++; continue;
                 }
-
             }
 
             /* Looking for the rule */
@@ -256,7 +268,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                         json_field = cJSON_GetObjectItem(al_json, "full_log");
                         char *full_log = json_field->valuestring;
                         char *tmpstr = full_log;
-                    
+
                         while(*tmpstr != '\0')
                         {
                             if(*tmpstr == '\'')
@@ -304,9 +316,9 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                                 break;
                             }
                         }
-                        if (data = cJSON_GetObjectItem(al_json,"data"), data) 
+                        if (data = cJSON_GetObjectItem(al_json,"data"), data)
                         {
-                            if (json_field = cJSON_GetObjectItem(data,"srcip"), json_field) 
+                            if (json_field = cJSON_GetObjectItem(data,"srcip"), json_field)
                             {
                                 srcip = json_field->valuestring;
                                 tmpstr = srcip;
@@ -358,7 +370,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                         json_field = cJSON_GetObjectItem(rule,"description");
                         rule_description = json_field->valuestring;
 
-                
+
                         fprintf(fp, "alertdate='%s'\nalertlocation='%s'\nruleid='%s'\nalertlevel='%d'\nruledescription='%s'\nalertlog='%s'\nsrcip='%s'", date, location, rule_id, alert_level, rule_description, full_log, srcip == NULL?"":srcip);
                         temp_file_created = 1;
                         mdebug2("file %s was written.", exec_tmp_file);

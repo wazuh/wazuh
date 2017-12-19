@@ -29,7 +29,7 @@ typedef struct _IntegratorConfig
     char *hookurl;
     char *path;
     char *alert_format;
-    OSMatch *group; 
+    char *group;
     OSMatch *location;
 }IntegratorConfig;
 

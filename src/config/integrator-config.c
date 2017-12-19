@@ -164,14 +164,7 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
         }
         else if(strcmp(node[i]->element, xml_integrator_group) == 0)
         {
-            os_calloc(1, sizeof(OSMatch),integrator_config[s]->group);
-            if(!OSMatch_Compile(node[i]->content,
-                                integrator_config[s]->group, 0))
-            {
-                merror(REGEX_COMPILE, node[i]->content,
-                       integrator_config[s]->group->error);
-                return(-1);
-            }
+            os_strdup(node[i]->content, integrator_config[s]->group);
         } else if (strcmp(node[i]->element, xml_integrator_max_log) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR,node[i]->element, node[i]->content);
