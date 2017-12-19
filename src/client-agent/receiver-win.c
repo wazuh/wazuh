@@ -103,9 +103,10 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     os_delwait();
                     update_status(GA_STATUS_ACTIVE);
                     break;
-                }
-
-                if (length > OS_MAXSTR) {
+                }else if (length == 0) {
+                    merror("Empty message from manager");
+                    break;
+                }else if (length > OS_MAXSTR) {
                     merror("Too big message size from manager.");
                     break;
                 }
