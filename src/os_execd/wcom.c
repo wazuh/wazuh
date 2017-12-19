@@ -617,6 +617,7 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     const char TEMPLATE[] = ".gz.XXXXXX";
     char source_j[PATH_MAX + 1];
     size_t length;
+    int output = 0;
 
     if (_jailfile(source_j, INCOMING_DIR, source) > PATH_MAX) {
         merror("At unsign(): Invalid file name '%s'", source);
@@ -634,7 +635,7 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     }
 
     memcpy(dest + length, TEMPLATE, sizeof(TEMPLATE));
-
+    mode_t old_mask = umask(0022);
 #ifndef WIN32
     int fd;
 
@@ -644,24 +645,24 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
         if (chmod(dest, 0640) < 0) {
             unlink(dest);
             merror("At unsign(): Couldn't chmod '%s'", dest);
-            return -1;
+            output = -1;
         }
     } else {
 #else
     if (!_mktemp(dest)) {
 #endif
         merror("At unsign(): Couldn't create temporary compressed file");
-        return -1;
+        output = -1;
     }
 
     if (w_wpk_unsign(source_j, dest, (const char **)wcom_ca_store) < 0) {
         unlink(dest);
         merror("At unsign: Couldn't unsign package file '%s'", source_j);
-        return -1;
+        output = -1;
     }
-
+    umask(old_mask);
     unlink(source);
-    return 0;
+    return output;
 }
 
 int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]) {
