@@ -24,6 +24,7 @@ from time import time, sleep
 import socket
 import hashlib
 from operator import setitem
+from json import loads
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -302,6 +303,16 @@ class Agent:
 
         return ret_msg
 
+    def use_only_authd(self):
+        """
+        Function to know the value of the option "use_only_authd" in API configuration
+        """
+        with open(common.api_config_path) as f:
+            data = f.readlines()
+
+        return loads(filter(lambda x: x.strip().startswith('config.use_only_authd'), 
+                                            data)[0][:-2].strip().split(' = ')[1])
+
     def remove(self, backup=False, purge=False):
         """
         Deletes the agent.
@@ -312,7 +323,13 @@ class Agent:
         """
 
         manager_status = manager.status()
-        if 'ossec-authd' not in manager_status or manager_status['ossec-authd'] != 'running':
+        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
+        
+        if self.use_only_authd():
+            if not is_authd_running:
+                raise WazuhException(1725)
+                
+        if not is_authd_running:
             data = self._remove_manual(backup, purge)
         else:
             data = self._remove_authd(purge)
@@ -447,7 +464,13 @@ class Agent:
         :return: Agent ID.
         """
         manager_status = manager.status()
-        if 'ossec-authd' not in manager_status or manager_status['ossec-authd'] != 'running':
+        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
+
+        if self.use_only_authd():
+            if not is_authd_running:
+                raise WazuhException(1725)
+                
+        if not is_authd_running:
             data = self._add_manual(name, ip, id, key, force)
         else:
             data = self._add_authd(name, ip, id, key, force)
