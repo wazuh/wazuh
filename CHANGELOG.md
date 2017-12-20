@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - New internal option for agents to switch applying shared configuration.
 - Added GeoIP address finding for input logs in JSON format.
 - Added alert and archive output files rotation capabilities.
+- Added rule option to discard field "firedtimes".
 
 ### Changed
 
