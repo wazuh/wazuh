@@ -608,7 +608,37 @@ int main(int argc, char **argv)
     if (ip_address && ar && (agent_id || restart_all_agents)) {
         /* Connect to remoted */
         FILE *fp;
-        int pass= 0;
+        int pass = 0;
+
+        if (fp = fopen(DEFAULTAR, "r"), fp) {
+            char name[256];
+            char command[256];
+            unsigned timeout;
+            char end;
+            int line;
+            int r;
+
+            for (line = 1; r = fscanf(fp, "%255s - %255s - %u%c", name, command, &timeout, &end), r == 4; line++) {
+                if (strcmp(name, ar) == 0) {
+                    pass = 1;
+                    break;
+                }
+            }
+
+            if (r != 4 && r != EOF) {
+                printf("\n** Active response file is corrupted at line %d.\n", line);
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            printf("\n** Active response is not available.\n");
+            exit(EXIT_FAILURE);
+        }
+
+        if (!pass) {
+            printf("\n** Selected active response does not exist.\n");
+            exit(EXIT_FAILURE);
+        }
+
         mdebug1("Connecting to remoted...");
         arq = connect_to_remoted();
         if (arq < 0) {
@@ -616,49 +646,8 @@ int main(int argc, char **argv)
             exit(1);
         }
         mdebug1("Connected...");
-        fp = fopen(DEFAULTAR, "r");
-        if (fp) {
-            char buffer[256];
 
-            while (fgets(buffer, 255, fp) != NULL) {
-                char *r_name;
-                char *r_cmd;
-                char *r_timeout;
-                r_name = buffer;
-                r_cmd = strchr(buffer, ' ');
-                if (!r_cmd) {
-                    continue;
-                }
-                *r_cmd = '\0';
-                r_cmd++;
-                if (*r_cmd == '-') {
-                    r_cmd++;
-                }
-                if (*r_cmd == ' ') {
-                    r_cmd++;
-                }
-
-                r_timeout = strchr(r_cmd, ' ');
-                if (!r_timeout) {
-                    continue;
-                }
-                *r_timeout = '\0';
-                if (strcmp(r_name, ar) == 0) {
-                    pass = 1;
-                    continue;
-                }
-            }
-            printf("\n\n");
-            fclose(fp);
-        } else {
-            printf("\n   No active response available.\n\n");
-        }
-
-        if (pass == 0) {
-            printf("Selected active response does not exist.\n");
-
-        }
-        else if (send_msg_to_agent(arq, ar, agent_id, ip_address) == 0) {
+        if (send_msg_to_agent(arq, ar, agent_id, ip_address) == 0) {
             printf("\n%s %s: Running active response '%s' on: %s\n",
                    __ossec_name, ARGV0, ar, agent_id ? agent_id : "all");
         } else {
