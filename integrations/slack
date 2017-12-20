@@ -32,7 +32,7 @@ if [ ! $? = 0 ]; then
 fi
 
 
-. $ALERTFILE 
+. $ALERTFILE
 postfile=`mktemp`
 
 

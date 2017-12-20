@@ -114,6 +114,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_white_list = "white_list";
     const char *xml_compress_alerts = "compress_alerts";
     const char *xml_custom_alert_output = "custom_alert_output";
+    const char *xml_rotate_interval = "rotate_interval";
+    const char *xml_max_output_size = "max_output_size";
 
     const char *xml_emailto = "email_to";
     const char *xml_emailfrom = "email_from";
@@ -520,7 +522,86 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
         }
 #endif
-        else {
+        else if (strcmp(node[i]->element, xml_rotate_interval) == 0) {
+            if (Config) {
+                char c;
+
+                switch (sscanf(node[i]->content, "%d%c", &Config->rotate_interval, &c)) {
+                case 1:
+                    break;
+
+                case 2:
+                    switch (c) {
+                    case 'd':
+                        Config->rotate_interval *= 86400;
+                        break;
+                    case 'h':
+                        Config->rotate_interval *= 3600;
+                        break;
+                    case 'm':
+                        Config->rotate_interval *= 60;
+                        break;
+                    case 's':
+                        break;
+                    default:
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                        return (OS_INVALID);
+                    }
+
+                    break;
+
+                default:
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+
+                if (Config->rotate_interval < 0) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_max_output_size) == 0) {
+            if (Config) {
+                char c;
+
+                switch (sscanf(node[i]->content, "%zd%c", &Config->max_output_size, &c)) {
+                case 1:
+                    break;
+
+                case 2:
+                    switch (c) {
+                    case 'T':
+                    case 't':
+                        Config->max_output_size *= 1099511627776;
+                        break;
+                    case 'G':
+                    case 'g':
+                        Config->max_output_size *= 1073741824;
+                        break;
+                    case 'M':
+                    case 'm':
+                        Config->max_output_size *= 1048576;
+                        break;
+                    case 'K':
+                    case 'k':
+                        Config->max_output_size *= 1024;
+                        break;
+                    case 'B':
+                    case 'b':
+                        break;
+                    default:
+                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                        return (OS_INVALID);
+                    }
+
+                    break;
+
+                default:
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+            }
+        } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }

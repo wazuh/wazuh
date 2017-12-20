@@ -137,15 +137,19 @@ disable()
         echo "Usage: $0 disable [database|client-syslog|agentless,debug|integrator]"
         exit 1;
     fi
-
+    daemon=''
     if [ "X$2" = "Xdatabase" ]; then
         echo "DB_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-dbd'
     elif [ "X$2" = "Xclient-syslog" ]; then
         echo "CSYSLOG_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-csyslogd'
     elif [ "X$2" = "Xagentless" ]; then
         echo "AGENTLESS_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-agentlessd'
     elif [ "X$2" = "Xintegrator" ]; then
         echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-integratord'
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
@@ -155,6 +159,14 @@ disable()
         echo "Disable options: database, client-syslog, agentless, debug, integrator"
         echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
+    fi
+    if [ "$daemon" != '' ]; then
+        pstatus ${daemon};
+        if [ $? = 1 ]; then
+            kill `cat $DIR/var/run/$daemon*`
+            rm $DIR/var/run/$daemon*
+            echo "Killing ${daemon}...";
+        fi
     fi
 }
 
@@ -187,7 +199,8 @@ testconfig()
 
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
+    # Reverse order of daemons
+    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
     echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
@@ -242,7 +255,7 @@ pstatus()
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
             ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
-                echo "${pfile}: Process $j not used by ossec, removing .."
+                echo "${pfile}: Process $j not used by ossec, removing..."
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
                 continue;
             fi
@@ -263,10 +276,10 @@ stopa()
     for i in ${DAEMONS}; do
         pstatus ${i};
         if [ $? = 1 ]; then
-            echo "Killing ${i} .. ";
+            echo "Killing ${i}... ";
             kill `cat ${DIR}/var/run/${i}*.pid`;
         else
-            echo "${i} not running ..";
+            echo "${i} not running...";
         fi
         rm -f ${DIR}/var/run/${i}*.pid
     done
@@ -297,6 +310,14 @@ stop)
     ;;
 restart)
     testconfig
+    lock
+    stopa
+    sleep 1
+    start
+    unlock
+    ;;
+reload)
+    DAEMONS=$(echo $DAEMONS | sed 's/ossec-execd//')
     lock
     stopa
     sleep 1

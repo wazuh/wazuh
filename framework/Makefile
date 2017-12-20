@@ -12,9 +12,8 @@ PREFIX       = /var/ossec
 OPENSSL_DIR      = ../src/external/openssl
 
 CC           = gcc
-CFLAGS       = -pipe -O2
-THREAD_FLAGS = -pthread -Wall
-LFLAGS       = -O2
+CFLAGS       = -pipe -Wall -Wextra
+THREAD_FLAGS = -pthread
 RM_FILE      = rm -f
 INSTALL_DIR  = install -o root -g ${OSSEC_GROUP} -m 0750  -d
 INSTALL_EXEC = install -o root -g ${OSSEC_GROUP} -m 0750
@@ -52,6 +51,14 @@ ifeq (${uname_S},Linux)
 BUILD_TARGET     += wazuh-clusterd-internal
 endif
 
+ifdef DEBUG
+	CFLAGS+=-g
+	LFLAGS+=-Wl,-g
+else
+	CFLAGS+=-O2
+	LFLAGS+=-Wl,-O2
+endif
+
 .PHONY: all build install examples clean
 
 all: build
@@ -61,7 +68,7 @@ install:
 	$(INSTALL_DIR) $(PREFIX)/framework/wazuh
 	$(INSTALL_DIR) $(PREFIX)/framework/lib
 
-	$(INSTALL_EXEC) wazuh/*.py ${PREFIX}/framework/wazuh
+	$(INSTALL_FILE) wazuh/*.py ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) wazuh/*.json ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib/
 ifeq (${uname_S},Linux)

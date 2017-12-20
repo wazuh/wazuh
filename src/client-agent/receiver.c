@@ -51,29 +51,30 @@ int receive_msg()
 
             // Manager disconnected or error
 
-            if (recv_b <= 0 || length > OS_MAXSTR) {
-                switch (recv_b) {
-                case -1:
-                    if (errno == ENOTCONN) {
-                        mdebug1("Manager disconnected (ENOTCONN).");
-                    } else {
-                        merror("Connection socket: %s (%d)", strerror(errno), errno);
-                    }
-
-                    return -1;
-
-                case 0:
-                    mdebug1("Manager disconnected.");
-                    return -1;
-
-                default:
-                    // length > OS_MAXSTR
-                    merror("Too big message size from manager.");
+            switch (recv_b) {
+            case -1:
+                if (errno == ENOTCONN) {
+                    mdebug1("Manager disconnected (ENOTCONN).");
+                } else {
+                    merror("Connection socket: %s (%d)", strerror(errno), errno);
                 }
+                return -1;
 
-                break;
+            case 0:
+                mdebug1("Manager disconnected.");
+                return -1;
+
+            default:
+                // length > OS_MAXSTR
+                if(length == 0){
+                	merror("Empty message from manager");
+                	return 0;
+                }else if(length > OS_MAXSTR){
+                	merror("Too big message size from manager.");
+                	return 0;
+                }    
             }
-
+            
             recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
             if (recv_b != (ssize_t)length) {
@@ -235,7 +236,7 @@ int receive_msg()
 
                                 UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
 
-                                if (!verifyRemoteConf()) {
+                                if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                     if (agt->flags.auto_restart) {
                                         minfo("Agent is restarting due to shared configuration changes.");
                                         restartAgent();

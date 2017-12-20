@@ -420,6 +420,11 @@ int IsFile(const char *file)
 	return (!stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
 }
 
+off_t FileSize(const char * path) {
+    struct stat buf;
+    return stat(path, &buf) ? -1 : buf.st_size;
+}
+
 int CreatePID(const char *name, int pid)
 {
     char file[256];
@@ -2034,7 +2039,15 @@ int TempFile(File *file, const char *source, int copy) {
     }
 
 #ifndef WIN32
-    if (fchmod(fd, 0640) < 0) {
+    struct stat buf;
+
+    if (stat(source, &buf) < 0) {
+        close(fd);
+        unlink(template);
+        return -1;
+    }
+
+    if (fchmod(fd, buf.st_mode) < 0) {
         close(fd);
         unlink(template);
         return -1;

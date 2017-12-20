@@ -28,7 +28,8 @@ typedef struct _IntegratorConfig
     char *apikey;
     char *hookurl;
     char *path;
-    OSMatch *group;
+    char *alert_format;
+    char *group;
     OSMatch *location;
 }IntegratorConfig;
 

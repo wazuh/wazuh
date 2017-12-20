@@ -23,7 +23,6 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     char integration_path[2048 + 1];
     char exec_tmp_file[2048 + 1];
     char exec_full_cmd[4096 + 1];
-    char *json_str;
     FILE *fp;
 
     file_queue jfileq;
@@ -32,6 +31,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     cJSON *json_field;
     cJSON *location;
     cJSON *rule;
+    cJSON *data;
 
     integration_path[2048] = 0;
     exec_tmp_file[2048] = 0;
@@ -183,19 +183,32 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(integrator_config[s]->group)
             {
                 int found = 0;
+                char * group;
+                char * end;
+
                 if (json_object = cJSON_GetObjectItem(rule,"groups"), json_object) {
-                    cJSON_ArrayForEach(json_field, json_object) {
-                        json_str = json_field->valuestring;
-                        if (OSMatch_Execute(json_str, strlen(json_str), integrator_config[s]->group)) {
-                            found++;
+                    for (group = integrator_config[s]->group; group && *group && !found; group = end ? end + 1 : NULL) {
+                        if (end = strchr(group, ','), end) {
+                            *end = '\0';
+                        }
+
+                        cJSON_ArrayForEach(json_field, json_object) {
+                            if (strcmp(json_field->valuestring, group) == 0) {
+                                found++;
+                                break;
+                            }
+                        }
+
+                        if (end) {
+                            *end = ',';
                         }
                     }
                 }
+
                 if (!found) {
                     mdebug2("skipping: group doesn't match");
                     s++; continue;
                 }
-
             }
 
             /* Looking for the rule */
@@ -244,11 +257,126 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 }
                 else
                 {
+                    if(integrator_config[s]->alert_format != NULL && strncmp(integrator_config[s]->alert_format, "json", 4) == 0){
+                        fprintf(fp, "%s", cJSON_PrintUnformatted(al_json));
+                        temp_file_created = 1;
+                        mdebug2("file %s was written.", exec_tmp_file);
+                        fclose(fp);
+                    }else{
+                        int log_count = 0;
+                        char *srcip = NULL;
+                        json_field = cJSON_GetObjectItem(al_json, "full_log");
+                        char *full_log = json_field->valuestring;
+                        char *tmpstr = full_log;
 
-                    fprintf(fp, "%s", cJSON_PrintUnformatted(al_json));
-                    temp_file_created = 1;
-                    mdebug2("file %s was written.", exec_tmp_file);
-                    fclose(fp);
+                        while(*tmpstr != '\0')
+                        {
+                            if(*tmpstr == '\'')
+                            {
+                                *tmpstr = ' ';
+                            }
+                            else if(*tmpstr == '\\')
+                            {
+                                *tmpstr = '/';
+                            }
+                            else if(*tmpstr == '`')
+                            {
+                                *tmpstr = ' ';
+                            }
+                            else if(*tmpstr == '"')
+                            {
+                                *tmpstr = ' ';
+                            }
+                            else if(*tmpstr == ';')
+                            {
+                                *tmpstr = ',';
+                            }
+                            else if(*tmpstr == '!')
+                            {
+                                *tmpstr = ' ';
+                            }
+                            else if(*tmpstr == '$')
+                            {
+                                *tmpstr = ' ';
+                            }
+
+                            else if(*tmpstr < 32 || *tmpstr > 122)
+                            {
+                                *tmpstr = ' ';
+                            }
+                            log_count++;
+                            tmpstr++;
+
+                            if(log_count >= (int)integrator_config[s]->max_log)
+                            {
+                                *tmpstr='\0';
+                                *(tmpstr -1)='.';
+                                *(tmpstr -2)='.';
+                                *(tmpstr -3)='.';
+                                break;
+                            }
+                        }
+                        if (data = cJSON_GetObjectItem(al_json,"data"), data)
+                        {
+                            if (json_field = cJSON_GetObjectItem(data,"srcip"), json_field)
+                            {
+                                srcip = json_field->valuestring;
+                                tmpstr = srcip;
+
+                                while(*tmpstr != '\0')
+                                {
+                                    if(*tmpstr == '\'')
+                                    {
+                                        *tmpstr = ' ';
+                                    }
+                                    else if(*tmpstr == '\\')
+                                    {
+                                        *tmpstr = ' ';
+                                    }
+                                    else if(*tmpstr == '`')
+                                    {
+                                        *tmpstr = ' ';
+                                    }
+                                    else if(*tmpstr == ' ')
+                                    {
+                                    }
+                                    else if(*tmpstr < 46 || *tmpstr > 122)
+                                    {
+                                        *tmpstr = ' ';
+                                    }
+
+                                    tmpstr++;
+                                }
+                            }
+                        }
+                        char *date = NULL;
+                        char *location = NULL;
+                        char *rule_id = NULL;
+                        int alert_level;
+                        char *rule_description = NULL;
+
+                        json_field = cJSON_GetObjectItem(al_json,"timestamp");
+                        date = json_field->valuestring;
+
+                        json_field = cJSON_GetObjectItem(al_json,"location");
+                        location = json_field->valuestring;
+
+                        json_field = cJSON_GetObjectItem(rule,"id");
+                        rule_id = json_field->valuestring;
+
+                        json_field = cJSON_GetObjectItem(rule,"level");
+                        alert_level = json_field->valueint;
+
+                        json_field = cJSON_GetObjectItem(rule,"description");
+                        rule_description = json_field->valuestring;
+
+
+                        fprintf(fp, "alertdate='%s'\nalertlocation='%s'\nruleid='%s'\nalertlevel='%d'\nruledescription='%s'\nalertlog='%s'\nsrcip='%s'", date, location, rule_id, alert_level, rule_description, full_log, srcip == NULL?"":srcip);
+                        temp_file_created = 1;
+                        mdebug2("file %s was written.", exec_tmp_file);
+                        fclose(fp);
+
+                    }
                 }
             }
 
