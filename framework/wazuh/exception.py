@@ -89,7 +89,8 @@ class WazuhException(Exception):
         1722: 'Incorrect format for group_id. It can only have letters and numbers. Max length is 256',
         1723: 'Hash algorithm not available',
         1724: 'Not a valid select field',
-        1725: 'Ossec authd is not running',
+        1725: 'Error registering a new agent',
+        1726: 'Ossec authd is not running',
 
         # Manager:
 

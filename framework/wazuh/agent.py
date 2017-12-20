@@ -24,6 +24,7 @@ from time import time, sleep
 import socket
 import hashlib
 from operator import setitem
+import fcntl
 from json import loads
 
 try:
@@ -327,7 +328,7 @@ class Agent:
         
         if self.use_only_authd():
             if not is_authd_running:
-                raise WazuhException(1725)
+                raise WazuhException(1726)
                 
         if not is_authd_running:
             data = self._remove_manual(backup, purge)
@@ -468,7 +469,7 @@ class Agent:
 
         if self.use_only_authd():
             if not is_authd_running:
-                raise WazuhException(1725)
+                raise WazuhException(1726)
                 
         if not is_authd_running:
             data = self._add_manual(name, ip, id, key, force)
@@ -557,82 +558,99 @@ class Agent:
 
         # Check if ip, name or id exist in client.keys
         last_id = 0
+        lock_file = open("{}/var/run/.api_lock".format(common.ossec_path), 'a+')
+        fcntl.lockf(lock_file, fcntl.LOCK_EX)
         with open(common.client_keys) as f_k:
-            for line in f_k.readlines():
-                if not line.strip():  # ignore empty lines
-                    continue
+            try:
+                for line in f_k.readlines():
+                    if not line.strip():  # ignore empty lines
+                        continue
 
-                if line[0] in ('# '):  # starts with # or ' '
-                    continue
+                    if line[0] in ('# '):  # starts with # or ' '
+                        continue
 
-                line_data = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
+                    line_data = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
 
-                line_id = int(line_data[0])
-                if last_id < line_id:
-                    last_id = line_id
+                    line_id = int(line_data[0])
+                    if last_id < line_id:
+                        last_id = line_id
 
-                if line_data[1][0] in ('#!'):  # name starts with # or !
-                    continue
+                    if line_data[1][0] in ('#!'):  # name starts with # or !
+                        continue
 
-                check_remove = 0
-                if id and id == line_data[0]:
-                    raise WazuhException(1708, id)
-                if name == line_data[1]:
-                    if force < 0:
-                        raise WazuhException(1705, name)
-                    else:
-                        check_remove = 1
-                if ip != 'any' and ip == line_data[2]:
-                    if force < 0:
-                        raise WazuhException(1706, ip)
-                    else:
-                        check_remove = 2
-
-                if check_remove:
-                    if force == 0 or Agent.check_if_delete_agent(line_data[0], force):
-                        Agent.remove_agent(line_data[0], backup=True)
-                    else:
-                        if check_remove == 1:
+                    check_remove = 0
+                    if id and id == line_data[0]:
+                        raise WazuhException(1708, id)
+                    if name == line_data[1]:
+                        if force < 0:
                             raise WazuhException(1705, name)
                         else:
+                            check_remove = 1
+                    if ip != 'any' and ip == line_data[2]:
+                        if force < 0:
                             raise WazuhException(1706, ip)
+                        else:
+                            check_remove = 2
 
-        if not id:
-            agent_id = str(last_id + 1).zfill(3)
-        else:
-            agent_id = id
+                    if check_remove:
+                        if force == 0 or Agent.check_if_delete_agent(line_data[0], force):
+                            Agent.remove_agent(line_data[0], backup=True)
+                        else:
+                            if check_remove == 1:
+                                raise WazuhException(1705, name)
+                            else:
+                                raise WazuhException(1706, ip)
 
-        if not key:
-            # Generate key
-            epoch_time = int(time())
-            str1 = "{0}{1}{2}".format(epoch_time, name, platform())
-            str2 = "{0}{1}".format(ip, agent_id)
-            hash1 = hashlib.md5(str1.encode())
-            hash1.update(urandom(64))
-            hash2 = hashlib.md5(str2.encode())
-            hash1.update(urandom(64))
-            agent_key = hash1.hexdigest() + hash2.hexdigest()
-        else:
-            agent_key = key
 
-        # Tmp file
-        f_keys_temp = '{0}.tmp'.format(common.client_keys)
-        open(f_keys_temp, 'a').close()
+                if not id:
+                    agent_id = str(last_id + 1).zfill(3)
+                else:
+                    agent_id = id
 
-        ossec_uid = getpwnam("ossec").pw_uid
-        ossec_gid = getgrnam("ossec").gr_gid
-        f_keys_st = stat(common.client_key)
-        chown(f_keys_temp, ossec_uid, ossec_gid)
-        chmod(f_keys_temp, f_keys_st.st_mode)
+                if not key:
+                    # Generate key
+                    epoch_time = int(time())
+                    str1 = "{0}{1}{2}".format(epoch_time, name, platform())
+                    str2 = "{0}{1}".format(ip, agent_id)
+                    hash1 = hashlib.md5(str1.encode())
+                    hash1.update(urandom(64))
+                    hash2 = hashlib.md5(str2.encode())
+                    hash1.update(urandom(64))
+                    agent_key = hash1.hexdigest() + hash2.hexdigest()
+                else:
+                    agent_key = key
 
-        copyfile(common.client_keys, f_keys_temp)
+                # Tmp file
+                f_keys_temp = '{0}.tmp'.format(common.client_keys)
+                open(f_keys_temp, 'a').close()
 
-        # Write key
-        with open(f_keys_temp, 'a') as f_kt:
-            f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
+                ossec_uid = getpwnam("ossec").pw_uid
+                ossec_gid = getgrnam("ossec").gr_gid
+                f_keys_st = stat(common.client_keys)
+                chown(f_keys_temp, ossec_uid, ossec_gid)
+                chmod(f_keys_temp, f_keys_st.st_mode)
 
-        # Overwrite client.keys
-        move(f_keys_temp, common.client_keys)
+                copyfile(common.client_keys, f_keys_temp)
+
+
+                # Write key
+                with open(f_keys_temp, 'a') as f_kt:
+                    f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
+
+                # Overwrite client.keys
+                move(f_keys_temp, common.client_keys)
+            except WazuhException as ex:
+                fcntl.lockf(lock_file, fcntl.LOCK_UN)
+                lock_file.close()
+                raise ex
+            except Exception as ex:
+                fcntl.lockf(lock_file, fcntl.LOCK_UN)
+                lock_file.close()
+                raise WazuhException(1725, str(e))
+
+
+            fcntl.lockf(lock_file, fcntl.LOCK_UN)
+            lock_file.close()
 
         self.id = agent_id
 
