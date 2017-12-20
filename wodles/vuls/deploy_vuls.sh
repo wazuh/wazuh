@@ -1,20 +1,21 @@
 #!/bin/sh
-# December 12, 2017
-
-# ./deploy   <SO>   <version>
-
-# Allowed values:
-# redhat/7, redhat/6, readhat/5,
-# centos/7, centos/6, centos/5
-# ubuntu/16, ubuntu/14, ubuntu/12
-# debian/10, debian/9, debian/8, debian/7
-# oracle/7, oracle/6, oracle/5
+################################################################################
+# Wazuh-Vuls integration deployment script
+# Wazuh Inc.
+# Dec 19, 2017
+################################################################################
 
 if [ $# != 2 ]; then
-    echo "  Use: ./deploy   <SO>   <version>"
+    echo "  Use: ./deploy <SO> <version>"
+    echo
+    echo "  Allowed values:"
+    echo "          - redhat 7, redhat 6, readhat 5"
+    echo "          - centos 7, centos 6, centos 5"
+    echo "          - ubuntu 16, ubuntu 14, ubuntu 12"
+    echo "          - debian 10, debian 9, debian 8, debian 7"
+    echo "          - oracle 7, oracle 6, oracle 5"
     exit 1
 fi
-
 
 OS_NAME=$1
 OS_VER=$2
@@ -27,13 +28,10 @@ PYTHON_PATH="/usr/bin/python"
 echo "  OS NAME: $OS_NAME"
 echo "  OS VERSION: $OS_VER"
 
-
-################################################################################
-
 THREADS=$(grep processor /proc/cpuinfo | wc -l)
 
 echo
-echo "********** Step2. Install requirements **********"
+echo "********** Step1. Install requirements **********"
 echo
 
 if [ "$OS_NAME" = "redhat" ] || [ "$OS_NAME" = "centos" ] || [ "$OS_NAME" = "oracle" ]; then
@@ -42,7 +40,7 @@ if [ "$OS_NAME" = "redhat" ] || [ "$OS_NAME" = "centos" ] || [ "$OS_NAME" = "ora
     fi
     sudo yum -y install sqlite git gcc make wget yum-utils
 elif [ "$OS_NAME" = "ubuntu" ] || [ "$OS_NAME" = "debian" ]; then
-    sudo apt -y install sqlite git gcc make wget
+    sudo apt -y install sqlite git gcc make wget reboot-notifier
 else
     echo "  Enter a valid OS"
     exit 1
@@ -56,7 +54,7 @@ export GOPATH=$INSTALL_PATH/go
 export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 
 echo
-echo "********** Step3. Deploy CVE dictionary **********"
+echo "********** Step2. Deploy CVE dictionary **********"
 echo
 
 mkdir -p $GOPATH/src/github.com/kotakanbe
@@ -69,7 +67,7 @@ make -j$THREADS install
 $PYTHON_PATH $VULS_AGENT --updatenvd --onlyupdate --nvd-year 2002
 
 echo
-echo "********** Step4. Deploy goval-dictionary **********"
+echo "********** Step3. Deploy goval-dictionary **********"
 echo
 
 mkdir -p $GOPATH/src/github.com/kotakanbe
@@ -90,7 +88,7 @@ elif [ "$OS_NAME" = "oracle" ]; then
 fi
 
 echo
-echo "********** Step5. Deploy Vuls *********"
+echo "********** Step4. Deploy Vuls *********"
 echo
 
 mkdir -p $GOPATH/src/github.com/future-architect
@@ -102,7 +100,7 @@ cd vuls
 make -j$THREADS install
 
 echo
-echo "********** Step6. Configuration *********"
+echo "********** Step5. Configuration *********"
 
 cd $INSTALL_PATH
 cat > config.toml <<\EOF
@@ -114,7 +112,7 @@ port = "local"
 EOF
 
 echo
-echo "********** Step7. Check config.toml and settings on the server before scanning *********"
+echo "********** Step6. Check config.toml and settings on the server before scanning *********"
 echo
 
 vuls configtest -log-dir $LOG_PATH

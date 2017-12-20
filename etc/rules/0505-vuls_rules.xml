@@ -35,13 +35,13 @@
       <description>Medium vulnerability $(ScannedCVE) detected in scanning launched on $(ScanDate) with $(Assurance) reliability ($(DetectionMethod)). Score: $(Score) ($(Source)). Affected packages: $(AffectedPackages)</description>
   </rule>
 
-  <rule id="22405" level="9">
+  <rule id="22405" level="10">
       <if_sid>22403</if_sid>
       <field name="Score">^7|^8</field>
       <description>High vulnerability $(ScannedCVE) detected in scanning launched on $(ScanDate) with $(Assurance) reliability ($(DetectionMethod)). Score: $(Score) ($(Source)). Affected packages: $(AffectedPackages)</description>
   </rule>
 
-  <rule id="22406" level="11">
+  <rule id="22406" level="13">
       <if_sid>22403</if_sid>
       <field name="Score">^9|^10</field>
       <description>Critical vulnerability $(ScannedCVE) detected in scanning launched on $(ScanDate) with $(Assurance) reliability ($(DetectionMethod)). Score: $(Score) ($(Source)). Affected packages: $(AffectedPackages)</description>
