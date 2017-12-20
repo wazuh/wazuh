@@ -33,6 +33,7 @@ class WazuhException(Exception):
         1102: 'Invalid section',
         1103: 'Invalid field in section',
         1104: 'Invalid type',
+        1105: 'Error reading API configuration',
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
@@ -88,12 +89,16 @@ class WazuhException(Exception):
         1722: 'Incorrect format for group_id. It can only have letters and numbers. Max length is 256',
         1723: 'Hash algorithm not available',
         1724: 'Not a valid select field',
+        1725: 'Error registering a new agent',
+        1726: 'Ossec authd is not running',
 
         # Manager:
 
         # Database:
         2000: 'No such database file',
         2001: 'Incompatible version of SQLite',
+        2002: 'Maximum attempts exceeded for sqlite3 execute',
+        2003: 'Error in database request',
 
         # Cluster
         3000: 'Cluster',

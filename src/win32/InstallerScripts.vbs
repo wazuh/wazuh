@@ -33,20 +33,30 @@ notify_time     = Replace(args(4), Chr(34), "") 'NOTIFY_TIME
 time_reconnect  = Replace(args(5), Chr(34), "") 'TIME_RECONNECT
 
 ' Only try to set the configuration if variables are setted
-If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or time_reconnect <> "" Then
 
-    Set objFSO = CreateObject("Scripting.FileSystemObject")
-    If objFSO.fileExists(home_dir & "ossec.conf") Then
-        ' Reading ossec.conf file
-        Const ForReading = 1
-        Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForReading)
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+If objFSO.fileExists(home_dir & "ossec.conf") Then
+    ' Reading ossec.conf file
+    Const ForReading = 1
+    Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForReading)
 
-        strText = objFile.ReadAll
-        objFile.Close
+    strText = objFile.ReadAll
+    objFile.Close
 
-        ' Modifying values in ossec.conf
-        strNewText = Replace(strText, "<teststring>", "<teststring>")
-
+    ' Enable syscheck in a fresh installation
+    strNewText = Replace(strText, "<teststring>", "<teststring>")
+    If InStr(strText,"<address>0.0.0.0</address>") > 0 Then
+        Set re = new regexp
+        re.Pattern = "<disabled>yes</disabled>"
+        re.Global = True
+        strNewText = re.Replace(strNewText, "<disabled>no</disabled>") 
+        Set re = new regexp
+        re.Pattern = "<!-- By default it is disabled. In the Install you must choose to enable it. -->"
+        re.Global = True
+        strNewText = re.Replace(strNewText, "") 
+    End If
+    
+    If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or time_reconnect <> "" Then
         If address <> "" and InStr(address,";") > 0 Then 'list of address
             list=Split(address,";")
             formatted_list =""
@@ -120,13 +130,14 @@ If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or 
             End If
         End If
 
-        ' Writing the ossec.conf file
-        const ForWriting = 2
-        Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
-        objFile.WriteLine strNewText
-        objFile.Close
 
     End If
+
+    ' Writing the ossec.conf file
+    const ForWriting = 2
+    Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
+    objFile.WriteLine strNewText
+    objFile.Close
 
 End If
 

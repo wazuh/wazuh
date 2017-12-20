@@ -120,7 +120,8 @@ testconfig()
 # Start function
 start()
 {
-    SDAEMONS="ossec-execd wazuh-modulesd ossec-agentd ossec-logcollector ossec-syscheckd"
+    # Reverse order of daemons
+    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
     echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     checkpid;
@@ -219,9 +220,10 @@ restart)
     unlock
     ;;
 reload)
-    DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd wazuh-modulesd"
+    DAEMONS=$(echo $DAEMONS | sed 's/ossec-execd//')
     lock
     stopa
+    sleep 1
     start
     unlock
     ;;

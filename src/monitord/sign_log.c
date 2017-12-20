@@ -11,19 +11,28 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "monitord.h"
-
+#include <openssl/md5.h>
+#include <openssl/sha.h>
 
 /* Sign a log file */
-void OS_SignLog(const char *logfile, const char *logfile_old, int log_missing)
+void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 {
+    int i;
+    size_t n;
+
     os_md5 mf_sum;
     os_md5 mf_sum_old;
 
     os_sha1 sf_sum;
     os_sha1 sf_sum_old;
 
+    SHA_CTX sha1_ctx;
+    MD5_CTX md5_ctx;
+
     char logfilesum[OS_FLSIZE + 1];
     char logfilesum_old[OS_FLSIZE + 1];
+    char logfile_r[OS_FLSIZE + 1];
+    char buffer[4096];
 
     FILE *fp;
 
@@ -35,8 +44,12 @@ void OS_SignLog(const char *logfile, const char *logfile_old, int log_missing)
     umask(0027);
 
     /* Create the checksum file names */
-    snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile);
-    snprintf(logfilesum_old, OS_FLSIZE, "%s.sum", logfile_old);
+    snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
+    snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile_r);
+    snprintf(logfilesum_old, OS_FLSIZE, "%s.%s.sum", logfile_old, ext);
+
+    MD5_Init(&md5_ctx);
+    SHA1_Init(&sha1_ctx);
 
     /* Generate MD5 of the old file */
     if (OS_MD5_File(logfilesum_old, mf_sum_old, OS_TEXT) < 0) {
@@ -52,21 +65,33 @@ void OS_SignLog(const char *logfile, const char *logfile_old, int log_missing)
         strncpy(sf_sum_old, "none", 6);
     }
 
-    /* Generate MD5 of the current file */
-    if (OS_MD5_File(logfile, mf_sum, OS_TEXT) < 0) {
-        if (log_missing) {
-            merror("File '%s' not found. MD5 checksum skipped.",
-                   logfile);
-        }
-        strncpy(mf_sum, "none", 6);
-    }
+    /* Generate MD5 and SHA-1 of the current file */
 
-    /* Generate SHA-1 of the current file */
-    if (OS_SHA1_File(logfile, sf_sum, OS_TEXT) < 0) {
-        if (log_missing) {
-            merror("File '%s' not found. SHA1 checksum skipped.",
-                   logfile);
+    if (fp = fopen(logfile_r, "r"), fp) {
+        while (n = fread(buffer, 1, 2048, fp), n > 0) {
+            SHA1_Update(&sha1_ctx, buffer, n);
+            MD5_Update(&md5_ctx, buffer, (unsigned long)n);
         }
+
+        fclose(fp);
+
+        // Include rotated files
+
+        for (i = 1; snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext), !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
+            if (fp = fopen(logfile_r, "r"), fp) {
+                while (n = fread(buffer, 1, 2048, fp), n > 0) {
+                    SHA1_Update(&sha1_ctx, buffer, n);
+                    MD5_Update(&md5_ctx, buffer, (unsigned long)n);
+                }
+
+                fclose(fp);
+            } else {
+                merror(FOPEN_ERROR, logfile_r, errno, strerror(errno));
+                break;
+            }
+        }
+    } else {
+        strncpy(mf_sum, "none", 6);
         strncpy(sf_sum, "none", 6);
     }
 
