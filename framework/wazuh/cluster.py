@@ -284,11 +284,12 @@ def read_config():
 
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
 
-def get_nodes():
+def get_nodes(updateDBname=False):
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
 
+    cluster_socket = connect_to_db_socket()
     # list with all the ips the localhost has
     localhost_ips = get_localhost_ips()
     data = []
@@ -314,6 +315,12 @@ def get_nodes():
             data.append({'url':url, 'node':response['node'],
                          'status':'connected', 'cluster':response['cluster']})
 
+            if updateDBname:
+                query = "insertname " + url + " " +response['node']
+                send_to_socket(cluster_socket, query)
+                receive_data_from_db_socket(cluster_socket)
+
+    cluster_socket.close()
     return {'items': data, 'totalItems': len(data)}
 
 
@@ -801,8 +808,8 @@ def receive_zip(zip_file):
 def divide_list(l, size=1000):
     return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
 
-def get_remote_nodes(connected=True):
-    all_nodes = get_nodes()['items']
+def get_remote_nodes(connected=True, updateDBname=False):
+    all_nodes = get_nodes(updateDBname)['items']
 
     # Get connected nodes in the cluster
     if connected:
@@ -1000,7 +1007,7 @@ def sync(debug, force=False):
     own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     own_items_names = own_items.keys()
 
-    remote_nodes = get_remote_nodes()
+    remote_nodes = get_remote_nodes(True, True)
     local_node = get_node()['node']
     logging.info("Starting to sync {0}'s files".format(local_node))
 
