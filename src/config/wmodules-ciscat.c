@@ -1,7 +1,7 @@
 /*
  * Wazuh Module Configuration
  * Copyright (C) 2016 Wazuh Inc.
- * April 27, 2016.
+ * December, 2017.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#ifndef WIN32
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_CONTENT = "content";
@@ -20,10 +21,6 @@ static const char *XML_TIMEOUT = "timeout";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START = "scan-on-start";
 static const char *XML_PROFILE = "profile";
-static const char *XML_XCCDF_ID = "xccdf-id";
-static const char *XML_DS_ID = "datastream-id";
-static const char *XML_CPE = "cpe";
-static const char *XML_OVAL_ID = "oval-id";
 static const char *XML_JAVA_PATH = "java_path";
 static const char *XML_CISCAT_PATH = "ciscat_path";
 static const char *XML_DISABLED = "disabled";
@@ -131,64 +128,6 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
-                } else if (!strcmp(children[j]->element, XML_XCCDF_ID)) {
-                    if (cur_eval->type != WM_CISCAT_XCCDF) {
-                        merror("Tag '%s' on incorrect content type at module '%s'", children[j]->element, WM_CISCAT_CONTEXT.name);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    }
-
-                    free(cur_eval->xccdf_id);
-
-                    if (!strlen(children[j]->content)) {
-                        merror("Invalid content for tag '%s' at module '%s'.", XML_XCCDF_ID, WM_CISCAT_CONTEXT.name);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    }
-
-                    cur_eval->xccdf_id = strdup(children[j]->content);
-                } else if (!strcmp(children[j]->element, XML_OVAL_ID)) {
-                    if (cur_eval->type != WM_CISCAT_OVAL) {
-                        merror("Tag '%s' on incorrect content type at module '%s'", children[j]->element, WM_CISCAT_CONTEXT.name);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    }
-
-                    free(cur_eval->oval_id);
-
-                    if (!strlen(children[j]->content)) {
-                        merror("Invalid content for tag '%s' at module '%s'.", XML_XCCDF_ID, WM_CISCAT_CONTEXT.name);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    }
-
-                    cur_eval->oval_id = strdup(children[j]->content);
-                } else if (!strcmp(children[j]->element, XML_DS_ID)) {
-                    free(cur_eval->ds_id);
-
-                    if (!strlen(children[j]->content)) {
-                        merror("Invalid content for tag '%s' at module '%s'.", XML_DS_ID, WM_CISCAT_CONTEXT.name);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    }
-
-                    cur_eval->ds_id = strdup(children[j]->content);
-                } else if (!strcmp(children[j]->element, XML_CPE)) {
-                    if (cur_eval->type != WM_CISCAT_XCCDF) {
-                        merror("Tag '%s' on incorrect content type at module '%s'", children[j]->element, WM_CISCAT_CONTEXT.name);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    }
-
-                    free(cur_eval->cpe);
-
-                    if (!strlen(children[j]->content)) {
-                        merror("Invalid content for tag '%s' at module '%s'.", XML_CPE, WM_CISCAT_CONTEXT.name);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    }
-
-                    cur_eval->cpe = strdup(children[j]->content);
                 } else {
                     merror("No such tag '%s' at module '%s'.", children[j]->element, WM_CISCAT_CONTEXT.name);
                     OS_ClearNode(children);
@@ -257,3 +196,5 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
     return 0;
 }
+
+#endif

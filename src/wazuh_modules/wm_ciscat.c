@@ -1,13 +1,15 @@
 /*
  * Wazuh Module for CIS-CAT
  * Copyright (C) 2016 Wazuh Inc.
- * April 25, 2016.
+ * December, 2017.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
+#ifndef WIN32
 
 #include "wmodules.h"
 
@@ -185,32 +187,11 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
         }
         break;
     case WM_CISCAT_OVAL:
-        wm_strcat(&command, "-od", ' ');
-        wm_strcat(&command, eval->path, ' ');
-        break;
+        mterror(WM_CISCAT_LOGTAG, "Invalid content type. Exiting...");
+        pthread_exit(NULL);
     default:
         mterror(WM_CISCAT_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
         pthread_exit(NULL);
-    }
-
-    if (eval->xccdf_id) {
-        wm_strcat(&command, "--xccdf-id", ' ');
-        wm_strcat(&command, eval->xccdf_id, ' ');
-    }
-
-    if (eval->oval_id) {
-        wm_strcat(&command, "--oval-id", ' ');
-        wm_strcat(&command, eval->oval_id, ' ');
-    }
-
-    if (eval->ds_id) {
-        wm_strcat(&command, "--ds-id", ' ');
-        wm_strcat(&command, eval->ds_id, ' ');
-    }
-
-    if (eval->cpe) {
-        wm_strcat(&command, "--cpe", ' ');
-        wm_strcat(&command, eval->cpe, ' ');
     }
 
     // Specify directory where saving reports
@@ -230,6 +211,10 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     // Do not create HTML report
 
     wm_strcat(&command, "-n", ' ');
+
+    // Show all tests (Not selected included)
+
+    wm_strcat(&command, "-y", ' ');
 
     // Send rootcheck message
 
@@ -358,7 +343,12 @@ void wm_ciscat_parser(wm_ciscat_eval *eval){
                 char benchmark[OS_MAXSTR];
                 snprintf(benchmark, OS_MAXSTR - 1, "%s", string);
                 cJSON_AddStringToObject(data, "benchmark", benchmark);
-                cJSON_AddStringToObject(data, "profile", eval->profile);
+                if (eval->profile){
+                    cJSON_AddStringToObject(data, "profile", eval->profile);
+                } else {
+                    cJSON_AddStringToObject(data, "profile", "No profile set.");
+                }
+
 
             } else if (line == 2) {
 
@@ -611,12 +601,10 @@ void wm_ciscat_destroy(wm_ciscat *ciscat) {
         next_eval = cur_eval->next;
         free(cur_eval->path);
         free(cur_eval->profile);
-        free(cur_eval->xccdf_id);
-        free(cur_eval->oval_id);
-        free(cur_eval->ds_id);
-        free(cur_eval->cpe);
         free(cur_eval);
     }
 
     free(ciscat);
 }
+
+#endif
