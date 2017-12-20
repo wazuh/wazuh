@@ -130,6 +130,16 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
             sqlite3_close(db);
             mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
         }
+
+        char *create4 = "CREATE TABLE IF NOT EXISTS node_name_ip (" \
+                        "name      TEXT," \
+                        "id_manager TEXT PRIMARY KEY)";
+        rc = sqlite3_exec(db, create4, NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            sqlite3_close(db);
+            mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
+        }
+
         rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
@@ -203,9 +213,14 @@ void* daemon_socket() {
     char *sql_ins_fi = "INSERT OR REPLACE INTO file_integrity VALUES (?,?,?)";
     char *sql_sel_fi = "SELECT * FROM file_integrity LIMIT ? OFFSET ?";
     char *sql_count_fi = "SELECT Count(*) FROM file_integrity";
+    // sql sentence to manage IP from name
+    char *sql_sel_by_name = "SELECT manager_file_status.id_manager as id_manager, manager_file_status.id_file as id_file, manager_file_status.status as status FROM node_name_ip INNER JOIN manager_file_status ON manager_file_status.id_manager = node_name_ip.id_manager WHERE node_name_ip.name = ? LIMIT ? OFFSET ?";
+    char *sql_sel_ip_by_name = "SELECT id_manager FROM node_name_ip WHERE name = ?";
+    char *sql_upd_ip_name = "UPDATE node_name_ip SET name = ? WHERE id_manager = ?";
+    char *sql_ins_ip_name = "INSERT OR REPLACE INTO node_name_ip VALUES (?,?)";
 
     char *sql;
-    bool has1, has2, has3, select, count, select_last_sync, select_files;
+    bool has1, has2, has3, select, count, select_last_sync, select_files, response_str;
 
     if (listen(fd, 5) == -1) {
         mterror_exit(DB_TAG, "Error listening in socket: %s", strerror(errno));
@@ -224,7 +239,7 @@ void* daemon_socket() {
         memset(buf, 0, sizeof(buf));
         memset(response, 0, sizeof(response));
         while ( (rc=recv(cl,buf,sizeof(buf),0)) > 0) {
-            has1=false; has2=false; has3=false; select=false; count=false; select_last_sync=false; select_files=false;
+            has1=false; has2=false; has3=false; select=false; count=false; select_last_sync=false; select_files=false; response_str=false;
 
             cmd = strtok(buf, " ");
             mtdebug2(DB_TAG,"Received %s command", cmd);
@@ -280,6 +295,25 @@ void* daemon_socket() {
             } else if (cmd != NULL && strcmp(cmd, "countfiles") == 0) {
                 sql = sql_count_fi;
                 count = true;
+            } else if (cmd != NULL && strcmp(cmd, "selectbyname") == 0) {
+                sql = sql_sel_by_name;
+                select = true;
+                has1 = true; // name
+                has2 = true; // limit
+                has3 = true; // offset
+                strcpy(response, " ");
+            } else if (cmd != NULL && strcmp(cmd, "getip") == 0) {
+                sql = sql_sel_ip_by_name;
+                has1 = true; // name
+                response_str = true;
+            } else if (cmd != NULL && strcmp(cmd, "updatename") == 0) {
+                sql = sql_upd_ip_name;
+                has1 = true; // name
+                has2 = true; // ip
+            } else if (cmd != NULL && strcmp(cmd, "insertname") == 0) {
+                sql = sql_ins_ip_name;
+                has1 = true; // name
+                has2 = true; // ip
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
@@ -324,7 +358,7 @@ void* daemon_socket() {
                     
                     do {
                         step = sqlite3_step(res);
-                        if (step == SQLITE_DONE && !count && !select && !select_files) {
+                        if (step == SQLITE_DONE && !count && !select && !select_files && !response_str) {
                             strcpy(response, "Command OK");
                             break;
                         }
@@ -343,6 +377,8 @@ void* daemon_socket() {
                             char str[100];
                             sprintf(str, "%s*%s*%d ", (char *)sqlite3_column_text(res, 0), (char *)sqlite3_column_text(res, 1), sqlite3_column_int(res, 2));
                             strcat(response, str);
+                        } else if (response_str) {
+                            strcpy(response, (char *)sqlite3_column_text(res,0));
                         } else 
                             strcpy(response, "Command OK");
                     } while (step == SQLITE_ROW || step == SQLITE_OK);
