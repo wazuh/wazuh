@@ -76,6 +76,15 @@ off_t fsize(char *file) {
     return 0;
 }
 
+/* function to get the modification date of a fize */
+time_t mod_time(char *file) {
+    struct stat filestat;
+    if (stat(file, &filestat) == 0) {
+        return filestat.st_mtime;
+    }
+    return 0;
+}
+
 /* Read a file and store data into a byte array
    size: length of the array
    The funcion will read (size-1) bytes and terminate the string
@@ -205,6 +214,7 @@ void* daemon_socket() {
     char *sql_ins_fi = "INSERT OR REPLACE INTO file_integrity VALUES (?,?,?)";
     char *sql_sel_fi = "SELECT * FROM file_integrity LIMIT ? OFFSET ?";
     char *sql_count_fi = "SELECT Count(*) FROM file_integrity";
+    char *sql_upd_fi = "UPDATE file_integrity SET md5 = ?, mod_date = ? WHERE filename = ?";
 
     char *sql;
     bool has1, has2, has3, select, count, select_last_sync, select_files;
@@ -282,6 +292,11 @@ void* daemon_socket() {
             } else if (cmd != NULL && strcmp(cmd, "countfiles") == 0) {
                 sql = sql_count_fi;
                 count = true;
+            } else if (cmd != NULL && strcmp(cmd, "updatefile") == 0) {
+                sql = sql_upd_fi;
+                has1 = true;
+                has2 = true;
+                has3 = true;
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
@@ -652,7 +667,7 @@ void* inotify_reader(void * args) {
         buffer[count - 1] = '\0';
 
         for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
-            char cmd[80];
+            char cmd[100];
 
             event = (struct inotify_event*)&buffer[i];
             mtdebug2(INOTIFY_TAG,"inotify: i='%d', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
@@ -674,6 +689,23 @@ void* inotify_reader(void * args) {
                         strcpy(cmd, "update1 ");
                         strcat(cmd, files[j].name);
                         strcat(cmd, event->name);
+
+                        inotify_push_request(cmd);
+                        memset(cmd,0,sizeof(cmd));
+
+                        os_md5 md5_file;
+                        if (OS_MD5_File(files[j].path, md5_file, OS_BINARY) < 0) {
+                            mterror(INOTIFY_TAG, "Could not compute MD5 of file %s", files[j].path);
+                            ignore = true;
+                            continue;
+                        }
+
+                        if (sprintf(cmd, "updatefile %s %ld %s", md5_file, mod_time(files[j].path), files[j].path) >= 100) {
+                            mterror(INOTIFY_TAG, "String overflow sending file updates to database in file %s", files[j].path);
+                            ignore = true;
+                            continue;
+                        }
+
                     } else if (event->mask & IN_Q_OVERFLOW) {
                         mtinfo(INOTIFY_TAG, "Inotify event queue overflowed");
                         ignore = true;
