@@ -749,7 +749,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         id_exist = keys.keyentries[index]->id;
                         minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
                         add_backup(keys.keyentries[index]);
-                        OS_DeleteKey(&keys, id_exist);
+                        OS_DeleteKey(&keys, id_exist, 0);
                     } else {
                         pthread_mutex_unlock(&mutex_keys);
                         merror("Duplicated IP %s", srcip);
@@ -785,7 +785,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     id_exist = keys.keyentries[index]->id;
                     minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
                     add_backup(keys.keyentries[index]);
-                    OS_DeleteKey(&keys, id_exist);
+                    OS_DeleteKey(&keys, id_exist, 0);
                 } else {
                     strncpy(fname, agentname, 2048);
 
@@ -848,7 +848,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 merror("SSL write error (%d)", ret);
                 merror("Agent key not saved for %s", agentname);
                 ERR_print_errors_fp(stderr);
-                OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id);
+                OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
             } else {
                 /* Add pending key to write */
                 add_insert(keys.keyentries[keys.keysize - 1]);

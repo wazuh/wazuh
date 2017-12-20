@@ -27,6 +27,7 @@ except Exception as e:
 #      <name>virustotal</name>
 #      <api_key>api_key_here</api_key>
 #      <group>syscheck</group>
+#      <alert_format>json</alert_format>
 #  </integration>
 
 # Global vars

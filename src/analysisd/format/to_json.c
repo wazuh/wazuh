@@ -92,7 +92,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->generated_rule->frequency){
             cJSON_AddNumberToObject(rule, "frequency", lf->generated_rule->frequency);
         }
-        if(lf->generated_rule->firedtimes){
+        if(lf->generated_rule->firedtimes && !(lf->generated_rule->alert_opts & NO_COUNTER)) {
             cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->firedtimes);
         }
         cJSON_AddItemToObject(rule, "mail", cJSON_CreateBool(lf->generated_rule->alert_opts & DO_MAILALERT));
@@ -237,9 +237,16 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
     }
 
-    if(lf->program_name) {
+    if (lf->program_name || lf->dec_timestamp) {
         cJSON_AddItemToObject(root, "predecoder", predecoder = cJSON_CreateObject());
-        cJSON_AddStringToObject(predecoder, "program_name", lf->program_name);
+
+        if (lf->program_name) {
+            cJSON_AddStringToObject(predecoder, "program_name", lf->program_name);
+        }
+
+        if (lf->dec_timestamp) {
+            cJSON_AddStringToObject(predecoder, "timestamp", lf->dec_timestamp);
+        }
     }
 
     if(lf->id)

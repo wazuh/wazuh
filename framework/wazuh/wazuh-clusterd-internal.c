@@ -76,11 +76,22 @@ off_t fsize(char *file) {
     return 0;
 }
 
+/* function to get the modification date of a fize */
+time_t mod_time(char *file) {
+    struct stat filestat;
+    if (stat(file, &filestat) == 0) {
+        return filestat.st_mtime;
+    }
+    return 0;
+}
+
 /* Read a file and store data into a byte array
    size: length of the array
    The funcion will read (size-1) bytes and terminate the string
 */
 void read_file(char * pathname, char * buffer, off_t size) {
+    if (size < 0) mterror_exit("File %s is empty", pathname);
+    size_t unsigned_size = (size_t)size;
     FILE * pFile;
     size_t result;
 
@@ -89,9 +100,9 @@ void read_file(char * pathname, char * buffer, off_t size) {
         mterror_exit(MAIN_TAG, "Error opening file: %s", strerror(errno));
 
     // copy the file into the buffer
-    result = fread(buffer, sizeof(char), size-1, pFile);
-    buffer[size - 1] = '\0';
-    if (result != size-1)
+    result = fread(buffer, sizeof(char), unsigned_size-1, pFile);
+    buffer[unsigned_size - 1] = '\0';
+    if (result != unsigned_size-1)
         mterror_exit(MAIN_TAG, "Error reading file: %s", strerror(errno));
 
     // terminte
@@ -213,6 +224,7 @@ void* daemon_socket() {
     char *sql_ins_fi = "INSERT OR REPLACE INTO file_integrity VALUES (?,?,?)";
     char *sql_sel_fi = "SELECT * FROM file_integrity LIMIT ? OFFSET ?";
     char *sql_count_fi = "SELECT Count(*) FROM file_integrity";
+    char *sql_upd_fi = "UPDATE file_integrity SET md5 = ?, mod_date = ? WHERE filename = ?";
     // sql sentence to manage IP from name
     char *sql_sel_by_name = "SELECT manager_file_status.id_manager as id_manager, manager_file_status.id_file as id_file, manager_file_status.status as status FROM node_name_ip INNER JOIN manager_file_status ON manager_file_status.id_manager = node_name_ip.id_manager WHERE node_name_ip.name = ? LIMIT ? OFFSET ?";
     char *sql_sel_ip_by_name = "SELECT id_manager FROM node_name_ip WHERE name = ?";
@@ -295,6 +307,11 @@ void* daemon_socket() {
             } else if (cmd != NULL && strcmp(cmd, "countfiles") == 0) {
                 sql = sql_count_fi;
                 count = true;
+            } else if (cmd != NULL && strcmp(cmd, "updatefile") == 0) {
+                sql = sql_upd_fi;
+                has1 = true;
+                has2 = true;
+                has3 = true;
             } else if (cmd != NULL && strcmp(cmd, "selectbyname") == 0) {
                 sql = sql_sel_by_name;
                 select = true;
@@ -440,7 +457,7 @@ typedef struct {
 
 /* Convert a inotify flag string to int mask */
 uint32_t get_flag_mask(cJSON * flags) {
-    unsigned int i;
+    int i;
     uint32_t mask = 0;
     for (i = 0; i < cJSON_GetArraySize(flags); i++) {
         char * flag = cJSON_GetArrayItem(flags, i)->valuestring;
@@ -472,7 +489,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
     struct dirent *direntp;
     DIR *dirp;
     unsigned int found_subdirs = 0;
-    int i=0;
+    unsigned int i=0;
     char **subdirs = *_subdirs;
     char **more_subdirs;
     for (i=0; i<max_files_to_watch; i++) if (subdirs[i] == 0) break;
@@ -496,7 +513,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
             
             size_t name_size = (sizeof(path) + sizeof(direntp->d_name) + sizeof("/")  + 1) * sizeof(char);
             subdirs[found_subdirs+i] = (char *) malloc(name_size);
-            if (snprintf(subdirs[found_subdirs+i], name_size, "%s%s/", path, direntp->d_name) >= name_size)
+            if (snprintf(subdirs[found_subdirs+i], name_size, "%s%s/", path, direntp->d_name) >= (ssize_t)name_size)
                 mterror(INOTIFY_TAG, "String overflow in directory name %s%s", path, direntp->d_name);
 
             found_subdirs += get_subdirs(subdirs[found_subdirs+i], _subdirs, max_files_to_watch) + 1;
@@ -511,7 +528,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
 
 /* Check if event filename is on ignore list */
 bool check_if_ignore(cJSON * exclude_files, char * event_filename) {
-    unsigned int i;
+    int i;
     bool exclude = false;
     for (i = 0; i < cJSON_GetArraySize(exclude_files); i++) {
         char * filename = cJSON_GetArrayItem(exclude_files, i)->valuestring;
@@ -541,7 +558,8 @@ cJSON * read_cluster_json_file() {
 
 /* get directories and subdirectories to watch with inotify */
 unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, cJSON * root) {
-    unsigned int i = 0, n_files_to_watch = 0, max_files_to_watch = 30;
+    unsigned int n_files_to_watch = 0, max_files_to_watch = 30;
+    int i = 0;
     inotify_watch_file * more_files = NULL, * files = *_files;
 
     for (i = 0; i < cJSON_GetArraySize(root); i++) {
@@ -664,7 +682,8 @@ end:
 void* inotify_reader(void * args) {
     inotify_reader_arguments* reader_args = (inotify_reader_arguments*) args;
 
-    int i, fd = reader_args->fd, n_files_to_watch = reader_args->n_files_to_watch;
+    int i, fd = reader_args->fd;
+    unsigned int n_files_to_watch = reader_args->n_files_to_watch;
     inotify_watch_file * files = reader_args->files;
     cJSON * root = reader_args->root;
 
@@ -684,7 +703,7 @@ void* inotify_reader(void * args) {
         buffer[count - 1] = '\0';
 
         for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
-            char cmd[80];
+            char cmd[100];
 
             event = (struct inotify_event*)&buffer[i];
             mtdebug2(INOTIFY_TAG,"inotify: i='%d', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
@@ -706,6 +725,23 @@ void* inotify_reader(void * args) {
                         strcpy(cmd, "update1 ");
                         strcat(cmd, files[j].name);
                         strcat(cmd, event->name);
+
+                        inotify_push_request(cmd);
+                        memset(cmd,0,sizeof(cmd));
+
+                        os_md5 md5_file;
+                        if (OS_MD5_File(files[j].path, md5_file, OS_BINARY) < 0) {
+                            mterror(INOTIFY_TAG, "Could not compute MD5 of file %s", files[j].path);
+                            ignore = true;
+                            continue;
+                        }
+
+                        if (sprintf(cmd, "updatefile %s %ld %s", md5_file, mod_time(files[j].path), files[j].path) >= 100) {
+                            mterror(INOTIFY_TAG, "String overflow sending file updates to database in file %s", files[j].path);
+                            ignore = true;
+                            continue;
+                        }
+
                     } else if (event->mask & IN_Q_OVERFLOW) {
                         mtinfo(INOTIFY_TAG, "Inotify event queue overflowed");
                         ignore = true;

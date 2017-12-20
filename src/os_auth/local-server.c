@@ -54,7 +54,7 @@ static char* local_dispatch(const char *input);
 static cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force);
 
 // Remove an agent
-static cJSON* local_remove(const char *id);
+static cJSON* local_remove(const char *id, int purge);
 
 // Get agent data
 static cJSON* local_get(const char *id);
@@ -186,6 +186,7 @@ char* local_dispatch(const char *input) {
         response = local_add(id, name, ip, key, force);
     } else if (!strcmp(function->valuestring, "remove")) {
         cJSON *item;
+        int purge;
 
         if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
             ierror = ENOARGUMENT;
@@ -197,7 +198,8 @@ char* local_dispatch(const char *input) {
             goto fail;
         }
 
-        response = local_remove(item->valuestring);
+        purge = cJSON_IsTrue(cJSON_GetObjectItem(arguments, "purge"));
+        response = local_remove(item->valuestring, purge);
     } else if (!strcmp(function->valuestring, "get")) {
         cJSON *item;
 
@@ -265,7 +267,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
                 id_exist = keys.keyentries[index]->id;
                 minfo("Duplicated IP '%s' (%s). Saving backup.", ip, id_exist);
                 add_backup(keys.keyentries[index]);
-                OS_DeleteKey(&keys, id_exist);
+                OS_DeleteKey(&keys, id_exist, 0);
             } else {
                 ierror = EDUPIP;
                 goto fail;
@@ -287,7 +289,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
             id_exist = keys.keyentries[index]->id;
             minfo("Duplicated name '%s' (%s). Saving backup.", name, id_exist);
             add_backup(keys.keyentries[index]);
-            OS_DeleteKey(&keys, id_exist);
+            OS_DeleteKey(&keys, id_exist, 0);
         } else {
             ierror = EDUPNAME;
             goto fail;
@@ -333,11 +335,11 @@ fail:
 }
 
 // Remove an agent
-cJSON* local_remove(const char *id) {
+cJSON* local_remove(const char *id, int purge) {
     int index;
     cJSON *response = cJSON_CreateObject();
 
-    mdebug2("local_remove(%s)", id);
+    mdebug2("local_remove(id='%s', purge=%d)", id, purge);
 
     pthread_mutex_lock(&mutex_keys);
 
@@ -349,7 +351,7 @@ cJSON* local_remove(const char *id) {
         minfo("Agent '%s' (%s) deleted (requested locally)", id, keys.keyentries[index]->name);
         /* Add pending key to write */
         add_remove(keys.keyentries[index]);
-        OS_DeleteKey(&keys, id);
+        OS_DeleteKey(&keys, id, purge);
         write_pending = 1;
         pthread_cond_signal(&cond_pending);
 

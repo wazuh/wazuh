@@ -80,7 +80,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
             time_sleep = oscap->state.next_time = 0;
         }
 
-        if (wm_state_io(&WM_OSCAP_CONTEXT, WM_IO_WRITE, &oscap->state, sizeof(oscap->state)) < 0)
+        if (wm_state_io(WM_OSCAP_CONTEXT.name, WM_IO_WRITE, &oscap->state, sizeof(oscap->state)) < 0)
             mterror(WM_OSCAP_LOGTAG, "Couldn't save running state.");
 
         // If time_sleep=0, yield CPU
@@ -100,7 +100,7 @@ void wm_oscap_setup(wm_oscap *_oscap) {
 
     // Read running state
 
-    if (wm_state_io(&WM_OSCAP_CONTEXT, WM_IO_READ, &oscap->state, sizeof(oscap->state)) < 0)
+    if (wm_state_io(WM_OSCAP_CONTEXT.name, WM_IO_READ, &oscap->state, sizeof(oscap->state)) < 0)
         memset(&oscap->state, 0, sizeof(oscap->state));
 
     if (isDebug())

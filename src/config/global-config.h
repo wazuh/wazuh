@@ -103,6 +103,9 @@ typedef struct __Config {
     char *node_name;
     unsigned char hide_cluster_info;
 
+    int rotate_interval;
+    int min_rotate_interval;
+    ssize_t max_output_size;
 } _Config;
 
 #endif /* _CCONFIG__H */

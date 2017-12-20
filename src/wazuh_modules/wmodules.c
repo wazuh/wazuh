@@ -13,7 +13,8 @@
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
-int wm_max_eps;
+int wm_max_eps;             // Maximum events per second sent by OpenScap Wazuh Module
+int wm_kill_timeout;        // Time for a process to quit before killing it
 
 // Add module to the global list
 
@@ -156,12 +157,12 @@ char** wm_strtok(char *string) {
 
 // Load or save the running state
 
-int wm_state_io(const wm_context *context, int op, void *state, size_t size) {
+int wm_state_io(const char * tag, int op, void *state, size_t size) {
     char path[PATH_MAX] = { '\0' };
     size_t nmemb;
     FILE *file;
 
-    snprintf(path, PATH_MAX, "%s/%s", WM_STATE_DIR, context->name);
+    snprintf(path, PATH_MAX, "%s/%s", WM_STATE_DIR, tag);
 
     if (!(file = fopen(path, op == WM_IO_WRITE ? "w" : "r")))
         return -1;

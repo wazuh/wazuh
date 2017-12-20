@@ -21,20 +21,22 @@ static void helpmsg()
 {
     printf("\n%s %s: Control remote agents.\n", __ossec_name, ARGV0);
     printf("Available options:\n");
-    printf("\t-h          This help message.\n");
-    printf("\t-l          List available (active or not) agents.\n");
-    printf("\t-lc         List active agents.\n");
-    printf("\t-i <id>     Extracts information from an agent.\n");
-    printf("\t-R -a       Restart all agents.\n");
-    printf("\t-R -u <id>  Restart the specified agent.\n");
-    printf("\t-r -a       Runs the integrity/rootkit checking on all agents now.\n");
-    printf("\t-r -u <id>  Runs the integrity/rootkit checking on one agent now.\n\n");
-    printf("\t-b <ip>     Blocks the specified ip address.\n");
-    printf("\t-f <ar>     Used with -b, specifies which response to run.\n");
-    printf("\t-L          List available active responses.\n");
-    printf("\t-m          Show the limit of agents that can be added.\n");
-    printf("\t-s          Changes the output to CSV (comma delimited).\n");
-	printf("\t-j          Changes the output to JSON .\n");
+    printf("\t-h                This help message.\n");
+    printf("\t-l                List available (active or not) agents.\n");
+    printf("\t-lc               List active agents.\n");
+    printf("\t-i <id>           Extracts information from an agent.\n");
+    printf("\t-R -a             Restart all agents.\n");
+    printf("\t-R -u <id>        Restart the specified agent.\n");
+    printf("\t-r -a             Runs the integrity/rootkit checking on all agents now.\n");
+    printf("\t-r -u <id>        Runs the integrity/rootkit checking on one agent now.\n\n");
+    printf("\t-s                Changes the output to CSV (comma delimited).\n");
+    printf("\t-j                Changes the output to JSON .\n");
+    printf("\t-m                Show the limit of agents that can be added.\n");
+    printf("Available options for active response:\n");
+    printf("\t-b <ip>           Blocks the specified ip address.\n");
+    printf("\t-f <ar> -a        Used with -b, specifies which response to run. Apply AR on all agents.\n");
+    printf("\t-f <ar> -u <id>   Used with -b, specifies which response to run. Apply AR on specified agent.\n");
+    printf("\t-L                List available active responses.\n");
     exit(1);
 }
 
@@ -605,6 +607,38 @@ int main(int argc, char **argv)
     /* Run active response on the specified agent id */
     if (ip_address && ar && (agent_id || restart_all_agents)) {
         /* Connect to remoted */
+        FILE *fp;
+        int pass = 0;
+
+        if (fp = fopen(DEFAULTAR, "r"), fp) {
+            char name[256];
+            char command[256];
+            unsigned timeout;
+            char end;
+            int line;
+            int r;
+
+            for (line = 1; r = fscanf(fp, "%255s - %255s - %u%c", name, command, &timeout, &end), r == 4; line++) {
+                if (strcmp(name, ar) == 0) {
+                    pass = 1;
+                    break;
+                }
+            }
+
+            if (r != 4 && r != EOF) {
+                printf("\n** Active response file is corrupted at line %d.\n", line);
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            printf("\n** Active response is not available.\n");
+            exit(EXIT_FAILURE);
+        }
+
+        if (!pass) {
+            printf("\n** Selected active response does not exist.\n");
+            exit(EXIT_FAILURE);
+        }
+
         mdebug1("Connecting to remoted...");
         arq = connect_to_remoted();
         if (arq < 0) {

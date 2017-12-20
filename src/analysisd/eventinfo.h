@@ -30,6 +30,7 @@ typedef struct _Eventinfo {
     char *hostname;
     char *program_name;
     char *comment;
+    char *dec_timestamp;
 
     /* Extracted from the decoders */
     char *srcip;
