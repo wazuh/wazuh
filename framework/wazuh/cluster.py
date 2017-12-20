@@ -291,11 +291,12 @@ def read_config():
 
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
 
-def get_nodes():
+def get_nodes(updateDBname=False):
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
 
+    cluster_socket = connect_to_db_socket()
     # list with all the ips the localhost has
     localhost_ips = get_localhost_ips()
     data = []
@@ -321,6 +322,12 @@ def get_nodes():
             data.append({'url':url, 'node':response['node'],
                          'status':'connected', 'cluster':response['cluster']})
 
+            if updateDBname:
+                query = "insertname " + url + " " +response['node']
+                send_to_socket(cluster_socket, query)
+                receive_data_from_db_socket(cluster_socket)
+
+    cluster_socket.close()
     return {'items': data, 'totalItems': len(data)}
 
 
@@ -346,8 +353,9 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
 
     # check files in database
     count_query = "count {0}".format(node)
-    cluster_socket.send(count_query)
-    n_files = int(receive_data_from_db_socket(cluster_socket))
+    send_to_socket(cluster_socket, count_query)
+    n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
+
     if n_files == 0:
         logging.info("New manager found: {0}".format(node))
         logging.debug("Adding {0}'s files to database".format(node))
@@ -359,8 +367,8 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
             for file in files:
                 insert_sql += " {0} {1}".format(node, file)
 
-            cluster_socket.send(insert_sql)
-            data = receive_data_from_db_socket(cluster_socket)
+            send_to_socket(cluster_socket, insert_sql)
+            data = cluster_socket.recv(10000)
 
     else:
         logging.debug("Retrieving {0}'s files from database".format(node))
@@ -373,7 +381,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
                 all_files[m] = 'pending'
                 insert_sql += " {0} {1}".format(node,m)
 
-            cluster_socket.send(insert_sql)
+            send_to_socket(cluster_socket, insert_sql)
             data = receive_data_from_db_socket(cluster_socket)
 
 
@@ -397,7 +405,10 @@ def connect_to_db_socket(retry=False):
     return cluster_socket
 
 def receive_data_from_db_socket(cluster_socket):
-    return filter(lambda x: x != '\x00', cluster_socket.recv(10000))
+    return ''.join(filter(lambda x: x != '\x00', cluster_socket.recv(10000).decode()))
+
+def send_to_socket(cluster_socket, query):
+    cluster_socket.send(query.encode())
 
 def scan_for_new_files():
     cluster_socket = connect_to_db_socket()
@@ -450,7 +461,7 @@ def list_files_from_filesystem(node_type, cluster_items):
 
 def get_file_status(manager, cluster_socket):
     count_query = "count {0}".format(manager)
-    cluster_socket.send(count_query)
+    send_to_socket(cluster_socket, count_query)
     n_files = int(receive_data_from_db_socket(cluster_socket))
 
     # limit = 100
@@ -458,7 +469,7 @@ def get_file_status(manager, cluster_socket):
     file_status = ""
     for offset in range(0,n_files,100):
         query += str(offset)
-        cluster_socket.send(query)
+        send_to_socket(cluster_socket, query)
         file_status += receive_data_from_db_socket(cluster_socket)
 
     # retrieve all files for a node in database with its status
@@ -498,7 +509,7 @@ def get_last_sync():
     """
     cluster_socket = connect_to_db_socket()
 
-    cluster_socket.send("sellast")
+    send_to_socket(cluster_socket, "sellast")
     
     date, duration = receive_data_from_db_socket(cluster_socket).split(" ")
 
@@ -517,7 +528,7 @@ def clear_file_status_one_node(manager, cluster_socket):
     for file in files:
         update_sql += " pending {0} {1}".format(manager, file)
 
-        cluster_socket.send(update_sql)
+        send_to_socket(cluster_socket, update_sql)
         received = receive_data_from_db_socket(cluster_socket)
 
 
@@ -530,7 +541,7 @@ def update_file_info_bd(cluster_socket, files):
         for fname, finfo in file:
             query += "{} {} {} ".format(fname, finfo['md5'], finfo['timestamp'])
 
-        cluster_socket.send(query)
+        send_to_socket(cluster_socket, query)
         received = receive_data_from_db_socket(cluster_socket)
 
 
@@ -547,7 +558,7 @@ def clear_file_status():
     cluster_socket = connect_to_db_socket(retry=True)
 
     # n files DB
-    cluster_socket.send("countfiles")
+    send_to_socket(cluster_socket, "countfiles")
     n_files_db = int(receive_data_from_db_socket(cluster_socket))
 
     # Only update status for modified files
@@ -557,7 +568,7 @@ def clear_file_status():
         file_status = ""
         for offset in range(0, n_files_db, 100):
             query += str(offset)
-            cluster_socket.send(query)
+            send_to_socket(cluster_socket, query)
             file_status += receive_data_from_db_socket(cluster_socket)
         
         db_items = {filename:{'md5': md5, 'timestamp': timestamp} for filename, 
@@ -571,7 +582,7 @@ def clear_file_status():
             local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5'] 
                             or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
             query += ' '.join(local_items.keys())
-            cluster_socket.send(query)
+            send_to_socket(cluster_socket, query)
             received = receive_data_from_db_socket(cluster_socket)
             new_items.update(local_items)
     else:
@@ -815,8 +826,8 @@ def receive_zip(zip_file):
 def divide_list(l, size=1000):
     return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
 
-def get_remote_nodes(connected=True):
-    all_nodes = get_nodes()['items']
+def get_remote_nodes(connected=True, updateDBname=False):
+    all_nodes = get_nodes(updateDBname)['items']
 
     # Get connected nodes in the cluster
     if connected:
@@ -836,7 +847,7 @@ def get_remote_nodes(connected=True):
 def get_file_status_of_one_node(node, own_items_names, cluster_socket):
     # check files in database
     count_query = "count {0}".format(node)
-    cluster_socket.send(count_query)
+    send_to_socket(cluster_socket, count_query)
     n_files = int(receive_data_from_db_socket(cluster_socket))
     if n_files == 0:
         logging.info("New manager found: {0}".format(node))
@@ -849,7 +860,7 @@ def get_file_status_of_one_node(node, own_items_names, cluster_socket):
             for file in files:
                 insert_sql += " {0} {1}".format(node, file)
 
-            cluster_socket.send(insert_sql)
+            send_to_socket(cluster_socket, insert_sql)
             data = receive_data_from_db_socket(cluster_socket)
 
         all_files = {file:'pending' for file in own_items_names}
@@ -865,7 +876,7 @@ def get_file_status_of_one_node(node, own_items_names, cluster_socket):
                 all_files[m] = 'pending'
                 insert_sql += " {0} {1}".format(node,m)
 
-            cluster_socket.send(insert_sql)
+            send_to_socket(cluster_socket, insert_sql)
             data = receive_data_from_db_socket(cluster_socket)
 
     return all_files
@@ -914,7 +925,7 @@ def update_node_db_after_sync(data, node, cluster_socket):
         for u in updated:
             update_sql += " synchronized {0} /{1}".format(node, u)
 
-        cluster_socket.send(update_sql)
+        send_to_socket(cluster_socket, update_sql)
         received = receive_data_from_db_socket(cluster_socket)
 
     for failed in divide_list(data['files']['error']):
@@ -929,10 +940,10 @@ def update_node_db_after_sync(data, node, cluster_socket):
             else:
                 update_sql += " failed {0} {1}".format(node, f)
 
-        cluster_socket.send(update_sql)
+        send_to_socket(cluster_socket, update_sql)
         received = receive_data_from_db_socket(cluster_socket)
         if len(delete_sql) > len("delete1"):
-            cluster_socket.send(delete_sql)
+            send_to_socket(cluster_socket, delete_sql)
             received = receive_data_from_db_socket(cluster_socket)
 
     for invalid in divide_list(data['files']['invalid']):
@@ -940,7 +951,7 @@ def update_node_db_after_sync(data, node, cluster_socket):
         for i in invalid:
             update_sql += " invalid {0} {1}".format(node, i)
 
-        cluster_socket.send(update_sql)
+        send_to_socket(cluster_socket, update_sql)
         received = receive_data_from_db_socket(cluster_socket)
 
 
@@ -986,9 +997,9 @@ def sync_one_node(debug, node, force=False):
     update_node_db_after_sync(result, node, cluster_socket)
     after = time()
     synchronization_duration += after-before
-    cluster_socket.send("clearlast")
+    send_to_socket(cluster_socket, "clearlast")
     received = receive_data_from_db_socket(cluster_socket)
-    cluster_socket.send("updatelast {0} {1}".format(synchronization_date, int(synchronization_duration)))
+    send_to_socket(cluster_socket, "updatelast {0} {1}".format(synchronization_date, int(synchronization_duration)))
     received = receive_data_from_db_socket(cluster_socket)
     cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
@@ -1021,7 +1032,7 @@ def sync(debug, force=False):
     own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     own_items_names = own_items.keys()
 
-    remote_nodes = get_remote_nodes()
+    remote_nodes = get_remote_nodes(True, True)
     local_node = get_node()['node']
     logging.info("Starting to sync {0}'s files".format(local_node))
 
@@ -1070,9 +1081,9 @@ def sync(debug, force=False):
 
     after = time()
     synchronization_duration += after-before
-    cluster_socket.send("clearlast")
+    send_to_socket(cluster_socket, "clearlast")
     received = receive_data_from_db_socket(cluster_socket)
-    cluster_socket.send("updatelast {0} {1}".format(int(synchronization_date), synchronization_duration))
+    send_to_socket(cluster_socket, "updatelast {0} {1}".format(int(synchronization_date), synchronization_duration))
     received = receive_data_from_db_socket(cluster_socket)
     cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))

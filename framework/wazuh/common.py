@@ -87,7 +87,7 @@ cluster_protocol_plain_size = 14
 def get_encrypted_size(plain_size):
     # Token format: https://github.com/fernet/spec/blob/master/Spec.md
     encrypted_size = 57+(16*(((plain_size/16 + 1)*16)/16))
-    return ((4 * encrypted_size / 3) + 3) & ~3 # base64 length
+    return int(((4 * encrypted_size / 3) + 3)) & ~3 # base64 length
 
 # token encrypted with base64
 global cluster_sync_msg_size
