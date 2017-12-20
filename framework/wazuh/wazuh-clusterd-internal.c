@@ -81,6 +81,8 @@ off_t fsize(char *file) {
    The funcion will read (size-1) bytes and terminate the string
 */
 void read_file(char * pathname, char * buffer, off_t size) {
+    if (size < 0) mterror_exit("File %s is empty", pathname);
+    size_t unsigned_size = (size_t)size;
     FILE * pFile;
     size_t result;
 
@@ -89,9 +91,9 @@ void read_file(char * pathname, char * buffer, off_t size) {
         mterror_exit(MAIN_TAG, "Error opening file: %s", strerror(errno));
 
     // copy the file into the buffer
-    result = fread(buffer, sizeof(char), size-1, pFile);
-    buffer[size - 1] = '\0';
-    if (result != size-1)
+    result = fread(buffer, sizeof(char), unsigned_size-1, pFile);
+    buffer[unsigned_size - 1] = '\0';
+    if (result != unsigned_size-1)
         mterror_exit(MAIN_TAG, "Error reading file: %s", strerror(errno));
 
     // terminte
@@ -404,7 +406,7 @@ typedef struct {
 
 /* Convert a inotify flag string to int mask */
 uint32_t get_flag_mask(cJSON * flags) {
-    unsigned int i;
+    int i;
     uint32_t mask = 0;
     for (i = 0; i < cJSON_GetArraySize(flags); i++) {
         char * flag = cJSON_GetArrayItem(flags, i)->valuestring;
@@ -436,7 +438,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
     struct dirent *direntp;
     DIR *dirp;
     unsigned int found_subdirs = 0;
-    int i=0;
+    unsigned int i=0;
     char **subdirs = *_subdirs;
     char **more_subdirs;
     for (i=0; i<max_files_to_watch; i++) if (subdirs[i] == 0) break;
@@ -460,7 +462,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
             
             size_t name_size = (sizeof(path) + sizeof(direntp->d_name) + sizeof("/")  + 1) * sizeof(char);
             subdirs[found_subdirs+i] = (char *) malloc(name_size);
-            if (snprintf(subdirs[found_subdirs+i], name_size, "%s%s/", path, direntp->d_name) >= name_size)
+            if (snprintf(subdirs[found_subdirs+i], name_size, "%s%s/", path, direntp->d_name) >= (ssize_t)name_size)
                 mterror(INOTIFY_TAG, "String overflow in directory name %s%s", path, direntp->d_name);
 
             found_subdirs += get_subdirs(subdirs[found_subdirs+i], _subdirs, max_files_to_watch) + 1;
@@ -475,7 +477,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
 
 /* Check if event filename is on ignore list */
 bool check_if_ignore(cJSON * exclude_files, char * event_filename) {
-    unsigned int i;
+    int i;
     bool exclude = false;
     for (i = 0; i < cJSON_GetArraySize(exclude_files); i++) {
         char * filename = cJSON_GetArrayItem(exclude_files, i)->valuestring;
@@ -505,7 +507,8 @@ cJSON * read_cluster_json_file() {
 
 /* get directories and subdirectories to watch with inotify */
 unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, cJSON * root) {
-    unsigned int i = 0, n_files_to_watch = 0, max_files_to_watch = 30;
+    unsigned int n_files_to_watch = 0, max_files_to_watch = 30;
+    int i = 0;
     inotify_watch_file * more_files = NULL, * files = *_files;
 
     for (i = 0; i < cJSON_GetArraySize(root); i++) {
@@ -628,7 +631,8 @@ end:
 void* inotify_reader(void * args) {
     inotify_reader_arguments* reader_args = (inotify_reader_arguments*) args;
 
-    int i, fd = reader_args->fd, n_files_to_watch = reader_args->n_files_to_watch;
+    int i, fd = reader_args->fd;
+    unsigned int n_files_to_watch = reader_args->n_files_to_watch;
     inotify_watch_file * files = reader_args->files;
     cJSON * root = reader_args->root;
 
