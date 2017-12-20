@@ -25,6 +25,7 @@ import socket
 import hashlib
 from operator import setitem
 import fcntl
+from json import loads
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -157,7 +158,7 @@ class Agent:
                 self.name = value
             if field == 'ip' and value != None:
                 self.ip = value
-            if field == 'internal_key' and value != None:
+            if field == 'key' and value != None:
                 self.internal_key = value
             if field == 'version' and value != None:
                 self.version = value
@@ -216,7 +217,7 @@ class Agent:
             self.status = Agent.calculate_status(self.lastKeepAlive, pending)
         else:
             self.status = 'Active'
-            self.ip = '127.0.0.1'
+            self.ip = '127.0.0.1' if 'ip' in select_fields else None
 
         if no_result:
             raise WazuhException(1701, self.id)
@@ -303,6 +304,16 @@ class Agent:
 
         return ret_msg
 
+    def use_only_authd(self):
+        """
+        Function to know the value of the option "use_only_authd" in API configuration
+        """
+        with open(common.api_config_path) as f:
+            data = f.readlines()
+
+        return loads(filter(lambda x: x.strip().startswith('config.use_only_authd'), 
+                                            data)[0][:-2].strip().split(' = ')[1])
+
     def remove(self, backup=False, purge=False):
         """
         Deletes the agent.
@@ -313,7 +324,13 @@ class Agent:
         """
 
         manager_status = manager.status()
-        if 'ossec-authd' not in manager_status or manager_status['ossec-authd'] != 'running':
+        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
+        
+        if self.use_only_authd():
+            if not is_authd_running:
+                raise WazuhException(1725)
+                
+        if not is_authd_running:
             data = self._remove_manual(backup, purge)
         else:
             data = self._remove_authd(purge)
@@ -448,7 +465,13 @@ class Agent:
         :return: Agent ID.
         """
         manager_status = manager.status()
-        if 'ossec-authd' not in manager_status or manager_status['ossec-authd'] != 'running':
+        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
+
+        if self.use_only_authd():
+            if not is_authd_running:
+                raise WazuhException(1725)
+                
+        if not is_authd_running:
             data = self._add_manual(name, ip, id, key, force)
         else:
             data = self._add_authd(name, ip, id, key, force)
@@ -659,9 +682,9 @@ class Agent:
         if path.exists(group_path):
             move(group_path, group_backup)
 
-        # msg = "Group '{0}' removed.".format(group_id)
+        msg = "Group '{0}' removed.".format(group_id)
 
-        # return {'msg': msg, 'affected_agents': ids}
+        return {'msg': msg, 'affected_agents': ids}
 
 
     @staticmethod
@@ -735,7 +758,8 @@ class Agent:
         if search:
             query += " AND NOT" if bool(search['negation']) else ' AND'
             query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
-            request['search'] = '%{0}%'.format(search['value'])
+            request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
+                                                                    else search['value'])
 
         if "FROM agent AND" in query:
             query = query.replace("FROM agent AND", "FROM agent WHERE")
@@ -960,30 +984,51 @@ class Agent:
             oq.close()
             return ret_msg
         else:
-            ids = list()
+            failed_ids = list()
+            affected_agents = list()
             if isinstance(agent_id, list):
                 for id in agent_id:
                     try:
                         Agent(id).restart()
+                        affected_agents.append(id)
                     except Exception as e:
-                        ids.append(create_exception_dic(id, e))
+                        failed_ids.append(create_exception_dic(id, e))
             else:
                 try:
                     Agent(agent_id).restart()
+                    affected_agents.append(agent_id)
                 except Exception as e:
-                    ids.append(create_exception_dic(agent_id, e))
-            if not ids:
+                    failed_ids.append(create_exception_dic(agent_id, e))
+            if not failed_ids:
                 message = 'All selected agents were restarted'
             else:
                 message = 'Some agents were not restarted'
 
             final_dict = {}
-            if ids:
-                final_dict = {'msg': message, 'ids': ids}
+            if failed_ids:
+                final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
             else:
-                final_dict = {'msg': message}
+                final_dict = {'msg': message, 'affected_agents': affected_agents}
 
             return final_dict
+
+    @staticmethod
+    def get_agent_by_name(agent_name, select=None):
+        """
+        Gets an existing agent called agent_name.
+
+        :param agent_name: Agent name.
+        :return: The agent.
+        """
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+        conn.execute("SELECT id FROM agent WHERE name = :name", {'name': agent_name})
+        agent_id = str(conn.fetch()[0]).zfill(3)
+        
+        return Agent(agent_id).get_basic_information(select)
 
     @staticmethod
     def get_agent(agent_id, select=None):
@@ -1018,29 +1063,32 @@ class Agent:
         :return: Message generated by OSSEC.
         """
 
-        ids = []
+        failed_ids = []
+        affected_agents = []
         if isinstance(agent_id, list):
             for id in agent_id:
                 try:
                     Agent(id).remove(backup, purge)
+                    affected_agents.append(id)
                 except Exception as e:
-                    ids.append(create_exception_dic(id, e))
+                    failed_ids.append(create_exception_dic(id, e))
         else:
             try:
                 Agent(agent_id).remove(backup, purge)
+                affected_agents.append(agent_id)
             except Exception as e:
-                ids.append(create_exception_dic(agent_id, e))
+                failed_ids.append(create_exception_dic(agent_id, e))
 
-        if not ids:
+        if not failed_ids:
             message = 'All selected agents were removed'
         else:
             message = 'Some agents were not removed'
 
         final_dict = {}
-        if ids:
-            final_dict = {'msg': message, 'ids': ids}
+        if failed_ids:
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
         else:
-            final_dict = {'msg': message}
+            final_dict = {'msg': message, 'affected_agents': affected_agents}
 
         return final_dict
 
@@ -1330,7 +1378,8 @@ class Agent:
         if search:
             query += " AND NOT" if bool(search['negation']) else ' AND'
             query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
-            request['search'] = '%{0}%'.format(search['value'])
+            request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
+                                                                    else search['value'])
 
         # Count
         conn.execute(query.format('COUNT(*)'), request)
@@ -1462,7 +1511,9 @@ class Agent:
             raise WazuhException(1722)
 
 
+        failed_ids = []
         ids = []
+        affected_agents = []
         if isinstance(group_id, list):
             for id in group_id:
 
@@ -1470,25 +1521,29 @@ class Agent:
                     raise WazuhException(1712)
 
                 try:
-                    Agent()._remove_single_group(id)
+                    removed = Agent()._remove_single_group(id)
+                    ids.append(id)
+                    affected_agents += removed['affected_agents']
                 except Exception as e:
-                    ids.append(create_exception_dic(id, e))
+                    failed_ids.append(create_exception_dic(id, e))
         else:
             if group_id.lower() == "default":
                 raise WazuhException(1712)
 
             try:
-                Agent()._remove_single_group(group_id)
+                removed = Agent()._remove_single_group(group_id)
+                ids.append(group_id)
+                affected_agents += removed['affected_agents']
             except Exception as e:
-                ids.append(create_exception_dic(group_id, e))
+                failed_ids.append(create_exception_dic(group_id, e))
 
         final_dict = {}
-        if not ids:
+        if not failed_ids:
             message = 'All selected groups were removed'
-            final_dict = {'msg': message}
+            final_dict = {'msg': message, 'ids': ids, 'affected_agents': affected_agents}
         else:
             message = 'Some groups were not removed'
-            final_dict = {'msg': message, 'ids': ids}
+            final_dict = {'msg': message, 'failed_ids': failed_ids, 'ids': ids, 'affected_agents': affected_agents}
 
         return final_dict
 

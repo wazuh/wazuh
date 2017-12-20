@@ -167,14 +167,18 @@ int main(int argc, char **argv)
         mond.emailidsname = OS_GetOneContentforElement(&xml, xml_idsname);
 
         if (tmpsmtp && mond.emailfrom) {
-            mond.smtpserver = OS_GetHost(tmpsmtp, 5);
-            if (!mond.smtpserver) {
-                merror(INVALID_SMTP, tmpsmtp);
-                if (mond.emailfrom) {
-                    free(mond.emailfrom);
+            if (tmpsmtp[0] == '/') {
+                os_strdup(tmpsmtp, mond.smtpserver);
+            } else {
+                mond.smtpserver = OS_GetHost(tmpsmtp, 5);
+                if (!mond.smtpserver) {
+                    merror(INVALID_SMTP, tmpsmtp);
+                    if (mond.emailfrom) {
+                        free(mond.emailfrom);
+                    }
+                    mond.emailfrom = NULL;
+                    merror("Invalid SMTP server.  Disabling email reports.");
                 }
-                mond.emailfrom = NULL;
-                merror("Invalid SMTP server.  Disabling email reports.");
             }
         } else {
             if (tmpsmtp) {

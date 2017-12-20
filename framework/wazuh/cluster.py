@@ -13,7 +13,7 @@ from wazuh import common
 import sqlite3
 from datetime import datetime
 from hashlib import sha512
-from time import time, mktime
+from time import time, mktime, sleep
 from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull
 from subprocess import check_output
 from shutil import rmtree
@@ -31,7 +31,6 @@ import re
 import socket
 import asyncore
 import asynchat
-from time import sleep
 # import the C accelerated API of ElementTree
 try:
     import xml.etree.cElementTree as ET
@@ -89,6 +88,8 @@ class WazuhClusterClient(asynchat.async_chat):
     def __init__(self, host, port, key, data, file):
         asynchat.async_chat.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setblocking(0)
+        self.socket.settimeout(common.cluster_timeout)
         self.connect((host, port))
         self.data = data
         self.file = file
@@ -150,7 +151,7 @@ def send_request(host, port, key, data, file=None):
     try:
         fernet_key = Fernet(key.encode('base64','strict'))
         client = WazuhClusterClient(host, int(port), fernet_key, data, file)
-        asyncore.loop(timeout=common.cluster_timeout)
+        asyncore.loop()
         data = client.response
 
     except NameError as e:
@@ -385,17 +386,17 @@ def list_files_from_filesystem(node_type, cluster_items):
     def get_files_from_dir(dirname, recursive, files, cluster_items):
         items = []
         for entry in listdir(dirname):
-            if entry not in cluster_items['excluded_files'] and entry[-1] != '~' \
-                and entry in files or files == ["all"]:
+            if entry in cluster_items['excluded_files'] or entry[-1] == '~':
+                continue
+
+            if entry in files or files == ["all"]:
 
                 full_path = path.join(dirname, entry)
                 if not path.isdir(full_path):
-                    new_item = dict(item)
-                    new_item["path"] = full_path.replace(common.ossec_path, "")
-                    items.append(new_item)
+                    items.append(full_path.replace(common.ossec_path, ""))
                 elif recursive:
-                    items = list(chain.from_iterable([items,
-                                    get_files_from_dir(full_path, recursive, files, cluster_items)]))
+                    items.extend(get_files_from_dir(full_path, recursive, files, cluster_items))
+
         return items
 
     # Expand directory
@@ -405,16 +406,13 @@ def list_files_from_filesystem(node_type, cluster_items):
             continue
         if item['source'] == node_type or \
            item['source'] == 'all':
-
             fullpath = common.ossec_path + file_path
-            expanded_items = chain.from_iterable([expanded_items,
-                                   get_files_from_dir(fullpath, item['recursive'],
-                                                      item['files'], cluster_items)])
+            expanded_items.extend(get_files_from_dir(fullpath, item['recursive'],item['files'], cluster_items))
 
     final_items = {}
     for new_item in expanded_items:
         try:
-            final_items[new_item['path']] = get_file_info(new_item['path'], cluster_items)
+            final_items[new_item] = get_file_info(new_item, cluster_items)
         except Exception as e:
             continue
 
@@ -462,6 +460,22 @@ def get_file_status_all_managers(file_list, manager):
 
     cluster_socket.close()
     return files
+
+
+def get_last_sync():
+    """
+    Function to retrieve information about the last synchronization
+    """
+    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+
+    cluster_socket.send("sellast")
+    
+    date, duration = filter(lambda x: x != '\x00', cluster_socket.recv(10000)).split(" ")
+
+    cluster_socket.close()
+
+    return str(datetime.fromtimestamp(int(date))), float(duration)
 
 
 def clear_file_status_one_node(manager, cluster_socket):
@@ -846,6 +860,9 @@ def sync_one_node(debug, node, force=False):
     """
     Sync files with only one node
     """
+    synchronization_date = time()
+    synchronization_duration = 0.0
+
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
@@ -866,6 +883,7 @@ def sync_one_node(debug, node, force=False):
     all_files = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 
     after = time()
+    synchronization_duration += after-before
     logging.debug("Time retrieving info from DB: {0}".format(after-before))
 
     before = time()
@@ -873,12 +891,19 @@ def sync_one_node(debug, node, force=False):
     push_updates_single_node(all_files, node, config_cluster, result_queue)
 
     after = time()
+    synchronization_duration += after-before
     logging.debug("Time sending info: {0}".format(after-before))
     before = time()
 
     result = result_queue.get()
     update_node_db_after_sync(result, node, cluster_socket)
     after = time()
+    synchronization_duration += after-before
+    cluster_socket.send("clearlast")
+    received = cluster_socket.recv(10000)
+    cluster_socket.send("updatelast {0} {1}".format(synchronization_date, int(synchronization_duration)))
+    received = cluster_socket.recv(10000)
+    cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 
     if debug:
@@ -896,6 +921,9 @@ def sync(debug, force=False):
     Sync this node with others
     :return: Files synced.
     """
+    synchronization_date = time()
+    synchronization_duration = 0.0
+
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
@@ -927,6 +955,7 @@ def sync(debug, force=False):
         all_nodes_files[node] = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 
     after = time()
+    synchronization_duration += after-before
     logging.debug("Time retrieving info from DB: {0}".format(after-before))
 
     before = time()
@@ -946,16 +975,20 @@ def sync(debug, force=False):
     for t in threads:
         t.join()
     after = time()
-
+    synchronization_duration += after-before
     logging.debug("Time sending info: {0}".format(after-before))
 
     before = time()
     for node,data in thread_results.items():
         update_node_db_after_sync(data, node, cluster_socket)
 
-    cluster_socket.close()
     after = time()
-
+    synchronization_duration += after-before
+    cluster_socket.send("clearlast")
+    received = cluster_socket.recv(10000)
+    cluster_socket.send("updatelast {0} {1}".format(int(synchronization_date), synchronization_duration))
+    received = cluster_socket.recv(10000)
+    cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 
     if debug:

@@ -11,6 +11,7 @@
 
 #include "wazuh_modules/wmodules.h"
 
+static const char *XML_DISABLED = "disabled";
 static const char *XML_TAG = "tag";
 static const char *XML_COMMAND = "command";
 static const char *XML_INTERVAL = "interval";
@@ -19,7 +20,7 @@ static const char *XML_RUN_ON_START = "run_on_start";
 
 // Parse XML
 
-int wm_command_read(xml_node **nodes, wmodule *module)
+int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 {
     int i;
     wm_command_t * command;
@@ -27,7 +28,10 @@ int wm_command_read(xml_node **nodes, wmodule *module)
     // Create module
 
     os_calloc(1, sizeof(wm_command_t), command);
+    command->enabled = 1;
     command->run_on_start = 1;
+    command->interval = WM_COMMAND_DEFAULT_INTERVAL;
+    command->agent_cfg = agent_cfg;
     module->context = &WM_COMMAND_CONTEXT;
     module->data = command;
 
@@ -37,6 +41,15 @@ int wm_command_read(xml_node **nodes, wmodule *module)
         if (!nodes[i]->element) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
+        } else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
+            if (!strcmp(nodes[i]->content, "yes"))
+                command->enabled = 0;
+            else if (!strcmp(nodes[i]->content, "no"))
+                command->enabled = 1;
+            else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_COMMAND_CONTEXT.name);
+                return OS_INVALID;
+            }
         } else if (!strcmp(nodes[i]->element, XML_TAG)) {
             if (strlen(nodes[i]->content) == 0) {
                 merror("Empty content for tag '%s' at module '%s'.", XML_TAG, WM_COMMAND_CONTEXT.name);
@@ -57,7 +70,7 @@ int wm_command_read(xml_node **nodes, wmodule *module)
             char *endptr;
             command->interval = strtoul(nodes[i]->content, &endptr, 0);
 
-            if (command->interval == 0 || command->interval == UINT_MAX) {
+            if ((command->interval == 0 && endptr == nodes[i]->content) || command->interval == ULONG_MAX) {
                 merror("Invalid interval at module '%s'", WM_COMMAND_CONTEXT.name);
                 return OS_INVALID;
             }
