@@ -220,6 +220,13 @@ def get_cluster_items():
         raise WazuhException(3005, str(e))
 
 def get_file_info(filename, cluster_items):
+    def is_synced_file(mtime, node_type):
+        if node_type == 'master':
+            return False
+        else:
+            return (datetime.now() - datetime.fromtimestamp(mtime)).seconds / 60 > 30
+
+    node_type = read_config()['node_type']
     fullpath = common.ossec_path + filename
 
     if not path.isfile(fullpath):
@@ -240,7 +247,7 @@ def get_file_info(filename, cluster_items):
         "modification_time" : str(datetime.utcfromtimestamp(st_mtime)),
         'timestamp': st_mtime,
         "size" : st_size,
-        'is_synced': st_mtime.is_integer()
+        'is_synced': is_synced_file(st_mtime, node_type)
     }
 
     return file_item
@@ -340,7 +347,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
     # check files in database
     count_query = "count {0}".format(node)
     cluster_socket.send(count_query)
-    n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
+    n_files = int(receive_data_from_db_socket(cluster_socket))
     if n_files == 0:
         logging.info("New manager found: {0}".format(node))
         logging.debug("Adding {0}'s files to database".format(node))
@@ -353,7 +360,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
                 insert_sql += " {0} {1}".format(node, file)
 
             cluster_socket.send(insert_sql)
-            data = cluster_socket.recv(10000)
+            data = receive_data_from_db_socket(cluster_socket)
 
     else:
         logging.debug("Retrieving {0}'s files from database".format(node))
@@ -367,7 +374,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
                 insert_sql += " {0} {1}".format(node,m)
 
             cluster_socket.send(insert_sql)
-            data = cluster_socket.recv(10000)
+            data = receive_data_from_db_socket(cluster_socket)
 
 
 def connect_to_db_socket(retry=False):
@@ -562,7 +569,7 @@ def clear_file_status():
         new_items = {}
         for files_slice in divide_list(own_items.items()):
             local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5'] 
-                            or int(db_items[x[0]]['timestamp']) < x[1]['timestamp'], files_slice))
+                            or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
             query += ' '.join(local_items.keys())
             cluster_socket.send(query)
             received = receive_data_from_db_socket(cluster_socket)
@@ -701,6 +708,16 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
         else:
             logging.warning("Client.keys file received in a master node.")
             raise WazuhException(3007)
+
+    if 'agent-info' in fullpath:
+        if node_type=='master':
+            # check if the date is older than the manager's date
+            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
+                logging.warning("Receiving an old agent-info file ({})".format(path.basename(fullpath)))
+                raise WazuhException(3012)
+        else:
+            logging.warning("Agent-info received in a client node.")
+            raise WazuhException(3011)
 
     # Write
     if w_mode == "atomic":
@@ -901,15 +918,22 @@ def update_node_db_after_sync(data, node, cluster_socket):
         received = receive_data_from_db_socket(cluster_socket)
 
     for failed in divide_list(data['files']['error']):
+        delete_sql = "delete1"
         update_sql = "update2"
         for f in failed:
             if isinstance(f, dict):
-                update_sql += " failed {0} /{1}".format(node, f['item'])
+                if f['reason'] == 'Error 3012 - Received an old agent-info file.':
+                    delete_sql += " /{0}".format(f['item'])
+                else:
+                    update_sql += " failed {0} /{1}".format(node, f['item'])
             else:
                 update_sql += " failed {0} {1}".format(node, f)
 
         cluster_socket.send(update_sql)
         received = receive_data_from_db_socket(cluster_socket)
+        if len(delete_sql) > len("delete1"):
+            cluster_socket.send(delete_sql)
+            received = receive_data_from_db_socket(cluster_socket)
 
     for invalid in divide_list(data['files']['invalid']):
         update_sql = "update2"
