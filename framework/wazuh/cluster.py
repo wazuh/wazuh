@@ -997,10 +997,12 @@ def sync_one_node(debug, node, force=False):
     update_node_db_after_sync(result, node, cluster_socket)
     after = time()
     synchronization_duration += after-before
+
     send_to_socket(cluster_socket, "clearlast")
     received = receive_data_from_db_socket(cluster_socket)
     send_to_socket(cluster_socket, "updatelast {0} {1}".format(synchronization_date, int(synchronization_duration)))
     received = receive_data_from_db_socket(cluster_socket)
+
     cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 
@@ -1081,10 +1083,12 @@ def sync(debug, force=False):
 
     after = time()
     synchronization_duration += after-before
+
     send_to_socket(cluster_socket, "clearlast")
     received = receive_data_from_db_socket(cluster_socket)
     send_to_socket(cluster_socket, "updatelast {0} {1}".format(int(synchronization_date), synchronization_duration))
     received = receive_data_from_db_socket(cluster_socket)
+
     cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 
