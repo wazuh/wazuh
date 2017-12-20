@@ -266,6 +266,11 @@ class Agent:
 
         return info
 
+    def compute_key(self):
+        str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
+        return b64encode(str_key.encode()).decode()
+        
+
     def get_key(self):
         """
         Gets agent key.
@@ -275,8 +280,7 @@ class Agent:
 
         self._load_info_from_DB()
         if self.id != "000":
-            str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
-            self.key = b64encode(str_key.encode()).decode()
+            self.key = self.compute_key()
         else:
             self.key = ""
 
@@ -516,7 +520,9 @@ class Agent:
         data = authd_socket.receive()
         authd_socket.close()
 
-        self.id = data['id']
+        self.id  = data['id']
+        self.internal_key = data['key']
+        self.key = self.compute_key()
 
     def _add_manual(self, name, ip, id=None, key=None, force=-1):
         """
@@ -653,6 +659,8 @@ class Agent:
             lock_file.close()
 
         self.id = agent_id
+        self.internal_key = agent_key
+        self.key = self.compute_key()
 
     def _remove_single_group(self, group_id):
         """
@@ -1103,7 +1111,8 @@ class Agent:
         :return: Agent ID.
         """
 
-        return Agent(name=name, ip=ip, force=force).id
+        new_agent = Agent(name=name, ip=ip, force=force)
+        return {'id': new_agent.id, 'key': new_agent.key}
 
     @staticmethod
     def insert_agent(name, id, key, ip='any', force=-1):
@@ -1118,7 +1127,8 @@ class Agent:
         :return: Agent ID.
         """
 
-        return Agent(name=name, ip=ip, id=id, key=key, force=force).id
+        new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force)
+        return {'id': new_agent.id, 'key': key}
 
     @staticmethod
     def check_if_delete_agent(id, seconds):
