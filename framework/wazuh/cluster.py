@@ -88,6 +88,8 @@ class WazuhClusterClient(asynchat.async_chat):
     def __init__(self, host, port, key, data, file):
         asynchat.async_chat.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setblocking(0)
+        self.socket.settimeout(common.cluster_timeout)
         self.connect((host, port))
         self.data = data
         self.file = file
@@ -149,7 +151,7 @@ def send_request(host, port, key, data, file=None):
     try:
         fernet_key = Fernet(key.encode('base64','strict'))
         client = WazuhClusterClient(host, int(port), fernet_key, data, file)
-        asyncore.loop(timeout=common.cluster_timeout)
+        asyncore.loop()
         data = client.response
 
     except NameError as e:
@@ -384,17 +386,17 @@ def list_files_from_filesystem(node_type, cluster_items):
     def get_files_from_dir(dirname, recursive, files, cluster_items):
         items = []
         for entry in listdir(dirname):
-            if entry not in cluster_items['excluded_files'] and entry[-1] != '~' \
-                and entry in files or files == ["all"]:
+            if entry in cluster_items['excluded_files'] or entry[-1] == '~':
+                continue
+
+            if entry in files or files == ["all"]:
 
                 full_path = path.join(dirname, entry)
                 if not path.isdir(full_path):
-                    new_item = dict(item)
-                    new_item["path"] = full_path.replace(common.ossec_path, "")
-                    items.append(new_item)
+                    items.append(full_path.replace(common.ossec_path, ""))
                 elif recursive:
-                    items = list(chain.from_iterable([items,
-                                    get_files_from_dir(full_path, recursive, files, cluster_items)]))
+                    items.extend(get_files_from_dir(full_path, recursive, files, cluster_items))
+
         return items
 
     # Expand directory
@@ -404,16 +406,13 @@ def list_files_from_filesystem(node_type, cluster_items):
             continue
         if item['source'] == node_type or \
            item['source'] == 'all':
-
             fullpath = common.ossec_path + file_path
-            expanded_items = chain.from_iterable([expanded_items,
-                                   get_files_from_dir(fullpath, item['recursive'],
-                                                      item['files'], cluster_items)])
+            expanded_items.extend(get_files_from_dir(fullpath, item['recursive'],item['files'], cluster_items))
 
     final_items = {}
     for new_item in expanded_items:
         try:
-            final_items[new_item['path']] = get_file_info(new_item['path'], cluster_items)
+            final_items[new_item] = get_file_info(new_item, cluster_items)
         except Exception as e:
             continue
 
@@ -461,6 +460,22 @@ def get_file_status_all_managers(file_list, manager):
 
     cluster_socket.close()
     return files
+
+
+def get_last_sync():
+    """
+    Function to retrieve information about the last synchronization
+    """
+    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+
+    cluster_socket.send("sellast")
+    
+    date, duration = filter(lambda x: x != '\x00', cluster_socket.recv(10000)).split(" ")
+
+    cluster_socket.close()
+
+    return str(datetime.fromtimestamp(int(date))), float(duration)
 
 
 def clear_file_status_one_node(manager, cluster_socket):
@@ -885,7 +900,9 @@ def sync_one_node(debug, node, force=False):
     after = time()
     synchronization_duration += after-before
     cluster_socket.send("clearlast")
+    received = cluster_socket.recv(10000)
     cluster_socket.send("updatelast {0} {1}".format(synchronization_date, int(synchronization_duration)))
+    received = cluster_socket.recv(10000)
     cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 
@@ -968,7 +985,9 @@ def sync(debug, force=False):
     after = time()
     synchronization_duration += after-before
     cluster_socket.send("clearlast")
+    received = cluster_socket.recv(10000)
     cluster_socket.send("updatelast {0} {1}".format(int(synchronization_date), synchronization_duration))
+    received = cluster_socket.recv(10000)
     cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 

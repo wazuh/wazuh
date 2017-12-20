@@ -13,6 +13,8 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(me
 
 parser = argparse.ArgumentParser(description="Wazuh Cluster control interface")
 
+parser.add_argument('-d', '--date', action='store_const', const='date', help="Get last synchronization date and duration")
+
 push_group = parser.add_argument_group('Push updates')
 push_group.add_argument('-p', '--push', const='push', action='store_const', help="Send all not synchronized files")
 push_group.add_argument('-f', '--force', const='force', action='store_const', help="Force synchronization of all files (use with -m to only force in one node)")
@@ -93,6 +95,10 @@ def _get_nodes_status(node_list):
 
     print pprint_table(data=node_info, headers=["Node","Status","Address"], show_header=True)
 
+def _get_last_sync():
+    date, duration = get_last_sync()
+
+    print pprint_table(data=[[date, str(duration)]], headers=["Date", "Duration (s)"], show_header=True)
 
 if __name__ == '__main__':
     # Initialize framework
@@ -137,6 +143,13 @@ if __name__ == '__main__':
     elif args.scan is not None:
         try:
             scan_for_new_files()
+        except socket.error as e:
+            print("Error connecting to wazuh cluster service: {0}".format(str(e)))
+            exit(1)
+
+    elif args.date is not None:
+        try:
+            _get_last_sync()
         except socket.error as e:
             print("Error connecting to wazuh cluster service: {0}".format(str(e)))
             exit(1)

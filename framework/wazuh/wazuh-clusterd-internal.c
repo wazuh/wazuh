@@ -180,9 +180,10 @@ void* daemon_socket() {
     // sql sentence to insert a new row in the last_sync table
     char *sql_del_lastsync = "DELETE FROM last_sync";
     char *sql_last_sync = "INSERT INTO last_sync(date, duration) VALUES (?,?)";
+    char *sql_sel_sync = "SELECT * FROM last_sync";
 
     char *sql;
-    bool has1, has2, has3, select, count;
+    bool has1, has2, has3, select, count, select_last_sync;
 
     if (listen(fd, 5) == -1) {
         mterror_exit(DB_TAG, "Error listening in socket: %s", strerror(errno));
@@ -210,6 +211,7 @@ void* daemon_socket() {
                 has2 = false;
                 has3 = false;
                 select = false;
+                select_last_sync = false;
             }else if (cmd != NULL && strcmp(cmd, "delete1") == 0) {
                 sql = sql_del1;
                 count = false;
@@ -217,6 +219,7 @@ void* daemon_socket() {
                 has2 = false;
                 has3 = false;
                 select = false;
+                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "update2") == 0) {
                 sql = sql_upd2;
                 count = false;
@@ -224,6 +227,7 @@ void* daemon_socket() {
                 has2 = true;
                 has3 = true;
                 select = false;
+                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "insert") == 0) {
                 sql = sql_ins;
                 count = false;
@@ -231,17 +235,29 @@ void* daemon_socket() {
                 has2 = true;
                 has3 = false;
                 select = false;
+                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "select") == 0) {
                 sql = sql_sel;
                 select = true;
+                select_last_sync = false;
                 count = false;
                 has1 = true;
                 has2 = true;
                 has3 = true;
                 strcpy(response, " ");
+            } else if (cmd != NULL && strcmp(cmd, "sellast") == 0) {
+                sql = sql_sel_sync;
+                select = false;
+                select_last_sync = true;
+                count = false;
+                has1 = false;
+                has2 = false;
+                has3 = false;
+                strcpy(response, " ");
             } else if (cmd != NULL && strcmp(cmd, "count") == 0) {
                 sql = sql_count;
                 select = false;
+                select_last_sync = false;
                 count = true;
                 has1 = true;
                 has2 = false;
@@ -253,6 +269,7 @@ void* daemon_socket() {
                 has2 = false;
                 has3 = false;
                 select = false;
+                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "clearlast") == 0) {
                 sql = sql_del_lastsync;
                 count = false;
@@ -260,6 +277,7 @@ void* daemon_socket() {
                 has2 = false;
                 has3 = false;
                 select = false;
+                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "updatelast") == 0) {
                 sql = sql_last_sync;
                 count = false;
@@ -267,6 +285,7 @@ void* daemon_socket() {
                 has2 = true;
                 has3 = false;
                 select = false;
+                select_last_sync = false;
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
@@ -328,7 +347,14 @@ void* daemon_socket() {
                     sqlite3_close(db);
                     mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
                 }
-                strcpy(response, "Command OK");
+                if (select_last_sync) {
+                    do {
+                        step = sqlite3_step(res);
+                        if (step != SQLITE_ROW) break;
+                        sprintf(response, "%d %lf", sqlite3_column_int(res, 0), sqlite3_column_double(res, 1));
+                    } while (step == SQLITE_ROW);
+                }
+                else strcpy(response, "Command OK");
             }
 
             transaction_done:
