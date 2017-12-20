@@ -328,7 +328,7 @@ class Agent:
         
         if self.use_only_authd():
             if not is_authd_running:
-                raise WazuhException(1725)
+                raise WazuhException(1726)
                 
         if not is_authd_running:
             data = self._remove_manual(backup, purge)
@@ -469,7 +469,7 @@ class Agent:
 
         if self.use_only_authd():
             if not is_authd_running:
-                raise WazuhException(1725)
+                raise WazuhException(1726)
                 
         if not is_authd_running:
             data = self._add_manual(name, ip, id, key, force)
