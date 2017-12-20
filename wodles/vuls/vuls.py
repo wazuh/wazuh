@@ -40,13 +40,13 @@ def help():
     print('wazuh-vuls \n' \
     '           [--mincvss 5]               Minimum score to report.\n' \
     '           [--updatenvd]               Update NVD database.\n' \
-    '           [--nvd-year 2002]                Year from which the CVE database will be downloaded'
+    '           [--nvd-year 2002]           Year from which the CVE database will be downloaded.\n' \
     '           [--updaterh]                Update Redhat OVAL database.\n' \
     '           [--updateub]                Update Ubuntu OVAL database.\n' \
     '           [--updatedeb]               Update Debian OVAL database.\n' \
     '           [--updateorac]              Update Oracle OVAL database.\n' \
     '           [--autoupdate]              Oval database auto-update.\n' \
-    '           [--os-version]              OS version for downloading the OVAL database'
+    '           [--os-version]              OS version for downloading the OVAL database.\n' \
     '           [--onlyupdate]              Only update databases.\n' \
     '           [--source <nvd|oval>]       CVE database preferred. The default will be the one that takes the highest CVSS.\n' \
     '           [--antiquity-limit 30]      Warn if vulnerability update date is less than X days.\n' \
@@ -56,7 +56,7 @@ def help():
 def extract_CVEinfo(cve, type):
     if type == 'nvd':
         source = 'National Vulnerability Database'
-    elif type == 'redhat' or type == 'centos':
+    elif type == 'redhat':
         source = 'RedHat OVAL'
     elif type == 'ubuntu':
             source = 'Ubuntu OVAL'
@@ -89,7 +89,11 @@ def send_msg(wazuh_queue, header, msg):
     debug(json.dumps(msg, indent=4))
     msg = '{0}{1}'.format(header, json.dumps(msg))
     s = socket(AF_UNIX, SOCK_DGRAM)
-    s.connect(wazuh_queue)
+    try:
+        s.connect(wazuh_queue)
+    except:
+        print('Error: Wazuh must be running.')
+        sys.exit(1)
     s.send(msg.encode())
     s.close()
 
@@ -106,14 +110,20 @@ def update_oval(OS, update_os_version):
         print('Error: To update the OVAL database, the OS version must be attached with --os-version. You can do it automatically with --autoupdate.')
         sys.exit(1)
     debug('Updating {0} {1} OVAL database...'.format(OS, update_os_version))
-    call([oval_db_fetcher, 'fetch-{0}'.format(OS), '-dbpath={0}/oval.sqlite3'.format(vuls_path), '-log-dir={0}'.format(vuls_log), update_os_version])
-
-def update(update_nvd, update_rh, update_ub, update_deb, update_orac, os_name, update_os_version):
+    try:
+        call([oval_db_fetcher, 'fetch-{0}'.format(OS), '-dbpath={0}/oval.sqlite3'.format(vuls_path), '-log-dir={0}'.format(vuls_log), update_os_version])
+    except:
+        print('Error: OVAL database could not be fetched.')
+        sys.exit(1)
+def update(update_nvd, update_rh, update_ub, update_deb, update_orac, os_name, update_os_version, nvd_year):
     if update_nvd:
         debug('Updating NVD database...')
         for i in range(nvd_year, (int(str(datetime.now()).split('-')[0]) + 1)):
-            call([cve_db_fetcher, 'fetchnvd', '-dbpath={0}/cve.sqlite3'.format(vuls_path), '-log-dir={0}'.format(vuls_log), '-years', str(i)])
-
+            try:
+                call([cve_db_fetcher, 'fetchnvd', '-dbpath={0}/cve.sqlite3'.format(vuls_path), '-log-dir={0}'.format(vuls_log), '-years', str(i)])
+            except:
+                print('Error: CVE database could not be fetched.')
+                sys.exit(1)
     if update_rh or os_name == 'redhat':
         debug('Updating Redhat OVAL database...')
         update_oval('redhat', update_os_version) #5 6 7
@@ -136,13 +146,13 @@ def main(argv):
     # Message header
     header = '1:Wazuh-VULS:'
     # Notify message header
-    notify_header = '9:Wazuh-VULS:'
+    notify_header = '9:rootcheck:'
     # Show packages info
     package_info = 1
     # Minimum antiquity
     antiquity_limit = 0
     # Update databases
-    nvd_year = 2002
+    nvd_year = int(str(datetime.now()).split('-')[0]) - 10
     update_nvd = 0
     update_rh = 0
     update_ub = 0
@@ -199,33 +209,47 @@ def main(argv):
             help()
             sys.exit(1)
 
-    update(update_nvd, update_rh, update_ub, update_deb, update_orac, '', update_os_version)
+    update(update_nvd, update_rh, update_ub, update_deb, update_orac, '', update_os_version, nvd_year)
 
-    if only_update:
+    if not only_update:
+        msg = {}
+        msg['event'] = 'Starting vulnerability scan.'
+        send_msg(wazuh_queue, notify_header, msg)
+
+        try:
+            call([vuls_bin, 'scan', '-results-dir={0}'.format(vuls_log), '-config={0}'.format(vuls_config), '-log-dir={0}'.format(vuls_log)])
+        except:
+            print('Error: Could not launch a Vuls scan.')
+            sys.exit(1)
+        try:
+            call([vuls_bin, 'report', '-format-json', '-ignore-unscored-cves', '-results-dir={0}'.format(vuls_log), '-cvedb-path={0}'.format(cve_db), '-ovaldb-path={0}'.format(oval_db), '-config={0}'.format(vuls_config), '-log-dir={0}'.format(vuls_log)])
+        except:
+            print('Error: Could not launch a Vuls report.')
+            sys.exit(1)
+    elif not autoupdate:
         sys.exit(0)
 
-    msg = {}
-    msg['event'] = 'Starting vulnerability scan.'
-    send_msg(wazuh_queue, notify_header, msg)
-
-    call([vuls_bin, 'scan', '-results-dir={0}'.format(vuls_log), '-config={0}'.format(vuls_config), '-log-dir={0}'.format(vuls_log)])
-
-    # Extracts the log header
-    data = json.load(open('{0}/current/localhost.json'.format(vuls_log)))
-
+    # Load JSON report
+    try:
+        data = json.load(open('{0}/current/localhost.json'.format(vuls_log)))
+    except:
+        print('Error: You must run at least a scan before.')
+        sys.exit(1)
     date = data['ScannedAt'].split('.')[0].replace('T', ' ')
-    os_family = data['Family']
-    family = os_family if os_family is not 'centos' else 'redhat'
+    os_family = data['Family'].lower()
+    family = (os_family if os_family != 'centos' else 'redhat').lower()
+    cvss_source = family if cvss_source == 'oval' else cvss_source
     os_release = data['Release']
     kernel = data['RunningKernel']['Release']
 
     if autoupdate:
-        update(0, 0, 0, 0, 0, family, os_release.split('.')[0].split('-')[0])
+        update(0, 0, 0, 0, 0, family, os_release.split('.')[0].split('-')[0], nvd_year)
 
-    call([vuls_bin, 'report', '-format-json', '-ignore-unscored-cves', '-results-dir={0}'.format(vuls_log), '-cvedb-path={0}'.format(cve_db), '-ovaldb-path={0}'.format(oval_db), '-config={0}'.format(vuls_config), '-log-dir={0}'.format(vuls_log)])
+    if only_update:
+        sys.exit(0)
 
     # Send scanned CVEs
-    for c, cve in data['ScannedCves'].iteritems():
+    for c, cve in iter(data['ScannedCves'].items()):
         if cvss_source:
             source = cvss_source if has_vector(cve, cvss_source) else change_vector(cvss_source, family)
             score = extract_CVEscore(cve, source)
