@@ -199,7 +199,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 pieces++;
 
                 // The space after ':' is optional
-                pieces += pieces[1] == ' ';
+                pieces += *pieces == ' ';
             }
 
             /* Check for the second format: p_name[pid]: */
@@ -214,7 +214,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                     pieces += 2;
 
                     // The space after ':' is optional
-                    pieces += pieces[1] == ' ';
+                    pieces += *pieces == ' ';
                 }
                 /* Some systems are not terminating the program name with
                  * a ':'. Working around this in here...
