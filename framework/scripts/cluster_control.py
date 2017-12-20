@@ -11,24 +11,61 @@ import logging
 import socket
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 
-parser = argparse.ArgumentParser(description="Wazuh Cluster control interface")
+class WazuhHelpFormatter(argparse.ArgumentParser):
+    def format_help(self):
+        msg = """
+    {0} [-h] | [-d] | [-s] | [-p] | [-f  [-m MANAGER [MANAGER ...]]] | [-l [FILE [FILE ...]]] [-m MANAGER [MANAGER ...]]] | [-a [AGENT [AGENT ...]]] | [ -n [NODE [NODE ...]]] 
 
-parser.add_argument('-d', '--date', action='store_const', const='date', help="Get last synchronization date and duration")
+    Usage:
+\t-h                                  # Show this help message
+\t-d                                  # Get last synchronization date and duration
+\t
+\t-s                                  # Scan for new files
+\t-p                                  # Send all not synchronized files
+\t-f -m MANAGER [MANAGER ...]         # Force synchronization of manager files
+\t
+\t-l                                  # List the status of all files
+\t-l FILE [FILE ...]                  # List the status of specified files
+\t-l -m MANAGER [MANAGER ...]         # List the status of all files of specified managers
+\t
+\t-a                                  # List the status of all agents
+\t-a AGENT [AGENT ...]                # List the status of specified agents
+\t
+\t-n                                  # List nodes status
+\t-n NODE [NODE ...]                  # List the status of specified nodes
 
-push_group = parser.add_argument_group('Push updates')
-push_group.add_argument('-p', '--push', const='push', action='store_const', help="Send all not synchronized files")
-push_group.add_argument('-f', '--force', const='force', action='store_const', help="Force synchronization of all files (use with -m to only force in one node)")
+    Params:
+\t-h, --help
+\t-d, --date
+\t
+\t-s, --scan
+\t-p, --push
+\t-f, --force
+\t
+\t-l, --files
+\t-a, --agents
+\t-n, --nodes
 
-files_group = parser.add_argument_group('Retrieve file status')
-files_group.add_argument('-l', '--files', metavar='FILE', dest='files', nargs='*', type=str, help="List the status of specified files (all if not specified)")
-files_group.add_argument('-m', '--manager', dest='manager', nargs='*', type=str, help="List the status of the files of that manager")
-files_group.add_argument('-s', '--scan', const='scan', action='store_const', help="Scan for new files in the manager")
+""".format(basename(argv[0]))
+        return msg
+    def error(self, message):
+        print("Wrong arguments: {0}".format(message))
+        self.print_help()
+        exit(1)
 
-agents_group = parser.add_argument_group('Retrieve agent status')
-agents_group.add_argument('-a', '--agents', metavar='AGENT', dest='agents', nargs='*', type=bool, help="List all agents")
+parser=WazuhHelpFormatter(usage='custom usage')
+parser._positionals.title = 'Wazuh Cluster control interface'
 
-nodes_group = parser.add_argument_group('Retrieve node status')
-nodes_group.add_argument('-n', '--nodes', metavar='NODE', dest='nodes', nargs='*', type=str, help="List the status of nodes (all if not specified)")
+parser.add_argument('-m', '--manager', dest='manager', nargs='*', type=str, help="List the status of the files of that manager")
+
+exclusive = parser.add_mutually_exclusive_group()
+exclusive.add_argument('-d', '--date', action='store_const', const='date', help="Get last synchronization date and duration")
+exclusive.add_argument('-s', '--scan', const='scan', action='store_const', help="Scan for new files in the manager")
+exclusive.add_argument('-p', '--push', const='push', action='store_const', help="Send all not synchronized files")
+exclusive.add_argument('-f', '--force', const='force', action='store_const', help="Force synchronization of all files (use with -m to only force in one node)")
+exclusive.add_argument('-l', '--files', metavar='FILE', dest='files', nargs='*', type=str, help="List the status of specified files (all if not specified)")
+exclusive.add_argument('-a', '--agents', metavar='AGENT', dest='agents', nargs='*', type=bool, help="List all agents")
+exclusive.add_argument('-n', '--nodes', metavar='NODE', dest='nodes', nargs='*', type=str, help="List the status of nodes (all if not specified)")
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
@@ -116,7 +153,7 @@ if __name__ == '__main__':
         sync(debug=False)
 
     elif args.manager is not None and args.files is None and args.force is None:
-        logging.error("Invalid argument: -m parameter requires -f or --force")
+        logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
 
     elif args.files is not None:
         _get_file_status(args.files, args.manager)
