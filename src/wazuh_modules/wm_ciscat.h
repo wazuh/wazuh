@@ -1,7 +1,7 @@
 /*
  * Wazuh Module for CIS-CAT scanner
  * Copyright (C) 2016 Wazuh Inc.
- * April 25, 2016.
+ * December, 2017.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -30,10 +30,6 @@ typedef struct wm_ciscat_flags {
 typedef struct wm_ciscat_eval {
     wm_ciscat_eval_t type;           // Type of evaluation file
     char *path;                     // File path (string)
-    char *xccdf_id;                 // XCCDF id
-    char *ds_id;                    // Datastream id
-    char *oval_id;                  // OVAL id
-    char *cpe;                      // CPE dictionary
     char *profile;                  // Profile
     wm_ciscat_flags flags;           // Flags
     unsigned int timeout;           // Execution time limit (seconds)
