@@ -386,6 +386,9 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
 
 
 def connect_to_db_socket(retry=False):
+    if not  check_cluster_status():
+        raise WazuhException(3013)
+        
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     max_retries = 100 if retry else 1
     n_retries = 0
