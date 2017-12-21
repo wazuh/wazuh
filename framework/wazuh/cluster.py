@@ -323,7 +323,7 @@ def get_nodes(updateDBname=False):
                          'status':'connected', 'cluster':response['cluster']})
 
             if updateDBname:
-                query = "insertname " + url + " " +response['node']
+                query = "insertname " +response['node'] + " " + url 
                 send_to_socket(cluster_socket, query)
                 receive_data_from_db_socket(cluster_socket)
 
@@ -464,12 +464,11 @@ def get_file_status(manager, cluster_socket):
     send_to_socket(cluster_socket, count_query)
     n_files = int(receive_data_from_db_socket(cluster_socket))
 
-    # limit = 100
     query = "select {0} 100 ".format(manager)
     file_status = ""
+    # limit = 100
     for offset in range(0,n_files,100):
-        query += str(offset)
-        send_to_socket(cluster_socket, query)
+        send_to_socket(cluster_socket, query + str(offset))
         file_status += receive_data_from_db_socket(cluster_socket)
 
     # retrieve all files for a node in database with its status
@@ -482,7 +481,19 @@ def get_file_status_all_managers(file_list, manager):
     Return a nested list where each element has the following structure
     [manager, filename, status]
     """
+    fix_manager = []
     cluster_socket = connect_to_db_socket()
+    for m in manager:
+        if re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(m):
+            fix_manager.append(m)
+        elif re.compile(r"\w+").match(m):
+            send_to_socket(cluster_socket, "getip {0}".format(m))
+            fix_manager.append(receive_data_from_db_socket(cluster_socket))
+        else:
+            raise WazuhException(3014, m)
+
+    manager = fix_manager
+
 
     files = []
 
