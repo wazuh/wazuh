@@ -106,7 +106,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             time_sleep = ciscat->state.next_time = 0;
         }
 
-        if (wm_state_io(&WM_CISCAT_CONTEXT, WM_IO_WRITE, &ciscat->state, sizeof(ciscat->state)) < 0)
+        if (wm_state_io(WM_CISCAT_CONTEXT.name, WM_IO_WRITE, &ciscat->state, sizeof(ciscat->state)) < 0)
             mterror(WM_CISCAT_LOGTAG, "Couldn't save running state.");
 
         // If time_sleep=0, yield CPU
@@ -126,7 +126,7 @@ void wm_ciscat_setup(wm_ciscat *_ciscat) {
 
     // Read running state
 
-    if (wm_state_io(&WM_CISCAT_CONTEXT, WM_IO_READ, &ciscat->state, sizeof(ciscat->state)) < 0)
+    if (wm_state_io(WM_CISCAT_CONTEXT.name, WM_IO_READ, &ciscat->state, sizeof(ciscat->state)) < 0)
         memset(&ciscat->state, 0, sizeof(ciscat->state));
 
     if (isDebug())
@@ -276,7 +276,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
         default:
             // Parent process
-            switch(waitpid(-1, &child_status, 0)) {
+            switch(waitpid(pid, &child_status, 0)) {
                 case -1:
                     mterror(WM_CISCAT_LOGTAG, WAITPID_ERROR, errno, strerror(errno));
                     break;
