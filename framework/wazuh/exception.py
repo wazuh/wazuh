@@ -91,6 +91,7 @@ class WazuhException(Exception):
         1724: 'Not a valid select field',
         1725: 'Error registering a new agent',
         1726: 'Ossec authd is not running',
+        1727: 'Error listing group files',
 
         # Manager:
 
