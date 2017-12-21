@@ -486,16 +486,17 @@ def get_file_status_all_managers(file_list, manager):
     """
     fix_manager = []
     cluster_socket = connect_to_db_socket()
-    for m in manager:
-        if re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(m):
-            fix_manager.append(m)
-        elif re.compile(r"\w+").match(m):
-            send_to_socket(cluster_socket, "getip {0}".format(m))
-            fix_manager.append(receive_data_from_db_socket(cluster_socket))
-        else:
-            raise WazuhException(3014, m)
+    if manager:
+        for m in manager:
+            if re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(m):
+                fix_manager.append(m)
+            elif re.compile(r"\w+").match(m):
+                send_to_socket(cluster_socket, "getip {0}".format(m))
+                fix_manager.append(receive_data_from_db_socket(cluster_socket))
+            else:
+                raise WazuhException(3014, m)
 
-    manager = fix_manager
+        manager = fix_manager
 
 
     files = []
