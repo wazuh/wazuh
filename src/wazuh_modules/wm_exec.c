@@ -170,6 +170,10 @@ DWORD WINAPI Reader(LPVOID args) {
 #include <unistd.h>
 #define EXECVE_ERROR 0xFF
 
+#ifndef _GNU_SOURCE
+extern char ** environ;
+#endif
+
 static void* reader(void *args);   // Reading thread's start point
 
 static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child process pool
