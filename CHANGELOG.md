@@ -23,6 +23,9 @@ All notable changes to this project will be documented in this file.
 - Stop related daemon when disabling components in ossec-control.
 - Prevented cluster daemon from starting on RHEL 5 or older.
 - Let Syscheck report file changes on first scan.
+- Allow requests by node name in cluster_control binary.
+- Improved help of cluster_control binary.
+- Integrity control of files in the cluster.
 
 ### Fixed
 
@@ -32,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - Fixed alert ID when plain-text alert output disabled.
 - Fixed Monitord freezing when a sendmail-like executable SMTP server is set.
 - Fixed validation of Active Response used by agent_control.
+- Allow non-ASCII characters in Windows version string.
 
 ## [v3.0.0] 2017-12-12
 
