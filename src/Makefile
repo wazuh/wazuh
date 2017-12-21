@@ -1068,7 +1068,7 @@ wazuh-modulesd: ${wmodulesd_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 
 ### wazuh-framework ##
 
-wazuh-framework: ${sqlite_o} ${shared_o}
+wazuh-framework: ${sqlite_o} ${shared_o} ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
 	${MAKE} -C ../framework build PREFIX=${PREFIX}
 
 

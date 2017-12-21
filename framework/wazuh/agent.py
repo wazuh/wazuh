@@ -1491,29 +1491,38 @@ class Agent:
         if not path.exists(group_path):
             raise WazuhException(1006, group_path)
 
-        data = []
-        for entry in listdir(group_path):
-            item = {}
-            item['filename'] = entry
-            with open("{0}/{1}".format(group_path, entry), 'rb') as f:
-                item['hash'] = hashlib.md5(f.read()).hexdigest()
-            data.append(item)
+        try:
+            data = []
+            for entry in listdir(group_path):
+                item = {}
+                try:
+                    item['filename'] = entry
+                    with open("{0}/{1}".format(group_path, entry), 'rb') as f:
+                        item['hash'] = hashlib.md5(f.read()).hexdigest()
+                    data.append(item)
+                except (OSError, IOError) as e:
+                    pass
 
-        # ar.conf
-        ar_path = "{0}/ar.conf".format(common.shared_path, entry)
-        with open(ar_path, 'rb') as f:
-            hash_ar = hashlib.md5(f.read()).hexdigest()
-        data.append({'filename': "ar.conf", 'hash': hash_ar})
+            try:
+                # ar.conf
+                ar_path = "{0}/ar.conf".format(common.shared_path, entry)
+                with open(ar_path, 'rb') as f:
+                    hash_ar = hashlib.md5(f.read()).hexdigest()
+                data.append({'filename': "ar.conf", 'hash': hash_ar})
+            except (OSError, IOError) as e:
+                pass
 
-        if search:
-            data = search_array(data, search['value'], search['negation'])
+            if search:
+                data = search_array(data, search['value'], search['negation'])
 
-        if sort:
-            data = sort_array(data, sort['fields'], sort['order'])
-        else:
-            data = sort_array(data, ["filename"])
+            if sort:
+                data = sort_array(data, sort['fields'], sort['order'])
+            else:
+                data = sort_array(data, ["filename"])
 
-        return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+            return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+        except Exception as e:
+            raise WazuhException(1727, str(e))
 
     @staticmethod
     def create_group(group_id):

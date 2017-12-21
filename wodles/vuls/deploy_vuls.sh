@@ -19,7 +19,7 @@ fi
 
 OS_NAME=$1
 OS_VER=$2
-WAZUH=`cat /etc/ossec-init.conf | head -1 | cut -d '"' -f 2`
+WAZUH=`cat /etc/ossec-init.conf | head -1 | cut -d '"' -f 2 | sed 's/ossec\//ossec/'`
 INSTALL_PATH=$WAZUH"/wodles/vuls"
 LOG_PATH=$WAZUH"/logs/vuls"
 VULS_AGENT=$INSTALL_PATH"/vuls.py"

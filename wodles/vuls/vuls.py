@@ -37,7 +37,7 @@ cve_db = '{0}/cve.sqlite3'.format(vuls_path)
 oval_db = '{0}/oval.sqlite3'.format(vuls_path)
 
 def help():
-    print('wazuh-vuls \n' \
+    print('vuls.py \n' \
     '           [--mincvss 5]               Minimum score to report.\n' \
     '           [--updatenvd]               Update NVD database.\n' \
     '           [--nvd-year 2002]           Year from which the CVE database will be downloaded.\n' \
@@ -305,6 +305,8 @@ def main(argv):
                 msg['AffectedPackagesInfo'][name]['Arch'] = package ['Arch']
                 msg['AffectedPackagesInfo'][name]['Repository'] = package ['Repository']
                 msg['AffectedPackagesInfo'][name]['Fixable'] = 'Yes' if p['NotFixedYet'] == False else 'No'
+            if 'AffectedPackages' not in msg:
+                msg['AffectedPackages'] = ''
             msg['AffectedPackages'] = '{0}{1} ({2}), '.format(msg['AffectedPackages'], name,  'Fixable' if p['NotFixedYet'] == False else 'Not fixable')
 
         msg['AffectedPackages'] = msg['AffectedPackages'][0:-2]
@@ -316,4 +318,8 @@ def main(argv):
     send_msg(wazuh_queue, notify_header, msg)
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
+    try:
+        main(sys.argv[1:])
+    except:
+        print('Error: Cannot launch VULS.')
+        sys.exit(1)

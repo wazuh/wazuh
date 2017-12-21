@@ -91,6 +91,7 @@ class WazuhException(Exception):
         1724: 'Not a valid select field',
         1725: 'Error registering a new agent',
         1726: 'Ossec authd is not running',
+        1727: 'Error listing group files',
 
         # Manager:
 
@@ -115,6 +116,7 @@ class WazuhException(Exception):
         3011: 'Agent info file received in a client node',
         3012: 'Received an old agent-info file',
         3013: 'Cluster is disabled'
+        3014: 'Manager name or IP incorrect'
 
         # > 9000: Authd
     }
