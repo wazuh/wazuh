@@ -355,8 +355,9 @@ class Agent:
         with open(common.api_config_path) as f:
             data = f.readlines()
 
-        return loads(filter(lambda x: x.strip().startswith('config.use_only_authd'), 
-                                            data)[0][:-2].strip().split(' = ')[1])
+        use_only_authd = filter(lambda x: x.strip().startswith('config.use_only_authd'), data)
+
+        return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
 
     def remove(self, backup=False, purge=False):
         """
