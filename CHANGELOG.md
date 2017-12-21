@@ -31,7 +31,7 @@ All notable changes to this project will be documented in this file.
 - Fixed syslog format pre-decoder for logs with missing (optional) space after tag.
 - Fixed alert ID when plain-text alert output disabled.
 - Fixed Monitord freezing when a sendmail-like executable SMTP server is set.
-
+- Fixed validation of Active Response used by agent_control.
 
 ## [v3.0.0] 2017-12-12
 
