@@ -113,7 +113,8 @@ class WazuhException(Exception):
         3009: 'Error connecting to cluster database',
         3010: 'Error in cluster client',
         3011: 'Agent info file received in a client node',
-        3012: 'Received an old agent-info file'
+        3012: 'Received an old agent-info file',
+        3013: 'Cluster is disabled'
 
         # > 9000: Authd
     }

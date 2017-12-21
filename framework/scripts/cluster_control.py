@@ -16,7 +16,6 @@ class WazuhHelpFormatter(argparse.ArgumentParser):
     def format_help(self):
         msg = """
     {0} [-h] | [-d] | [-s] | [-p] | [-f  [-m MANAGER [MANAGER ...]]] | [-l [FILE [FILE ...]]] [-m MANAGER [MANAGER ...]]] | [-a [AGENT [AGENT ...]]] | [ -n [NODE [NODE ...]]] 
-
     Usage:
 \t-h                                  # Show this help message
 \t-d                                  # Get last synchronization date and duration
@@ -34,7 +33,6 @@ class WazuhHelpFormatter(argparse.ArgumentParser):
 \t
 \t-n                                  # List nodes status
 \t-n NODE [NODE ...]                  # List the status of specified nodes (name or IP)
-
     Params:
 \t-h, --help
 \t-d, --date
@@ -46,7 +44,6 @@ class WazuhHelpFormatter(argparse.ArgumentParser):
 \t-l, --files
 \t-a, --agents
 \t-n, --nodes
-
 """.format(basename(argv[0]))
         return msg
     def error(self, message):
@@ -145,10 +142,6 @@ if __name__ == '__main__':
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
 
-    if not check_cluster_status():
-        print("Cluster is disabled. Exiting...")
-        exit(1)
-
     # get arguments
     args = parser.parse_args()
 
@@ -168,14 +161,14 @@ if __name__ == '__main__':
         try:
             _get_file_status(args.files, args.manager)
         except WazuhException as e:
-            print("Can not get files: {0}".format(str(e)))
+            print("{0}".format(str(e)))
             exit(1)
 
     elif args.agents is not None:
         try:
             _get_agents_status()
         except WazuhException as e:
-            print("Can not get agents: {0}".format(str(e)))
+            print("{0}".format(str(e)))
             exit(1)
 
     elif args.nodes is not None:
@@ -211,4 +204,3 @@ if __name__ == '__main__':
     else:
         parser.print_help()
         exit()
-
