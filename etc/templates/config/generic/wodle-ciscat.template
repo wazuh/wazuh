@@ -4,6 +4,6 @@
     <interval>1d</interval>
     <scan-on-start>yes</scan-on-start>
 
-    <java_path>/mnt/jre</java_path>
+    <java_path>/usr/bin</java_path>
     <ciscat_path>/var/ossec/wodles/ciscat</ciscat_path>
   </wodle>
