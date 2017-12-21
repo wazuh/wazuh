@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file.
 - Added GeoIP address finding for input logs in JSON format.
 - Added alert and archive output files rotation capabilities.
 - Added rule option to discard field "firedtimes".
+- Added VULS integration for running vulnerability assessments.
+- CIS-CAT Wazuh Module to scan CIS policies. 
 
 ### Changed
 
