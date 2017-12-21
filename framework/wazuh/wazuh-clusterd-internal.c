@@ -32,6 +32,9 @@
 #include <cJSON.h>
 #include <dirent.h>
 #include <pwd.h>
+#include <hash_op.h>
+#include <queue_op.h>
+#include <md5_op.h>
 
 #define DB_PATH DEFAULTDIR "/var/db/cluster.db"
 #define SOCKET_PATH DEFAULTDIR "/queue/ossec/cluster_db"
@@ -40,8 +43,15 @@
 #define CLUSTER_JSON DEFAULTDIR "/framework/wazuh/cluster.json"
 
 #define MAIN_TAG "wazuh-clusterd-internal"
-#define INOTIFY_TAG "wazuh-clusterd-internal:inotify"
-#define DB_TAG "wazuh-clusterd-internal:db_socket"
+#define INOTIFY_TAG MAIN_TAG ":inotify"
+#define DB_TAG MAIN_TAG ":db_socket"
+
+#define PATH_MAX 4096
+
+static w_queue_t * queue;                 // Queue for pending files
+static OSHash * ptable;                   // Table for pending paths
+static pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
 /* Print help statement */
 static void help_cluster_daemon(char * name)
@@ -66,8 +76,22 @@ off_t fsize(char *file) {
     return 0;
 }
 
-/* function to read a file and load it into a char * buffer */
+/* function to get the modification date of a fize */
+time_t mod_time(char *file) {
+    struct stat filestat;
+    if (stat(file, &filestat) == 0) {
+        return filestat.st_mtime;
+    }
+    return 0;
+}
+
+/* Read a file and store data into a byte array
+   size: length of the array
+   The funcion will read (size-1) bytes and terminate the string
+*/
 void read_file(char * pathname, char * buffer, off_t size) {
+    if (size < 0) mterror_exit("File %s is empty", pathname);
+    size_t unsigned_size = (size_t)size;
     FILE * pFile;
     size_t result;
 
@@ -76,9 +100,9 @@ void read_file(char * pathname, char * buffer, off_t size) {
         mterror_exit(MAIN_TAG, "Error opening file: %s", strerror(errno));
 
     // copy the file into the buffer
-    result = fread(buffer, sizeof(char), size-1, pFile);
-    buffer[size] = '\0';
-    if (result != size-1)
+    result = fread(buffer, sizeof(char), unsigned_size-1, pFile);
+    buffer[unsigned_size - 1] = '\0';
+    if (result != unsigned_size-1)
         mterror_exit(MAIN_TAG, "Error reading file: %s", strerror(errno));
 
     // terminte
@@ -96,22 +120,37 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
         rc = sqlite3_exec(db, create1, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
-            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
-        }
-        rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
-        if (rc != SQLITE_OK) {
-            sqlite3_close(db);
-            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
+            mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
         }
 
         char *create2 = "CREATE TABLE IF NOT EXISTS last_sync (" \
                         "date     INTEGER PRIMARY KEY," \
-                        "duration REAL";
+                        "duration REAL)";
         rc = sqlite3_exec(db, create2, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
-            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
+            mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
         }
+
+        char *create3 = "CREATE TABLE IF NOT EXISTS file_integrity (" \
+                        "filename TEXT PRIMARY KEY," \
+                        "md5      TEXT," \
+                        "mod_date INTEGER)";
+        rc = sqlite3_exec(db, create3, NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            sqlite3_close(db);
+            mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
+        }
+
+        char *create4 = "CREATE TABLE IF NOT EXISTS node_name_ip (" \
+                        "name      TEXT," \
+                        "id_manager TEXT PRIMARY KEY)";
+        rc = sqlite3_exec(db, create4, NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            sqlite3_close(db);
+            mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
+        }
+
         rc = sqlite3_prepare_v2(db, sql, -1, *(&res), 0);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
@@ -172,18 +211,28 @@ void* daemon_socket() {
     char *sql_upd1 = "UPDATE manager_file_status SET status = 'pending' WHERE id_file = ?";
     char *sql_clr  = "UPDATE manager_file_status SET status = 'pending'";
     // sql sentence to insert new row
-    char *sql_ins = "INSERT INTO manager_file_status VALUES (?,?,'pending')";
+    char *sql_ins = "INSERT OR REPLACE INTO manager_file_status VALUES (?,?,'pending')";
     // sql sentence to perform a select query
     char *sql_sel = "SELECT * FROM manager_file_status WHERE id_manager = ? LIMIT ? OFFSET ?";
     char *sql_count = "SELECT Count(*) FROM manager_file_status WHERE id_manager = ?";
     char *sql_del1 = "DELETE FROM manager_file_status WHERE id_file = ?";
-    // sql sentence to insert a new row in the last_sync table
+    // sql sentences to insert a new row in the last_sync table
     char *sql_del_lastsync = "DELETE FROM last_sync";
     char *sql_last_sync = "INSERT INTO last_sync(date, duration) VALUES (?,?)";
     char *sql_sel_sync = "SELECT * FROM last_sync";
+    // sql sentences to insert or update a new row in the file_integrity table
+    char *sql_ins_fi = "INSERT OR REPLACE INTO file_integrity VALUES (?,?,?)";
+    char *sql_sel_fi = "SELECT * FROM file_integrity LIMIT ? OFFSET ?";
+    char *sql_count_fi = "SELECT Count(*) FROM file_integrity";
+    char *sql_upd_fi = "UPDATE file_integrity SET md5 = ?, mod_date = ? WHERE filename = ?";
+    // sql sentence to manage IP from name
+    char *sql_sel_by_name = "SELECT manager_file_status.id_manager as id_manager, manager_file_status.id_file as id_file, manager_file_status.status as status FROM node_name_ip INNER JOIN manager_file_status ON manager_file_status.id_manager = node_name_ip.id_manager WHERE node_name_ip.name = ? LIMIT ? OFFSET ?";
+    char *sql_sel_ip_by_name = "SELECT id_manager FROM node_name_ip WHERE name = ?";
+    char *sql_upd_ip_name = "UPDATE node_name_ip SET name = ? WHERE id_manager = ?";
+    char *sql_ins_ip_name = "INSERT OR REPLACE INTO node_name_ip VALUES (?,?)";
 
     char *sql;
-    bool has1, has2, has3, select, count, select_last_sync;
+    bool has1, has2, has3, select, count, select_last_sync, select_files, response_str;
 
     if (listen(fd, 5) == -1) {
         mterror_exit(DB_TAG, "Error listening in socket: %s", strerror(errno));
@@ -196,96 +245,92 @@ void* daemon_socket() {
             continue;
         }
 
+
         mtdebug2(DB_TAG,"Accepted connection from %d", cl);
 
         memset(buf, 0, sizeof(buf));
         memset(response, 0, sizeof(response));
         while ( (rc=recv(cl,buf,sizeof(buf),0)) > 0) {
+            has1=false; has2=false; has3=false; select=false; count=false; select_last_sync=false; select_files=false; response_str=false;
 
             cmd = strtok(buf, " ");
             mtdebug2(DB_TAG,"Received %s command", cmd);
             if (cmd != NULL && strcmp(cmd, "update1") == 0) {
                 sql = sql_upd1;
-                count = false;
                 has1 = true;
-                has2 = false;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
             }else if (cmd != NULL && strcmp(cmd, "delete1") == 0) {
                 sql = sql_del1;
-                count = false;
                 has1 = true;
-                has2 = false;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "update2") == 0) {
                 sql = sql_upd2;
-                count = false;
                 has1 = true;
                 has2 = true;
                 has3 = true;
-                select = false;
-                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "insert") == 0) {
                 sql = sql_ins;
-                count = false;
                 has1 = true;
                 has2 = true;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "select") == 0) {
                 sql = sql_sel;
                 select = true;
-                select_last_sync = false;
-                count = false;
                 has1 = true;
                 has2 = true;
                 has3 = true;
                 strcpy(response, " ");
             } else if (cmd != NULL && strcmp(cmd, "sellast") == 0) {
                 sql = sql_sel_sync;
-                select = false;
                 select_last_sync = true;
-                count = false;
-                has1 = false;
-                has2 = false;
-                has3 = false;
                 strcpy(response, " ");
             } else if (cmd != NULL && strcmp(cmd, "count") == 0) {
                 sql = sql_count;
-                select = false;
-                select_last_sync = false;
                 count = true;
                 has1 = true;
-                has2 = false;
-                has3 = false;
             } else if (cmd != NULL && strcmp(cmd, "clear") == 0) {
                 sql = sql_clr;
-                count = false;
-                has1 = false;
-                has2 = false;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "clearlast") == 0) {
                 sql = sql_del_lastsync;
-                count = false;
-                has1 = false;
-                has2 = false;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
             } else if (cmd != NULL && strcmp(cmd, "updatelast") == 0) {
                 sql = sql_last_sync;
-                count = false;
                 has1 = true;
                 has2 = true;
-                has3 = false;
-                select = false;
-                select_last_sync = false;
+            } else if (cmd != NULL && strcmp(cmd, "insertfile") == 0) {
+                sql = sql_ins_fi;
+                has1 = true;
+                has2 = true;
+                has3 = true;
+            } else if (cmd != NULL && strcmp(cmd, "selfiles") == 0) {
+                sql = sql_sel_fi;
+                has1 = true;
+                has2 = true;
+                select_files = true;
+                strcpy(response, " ");
+            } else if (cmd != NULL && strcmp(cmd, "countfiles") == 0) {
+                sql = sql_count_fi;
+                count = true;
+            } else if (cmd != NULL && strcmp(cmd, "updatefile") == 0) {
+                sql = sql_upd_fi;
+                has1 = true;
+                has2 = true;
+                has3 = true;
+            } else if (cmd != NULL && strcmp(cmd, "selectbyname") == 0) {
+                sql = sql_sel_by_name;
+                select = true;
+                has1 = true; // name
+                has2 = true; // limit
+                has3 = true; // offset
+                strcpy(response, " ");
+            } else if (cmd != NULL && strcmp(cmd, "getip") == 0) {
+                sql = sql_sel_ip_by_name;
+                has1 = true; // name
+                response_str = true;
+            } else if (cmd != NULL && strcmp(cmd, "updatename") == 0) {
+                sql = sql_upd_ip_name;
+                has1 = true; // name
+                has2 = true; // ip
+            } else if (cmd != NULL && strcmp(cmd, "insertname") == 0) {
+                sql = sql_ins_ip_name;
+                has1 = true; // name
+                has2 = true; // ip
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
@@ -298,31 +343,44 @@ void* daemon_socket() {
                 while (cmd != NULL) {
                     cmd = strtok(NULL, " ");
                     if (cmd == NULL) break;
+
                     if (strcmp(sql, sql_last_sync) == 0) {
                         long int value = strtol(cmd, &endptr, 10);
                         if (endptr == cmd) mterror_exit(DB_TAG, "No integer found in database request. Found: %s", cmd);
                         rc = sqlite3_bind_int(res,1,value);
-                        if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind int: %s", sqlite3_errmsg(db));
                     }
-                    else sqlite3_bind_text(res,1,cmd,-1,0);
+                    else rc = sqlite3_bind_text(res,1,cmd,-1,0);
+                    if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 1st parameter of query: %s", sqlite3_errmsg(db));
+
                     if (has2) {
                         cmd = strtok(NULL, " ");
                         if (strcmp(sql, sql_last_sync) == 0) {
                             double value = strtod(cmd, &endptr);
                             if (endptr == cmd) mterror_exit(DB_TAG, "No floating number found in database request. Found: %s", cmd);
                             rc = sqlite3_bind_double(res,2,value);
-                            if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind double: %s", sqlite3_errmsg(db));
                         }
-                        else sqlite3_bind_text(res,2,cmd,-1,0);
+                        else rc = sqlite3_bind_text(res,2,cmd,-1,0);
+                        if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 2nd parameter of query: %s", sqlite3_errmsg(db));
                     } 
                     if (has3) {
                         cmd = strtok(NULL, " ");
-                        sqlite3_bind_text(res,3,cmd,-1,0);
+                        if (strcmp(sql, sql_ins_fi) == 0) {
+                            long int value = strtol(cmd, &endptr, 10);
+                            if (endptr == cmd) mterror_exit(DB_TAG, "No integer found in database request. Found: %s", cmd);
+                            rc = sqlite3_bind_int(res,3,value);
+                        }
+                        else rc = sqlite3_bind_text(res,3,cmd,-1,0);
+                        if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 3rd parameter of query: %s", sqlite3_errmsg(db));
                     }
                     
                     do {
                         step = sqlite3_step(res);
-                        if (step != SQLITE_ROW) break;
+                        if (step == SQLITE_DONE && !count && !select && !select_files && !response_str) {
+                            strcpy(response, "Command OK");
+                            break;
+                        }
+                        else if (step != SQLITE_ROW && step != SQLITE_OK) break;
+
                         if (select) {
                             strcat(response, (char *)sqlite3_column_text(res, 1));
                             strcat(response, "*");
@@ -332,9 +390,15 @@ void* daemon_socket() {
                             char str[10];
                             sprintf(str, "%d", sqlite3_column_int(res, 0));
                             strcpy(response, str);
+                        } else if (select_files) {
+                            char str[100];
+                            sprintf(str, "%s*%s*%d ", (char *)sqlite3_column_text(res, 0), (char *)sqlite3_column_text(res, 1), sqlite3_column_int(res, 2));
+                            strcat(response, str);
+                        } else if (response_str) {
+                            strcpy(response, (char *)sqlite3_column_text(res,0));
                         } else 
                             strcpy(response, "Command OK");
-                    } while (step == SQLITE_ROW);
+                    } while (step == SQLITE_ROW || step == SQLITE_OK);
                     sqlite3_clear_bindings(res);
                     sqlite3_reset(res);
 
@@ -347,14 +411,14 @@ void* daemon_socket() {
                     sqlite3_close(db);
                     mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
                 }
-                if (select_last_sync) {
+                if (select_last_sync || count) {
                     do {
                         step = sqlite3_step(res);
-                        if (step != SQLITE_ROW) break;
-                        sprintf(response, "%d %lf", sqlite3_column_int(res, 0), sqlite3_column_double(res, 1));
-                    } while (step == SQLITE_ROW);
-                }
-                else strcpy(response, "Command OK");
+                        if (step != SQLITE_ROW && step != SQLITE_OK) break;
+                        if (select_last_sync) sprintf(response, "%d %lf", sqlite3_column_int(res, 0), sqlite3_column_double(res, 1));
+                        else if (count) sprintf(response, "%d", sqlite3_column_int(res, 0));
+                    } while (step == SQLITE_ROW || step == SQLITE_OK);
+                } else strcpy(response, "Command OK");
             }
 
             transaction_done:
@@ -383,17 +447,17 @@ void* daemon_socket() {
 
 
 /* structure to save all info required for inotify daemon */
-struct inotify_watch_file {
-    char *name;
-    char *path;
+typedef struct {
+    char name[PATH_MAX];
+    char path[PATH_MAX];
     uint32_t flags;
     int watcher;
     cJSON * files;
-};
+} inotify_watch_file;
 
 /* Convert a inotify flag string to int mask */
 uint32_t get_flag_mask(cJSON * flags) {
-    unsigned int i;
+    int i;
     uint32_t mask = 0;
     for (i = 0; i < cJSON_GetArraySize(flags); i++) {
         char * flag = cJSON_GetArrayItem(flags, i)->valuestring;
@@ -421,12 +485,14 @@ uint32_t get_flag_mask(cJSON * flags) {
 }
 
 /* Store subdirectories names in subdirs array */
-unsigned int get_subdirs(char * path, char **subdirs) {
+unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_to_watch) {
     struct dirent *direntp;
     DIR *dirp;
     unsigned int found_subdirs = 0;
-    int i=0;
-    for (i=0; i<sizeof(subdirs); i++) if (subdirs[i] == 0) break;
+    unsigned int i=0;
+    char **subdirs = *_subdirs;
+    char **more_subdirs;
+    for (i=0; i<max_files_to_watch; i++) if (subdirs[i] == 0) break;
 
     if ((dirp = opendir(path)) == NULL) 
         mterror_exit(INOTIFY_TAG, "Error listing subdirectories of %s: %s", path, strerror(errno));
@@ -435,15 +501,22 @@ unsigned int get_subdirs(char * path, char **subdirs) {
         if (strcmp(direntp->d_name, ".") == 0 || strcmp(direntp->d_name, "..") == 0) continue;
 
         if (direntp->d_type == DT_DIR) {
-            if (found_subdirs == sizeof(subdirs))
-                subdirs = (char **) realloc(subdirs, found_subdirs+30 * sizeof(char*));
+            if (found_subdirs+i == max_files_to_watch) {
+                max_files_to_watch += 30;
+                more_subdirs = (char **) realloc(subdirs, max_files_to_watch * sizeof(char*));
+                if (more_subdirs == NULL) {
+                    free(subdirs);
+                    mterror_exit(INOTIFY_TAG, "Error reallocating memory for found subdirectories");
+                } else *_subdirs = subdirs = more_subdirs;
+                memset(subdirs + found_subdirs + i, 0, 30 * sizeof(char *));
+            }
             
             size_t name_size = (sizeof(path) + sizeof(direntp->d_name) + sizeof("/")  + 1) * sizeof(char);
             subdirs[found_subdirs+i] = (char *) malloc(name_size);
-            if (snprintf(subdirs[found_subdirs+i], name_size, "%s%s/", path, direntp->d_name) >= name_size)
+            if (snprintf(subdirs[found_subdirs+i], name_size, "%s%s/", path, direntp->d_name) >= (ssize_t)name_size)
                 mterror(INOTIFY_TAG, "String overflow in directory name %s%s", path, direntp->d_name);
 
-            found_subdirs += get_subdirs(subdirs[found_subdirs+i], subdirs) + 1;
+            found_subdirs += get_subdirs(subdirs[found_subdirs+i], _subdirs, max_files_to_watch) + 1;
         }
     }
 
@@ -455,7 +528,7 @@ unsigned int get_subdirs(char * path, char **subdirs) {
 
 /* Check if event filename is on ignore list */
 bool check_if_ignore(cJSON * exclude_files, char * event_filename) {
-    unsigned int i;
+    int i;
     bool exclude = false;
     for (i = 0; i < cJSON_GetArraySize(exclude_files); i++) {
         char * filename = cJSON_GetArrayItem(exclude_files, i)->valuestring;
@@ -471,26 +544,24 @@ bool check_if_ignore(cJSON * exclude_files, char * event_filename) {
     return exclude;
 }
 
-void* daemon_inotify(void * args) {
-    char * node_type = args;
-    mtinfo(INOTIFY_TAG,"Preparing client socket");
-    /* prepare socket */
-    struct sockaddr_un addr;
-    int db_socket,rc;
-
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path)-1);
-
+/* read files to watch from cluster.json file */
+cJSON * read_cluster_json_file() {
     off_t size = fsize(CLUSTER_JSON)+1;
     char * cluster_json;
     cluster_json = (char *) malloc (sizeof(char) *size+1);
     read_file(CLUSTER_JSON, cluster_json, size);
 
     cJSON * root = cJSON_Parse(cluster_json);
-    unsigned int i = 0, n_files_to_watch = 0;
 
-    struct inotify_watch_file files[30];
+    return root;
+}
+
+/* get directories and subdirectories to watch with inotify */
+unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, cJSON * root) {
+    unsigned int n_files_to_watch = 0, max_files_to_watch = 30;
+    int i = 0;
+    inotify_watch_file * more_files = NULL, * files = *_files;
+
     for (i = 0; i < cJSON_GetArraySize(root); i++) {
         cJSON *subitem = cJSON_GetArrayItem(root, i);
         if (strcmp(subitem->string, "excluded_files") == 0) continue;
@@ -499,39 +570,43 @@ void* daemon_inotify(void * args) {
         if (strcmp(source_item->valuestring, node_type) == 0 ||
             strcmp(source_item->valuestring, "all") == 0) {
 
-            char * aux_path;
-            size_t path_len = strlen(DEFAULTDIR) + strlen(subitem->string) + 1;
-            aux_path = (char *) malloc(path_len);
-            if (snprintf(aux_path, path_len, "%s%s", DEFAULTDIR, subitem->string) >= path_len)
+            char aux_path[PATH_MAX];
+            if (snprintf(aux_path, PATH_MAX, "%s%s", DEFAULTDIR, subitem->string) >= PATH_MAX)
                 mterror(INOTIFY_TAG, "Overflow error copying %s's name in memory", subitem->string);
 
             uint32_t flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
             if (cJSON_GetObjectItemCaseSensitive(subitem, "recursive")->type == cJSON_True) {
                 char ** subdirs = (char **) calloc(30, sizeof(char*));
-                unsigned int found_subdirs = get_subdirs(aux_path, subdirs);
-                int j;
+                if (subdirs == NULL) mterror_exit(INOTIFY_TAG, "Error allocating memory for subdirectories watchers");
+                unsigned int found_subdirs = get_subdirs(aux_path, &subdirs, max_files_to_watch);
+                unsigned int j;
                 for (j = 0; j < found_subdirs; j++) {
-                    unsigned int len = strlen(subdirs[j]) + 1;
-                    files[n_files_to_watch].path = (char *) malloc(len);
                     strcpy(files[n_files_to_watch].path, subdirs[j]);
-                    files[n_files_to_watch].name = (char *) malloc(len);
-                    strncpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string), len);
-                    files[n_files_to_watch].name[len-1] = '\0';
+
+                    strcpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string));
+
                     files[n_files_to_watch].flags = flags;
                     n_files_to_watch++;
+                    if (n_files_to_watch >= max_files_to_watch) {
+                        mtdebug2(INOTIFY_TAG, "Reallocating memory for file structure");
+                        max_files_to_watch += 10;
+                        more_files = realloc(files, max_files_to_watch*sizeof(inotify_watch_file));
+
+                        if (more_files != NULL) *_files = files = more_files;
+                        else {
+                            free(files);
+                            mterror_exit(INOTIFY_TAG, "Error reallocating memory for cluster.json files struct");
+                        }
+                        memset(files + n_files_to_watch, 0, 10 * sizeof(char *));
+                    }
+
                 }
             }
 
-            size_t len;
-            len = strlen(aux_path)+1;
-            files[n_files_to_watch].path = (char *) malloc(len);
-            if (snprintf(files[n_files_to_watch].path, len, "%s", aux_path) >= len)
+            if (snprintf(files[n_files_to_watch].path, PATH_MAX, "%s", aux_path) >= PATH_MAX)
                 mterror(INOTIFY_TAG, "String overflow in filepath %s", files[n_files_to_watch].path);
-            free(aux_path);
 
-            len = strlen(subitem->string)+1;
-            files[n_files_to_watch].name = (char *) malloc(len);
-            if (snprintf(files[n_files_to_watch].name, len, "%s", subitem->string) >= len)
+            if (snprintf(files[n_files_to_watch].name, PATH_MAX, "%s", subitem->string) >= PATH_MAX)
                 mterror(INOTIFY_TAG, "String overflow in file name %s", subitem->string);
 
             files[n_files_to_watch].flags = flags;
@@ -540,26 +615,83 @@ void* daemon_inotify(void * args) {
 
             mtinfo(INOTIFY_TAG, "Monitoring %s", cJSON_GetObjectItemCaseSensitive(subitem, "description")->valuestring);
             n_files_to_watch++;
+            if (n_files_to_watch >= max_files_to_watch) {
+                mtdebug2(INOTIFY_TAG, "Reallocating memory for file structure");
+                max_files_to_watch += 10;
+                more_files = realloc(files, max_files_to_watch*sizeof(inotify_watch_file));
+
+                if (more_files != NULL) *_files = files = more_files;
+                else {
+                    free(files);
+                    mterror_exit(INOTIFY_TAG, "Error reallocating memory for cluster.json files struct");
+                }
+                memset(files + n_files_to_watch, 0, 10 * sizeof(char *));
+            }
         }
     }
 
-    mtdebug1(INOTIFY_TAG, "Preparing inotify watchers");
-    /* prepare inotify */
+    return n_files_to_watch;
+}
+
+typedef struct {
     int fd;
-    fd = inotify_init ();
-    for (i = 0; i < n_files_to_watch; i++) {
-        files[i].files = files[i].files == NULL ? cJSON_Parse("[\"all\"]") : files[i].files;
-        mtdebug1(INOTIFY_TAG, "Monitoring %s files from directory %s", cJSON_Print(files[i].files), files[i].name);
-        files[i].watcher = inotify_add_watch(fd, files[i].path, files[i].flags);
-        if (files[i].watcher < 0)
-            mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 
-                files[i].path, strerror(errno));
+    int n_files_to_watch;
+    inotify_watch_file * files;
+    cJSON * root;
+} inotify_reader_arguments;
+
+// Insert request into internal structure
+void inotify_push_request(char * cmd) {
+    char * dup;
+    int error;
+
+    error = pthread_mutex_lock(&mutex_queue);
+    if (error) mterror_exit(INOTIFY_TAG, "Error locking queue at inotify_push_request: %s", strerror(errno));
+
+    if (queue_full(queue)) {
+        mterror(INOTIFY_TAG, "Internal queue is full (%zu)", queue->size);
+        goto end;
     }
+
+    switch (OSHash_Add(ptable, cmd, (void *)1)) {
+    case 0:
+        mterror(INOTIFY_TAG, "Could not insert key %s into table", cmd);
+        break;
+
+    case 1:
+        mtdebug2(INOTIFY_TAG, "Adding %s: command already exists at path table", cmd);
+        break;
+
+    case 2:
+        dup = strdup(cmd);
+        mtdebug2(INOTIFY_TAG, "Adding %s to inotify command table", cmd);
+
+        if (queue_push(queue, dup) < 0) {
+            mterror(INOTIFY_TAG, "Could not insert key %s into queue", dup);
+            free(dup);
+        }
+        error = pthread_cond_signal(&cond_pending);
+        if (error) mterror_exit(INOTIFY_TAG, "Error sending cond signal at inotify_push_request: %s", strerror(errno));
+    }
+end:
+    error = pthread_mutex_unlock(&mutex_queue);
+    if (error) mterror_exit(INOTIFY_TAG, "Error unlocking queue at inotify_push_request: %s", strerror(errno));
+}
+
+// Real time inotify reader thread
+void* inotify_reader(void * args) {
+    inotify_reader_arguments* reader_args = (inotify_reader_arguments*) args;
+
+    int i, fd = reader_args->fd;
+    unsigned int n_files_to_watch = reader_args->n_files_to_watch;
+    inotify_watch_file * files = reader_args->files;
+    cJSON * root = reader_args->root;
 
     char buffer[IN_BUFFER_SIZE];
     struct inotify_event *event = (struct inotify_event *)buffer;
     ssize_t count;
     bool ignore = false;
+
     while (1) {
         if ((count = read(fd, buffer, IN_BUFFER_SIZE)) < 0) {
             if (errno != EAGAIN)
@@ -571,7 +703,7 @@ void* daemon_inotify(void * args) {
         buffer[count - 1] = '\0';
 
         for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
-            char cmd[80];
+            char cmd[100];
 
             event = (struct inotify_event*)&buffer[i];
             mtdebug2(INOTIFY_TAG,"inotify: i='%d', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
@@ -593,6 +725,23 @@ void* daemon_inotify(void * args) {
                         strcpy(cmd, "update1 ");
                         strcat(cmd, files[j].name);
                         strcat(cmd, event->name);
+
+                        inotify_push_request(cmd);
+                        memset(cmd,0,sizeof(cmd));
+
+                        os_md5 md5_file;
+                        if (OS_MD5_File(files[j].path, md5_file, OS_BINARY) < 0) {
+                            mterror(INOTIFY_TAG, "Could not compute MD5 of file %s", files[j].path);
+                            ignore = true;
+                            continue;
+                        }
+
+                        if (sprintf(cmd, "updatefile %s %ld %s", md5_file, mod_time(files[j].path), files[j].path) >= 100) {
+                            mterror(INOTIFY_TAG, "String overflow sending file updates to database in file %s", files[j].path);
+                            ignore = true;
+                            continue;
+                        }
+
                     } else if (event->mask & IN_Q_OVERFLOW) {
                         mtinfo(INOTIFY_TAG, "Inotify event queue overflowed");
                         ignore = true;
@@ -609,38 +758,115 @@ void* daemon_inotify(void * args) {
                 ignore = false;
                 continue;
             }
-
-            if ((db_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-                mterror_exit(INOTIFY_TAG, "Error initializing client socket: %s", strerror(errno));
-            }
-
-            if (connect(db_socket, (struct sockaddr*)&addr , sizeof(addr)) < 0) {
-                mterror_exit(INOTIFY_TAG, "Error connecting to socket: %s", strerror(errno));
-            }
-
-            if ((rc = write(db_socket, cmd, sizeof(cmd))) < 0) {
-                mterror_exit(INOTIFY_TAG, "Error writing update in DB socket: %s", strerror(errno));
-            }
-
-            char data[10000];
-            if (recv(db_socket, data, sizeof(data),0) < 0)
-                mterror(INOTIFY_TAG, "Error receving data from DB socket: %s", strerror(errno));
-
-            if (shutdown(db_socket, SHUT_RDWR) < 0) {
-                mterror(INOTIFY_TAG, "Error in shutdown: %s", strerror(errno));
-            }
-            if (close(db_socket) < 0) {
-                mterror(INOTIFY_TAG, "Error closing client socket:  %s", strerror(errno));
-            }
+            inotify_push_request(cmd);
             memset(cmd,0,sizeof(cmd));
-            memset(data,0,sizeof(data));
         }
+    }
+    return 0;
+}
+
+char * inotify_pop() {
+    char * cmd;
+    int error;
+
+    error = pthread_mutex_lock(&mutex_queue);
+    if (error) mterror_exit(INOTIFY_TAG, "Error locking queue at inotify_pop: %s", strerror(errno));
+
+    while (queue_empty(queue)) {
+        error = pthread_cond_wait(&cond_pending, &mutex_queue);
+        if (errno) mterror_exit(INOTIFY_TAG, "Error waiting for condition at inotify_pop: %s", strerror(errno));
+    }
+
+    cmd = queue_pop(queue);
+
+    if (!OSHash_Delete(ptable, cmd)) mterror(INOTIFY_TAG, "Could not delete key %s from table", cmd);
+
+    error = pthread_mutex_unlock(&mutex_queue);
+    if (error) mterror_exit(INOTIFY_TAG, "Error unlocking queue at inotify_pop: %s", strerror(errno));
+
+    mtdebug2(INOTIFY_TAG, "Taking %s from table", cmd);
+    return cmd;
+}
+
+void* daemon_inotify(void * args) {
+    char * node_type = args;
+    mtinfo(INOTIFY_TAG,"Preparing client socket");
+    /* prepare socket to send data to cluster database */
+    struct sockaddr_un addr;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path)-1);
+
+    // Create hash table
+    if (ptable = OSHash_Create(), !ptable) 
+        mterror_exit(INOTIFY_TAG, "At daemon_inotify(): OSHash_Create()");
+
+    // Create queue
+    if (queue = queue_init(16384), !queue)
+        mterror_exit(INOTIFY_TAG, "At daemon_inotify(): queue_init()");
+
+    cJSON * root = read_cluster_json_file();
+
+    inotify_watch_file * files;
+    files = malloc(30*sizeof(inotify_watch_file));
+    unsigned int i, n_files_to_watch = get_files_to_watch(node_type, &files, root);
+
+    mtdebug1(INOTIFY_TAG, "Preparing inotify watchers");
+    /* prepare inotify */
+    int fd = inotify_init ();
+    for (i = 0; i < n_files_to_watch; i++) {
+        files[i].files = files[i].files == NULL ? cJSON_Parse("[\"all\"]") : files[i].files;
+        mtdebug1(INOTIFY_TAG, "Monitoring %s files from directory %s", cJSON_Print(files[i].files), files[i].name);
+        files[i].watcher = inotify_add_watch(fd, files[i].path, files[i].flags);
+        if (files[i].watcher < 0)
+            mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 
+                files[i].path, strerror(errno));
+    }
+
+    pthread_t inotify_reader_thread;
+    inotify_reader_arguments thread_args;
+    thread_args.fd = fd;
+    thread_args.n_files_to_watch = n_files_to_watch;
+    thread_args.files = files;
+    thread_args.root = root;
+    pthread_create(&inotify_reader_thread, NULL, inotify_reader, &thread_args);
+
+
+    int db_socket, rc;
+    while(1) {
+        char * cmd = inotify_pop();
+
+        if ((db_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+            mterror_exit(INOTIFY_TAG, "Error initializing client socket: %s", strerror(errno));
+        }
+
+        if (connect(db_socket, (struct sockaddr*)&addr , sizeof(addr)) < 0) {
+            mterror_exit(INOTIFY_TAG, "Error connecting to socket: %s", strerror(errno));
+        }
+
+        if ((rc = write(db_socket, cmd, strlen(cmd))) < 0) {
+            mterror_exit(INOTIFY_TAG, "Error writing update in DB socket: %s", strerror(errno));
+        }
+
+        char data[10000];
+        if (recv(db_socket, data, sizeof(data),0) < 0)
+            mterror(INOTIFY_TAG, "Error receving data from DB socket: %s", strerror(errno));
+
+        if (shutdown(db_socket, SHUT_RDWR) < 0) {
+            mterror(INOTIFY_TAG, "Error in shutdown: %s", strerror(errno));
+        }
+        if (close(db_socket) < 0) {
+            mterror(INOTIFY_TAG, "Error closing client socket:  %s", strerror(errno));
+        }
+        memset(data,0,sizeof(data));
+        free(cmd);
     }
 
     mtdebug1(INOTIFY_TAG,"Removing watchers");
     /*removing the directory from the watch list.*/
     for (i = 0; i < n_files_to_watch; i++) inotify_rm_watch(fd, files[i].watcher);
-
+    free(files);
     close(fd);
 
     return 0;

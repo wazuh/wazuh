@@ -109,7 +109,11 @@ class WazuhException(Exception):
         3005: 'Error reading cluster JSON file',
         3006: 'Error reading cluster configuration',
         3007: 'Client.keys file received in master node',
-        3008: 'Error importing cryptography module'
+        3008: 'Error importing cryptography module',
+        3009: 'Error connecting to cluster database',
+        3010: 'Error in cluster client',
+        3011: 'Agent info file received in a client node',
+        3012: 'Received an old agent-info file'
 
         # > 9000: Authd
     }

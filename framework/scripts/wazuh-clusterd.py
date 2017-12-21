@@ -261,7 +261,7 @@ if __name__ == '__main__':
 
     if not cluster_config or cluster_config['disabled'] == 'yes':
         logging.info("Cluster disabled. Exiting...")
-        exit(0)
+        kill(getpid(), SIGINT)
 
     # execute C cluster daemon (database & inotify) if it's not running
     try:
