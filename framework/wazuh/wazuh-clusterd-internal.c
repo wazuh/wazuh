@@ -90,7 +90,7 @@ time_t mod_time(char *file) {
    The funcion will read (size-1) bytes and terminate the string
 */
 void read_file(char * pathname, char * buffer, off_t size) {
-    if (size < 0) mterror_exit("File %s is empty", pathname);
+    if (size < 0) mterror_exit(INOTIFY_TAG, "File %s is empty", pathname);
     size_t unsigned_size = (size_t)size;
     FILE * pFile;
     size_t result;
