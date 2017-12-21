@@ -1682,7 +1682,9 @@ const char *getuname()
                             read_buff[i] = '\0';
                             i--;
                         }
-                        strncat(ret, read_buff, ret_size - 1);
+                        char * pch = strstr(read_buff, "Windows");
+                        strncat(ret, "Microsoft ", ret_size - 1);
+                        strncat(ret, pch, ret_size - 1);
                     }else
                         strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
                 }
