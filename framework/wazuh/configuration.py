@@ -51,7 +51,7 @@ conf_sections = {
         'list_options': ['nodes']
     },
     'auth': {
-  	    'type': 'simple',
+        'type': 'simple',
         'list_options': []
     }
 }

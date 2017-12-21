@@ -64,8 +64,8 @@ src/win32/help_win.txt
 src/win32/internal_options.conf
 src/win32/restart-ossec.cmd
 src/win32/route-null.cmd
-
-
+src/win32/VERSION
+src/win32/REVISION
 
 # Eclipse files
 .cproject
@@ -92,15 +92,6 @@ src/test_os_xml
 src/test_os_zlib
 src/test_shared
 etc/preloaded-vars.conf
-
-# Windows-specific build output:
-src/win32/LICENSE.txt
-src/win32/default-local_internal_options.conf
-src/win32/default-ossec.conf
-src/win32/help_win.txt
-src/win32/internal_options.conf
-src/win32/restart-ossec.cmd
-src/win32/route-null.cmd
 
 # OpenSSL
 src/external/openssl/Makefile

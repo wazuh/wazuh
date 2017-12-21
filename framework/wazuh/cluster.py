@@ -6,13 +6,14 @@
 from wazuh.utils import cut_array, sort_array, search_array, md5
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
+from wazuh.manager import status
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh import common
 import sqlite3
 from datetime import datetime
 from hashlib import sha512
-from time import time, mktime
+from time import time, mktime, sleep
 from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull
 from subprocess import check_output
 from shutil import rmtree
@@ -54,36 +55,41 @@ except:
 
 def check_cluster_status():
     """
-    Function to check if cluster is enabled in ossec-control
+    Function to check if cluster is enabled
     """
     with open("/etc/ossec-init.conf") as f:
         # the osec directory is the first line of ossec-init.conf
         directory = f.readline().split("=")[1][:-1].replace('"', "")
 
     try:
-        process_list = check_output(["tac", "{0}/bin/.process_list".format(directory)], stderr=open(devnull, 'w')).split('\n')
+        # wrap the data
+        with open("{0}/etc/ossec.conf".format(directory)) as f:
+            txt_data = f.read()
+
+        txt_data = re.sub("(<!--.*?-->)", "", txt_data, flags=re.MULTILINE | re.DOTALL)
+        txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
+        txt_data = '<root_tag>' + txt_data + '</root_tag>'
+
+        conf = ET.fromstring(txt_data)
+
+        return conf.find('ossec_config').find('cluster').find('disabled').text == 'no'
     except:
         return False
-    for process in process_list:
-        if process == 'CLUSTER_DAEMON=""':
-            return False
-        elif process == 'CLUSTER_DAEMON=wazuh-clusterd':
-            return True
-    return False
 
-# import python-cryptography lib only if cluster is enabled at ossec-control
+# import python-cryptography lib only if cluster is enabled
 if check_cluster_status():
     try:
         from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
     except ImportError as e:
-        print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
-        exit(-1)
+        raise WazuhException(3008, str(e))
 
 
 class WazuhClusterClient(asynchat.async_chat):
     def __init__(self, host, port, key, data, file):
         asynchat.async_chat.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setblocking(0)
+        self.socket.settimeout(common.cluster_timeout)
         self.connect((host, port))
         self.data = data
         self.file = file
@@ -145,7 +151,7 @@ def send_request(host, port, key, data, file=None):
     try:
         fernet_key = Fernet(key.encode('base64','strict'))
         client = WazuhClusterClient(host, int(port), fernet_key, data, file)
-        asyncore.loop(timeout=common.cluster_timeout)
+        asyncore.loop()
         data = client.response
 
     except NameError as e:
@@ -158,7 +164,8 @@ def send_request(host, port, key, data, file=None):
     return error, data
 
 def get_status_json():
-    return "Enabled" if check_cluster_status() else "Disabled"
+    return {"enabled": "yes" if check_cluster_status() else "no",
+            "running": "yes" if status()['wazuh-clusterd'] == 'running' else "no"}
 
 
 def check_cluster_cmd(cmd, node_type):
@@ -263,8 +270,13 @@ def read_config():
     try:
         config_cluster = get_ossec_conf('cluster')
 
+    except WazuhException as e:
+        if e.code == 1102:
+            raise WazuhException(3006, "Cluster configuration not present in ossec.conf")
+        else:
+            raise WazuhException(3006, e.message)
     except Exception as e:
-        raise WazuhException(3006, e.message)
+        raise WazuhException(3006, str(e))
 
     return config_cluster
 
@@ -374,17 +386,17 @@ def list_files_from_filesystem(node_type, cluster_items):
     def get_files_from_dir(dirname, recursive, files, cluster_items):
         items = []
         for entry in listdir(dirname):
-            if entry not in cluster_items['excluded_files'] and entry[-1] != '~' \
-                and entry in files or files == ["all"]:
+            if entry in cluster_items['excluded_files'] or entry[-1] == '~':
+                continue
+
+            if entry in files or files == ["all"]:
 
                 full_path = path.join(dirname, entry)
                 if not path.isdir(full_path):
-                    new_item = dict(item)
-                    new_item["path"] = full_path.replace(common.ossec_path, "")
-                    items.append(new_item)
+                    items.append(full_path.replace(common.ossec_path, ""))
                 elif recursive:
-                    items = list(chain.from_iterable([items,
-                                    get_files_from_dir(full_path, recursive, files, cluster_items)]))
+                    items.extend(get_files_from_dir(full_path, recursive, files, cluster_items))
+
         return items
 
     # Expand directory
@@ -394,16 +406,13 @@ def list_files_from_filesystem(node_type, cluster_items):
             continue
         if item['source'] == node_type or \
            item['source'] == 'all':
-
             fullpath = common.ossec_path + file_path
-            expanded_items = chain.from_iterable([expanded_items,
-                                   get_files_from_dir(fullpath, item['recursive'],
-                                                      item['files'], cluster_items)])
+            expanded_items.extend(get_files_from_dir(fullpath, item['recursive'],item['files'], cluster_items))
 
     final_items = {}
     for new_item in expanded_items:
         try:
-            final_items[new_item['path']] = get_file_info(new_item['path'], cluster_items)
+            final_items[new_item] = get_file_info(new_item, cluster_items)
         except Exception as e:
             continue
 
@@ -453,6 +462,22 @@ def get_file_status_all_managers(file_list, manager):
     return files
 
 
+def get_last_sync():
+    """
+    Function to retrieve information about the last synchronization
+    """
+    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+
+    cluster_socket.send("sellast")
+    
+    date, duration = filter(lambda x: x != '\x00', cluster_socket.recv(10000)).split(" ")
+
+    cluster_socket.close()
+
+    return str(datetime.fromtimestamp(int(date))), float(duration)
+
+
 def clear_file_status_one_node(manager, cluster_socket):
     """
     Function to set the status of all manager's files to pending
@@ -471,7 +496,14 @@ def clear_file_status():
     Function to set all database files' status to pending
     """
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+    max_retries = 100
+    for i in range(max_retries):
+        try:
+            cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
+        except socket.error:
+            sleep(1)
+            continue
+        break
 
     cluster_socket.send("clear ")
     received = cluster_socket.recv(10000)
@@ -595,12 +627,16 @@ def _check_removed_agents(new_client_keys):
                 logging.error("Error deleting agent {0}: {1}".format(agent_id, str(e)))
 
 
-def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None):
+def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master'):
     # Set Timezone to epoch converter
     # environ['TZ']='UTC'
 
     if path.basename(fullpath) == 'client.keys':
-        _check_removed_agents(new_content.split('\n'))
+        if node_type=='client':
+            _check_removed_agents(new_content.split('\n'))
+        else:
+            logging.warning("Client.keys file received in a master node.")
+            raise WazuhException(3007)
 
     # Write
     if w_mode == "atomic":
@@ -633,6 +669,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None)
     if w_mode == "atomic":
         rename(f_temp, fullpath)
 
+
 def extract_zip(zip_bytes):
     zip_json = {}
     with zipfile.ZipFile(BytesIO(zip_bytes)) as zipf:
@@ -657,7 +694,7 @@ def receive_zip(zip_file):
 
 
     cluster_items = get_cluster_items()
-
+    config = read_config()
     logging.info("Receiving package with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'invalid': []}
@@ -677,10 +714,12 @@ def receive_zip(zip_file):
             except KeyError:
                 remote_umask = int(cluster_items['/etc/']['umask'], base=0)
                 remote_write_mode = cluster_items['/etc/']['write_mode']
+            
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],
-                            w_mode=remote_write_mode)
+                            w_mode=remote_write_mode,
+                            node_type=config['node_type'])
 
         except Exception as e:
             logging.error("Error extracting zip file: {0}".format(str(e)))
@@ -821,6 +860,9 @@ def sync_one_node(debug, node, force=False):
     """
     Sync files with only one node
     """
+    synchronization_date = time()
+    synchronization_duration = 0.0
+
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
@@ -841,6 +883,7 @@ def sync_one_node(debug, node, force=False):
     all_files = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 
     after = time()
+    synchronization_duration += after-before
     logging.debug("Time retrieving info from DB: {0}".format(after-before))
 
     before = time()
@@ -848,12 +891,19 @@ def sync_one_node(debug, node, force=False):
     push_updates_single_node(all_files, node, config_cluster, result_queue)
 
     after = time()
+    synchronization_duration += after-before
     logging.debug("Time sending info: {0}".format(after-before))
     before = time()
 
     result = result_queue.get()
     update_node_db_after_sync(result, node, cluster_socket)
     after = time()
+    synchronization_duration += after-before
+    cluster_socket.send("clearlast")
+    received = cluster_socket.recv(10000)
+    cluster_socket.send("updatelast {0} {1}".format(synchronization_date, int(synchronization_duration)))
+    received = cluster_socket.recv(10000)
+    cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 
     if debug:
@@ -871,6 +921,9 @@ def sync(debug, force=False):
     Sync this node with others
     :return: Files synced.
     """
+    synchronization_date = time()
+    synchronization_duration = 0.0
+
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
@@ -902,6 +955,7 @@ def sync(debug, force=False):
         all_nodes_files[node] = get_file_status_of_one_node(node, own_items_names, cluster_socket)
 
     after = time()
+    synchronization_duration += after-before
     logging.debug("Time retrieving info from DB: {0}".format(after-before))
 
     before = time()
@@ -921,16 +975,20 @@ def sync(debug, force=False):
     for t in threads:
         t.join()
     after = time()
-
+    synchronization_duration += after-before
     logging.debug("Time sending info: {0}".format(after-before))
 
     before = time()
     for node,data in thread_results.items():
         update_node_db_after_sync(data, node, cluster_socket)
 
-    cluster_socket.close()
     after = time()
-
+    synchronization_duration += after-before
+    cluster_socket.send("clearlast")
+    received = cluster_socket.recv(10000)
+    cluster_socket.send("updatelast {0} {1}".format(int(synchronization_date), synchronization_duration))
+    received = cluster_socket.recv(10000)
+    cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
 
     if debug:

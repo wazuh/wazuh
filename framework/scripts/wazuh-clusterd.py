@@ -2,58 +2,64 @@
 
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-import asyncore
-import asynchat
-import socket
-import json
-from distutils.util import strtobool
-from sys import argv, exit, path
-from os.path import dirname
-from subprocess import check_call, CalledProcessError, check_output
-from os import devnull, seteuid, setgid, getpid, kill
-from multiprocessing import Process
-from re import search
-from time import sleep
-from pwd import getpwnam
-from signal import signal, SIGINT, SIGTERM, SIGUSR1
-import ctypes
-import ctypes.util
 try:
-    from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
-except ImportError as e:
-    print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
-    exit(-1)
+    import asyncore
+    import asynchat
+    import socket
+    import json
+    from distutils.util import strtobool
+    from sys import argv, exit, path
+    from os.path import dirname
+    from subprocess import check_call, CalledProcessError
+    from os import devnull, seteuid, setgid, getpid, kill
+    from multiprocessing import Process
+    from re import search
+    from time import sleep
+    from pwd import getpwnam
+    from signal import signal, SIGINT, SIGTERM, SIGUSR1
+    import ctypes
+    import ctypes.util
 
-import argparse
-parser =argparse.ArgumentParser()
-parser.add_argument('-f', help="Run in foreground", action='store_true')
-parser.add_argument('-d', help="Enable debug messages", action='store_true')
-parser.add_argument('-V', help="Print version", action='store_true')
+    import argparse
+    parser =argparse.ArgumentParser()
+    parser.add_argument('-f', help="Run in foreground", action='store_true')
+    parser.add_argument('-d', help="Enable debug messages", action='store_true')
+    parser.add_argument('-V', help="Print version", action='store_true')
 
-# Set framework path
-path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
+    # Set framework path
+    path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
 
-child_pid = 0
+    child_pid = 0
 
-# Import framework
-try:
-    from wazuh import Wazuh
+    # Import framework
+    try:
+        from wazuh import Wazuh
 
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
-    
-    from wazuh.common import *
-    from wazuh.cluster import *
-    from wazuh.exception import WazuhException
-    from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
-except Exception as e:
-    print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
+        # Initialize framework
+        myWazuh = Wazuh(get_init=True)
+
+        from wazuh.common import *
+        from wazuh.cluster import *
+        from wazuh.exception import WazuhException
+        from wazuh.utils import check_output
+        from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
+    except Exception as e:
+        print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
+        exit()
+
+    if check_cluster_status():
+        try:
+            from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
+        except ImportError as e:
+            print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
+            exit(-1)
+
+    import logging
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
+                        filename="{0}/logs/cluster.log".format(common.ossec_path))
+except:
+    print("wazuh-clusterd: Python 2.7 required. Exiting.")
     exit()
-
-import logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
-                    filename="{0}/logs/cluster.log".format(common.ossec_path))
 
 class WazuhClusterHandler(asynchat.async_chat):
     def __init__(self, sock, addr, key, node_type):
@@ -107,7 +113,7 @@ class WazuhClusterHandler(asynchat.async_chat):
             error = "Could not decrypt message from {0}".format(self.addr)
         else:
             error = str(v)
-        
+
         logging.error("Error handling client request: {0}".format(error))
         self.data = json.dumps({'error': 1, 'data': error})
         self.handle_write()
@@ -116,7 +122,7 @@ class WazuhClusterHandler(asynchat.async_chat):
     def handle_write(self):
         msg = self.f.encrypt(self.data) + '\n'
         i = 0
-        while i < len(msg): 
+        while i < len(msg):
             next_i = i+4096 if i+4096 < len(msg) else len(msg)
             sent = self.send(msg[i:next_i])
             if sent == 4096 or next_i == len(msg):
@@ -129,6 +135,7 @@ class WazuhClusterServer(asyncore.dispatcher):
     def __init__(self, bind_addr, port, key, node_type):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.settimeout(common.cluster_timeout)
         self.set_reuse_addr()
         self.key = key
         self.node_type = node_type
@@ -138,6 +145,7 @@ class WazuhClusterServer(asyncore.dispatcher):
             logging.error("Can't bind socket: {0}".format(str(e)))
             raise e
         self.listen(50)
+
         cluster_info = read_config()
         logging.info("Starting cluster {0}".format(cluster_info['name']))
         logging.info("Listening on port {0}.".format(port))
@@ -182,7 +190,7 @@ def crontab_sync_client():
     def sync_handler(n_signal, frame):
         master = get_remote_nodes()[0]
         sync_one_node(False, master)
-        
+
     signal(SIGUSR1, sync_handler)
     while True:
         sleep(30)
@@ -196,7 +204,7 @@ def signal_handler(n_signal, frame):
 
         return strsignal_c(n_signal)
 
-    logging.info("Signal [{0}-{1}] received. Exit cleaning...".format(n_signal, 
+    logging.info("Signal [{0}-{1}] received. Exit cleaning...".format(n_signal,
                                                                strsignal(n_signal)))
     # received Cntrl+C
     if n_signal == SIGINT or n_signal == SIGTERM:
@@ -230,25 +238,6 @@ if __name__ == '__main__':
     signal(SIGINT, signal_handler)
     signal(SIGTERM, signal_handler)
 
-    cluster_config = read_config()
-
-    # execute C cluster daemon (database & inotify) if it's not running
-    try:
-        exit_code = check_call(["ps", "-C", "wazuh-clusterd-internal"], stdout=open(devnull, 'w'))
-        pid = check_output(["pidof", "{0}/bin/wazuh-clusterd-internal".format(common.ossec_path)]).split(" ")
-        for p in pid:
-            p = p[:-1] if '\n' in p else p
-            check_call(["kill", p])
-
-        run_internal_daemon(args.d)
-    except CalledProcessError:
-        run_internal_daemon(args.d)
-    
-    # Drop privileges to ossec
-    pwdnam_ossec = getpwnam('ossec')
-    setgid(pwdnam_ossec.pw_gid)
-    seteuid(pwdnam_ossec.pw_uid)
-
     if not args.f:
         res_code = pyDaemon()
     else:
@@ -262,6 +251,35 @@ if __name__ == '__main__':
         # add the handler to the root logger
         logging.getLogger('').addHandler(console)
 
+    try:
+        cluster_config = read_config()
+    except WazuhException as e:
+        if e.code == 3006:
+            cluster_config = None
+        else:
+            raise e
+
+    if not cluster_config or cluster_config['disabled'] == 'yes':
+        logging.info("Cluster disabled. Exiting...")
+        exit(0)
+
+    # execute C cluster daemon (database & inotify) if it's not running
+    try:
+        exit_code = check_call(["ps", "-C", "wazuh-clusterd-internal"], stdout=open(devnull, 'w'))
+        pid = check_output(["pidof", "{0}/bin/wazuh-clusterd-internal".format(common.ossec_path)]).split(" ")
+        for p in pid:
+            p = p[:-1] if '\n' in p else p
+            check_call(["kill", p])
+
+        run_internal_daemon(args.d)
+    except CalledProcessError:
+        run_internal_daemon(args.d)
+
+    # Drop privileges to ossec
+    pwdnam_ossec = getpwnam('ossec')
+    setgid(pwdnam_ossec.pw_gid)
+    seteuid(pwdnam_ossec.pw_uid)
+
     create_pid("wazuh-clusterd", getpid())
 
     if not args.d:
@@ -272,7 +290,7 @@ if __name__ == '__main__':
     except WazuhException as e:
         logging.error(str(e))
         kill(getpid(), SIGINT)
-    
+
 
     logging.info("Cleaning database before starting service...")
     clear_file_status()
@@ -292,6 +310,6 @@ if __name__ == '__main__':
         p.start()
         child_pid = p.pid
 
-    server = WazuhClusterServer('' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr'], 
+    server = WazuhClusterServer('' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr'],
                                 int(cluster_config['port']), cluster_config['key'], cluster_config['node_type'])
-    asyncore.loop(timeout=common.cluster_timeout)
+    asyncore.loop()

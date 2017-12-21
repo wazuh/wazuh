@@ -3,8 +3,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from subprocess import check_output
-
 def set_paths_based_on_ossec(o_path='/var/ossec'):
     """
     Set paths based on ossec location.
@@ -97,7 +95,7 @@ cluster_sync_msg_size = get_encrypted_size(cluster_protocol_plain_size)
 
 # timeout of the cluster server & client
 global cluster_timeout
-cluster_timeout = 30 
+cluster_timeout = 3
 
 # Common variables based on ossec path (/var/ossec by default)
 set_paths_based_on_ossec()

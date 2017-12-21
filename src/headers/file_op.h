@@ -30,6 +30,8 @@ time_t File_DateofChange(const char *file) __attribute__((nonnull));
 
 ino_t File_Inode(const char *file) __attribute__((nonnull));
 
+off_t FileSize(const char * path);
+
 int IsDir(const char *file) __attribute__((nonnull));
 
 int IsFile(const char *file) __attribute__((nonnull));

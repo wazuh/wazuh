@@ -10,6 +10,7 @@ ExecStart=/usr/bin/env ${DIRECTORY}/bin/ossec-control start
 ExecStop=/usr/bin/env ${DIRECTORY}/bin/ossec-control stop
 ExecReload=/usr/bin/env ${DIRECTORY}/bin/ossec-control reload
 KillMode=none
+RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target

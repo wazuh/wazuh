@@ -14,7 +14,7 @@ import sqlite3
 if LooseVersion(sqlite3.sqlite_version) < LooseVersion('3.7.0.0'):
     msg = str(sqlite3.sqlite_version)
     msg += "\nTry to export the internal SQLite library:"
-    msg += "\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{0}/api/framework/lib".format(common.ossec_path)
+    msg += "\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{0}/framework/lib".format(common.ossec_path)
     raise WazuhException(2001, msg)
 
 
@@ -74,13 +74,16 @@ class Connection:
 
             except sqlite3.OperationalError as e:
                 error_text = str(e)
-                n_attempts += 1
+                if error_text == 'database is locked':
+                    n_attempts += 1
+                else:
+                    raise WazuhException(2003, error_text)
 
             except Exception as e:
                 raise Exception (str(e))
 
             if n_attempts > self.max_attempts:
-                raise sqlite3.OperationalError("Maximum attempts exceeded for sqlite3 execute: {0}".format(error_text))
+                raise WazuhException(2002, error_text)
 
     def fetch(self):
         """
