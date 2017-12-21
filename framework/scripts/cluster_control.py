@@ -9,6 +9,7 @@ import argparse
 from itertools import chain
 import logging
 import socket
+from signal import signal, SIGINT
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 
 class WazuhHelpFormatter(argparse.ArgumentParser):
@@ -26,13 +27,13 @@ class WazuhHelpFormatter(argparse.ArgumentParser):
 \t
 \t-l                                  # List the status of all files
 \t-l FILE [FILE ...]                  # List the status of specified files
-\t-l -m MANAGER [MANAGER ...]         # List the status of all files of specified managers
+\t-l -m MANAGER [MANAGER ...]         # List the status of all files of specified managers (name or IP)
 \t
-\t-a                                  # List the status of all agents
-\t-a AGENT [AGENT ...]                # List the status of specified agents
+\t-a                                  # List the status of all agents 
+\t-a AGENT [AGENT ...]                # List the status of specified agents (IP)
 \t
 \t-n                                  # List nodes status
-\t-n NODE [NODE ...]                  # List the status of specified nodes
+\t-n NODE [NODE ...]                  # List the status of specified nodes (name or IP)
 
     Params:
 \t-h, --help
@@ -132,6 +133,9 @@ def _get_nodes_status(node_list):
 
     print pprint_table(data=node_info, headers=["Node","Status","Address"], show_header=True)
 
+def signal_handler(n_signal, frame):
+    exit(1)
+    
 def _get_last_sync():
     date, duration = get_last_sync()
 
@@ -140,6 +144,11 @@ def _get_last_sync():
 if __name__ == '__main__':
     # Initialize framework
     myWazuh = Wazuh(get_init=True)
+
+    if not check_cluster_status():
+        print("Cluster is disabled. Exiting...")
+        exit(1)
+
     # get arguments
     args = parser.parse_args()
 
@@ -156,10 +165,18 @@ if __name__ == '__main__':
         logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
 
     elif args.files is not None:
-        _get_file_status(args.files, args.manager)
+        try:
+            _get_file_status(args.files, args.manager)
+        except WazuhException as e:
+            print("Can not get files: {0}".format(str(e)))
+            exit(1)
 
     elif args.agents is not None:
-        _get_agents_status()
+        try:
+            _get_agents_status()
+        except WazuhException as e:
+            print("Can not get agents: {0}".format(str(e)))
+            exit(1)
 
     elif args.nodes is not None:
         _get_nodes_status(args.nodes)
@@ -194,3 +211,4 @@ if __name__ == '__main__':
     else:
         parser.print_help()
         exit()
+
