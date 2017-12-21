@@ -2306,7 +2306,7 @@ class Agent:
 
         items = 0
         for item in purgeable_agents:
-            Agent(item[0]).remove(backup)
+            Agent(item[0]).remove(backup, purge=True)
             items += 1
 
         result = {'totalItems': items}
