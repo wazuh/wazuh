@@ -21,7 +21,7 @@ static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
 static void wm_ciscat_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_ciscat_check();                       // Check configuration, disable flag
 static void wm_ciscat_run(wm_ciscat_eval *eval, char *path);      // Run a CIS-CAT policy
-static void wm_ciscat_parser(wm_ciscat_eval *eval);  // Parse CIS-CAT reports
+static void wm_ciscat_parser_xml();                 // Parse CIS-CAT xml reports
 static void wm_ciscat_info();                        // Show module info
 static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
 
@@ -158,10 +158,12 @@ void wm_ciscat_cleanup() {
 
 void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     char *command = NULL;
+    char *bm_command = NULL;
     int status, child_status;
     char *output = NULL;
     char msg[OS_MAXSTR];
     char *ciscat_script = "./CIS-CAT.sh";
+    char xml_file[OS_MAXSTR];
 
     // Define time to sleep between messages sent
 
@@ -204,9 +206,9 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     wm_strcat(&command, "-rn", ' ');
     wm_strcat(&command, "ciscat-report", ' ');
 
-    // Get txt reports
+    // Get xml reports
 
-    wm_strcat(&command, "-t", ' ');
+    wm_strcat(&command, "-x", ' ');
 
     // Do not create HTML report
 
@@ -289,27 +291,40 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     select(0 , NULL, NULL, NULL, &timeout);
     SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
 
-    wm_ciscat_parser(eval);
+    // Get assessment result from XML report
+
+    os_calloc(OS_MAXSTR, sizeof(char), bm_command);
+
+    snprintf(bm_command, OS_MAXSTR - 1, "/usr/bin/xsltproc -o %s/results.txt %s/template_xccdf.xsl %s/ciscat-report.xml", WM_CISCAT_REPORTS, WM_CISCAT_DEFAULT_DIR, WM_CISCAT_REPORTS);
+
+    mtdebug2(WM_CISCAT_LOGTAG, "Launching command: %s", bm_command);
+    if (wm_exec(bm_command, &output, &status, eval->timeout) != 0) {
+        mterror_exit(WM_CISCAT_LOGTAG, "Error launching command: %s", bm_command);
+    }
+
+    wm_ciscat_parser_xml();
+
+    snprintf(xml_file, OS_MAXSTR - 1, "%s%s", WM_CISCAT_REPORTS, "/ciscat-report.xml");
+    unlink(xml_file);
 
     free(output);
     free(command);
+    free(bm_command);
 }
 
-void wm_ciscat_parser(wm_ciscat_eval *eval){
+void wm_ciscat_parser_xml(){
 
     char file[OS_MAXSTR];
     FILE *fp;
     char string[OS_MAXSTR];
-    int line = 0;
-    int last_line = 0;
-    int final = 0;
-    int i;
     cJSON *object;
     cJSON *data;
+    char *pos;
+    int i;
 
-    // Define report location
+    // Define results location
 
-    snprintf(file, OS_MAXSTR - 1, "%s%s", WM_CISCAT_REPORTS, "/ciscat-report.txt");
+    snprintf(file, OS_MAXSTR - 1, "%s%s", WM_CISCAT_REPORTS, "/results.txt");
 
     // Set unique ID for each scan
 
@@ -321,212 +336,117 @@ void wm_ciscat_parser(wm_ciscat_eval *eval){
 
         while (fgets(string, OS_MAXSTR, fp) != NULL){
 
+            if (strncmp(string, "********", 8)){
 
-            // Remove '\r\n' from log lines
+                // Remove '\n' from strings
 
-            if (!last_line){
-                size_t length;
-                length = strlen(string);
-                string[length - 1] = '\0';
-                string[length - 2] = '\0';
-            }
-
-            line++;
-
-            if (line == 1){
-
-                object = cJSON_CreateObject();
-                data = cJSON_CreateObject();
-                cJSON_AddStringToObject(object, "type", "scan_start");
-                cJSON_AddNumberToObject(object, "scan_id", ID);
-                cJSON_AddItemToObject(object, "cis-data", data);
-                char benchmark[OS_MAXSTR];
-                snprintf(benchmark, OS_MAXSTR - 1, "%s", string);
-                cJSON_AddStringToObject(data, "benchmark", benchmark);
-                if (eval->profile){
-                    cJSON_AddStringToObject(data, "profile", eval->profile);
-                } else {
-                    cJSON_AddStringToObject(data, "profile", "No profile set.");
+                if ((pos = strrchr(string, '\n'))) {
+                    *pos = '\0';
                 }
-
-
-            } else if (line == 2) {
 
                 char ** parts = NULL;
 
-                parts = OS_StrBreak(' ', string, 3);
-                cJSON_AddStringToObject(data, "hostname", parts[2]);
+                parts = OS_StrBreak(':', string, 2);
+
+                if (!strncmp(parts[0], "benchmark", 10)){
+
+                    object = cJSON_CreateObject();
+                    data = cJSON_CreateObject();
+                    cJSON_AddStringToObject(object, "type", "scan_info");
+                    cJSON_AddNumberToObject(object, "scan_id", ID);
+                    cJSON_AddItemToObject(object, "cis-data", data);
+                    cJSON_AddStringToObject(data, "benchmark", parts[1]);
+
+                } else if (!strncmp(parts[0], "profile", 8)){
+
+                    cJSON_AddStringToObject(data, "profile", parts[1]);
+
+                } else if (!strncmp(parts[0], "hostname", 9)){
+
+                    cJSON_AddStringToObject(data, "hostname", parts[1]);
+
+                } else if (!strncmp(parts[0], "timestamp", 10)){
+
+                    cJSON_AddStringToObject(data, "timestamp", parts[1]);
+
+                } else if (!strncmp(parts[0], "score", 8)){
+
+                    cJSON_AddNumberToObject(data, "score", atoi(parts[1]));
+
+                    // Send event to queue
+
+                    char *msg;
+
+                    msg = cJSON_PrintUnformatted(object);
+                    mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
+                    SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+                    cJSON_Delete(object);
+
+                    free(msg);
+
+                } else if (!strncmp(parts[0], "rule_id", 7)){
+
+                    object = cJSON_CreateObject();
+                    data = cJSON_CreateObject();
+                    cJSON_AddStringToObject(object, "type", "scan_result");
+                    cJSON_AddNumberToObject(object, "scan_id", ID);
+                    cJSON_AddItemToObject(object, "cis-data", data);
+
+                    char ** id_parts;
+                    id_parts = OS_StrBreak('_', parts[1], 5);
+
+                    cJSON_AddStringToObject(data, "rule_id", id_parts[3]);
+
+                    for (i=0; id_parts[i]; i++){
+                        free(id_parts[i]);
+                    }
+                    free(id_parts);
+
+                } else if (!strncmp(parts[0], "rule_title", 10)){
+
+                    cJSON_AddStringToObject(data, "rule_title", parts[1]);
+
+                } else if (!strncmp(parts[0], "group", 5)){
+
+                    cJSON_AddStringToObject(data, "group", parts[1]);
+
+                } else if (!strncmp(parts[0], "description", 11)){
+
+                    cJSON_AddStringToObject(data, "description", parts[1]);
+
+                } else if (!strncmp(parts[0], "rationale", 9)){
+
+                    cJSON_AddStringToObject(data, "rationale", parts[1]);
+
+                } else if (!strncmp(parts[0], "remediation", 11)){
+
+                    cJSON_AddStringToObject(data, "remediation", parts[1]);
+
+                } else if (!strncmp(parts[0], "result", 6)){
+
+                    cJSON_AddStringToObject(data, "result", parts[1]);
+
+                    // Send event to queue
+
+                    char *msg;
+
+                    msg = cJSON_PrintUnformatted(object);
+                    mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
+                    SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+                    cJSON_Delete(object);
+
+                    free(msg);
+
+                } else
+                    continue;
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
                 }
                 free(parts);
-
-            } else if (line == 3) {
-
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(' ', string, 2);
-                cJSON_AddStringToObject(data, "timestamp", parts[1]);
-
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-
-                char *msg;
-
-                msg = cJSON_PrintUnformatted(object);
-                mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
-                SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
-                cJSON_Delete(object);
-
-                free(msg);
-
-            } else if (line == 4){
-                continue;
-
-            } else if ((strstr(string, "**********") != NULL)){
-
-                line = 5;
-                final = 1;
-                object = cJSON_CreateObject();
-                data = cJSON_CreateObject();
-                cJSON_AddStringToObject(object, "type", "scan_end");
-                cJSON_AddNumberToObject(object, "scan_id", ID);
-                cJSON_AddItemToObject(object, "cis-data", data);
-
-            } else if (line == 6 && final){
-
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(' ', string, 2);
-                cJSON_AddStringToObject(data, "pass", parts[1]);
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-
-            } else if (line == 7 && final){
-
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(' ', string, 2);
-                cJSON_AddStringToObject(data, "fail", parts[1]);
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-
-            } else if (line == 8 && final){
-
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(' ', string, 2);
-                cJSON_AddStringToObject(data, "error", parts[1]);
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-
-            } else if (line == 9 && final){
-
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(' ', string, 2);
-                cJSON_AddStringToObject(data, "unknown", parts[1]);
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-
-            } else if (line == 10 && final){
-
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(' ', string, 3);
-                cJSON_AddStringToObject(data, "not_selected", parts[2]);
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-
-            } else if (line == 11 && final){
-
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(' ', string, 3);
-                cJSON_AddStringToObject(data, "actual_pass", parts[2]);
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-
-            } else if (line == 12 && final){
-
-                last_line = 1;
-
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(' ', string, 3);
-                cJSON_AddStringToObject(data, "max_possible", parts[2]);
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-
-            } else if (line == 13 && final){
-
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(' ', string, 2);
-                cJSON_AddStringToObject(data, "score", parts[1]);
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-
-                char *msg;
-
-                msg = cJSON_PrintUnformatted(object);
-                mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
-                SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
-                cJSON_Delete(object);
-
-                free(msg);
 
             } else {
-
-                object = cJSON_CreateObject();
-                data = cJSON_CreateObject();
-                cJSON_AddStringToObject(object, "type", "scan_result");
-                cJSON_AddNumberToObject(object, "scan_id", ID);
-                cJSON_AddItemToObject(object, "cis-data", data);
-
-                char ** parts = NULL;
-
-                parts = OS_StrBreak(' ', string, 3);
-
-                cJSON_AddStringToObject(data, "check_id", parts[1]);
-                cJSON_AddStringToObject(data, "description", parts[2]);
-
-                char *result = os_strip_char(parts[0], ':');
-                cJSON_AddStringToObject(data, "result", result);
-
-                for (i=0; parts[i]; i++){
-                    free(parts[i]);
-                }
-                free(parts);
-
-                char *msg;
-
-                msg = cJSON_PrintUnformatted(object);
-                mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
-                SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
-                cJSON_Delete(object);
-
-                free(msg);
-
+                continue;
             }
         }
         fclose(fp);
