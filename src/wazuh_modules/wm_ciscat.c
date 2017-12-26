@@ -248,7 +248,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
                 case 0:
                     if (status > 0) {
                         mtwarn(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
-                        mtdebug2(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+                        mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
                         exit(1);
                     }
 
@@ -265,7 +265,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
                 default:
                     mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
-                    exit(0);
+                    exit(1);
                     pthread_exit(NULL);
             }
 
@@ -281,8 +281,13 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
                     mterror(WM_CISCAT_LOGTAG, WAITPID_ERROR, errno, strerror(errno));
                     break;
                 default:
-                    if (WEXITSTATUS(child_status) == 1)
+                    if (WEXITSTATUS(child_status) == 1){
                         eval->flags.error = 1;
+                        free(output);
+                        free(command);
+                        free(bm_command);
+                        return;
+                    }
             }
     }
 
@@ -293,18 +298,23 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     // Get assessment result from XML report
 
+    snprintf(xml_file, OS_MAXSTR - 1, "%s%s", WM_CISCAT_REPORTS, "/ciscat-report.xml");
+
     os_calloc(OS_MAXSTR, sizeof(char), bm_command);
 
-    snprintf(bm_command, OS_MAXSTR - 1, "/usr/bin/xsltproc -o %s/results.txt %s/template_xccdf.xsl %s/ciscat-report.xml", WM_CISCAT_REPORTS, WM_CISCAT_DEFAULT_DIR, WM_CISCAT_REPORTS);
+    snprintf(bm_command, OS_MAXSTR - 1, "/usr/bin/xsltproc -o %s/results.txt %s/template_xccdf.xsl %s", WM_CISCAT_REPORTS, WM_CISCAT_DEFAULT_DIR, xml_file);
 
     mtdebug2(WM_CISCAT_LOGTAG, "Launching command: %s", bm_command);
     if (wm_exec(bm_command, &output, &status, eval->timeout) != 0) {
-        mterror_exit(WM_CISCAT_LOGTAG, "Error launching command: %s", bm_command);
+        unlink(xml_file);
+        free(output);
+        free(command);
+        free(bm_command);
+        return;
     }
 
     wm_ciscat_parser_xml();
 
-    snprintf(xml_file, OS_MAXSTR - 1, "%s%s", WM_CISCAT_REPORTS, "/ciscat-report.xml");
     unlink(xml_file);
 
     free(output);
