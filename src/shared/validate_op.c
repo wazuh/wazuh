@@ -510,7 +510,9 @@ static const char *__gethour(const char *str, char *ossec_hour)
     } else if ((*str == 'p') || (*str == 'P')) {
         str++;
         if ((*str == 'm') || (*str == 'M')) {
-            chour += 12;
+            if(chour != 12) {
+                chour += 12;
+            }
 
             /* New hour must be valid */
             if (chour < 0 || chour >= 24) {
