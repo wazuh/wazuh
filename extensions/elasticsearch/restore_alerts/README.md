@@ -2,11 +2,11 @@
 
 After upgrading Wazuh from 2.x to 3.x, your alerts will not be lost, but you cannot visualize your old alerts in Kibana due to a change in the Wazuh alerts' template. So, in order to work again with your old alerts and the new ones, it is necessary to reindex your alerts in Elasticsearch, applying the new mapping.
 
-To do so, you must download the `restore_alerts.sh` script from https://github.com/wazuh/wazuh/tree/master/extensions/elasticsearch/restore_alerts.sh and a Logstash's configuration file called `restore_alerts.conf` from https://github.com/wazuh/wazuh/tree/master/extensions/elasticsearch/restore_alerts.conf.
+To do so, you must download the `restore_alerts.sh` script from https://github.com/wazuh/wazuh/tree/master/extensions/elasticsearch/restore_alerts/restore_alerts.sh and a Logstash's configuration file called `restore_alerts.conf` from https://github.com/wazuh/wazuh/tree/master/extensions/elasticsearch/restore_alerts/restore_alerts.conf.
 
 ```shellsession
-$ curl -so restore_alerts.sh https://raw.githubusercontent.com/wazuh/wazuh/masterextensions/elasticsearch/restore_alerts.sh
-$ curl -so restore_alerts.conf https://raw.githubusercontent.com/wazuh/wazuh/masterextensions/elasticsearch/restore_alerts.conf
+$ curl -so restore_alerts.sh https://raw.githubusercontent.com/wazuh/wazuh/master/extensions/elasticsearch/restore_alerts/restore_alerts.sh
+$ curl -so restore_alerts.conf https://raw.githubusercontent.com/wazuh/wazuh/master/extensions/elasticsearch/restore_alerts/restore_alerts.conf
 ```
 
 Once the script and the configuration file are downloaded, you can restore your Wazuh's alerts in two different ways: **restoring them from Elasticsearch** and index them in Elasticsearch or **restoring from your Wazuh's manager** and index them in Elasticsearch.
