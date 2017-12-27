@@ -70,7 +70,10 @@ def extract_CVEinfo(cve, type):
 
     link = cve['CveContents'][type]['SourceLink']
     last_modified = cve['CveContents'][type]['LastModified']
-    return source, link, last_modified
+    tittle = cve['CveContents'][type]['Title']
+    if tittle == '':
+        tittle = cve['CveContents'][type]['CveID']
+    return source, link, last_modified, tittle
 
 def extract_CVEscore(cve, type):
     cvss2 = cve['CveContents'][type]['Cvss2Score']
@@ -87,14 +90,16 @@ def change_vector(type, family):
 def send_msg(wazuh_queue, header, msg):
     msg['integration'] = 'vuls'
     debug(json.dumps(msg, indent=4))
-    msg = '{0}{1}'.format(header, json.dumps(msg))
+    formatted = {}
+    formatted['vuls'] = msg
+    formatted = '{0}{1}'.format(header, json.dumps(formatted))
     s = socket(AF_UNIX, SOCK_DGRAM)
     try:
         s.connect(wazuh_queue)
     except:
         print('Error: Wazuh must be running.')
         sys.exit(1)
-    s.send(msg.encode())
+    s.send(formatted.encode())
     s.close()
 
 def debug(msg):
@@ -253,7 +258,7 @@ def main(argv):
         if cvss_source:
             source = cvss_source if has_vector(cve, cvss_source) else change_vector(cvss_source, family)
             score = extract_CVEscore(cve, source)
-            source, link, last_modified = extract_CVEinfo(cve, source)
+            source, link, last_modified, tittle = extract_CVEinfo(cve, source)
         else:
             # Higher
             nvd_score = extract_CVEscore(cve, 'nvd') if has_vector(cve, 'nvd') else -1
@@ -261,55 +266,56 @@ def main(argv):
 
             if nvd_score > nat_score:
                 score = nvd_score
-                source, link, last_modified = extract_CVEinfo(cve, 'nvd')
+                source, link, last_modified, tittle = extract_CVEinfo(cve, 'nvd')
             else:
                 score = nat_score
-                source, link, last_modified = extract_CVEinfo(cve, family)
+                source, link, last_modified, tittle = extract_CVEinfo(cve, family)
 
         if score < cvss_min:
             debug('\n{0} has a score lower than {1}. Skipping.'.format(cve['CveID'], cvss_min))
             continue
 
         msg = {}
-        msg['ScanDate'] = date
-        msg['OSversion'] = '{0} {1}'.format(os_family, os_release)
-        msg['KernelVersion'] = kernel
-        msg['ScannedCVE'] = cve['CveID']
-        msg['Assurance'] = '{0}%'.format(cve['Confidence']['Score'])
-        msg['DetectionMethod'] = cve['Confidence']['DetectionMethod']
-        msg['Score'] = score
-        msg['Source'] = source
-        msg['Link'] = link
-        msg['LastModified'] = last_modified.split('.')[0].replace('T', ' ')[0:19]
-        msg['AffectedPackages'] = ''
+        msg['scan_date'] = date
+        msg['os_version'] = '{0} {1}'.format(os_family, os_release)
+        msg['kernel_version'] = kernel
+        msg['scanned_cve'] = cve['CveID']
+        msg['tittle'] = tittle
+        msg['assurance'] = '{0}%'.format(cve['Confidence']['Score'])
+        msg['detection_method'] = cve['Confidence']['DetectionMethod']
+        msg['score'] = score
+        msg['source'] = source
+        msg['link'] = link
+        msg['last_modified'] = last_modified.split('.')[0].replace('T', ' ')[0:19]
 
-        diff = (datetime.now() - datetime.strptime(msg['LastModified'], '%Y-%m-%d %H:%M:%S')).days
+        diff = (datetime.now() - datetime.strptime(msg['last_modified'], '%Y-%m-%d %H:%M:%S')).days
         if diff < antiquity_limit:
-            msg = {}
-            msg['Days'] = antiquity_limit
-            msg['event'] = '{0} has a update date lower than {1} days.'.format(cve['CveID'], antiquity_limit)
+            msg['days'] = antiquity_limit
+            msg['event'] = '{0} has a update date lower than {1} days.'.format(msg['scanned_cve'], antiquity_limit)
             send_msg(wazuh_queue, header, msg)
+            del msg['days']
+            del msg['event']
 
         if package_info:
-            msg['AffectedPackagesInfo'] = {}
+            msg['affected_packages_info'] = {}
         # Look for affected packages
         for p in cve['AffectedPackages']:
             name = p['Name']
             package = data['Packages'][name]
             if package_info:
-                msg['AffectedPackagesInfo'][name] = {}
-                msg['AffectedPackagesInfo'][name]['Version'] = package['Version']
-                msg['AffectedPackagesInfo'][name]['Release'] = package ['Release']
-                msg['AffectedPackagesInfo'][name]['NewVersion'] = package ['NewVersion']
-                msg['AffectedPackagesInfo'][name]['NewRelease'] = package ['NewRelease']
-                msg['AffectedPackagesInfo'][name]['Arch'] = package ['Arch']
-                msg['AffectedPackagesInfo'][name]['Repository'] = package ['Repository']
-                msg['AffectedPackagesInfo'][name]['Fixable'] = 'Yes' if p['NotFixedYet'] == False else 'No'
-            if 'AffectedPackages' not in msg:
-                msg['AffectedPackages'] = ''
-            msg['AffectedPackages'] = '{0}{1} ({2}), '.format(msg['AffectedPackages'], name,  'Fixable' if p['NotFixedYet'] == False else 'Not fixable')
+                msg['affected_packages_info'][name] = {}
+                if package ['Version'] != '': msg['affected_packages_info'][name]['version'] = package['Version']
+                if package ['Release'] != '': msg['affected_packages_info'][name]['release'] = package ['Release']
+                if package ['NewVersion'] != '': msg['affected_packages_info'][name]['new_version'] = package ['NewVersion']
+                if package ['NewRelease'] != '': msg['affected_packages_info'][name]['new_release'] = package ['NewRelease']
+                if package ['Arch'] != '': msg['affected_packages_info'][name]['arch'] = package ['Arch']
+                if package ['Repository'] != '': msg['affected_packages_info'][name]['repository'] = package ['Repository']
+                if p ['NotFixedYet'] != '': msg['affected_packages_info'][name]['fixable'] = 'Yes' if p['NotFixedYet'] == False else 'No'
+            if 'affected_packages' not in msg:
+                msg['affected_packages'] = ''
+            msg['affected_packages'] = '{0}{1} ({2}), '.format(msg['affected_packages'], name,  'Fixable' if p['NotFixedYet'] == False else 'Not fixable')
 
-        msg['AffectedPackages'] = msg['AffectedPackages'][0:-2]
+        msg['affected_packages'] = msg['affected_packages'][0:-2]
 
         send_msg(wazuh_queue, header, msg)
 

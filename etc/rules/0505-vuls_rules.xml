@@ -1,56 +1,62 @@
 <!--
-  -  Vuls integration rules
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  Vuls integration rules
+  Created by Wazuh, Inc. <support@wazuh.com>.
+  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!--
-{"KernelVersion": "3.10.0-693.el7.x86_64", "Source": "National Vulnerability Database", "LastModified": "2017-12-06 21:29:12", "integration": "vuls", "ScannedCVE": "CVE-2017-11176", "AffectedPackages": "kernel (Fixable), kernel-tools (Fixable), kernel-tools-libs (Fixable), python-perf (Fixable)", "DetectionMethod": "OvalMatch", "Score": 10.9431234567891024, "Link": "https://nvd.nist.gov/vuln/detail/CVE-2017-11176", "OSversion": "centos-7.4.1708", "Assurance": "100%", "ScanDate": "2017-12-19 14:53:25"}
+  ****** Logs examples ******
+
+  {"vuls": {"last_modified": "2017-12-08 21:29:05", "detection_method": "OvalMatch", "kernel_version": "3.10.0-693.el7.x86_64", "scan_date": "2017-12-27 14:39:50", "affected_packages": "kernel (Not fixable), kernel-tools (Not fixable), kernel-tools-libs (Not fixable), python-perf (Not fixable)", "integration": "vuls", "os_version": "centos 7.4.1708", "score": 8.3, "link": "https://nvd.nist.gov/vuln/detail/CVE-2017-1000251", "source": "National Vulnerability Database", "scanned_cve": "CVE-2017-1000251", "tittle": "CVE-2017-1000251", "assurance": "100%", "affected_packages_info": {"kernel": {"new_version": "", "repository": "", "version": "3.10.0", "release": "693.el7", "fixable": "No", "new_release": "", "arch": "x86_64"}, "kernel-tools-libs": {"new_version": "", "repository": "", "version": "3.10.0", "release": "693.el7", "fixable": "No", "new_release": "", "arch": "x86_64"}, "kernel-tools": {"new_version": "", "repository": "", "version": "3.10.0", "release": "693.el7", "fixable": "No", "new_release": "", "arch": "x86_64"}, "python-perf": {"new_version": "", "repository": "", "version": "3.10.0", "release": "693.el7", "fixable": "No", "new_release": "", "arch": "x86_64"}}}}
+
+  {"vuls": {"last_modified": "2017-10-17 00:00:00", "detection_method": "OvalMatch", "kernel_version": "3.10.0-693.el7.x86_64", "scan_date": "2017-12-27 14:39:50", "affected_packages": "wpa_supplicant (Not fixable)", "integration": "vuls", "os_version": "centos 7.4.1708", "score": 8.1, "link": "https://access.redhat.com/security/cve/CVE-2017-13088", "source": "RedHat OVAL", "scanned_cve": "CVE-2017-13088", "tittle": "RHSA-2017:2907: wpa_supplicant security update (Important)", "assurance": "100%", "affected_packages_info": {"wpa_supplicant": {"new_version": "", "repository": "", "version": "1:2.6", "release": "5.el7", "fixable": "No", "new_release": "", "arch": "x86_64"}}}}
+
+  {"vuls": {"last_modified": "2017-07-05 00:00:00", "detection_method": "OvalMatch", "kernel_version": "3.10.0-693.el7.x86_64", "scan_date": "2017-12-27 14:39:50", "days": 27, "integration": "vuls", "os_version": "centos 7.4.1708", "score": 7.5, "link": "https://access.redhat.com/security/cve/CVE-2017-3143", "source": "RedHat OVAL", "scanned_cve": "CVE-2017-3143", "tittle": "RHSA-2017:1680: bind security and bug fix update (Important)", "event": "CVE-2017-3143 has a update date lower than 27 days.", "assurance": "100%"}}
 -->
 
 <group name="vuls,">
 
   <rule id="22401" level="0">
     <decoded_as>json</decoded_as>
-    <field name="integration">vuls</field>
+    <field name="vuls.integration">vuls</field>
     <description>Vuls integration event.</description>
   </rule>
 
   <rule id="22402" level="7">
       <if_sid>22401</if_sid>
-      <field name="event">\.+</field>
+      <field name="vuls.event">\.+</field>
       <match>has a update date lower</match>
-      <description>$(CveID) has a update date lower than $(Days) days.</description>
+      <description>$(vuls.scanned_cve) has a update date lower than $(vuls.days) days.</description>
   </rule>
 
   <rule id="22403" level="5">
       <if_sid>22401</if_sid>
-      <field name="AffectedPackages">\.+</field>
-      <description>Low vulnerability $(ScannedCVE) detected in scanning launched on $(ScanDate) with $(Assurance) reliability ($(DetectionMethod)). Score: $(Score) ($(Source)). Affected packages: $(AffectedPackages)</description>
+      <field name="vuls.affected_packages">\.+</field>
+      <description>Low vulnerability $(vuls.scanned_cve) detected in scanning launched on c with $(vuls.assurance) reliability ($(vuls.detection_method)). Score: $(vuls.core) ($(vuls.source)). Affected packages: $(vuls.affected_packages)</description>
   </rule>
 
   <rule id="22404" level="7">
       <if_sid>22403</if_sid>
-      <field name="Score">^4|^5|^6</field>
-      <description>Medium vulnerability $(ScannedCVE) detected in scanning launched on $(ScanDate) with $(Assurance) reliability ($(DetectionMethod)). Score: $(Score) ($(Source)). Affected packages: $(AffectedPackages)</description>
+      <field name="vuls.score">^4|^5|^6</field>
+      <description>Medium vulnerability $(vuls.scanned_cve) detected in scanning launched on $(vuls.scan_date) with $(vuls.assurance) reliability ($(vuls.detection_method)). $(vuls.tittle). Score: $(vuls.score) ($(vuls.source)). Affected packages: $(vuls.affected_packages)</description>
   </rule>
 
   <rule id="22405" level="10">
       <if_sid>22403</if_sid>
-      <field name="Score">^7|^8</field>
-      <description>High vulnerability $(ScannedCVE) detected in scanning launched on $(ScanDate) with $(Assurance) reliability ($(DetectionMethod)). Score: $(Score) ($(Source)). Affected packages: $(AffectedPackages)</description>
+      <field name="vuls.score">^7|^8</field>
+      <description>High vulnerability $(vuls.scanned_cve) detected in scanning launched on $(vuls.scan_date) with $(vuls.assurance) reliability ($(vuls.detection_method)). $(vuls.tittle). Score: $(vuls.score) ($(vuls.source)). Affected packages: $(vuls.affected_packages)</description>
   </rule>
 
   <rule id="22406" level="13">
       <if_sid>22403</if_sid>
-      <field name="Score">^9|^10</field>
-      <description>Critical vulnerability $(ScannedCVE) detected in scanning launched on $(ScanDate) with $(Assurance) reliability ($(DetectionMethod)). Score: $(Score) ($(Source)). Affected packages: $(AffectedPackages)</description>
+      <field name="vuls.score">^9|^10</field>
+      <description>Critical vulnerability $(vuls.scanned_cve) detected in scanning launched on $(vuls.scan_date) with $(vuls.assurance) reliability ($(vuls.detection_method)). $(vuls.tittle). Score: $(vuls.score) ($(vuls.source)). Affected packages: $(vuls.affected_packages)</description>
   </rule>
 
   <rule id="22407" level="7">
       <if_sid>22401</if_sid>
-      <field name="AffectedPackages">kernel</field>
-      <description>Vulnerability $(ScannedCVE) affects critical parts of the system.</description>
+      <field name="vuls.affected_packages">kernel</field>
+      <description>Vulnerability $(vuls.scanned_cve) affects critical parts of the system.</description>
   </rule>
 
 </group>
