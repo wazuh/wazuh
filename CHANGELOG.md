@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.2.0]
+
+### Fixed
+
+- [Fixed oscap.py to support new versions of OpenSCAP scanner.](https://github.com/wazuh/wazuh/pull/331)
+
 ## [v3.1.0]
 
 ### Added
