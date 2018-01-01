@@ -79,6 +79,18 @@ def extract_CVEscore(cve, type):
     cvss2 = cve['CveContents'][type]['Cvss2Score']
     cvss3 = cve['CveContents'][type]['Cvss3Score']
     score = cvss2 if cvss2 > cvss3 else cvss3
+    if score == 0 and cve['CveContents'][type]['Severity'] != '':
+        severity = cve['CveContents'][type]['Severity']
+        if severity == 'Critical':
+            score = 10
+        elif severity == 'High':
+            score = 8.99
+        elif severity == 'Medium':
+            score = 6.99
+        elif severity == 'Low':
+            score = 3.99
+        else:
+            score = 1
     return score
 
 def has_vector(cve, type):
