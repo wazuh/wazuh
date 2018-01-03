@@ -9,21 +9,25 @@
  * Foundation.
  */
 
-#ifndef WIN32
-
 #include "wmodules.h"
 
 static wm_ciscat *ciscat;                             // Pointer to configuration
+
+#ifndef WIN32
 static int queue_fd;                                // Output queue file descriptor
+#endif
 
 static void* wm_ciscat_main(wm_ciscat *ciscat);        // Module main function. It won't return
 static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
-static void wm_ciscat_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_ciscat_check();                       // Check configuration, disable flag
 static void wm_ciscat_run(wm_ciscat_eval *eval, char *path);      // Run a CIS-CAT policy
+#ifndef WIN32
 static void wm_ciscat_parser_xml();                 // Parse CIS-CAT xml reports
+static void wm_ciscat_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
+#endif
 static void wm_ciscat_info();                        // Show module info
 static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
+static void delay(unsigned int ms);                 // Sleep during 'ms' milliseconds
 
 const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event sending
 
@@ -41,9 +45,8 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     wm_ciscat_eval *eval;
     time_t time_start = 0;
     time_t time_sleep = 0;
-    char *cis_path;
-    char *jre_path;
-    char *env_var;
+    char *cis_path = NULL;
+    char *jre_path = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), cis_path);
 
@@ -51,10 +54,23 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     if (ciscat->java_path){
         os_calloc(OS_MAXSTR, sizeof(char), jre_path);
-        env_var = getenv("PATH");
-        snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", env_var, ciscat->java_path);
+
+        char *env_var = getenv("PATH");
+
+        if (!env_var){
+            snprintf(jre_path, OS_MAXSTR - 1, "%s", ciscat->java_path);
+        } else {
+    #ifdef WIN32
+            snprintf(jre_path, OS_MAXSTR - 1, "%s;%s", env_var, ciscat->java_path);
+        }
+        if (_putenv_s("PATH", jre_path))
+            mtwarn(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
+    #else
+            snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", env_var, ciscat->java_path);
+        }
         if(setenv("PATH", jre_path, 1) < 0)
             mtwarn(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
+    #endif
     }
 
     // Define path where CIS-CAT is installed
@@ -62,7 +78,11 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     if (ciscat->ciscat_path){
         snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
     } else {
+    #ifdef WIN32
+        snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR_WIN);
+    #else
         snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR);
+    #endif
     }
 
     // Check configuration and show debug information
@@ -77,7 +97,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
         if (ciscat->state.next_time > time_start) {
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
-            sleep(ciscat->state.next_time - time_start);
+            delay(1000 * ciscat->state.next_time - time_start);
         }
     }
 
@@ -110,8 +130,11 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             mterror(WM_CISCAT_LOGTAG, "Couldn't save running state.");
 
         // If time_sleep=0, yield CPU
-        sleep(time_sleep);
+        delay(1000 * time_sleep);
     }
+
+    free(cis_path);
+    free(jre_path);
 
     return NULL;
 }
@@ -119,7 +142,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 // Setup module
 
 void wm_ciscat_setup(wm_ciscat *_ciscat) {
-    int i;
 
     ciscat = _ciscat;
     wm_ciscat_check();
@@ -131,6 +153,10 @@ void wm_ciscat_setup(wm_ciscat *_ciscat) {
 
     if (isDebug())
         wm_ciscat_info();
+
+#ifndef WIN32
+
+    int i;
 
     // Connect to socket
 
@@ -145,16 +171,129 @@ void wm_ciscat_setup(wm_ciscat *_ciscat) {
     // Cleanup exiting
 
     atexit(wm_ciscat_cleanup);
+#endif
+
 }
 
 // Cleanup function, doesn't overwrite wm_cleanup
 
+#ifndef WIN32
 void wm_ciscat_cleanup() {
     close(queue_fd);
     mtinfo(WM_CISCAT_LOGTAG, "Module finished.");
 }
+#endif
 
-// Run a CIS-CAT policy
+// Run a CIS-CAT policy for Windows
+
+#ifdef WIN32
+
+void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
+    char *command = NULL;
+    //char *bm_command = NULL;
+    //int child_status;
+    int status;
+    char *output = NULL;
+    char msg[OS_MAXSTR];
+    char *ciscat_script;
+    //char xml_file[OS_MAXSTR];
+
+    os_calloc(OS_MAXSTR, sizeof(char), ciscat_script);
+
+    snprintf(ciscat_script, OS_MAXSTR - 1, "%s\\CIS-CAT.BAT", path);
+
+    // Create arguments
+
+    wm_strcat(&command, ciscat_script, '\0');
+
+    // Accepting Terms of Use
+
+    wm_strcat(&command, "-a", ' ');
+
+    switch (eval->type) {
+    case WM_CISCAT_XCCDF:
+        wm_strcat(&command, "-b", ' ');
+        wm_strcat(&command, eval->path, ' ');
+
+        if (eval->profile) {
+            wm_strcat(&command, "-p", ' ');
+            wm_strcat(&command, eval->profile, ' ');
+        }
+        break;
+    case WM_CISCAT_OVAL:
+        mterror(WM_CISCAT_LOGTAG, "Invalid content type. Exiting...");
+        pthread_exit(NULL);
+    default:
+        mterror(WM_CISCAT_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
+        pthread_exit(NULL);
+    }
+
+    // Specify directory where saving reports
+
+    wm_strcat(&command, "-r", ' ');
+    wm_strcat(&command, TMP_DIR, ' ');
+
+    // Set reports file name
+
+    wm_strcat(&command, "-rn", ' ');
+    wm_strcat(&command, "ciscat-report", ' ');
+
+    // Get xml reports
+
+    wm_strcat(&command, "-x", ' ');
+
+    // Do not create HTML report
+
+    wm_strcat(&command, "-n", ' ');
+
+    // Show all tests (Not selected included)
+
+    wm_strcat(&command, "-y", ' ');
+
+    // Send rootcheck message
+
+    snprintf(msg, OS_MAXSTR, "Starting CIS-CAT scan. File: %s. ", eval->path);
+    SendMSG(0, msg, "rootcheck", ROOTCHECK_MQ);
+
+    // Execute the scan
+
+    mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
+
+    switch (wm_exec(command, &output, &status, eval->timeout)) {
+        case 0:
+            if (status > 0) {
+                mtwarn(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+                mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+                eval->flags.error = 1;
+            }
+
+            mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
+
+            break;
+
+        case WM_ERROR_TIMEOUT:
+            free(output);
+            output = NULL;
+            wm_strcat(&output, "ciscat: ERROR: Timeout expired.", '\0');
+            mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
+            pthread_exit(NULL);
+            break;
+
+        default:
+            mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
+            pthread_exit(NULL);
+    }
+
+    snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
+    SendMSG(0, msg, "rootcheck", ROOTCHECK_MQ);
+
+    free(output);
+    free(command);
+}
+
+#else
+
+// Run a CIS-CAT policy for UNIX systems
 
 void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     char *command = NULL;
@@ -164,11 +303,6 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     char msg[OS_MAXSTR];
     char *ciscat_script = "./CIS-CAT.sh";
     char xml_file[OS_MAXSTR];
-
-    // Define time to sleep between messages sent
-
-    int usec = 1000000 / wm_max_eps;
-    struct timeval timeout = {0, usec};
 
     // Create arguments
 
@@ -292,8 +426,6 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
-    timeout.tv_usec = usec;
-    select(0 , NULL, NULL, NULL, &timeout);
     SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
 
     // Get assessment result from XML report
@@ -327,10 +459,14 @@ void wm_ciscat_parser_xml(){
     char file[OS_MAXSTR];
     FILE *fp;
     char string[OS_MAXSTR];
-    cJSON *object;
-    cJSON *data;
+    cJSON *object = NULL;
+    cJSON *data = NULL;
     char *pos;
     int i;
+
+    // Define time to sleep between messages sent
+
+    int msec = 1000 / wm_max_eps;
 
     // Define results location
 
@@ -358,7 +494,7 @@ void wm_ciscat_parser_xml(){
 
                 parts = OS_StrBreak(':', string, 2);
 
-                if (!strncmp(parts[0], "benchmark", 10)){
+                if (!strncmp(parts[0], "benchmark", 10)) {
 
                     object = cJSON_CreateObject();
                     data = cJSON_CreateObject();
@@ -389,6 +525,7 @@ void wm_ciscat_parser_xml(){
 
                     msg = cJSON_PrintUnformatted(object);
                     mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
+                    delay(msec);
                     SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
                     cJSON_Delete(object);
 
@@ -442,21 +579,18 @@ void wm_ciscat_parser_xml(){
 
                     msg = cJSON_PrintUnformatted(object);
                     mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
+                    delay(msec);
                     SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
                     cJSON_Delete(object);
 
                     free(msg);
 
-                } else
-                    continue;
+                }
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
                 }
                 free(parts);
-
-            } else {
-                continue;
             }
         }
         fclose(fp);
@@ -465,6 +599,8 @@ void wm_ciscat_parser_xml(){
         mterror(WM_CISCAT_LOGTAG, "Unable to read file %s: %s", file, strerror(errno));
     }
 }
+
+#endif
 
 // Check configuration
 
@@ -537,4 +673,12 @@ void wm_ciscat_destroy(wm_ciscat *ciscat) {
     free(ciscat);
 }
 
+void delay(unsigned int ms) {
+#ifdef WIN32
+    Sleep(ms);
+#else
+    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
+    select(0, NULL, NULL, NULL, &timeout);
 #endif
+
+}

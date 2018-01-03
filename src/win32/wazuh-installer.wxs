@@ -192,6 +192,9 @@
                     <Directory Id="SYSCHECK" Name="syscheck" />
                     <Directory Id="INCOMING" Name="incoming" />
                     <Directory Id="UPGRADE" Name="upgrade" />
+                    <Directory Id="WODLES" Name="wodles">
+                        <Directory Id="CISCAT" Name="ciscat" />
+                    </Directory>
                 </Directory>
             </Directory>
             <Directory Id="ProgramMenuFolder">
@@ -284,6 +287,18 @@
                 <RemoveFolder Id="purgue_shared_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
+        <DirectoryRef Id="WODLES">
+            <Component Id="CMP_WODLES" Guid="56E1931D-19C8-419B-909C-0C39114C114B" KeyPath="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_wodles" Name="*.*" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="CISCAT">
+            <Component Id="CMP_CISCAT" Guid="C62A33E1-3038-4D99-B8F8-26FDEEAFC7C4" KeyPath="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_template" Name="template_xccdf.xsl" On="uninstall" />
+            </Component>
+        </DirectoryRef>
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="AGENT_AUTH.EXE" />
             <ComponentRef Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" />
@@ -317,6 +332,8 @@
             <ComponentRef Id="CMP_INCOMING" />
             <ComponentRef Id="CMP_UPGRADE" />
             <ComponentRef Id="CMP_SHARED" />
+            <ComponentRef Id="CMP_WODLES" />
+            <ComponentRef Id="CMP_CISCAT" />
             <ComponentRef Id="REMOVE_OLD_NSIS" />
             <ComponentRef Id="HELP_WIN.TXT" />
             <ComponentRef Id="VERSION" />

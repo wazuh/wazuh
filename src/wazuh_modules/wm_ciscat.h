@@ -17,6 +17,7 @@
 
 #define WM_CISCAT_LOGTAG ARGV0 ":ciscat"
 #define WM_CISCAT_DEFAULT_DIR WM_DEFAULT_DIR "/ciscat"
+#define WM_CISCAT_DEFAULT_DIR_WIN "wodles\\ciscat"
 #define WM_CISCAT_REPORTS DEFAULTDIR "/tmp"
 
 typedef enum wm_ciscat_eval_t { WM_CISCAT_XCCDF = 1, WM_CISCAT_OVAL } wm_ciscat_eval_t;

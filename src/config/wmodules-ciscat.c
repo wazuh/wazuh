@@ -9,7 +9,6 @@
  * Foundation.
  */
 
-#ifndef WIN32
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_CONTENT = "content";
@@ -196,5 +195,3 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
     return 0;
 }
-
-#endif
