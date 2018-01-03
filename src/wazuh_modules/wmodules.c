@@ -13,8 +13,39 @@
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
-int wm_max_eps;             // Maximum events per second sent by OpenScap Wazuh Module
+int wm_max_eps;             // Maximum events per second sent by OpenScap and CIS-CAT Wazuh Module
 int wm_kill_timeout;        // Time for a process to quit before killing it
+
+// Read XML configuration and internal internal options
+
+int wm_config() {
+
+    int agent_cfg = 0;
+
+    // Get defined values from internal_options
+
+    wm_task_nice = getDefine_Int("wazuh_modules", "task_nice", -20, 19);
+    wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 100, 1000);
+    wm_kill_timeout = getDefine_Int("wazuh_modules", "kill_timeout", 0, 3600);
+
+    // Read configuration: ossec.conf
+
+    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg) < 0)
+        exit(EXIT_FAILURE);
+
+#ifdef CLIENT
+    // Read configuration: agent.conf
+    agent_cfg = 1;
+    ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
+#else
+    wmodule *database;
+    // The database module won't be available on agents
+    if ((database = wm_database_read()))
+        wm_add(database);
+#endif
+
+    return 0;
+}
 
 // Add module to the global list
 
@@ -162,10 +193,16 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     size_t nmemb;
     FILE *file;
 
+    #ifdef WIN32
+    snprintf(path, PATH_MAX, "%s\\%s", WM_DIR_WIN, tag);
+    #else
     snprintf(path, PATH_MAX, "%s/%s", WM_STATE_DIR, tag);
+    #endif
 
-    if (!(file = fopen(path, op == WM_IO_WRITE ? "w" : "r")))
+    if (!(file = fopen(path, op == WM_IO_WRITE ? "wb" : "rb"))) {
+        merror("Unable to open the file: %s. %s", path, strerror(errno));
         return -1;
+    }
 
     nmemb = (op == WM_IO_WRITE) ? fwrite(state, size, 1, file) : fread(state, size, 1, file);
     fclose(file);
