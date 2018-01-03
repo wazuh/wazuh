@@ -1464,6 +1464,7 @@ class Agent:
         non_nested = [{field:tuple_elem for field,tuple_elem \
                 in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
         map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+        map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
 
         data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
 
