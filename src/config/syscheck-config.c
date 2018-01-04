@@ -1035,9 +1035,13 @@ void Free_Syscheck(syscheck_config * config) {
         free(config->registry_ignore);
         free(config->registry_ignore_regex);
         free(config->registry);
-        free(config->reg_fp);
+        if (config->reg_fp) {
+            fclose(config->reg_fp);
+        }
     #endif
-        free(config->fp);
+        if (config->fp) {
+            fclose(config->fp);
+        }
         free(config->realtime);
         free(config->prefilter_cmd);
     }

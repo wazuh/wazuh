@@ -273,6 +273,8 @@ void Free_Rootcheck(rkconfig * config){
             }
             free(config->alert_msg);
         }
-        free(config->fp);
+        if (config->fp) {
+            fclose(config->fp);
+        }
     }
 }

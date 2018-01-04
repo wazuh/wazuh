@@ -446,7 +446,9 @@ void Free_Localfile(logreader_config * config){
                 free(config->config[i].alias);
                 free(config->config[i].query);
                 labels_free(config->config[i].labels);
-                free(config->config[i].fp);
+                if (config->config[i].fp) {
+                    fclose(config->config[i].fp);
+                }
             }
 
             free(config->config);
