@@ -22,7 +22,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* file_diff;
     cJSON* manager;
 	cJSON* agent;
+    cJSON* predecoder;
     cJSON* data;
+    cJSON* cluster;
 	char manager_name[512];
     char* out;
     int i;
@@ -50,6 +52,17 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddStringToObject(root, "id", alert_id);
     }
 
+    // Cluster information
+    if (!Config.hide_cluster_info) {
+        cJSON_AddItemToObject(root, "cluster", cluster = cJSON_CreateObject());
+        if(Config.cluster_name)
+            cJSON_AddStringToObject(cluster, "name", Config.cluster_name);
+        else
+            cJSON_AddStringToObject(cluster, "name", "wazuh");
+
+        if(Config.node_name)
+            cJSON_AddStringToObject(cluster, "node", Config.node_name);
+    }
 
 	/* Get manager hostname */
     memset(manager_name, '\0', 512);
@@ -79,12 +92,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->generated_rule->frequency){
             cJSON_AddNumberToObject(rule, "frequency", lf->generated_rule->frequency);
         }
-        if(lf->generated_rule->firedtimes){
+        if(lf->generated_rule->firedtimes && !(lf->generated_rule->alert_opts & NO_COUNTER)) {
             cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->firedtimes);
         }
         cJSON_AddItemToObject(rule, "mail", cJSON_CreateBool(lf->generated_rule->alert_opts & DO_MAILALERT));
 
-        if (lf->generated_rule->last_events && lf->generated_rule->last_events[1] && lf->generated_rule->last_events[1][0]) {
+        if (lf->generated_rule->last_events && lf->generated_rule->last_events[0] && lf->generated_rule->last_events[1] && lf->generated_rule->last_events[1][0]) {
             cJSON_AddStringToObject(root, "previous_output", lf->generated_rule->last_events[1]);
         }
     }
@@ -123,7 +136,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->dstuser) {
         cJSON_AddStringToObject(data, "dstuser", lf->dstuser);
     }
-    if(lf->full_log) {
+    if(lf->full_log && !(lf->generated_rule && lf->generated_rule->alert_opts & NO_FULL_LOG)) {
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
     }
     if (lf->agent_id) {
@@ -224,8 +237,17 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
     }
 
-    if(lf->program_name)
-        cJSON_AddStringToObject(root, "program_name", lf->program_name);
+    if (lf->program_name || lf->dec_timestamp) {
+        cJSON_AddItemToObject(root, "predecoder", predecoder = cJSON_CreateObject());
+
+        if (lf->program_name) {
+            cJSON_AddStringToObject(predecoder, "program_name", lf->program_name);
+        }
+
+        if (lf->dec_timestamp) {
+            cJSON_AddStringToObject(predecoder, "timestamp", lf->dec_timestamp);
+        }
+    }
 
     if(lf->id)
         cJSON_AddStringToObject(data, "id", lf->id);

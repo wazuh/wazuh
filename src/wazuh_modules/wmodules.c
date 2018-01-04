@@ -13,7 +13,8 @@
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
-int wm_max_eps;
+int wm_max_eps;             // Maximum events per second sent by OpenScap Wazuh Module
+int wm_kill_timeout;        // Time for a process to quit before killing it
 
 // Read XML configuration and internal options
 
@@ -23,16 +24,18 @@ int wm_config() {
 
     wm_task_nice = getDefine_Int("wazuh_modules", "task_nice", -20, 19);
     wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 100, 1000);
+    wm_kill_timeout = getDefine_Int("wazuh_modules", "kill_timeout", 0, 3600);
 
     // Read configuration: ossec.conf
 
     if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, NULL) < 0){
-        return -1;
+        exit(EXIT_FAILURE);
     }
 
 #ifdef CLIENT
     // Read configuration: agent.conf
-    ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, NULL);
+    agent_cfg = 1;
+    ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
     wmodule * database;
     // The database module won't be available on agents
@@ -59,9 +62,26 @@ void wm_add(wmodule *module) {
 // Check general configuration
 
 void wm_check() {
-    wmodule *i;
+    wmodule *i = wmodules;
     wmodule *j;
     wmodule *next;
+
+    // Discard empty configurations
+
+    while (i) {
+        if (i->context) {
+            i = i->next;
+        } else {
+            next = i->next;
+            free(i);
+
+            if (i == wmodules) {
+                wmodules = next;
+            }
+
+            i = next;
+        }
+    }
 
     // Check that a configuration exists
 
@@ -170,15 +190,15 @@ char** wm_strtok(char *string) {
 
 // Load or save the running state
 
-int wm_state_io(const wm_context *context, int op, void *state, size_t size) {
+int wm_state_io(const char * tag, int op, void *state, size_t size) {
     char path[PATH_MAX] = { '\0' };
     size_t nmemb;
     FILE *file;
 
     #ifdef WIN32
-    snprintf(path, PATH_MAX, "%s\\%s", WM_STATE_DIR_WIN, context->name);
+    snprintf(path, PATH_MAX, "%s\\%s", WM_STATE_DIR_WIN, tag);
     #else
-    snprintf(path, PATH_MAX, "%s/%s", WM_STATE_DIR, context->name);
+    snprintf(path, PATH_MAX, "%s/%s", WM_STATE_DIR, tag);
     #endif
 
     if (!(file = fopen(path, op == WM_IO_WRITE ? "wb" : "rb"))){

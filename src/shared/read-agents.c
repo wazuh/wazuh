@@ -17,8 +17,8 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, i
 static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_counter,
                                    int csv_output, cJSON *json_output) __attribute__((nonnull(1)));
 static int _do_print_syscheck(FILE *fp, int all_files, int csv_output, cJSON *json_output) __attribute__((nonnull(1)));
-static int _do_get_rootcheckscan(FILE *fp) __attribute__((nonnull));
-static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
+static void _do_get_rootcheckscan(FILE *fp, time_t values[2]) __attribute__((nonnull));
+static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_scan[2],
                                int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
 #endif /* !WIN32*/
 
@@ -512,28 +512,24 @@ int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname,
     return (0);
 }
 
-static int _do_get_rootcheckscan(FILE *fp)
+static void _do_get_rootcheckscan(FILE *fp, time_t values[2])
 {
     char *tmp_str;
     char buf[OS_MAXSTR + 1];
 
+    values[0] = values[1] = time(NULL);
+
     while (fgets(buf, OS_MAXSTR, fp) != NULL) {
-        tmp_str = strstr(buf, "Starting rootcheck scan");
-        if (tmp_str) {
-            time_t s_time = 0;
-            tmp_str = buf + 1;
-
-            s_time = (time_t)atoi(tmp_str);
-
-            return ((int)s_time);
+        if (tmp_str = strstr(buf, "Starting rootcheck scan"), tmp_str) {
+            values[0] = (time_t)atol(buf + 1);
+        } else if (tmp_str = strstr(buf, "Ending rootcheck scan"), tmp_str) {
+            values[1] = (time_t)atol(buf + 1);
         }
     }
-
-    return ((int)time(NULL));
 }
 
 /* Print rootcheck db */
-static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
+static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_scan[2],
                                int csv_output, cJSON *json_output, int show_last)
 {
     int i = 0;
@@ -570,7 +566,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
 
     if (!(csv_output || json_output)) {
         if (show_last) {
-            tm_time = localtime(&time_last_scan);
+            tm_time = localtime(time_last_scan);
             strftime(read_day, 23, "%Y %h %d %T", tm_time);
 
             printf("\nLast scan: %s\n\n", read_day);
@@ -609,7 +605,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
         tmp_str++;
 
         /* Check for resolved */
-        if (time_last_scan > (s_time + 86400)) {
+        if (s_time < time_last_scan[0] && s_time < time_last_scan[1]) {
             if (!resolved) {
                 continue;
             }
@@ -646,19 +642,14 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
         strftime(old_day, 23, "%Y %h %d %T", tm_time);
 
         if (json_output) {
+            char json_buffer[OS_MAXSTR + 1];
             cJSON *event = cJSON_CreateObject();
             cJSON_AddStringToObject(event, "status", resolved == 0 ? "outstanding" : "resolved");
             cJSON_AddStringToObject(event, "readDay", read_day);
             cJSON_AddStringToObject(event, "oldDay", old_day);
 
-            if (ns_events[i])
-                cJSON_AddStringToObject(event, "event", tmp_str);
-            else {
-                char json_buffer[OS_MAXSTR + 1];
-                snprintf(json_buffer, OS_MAXSTR, "%s%s", ns_events[i], tmp_str);
-                cJSON_AddStringToObject(event, "event", json_buffer);
-            }
-
+            snprintf(json_buffer, OS_MAXSTR, "%s%s", ns_events[i] ? "" : "System Audit: ", tmp_str);
+            cJSON_AddStringToObject(event, "event", json_buffer);
             cJSON_AddItemToArray(json_output, event);
         } else if (csv_output) {
             printf("%s,%s,%s,%s%s\n", resolved == 0 ? "outstanding" : "resolved",
@@ -691,7 +682,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
 int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname,
                     int resolved, int csv_output, cJSON *json_output, int show_last)
 {
-    int ltime = 0;
+    time_t ltime[2];
     FILE *fp;
     char tmp_file[513];
 
@@ -715,7 +706,8 @@ int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname,
 
     if (fp) {
         /* Get last time of scan */
-        ltime = _do_get_rootcheckscan(fp);
+        _do_get_rootcheckscan(fp, ltime);
+
         if (!fname) {
             if (resolved == 1) {
                 _do_print_rootcheck(fp, 1, ltime, csv_output, json_output, 0);
@@ -877,17 +869,20 @@ int delete_agentinfo(const char *id, const char *name)
 }
 
 /* Print the text representation of the agent status */
-const char *print_agent_status(int status)
+const char *print_agent_status(agent_status_t status)
 {
-    const char *status_str = "Never connected";
-
-    if (status == GA_STATUS_ACTIVE) {
-        status_str = "Active";
-    } else if (status == GA_STATUS_NACTIVE) {
-        status_str = "Disconnected";
+    switch (status) {
+    case GA_STATUS_ACTIVE:
+        return "Active";
+    case GA_STATUS_NACTIVE:
+        return "Disconnected";
+    case GA_STATUS_INV:
+        return "Never connected";
+    case GA_STATUS_PENDING:
+        return "Pending";
+    default:
+        return "(undefined)";
     }
-
-    return (status_str);
 }
 
 #ifndef WIN32
@@ -1235,7 +1230,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip)
 }
 
 /* Gets the status of an agent, based on the name / IP address */
-int get_agent_status(const char *agent_name, const char *agent_ip)
+agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
 {
     char tmp_file[513];
     char *agent_ip_pt = NULL;
@@ -1264,11 +1259,15 @@ int get_agent_status(const char *agent_name, const char *agent_ip)
         return (GA_STATUS_INV);
     }
 
-    if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
-        return (GA_STATUS_ACTIVE);
+    if (file_status.st_mtime < (time(0) - DISCON_TIME)) {
+        return (GA_STATUS_NACTIVE);
     }
 
-    return (GA_STATUS_NACTIVE);
+    if (file_status.st_size == 0) {
+        return GA_STATUS_PENDING;
+    }
+
+    return (GA_STATUS_ACTIVE);
 }
 
 /* List available agents */

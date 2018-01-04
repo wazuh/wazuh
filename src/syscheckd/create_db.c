@@ -150,13 +150,10 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
         if (!buf) {
             char alert_msg[916 + 1];    /* to accommodate a long */
             alert_msg[916] = '\0';
+            char * alertdump = NULL;
 
             if (opts & CHECK_SEECHANGES) {
-                char *alertdump = seechanges_addfile(file_name);
-                if (alertdump) {
-                    free(alertdump);
-                    alertdump = NULL;
-                }
+                alertdump = seechanges_addfile(file_name);
             }
 
             snprintf(alert_msg, 916, "%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld",
@@ -186,7 +183,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             /* Send the new checksum to the analysis server */
             alert_msg[916] = '\0';
 
-            snprintf(alert_msg, 916, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld %s",
+            snprintf(alert_msg, 916, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld %s%s%s",
                      opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                      opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                      opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
@@ -197,8 +194,11 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                      opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                     file_name);
+                     file_name,
+                     alertdump ? "\n" : "",
+                     alertdump ? alertdump : "");
             send_syscheck_msg(alert_msg);
+            free(alertdump);
         } else {
             char alert_msg[OS_MAXSTR + 1];
             char c_sum[256 + 2];

@@ -62,7 +62,8 @@ void OS_CompressLog(const char *logfile)
     gzclose(zlog);
 
     /* Remove uncompressed file */
-    unlink(logfile);
+    if ( unlink(logfile) == -1)
+        merror("Unable to delete '%s' due to '%s'", logfile, strerror(errno));
 
     return;
 }

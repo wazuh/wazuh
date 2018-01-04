@@ -45,5 +45,4 @@
   <prematch offset="after_parent">^Invalid remote configuration:</prematch>
   <regex offset="after_prematch">^ '(\S+)'.</regex>
   <order>module</order>
-
 </decoder>

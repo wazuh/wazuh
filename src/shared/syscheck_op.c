@@ -104,7 +104,7 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     lf->nfields = SK_NFIELDS;
 
     for (i = 0; i < SK_NFIELDS; i++)
-        lf->fields[i].key = sdb.syscheck_dec->fields[i];
+        os_strdup(sdb.syscheck_dec->fields[i], lf->fields[i].key);
 
     os_strdup(f_name, lf->fields[SK_FILE].value);
     os_strdup(sum->size, lf->fields[SK_SIZE].value);

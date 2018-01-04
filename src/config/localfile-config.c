@@ -129,7 +129,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 logf[pl].alias = NULL;
                 logf[pl].logformat = NULL;
                 logf[pl].fp = NULL;
-                return (OS_INVALID);
+                labels_free(logf[pl].labels);
+                return 0;
             }
 
             os_strdup(node[i]->content, logf[pl].file);
@@ -435,20 +436,21 @@ int Test_Localfile(const char * path){
 void Free_Localfile(logreader_config * config){
     if (config) {
         if (config->config) {
-            int i = 0;
-            do {
+            int i;
+
+            for (i = 0; config->config[i].file; i++) {
                 free(config->config[i].ffile);
                 free(config->config[i].file);
                 free(config->config[i].logformat);
                 free(config->config[i].djb_program_name);
-                free(config->config[i].command);
                 free(config->config[i].alias);
                 free(config->config[i].query);
                 labels_free(config->config[i].labels);
-                free(config->config[i].read);
-                free(config->config[i].fp);
-                i++;
-            } while (config->config[i].file != NULL);
+                if (config->config[i].fp) {
+                    fclose(config->config[i].fp);
+                }
+            }
+
             free(config->config);
         }
     }

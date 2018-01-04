@@ -10,7 +10,7 @@ class WazuhException(Exception):
     """
 
     ERRORS = {
-	# < 1000: API
+        # < 1000: API
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
@@ -33,6 +33,7 @@ class WazuhException(Exception):
         1102: 'Invalid section',
         1103: 'Invalid field in section',
         1104: 'Invalid type',
+        1105: 'Error reading API configuration',
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
@@ -88,15 +89,34 @@ class WazuhException(Exception):
         1722: 'Incorrect format for group_id. It can only have letters and numbers. Max length is 256',
         1723: 'Hash algorithm not available',
         1724: 'Not a valid select field',
+        1725: 'Error registering a new agent',
+        1726: 'Ossec authd is not running',
+        1727: 'Error listing group files',
 
         # Manager:
 
         # Database:
         2000: 'No such database file',
         2001: 'Incompatible version of SQLite',
+        2002: 'Maximum attempts exceeded for sqlite3 execute',
+        2003: 'Error in database request',
 
         # Cluster
-        3000: 'Cluster'
+        3000: 'Cluster',
+        3001: 'Error creating zip file',
+        3002: 'Error creating PID file',
+        3003: 'Error deleting PID file',
+        3004: 'Error in cluster configuration',
+        3005: 'Error reading cluster JSON file',
+        3006: 'Error reading cluster configuration',
+        3007: 'Client.keys file received in master node',
+        3008: 'Error importing cryptography module',
+        3009: 'Error connecting to cluster database',
+        3010: 'Error in cluster client',
+        3011: 'Agent info file received in a client node',
+        3012: 'Received an old agent-info file',
+        3013: 'Cluster is disabled',
+        3014: 'Manager name or IP incorrect'
 
         # > 9000: Authd
     }

@@ -46,7 +46,7 @@ else
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
     elif [ "$UNAME" = "AIX" ]; then
-        GROUPADD="/usr/sbin/mkgroup"
+        GROUPADD="/usr/bin/mkgroup"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
     else
@@ -86,7 +86,7 @@ else
 
     for U in ${NEWUSERS}; do
         if ! grep "^${U}" /etc/passwd > /dev/null 2>&1; then
-    	    if [ "$UNAME" = "OpenBSD" ] || [ "$UNAME" = "SunOS" ] || [ "$UNAME" = "HP-UX" ]; then
+	    if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" -o "$UNAME" = "AIX" ]; then
                 ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
             else
                 ${USERADD} "${U}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"

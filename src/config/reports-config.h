@@ -23,12 +23,15 @@ typedef struct _report_config {
 } report_config;
 
 typedef struct _monitor_config {
-    unsigned short int day_wait;
-    short int compress;
-    short int sign;
-    short int monitor_agents;
+    short int day_wait;
+    unsigned int compress:1;
+    unsigned int sign:1;
+    unsigned int monitor_agents:1;
+    unsigned int rotate_log:1;
     int a_queue;
     int keep_log_days;
+    unsigned long size_rotate;
+    int daily_rotations;
 
     char *smtpserver;
     char *emailfrom;

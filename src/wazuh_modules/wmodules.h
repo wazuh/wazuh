@@ -57,10 +57,13 @@ typedef struct wmodule {
 #include "wm_oscap.h"
 #include "wm_database.h"
 #include "syscollector/syscollector.h"
+#include "wm_command.h"
+#include "wm_ciscat.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
 extern int wm_max_eps;          // Maximum events per second sent by OpenScap Wazuh Module
+extern int wm_kill_timeout;     // Time for a process to quit before killing it
 
 // Read XML configuration and internal options
 int wm_config();
@@ -107,7 +110,7 @@ char** wm_strtok(char *string);
  * op: WM_IO_READ | WM_IO_WRITE
  * Returns 0 if success, or 1 if fail.
  */
-int wm_state_io(const wm_context *context, int op, void *state, size_t size);
+int wm_state_io(const char * tag, int op, void *state, size_t size);
 
 // Frees the wmodule struct
 void wm_free(wmodule * c);

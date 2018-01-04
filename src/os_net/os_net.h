@@ -80,6 +80,12 @@ int OS_CloseSocket(int socket);
  */
 int OS_SetRecvTimeout(int socket, int seconds);
 
+/* Send secure TCP message
+ * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
+ * Return 0 on success or OS_SOCKTERR on error.
+ */
+int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
+
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value);

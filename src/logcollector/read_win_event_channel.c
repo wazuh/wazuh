@@ -223,6 +223,7 @@ int get_username_and_domain(os_event *event)
     /* Try to convert SID to a string. This isn't necessary to make
      * things work but it is nice to have for error and debug logging.
      */
+
     if (!ConvertSidToStringSid(event->uid, &StringSid)) {
         mdebug1(
             "Could not convert SID to string which returned (%lu)",

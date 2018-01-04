@@ -131,7 +131,6 @@ int local_start()
     if (!agt) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
-    agt->port = DEFAULT_SECURE;
 
     /* Get debug level */
     debug_level = getDefine_Int("windows", "debug", 0, 2);
@@ -209,7 +208,15 @@ int local_start()
     srandom(time(0));
     os_random();
 
-    write_state();
+    /* Launch rotation thread */
+    if (CreateThread(NULL,
+                     0,
+                     (LPTHREAD_START_ROUTINE)state_main,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID) == NULL) {
+        merror(THREAD_ERROR);
+    }
 
     /* Socket connection */
     agt->sock = -1;
@@ -259,7 +266,7 @@ int local_start()
     os_setwait();
     start_agent(1);
     os_delwait();
-    update_status(AGN_CONNECTED);
+    update_status(GA_STATUS_ACTIVE);
 
     /* Send integrity message for agent configs */
     intcheck_file(cfg, "");
@@ -326,6 +333,8 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
     mdebug2("Attempting to send message to server.");
 
+    os_wait();
+
     /* Using a mutex to synchronize the writes */
     while (1) {
         dwWaitResult = WaitForSingleObject(hMutex, 1000000L);
@@ -391,7 +400,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
                 /* If response is not available, set lock and wait for it */
                 mwarn(SERVER_UNAV);
-                update_status(AGN_DISCONNECTED);
+                update_status(GA_STATUS_NACTIVE);
 
                 /* Go into reconnect mode */
                 while ((cu_time - available_server) > agt->max_time_reconnect_try) {
@@ -410,9 +419,9 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
                     }
 
                     /* If we have more than one server, try all */
-                    if (wi > 12 && agt->rip[1]) {
+                    if (wi > 12 && agt->server[1].rip) {
                         int curr_rip = agt->rip_id;
-                        minfo("Trying next server IP in line: '%s'.", agt->rip[agt->rip_id + 1] != NULL ? agt->rip[agt->rip_id + 1] : agt->rip[0]);
+                        minfo("Trying next server IP in line: '%s'.", agt->server[agt->rip_id + 1].rip != NULL ? agt->server[agt->rip_id + 1].rip : agt->server[0].rip);
 
                         connect_server(agt->rip_id + 1);
 
@@ -434,9 +443,9 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
                     }
                 }
 
-                minfo(AG_CONNECTED, agt->rip[agt->rip_id], agt->port);
+                minfo(AG_CONNECTED, agt->server[agt->rip_id].rip, agt->server[agt->rip_id].port);
                 minfo(SERVER_UP);
-                update_status(AGN_CONNECTED);
+                update_status(GA_STATUS_ACTIVE);
             }
         }
     }
@@ -489,13 +498,10 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 /* Send win32 info to server */
 void send_win32_info(time_t curr_time)
 {
-    int msg_size;
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
-    char crypt_msg[OS_MAXSTR + 2];
     char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
 
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
-    crypt_msg[OS_MAXSTR + 1] = '\0';
 
     mdebug1("Sending keep alive message.");
 
@@ -554,31 +560,8 @@ void send_win32_info(time_t curr_time)
 
     /* Create message */
     mdebug2("Sending keep alive: %s", tmp_msg);
+    send_msg(tmp_msg, -1);
 
-    msg_size = CreateSecMSG(&keys, tmp_msg, strlen(tmp_msg), crypt_msg, 0);
-
-    if (msg_size == 0) {
-        merror(SEC_ERROR);
-        return;
-    }
-
-    /* Send UDP message */
-    if (agt->protocol == UDP_PROTO) {
-        if (OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0) {
-            merror(SEND_ERROR, "server", strerror(errno));
-            sleep(1);
-        }
-    } else {
-        uint32_t length = msg_size;
-
-        if (OS_SendTCPbySize(agt->sock, sizeof(length), (void*)&length) < 0) {
-            merror(SEND_ERROR, "server", strerror(errno));
-            sleep(1);
-        } else if (OS_SendTCPbySize(agt->sock, msg_size, crypt_msg) < 0) {
-            merror(SEND_ERROR, "server", strerror(errno));
-            sleep(1);
-        }
-    }
 
     update_keepalive(curr_time);
 

@@ -240,7 +240,7 @@ def get_ruleset_version():
     return rs_version
 
 
-def get_new_ruleset(source, branch_name=None):
+def get_new_ruleset(source, url, branch_name=None):
     mkdir(update_downloads)
     rm(update_ruleset)
 
@@ -250,7 +250,11 @@ def get_new_ruleset(source, branch_name=None):
         else:
             branch = get_branch()  # 'stable' 'master' 'development'
 
-        url_ruleset = "https://github.com/wazuh/wazuh-ruleset/archive/{0}.zip".format(branch)
+        if url:
+            url_ruleset = url
+        else:
+            url_ruleset = "https://github.com/wazuh/wazuh-ruleset/archive/{0}.zip".format(branch)
+
         ruleset_zip = "{0}/ruleset.zip".format(update_downloads)
 
         logger.debug("Downloading ruleset from {0}.".format(url_ruleset,))
@@ -452,7 +456,7 @@ def main():
     else:
         # Get ruleset
         status['old_version'] = get_ruleset_version()
-        status['new_version'] = get_new_ruleset(arguments['source'], arguments['branch-name'])
+        status['new_version'] = get_new_ruleset(arguments['source'], arguments['url'], arguments['branch-name'])
         ruleset_to_update, status['restart_required'] = get_ruleset_to_update(arguments['force'])
 
         # Update
@@ -518,6 +522,8 @@ def usage():
     \t-s, --source        Select ruleset source path (instead of download it).
     \t-j, --json          JSON output. It should be used with '-s' or '-S' argument.
     \t-d, --debug         Debug mode.
+    \t-u, --url           URL of ruleset zip (default: https://github.com/wazuh/wazuh-ruleset/archive/$BRANCH-NAME.zip)
+    \t                    It requires -n parameter.
     \t-n, --branch-name   Branch name (default: stable)
     """.format(branch)
     print(msg)
@@ -536,17 +542,20 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Arguments
-    arguments = {'ossec_path': '/var/ossec', 'source': 'download', 'restart': 'ask', 'backups': False, 'force': False, 'debug': False, 'json': False, 'branch-name': False}
+    arguments = {'ossec_path': '/var/ossec', 'source': 'download', 'restart': 'ask', 'backups': False, 'force': False, 'debug': False, 'json': False, 'branch-name': False, 'url': False}
     restart_args = 0
 
     try:
-        opts, args = getopt(sys.argv[1:], "s:o:n:brRfdjh", ["backups", "source=", "ossec_path=", "restart", "no-restart", "force-update", "debug", "json", "help", "branch-name="])
+        opts, args = getopt(sys.argv[1:], "s:o:n:u:brRfdjh", ["backups", "source=", "ossec_path=", "restart", "no-restart", "force-update", "debug", "json", "help", "branch-name=", "url="])
         if len(opts) > 6:
             print("Incorrect number of arguments.\nTry './update_ruleset.py --help' for more information.")
             sys.exit(1)
     except GetoptError as err:
         print(str(err) + "\n" + "Try './update_ruleset.py --help' for more information.")
         sys.exit(1)
+
+    branch_found = False
+    url_found = False
 
     for o, a in opts:
         if o in ("-b", "--backups"):
@@ -572,12 +581,20 @@ if __name__ == "__main__":
             arguments['json'] = True
         elif o in ("-n", "--branch-name"):
             arguments['branch-name'] = a
+            branch_found = True
+        elif o in ("-u", "--url"):
+            arguments['url'] = a
+            url_found = True
         elif o in ("-h", "--help"):
             usage()
             sys.exit(0)
         else:
             usage()
             sys.exit(1)
+
+    if url_found and not branch_found:
+        print("Bad arguments combination.\nURL parameter should be specified with a Branch name.")
+        sys.exit(1)
 
     if restart_args > 1:
         print("Bad arguments combination.\nTry './update_ruleset.py --help' for more information.")

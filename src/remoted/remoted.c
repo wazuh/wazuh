@@ -18,12 +18,16 @@
 /* Global variables */
 keystore keys;
 remoted logr;
+char* node_name;
 
 
 /* Handle remote connections */
 void HandleRemote(int uid)
 {
     int position = logr.position;
+    int timeout;    //timeout in seconds waiting for a client reply
+
+    timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
 
     /* If syslog connection and allowips is not defined, exit */
     if (logr.conn[position] == SYSLOG_CONN) {
@@ -54,9 +58,12 @@ void HandleRemote(int uid)
 
     /* Bind TCP */
     if (logr.proto[position] == TCP_PROTO) {
-        if ((logr.sock =
-                    OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
+        if ((logr.sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
             merror_exit(BIND_ERROR, logr.port[position]);
+        }else{
+            if (OS_SetRecvTimeout(logr.sock, timeout) < 0){
+                merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
+            }
         }
     } else {
         /* Using UDP. Fast, unreliable... perfect */

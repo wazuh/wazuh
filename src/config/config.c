@@ -48,6 +48,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslabels = "labels";                    /* Labels Config */
     const char *osauthd = "auth";                       /* Authd Config */
     const char *oslogging = "logging";                  /* Logging Config */
+    const char *oscluster = "cluster";                  /* Cluster Config */
 
     while (node[i]) {
         XML_NODE chld_node = NULL;
@@ -111,7 +112,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osclient) == 0) {
-            if ((modules & CCLIENT) && (Read_Client(chld_node, d1, d2) < 0)) {
+            if ((modules & CCLIENT) && (Read_Client(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osbuffer) == 0) {
@@ -143,6 +144,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oslogging) == 0) {
+        } else if (strcmp(node[i]->element, oscluster) == 0) {
+            if ((modules & CCLUSTER) && (Read_Cluster(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             goto fail;
@@ -178,6 +183,10 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     const char *xml_agent_os = "os";
     const char *xml_agent_overwrite = "overwrite";
     const char *xml_agent_profile = "profile";
+
+    if ((modules & CAGENT_CONFIG) && !getDefine_Int("agent", "remote_conf", 0, 1)) {
+      return 0;
+    }
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
         if (modules & CAGENT_CONFIG) {

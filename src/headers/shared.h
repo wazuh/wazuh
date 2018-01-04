@@ -200,6 +200,7 @@ extern const char *__local_name;
 #include "list_op.h"
 #include "dirtree_op.h"
 #include "hash_op.h"
+#include "queue_op.h"
 #include "store_op.h"
 #include "rc.h"
 #include "ar.h"
@@ -211,6 +212,7 @@ extern const char *__local_name;
 #include "string_op.h"
 #include "randombytes.h"
 #include "labels_op.h"
+#include "time_op.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"

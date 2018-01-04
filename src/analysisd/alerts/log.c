@@ -123,7 +123,7 @@ void OS_LogOutput(Eventinfo *lf)
     printf(
         "** Alert %ld.%ld:%s - %s\n"
         "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
-        "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
+        "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%.1256s\n",
         (long int)lf->time,
         __crt_ftell,
         lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
@@ -175,7 +175,8 @@ void OS_LogOutput(Eventinfo *lf)
         lf->dstuser == NULL ? "" : "\nUser: ",
         lf->dstuser == NULL ? "" : lf->dstuser,
 
-        lf->full_log);
+        lf->generated_rule->alert_opts & NO_FULL_LOG ? "" : "\n",
+        lf->generated_rule->alert_opts & NO_FULL_LOG ? "" : lf->full_log);
 
     /* FIM events */
 
@@ -238,9 +239,6 @@ void OS_LogOutput(Eventinfo *lf)
             printf("Old inode: %ld\n", lf->inode_before);
         if (lf->inode_after)
             printf("New inode: %ld\n", lf->inode_after);
-
-        if (lf->diff)
-            printf("What changed: %s\n", lf->diff);
     }
 
     // Dynamic fields, except for syscheck events
@@ -259,7 +257,6 @@ void OS_LogOutput(Eventinfo *lf)
             printf("%.1256s\n", *lasts);
             lasts++;
         }
-        lf->generated_rule->last_events[0] = NULL;
     }
 
     printf("\n");
@@ -294,7 +291,7 @@ void OS_Log(Eventinfo *lf)
     fprintf(_aflog,
             "** Alert %ld.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
-            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
+            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%.1256s\n",
             (long int)lf->time,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
@@ -345,7 +342,8 @@ void OS_Log(Eventinfo *lf)
             lf->dstuser == NULL ? "" : "\nUser: ",
             lf->dstuser == NULL ? "" : lf->dstuser,
 
-            lf->full_log);
+            lf->generated_rule->alert_opts & NO_FULL_LOG ? "" : "\n",
+            lf->generated_rule->alert_opts & NO_FULL_LOG ? "" : lf->full_log);
 
     /* FIM events */
 
@@ -408,9 +406,6 @@ void OS_Log(Eventinfo *lf)
             fprintf(_aflog, "Old inode: %ld\n", lf->inode_before);
         if (lf->inode_after)
             fprintf(_aflog, "New inode: %ld\n", lf->inode_after);
-
-        if (lf->diff)
-            fprintf(_aflog, "What changed: %s\n", lf->diff);
     }
 
     // Dynamic fields, except for syscheck events
@@ -429,7 +424,6 @@ void OS_Log(Eventinfo *lf)
             fprintf(_aflog, "%.1256s\n", *lasts);
             lasts++;
         }
-        lf->generated_rule->last_events[0] = NULL;
     }
 
     fprintf(_aflog, "\n");

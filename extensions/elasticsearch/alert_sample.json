@@ -1,0 +1,84 @@
+{
+  "@timestamp": "2015-03-18T15:55:55.000Z",
+  "AlertsFile": "sample",
+  "full_log": "sample",
+  "location": "sample",
+  "GeoLocation": {
+    "country_name": "sample",
+    "location": [0.0,0.0]
+  },
+  "agent": {
+    "name": "sample"
+  },
+  "data": {
+    "title": "sample",
+    "protocol": "sample",
+    "action": "sample",
+    "srcip": "sample",
+    "dstip": "sample",
+    "srcport": "sample",
+    "dstport": "sample",
+    "srcuser": "sample",
+    "dstuser": "sample",
+    "id": "sample",
+    "status": "sample",
+    "data": "sample",
+    "system_name": "sample",
+    "url": "sample",
+	"audit": {
+      "command": "sample",
+      "type": "sample",
+      "egid": "sample",
+      "euid": "sample",
+      "exe": "sample",
+      "gid": "sample",
+      "uid": "sample",
+      "directory": {
+        "name": "sample"
+      },
+      "file": {
+        "mode": "sample",
+        "name": "sample"
+      }
+	},
+	"oscap": {
+      "check": {
+        "result": "sample",
+        "severity": "sample",
+        "title": "sample"
+      },
+      "scan": {
+        "id": "sample",
+        "content": "sample",
+        "score": 1.55,
+        "profile": {
+          "title": "sample"
+        }
+      }
+    }
+  },
+  "rule": {
+    "cis": ["sample"],
+    "description": "sample",
+    "groups": ["sample"],
+    "id": "sample",
+    "level": 0,
+    "pci_dss": ["sample"]
+  },
+  "syscheck": {
+    "gname_after": "sample",
+    "gname_before": "sample",
+    "guid_after": "sample",
+    "guid_before": "sample",
+    "md5_after": "sample",
+    "md5_before": "sample",
+    "path": "sample",
+    "perm_after": "sample",
+    "perm_before": "sample",
+    "uid_after": "sample",
+    "uid_before": "sample",
+    "uname_after": "sample",
+    "uname_before": "sample",
+    "event": "sample"
+  }
+}

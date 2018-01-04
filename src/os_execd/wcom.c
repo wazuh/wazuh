@@ -168,6 +168,29 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         }
     } else if (strcmp(rcv_comm, "restart") == 0) {
         return wcom_restart(output);
+    } else if (strcmp(rcv_comm, "lock_restart") == 0) {
+        static int max_restart_lock = 0;
+        int timeout;
+
+        if (!max_restart_lock) {
+                max_restart_lock = getDefine_Int("execd", "max_restart_lock", 0, 3600);
+        };
+        timeout = atoi(rcv_args);
+
+        if (timeout < -1) {
+            strcpy(output, "err Invalid timeout");
+        } else {
+            strcpy(output, "ok");
+            if (timeout == -1 || timeout > max_restart_lock) {
+                if (timeout > max_restart_lock) {
+                    mwarn("Timeout exceeds the maximum allowed.");
+                }
+                timeout = max_restart_lock;
+            }
+        }
+        lock_restart(timeout);
+
+        return strlen(output);
     } else {
         merror("WCOM Unrecognized command '%s'.", rcv_comm);
         strcpy(output, "err Unrecognized command");
@@ -223,8 +246,8 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char *outp
     }
 
     if (strcmp(file.path, final_path) != 0) {
-        merror("At WCOM write: No file is opened.");
-        strcpy(output, "err No file opened");
+        merror("At WCOM write: The target file doesn't match the opened file (%s).", file.path);
+        strcpy(output, "err The target file doesn't match the opened file");
         return strlen(output);
     }
 
@@ -254,8 +277,8 @@ size_t wcom_close(const char *file_path, char *output){
     }
 
     if (strcmp(file.path, final_path) != 0) {
-        merror("At WCOM close: No file is opened.");
-        strcpy(output, "err No file opened");
+        merror("At WCOM close: The target file doesn't match the opened file (%s).", file.path);
+        strcpy(output, "err The target file doesn't match the opened file");
         return strlen(output);
     }
 
@@ -473,35 +496,37 @@ size_t wcom_upgrade_result(char *output){
 }
 
 size_t wcom_restart(char *output) {
-    #ifndef WIN32
+    time_t lock = pending_upg - time(NULL);
 
-    char *exec_cmd[3] = { DEFAULTDIR "/bin/ossec-control", "restart", NULL};
-    if (isChroot()) {
-        strcpy(exec_cmd[0], "/bin/ossec-control");
+    if (lock <= 0) {
+#ifndef WIN32
+        char *exec_cmd[3] = { DEFAULTDIR "/bin/ossec-control", "restart", NULL};
+        if (isChroot()) {
+            strcpy(exec_cmd[0], "/bin/ossec-control");
+        }
+
+        switch (fork()) {
+            case -1:
+                merror("At WCOM upgrade_result: Cannot fork");
+            break;
+            case 0:
+                sleep(1);
+                if (execv(exec_cmd[0], exec_cmd) < 0) {
+                    merror(EXEC_CMDERROR, *exec_cmd, strerror(errno));
+                    return strlen(output);
+                }
+            break;
+            default:
+                strcpy(output, "ok");
+            break;
+        }
+#else
+        char exec_cm[] = {"\"" AR_BINDIR "/restart-ossec.cmd\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
+        ExecCmd_Win32(exec_cm);
+#endif
+    } else {
+        minfo(LOCK_RES, (int)lock);
     }
-
-    switch (fork()) {
-        case -1:
-            merror("At WCOM upgrade_result: Cannot fork");
-        break;
-        case 0:
-            sleep(1);
-            if (execv(exec_cmd[0], exec_cmd) < 0) {
-                merror(EXEC_CMDERROR, *exec_cmd, strerror(errno));
-                return strlen(output);
-            }
-        break;
-        default:
-            strcpy(output, "ok");
-        break;
-    }
-
-    #else
-
-    char exec_cm[] = {"\"" AR_BINDIR "/restart-ossec.cmd\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
-    ExecCmd_Win32(exec_cm);
-
-    #endif
 
     return strlen(output);
 }
@@ -592,6 +617,7 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     const char TEMPLATE[] = ".gz.XXXXXX";
     char source_j[PATH_MAX + 1];
     size_t length;
+    int output = 0;
 
     if (_jailfile(source_j, INCOMING_DIR, source) > PATH_MAX) {
         merror("At unsign(): Invalid file name '%s'", source);
@@ -609,7 +635,7 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     }
 
     memcpy(dest + length, TEMPLATE, sizeof(TEMPLATE));
-
+    mode_t old_mask = umask(0022);
 #ifndef WIN32
     int fd;
 
@@ -619,24 +645,24 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
         if (chmod(dest, 0640) < 0) {
             unlink(dest);
             merror("At unsign(): Couldn't chmod '%s'", dest);
-            return -1;
+            output = -1;
         }
     } else {
 #else
     if (!_mktemp(dest)) {
 #endif
         merror("At unsign(): Couldn't create temporary compressed file");
-        return -1;
+        output = -1;
     }
 
     if (w_wpk_unsign(source_j, dest, (const char **)wcom_ca_store) < 0) {
         unlink(dest);
         merror("At unsign: Couldn't unsign package file '%s'", source_j);
-        return -1;
+        output = -1;
     }
-
+    umask(old_mask);
     unlink(source);
-    return 0;
+    return output;
 }
 
 int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]) {
@@ -696,5 +722,10 @@ int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1
     }
 
     unlink(source);
+    return 0;
+}
+
+size_t lock_restart(int timeout) {
+    pending_upg = time(NULL) + (time_t) timeout;
     return 0;
 }

@@ -15,6 +15,7 @@
 #include "os_net/os_net.h"
 #include "agentd.h"
 
+static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
 
 /* Receive events from the server */
 void *receiver_thread(__attribute__((unused)) void *none)
@@ -23,6 +24,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
     uint32_t length;
     size_t msg_length;
     int reads;
+    int undefined_msg_logged = 0;
     char file[OS_SIZE_1024 + 1];
     char buffer[OS_MAXSTR + 1];
 
@@ -45,6 +47,11 @@ void *receiver_thread(__attribute__((unused)) void *none)
     memset(file_sum, '\0', 34);
 
     while (1) {
+        /* Run timeout commands */
+        if (agt->execdq >= 0) {
+            WinTimeoutRun();
+        }
+
         /* sock must be set */
         if (agt->sock == -1) {
             sleep(5);
@@ -54,8 +61,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
         FD_ZERO(&fdset);
         FD_SET(agt->sock, &fdset);
 
-        /* Wait for 30 seconds */
-        selecttime.tv_sec = 30;
+        /* Wait for 1 second */
+        selecttime.tv_sec = 1;
         selecttime.tv_usec = 0;
 
         /* Wait with a timeout for any descriptor */
@@ -72,7 +79,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
         /* Read until no more messages are available */
         while (1) {
-            if (agt->protocol == TCP_PROTO) {
+            if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
                 /* Only one read per call */
                 if (reads++) {
                     break;
@@ -84,18 +91,22 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 // Manager disconnected or error
 
                 if (recv_b <= 0) {
-                    update_status(AGN_DISCONNECTED);
-                    merror("Receiver: %s [%d]", strerror(errno), errno);
+                    if (recv_b < 0) {
+                        merror("Receiver: %s [%d]", strerror(errno), errno);
+                    }
+
+                    update_status(GA_STATUS_NACTIVE);
                     merror(LOST_ERROR);
                     os_setwait();
                     start_agent(0);
                     minfo(SERVER_UP);
                     os_delwait();
-                    update_status(AGN_CONNECTED);
+                    update_status(GA_STATUS_ACTIVE);
                     break;
-                }
-
-                if (length > OS_MAXSTR) {
+                }else if (length == 0) {
+                    merror("Empty message from manager");
+                    break;
+                }else if (length > OS_MAXSTR) {
                     merror("Too big message size from manager.");
                     break;
                 }
@@ -115,9 +126,9 @@ void *receiver_thread(__attribute__((unused)) void *none)
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->rip[agt->rip_id]);
+            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip);
             if (tmp_msg == NULL) {
-                mwarn(MSG_ERROR, agt->rip[agt->rip_id]);
+                mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
                 continue;
             }
 
@@ -125,14 +136,11 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
             /* Check for commands */
             if (IsValidHeader(tmp_msg)) {
+                undefined_msg_logged = 0;
+
                 /* This is the only thread that modifies it */
                 available_server = (int)time(NULL);
                 update_ack(available_server);
-
-                /* Run timeout commands */
-                if (agt->execdq >= 0) {
-                    WinTimeoutRun(available_server);
-                }
 
                 /* If it is an active response message */
                 if (strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0) {
@@ -243,9 +251,13 @@ void *receiver_thread(__attribute__((unused)) void *none)
                             final_file = strrchr(file, '/');
                             if (final_file) {
                                 if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
+                                    if (cldir_ex_ignore(SHAREDCFG_DIR, IGNORE_LIST)) {
+                                        mwarn("Could not clean up shared directory.");
+                                    }
+
                                     UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
 
-                                    if (!verifyRemoteConf()) {
+                                    if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                         if (agt->flags.auto_restart) {
                                             minfo("Agent is restarting due to shared configuration changes.");
                                             restartAgent();
@@ -274,8 +286,9 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 fprintf(fp, "%s", tmp_msg);
             }
 
-            else {
-                mwarn("Unknown message received. No action defined.");
+            else if (!undefined_msg_logged) {
+                mwarn("Unknown message received. No action defined. Maybe restarted while receiving merged file?");
+                undefined_msg_logged = 1;
             }
         }
     }

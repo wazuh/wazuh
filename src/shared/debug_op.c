@@ -37,10 +37,11 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
     va_list args2; /* For the stderr print */
     va_list args3; /* For the JSON output */
     FILE *fp;
-    FILE *fp2;
     char timestamp[OS_MAXSTR];
     char jsonstr[OS_MAXSTR];
     char *output;
+    char logfile[PATH_MAX + 1];
+
     const char *strlevel[5]={
       "DEBUG",
       "INFO",
@@ -62,92 +63,117 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
     va_copy(args2, args);
     va_copy(args3, args);
 
-    if (!flags.read){
+    if (!flags.read) {
       os_logging_config();
     }
 
-    if (flags.log_json){
+    if (flags.log_json) {
 
-      /* If under chroot, log directly to /logs/ossec.json */
-      if (chroot_flag == 1) {
-          int old = umask(0006);
-          fp2 = fopen(LOGJSONFILE, "a");
-          umask(old);
-      } else {
-          char _logjsonfile[256];
-  #ifndef WIN32
-          snprintf(_logjsonfile, 256, "%s%s", DEFAULTDIR, LOGJSONFILE);
-  #else
-          snprintf(_logjsonfile, 256, "%s", LOGJSONFILE);
-  #endif
-          int old = umask(0006);
-          fp2 = fopen(_logjsonfile, "a");
-          umask(old);
-      }
+#ifndef WIN32
+        int oldmask;
 
-      if (fp2) {
+        strncpy(logfile, isChroot() ? LOGJSONFILE : DEFAULTDIR LOGJSONFILE, sizeof(logfile) - 1);
+        logfile[sizeof(logfile) - 1] = '\0';
 
-          cJSON *json_log = cJSON_CreateObject();
+        if (!IsFile(logfile)) {
+            fp = fopen(logfile, "a");
+        } else {
+            oldmask = umask(0006);
+            fp = fopen(logfile, "w");
+            umask(oldmask);
 
-          snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
-                        localtm.tm_year + 1900, localtm.tm_mon + 1,
-                        localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+            // Make sure that the group is ossec
 
-          vsnprintf(jsonstr, OS_MAXSTR, msg, args3);
+            if (fp && getuid() == 0) {
+                gid_t group;
 
-          cJSON_AddStringToObject(json_log, "timestamp", timestamp);
-          cJSON_AddStringToObject(json_log, "tag", tag);
-          cJSON_AddStringToObject(json_log, "level", strleveljson[level]);
-          cJSON_AddStringToObject(json_log, "description", jsonstr);
+                if (group = Privsep_GetGroup(GROUPGLOBAL), group != (gid_t)-1) {
+                    if (chown(logfile, 0, group)) {
+                        // Don't log anything
+                    }
+                }
+            }
+        }
+#else
+        strncpy(logfile, LOGJSONFILE, sizeof(logfile) - 1);
+        logfile[sizeof(logfile) - 1] = '\0';
+        fp = fopen(logfile, "a");
+#endif
 
-          output = cJSON_PrintUnformatted(json_log);
+        if (fp) {
+            cJSON *json_log = cJSON_CreateObject();
 
-          (void)fprintf(fp2, "%s", output);
-          (void)fprintf(fp2, "\n");
+            snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+                    localtm.tm_year + 1900, localtm.tm_mon + 1,
+                    localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
-          cJSON_Delete(json_log);
-          free(output);
-          fflush(fp2);
-          fclose(fp2);
-      }
+            vsnprintf(jsonstr, OS_MAXSTR, msg, args3);
+
+            cJSON_AddStringToObject(json_log, "timestamp", timestamp);
+            cJSON_AddStringToObject(json_log, "tag", tag);
+            cJSON_AddStringToObject(json_log, "level", strleveljson[level]);
+            cJSON_AddStringToObject(json_log, "description", jsonstr);
+
+            output = cJSON_PrintUnformatted(json_log);
+
+            (void)fprintf(fp, "%s", output);
+            (void)fprintf(fp, "\n");
+
+            cJSON_Delete(json_log);
+            free(output);
+            fflush(fp);
+            fclose(fp);
+        }
     }
 
-    if(flags.log_plain){
+    if (flags.log_plain) {
       /* If under chroot, log directly to /logs/ossec.log */
-      if (chroot_flag == 1) {
-          int old = umask(0006);
-          fp = fopen(LOGFILE, "a");
-          umask(old);
-      } else {
-          char _logfile[256];
-  #ifndef WIN32
-          snprintf(_logfile, 256, "%s%s", DEFAULTDIR, LOGFILE);
-  #else
-          snprintf(_logfile, 256, "%s", LOGFILE);
-  #endif
-          int old = umask(0006);
-          fp = fopen(_logfile, "a");
-          umask(old);
-      }
 
-      /* Maybe log to syslog if the log file is not available */
-      if (fp) {
-          (void)fprintf(fp, "%d/%02d/%02d %02d:%02d:%02d ",
+#ifndef WIN32
+        int oldmask;
+
+        strncpy(logfile, isChroot() ? LOGFILE : DEFAULTDIR LOGFILE, sizeof(logfile) - 1);
+        logfile[sizeof(logfile) - 1] = '\0';
+
+        if (!IsFile(logfile)) {
+            fp = fopen(logfile, "a");
+        } else {
+            oldmask = umask(0006);
+            fp = fopen(logfile, "w");
+            umask(oldmask);
+
+            // Make sure that the group is ossec
+
+            if (fp && getuid() == 0) {
+                gid_t group;
+
+                if (group = Privsep_GetGroup(GROUPGLOBAL), group != (gid_t)-1) {
+                    if (chown(logfile, 0, group)) {
+                        // Don't log anything
+                    }
+                }
+            }
+        }
+#else
+        strncpy(logfile, LOGFILE, sizeof(logfile) - 1);
+        logfile[sizeof(logfile) - 1] = '\0';
+        fp = fopen(logfile, "a");
+#endif
+
+        /* Maybe log to syslog if the log file is not available */
+        if (fp) {
+            (void)fprintf(fp, "%d/%02d/%02d %02d:%02d:%02d ",
                         localtm.tm_year + 1900, localtm.tm_mon + 1,
                         localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
-          (void)fprintf(fp, "%s: ", tag);
-          (void)fprintf(fp, "%s: ", strlevel[level]);
-          (void)vfprintf(fp, msg, args);
-  #ifdef WIN32
-          (void)fprintf(fp, "\r\n");
-  #else
-          (void)fprintf(fp, "\n");
-  #endif
-          fflush(fp);
-          fclose(fp);
-      }
-    }
+            (void)fprintf(fp, "%s: ", tag);
+            (void)fprintf(fp, "%s: ", strlevel[level]);
+            (void)vfprintf(fp, msg, args);
+            (void)fprintf(fp, "\n");
 
+            fflush(fp);
+            fclose(fp);
+        }
+    }
 
     /* Only if not in daemon mode */
     if (daemon_flag == 0) {
@@ -175,12 +201,13 @@ void os_logging_config(){
   const char * xmlf[] = {"ossec_config", "logging", "log_format", NULL};
   char * logformat;
   char ** parts = NULL;
-  int i, j;
+  int i;
+
+  flags.read = 1;
 
   if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
     flags.log_plain = 1;
     flags.log_json = 0;
-    flags.read = 1;
     OS_ClearXML(&xml);
     merror_exit(XML_ERROR, "/etc/ossec.conf", xml.err, xml.err_line);
   }
@@ -191,7 +218,6 @@ void os_logging_config(){
 
     flags.log_plain = 1;
     flags.log_json = 0;
-    flags.read = 1;
 
     free(logformat);
     OS_ClearXML(&xml);
@@ -211,14 +237,7 @@ void os_logging_config(){
         }else{
           flags.log_plain = 1;
           flags.log_json = 0;
-          flags.read = 1;
-          for (j=0; parts[j]; j++){
-            free(parts[j]);
-          }
-          free(parts);
-          free(logformat);
-          OS_ClearXML(&xml);
-          merror(CONFIG_ERROR, DEFAULTCPATH);
+          merror_exit(XML_VALUEERR, "log_format", part);
         }
       }
       for (i=0; parts[i]; i++){
@@ -229,7 +248,6 @@ void os_logging_config(){
 
     free(logformat);
     OS_ClearXML(&xml);
-    flags.read = 1;
   }
 }
 

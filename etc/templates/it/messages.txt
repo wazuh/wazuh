@@ -83,8 +83,16 @@ yessyslog="Syslog remoto attivato"
 # Part 3.4/3.5
 readlogs="Imposto la configurazione per l'analisi dei seguenti logs:"
 
-# Part 5
+# Part 3.7
+runauthd="Vuoi eseguire il servizio Auth?"
+norunauthd="Non eseguire l'autenticazione"
+yesrunauthd="Running Auth servizio"
+
+# Part 4
 installing="Installo il sistema"
+startwazuh="Vuoi iniziare Wazuh dopo l'installazione?"
+nowazuhstart="Wazuh non inizierà alla fine dell'installazione."
+yeswazuhstart="Wazuh inizierà alla fine dell'installazione."
 runningmake="Eseguo il Makefile"
 
 # Final

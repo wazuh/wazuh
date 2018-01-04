@@ -96,7 +96,14 @@ int req_push(char * buffer, size_t length) {
         snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
 
         if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-            merror("At req_push(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+            switch (errno) {
+            case ECONNREFUSED:
+                merror("At req_push(): Target '%s' refused connection. Is Active Response enabled?", target);
+                break;
+
+            default:
+                merror("At req_push(): Could not connect to socket '%s': %s (%d).", target, strerror(errno), errno);
+            }
 
             // Example: #!-req 16 err Permission denied
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err %s", counter, errno == ENOENT ? "Invalid target" : strerror(errno));
@@ -121,7 +128,7 @@ int req_push(char * buffer, size_t length) {
 
         // Send ACK, only in UDP mode
 
-        if (agt->protocol == UDP_PROTO) {
+        if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
             mdebug2("req_push(): Sending ack (%s).", counter);
             // Example: #!-req 16 ack
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", counter);
@@ -261,7 +268,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
             // Wait for ACK, only in UDP mode
 
-            if (agt->protocol == UDP_PROTO) {
+            if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
                 gettimeofday(&now, NULL);
                 nsec = now.tv_usec * 1000 + rto_msec * 1000000;
                 timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;

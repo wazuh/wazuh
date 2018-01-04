@@ -34,6 +34,7 @@
         <if_sid>80000</if_sid>
         <match>^Starting</match>
         <description>Puppet Master started</description>
+        <group>gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -46,6 +47,7 @@
         <match>^Processing|^Caught</match>
         <regex>\.+stop</regex>
         <description>Puppet Master stopped</description>
+        <group>gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -56,6 +58,7 @@
         <if_sid>80000</if_sid>
         <match>^Permission denied </match>
         <description>Puppet Master: Permission denied</description>
+        <group>gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -106,6 +109,7 @@
         <if_sid>80000</if_sid>
         <match>^Could not run: Address already in use</match>
         <description>Puppet Master: not run - address in use</description>
+        <group>gpg13_4.3,</group>
     </rule>
 
     <rule id="80007" level="5">
@@ -113,12 +117,14 @@
         <match>^Could not|^You cannot|^too few arguments|^Duplicate declaration|^Unrecognised escape sequence|^Invalid parameter|is not|has not been tested|Unknown function|failed|has failure</match>
         <regex>manifests</regex>
         <description>Puppet Master: Manifest Error</description>
+        <group>gpg13_4.3,</group>
     </rule>
 
     <rule id="80008" level="4">
         <if_sid>80000</if_sid>
         <match>^Could not|not found|^Not collecting|^The environment must be|^Syntax error|^Failed|failed|has failure</match>
         <description>Puppet Master: Error</description>
+        <group>gpg13_4.3,</group>
     </rule>
 
 
@@ -157,6 +163,7 @@
         <if_sid>80001</if_sid>
         <match>^Starting Puppet client</match>
         <description>Puppet Agent started</description>
+        <group>gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -168,6 +175,7 @@
         <match>^Processing|^Caught</match>
         <regex>\.+stop</regex>
         <description>Puppet Agent stopped</description>
+        <group>gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -225,36 +233,42 @@
         <if_sid>80001</if_sid>
         <regex>^No \S+ file found|file \S+ does not exist</regex>
         <description>Puppet Agent: Error - no file found or does not exist</description>
+        <group>gpg13_4.3,</group>
     </rule>
 
     <rule id="80055" level="4">
         <if_sid>80001</if_sid>
         <regex>feature \S+ is missing</regex>
         <description>Puppet Agent: Error - feature is missing</description>
+        <group>gpg13_4.3,</group>
     </rule>
 
     <rule id="80056" level="5">
         <if_sid>80001</if_sid>
         <match>^Failed to load library</match>
         <description>Puppet Agent: Error - failed library</description>
+        <group>gpg13_4.3,</group>
     </rule>
 
     <rule id="80057" level="5">
         <if_sid>80001</if_sid>
         <match>^Failed to apply catalog</match>
         <description>Puppet Agent: Error - failed to apply catalog</description>
+        <group>gpg13_4.3,</group>
     </rule>
 
     <rule id="80058" level="10">
         <if_sid>80001</if_sid>
         <match>Connection refused - connect</match>
         <description>Puppet Agent: connection refused</description>
+        <group>gpg13_4.3,</group>
     </rule>
 
     <rule id="80059" level="4">
         <if_sid>80001</if_sid>
         <match>^Unable to fetch|does not support|Not using cache|Could not retrieve|Failed|failed|has failure</match>
         <description>Puppet Agent: Error</description>
+        <group>gpg13_4.3,</group>
     </rule>
 
     <!--
@@ -288,24 +302,28 @@
         <match>created|defined</match>
         <regex>\(\.+\) created|\(\.+\) defined</regex>
         <description>Puppet Agent: Info - create or defined content</description>
+        <group>gpg13_4.12,</group>
     </rule>
 
     <rule id="80071" level="0">
         <if_sid>80001</if_sid>
         <match>^Retrieving|^Loading|^Caching|^Evicting|^Using settings|^Finishing transaction|^Configuring| connection for|mode changed|Autorequiring</match>
         <description>Puppet Agent: Info</description>
+        <group>gpg13_4.12,</group>
     </rule>
 
     <rule id="80072" level="2">
         <if_sid>80001</if_sid>
         <match>^Applying configuration|^Finished catalog</match>
         <description>Puppet Agent: Info - applying configuration</description>
+        <group>gpg13_4.12,</group>
     </rule>
 
     <rule id="80073" level="2">
         <if_sid>80001</if_sid>
         <match>^Executing</match>
         <description>Puppet Agent: Info - executing </description>
+        <group>gpg13_4.12,</group>
     </rule>
 
 

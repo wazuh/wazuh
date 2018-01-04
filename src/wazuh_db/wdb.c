@@ -50,9 +50,10 @@ int wdb_open_global() {
                 return -1;
             }
         }
+
+        sqlite3_busy_timeout(wdb_global, BUSY_SLEEP);
     }
 
-    sqlite3_busy_timeout(wdb_global, BUSY_SLEEP);
     return 0;
 }
 

@@ -7,4 +7,5 @@
     <content type="xccdf" path="ssg-ubuntu-1604-ds.xml">
       <profile>xccdf_org.ssgproject.content_profile_common</profile>
     </content>
+    <content type="oval" path="cve-ubuntu-xenial-oval.xml"/>
   </wodle>

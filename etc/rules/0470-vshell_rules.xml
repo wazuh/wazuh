@@ -22,12 +22,14 @@
     <if_sid>86800</if_sid>
     <regex>Login failed|Authentication for (\w+) failed</regex>
     <description>VShell user failed to login or user does not exist</description>
+    <group>gpg13_7.1,</group>
   </rule>
 
   <rule id="86803" level="7">
     <if_sid>86802</if_sid>
     <regex>Maximum authentication retries for user (\w+) exceeded</regex>
     <description>VShell user used the maximum number of password attempts.</description>
+    <group>gpg13_7.1,</group>
   </rule>
 
   <rule id="86804" level="10">
@@ -40,6 +42,7 @@
     <if_sid>86800</if_sid>
     <regex>password for user (\S+) accepted</regex>
     <description>VShell user successfully authenticated.</description>
+    <group>gpg13_7.1,gpg13_7.2,</group>
   </rule>
 
   <rule id="86806" level="12" frequency="5" timeframe="120">

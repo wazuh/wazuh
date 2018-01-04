@@ -14,7 +14,7 @@
 
 static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key, date_add, `group`) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?);";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, version = ?, config_sum = ?, merged_sum = ? WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
@@ -57,7 +57,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, 
 
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return result;
 }
 
@@ -79,12 +79,12 @@ int wdb_update_agent_name(int id, const char *name) {
 
     result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return result;
 }
 
 /* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *version, const char *config_sum, const char *merged_sum) {
+int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name) {
     int result = 0;
     sqlite3_stmt *stmt;
 
@@ -107,11 +107,13 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
     sqlite3_bind_text(stmt, 9, version, -1, NULL);
     sqlite3_bind_text(stmt, 10, config_sum, -1, NULL);
     sqlite3_bind_text(stmt, 11, merged_sum, -1, NULL);
-    sqlite3_bind_int(stmt, 12, id);
+    sqlite3_bind_text(stmt, 12, manager_host, -1, NULL);
+    sqlite3_bind_text(stmt, 13, node_name, -1, NULL);
+    sqlite3_bind_int(stmt, 14, id);
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return result;
 }
 
@@ -133,7 +135,7 @@ int wdb_update_agent_keepalive(int id, long keepalive) {
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return result;
 }
 
@@ -154,7 +156,7 @@ int wdb_remove_agent(int id) {
 
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_remove_agent_db(id) : -1;
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return result;
 }
 
@@ -186,7 +188,7 @@ char* wdb_agent_name(int id) {
     }
 
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return result;
 }
 
@@ -330,7 +332,7 @@ int* wdb_get_all_agents() {
     array[i] = -1;
 
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return array;
 }
 
@@ -383,9 +385,8 @@ long wdb_get_agent_offset(int id_agent, int type) {
 
     sqlite3_bind_int(stmt, 1, id_agent);
     result = wdb_step(stmt) == SQLITE_ROW ? sqlite3_column_int64(stmt, 0) : -1;
-
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return result;
 }
 
@@ -419,7 +420,7 @@ int wdb_set_agent_offset(int id_agent, int type, long offset) {
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return result;
 }
 
@@ -446,7 +447,7 @@ int wdb_get_agent_status(int id_agent) {
         result = -1;
 
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return result;
 }
 
@@ -483,7 +484,7 @@ int wdb_set_agent_status(int id_agent, int status) {
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return result;
 }
 
@@ -505,6 +506,6 @@ int wdb_update_agent_group(int id, const char *group) {
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
-    wdb_close_global();
+
     return result;
 }

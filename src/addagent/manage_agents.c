@@ -16,7 +16,7 @@
 #include "external/cJSON/cJSON.h"
 #include <stdlib.h>
 
-#if defined(__MINGW32__)
+#if defined(__MINGW32__) || defined(__hppa__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
 {
     int len = strlen(name) + strlen(val) + 2;
@@ -144,7 +144,7 @@ int add_agent(int json_output, int no_limit)
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
 
-                if (!strcmp(_name, shost) || NameExist(_name)) {
+                if (_name && (!strcmp(_name, shost) || NameExist(_name))) {
                     cJSON_AddNumberToObject(json_root, "error", 75);
                     cJSON_AddStringToObject(json_root, "message", "Name already present");
                 } else {
@@ -243,7 +243,7 @@ int add_agent(int json_output, int no_limit)
     if (sock < 0 && !*id) {
         do {
             /* Default ID */
-            for (i = 1; snprintf(id, 8, "%03d", i), IDExist(id, 0); i++);
+            for (i = 1; snprintf(id, sizeof(id), "%03d", i), IDExist(id, 0); i++);
 
             /* Get ID */
 

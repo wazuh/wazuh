@@ -71,8 +71,8 @@ CREATE TABLE IF NOT EXISTS  alert
     level           TINYINT     UNSIGNED,
     timestamp       INT         UNSIGNED NOT NULL,
     location_id     SMALLINT    UNSIGNED NOT NULL,
-    src_ip          INT         UNSIGNED,
-    dst_ip          INT         UNSIGNED,
+    src_ip          TEXT,
+    dst_ip          TEXT,
     src_port        SMALLINT    UNSIGNED,
     dst_port        SMALLINT    UNSIGNED,
     alertid         VARCHAR(30) DEFAULT NULL,
@@ -88,4 +88,3 @@ CREATE TABLE IF NOT EXISTS  alert
     INDEX       (src_ip),
     INDEX       (tld)
     );
-

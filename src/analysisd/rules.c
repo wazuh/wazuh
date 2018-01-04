@@ -931,6 +931,10 @@ int Rules_OP_ReadRules(const char *rulefile)
                             if (!(config_ruleinfo->alert_opts & NO_AR)) {
                                 config_ruleinfo->alert_opts |= NO_AR;
                             }
+                        } else if (strcmp("no_full_log", rule_opt[k]->content) == 0) {
+                            config_ruleinfo->alert_opts |= NO_FULL_LOG;
+                        } else if (strcmp("no_counter", rule_opt[k]->content) == 0) {
+                            config_ruleinfo->alert_opts |= NO_COUNTER;
                         } else {
                             merror(XML_VALUEERR, xml_options,
                                    rule_opt[k]->content);
@@ -1778,17 +1782,24 @@ static void Rule_AddAR(RuleInfo *rule_config)
         my_ar = (active_response *)my_ars_node->data;
         mark_to_ar = 0;
 
-        /* Check if the level for the ar is higher */
-        if (my_ar->level) {
-            if (rule_real_level >= my_ar->level) {
+        /* If level and group are specified, rules have to match both of them */
+        if (my_ar->level && my_ar->rules_group){
+            if (rule_real_level >= my_ar->level && OS_Regex(my_ar->rules_group, rule_config->group)){
                 mark_to_ar = 1;
             }
-        }
+        }else{
+            /* Check if the level for the ar is higher */
+            if (my_ar->level) {
+                if (rule_real_level >= my_ar->level) {
+                    mark_to_ar = 1;
+                }
+            }
 
-        /* Check if group matches */
-        if (my_ar->rules_group) {
-            if (OS_Regex(my_ar->rules_group, rule_config->group)) {
-                mark_to_ar = 1;
+            /* Check if group matches */
+            if (my_ar->rules_group) {
+                if (OS_Regex(my_ar->rules_group, rule_config->group)) {
+                    mark_to_ar = 1;
+                }
             }
         }
 

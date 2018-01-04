@@ -32,6 +32,8 @@ time_t File_DateofChange(const char *file) __attribute__((nonnull));
 
 ino_t File_Inode(const char *file) __attribute__((nonnull));
 
+off_t FileSize(const char * path);
+
 int IsDir(const char *file) __attribute__((nonnull));
 
 int IsFile(const char *file) __attribute__((nonnull));
@@ -82,6 +84,9 @@ int rmdir_ex(const char *path);
 
 // Delete directory content
 int cldir_ex(const char *name);
+
+// Delete directory content with exception list
+int cldir_ex_ignore(const char * name, const char ** ignore);
 
 // Make directory recursively
 int mkdir_ex(const char * path);

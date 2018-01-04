@@ -91,7 +91,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Launch rotation thread */
 
-    if (CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
+    if (getDefine_Int("monitord", "rotate_log", 0, 1) && CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
         merror_exit(THREAD_ERROR);
     }
 
@@ -109,11 +109,11 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Connect remote */
     rc = 0;
     while (rc < agt->rip_id) {
-        minfo("Server IP Address: %s", agt->rip[rc]);
+        minfo("Server IP Address: %s", agt->server[rc].rip);
         rc++;
     }
 
-    write_state();
+    w_create_thread(state_main, NULL);
 
     /* Try to connect to the server */
     if (!connect_server(0)) {
@@ -140,7 +140,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     start_agent(1);
 
     os_delwait();
-    update_status(AGN_CONNECTED);
+    update_status(GA_STATUS_ACTIVE);
 
     /* Send integrity message for agent configs */
     intcheck_file(OSSECCONF, dir);
@@ -185,13 +185,13 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         /* For the receiver */
         if (FD_ISSET(agt->sock, &fdset)) {
             if (receive_msg() < 0) {
-                update_status(AGN_DISCONNECTED);
+                update_status(GA_STATUS_NACTIVE);
                 merror(LOST_ERROR);
                 os_setwait();
                 start_agent(0);
                 minfo(SERVER_UP);
                 os_delwait();
-                update_status(AGN_CONNECTED);
+                update_status(GA_STATUS_ACTIVE);
             }
         }
 

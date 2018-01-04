@@ -1,7 +1,49 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.0.0]
+## [v3.2.0]
+
+### Fixed
+
+- [Fixed oscap.py to support new versions of OpenSCAP scanner.](https://github.com/wazuh/wazuh/pull/331)
+
+## [v3.1.0]
+
+### Added
+
+- New Wazuh Module "command" for asynchronous command execution.
+- New field "predecoder.timestamp" for JSON alerts including timestamp from logs.
+- Added reload action to ossec-control in local mode.
+- Add duration control of a cluster database synchronization.
+- New internal option for agents to switch applying shared configuration.
+- Added GeoIP address finding for input logs in JSON format.
+- Added alert and archive output files rotation capabilities.
+- Added rule option to discard field "firedtimes".
+- Added VULS integration for running vulnerability assessments.
+- CIS-CAT Wazuh Module to scan CIS policies. 
+
+### Changed
+
+- Keepping client.keys file permissions when modifying it.
+- Improve Rootcheck formula to select outstanding defects.
+- Stop related daemon when disabling components in ossec-control.
+- Prevented cluster daemon from starting on RHEL 5 or older.
+- Let Syscheck report file changes on first scan.
+- Allow requests by node name in cluster_control binary.
+- Improved help of cluster_control binary.
+- Integrity control of files in the cluster.
+
+### Fixed
+
+- Fixed netstat command in localfile configuration.
+- Fixed error when searching agents by ID.
+- Fixed syslog format pre-decoder for logs with missing (optional) space after tag.
+- Fixed alert ID when plain-text alert output disabled.
+- Fixed Monitord freezing when a sendmail-like executable SMTP server is set.
+- Fixed validation of Active Response used by agent_control.
+- Allow non-ASCII characters in Windows version string.
+
+## [v3.0.0] 2017-12-12
 
 ### Added
 
@@ -25,6 +67,24 @@ All notable changes to this project will be documented in this file.
 - Added internal option for Remoted to set the shared configuration reloading time.
 - Auto restart agents when new shared configuration is pushed from the manager.
 - Added native support for Systemd.
+- Added option to register unlimited agents in Authd.
+- New internal option to limit the number of file descriptors in Analysisd and Remoted.
+- Added new state "pending" for agents.
+- Added internal option to disable real-time DB synchronization.
+- Allow multiple manager stanzas in Agentd settings.
+- New internal option to limit the receiving time in TCP mode.
+- Added manager hostname data to agent information.
+- New option for rotating internal logs by size.
+- Added internal option to enable or disable daily rotation of internal logs.
+- Added command option for Monitord to overwrite 'day_wait' parameter.
+- Adding templates and sample alert for Elasticsearch 6.0.
+- Added option to enable/disable Authd on install and auto-generate certificates.
+- Pack secure TCP messages into a single packet.
+- Added function to install SCAP policies depending on OS version.
+- Added integration with Virustotal.
+- Added timeout option for TCP sockets in Remoted and Agentd.
+- Added option to start the manager after installing.
+- Added a cluster of managers (`wazuh-clusterd`) and a script to control it (`cluster_control`).
 
 ### Changed
 
@@ -47,10 +107,30 @@ All notable changes to this project will be documented in this file.
 - Changed 'message' field to 'data' for successful agent removing response in Authd API.
 - Changed critical error to standard error in Syslog Remoted when no access list has been configured.
 - Ignore hidden files in shared folder for merged file.
-- Changed agent notification time values: notify time to 10 seconds and reconnect time to one minute.
+- Changed agent notification time values: notify time to 1 minute and reconnect time to 5 minutes.
 - Prevent data field from being inserted into JSON alerts when it's empty.
 - Spelling corrections (by Josh Soref).
 - Moved debug messages when updating shared files to level 2.
+- Do not create users ossecm or ossecr on agents.
+- Upgrade netstat command in Logcollector.
+- Prevent Monitord and DB sync module from dealing with agent files on local installations.
+- Speed up DB syncing by keeping databases opened and an inotify event queue.
+- Merge server's IP and hostname options to one setting.
+- Enabled Active Response by default in both Windows and UNIX.
+- Make Monitord 'day_wait' internal option affect log rotation.
+- Extend Monitord 'day_wait' internal option range.
+- Prevent Windows agent from log error when the manager disconnected.
+- Improve Active Response filtering options.
+- Use init system (Systemd/SysVinit) to restart Wazuh when upgrading.
+- Added possibility of filtering agents by manager hostname in the Framework.
+- Prevent installer from overwriting agent.conf file.
+- Cancel file sending operation when agent socket is closed.
+- Clean up agent shared folder before unmerging shared configuration.
+- Print descriptive error when request socket refuses connection due to AR disabled.
+- Extend Logcollector line burst limit range.
+- Fix JSON alert file reloading when the file is rotated.
+- Merge IP and Hostname server configuration into "Address" field.
+- Improved TCP transmission performance by packing secure messages.
 
 ### Fixed
 
@@ -70,13 +150,27 @@ All notable changes to this project will be documented in this file.
 - Fixed some warnings that appeared when compiling on Fedora 26.
 - Fixed permission issue in logs folder.
 - Fixed issue in Remoted that prevented it from send shared configuration when it changed.
+- Fixed Windows agent compilation compability with CentOS.
+- Supporting different case from password prompt in Agentless (by Jesus Fidalgo).
+- Fix bad detection of inotify queue overflowed.
+- Fix repetitive error when a rule's diff file is empty.
+- Fixed log group permission when created by a daemon running as root.
+- Prevented Agentd from logging too many errors when restarted while receiving the merged file.
+- Prevented Remoted from sending data to disconnected agents in TCP mode.
+- Fixed alerts storage in PostgreSQL databases.
+- Fixed invalid previous output data in JSON alerts.
+- Fixed memory error in modulesd for invalid configurations.
+- Fixed default Auth configuration to support custom install directory.
+- Fixed directory transversal vulnerability in Active response commands.
+- Fixed Active response timeout accuracy.
+- Fixed race conditions in concurrent transmissions over TCP.
 
 ### Removed
 
 - Removed Picviz support (by Dan Parriott).
 
 
-## [v2.1.1]
+## [v2.1.1] - 2017-09-21
 
 ### Changed
 

@@ -15,9 +15,10 @@ static const char *XML_NAME = "name";
 
 // Read wodle element
 
-int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, __attribute__((unused)) void *d2)
+int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 {
     wmodule **wmodules = (wmodule**)d1;
+    int agent_cfg = d2 ? *(int *)d2 : 0;
     wmodule *cur_wmodule;
     xml_node **children = NULL;
 
@@ -66,8 +67,21 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, __attribute__((unu
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    } else
+    } else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)){
+        if (wm_command_read(children, cur_wmodule, agent_cfg) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+#ifndef WIN32
+    } else if (!strcmp(node->values[0], WM_CISCAT_CONTEXT.name)){
+        if (wm_ciscat_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+#endif
+    } else {
         merror("Unknown module '%s'", node->values[0]);
+    }
 
     OS_ClearNode(children);
     return 0;

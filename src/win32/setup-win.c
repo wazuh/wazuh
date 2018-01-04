@@ -38,8 +38,6 @@ int main(int argc, char **argv)
         char cmd[OS_MAXSTR + 1];
 
         /* Copy some files to outside */
-        snprintf(cmd, OS_MAXSTR, "move os_win32ui.exe ../");
-        system(cmd);
 
         snprintf(cmd, OS_MAXSTR, "move win32ui.exe ../");
         system(cmd);
@@ -54,11 +52,9 @@ int main(int argc, char **argv)
         system(cmd);
 
         /* Change permissions */
-        system("echo y|icacls * /T /G  \"*S-1-5-32-544:F\" ");
+        system("echo y|icacls * /T /grant  \"*S-1-5-32-544:F\" ");
 
         /* Copy them back */
-        snprintf(cmd, OS_MAXSTR, "move ..\\os_win32ui.exe .");
-        system(cmd);
 
         snprintf(cmd, OS_MAXSTR, "move ..\\win32ui.exe .");
         system(cmd);
@@ -72,7 +68,7 @@ int main(int argc, char **argv)
         snprintf(cmd, OS_MAXSTR, "move ..\\help.txt .");
         system(cmd);
     } else {
-        system("echo y|icacls . /T /G  \"*S-1-5-32-544:F\" ");
+        system("echo y|cacls . /T /G  \"*S-1-5-32-544:F\" ");
     }
 
     return (1);

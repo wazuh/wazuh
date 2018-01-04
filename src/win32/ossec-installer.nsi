@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "3.0.0-beta8"
-!define REVISION "3483"
+!define VERSION "3.2.0-alpha1"
+!define REVISION "3201"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -36,7 +36,7 @@ Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2017 Wazuh Inc."
 OutFile "${OutFile}"
 
-VIProductVersion "3.0.0.0"
+VIProductVersion "3.2.0.0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
 VIAddVersionKey LegalCopyright "2017 - Wazuh Inc."
@@ -200,14 +200,16 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=shared\win_applications_rcl.txt ../rootcheck\db\win_applications_rcl.txt
     File /oname=shared\win_malware_rcl.txt ../rootcheck\db\win_malware_rcl.txt
     File /oname=shared\win_audit_rcl.txt ../rootcheck\db\win_audit_rcl.txt
-    File help.txt
+    File /oname=help.txt help_win.txt
     File vista_sec.txt
     File /oname=active-response\bin\route-null.cmd route-null.cmd
     File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
-    File /oname=libwinpthread-1.dll /usr/i686-w64-mingw32/lib/libwinpthread-1.dll
+    File /oname=libwinpthread-1.dll libwinpthread-1.dll
 	File agent-auth.exe
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
+    File VERSION
+    File REVISION
 
     ; Create empty file active-responses.log
     FileOpen $0 "$INSTDIR\active-response\active-responses.log" w
@@ -241,25 +243,6 @@ Section "Wazuh Agent (required)" MainSec
     ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
     var /global CURRENTTIME
     StrCpy $CURRENTTIME "$2-$1-$0 $4:$5:$6"
-
-    ; write version and install information
-    VersionInstall:
-        FileOpen $0 "$INSTDIR\VERSION.txt" w
-        FileWrite $0 "${NAME} v${VERSION} - Revision ${REVISION} - Installed on $CURRENTTIME"
-        FileClose $0
-        IfErrors VersionError VersionComplete
-    VersionError:
-        MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
-            Failure saving version to file.$\r$\n$\r$\n\
-            File:$\r$\n$\r$\n$INSTDIR\VERSION.txt$\r$\n$\r$\n\
-            Click Abort to stop the installation,$\r$\n\
-            Retry to try again, or$\r$\n\
-            Ignore to skip this file." /SD IDABORT IDIGNORE VersionComplete IDRETRY VersionInstall
-
-        SetErrorLevel 2
-        Abort
-    VersionComplete:
-        ClearErrors
 
     ; create log file
     LogInstall:

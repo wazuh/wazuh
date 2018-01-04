@@ -72,7 +72,7 @@ def main():
     # Custom WPK file
     if args.file:
         if args.execute:
-            upgrade_command_result = agent.upgrade_custom(file_path=args.file, installer=args.execute, debug=args.debug, show_progress=print_progress if not args.silent else None)
+            upgrade_command_result = agent.upgrade_custom(file_path=args.file, installer=args.execute, debug=args.debug, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=-1 if args.timeout == None else args.timeout)
             if not args.silent:
                 if not args.debug:
                     print("\n{0}... Please wait.".format(upgrade_command_result))
@@ -99,7 +99,7 @@ def main():
     # WPK upgrade file
     else:
         prev_ver = agent.version
-        upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=args.version, force=args.force, show_progress=print_progress if not args.silent else None)
+        upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=args.version, force=args.force, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=-1 if args.timeout == None else args.timeout)
         if not args.silent:
             if not args.debug:
                 print("\n{0}... Please wait.".format(upgrade_command_result))
@@ -137,6 +137,8 @@ if __name__ == "__main__":
     arg_parser.add_argument("-s", "--silent", action="store_true", help="Do not show output.")
     arg_parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     arg_parser.add_argument("-l", "--list_outdated", action="store_true", help="Generates a list with all outdated agents.")
+    arg_parser.add_argument("-c", "--chunk_size", type=int, help="Chunk size sending WPK file.")
+    arg_parser.add_argument("-t", "--timeout", type=int, help="Timeout until agent restart is unlocked.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
     arg_parser.add_argument("-x", "--execute", type=str, help="Executable filename in the WPK custom file.")
     args = arg_parser.parse_args()

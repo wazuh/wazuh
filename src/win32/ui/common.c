@@ -173,7 +173,7 @@ void init_config()
 int config_read(__attribute__((unused)) HWND hwnd)
 {
     char *tmp_str;
-    char *delim = " - ";
+    char buffer[4096];
 
     /* Clear config */
     config_clear();
@@ -186,19 +186,15 @@ int config_read(__attribute__((unused)) HWND hwnd)
     }
 
     /* Get version/revision */
-    config_inst.version = cat_file(VERSION_FILE, NULL);
-    if (config_inst.version) {
-        config_inst.revision = strstr(config_inst.version, delim);
-        if (config_inst.revision) {
-            *config_inst.revision = '\0';
-            config_inst.revision += strlen(delim);
 
-            // Remove " - Installed on ..."
+    if (tmp_str = cat_file(VERSION_FILE, NULL), tmp_str) {
+        snprintf(buffer, sizeof(buffer), "Wazuh %s", tmp_str);
+        os_strdup(buffer, config_inst.version);
+    }
 
-            if (tmp_str = strstr(config_inst.revision, delim), tmp_str) {
-                *tmp_str = '\0';
-            }
-        }
+    if (tmp_str = cat_file(REVISION_FILE, NULL), tmp_str) {
+        snprintf(buffer, sizeof(buffer), "Revision %s", tmp_str);
+        os_strdup(buffer, config_inst.revision);
     }
 
     /* Get number of messages sent */
@@ -282,10 +278,12 @@ int get_ossec_server()
 {
     OS_XML xml;
     char *str = NULL;
+    int success = 0;
 
     /* Definitions */
     const char *(xml_serverip[]) = {"ossec_config", "client", "server-ip", NULL};
     const char *(xml_serverhost[]) = {"ossec_config", "client", "server-hostname", NULL};
+    const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
 
     /* Read XML */
     if (OS_ReadXML(CONFIG, &xml) < 0) {
@@ -299,24 +297,15 @@ int get_ossec_server()
     }
     config_inst.server_type = 0;
 
-    /* Get IP */
-    str = OS_GetOneContentforElement(&xml, xml_serverip);
-    if (str && (OS_IsValidIP(str, NULL) == 1)) {
-        config_inst.server_type = SERVER_IP_USED;
-        config_inst.server = str;
-
-        OS_ClearXML(&xml);
-        return (1);
-    }
-    /* If we don't find the IP, try the server hostname */
-    else {
-        if (str) {
-            free(str);
-            str = NULL;
-        }
-
-        str = OS_GetOneContentforElement(&xml, xml_serverhost);
-        if (str) {
+    /* Get IP address of manager */
+    if (str = OS_GetOneContentforElement(&xml, xml_serveraddr), str) {
+        if (OS_IsValidIP(str, NULL) == 1) {
+            config_inst.server_type = SERVER_IP_USED;
+            config_inst.server = str;
+            success = 1;
+            goto ret;
+        } else {
+            /* If we don't find the IP, try the server hostname */
             char *s_ip;
             s_ip = OS_GetHost(str, 0);
             if (s_ip) {
@@ -326,18 +315,37 @@ int get_ossec_server()
                 /* Assign the hostname to the server info */
                 config_inst.server_type = SERVER_HOST_USED;
                 config_inst.server = str;
-                OS_ClearXML(&xml);
-                return (1);
+                success = 1;
+                goto ret;
             }
-            free(str);
+        }
+    }
+    if (str = OS_GetOneContentforElement(&xml, xml_serverip), str) {
+        if (OS_IsValidIP(str, NULL) == 1) {
+            config_inst.server_type = SERVER_IP_USED;
+            config_inst.server = str;
+            success = 1;
+            goto ret;
+        }
+    }
+    if (str = OS_GetOneContentforElement(&xml, xml_serverhost), str) {
+        char *s_ip;
+        s_ip = OS_GetHost(str, 0);
+        if (s_ip) {
+            free(s_ip);
+            config_inst.server_type = SERVER_HOST_USED;
+            config_inst.server = str;
+            success = 1;
+            goto ret;
         }
     }
 
     /* Set up final server name when not available */
     config_inst.server = strdup(FL_NOSERVER);
 
+    ret:
     OS_ClearXML(&xml);
-    return (0);
+    return success;
 }
 
 /* Run a cmd.exe command */
@@ -392,9 +400,7 @@ int run_cmd(char *cmd, HWND hwnd)
 int set_ossec_server(char *ip, HWND hwnd)
 {
     const char **xml_pt = NULL;
-    const char *(xml_serverip[]) = {"ossec_config", "client", "server-ip", NULL};
-    const char *(xml_serverhost[]) = {"ossec_config", "client", "server-hostname", NULL};
-
+    const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
     char config_tmp[] = CONFIG;
     char *conf_file = basename_ex(config_tmp);
 
@@ -415,10 +421,10 @@ int set_ossec_server(char *ip, HWND hwnd)
             return (0);
         }
         config_inst.server_type = SERVER_HOST_USED;
-        xml_pt = xml_serverhost;
+        xml_pt = xml_serveraddr;
     } else {
         config_inst.server_type = SERVER_IP_USED;
-        xml_pt = xml_serverip;
+        xml_pt = xml_serveraddr;
     }
 
     /* Create temporary file */

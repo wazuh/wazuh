@@ -45,7 +45,6 @@ static int response_timeout;
 void * req_main(__attribute__((unused)) void * arg) {
     int sock;
     int error;
-    int request_timeout;
     unsigned int counter = (unsigned int)os_random();
     char counter_s[COUNTER_LENGTH];
     req_node_t * node;
@@ -221,7 +220,10 @@ void * req_dispatch(req_node_t * node) {
 
         if (send_msg(agentid, payload, ldata)) {
             merror("Sending request to agent '%s'.", agentid);
-            send(node->sock, WR_SEND_ERROR, strlen(WR_SEND_ERROR), 0);
+
+            if (send(node->sock, WR_SEND_ERROR, strlen(WR_SEND_ERROR), 0) < 0) {
+                merror("Couldn't report sending error to client.");
+            }
             goto cleanup;
         }
 
@@ -246,7 +248,11 @@ void * req_dispatch(req_node_t * node) {
 
     if (attempts == max_attempts) {
         merror("Couldn't send request to agent '%s': number of attempts exceeded.", agentid);
-        send(node->sock, WR_ATTEMPT_ERROR, strlen(WR_ATTEMPT_ERROR), 0);
+
+        if (send(node->sock, WR_ATTEMPT_ERROR, strlen(WR_ATTEMPT_ERROR), 0) < 0) {
+            merror("Couldn't report error about number of attempts exceeded to client.");
+        }
+
         goto cleanup;
     }
 

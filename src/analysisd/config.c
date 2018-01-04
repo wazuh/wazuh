@@ -60,11 +60,19 @@ int GlobalConf(const char *cfgfile)
     Config.label_cache_maxage = 0;
     Config.show_hidden_labels = 0;
 
+    Config.cluster_name = NULL;
+    Config.node_name = NULL;
+    Config.hide_cluster_info = 1;
+    Config.rotate_interval = 0;
+    Config.min_rotate_interval = 0;
+    Config.max_output_size = 0;
+
     os_calloc(1, sizeof(wlabel_t), Config.labels);
 
     modules |= CGLOBAL;
     modules |= CRULES;
     modules |= CALERTS;
+    modules |= CCLUSTER;
 
     /* Read config */
     if (ReadConfig(modules, cfgfile, &Config, NULL) < 0 ||
@@ -72,9 +80,21 @@ int GlobalConf(const char *cfgfile)
         return (OS_INVALID);
     }
 
+    Config.min_rotate_interval = getDefine_Int("analysisd", "min_rotate_interval", 10, 86400);
+
     /* Minimum memory size */
     if (Config.memorysize < 2048) {
         Config.memorysize = 2048;
+    }
+
+    if (Config.rotate_interval && (Config.rotate_interval < Config.min_rotate_interval || Config.rotate_interval > 86400)) {
+        merror("Rotate interval setting must be between %d seconds and one day.", Config.min_rotate_interval);
+        return (OS_INVALID);
+    }
+
+    if (Config.max_output_size && (Config.max_output_size < 1000000 || Config.max_output_size > 1099511627776)) {
+        merror("Maximum output size must be between 1 MiB and 1 TiB.");
+        return (OS_INVALID);
     }
 
     return (0);

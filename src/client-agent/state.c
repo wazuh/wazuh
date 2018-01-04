@@ -13,22 +13,39 @@
 #include "agentd.h"
 #include <pthread.h>
 
-agent_state_t agent_state;
+agent_state_t agent_state = { .status = GA_STATUS_PENDING };
 pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int update_status(agent_status_t status) {
+static int write_state();
+
+void * state_main(__attribute__((unused)) void * args) {
+    int interval = getDefine_Int("agent", "state_interval", 0, 86400);
+
+    if (!interval) {
+        minfo("State file is disabled.");
+        return NULL;
+    }
+
+    mdebug1("State file updating thread started.");
+
+    while (1) {
+        write_state();
+        sleep(interval);
+    }
+
+    return NULL;
+}
+
+void update_status(agent_status_t status) {
     agent_state.status = status;
-    return write_state();
 }
 
-int update_keepalive(time_t curr_time) {
+void update_keepalive(time_t curr_time) {
     agent_state.last_keepalive = curr_time;
-    return write_state();
 }
 
-int update_ack(time_t curr_time) {
+void update_ack(time_t curr_time) {
     agent_state.last_ack = curr_time;
-    return write_state();
 }
 
 int write_state() {
@@ -68,13 +85,13 @@ int write_state() {
 #endif
 
     switch (agent_state.status) {
-    case AGN_PENDING:
+    case GA_STATUS_PENDING:
         status = "pending";
         break;
-    case AGN_CONNECTED:
+    case GA_STATUS_ACTIVE:
         status = "connected";
         break;
-    case AGN_DISCONNECTED:
+    case GA_STATUS_NACTIVE:
         status = "disconnected";
         break;
     default:
@@ -97,8 +114,8 @@ int write_state() {
         "\n"
         "# Agent status:\n"
         "# - pending:      waiting for get connected.\n"
-        "# - connected:    connection established with manager in the last 30 minutes.\n"
-        "# - disconnected: connection lost or no ACK received in the last 30 minutes.\n"
+        "# - connected:    connection established with manager in the last %d seconds.\n"
+        "# - disconnected: connection lost or no ACK received in the last %d seconds.\n"
         "status='%s'\n"
         "\n"
         "# Last time a keepalive was sent\n"
@@ -112,7 +129,7 @@ int write_state() {
         "\n"
         "# Number of messages (events + control messages) sent to the manager\n"
         "msg_sent='%u'\n"
-        , __local_name, status, last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
+        , __local_name, agt->notify_time, agt->notify_time, status, last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
 
     fclose(fp);
 

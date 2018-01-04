@@ -54,10 +54,7 @@ while [[ $idvar -eq 0 ]]; do
    fi
 done
 
-echo "UIDs available are:";
-echo ${new_uid}
-echo ${j}
-echo ${k}
+echo "UIDs available: $i $j $k";
 
 # Verify that the uid and gid exist and match
 if [[ $new_uid -eq 0 ]] || [[ $new_gid -eq 0 ]];
@@ -93,7 +90,7 @@ else
 fi
 
 for U in ${NEWUSERS}; do
-    if [[ $(dscl . -read /Users/${U}) ]]
+    if [[ $(dscl . -read /Users/${U} 2>/dev/null) ]]
        then
        echo "${U} already exists";
     else
@@ -102,9 +99,11 @@ for U in ${NEWUSERS}; do
        sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} RecordName ${U}
        sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} RealName "${U}acct"
        sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} NFSHomeDirectory /var/ossec
-       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} UniqueID ${j}
+       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} UniqueID ${i}
        sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} PrimaryGroupID ${new_gid}
        sudo ${DSCL} localhost -append /Local/Default/Groups/${GROUP} GroupMembership ${U}
        sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} Password "*"
     fi
+
+    i=$[i+1]
 done

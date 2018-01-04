@@ -43,7 +43,6 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 endif
 
 OSSEC_LDFLAGS=${LDFLAGS} -L${EXTERNAL_OPENSSL} -lm -lssl -lcrypto
-INSTALL=install
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -59,6 +58,7 @@ ifeq (${uname_S},AIX)
 		PATH:=${PATH}:/usr/vac/bin
 		OSSEC_LDFLAGS+=-pthread
 		CFLAGS+=-Wl,--start-group
+		CC=gcc
 else
 ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
@@ -71,7 +71,7 @@ ifeq (${uname_S},SunOS)
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
 		OSSEC_LDFLAGS+=-pthread -lrt
-		INSTALL=ginstall
+		uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 else
 ifeq (${uname_S},Darwin)
 		DEFINES+=-DDarwin
@@ -187,6 +187,15 @@ $(error No windows cross-compiler found!) #MING_BASE:=unknown-
 endif
 endif
 endif
+
+ifneq (,$(wildcard /usr/i686-w64-mingw32/lib/libwinpthread-1.dll))
+	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/lib/libwinpthread-1.dll
+else
+ifneq (,$(wildcard /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll))
+	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
+endif
+endif
+
 endif #winagent
 
 
@@ -427,6 +436,7 @@ BUILD_SERVER+=ossec-makelists
 BUILD_SERVER+=ossec-dbd
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
+BUILD_SERVER+=wazuh-framework
 
 BUILD_AGENT+=ossec-agentd
 BUILD_AGENT+=agent-auth
@@ -440,22 +450,26 @@ BUILD_AGENT+=wazuh-modulesd
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
-server: | external ${BUILD_SERVER}
+server: external
+	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
 endif
-local: | external ${BUILD_SERVER}
+local: external
+	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
 endif
-hybrid: | external ${BUILD_SERVER}
+hybrid: external
+	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
-agent: | external ${BUILD_AGENT}
+agent: external
+	${MAKE} ${BUILD_AGENT}
 
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
@@ -464,7 +478,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a wazuh_modules/syscollector/syscollector_win_ext.dll
+winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32 -liphlpapi -lws2_32"
 	cd ${EXTERNAL_LUA}src/ && ${MAKE} CC=${MING_BASE}${CC} -f Makefile.mingw mingw
 	cp ${EXTERNAL_LUA}src/ossec-lua.exe win32/
@@ -476,8 +490,12 @@ winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a wazuh_modules/sysco
 	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
 	cd win32/ && ./unix2dos.pl ../../active-response/win/route-null.cmd > route-null.cmd
 	cd win32/ && ./unix2dos.pl ../../active-response/win/restart-ossec.cmd > restart-ossec.cmd
+	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
+	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis ossec-installer.nsi
 
+win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
+	cp $< $@
 
 ####################
 #### External ######
@@ -495,10 +513,14 @@ OPENSSL_LIB=${EXTERNAL_OPENSSL}libssl.a
 CRYPTO_LIB=${EXTERNAL_OPENSSL}libcrypto.a
 
 ${CRYPTO_LIB}: ${OPENSSL_LIB}
+ifeq (${TARGET},winagent)
+	${OSSEC_RANLIB} ${CRYPTO_LIB}
+endif
 
 ${OPENSSL_LIB}:
 ifeq (${TARGET},winagent)
 	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} ./Configure mingw && ${MAKE} build_libs
+	${OSSEC_RANLIB} ${OPENSSL_LIB}
 else
 ifeq (${uname_S},Darwin)
 	cd ${EXTERNAL_OPENSSL} && ./Configure darwin64-x86_64-cc && ${MAKE} build_libs
@@ -506,7 +528,15 @@ else
 ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure hpux-ia64-gcc && ${MAKE} build_libs
 else
+ifeq (${uname_S},SunOS)
+ifeq ($(uname_M),i86pc)
+	cd ${EXTERNAL_OPENSSL} && ./Configure solaris-x86-gcc && ${MAKE} build_libs
+else
+	cd ${EXTERNAL_OPENSSL} && ./Configure solaris-sparcv9-gcc && ${MAKE} build_libs
+endif
+else
 	cd ${EXTERNAL_OPENSSL} && ./config && ${MAKE} build_libs
+endif
 endif
 endif
 endif
@@ -655,7 +685,7 @@ wazuh_db/%.o: wazuh_db/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-analysisd\" -c $^ -o $@
 
 ${EXTERNAL_SQLITE}sqlite3.o: ${EXTERNAL_SQLITE}sqlite3.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -w -c $^ -o $@ -fPIC
 
 #### Config ##########
 
@@ -1071,6 +1101,12 @@ wmodulesd_o := $(wmodulesd_c:.c=.o)
 wazuh-modulesd: ${wmodulesd_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB} ${PROCPS_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
+### wazuh-framework ##
+
+wazuh-framework: ${sqlite_o} ${shared_o}
+	${MAKE} -C ../framework build PREFIX=${PREFIX}
+
+
 ####################
 #### test ##########
 ####################
@@ -1205,7 +1241,7 @@ win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.c addagent/validat
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows
+clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1252,6 +1288,9 @@ clean-internals:
 	rm -f ${wmodulesd_o} ${wmodules_o} wazuh-modulesd wmodules.a
 	rm -f ${sqlite_o} sqlite.a
 
+clean-framework:
+	${MAKE} -C ../framework clean
+
 clean-windows:
 	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll
 	rm -f win32/LICENSE.txt
@@ -1270,3 +1309,10 @@ clean-windows:
 	rm -f win32/ossec-lua.exe
 	rm -f win32/ossec-luac.exe
 	rm -f win32/wazuh-agent-*.exe
+	rm -f win32/libwinpthread-1.dll
+	rm -f win32/VERSION
+	rm -f win32/REVISION
+
+clean-config:
+	rm -f ../etc/ossec.mc
+	rm -f Config.OS

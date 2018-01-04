@@ -9,7 +9,7 @@ function backup
 
 function install
 {
-    kill -processname win32ui -ErrorAction SilentlyContinue
+    kill -processname win32ui -ErrorAction SilentlyContinue -Force
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
     Start-Process -FilePath (Get-ChildItem ".\upgrade\wazuh-agent*.exe") -ArgumentList '/S'
 }

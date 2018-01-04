@@ -14,6 +14,7 @@
 #include "execd.h"
 
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
+time_t pending_upg = 0;
 
 #ifndef WIN32
 
@@ -430,10 +431,10 @@ static void ExecdStart(int q)
                             new_timeout = repeated_offenders_timeout[i2 - 1] * 60;
                         } else {
                             free(ntimes);       /* In hash_op.c, data belongs to caller */
-                            os_calloc(10, sizeof(char), ntimes);
+                            os_calloc(16, sizeof(char), ntimes);
                             new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
                             ntimes_int++;
-                            snprintf(ntimes, 9, "%d", ntimes_int);
+                            snprintf(ntimes, 16, "%d", ntimes_int);
                             OSHash_Update(repeated_hash, rkey, ntimes);
                         }
                         list_entry->time_to_block = new_timeout;
@@ -472,10 +473,10 @@ static void ExecdStart(int q)
                         if (ntimes_int >= i2) {
                             new_timeout = repeated_offenders_timeout[i2 - 1] * 60;
                         } else {
-                            os_calloc(10, sizeof(char), ntimes);
+                            os_calloc(16, sizeof(char), ntimes);
                             new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
                             ntimes_int++;
-                            snprintf(ntimes, 9, "%d", ntimes_int);
+                            snprintf(ntimes, 16, "%d", ntimes_int);
                             OSHash_Update(repeated_hash, rkey, ntimes);
                         }
                         timeout_value = new_timeout;

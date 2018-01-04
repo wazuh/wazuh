@@ -462,6 +462,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->program_name = NULL;
     lf->location = NULL;
     lf->comment = NULL;
+    lf->dec_timestamp = NULL;
 
     lf->srcip = NULL;
     lf->srcgeoip = NULL;
@@ -611,8 +612,10 @@ void Free_Eventinfo(Eventinfo *lf)
 
     if (lf->fields) {
         int i;
-        for (i = 0; i < lf->nfields; i++)
+        for (i = 0; i < lf->nfields; i++) {
+            free(lf->fields[i].key);
             free(lf->fields[i].value);
+        }
 
         free(lf->fields);
     }

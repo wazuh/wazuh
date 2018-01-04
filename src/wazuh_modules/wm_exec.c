@@ -39,7 +39,7 @@ static DWORD WINAPI Reader(LPVOID args);    // Reading thread's start point
 // Execute command with timeout of secs
 
 int wm_exec(char *command, char **output, int *status, int secs) {
-    HANDLE hThread;
+    HANDLE hThread = NULL;
     DWORD dwCreationFlags;
     STARTUPINFO sinfo = { 0 };
     PROCESS_INFORMATION pinfo = { 0 };
@@ -47,20 +47,23 @@ int wm_exec(char *command, char **output, int *status, int secs) {
     int retval = 0;
 
     sinfo.cb = sizeof(STARTUPINFO);
-    sinfo.dwFlags = STARTF_USESTDHANDLES;
 
-    // Create stdout pipe and make it inheritable
+    if (output) {
+        sinfo.dwFlags = STARTF_USESTDHANDLES;
 
-    if (!CreatePipe(&tinfo.pipe, &sinfo.hStdOutput, NULL, 0)) {
-        merror("CreatePipe()");
-        return -1;
-    }
+        // Create stdout pipe and make it inheritable
 
-    sinfo.hStdError = sinfo.hStdOutput;
+        if (!CreatePipe(&tinfo.pipe, &sinfo.hStdOutput, NULL, 0)) {
+            merror("CreatePipe()");
+            return -1;
+        }
 
-    if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
-        merror("SetHandleInformation()");
-        return -1;
+        sinfo.hStdError = sinfo.hStdOutput;
+
+        if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
+            merror("SetHandleInformation()");
+            return -1;
+        }
     }
 
     // Create child process and close inherited pipes
@@ -76,18 +79,18 @@ int wm_exec(char *command, char **output, int *status, int secs) {
         return -1;
     }
 
-    CloseHandle(sinfo.hStdOutput);
+    if (output) {
+        CloseHandle(sinfo.hStdOutput);
 
-    // Create reading thread
+        // Create reading thread
 
-    hThread = CreateThread(NULL, 0, Reader, &tinfo, 0, NULL);
+        hThread = CreateThread(NULL, 0, Reader, &tinfo, 0, NULL);
 
-    if (!hThread) {
-        merror("CreateThread(): %ld", GetLastError());
-        return -1;
+        if (!hThread) {
+            merror("CreateThread(): %ld", GetLastError());
+            return -1;
+        }
     }
-
-    // Get output
 
     switch (WaitForSingleObject(pinfo.hProcess, secs * 1000)) {
     case 0:
@@ -110,22 +113,25 @@ int wm_exec(char *command, char **output, int *status, int secs) {
         retval = -1;
     }
 
-    // Output
+    if (output) {
+        // Output
 
-    if (WaitForSingleObject(hThread, 1000) == WAIT_TIMEOUT) {
-		TerminateThread(hThread, 1);
-		WaitForSingleObject(hThread, INFINITE);
-	}
+        if (WaitForSingleObject(hThread, 1000) == WAIT_TIMEOUT) {
+            TerminateThread(hThread, 1);
+            WaitForSingleObject(hThread, INFINITE);
+        }
 
-    if (retval >= 0)
-        *output = tinfo.output ? tinfo.output : strdup("");
-    else
-        free(tinfo.output);
+        if (retval >= 0)
+            *output = tinfo.output ? tinfo.output : strdup("");
+        else
+            free(tinfo.output);
+
+        CloseHandle(hThread);
+        CloseHandle(tinfo.pipe);
+    }
 
     // Cleanup
 
-    CloseHandle(hThread);
-	CloseHandle(tinfo.pipe);
     CloseHandle(pinfo.hProcess);
     CloseHandle(pinfo.hThread);
 
@@ -141,17 +147,17 @@ DWORD WINAPI Reader(LPVOID args) {
     DWORD nbytes;
 
     while (ReadFile(tinfo->pipe, buffer, 1024, &nbytes, NULL), nbytes > 0) {
-		int nextsize = length + nbytes;
+        int nextsize = length + nbytes;
 
-		if (nextsize <= WM_STRING_MAX) {
-			tinfo->output = (char*)realloc(tinfo->output, nextsize + 1);
-			memcpy(tinfo->output + length, buffer, nbytes);
-			length = nextsize;
-			tinfo->output[length] = '\0';
-		} else {
-			mwarn("String limit reached.");
-			break;
-		}
+        if (nextsize <= WM_STRING_MAX) {
+            tinfo->output = (char*)realloc(tinfo->output, nextsize + 1);
+            memcpy(tinfo->output + length, buffer, nbytes);
+            length = nextsize;
+            tinfo->output[length] = '\0';
+        } else {
+            mwarn("String limit reached.");
+            break;
+        }
     }
 
     return 0;
@@ -164,32 +170,19 @@ DWORD WINAPI Reader(LPVOID args) {
 #include <unistd.h>
 #define EXECVE_ERROR 0xFF
 
+#ifndef _GNU_SOURCE
+extern char ** environ;
+#endif
+
 static void* reader(void *args);   // Reading thread's start point
 
 static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child process pool
 static pthread_mutex_t wm_children_mutex = PTHREAD_MUTEX_INITIALIZER;   // Mutex for child process pool
 
-// Work-around for OS X
-
-static inline void get_time(struct timespec *ts) {
-#ifdef __MACH__
-    clock_serv_t cclock;
-    mach_timespec_t mts;
-    host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
-    clock_get_time(cclock, &mts);
-    mach_port_deallocate(mach_task_self(), cclock);
-    ts->tv_sec = mts.tv_sec;
-    ts->tv_nsec = mts.tv_nsec;
-#else
-    clock_gettime(CLOCK_REALTIME, ts);
-#endif
-}
-
 // Execute command with timeout of secs
 
 int wm_exec(char *command, char **output, int *exitcode, int secs)
 {
-    static char* const envp[] = { NULL };
     char **argv;
     pid_t pid;
     int pipe_fd[2];
@@ -201,7 +194,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
     // Create pipe for child's stdout
 
-    if (pipe(pipe_fd) < 0) {
+    if (output && pipe(pipe_fd) < 0) {
         merror("At wm_exec(): pipe(): %s", strerror(errno));
         return -1;
     }
@@ -222,15 +215,22 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         argv = wm_strtok(command);
 
-        close(pipe_fd[0]);
-        dup2(pipe_fd[1], STDOUT_FILENO);
-        dup2(pipe_fd[1], STDERR_FILENO);
-        close(pipe_fd[1]);
+        if (output) {
+            close(pipe_fd[0]);
+            dup2(pipe_fd[1], STDOUT_FILENO);
+            dup2(pipe_fd[1], STDERR_FILENO);
+            close(pipe_fd[1]);
+        } else {
+            close(STDOUT_FILENO);
+            close(STDERR_FILENO);
+        }
+
+        close(STDIN_FILENO);
 
         setsid();
         if (nice(wm_task_nice)) {}
 
-        if (execve(argv[0], argv, envp) < 0)
+        if (execve(argv[0], argv, environ) < 0)
             exit(EXECVE_ERROR);
 
         break;
@@ -239,46 +239,55 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         // Parent
 
-        close(pipe_fd[1]);
-        tinfo.pipe = pipe_fd[0];
         wm_append_sid(pid);
 
-        // Launch thread
+        if (output) {
+            close(pipe_fd[1]);
+            tinfo.pipe = pipe_fd[0];
 
-        pthread_mutex_lock(&tinfo.mutex);
+            // Launch thread
 
-        if (pthread_create(&thread, NULL, reader, &tinfo)) {
-            merror("Couldn't create reading thread.");
+            pthread_mutex_lock(&tinfo.mutex);
+
+            if (pthread_create(&thread, NULL, reader, &tinfo)) {
+                merror("Couldn't create reading thread.");
+                pthread_mutex_unlock(&tinfo.mutex);
+                return -1;
+            }
+
+            gettime(&timeout);
+            timeout.tv_sec += secs;
+
+            // Wait for reading termination
+
+            switch (secs ? pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout) : pthread_cond_wait(&tinfo.finished, &tinfo.mutex)) {
+            case 0:
+                retval = 0;
+                break;
+
+            case ETIMEDOUT:
+                retval = WM_ERROR_TIMEOUT;
+                kill(-pid, SIGTERM);
+                pthread_cancel(thread);
+                break;
+
+            default:
+                kill(-pid, SIGTERM);
+                pthread_cancel(thread);
+            }
+
+            // Wait for thread
+
             pthread_mutex_unlock(&tinfo.mutex);
-            return -1;
-        }
+            pthread_join(thread, NULL);
 
-        get_time(&timeout);
-        timeout.tv_sec += secs;
+            // Cleanup
 
-        // Wait for reading termination
-
-        switch (pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout)) {
-        case 0:
+            pthread_mutex_destroy(&tinfo.mutex);
+            pthread_cond_destroy(&tinfo.finished);
+        } else {
             retval = 0;
-            break;
-
-        case ETIMEDOUT:
-            retval = WM_ERROR_TIMEOUT;
-            kill(-pid, SIGTERM);
-            pthread_cancel(thread);
-            break;
-
-        default:
-            kill(-pid, SIGTERM);
-            pthread_cancel(thread);
         }
-
-        // Wait for thread
-
-        pthread_mutex_unlock(&tinfo.mutex);
-        pthread_join(thread, NULL);
-        wm_remove_sid(pid);
 
         // Wait for child process
 
@@ -289,23 +298,24 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             break;
 
         default:
-            if (WEXITSTATUS(status) == EXECVE_ERROR)
+            if (WEXITSTATUS(status) == EXECVE_ERROR) {
+                merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
                 retval = -1;
-            else if (exitcode)
+            } else if (exitcode)
                 *exitcode = WEXITSTATUS(status);
         }
 
-        // Setup output
+        wm_remove_sid(pid);
 
-        if (retval >= 0)
-            *output = tinfo.output ? tinfo.output : strdup("");
-        else
-            free(tinfo.output);
+        if (output) {
+            // Setup output
 
-        // Cleanup
-
-        pthread_mutex_destroy(&tinfo.mutex);
-        pthread_cond_destroy(&tinfo.finished);
+            if (retval >= 0) {
+                *output = tinfo.output ? tinfo.output : strdup("");
+            } else {
+                free(tinfo.output);
+            }
+        }
     }
 
     return retval;
@@ -386,17 +396,64 @@ void wm_remove_sid(pid_t sid) {
 // Terminate every child process group. Doesn't wait for them!
 
 void wm_kill_children() {
-    // This function can be called from a signal handler
+    // This function may be called from a signal handler
 
     int i;
+    int timeout;
     pid_t sid;
 
     for (i = 0; i < WM_POOL_SIZE; i++) {
         sid = wm_children[i];
 
         if (sid) {
-            kill(-sid, SIGTERM);
-            wm_children[i] = 0;
+            if (wm_kill_timeout) {
+                timeout = wm_kill_timeout;
+
+                // Fork a process to kill the child
+
+                switch (fork()) {
+                case -1:
+                    merror("wm_kill_children(): Couldn't fork: (%d) %s.", errno, strerror(errno));
+                    break;
+
+                case 0: // Child
+                    kill(-sid, SIGTERM);
+
+                    do {
+                        sleep(1);
+
+                        // Poll process, waitpid() does not work here
+
+                        switch (kill(-sid, 0)) {
+                        case -1:
+                            switch (errno) {
+                            case ESRCH:
+                                exit(EXIT_SUCCESS);
+
+                            default:
+                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", sid, errno, strerror(errno));
+                                exit(EXIT_FAILURE);
+                            }
+
+                        default:
+                            timeout--;
+                        }
+                    } while (timeout);
+
+                    // If time is gone, kill process
+
+                    mdebug1("Killing process group %d", sid);
+
+                    kill(-sid, SIGKILL);
+                    exit(EXIT_SUCCESS);
+
+                default: // Parent
+                    wm_children[i] = 0;
+                }
+            } else {
+                // Kill immediately
+                kill(-sid, SIGKILL);
+            }
         }
     }
 }

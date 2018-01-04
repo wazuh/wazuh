@@ -14,6 +14,7 @@ static const char *(months[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
                                 };
 
+static void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct tm * pp_old, const char * tag, const char * ext);
 
 void manage_files(int cday, int cmon, int cyear)
 {
@@ -24,21 +25,6 @@ void manage_files(int cday, int cmon, int cyear)
     struct tm p_old;
 #endif
 
-    char elogfile[OS_FLSIZE + 1];
-    char elogfile_old[OS_FLSIZE + 1];
-
-    char alogfile[OS_FLSIZE + 1];
-    char alogfile_old[OS_FLSIZE + 1];
-
-    char ajlogfile[OS_FLSIZE + 1];
-    char ajlogfile_old[OS_FLSIZE + 1];
-
-    char flogfile[OS_FLSIZE + 1];
-    char flogfile_old[OS_FLSIZE + 1];
-
-    char ejlogfile[OS_FLSIZE + 1];
-    char ejlogfile_old[OS_FLSIZE + 1];
-
     /* Get time from the day before (for log signing) */
     tm_old = time(NULL);
     tm_old -= 93500;
@@ -48,123 +34,30 @@ void manage_files(int cday, int cmon, int cyear)
     pp_old = localtime(&tm_old);
 #endif
 
-    memset(elogfile, '\0', OS_FLSIZE + 1);
-    memset(elogfile_old, '\0', OS_FLSIZE + 1);
-    memset(alogfile, '\0', OS_FLSIZE + 1);
-    memset(alogfile_old, '\0', OS_FLSIZE + 1);
-    memset(ajlogfile, '\0', OS_FLSIZE + 1);
-    memset(ajlogfile_old, '\0', OS_FLSIZE + 1);
-    memset(flogfile, '\0', OS_FLSIZE + 1);
-    memset(flogfile_old, '\0', OS_FLSIZE + 1);
-    memset(ejlogfile, '\0', OS_FLSIZE + 1);
-    memset(ejlogfile_old, '\0', OS_FLSIZE + 1);
-    /* When the day changes, we wait up to day_wait before compressing the file */
-    sleep(mond.day_wait);
+    manage_log(EVENTS, cday, cmon, cyear, pp_old, "archive", "log");
+    manage_log(EVENTS, cday, cmon, cyear, pp_old, "archive", "json");
+    manage_log(ALERTS, cday, cmon, cyear, pp_old, "alerts", "log");
+    manage_log(ALERTS, cday, cmon, cyear, pp_old, "alerts", "json");
+    manage_log(FWLOGS, cday, cmon, cyear, pp_old, "firewall", "log");
+}
 
-    /* Event logfile */
-    snprintf(elogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
-             EVENTS,
-             cyear,
-             months[cmon],
-             "archive",
-             cday);
-    /* Event log file old */
-    snprintf(elogfile_old, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
-             EVENTS,
-             pp_old->tm_year + 1900,
-             months[pp_old->tm_mon],
-             "archive",
-             pp_old->tm_mday);
-    OS_SignLog(elogfile, elogfile_old, 0);
+void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct tm * pp_old, const char * tag, const char * ext) {
+    int i;
+    char logfile[OS_FLSIZE + 1];
+    char logfile_r[OS_FLSIZE + 1];
+    char logfile_old[OS_FLSIZE + 1];
+
+    snprintf(logfile, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d", logdir, cyear, months[cmon], tag, cday);
+    snprintf(logfile_old, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d", logdir, pp_old->tm_year + 1900, months[pp_old->tm_mon], tag, pp_old->tm_mday);
+
+    OS_SignLog(logfile, logfile_old, ext);
 
     if (mond.compress) {
-        OS_CompressLog(elogfile);
+        snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
+        OS_CompressLog(logfile_r);
+
+        for (i = 1; snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext), !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
+            OS_CompressLog(logfile_r);
+        }
     }
-
-    /* JSON Event logfile */
-    snprintf(ejlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
-             EVENTS,
-             cyear,
-             months[cmon],
-             "archive",
-             cday);
-    /* JSON  Event log file old */
-    snprintf(ejlogfile_old, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
-             EVENTS,
-             pp_old->tm_year + 1900,
-             months[pp_old->tm_mon],
-             "archive",
-             pp_old->tm_mday);
-
-    OS_SignLog(ejlogfile, ejlogfile_old, 0);
-
-    if (mond.compress) {
-        OS_CompressLog(ejlogfile);
-    }
-
-    /* alert logfile  */
-    snprintf(alogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
-             ALERTS,
-             cyear,
-             months[cmon],
-             "alerts",
-             cday);
-    /* alert logfile old  */
-    snprintf(alogfile_old, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
-             ALERTS,
-             pp_old->tm_year + 1900,
-             months[pp_old->tm_mon],
-             "alerts",
-             pp_old->tm_mday);
-
-    OS_SignLog(alogfile, alogfile_old, 0);
-
-    if (mond.compress) {
-        OS_CompressLog(alogfile);
-    }
-
-    /* alert logfile  */
-    snprintf(ajlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
-             ALERTS,
-             cyear,
-             months[cmon],
-             "alerts",
-             cday);
-
-    /* alert logfile old  */
-    snprintf(ajlogfile_old, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
-             ALERTS,
-             pp_old->tm_year + 1900,
-             months[pp_old->tm_mon],
-             "alerts",
-             pp_old->tm_mday);
-
-    OS_SignLog(ajlogfile, ajlogfile_old, 0);
-
-    if (mond.compress) {
-        OS_CompressLog(ajlogfile);
-    }
-
-    /* firewall events */
-    snprintf(flogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
-             FWLOGS,
-             cyear,
-             months[cmon],
-             "firewall",
-             cday);
-    /* firewall events old */
-    snprintf(flogfile_old, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
-             FWLOGS,
-             pp_old->tm_year + 1900,
-             months[pp_old->tm_mon],
-             "firewall",
-             pp_old->tm_mday);
-
-    OS_SignLog(flogfile, flogfile_old, 0);
-
-    if (mond.compress) {
-        OS_CompressLog(flogfile);
-    }
-
-    return;
 }

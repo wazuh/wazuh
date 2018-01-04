@@ -22,7 +22,7 @@ expect {
     }
     "*sure you want to continue connecting*" {
         send "yes\r"
-        expect "* password:*" {
+        expect "*assword:*" {
             send "$pass\r"
             source $sshloginsrc
         }
@@ -43,7 +43,7 @@ expect {
         send_user "\nERROR: Unable to connect to remote host: $hostname .\n"
         exit 1;
     }
-    "* password:*" {
+    "*assword:*" {
         send "$pass\r"
         source $sshloginsrc
     }

@@ -421,6 +421,11 @@ int IsFile(const char *file)
 	return (!stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
 }
 
+off_t FileSize(const char * path) {
+    struct stat buf;
+    return stat(path, &buf) ? -1 : buf.st_size;
+}
+
 int CreatePID(const char *name, int pid)
 {
     char file[256];
@@ -1373,7 +1378,9 @@ const char *getuname()
                             read_buff[i] = '\0';
                             i--;
                         }
-                        strncat(ret, read_buff, ret_size - 1);
+                        char * pch = strstr(read_buff, "Windows");
+                        strncat(ret, "Microsoft ", ret_size - 1);
+                        strncat(ret, pch, ret_size - 1);
                     }else
                         strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
                 }
@@ -1675,6 +1682,12 @@ int rmdir_ex(const char *name) {
 // Delete directory content
 
 int cldir_ex(const char *name) {
+    return cldir_ex_ignore(name, NULL);
+}
+
+// Delete directory content with exception list
+
+int cldir_ex_ignore(const char * name, const char ** ignore) {
     DIR *dir;
     struct dirent *dirent;
     char path[PATH_MAX + 1];
@@ -1689,7 +1702,7 @@ int cldir_ex(const char *name) {
 
     while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
-        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+        if ((dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) || w_str_in_array(dirent->d_name, ignore)) {
             continue;
         }
 
@@ -1724,11 +1737,18 @@ int TempFile(File *file, const char *source, int copy) {
     }
 
 #ifndef WIN32
-    if (fchmod(fd, 0640) < 0) {
-        close(fd);
-        unlink(template);
-        return -1;
+    struct stat buf;
+
+    if (stat(source, &buf) == 0) {
+        if (fchmod(fd, buf.st_mode) < 0) {
+            close(fd);
+            unlink(template);
+            return -1;
+        }
+    } else {
+        mdebug1(FSTAT_ERROR, source, errno, strerror(errno));
     }
+
 #endif
 
     file->fp = fdopen(fd, "w");
@@ -1744,34 +1764,29 @@ int TempFile(File *file, const char *source, int copy) {
         size_t count_w;
         char buffer[4096];
 
-        fp_src = fopen(source, "r");
+        if (fp_src = fopen(source, "r"), fp_src) {
+            while (!feof(fp_src)) {
+                count_r = fread(buffer, 1, 4096, fp_src);
 
-        if (!fp_src) {
-            file->name = strdup(template);
-            return 0;
-        }
+                if (ferror(fp_src)) {
+                    fclose(fp_src);
+                    fclose(file->fp);
+                    unlink(template);
+                    return -1;
+                }
 
-        while (!feof(fp_src)) {
-            count_r = fread(buffer, 1, 4096, fp_src);
+                count_w = fwrite(buffer, 1, count_r, file->fp);
 
-            if (ferror(fp_src)) {
-                fclose(fp_src);
-                fclose(file->fp);
-                unlink(template);
-                return -1;
+                if (count_w != count_r || ferror(file->fp)) {
+                    fclose(fp_src);
+                    fclose(file->fp);
+                    unlink(template);
+                    return -1;
+                }
             }
 
-            count_w = fwrite(buffer, 1, count_r, file->fp);
-
-            if (count_w != count_r || ferror(file->fp)) {
-                fclose(fp_src);
-                fclose(file->fp);
-                unlink(template);
-                return -1;
-            }
+            fclose(fp_src);
         }
-
-        fclose(fp_src);
     }
 
     file->name = strdup(template);

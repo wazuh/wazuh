@@ -18,10 +18,28 @@ if [ $? = 0 ]; then
 . ${PLIST};
 fi
 
+is_rhel_le_5() {
+    RPM_RELEASE="/etc/redhat-release"
+
+    # If SO is not RHEL, return (false)
+    [ -r $RPM_RELEASE ] || return
+
+    DIST_NAME=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\1/p' /etc/redhat-release)
+    DIST_VER=$(sed -rn 's/^(.*) release ([[:digit:]]+)[. ].*/\2/p' /etc/redhat-release)
+
+    [[ "$DIST_NAME" =~ ^CentOS ]] || [[ "$DIST_NAME" =~ ^"Red Hat" ]] && [ -n "$DIST_VER" ] && [ $DIST_VER -le 5 ]
+}
+
+
 AUTHOR="Wazuh Inc."
-DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
+DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+
+if ! is_rhel_le_5
+then
+    DAEMONS="$DAEMONS wazuh-clusterd"
+fi
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
@@ -110,7 +128,7 @@ enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator, authentication"
         echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
@@ -131,7 +149,7 @@ enable()
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator, authentication"
         echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
@@ -142,30 +160,43 @@ disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator, authentication"
         echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
     fi
-
+    daemon=''
     if [ "X$2" = "Xdatabase" ]; then
         echo "DB_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-dbd'
     elif [ "X$2" = "Xclient-syslog" ]; then
         echo "CSYSLOG_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-csyslogd'
     elif [ "X$2" = "Xagentless" ]; then
         echo "AGENTLESS_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-agentlessd'
     elif [ "X$2" = "Xintegrator" ]; then
         echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-integratord'
     elif [ "X$2" = "Xauth" ]; then
         echo "AUTH_DAEMON=\"\"" >> ${PLIST};
+        daemon='ossec-authd'
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator, authentication"
         echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth]"
         exit 1;
+    fi
+    if [ "$daemon" != '' ]; then
+        pstatus ${daemon};
+        if [ $? = 1 ]; then
+            kill `cat $DIR/var/run/$daemon*`
+            rm $DIR/var/run/$daemon*
+            echo "Killing ${daemon}...";
+        fi
     fi
 }
 
@@ -226,7 +257,9 @@ testconfig()
 # Start function
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON} wazuh-modulesd ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
+    # Reverse order of daemons
+    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+    incompatible=false
 
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
@@ -241,6 +274,15 @@ start()
         exit 1;
     fi
 
+    if is_rhel_le_5
+    then
+        if [ $USE_JSON = true ]; then
+            incompatible=true
+        else
+            echo "Cluster daemon is incompatible with CentOS 5 and RHEL 5... Skipping wazuh-clusterd."
+        fi
+    fi
+
     checkpid;
 
     # We actually start them now.
@@ -249,18 +291,17 @@ start()
         echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
-        if [ $USE_JSON = true ] && [ $first = false ]; then
-            echo -n ','
-        else
-            first=false
-        fi
-
         ## If ossec-maild is disabled, don't try to start it.
         if [ X"$i" = "Xossec-maild" ]; then
              grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
              if [ $? = 0 ]; then
                  continue
              fi
+        fi
+        if [ $USE_JSON = true ] && [ $first = false ]; then
+            echo -n ','
+        else
+            first=false
         fi
 
         pstatus ${i};
@@ -292,7 +333,10 @@ start()
             fi
         fi
     done
-
+    if $incompatible
+    then
+        echo -n '{"daemon":"wazuh-clusterd","status":"incompatible"}'
+    fi
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
@@ -307,7 +351,6 @@ start()
 pstatus()
 {
     pfile=$1;
-
     # pfile must be set
     if [ "X${pfile}" = "X" ]; then
         return 0;
@@ -319,7 +362,7 @@ pstatus()
             ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
-                    echo "${pfile}: Process $j not used by ossec, removing .."
+                    echo "${pfile}: Process $j not used by ossec, removing..."
                 fi
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
                 continue;
@@ -353,14 +396,14 @@ stopa()
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"killed"}'
             else
-                echo "Killing ${i} .. ";
+                echo "Killing ${i}... ";
             fi
             kill `cat ${DIR}/var/run/${i}*.pid`;
         else
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
             else
-                echo "${i} not running ..";
+                echo "${i} not running...";
             fi
         fi
         rm -f ${DIR}/var/run/${i}*.pid
@@ -409,9 +452,10 @@ restart)
     unlock
     ;;
 reload)
-    DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+    DAEMONS=$(echo $DAEMONS | sed 's/ossec-execd//')
     lock
     stopa
+    sleep 1
     start
     unlock
     ;;

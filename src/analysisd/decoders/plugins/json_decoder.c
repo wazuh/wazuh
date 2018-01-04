@@ -28,6 +28,16 @@ static void fillData(Eventinfo *lf, const char *key, const char *value)
             print_out("       srcip: '%s'", lf->srcip);
         }
 #endif
+
+#ifdef LIBGEOIP_ENABLED
+    if (!lf->srcgeoip) {
+        lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
+#ifdef TESTRULE
+        if (lf->srcgeoip && !alert_only)
+            print_out("       srcgeoip: '%s'", lf->srcgeoip);
+#endif
+    }
+#endif
         return;
     }
 
@@ -37,6 +47,16 @@ static void fillData(Eventinfo *lf, const char *key, const char *value)
         if (!alert_only) {
             print_out("       dstip: '%s'", lf->dstip);
         }
+#endif
+
+#ifdef LIBGEOIP_ENABLED
+    if(!lf->dstgeoip) {
+        lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
+#ifdef TESTRULE
+            if (lf->dstgeoip && !alert_only)
+                print_out("       dstgeoip: '%s'", lf->dstgeoip);
+#endif
+    }
 #endif
     return;
     }
@@ -339,7 +359,7 @@ void *JSON_Decoder_Exec(Eventinfo *lf)
     cJSON *logJSON;
     logJSON = cJSON_Parse(lf->log);
     if (!logJSON)
-        mdebug2 ("Error parsing JSON string. %s", cJSON_GetErrorPtr());
+        mdebug2("Malformed JSON string '%s', near '%.20s'", lf->log, cJSON_GetErrorPtr());
     else
     {
         readJSON (logJSON, NULL, lf);

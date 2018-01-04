@@ -128,6 +128,9 @@ int main(int argc, char **argv)
     /* Start daemon */
     mdebug1(STARTED_MSG);
 
+    /* Setup random */
+    srandom_init();
+
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
@@ -199,6 +202,12 @@ int main(int argc, char **argv)
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
+    }
+
+    /* Create location hash */
+    db_config.location_hash = OSHash_Create();
+    if (!db_config.location_hash) {
+        merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
     /* chroot */

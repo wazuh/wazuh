@@ -1,4 +1,4 @@
-** Wazuh Windows Agent v3.0.0-beta8 **
+** Wazuh Windows Agent **
 ** Copyright (C) 2017 Wazuh Inc. **
 
 
@@ -7,7 +7,7 @@ make sure that you have an instance of the Wazuh manager running and configured
 to accept this system as an agent.
 
 For more information on how to install the server version of Wazuh, look at:
-http://documentation.wazuh.com
+https://documentation.wazuh.com
 
 
 
@@ -24,8 +24,8 @@ http://documentation.wazuh.com
 1- How to obtain more information
 
 You can obtain more information about OSSEC on the following links:
-http://documentation.wazuh.com
-http://www.ossec.net (OSSEC site)
+https://documentation.wazuh.com
+https://www.ossec.net (OSSEC site)
 
 
 2- What this agent does
@@ -46,4 +46,4 @@ The Windows agent does the following tasks:
 Visit the following link for information on how to get help or
 support for OSSEC:
 
-http://wazuh.com/
+https://wazuh.com/

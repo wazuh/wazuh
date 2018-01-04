@@ -359,7 +359,10 @@ int main(int argc, char **argv)
 
                     {
                         FILE *fp;
+
+                        umask(0026);
                         fp = fopen(KEYSFILE_PATH, "w");
+
                         if (!fp) {
                             printf("ERROR: Unable to open key file: %s", KEYSFILE_PATH);
                             exit(1);

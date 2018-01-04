@@ -15,11 +15,8 @@ char ** wcom_ca_store;
 /* Read the config file */
 int ExecdConfig(const char *cfgfile)
 {
-#ifdef WIN32
-    int is_disabled = 1;
-#else
     int is_disabled = 0;
-#endif
+
     const char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
     const char *(blocks[]) = {"ossec_config", "active-response", "repeated_offenders", NULL};
     const char *(castore[]) = {"ossec_config", "active-response", "ca_store", NULL};
