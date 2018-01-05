@@ -7,7 +7,9 @@ EXTERNAL_LUA=external/lua-5.2.3/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
+ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
+endif
 LUA_PLAT=posix
 MAXAGENTS?=8000
 REUSE_ID?=no
@@ -580,9 +582,8 @@ libcJSON.a: ${cjson_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
-
 #### procps #########
-
+ifneq (${TARGET},winagent)
 PROCPS_LIB=libproc.a
 PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
 
@@ -595,7 +596,7 @@ ${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
 libproc.a: ${procps_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
-
+endif
 
 ####################
 #### OSSEC Libs ####

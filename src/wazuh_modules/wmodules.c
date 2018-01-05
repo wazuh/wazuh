@@ -34,7 +34,7 @@ int wm_config() {
 
 #ifdef CLIENT
     // Read configuration: agent.conf
-    agent_cfg = 1;
+    int agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
     wmodule * database;

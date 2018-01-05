@@ -53,10 +53,10 @@ BUILD_TARGET     += wazuh-clusterd-internal
 endif
 
 ifdef DEBUG
-	CFLAGS+=-g
+	CFLAGS+=-g -I ../src
 	LFLAGS+=-Wl,-g
 else
-	CFLAGS+=-O2
+	CFLAGS+=-O2 -I ../src
 	LFLAGS+=-Wl,-O2
 endif
 
