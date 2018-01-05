@@ -108,14 +108,13 @@ int connect_server(int initial_id)
                 rc = 0;
             }
         } else {
-#ifdef HPUX
-            /* Set socket non-blocking on HPUX */
-            // fcntl(agt->sock, O_NONBLOCK);
-#endif
-            if (OS_SetRecvTimeout(agt->sock, timeout) < 0){
-                merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
+            if (agt->server[rc].protocol == TCP_PROTO) {
+                if (OS_SetRecvTimeout(agt->sock, timeout) < 0){
+                    merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
+                }
             }
-#ifdef WIN32s
+
+#ifdef WIN32
             if (agt->server[rc].protocol == UDP_PROTO) {
                 int bmode = 1;
 
