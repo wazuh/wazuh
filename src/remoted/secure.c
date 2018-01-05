@@ -369,6 +369,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
              keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
 
+             mdebug1("000000000000000000000000000000 '%s' _ '%s'", tmp_msg, srcmsg);
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
      */

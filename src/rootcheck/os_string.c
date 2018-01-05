@@ -116,6 +116,7 @@ struct exec {
 #include "headers/regex_op.h"
 
 #include "error_messages/error_messages.h"
+#include "error_messages/debug_messages.h"
 
 #define STR_MINLEN  4       /* Minimum length for a string */
 
@@ -268,4 +269,3 @@ int os_string(__attribute__((unused)) char *file, __attribute__((unused)) char *
     return (0);
 }
 #endif
-

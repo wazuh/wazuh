@@ -21,6 +21,7 @@
 #include "file_op.h"
 #include "debug_op.h"
 #include "error_messages/error_messages.h"
+#include "error_messages/debug_messages.h"
 
 static const char *pidfile = NULL;
 

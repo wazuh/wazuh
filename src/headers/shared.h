@@ -218,6 +218,7 @@ extern const char *__local_name;
 #include "os_regex/os_regex.h"
 
 #include "error_messages/error_messages.h"
+#include "error_messages/debug_messages.h"
 #include "custom_output_search.h"
 
 #endif /* __SHARED_H */
