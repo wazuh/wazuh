@@ -139,68 +139,71 @@ def _get_last_sync():
     print pprint_table(data=[[date, str(duration)]], headers=["Date", "Duration (s)"], show_header=True)
 
 if __name__ == '__main__':
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
+    try:
+        # Initialize framework
+        myWazuh = Wazuh(get_init=True)
 
-    # get arguments
-    args = parser.parse_args()
+        # get arguments
+        args = parser.parse_args()
 
-    if args.push:
-        try:
-            check_cluster_config(read_config())
-        except WazuhException as e:
-            print("Error doing synchronization: {0}".format(str(e)))
-            exit(1)
+        if args.push:
+            try:
+                check_cluster_config(read_config())
+            except WazuhException as e:
+                print("Error doing synchronization: {0}".format(str(e)))
+                exit(1)
 
-        sync(debug=False)
+            sync(debug=False)
 
-    elif args.manager is not None and args.files is None and args.force is None:
-        logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
+        elif args.manager is not None and args.files is None and args.force is None:
+            logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
 
-    elif args.files is not None:
-        try:
-            _get_file_status(args.files, args.manager)
-        except WazuhException as e:
-            print("{0}".format(str(e)))
-            exit(1)
+        elif args.files is not None:
+            try:
+                _get_file_status(args.files, args.manager)
+            except WazuhException as e:
+                print("{0}".format(str(e)))
+                exit(1)
 
-    elif args.agents is not None:
-        try:
-            _get_agents_status()
-        except WazuhException as e:
-            print("{0}".format(str(e)))
-            exit(1)
+        elif args.agents is not None:
+            try:
+                _get_agents_status()
+            except WazuhException as e:
+                print("{0}".format(str(e)))
+                exit(1)
 
-    elif args.nodes is not None:
-        _get_nodes_status(args.nodes)
+        elif args.nodes is not None:
+            _get_nodes_status(args.nodes)
 
-    elif args.force is not None:
-        try:
-            check_cluster_config(read_config())
-        except WazuhException as e:
-            print("Error doing synchronization: {0}".format(str(e)))
-            exit(1)
+        elif args.force is not None:
+            try:
+                check_cluster_config(read_config())
+            except WazuhException as e:
+                print("Error doing synchronization: {0}".format(str(e)))
+                exit(1)
 
-        if args.manager is None:
-            sync(debug=False, force=True)
+            if args.manager is None:
+                sync(debug=False, force=True)
+            else:
+                for node in args.manager:
+                    sync_one_node(debug=False, node=node, force=True)
+
+        elif args.scan is not None:
+            try:
+                scan_for_new_files()
+            except socket.error as e:
+                print("Error connecting to wazuh cluster service: {0}".format(str(e)))
+                exit(1)
+
+        elif args.date is not None:
+            try:
+                _get_last_sync()
+            except socket.error as e:
+                print("Error connecting to wazuh cluster service: {0}".format(str(e)))
+                exit(1)
+
         else:
-            for node in args.manager:
-                sync_one_node(debug=False, node=node, force=True)
-
-    elif args.scan is not None:
-        try:
-            scan_for_new_files()
-        except socket.error as e:
-            print("Error connecting to wazuh cluster service: {0}".format(str(e)))
-            exit(1)
-
-    elif args.date is not None:
-        try:
-            _get_last_sync()
-        except socket.error as e:
-            print("Error connecting to wazuh cluster service: {0}".format(str(e)))
-            exit(1)
-
-    else:
-        parser.print_help()
-        exit()
+            parser.print_help()
+            exit()
+    except Exception as e:
+        print "ERROR: {0}".format(str(e))
