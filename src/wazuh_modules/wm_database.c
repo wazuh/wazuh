@@ -1437,7 +1437,7 @@ void wm_inotify_setup(wm_database * data) {
     }
 
     if (data->sync_syscollector) {
-        if ((wd_syscollector = inotify_add_watch(fd, DEFAULTDIR SYSCOLLECTOR_DIR, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)
+        if ((wd_syscollector = inotify_add_watch(inotify_fd, DEFAULTDIR SYSCOLLECTOR_DIR, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch Syscollector directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_syscollector='%d'", wd_syscollector);

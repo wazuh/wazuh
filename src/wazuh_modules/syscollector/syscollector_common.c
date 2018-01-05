@@ -160,7 +160,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             time_sleep = sys->state.next_time = 0;
         }
 
-        if (wm_state_io(&WM_SYS_CONTEXT, WM_IO_WRITE, &sys->state, sizeof(sys->state)) < 0)
+        if (wm_state_io(WM_SYS_CONTEXT.name, WM_IO_WRITE, &sys->state, sizeof(sys->state)) < 0)
             mterror(WM_SYS_LOGTAG, "Couldn't save running state.");
 
         // If time_sleep=0, yield CPU
@@ -179,7 +179,7 @@ static void wm_sys_setup(wm_sys_t *_sys) {
 
     // Read running state
 
-    if (wm_state_io(&WM_SYS_CONTEXT, WM_IO_READ, &sys->state, sizeof(sys->state)) < 0)
+    if (wm_state_io(WM_SYS_CONTEXT.name, WM_IO_READ, &sys->state, sizeof(sys->state)) < 0)
         memset(&sys->state, 0, sizeof(sys->state));
 
     #ifndef WIN32
