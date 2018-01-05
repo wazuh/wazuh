@@ -40,8 +40,9 @@ HASH_OP          = ../src/shared/hash_op.o
 MATH_OP          = ../src/shared/math_op.o
 RANDOMBYTES      = ../src/shared/randombytes.o
 MD5_OP           = ../src/os_crypto/md5/md5_op.o
+VERSION_OP       = ../src/shared/version_op.o
 
-DEBUG_OP_DEPS    = $(DEBUG_OP) $(JSON_LIB) $(XML_LIB) $(XML_ACCESS) $(STRBREAK) $(STRING_OP) $(FILE_OP) $(PRIVSEP_OP) $(REGEX_OP) $(HELP_O)
+DEBUG_OP_DEPS    = $(DEBUG_OP) $(JSON_LIB) $(XML_LIB) $(XML_ACCESS) $(STRBREAK) $(STRING_OP) $(FILE_OP) $(PRIVSEP_OP) $(REGEX_OP) $(HELP_O) $(VERSION_OP)
 HASH_OP_DEPS     = $(HASH_OP) $(MATH_OP) $(RANDOMBYTES)
 MD5_DEPS         = $(MD5_OP)
 
