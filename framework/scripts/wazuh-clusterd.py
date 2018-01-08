@@ -74,6 +74,8 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.node_type = node_type
         self.requests_queue = requests_queue
         self.finished_clients = finished_clients
+        self.command = []
+        self.restart = False
 
     def handle_close(self):
         self.requests_queue[self.addr] = False
@@ -87,23 +89,24 @@ class WazuhClusterHandler(asynchat.async_chat):
         response = b''.join(self.received_data)
         error = 0
         cmd = self.f.decrypt(response[:common.cluster_sync_msg_size]).decode()
-        command = cmd.split(" ")
+        self.command = cmd.split(" ")
 
-        logging.debug("Command received: {0}".format(command))
+        logging.debug("Command received: {0}".format(self.command))
 
-        if not check_cluster_cmd(command, self.node_type):
+        if not check_cluster_cmd(self.command, self.node_type):
             logging.error("Received invalid cluster command {0} from {1}".format(
-                            command[0], self.addr))
+                            self.command[0], self.addr))
             error = 1
-            res = "Received invalid cluster command {0}".format(command[0])
+            res = "Received invalid cluster command {0}".format(self.command[0])
 
         if error == 0:
-            if command[0] == 'node':
+            if self.command[0] == 'node':
                 res = get_node()
-            elif command[0] == 'zip':
+            elif self.command[0] == 'zip':
                 zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 res = extract_zip(zip_bytes)
-            elif command[0] == 'ready':
+                self.restart = res['restart']
+            elif self.command[0] == 'ready':
                 # sync_one_node(False, self.addr)
                 res = "Starting to sync client's files"
                 # execute an independent process to "crontab" the sync interval
@@ -117,10 +120,31 @@ class WazuhClusterHandler(asynchat.async_chat):
                     self.finished_clients.value = 0
                     kill(child_pid, SIGUSR1)
 
-            logging.debug("Command {0} executed for {1}".format(command[0], self.addr))
+            logging.debug("Command {0} executed for {1}".format(self.command[0], self.addr))
 
         self.data = json.dumps({'error': error, 'data': res})
         self.handle_write()
+
+    def handle_close(self):
+        self.close()
+        if self.command[0] == 'zip' and self.restart:
+            self.restart = False
+            try:
+                # check synchronized rules are correct before restarting the manager
+                check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
+                logging.debug("Synchronized rules are correct.")
+            except CalledProcessError as e:
+                logging.warning("Synchronized rules are not correct. Manager not restarted: {0}.".format(str(e)))
+                return
+
+            try:
+                logging.info("Restarting manager...")
+                sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+                sock.connect("{0}/queue/alerts/execq".format(common.ossec_path))
+                sock.send("restart-ossec0 cluster restart")
+            except CalledProcessError as e:
+                logging.warning("Could not restart manager: {0}.".format(str(e)))
+
 
     def handle_error(self):
         nil, t, v, tbinfo = asyncore.compact_traceback()
@@ -146,6 +170,7 @@ class WazuhClusterHandler(asynchat.async_chat):
             logging.debug("SERVER: Sending {} of {}".format(i, msg_len))
 
         logging.debug("Data sent to {0}".format(self.addr))
+        self.handle_close()
 
 class WazuhClusterServer(asyncore.dispatcher):
 
