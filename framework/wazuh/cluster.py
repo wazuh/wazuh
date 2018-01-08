@@ -305,12 +305,13 @@ def get_nodes(updateDBname=False):
         if not url in localhost_ips:
             error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
                                 data="node {0}".format('a'*(common.cluster_protocol_plain_size - len("node "))))
-            if response['error'] == 1:
-                logging.warning("Error bad response with {0}: {1}".format(url, response))
-                data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
-                continue
-            elif error == 0:
-                 reponse = response['data']
+            if error == 0:
+                if response['error'] == 0:
+                    reponse = response['data']
+                else:
+                    logging.warning("Error bad response with {0}: {1}".format(url, response))
+                    data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
+                    continue
         else:
             error = 0
             url = "localhost"
