@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.2.0]
 
+### Added
+
+- [Added support to synchronize custom rules and decoders in the cluster.](https://github.com/wazuh/wazuh/pull/344)
+
 ### Fixed
 
 - [Fixed oscap.py to support new versions of OpenSCAP scanner.](https://github.com/wazuh/wazuh/pull/331)
