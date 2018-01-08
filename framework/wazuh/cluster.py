@@ -812,6 +812,7 @@ def receive_zip(zip_file):
     logging.info("Receiving package with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'invalid': []}
+    restart = False
 
     if 'remote_groups.txt' in zip_file.keys():
         check_groups(set(zip_file['remote_groups.txt']['data'].split('\n')))
@@ -835,12 +836,17 @@ def receive_zip(zip_file):
                             w_mode=remote_write_mode,
                             node_type=config['node_type'])
 
+            if 'rules' in file_path or 'decoders' in file_path:
+                restart = True
+
         except Exception as e:
             logging.error("Error extracting zip file: {0}".format(str(e)))
             final_dict['error'].append({'item': name, 'reason': str(e)})
             continue
 
         final_dict['updated'].append(name)
+
+    final_dict['restart'] = restart
 
     return final_dict
 
