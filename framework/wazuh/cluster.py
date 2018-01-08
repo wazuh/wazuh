@@ -305,14 +305,18 @@ def get_nodes(updateDBname=False):
         if not url in localhost_ips:
             error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
                                 data="node {0}".format('a'*(common.cluster_protocol_plain_size - len("node "))))
-            if error == 0:
-                response = response['data']
+            if response['error'] == 1:
+                logging.warning("Error bad response with {0}: {1}".format(url, response))
+                data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
+                continue
+            elif error == 0:
+                 reponse = response['data']
         else:
             error = 0
             url = "localhost"
             response = get_node()
 
-        if error:
+        if error == 1:
             logging.warning("Error connecting with {0}: {1}".format(url, response))
             data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
             continue
@@ -323,12 +327,13 @@ def get_nodes(updateDBname=False):
                          'status':'connected', 'cluster':response['cluster']})
 
             if updateDBname:
-                query = "insertname " +response['node'] + " " + url 
+                query = "insertname " +response['node'] + " " + url
                 send_to_socket(cluster_socket, query)
                 receive_data_from_db_socket(cluster_socket)
 
     cluster_socket.close()
     return {'items': data, 'totalItems': len(data)}
+
 
 
 def get_node(name=None):
@@ -388,7 +393,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
 def connect_to_db_socket(retry=False):
     if not  check_cluster_status():
         raise WazuhException(3013)
-        
+
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     max_retries = 100 if retry else 1
     n_retries = 0
@@ -525,7 +530,7 @@ def get_last_sync():
     cluster_socket = connect_to_db_socket()
 
     send_to_socket(cluster_socket, "sellast")
-    
+
     date, duration = receive_data_from_db_socket(cluster_socket).split(" ")
 
     cluster_socket.close()
@@ -549,7 +554,7 @@ def clear_file_status_one_node(manager, cluster_socket):
 
 def update_file_info_bd(cluster_socket, files):
     """
-    Function to update the files' information in database 
+    Function to update the files' information in database
     """
     query = "insertfile "
     for file in divide_list(files.items()):
@@ -563,13 +568,13 @@ def update_file_info_bd(cluster_socket, files):
 def clear_file_status():
     """
     Function to set all database files' status to pending
-    """    
+    """
     # Get information of files from filesystem
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
-    own_items = list_files_from_filesystem(config_cluster['node_type'], get_cluster_items())  
-       
+    own_items = list_files_from_filesystem(config_cluster['node_type'], get_cluster_items())
+
     cluster_socket = connect_to_db_socket(retry=True)
 
     # n files DB
@@ -577,7 +582,7 @@ def clear_file_status():
     n_files_db = int(receive_data_from_db_socket(cluster_socket))
 
     # Only update status for modified files
-    if n_files_db > 0: 
+    if n_files_db > 0:
         # Get information of files from DB (limit = 100)
         query = "selfiles 100 "
         file_status = ""
@@ -585,16 +590,16 @@ def clear_file_status():
             query += str(offset)
             send_to_socket(cluster_socket, query)
             file_status += receive_data_from_db_socket(cluster_socket)
-        
-        db_items = {filename:{'md5': md5, 'timestamp': timestamp} for filename, 
-                    md5, timestamp in map(lambda x: x.split('*'), 
+
+        db_items = {filename:{'md5': md5, 'timestamp': timestamp} for filename,
+                    md5, timestamp in map(lambda x: x.split('*'),
                     filter(lambda x: x != '', file_status.split(' ')))}
 
         # Update status
         query = "update1 "
         new_items = {}
         for files_slice in divide_list(own_items.items()):
-            local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5'] 
+            local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5']
                             or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
             query += ' '.join(local_items.keys())
             send_to_socket(cluster_socket, query)
@@ -821,7 +826,7 @@ def receive_zip(zip_file):
             except KeyError:
                 remote_umask = int(cluster_items['/etc/']['umask'], base=0)
                 remote_write_mode = cluster_items['/etc/']['write_mode']
-            
+
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],
@@ -902,7 +907,7 @@ def push_updates_single_node(all_files, node_dest, config_cluster, result_queue)
     pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
     if len(pending_files) > 0:
         logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
-        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)), 
+        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
                                   node_type=config_cluster['node_type'])
 
         error, response = send_request(host=node_dest, port=config_cluster['port'],
