@@ -43,6 +43,28 @@
         "description": "agents group configuration"
     },
 
+    "/etc/rules": {
+        "umask": "0o137",
+        "format": "plain",
+        "source": "master",
+        "write_mode": "atomic",
+        "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE", "IN_DELETE"],
+        "files": ["all"],
+        "recursive": true,
+        "description": "user rules"
+    },
+
+    "/etc/decoders": {
+        "umask": "0o137",
+        "format": "plain",
+        "source": "master",
+        "write_mode": "atomic",
+        "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE", "IN_DELETE"],
+        "files": ["all"],
+        "recursive": true,
+        "description": "user decoders"
+    },
+
     "excluded_files": [
         "ar.conf",
         "merged.mg",
