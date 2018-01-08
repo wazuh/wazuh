@@ -19,7 +19,7 @@ from subprocess import check_output
 from shutil import rmtree
 from io import BytesIO
 from itertools import compress, chain
-from operator import itemgetter, eq
+from operator import itemgetter, eq, or_
 from ast import literal_eval
 import socket
 import json
@@ -812,7 +812,7 @@ def receive_zip(zip_file):
     logging.info("Receiving package with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'invalid': []}
-    restart = False
+    restart = []
 
     if 'remote_groups.txt' in zip_file.keys():
         check_groups(set(zip_file['remote_groups.txt']['data'].split('\n')))
@@ -826,18 +826,22 @@ def receive_zip(zip_file):
             try:
                 remote_umask = int(cluster_items[dir_name]['umask'], base=0)
                 remote_write_mode = cluster_items[dir_name]['write_mode']
+                restart.append(cluster_items[dir_name]['restart'])
             except KeyError:
-                remote_umask = int(cluster_items['/etc/']['umask'], base=0)
-                remote_write_mode = cluster_items['/etc/']['write_mode']
+                if '/etc/' in file_path:
+                    remote_umask = int(cluster_items['/etc/']['umask'], base=0)
+                    remote_write_mode = cluster_items['/etc/']['write_mode']
+                    restart.append(cluster_items['/etc/']['restart'])
+                elif '/etc/rules/' in file_path or '/etc/decoders/' in file_path:
+                    remote_umask = int(cluster_items['/etc/rules/']['umask'], base=0)
+                    remote_write_mode = cluster_items['/etc/rules/']['write_mode']
+                    restart.append(cluster_items['/etc/rules/']['restart'])
             
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],
                             w_mode=remote_write_mode,
                             node_type=config['node_type'])
-
-            if 'rules' in file_path or 'decoders' in file_path:
-                restart = True
 
         except Exception as e:
             logging.error("Error extracting zip file: {0}".format(str(e)))
@@ -846,7 +850,7 @@ def receive_zip(zip_file):
 
         final_dict['updated'].append(name)
 
-    final_dict['restart'] = restart
+    final_dict['restart'] = reduce(or_, restart)
 
     return final_dict
 
