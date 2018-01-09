@@ -87,7 +87,7 @@ void * wm_aws_main(wm_aws_t * config) {
             memset(&config->state, 0, sizeof(config->state));
         }
 
-        mtinfo(WM_AWS_LOGTAG, "Fetching AWS CloudTrail logs started");
+        mtinfo(WM_AWS_LOGTAG, "Fetching logs started");
 
         // Get time and execute
         time_start = time(NULL);
@@ -95,16 +95,18 @@ void * wm_aws_main(wm_aws_t * config) {
         switch (wm_exec(command, &output, &status, 0)) {
         case 0:
             if (status > 0) {
-                mtwarn(WM_AWS_LOGTAG, "AWS-CloudTrail returned exit code %d.", status);
+                mtwarn(WM_AWS_LOGTAG, "Returned exit code %d.", status);
                 if(status == 3)
-                    mtwarn(WM_AWS_LOGTAG, "AWS-CloudTrail invalid credentials to access S3 Bucket"); 
+                    mtwarn(WM_AWS_LOGTAG, "Invalid credentials to access S3 Bucket");
+                if(status == 4)
+                    mtwarn(WM_AWS_LOGTAG, "boto3 module is required.");
                 mtdebug2(WM_AWS_LOGTAG, "OUTPUT: %s", output);
             }
 
             break;
 
         default:
-            mterror(WM_AWS_LOGTAG, "AWS-CloudTrail: Internal calling. Exiting...");
+            mterror(WM_AWS_LOGTAG, "Internal calling. Exiting...");
             pthread_exit(NULL);
         }
 
@@ -119,7 +121,7 @@ void * wm_aws_main(wm_aws_t * config) {
         free(output);
         free(command);
 
-        mtinfo(WM_AWS_LOGTAG, "Fetching AWS CloudTrail logs finished.");
+        mtinfo(WM_AWS_LOGTAG, "Fetching logs finished.");
 
         if (config->interval) {
             time_sleep = time(NULL) - time_start;
@@ -128,12 +130,12 @@ void * wm_aws_main(wm_aws_t * config) {
                 time_sleep = config->interval - time_sleep;
                 config->state.next_time = config->interval + time_start;
             } else {
-                mtwarn(WM_AWS_LOGTAG, "AWS-CloudTrail: Interval overtaken.");
+                mtwarn(WM_AWS_LOGTAG, "Interval overtaken.");
                 time_sleep = config->state.next_time = 0;
             }
 
             if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_WRITE, &config->state, sizeof(config->state)) < 0)
-                mterror(WM_AWS_LOGTAG, "AWS-CloudTrail: Couldn't save running state.");
+                mterror(WM_AWS_LOGTAG, "Couldn't save running state.");
         }
 
         // If time_sleep=0, yield CPU

@@ -7,18 +7,21 @@
 #
 #
 
-import argparse
-import boto3
-import botocore
-import gzip
-import json
 import os
 import re
 import signal
 import sys
 import sqlite3
-from optparse import OptionParser
+import argparse
 from socket import socket, AF_UNIX, SOCK_DGRAM
+try:
+    import boto3
+except ImportError:
+    print('Error: No module found boto3.')
+    sys.exit(4)
+import botocore
+import gzip
+import json
 
 # Enable/disable debug mode
 enable_debug = False
@@ -32,10 +35,10 @@ wazuh_tmp = '{0}/tmp'.format(wazuh_path)
 wazuh_wodle = '{0}/wodles/aws'.format(wazuh_path)
 
 def send_msg(wazuh_queue, header, msg):
-    msg['integration'] = 'aws'
-    debug(json.dumps(msg, indent=4))
     formatted = {}
+    formatted['integration'] = 'aws'
     formatted['aws'] = msg
+    debug(json.dumps(formatted, indent=4))
     formatted = '{0}{1}'.format(header, json.dumps(formatted))
     s = socket(AF_UNIX, SOCK_DGRAM)
     try:
@@ -71,14 +74,14 @@ def main(argv):
     header = '1:Wazuh-AWS:'
 
     # Parse arguments
-    parser = OptionParser(usage="usage: %prog [options]", version="%prog 1.0")
-    parser.add_option('-b', '--bucket', dest='logBucket', type='string', help='Specify the S3 bucket containing AWS logs')
-    parser.add_option('-d', '--debug', action='store_true', dest='debug', help='Increase verbosity')
-    parser.add_option('-a', '--access_key', dest='access_key', type='string', help='S3 Access key credential')
-    parser.add_option('-k', '--secret_key', dest='secret_key', type='string', help='S3 Secrety key credential')
+    parser = argparse.ArgumentParser(usage="usage: %prog [options]", version="%prog 1.0")
+    parser.add_argument('-b', '--bucket', dest='logBucket', help='Specify the S3 bucket containing AWS logs')
+    parser.add_argument('-d', '--debug', action='store_true', dest='debug', help='Increase verbosity')
+    parser.add_argument('-a', '--access_key', dest='access_key', help='S3 Access key credential')
+    parser.add_argument('-k', '--secret_key', dest='secret_key', help='S3 Secrety key credential')
     #Beware, once you delete history it's gone.
-    parser.add_option('-R', '--remove', action='store_true', dest='deleteFile', help='Remove processed files from the AWS S3 bucket')
-    (options, args) = parser.parse_args()
+    parser.add_argument('-R', '--remove', action='store_true', dest='deleteFile', help='Remove processed files from the AWS S3 bucket')
+    options = parser.parse_args()
     db_connector = None
 
     if options.debug:
