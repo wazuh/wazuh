@@ -180,15 +180,17 @@ def crontab_sync_master(interval):
 
         config_cluster = read_config()
         for node in get_remote_nodes():
+            if node[1] == 'master':
+                continue
             # ask clients to send updates
-            error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
+            error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
                                 data="ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready "))))
 
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
 def crontab_sync_client():
     def sync_handler(n_signal, frame):
-        master = get_remote_nodes()[0]
+        master = get_remote_nodes()[0][0]
         sync_one_node(False, master)
 
     signal(SIGUSR1, sync_handler)
