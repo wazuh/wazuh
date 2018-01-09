@@ -13,7 +13,7 @@
 #define WM_AWS_H
 
 #define WM_AWS_LOGTAG ARGV0 ":aws-cloudtrail"
-#define WM_AWS_DEFAULT_INTERVAL 5
+#define WM_AWS_DEFAULT_INTERVAL 1
 #define WM_AWS_DEFAULT_DIR WM_DEFAULT_DIR "/aws"
 #define WM_AWS_SCRIPT_PATH WM_AWS_DEFAULT_DIR "/aws.py"
 

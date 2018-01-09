@@ -26,7 +26,6 @@ const wm_context WM_AWS_CONTEXT = {
 
 void * wm_aws_main(wm_aws_t * config) {
     time_t time_start;
-    char *command = NULL;
     time_t time_sleep = 0;
     int usec = 1000000 / wm_max_eps;
     struct timeval timeout = { 0, usec };
@@ -37,27 +36,6 @@ void * wm_aws_main(wm_aws_t * config) {
     }
 
     mtinfo(WM_AWS_LOGTAG, "Module AWS-CloudTrail started");
-
-    // Create arguments
-
-    wm_strcat(&command, WM_AWS_SCRIPT_PATH, '\0');
-    wm_strcat(&command, "--bucket", ' ');
-    wm_strcat(&command, config->bucket, ' ');
-
-    if (config->remove_from_bucket) {
-        wm_strcat(&command, "--remove", ' ');
-    }
-    if (config->access_key) {
-        wm_strcat(&command, "--access_key", ' ');
-        wm_strcat(&command, config->access_key, ' ');
-    }
-    if (config->secret_key) {
-        wm_strcat(&command, "--secret_key", ' ');
-        wm_strcat(&command, config->secret_key, ' ');
-    }
-    if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_READ, &config->state, sizeof(config->state)) < 0) {
-        memset(&config->state, 0, sizeof(config->state));
-    }
 
     // Connect to socket
     
@@ -86,8 +64,30 @@ void * wm_aws_main(wm_aws_t * config) {
     while (1) {
         int status;
         char * output = NULL;
+        char *command = NULL;  
+  
+        // Create arguments
 
-        mtdebug1(WM_AWS_LOGTAG, "Fetching AWS CloudTrail logs started");
+        wm_strcat(&command, WM_AWS_SCRIPT_PATH, '\0');
+        wm_strcat(&command, "--bucket", ' ');
+        wm_strcat(&command, config->bucket, ' ');
+
+        if (config->remove_from_bucket) {
+            wm_strcat(&command, "--remove", ' ');
+        }
+        if (config->access_key) {
+            wm_strcat(&command, "--access_key", ' ');
+            wm_strcat(&command, config->access_key, ' ');
+        }
+        if (config->secret_key) {
+            wm_strcat(&command, "--secret_key", ' ');
+            wm_strcat(&command, config->secret_key, ' ');
+        }
+        if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_READ, &config->state, sizeof(config->state)) < 0) {
+            memset(&config->state, 0, sizeof(config->state));
+        }
+
+        mtinfo(WM_AWS_LOGTAG, "Fetching AWS CloudTrail logs started");
 
         // Get time and execute
         time_start = time(NULL);
@@ -115,10 +115,11 @@ void * wm_aws_main(wm_aws_t * config) {
             select(0 , NULL, NULL, NULL, &timeout);
             SendMSG(config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
         }
+
         free(output);
         free(command);
 
-        mtdebug1(WM_AWS_LOGTAG, "Fetching AWS CloudTrail logs finished.");
+        mtinfo(WM_AWS_LOGTAG, "Fetching AWS CloudTrail logs finished.");
 
         if (config->interval) {
             time_sleep = time(NULL) - time_start;

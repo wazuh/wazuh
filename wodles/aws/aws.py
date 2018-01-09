@@ -127,7 +127,7 @@ def main(argv):
         if downloaded_file != "":
             if already_processed(downloaded_file, db_connector):
                 debug("++ Skipping previously seen file {file}".format(file=downloaded_file))
-                #continue
+                continue
             debug("++ Found new log: {0}".format(downloaded_file))
             my_bucket.download_file(bucket_file.key,downloaded_file_path)
             data = gzip.open(downloaded_file_path, 'rb')
@@ -156,7 +156,7 @@ def main(argv):
             if options.deleteFile:
                 debug("+++ Remove file from S3 Bucket:{0}".format(downloaded_file))
                 s3.Object(options.logBucket, bucket_file.key).delete()
-            #mark_complete(downloaded_file, db_connector)
+            mark_complete(downloaded_file, db_connector)
 
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, handler)
