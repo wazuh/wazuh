@@ -1,6 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.2.0]
+
+### Fixed
+
+- [Fixed bug in framework when the manager is installed in different path than /var/ossec.](https://github.com/wazuh/wazuh/pull/335)
+
+
 ## [v3.1.0]
 
 ### Added
