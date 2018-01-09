@@ -300,6 +300,7 @@ def get_nodes(updateDBname=False):
     # list with all the ips the localhost has
     localhost_ips = get_localhost_ips()
     data = []
+    error_response = False
 
     for url in config_cluster["nodes"]:
         if not url in localhost_ips:
@@ -310,8 +311,7 @@ def get_nodes(updateDBname=False):
                     reponse = response['data']
                 else:
                     logging.warning("Received an error response from {0}: {1}".format(url, response))
-                    data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
-                    continue
+                    error_response = True
         else:
             error = 0
             url = "localhost"
@@ -319,7 +319,11 @@ def get_nodes(updateDBname=False):
 
         if error == 1:
             logging.warning("Error connecting with {0}: {1}".format(url, response))
+            error_response = True
+
+        if error_response:
             data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
+            error_response = False
             continue
 
         if config_cluster['node_type'] == 'master' or \
