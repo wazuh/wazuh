@@ -309,7 +309,7 @@ def get_nodes(updateDBname=False):
                 if response['error'] == 0:
                     reponse = response['data']
                 else:
-                    logging.warning("Error bad response with {0}: {1}".format(url, response))
+                    logging.warning("Received an error response from {0}: {1}".format(url, response))
                     data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
                     continue
         else:
