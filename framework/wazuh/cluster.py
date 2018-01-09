@@ -300,8 +300,9 @@ def get_nodes(updateDBname=False):
     # list with all the ips the localhost has
     localhost_ips = get_localhost_ips()
     data = []
+    chosen_master = False
 
-    for url in config_cluster["nodes"]:
+    for url in sorted(config_cluster["nodes"]):
         if not url in localhost_ips:
             error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
                                 data="node {0}".format('a'*(common.cluster_protocol_plain_size - len("node "))))
@@ -317,9 +318,15 @@ def get_nodes(updateDBname=False):
             data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
             continue
 
-        if config_cluster['node_type'] == 'master' or \
-           response['type'] == 'master' or url == "localhost":
-            data.append({'url':url, 'node':response['node'],
+        if not chosen_master and response['type'] == 'master':
+            chosen_master = True
+            response['type'] = 'actual master'
+            if url == "localhost":
+                config_cluster['node_type'] = 'actual master'
+
+        if config_cluster['node_type'] == 'actual master' or \
+            response['type'] == 'actual master' or url == "localhost":
+            data.append({'url':url, 'node':response['node'], 'type': response['type'],
                          'status':'connected', 'cluster':response['cluster']})
 
             if updateDBname:
