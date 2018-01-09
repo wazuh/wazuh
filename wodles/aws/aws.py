@@ -28,6 +28,8 @@ wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
 wazuh_queue = '{0}/queue/ossec/queue'.format(wazuh_path)
 # Wazuh tmp folder
 wazuh_tmp = '{0}/tmp'.format(wazuh_path)
+# Wazuh wodle path
+wazuh_wodle = '{0}/wodles/aws'.format(wazuh_path)
 
 def send_msg(wazuh_queue, header, msg):
     msg['integration'] = 'aws'
@@ -72,6 +74,8 @@ def main(argv):
     parser = OptionParser(usage="usage: %prog [options]", version="%prog 1.0")
     parser.add_option('-b', '--bucket', dest='logBucket', type='string', help='Specify the S3 bucket containing AWS logs')
     parser.add_option('-d', '--debug', action='store_true', dest='debug', help='Increase verbosity')
+    parser.add_option('-a', '--access_key', dest='access_key', type='string', help='S3 Access key credential')
+    parser.add_option('-k', '--secret_key', dest='secret_key', type='string', help='S3 Secrety key credential')
     #Beware, once you delete history it's gone.
     parser.add_option('-R', '--remove', action='store_true', dest='deleteFile', help='Remove processed files from the AWS S3 bucket')
     (options, args) = parser.parse_args()
@@ -89,7 +93,7 @@ def main(argv):
     # Create or connect SQLite DB
     debug('+++ Create or connect SQLite DB')
     try:
-        db_connector = sqlite3.connect("s3_cloudtrail.db")
+        db_connector = sqlite3.connect("{0}/s3_cloudtrail.db".format(wazuh_wodle))
         db_connector.execute("select count(*) from log_progress")
     except sqlite3.OperationalError:
         db_connector.execute("create table log_progress  (log_name 'text' primary key, processed_date 'TEXT')")
@@ -98,7 +102,15 @@ def main(argv):
     # Connect to Amazon S3 Bucket
     debug('+++ Connecting to Amazon S3')
 
-    s3 = boto3.resource('s3')
+    if options.access_key != None and options.secret_key != None:
+        s3 = boto3.resource(
+            's3',
+            aws_access_key_id=options.access_key,
+            aws_secret_access_key=options.secret_key
+        )
+    else:
+        s3 = boto3.resource('s3')
+
     my_bucket = s3.Bucket(options.logBucket)
     try:
         s3.meta.client.head_bucket(Bucket=options.logBucket)

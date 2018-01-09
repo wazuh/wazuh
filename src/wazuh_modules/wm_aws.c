@@ -17,7 +17,7 @@ static void wm_aws_destroy(wm_aws_t * config);   // Destroy data
 // Command module context definition
 
 const wm_context WM_AWS_CONTEXT = {
-    "aws",
+    "aws-cloudtrail",
     (wm_routine)wm_aws_main,
     (wm_routine)wm_aws_destroy
 };
@@ -28,22 +28,33 @@ void * wm_aws_main(wm_aws_t * config) {
     time_t time_start;
     char *command = NULL;
     time_t time_sleep = 0;
-    size_t extag_len;
-    char * extag;
     int usec = 1000000 / wm_max_eps;
     struct timeval timeout = { 0, usec };
 
     if (!config->enabled) {
-        mtwarn(WM_AWS_LOGTAG, "Module AWS is disabled. Exiting.");
+        mtwarn(WM_AWS_LOGTAG, "Module AWS-CloudTrail is disabled. Exiting.");
         pthread_exit(0);
     }
 
-    mtinfo(WM_AWS_LOGTAG, "Module AWS started");
+    mtinfo(WM_AWS_LOGTAG, "Module AWS-CloudTrail started");
 
     // Create arguments
 
     wm_strcat(&command, WM_AWS_SCRIPT_PATH, '\0');
-    
+    wm_strcat(&command, "--bucket", ' ');
+    wm_strcat(&command, config->bucket, ' ');
+
+    if (config->remove_from_bucket) {
+        wm_strcat(&command, "--remove", ' ');
+    }
+    if (config->access_key) {
+        wm_strcat(&command, "--access_key", ' ');
+        wm_strcat(&command, config->access_key, ' ');
+    }
+    if (config->secret_key) {
+        wm_strcat(&command, "--secret_key", ' ');
+        wm_strcat(&command, config->secret_key, ' ');
+    }
     if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_READ, &config->state, sizeof(config->state)) < 0) {
         memset(&config->state, 0, sizeof(config->state));
     }
@@ -67,7 +78,7 @@ void * wm_aws_main(wm_aws_t * config) {
         time_start = time(NULL);
 
         if (config->state.next_time > time_start) {
-            mtinfo(WM_AWS_LOGTAG, "%s: Waiting for turn to evaluate.", config->tag);
+            mtinfo(WM_AWS_LOGTAG, "Waiting interval to start fetching.");
             sleep(config->state.next_time - time_start);
         }
     }
@@ -84,14 +95,16 @@ void * wm_aws_main(wm_aws_t * config) {
         switch (wm_exec(command, &output, &status, 0)) {
         case 0:
             if (status > 0) {
-                mtwarn(WM_AWS_LOGTAG, "AWS returned exit code %d.", status);
+                mtwarn(WM_AWS_LOGTAG, "AWS-CloudTrail returned exit code %d.", status);
+                if(status == 3)
+                    mtwarn(WM_AWS_LOGTAG, "AWS-CloudTrail invalid credentials to access S3 Bucket"); 
                 mtdebug2(WM_AWS_LOGTAG, "OUTPUT: %s", output);
             }
 
             break;
 
         default:
-            mterror(WM_AWS_LOGTAG, "AWS: Internal calling. Exiting...");
+            mterror(WM_AWS_LOGTAG, "AWS-CloudTrail: Internal calling. Exiting...");
             pthread_exit(NULL);
         }
 
@@ -114,12 +127,12 @@ void * wm_aws_main(wm_aws_t * config) {
                 time_sleep = config->interval - time_sleep;
                 config->state.next_time = config->interval + time_start;
             } else {
-                mtwarn(WM_AWS_LOGTAG, "AWS: Interval overtaken.");
+                mtwarn(WM_AWS_LOGTAG, "AWS-CloudTrail: Interval overtaken.");
                 time_sleep = config->state.next_time = 0;
             }
 
             if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_WRITE, &config->state, sizeof(config->state)) < 0)
-                mterror(WM_AWS_LOGTAG, "AWS: Couldn't save running state.");
+                mterror(WM_AWS_LOGTAG, "AWS-CloudTrail: Couldn't save running state.");
         }
 
         // If time_sleep=0, yield CPU

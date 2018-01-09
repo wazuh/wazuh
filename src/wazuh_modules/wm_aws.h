@@ -12,8 +12,8 @@
 #ifndef WM_AWS_H
 #define WM_AWS_H
 
-#define WM_AWS_LOGTAG ARGV0 ":aws"
-#define WM_AWS_DEFAULT_INTERVAL 2
+#define WM_AWS_LOGTAG ARGV0 ":aws-cloudtrail"
+#define WM_AWS_DEFAULT_INTERVAL 5
 #define WM_AWS_DEFAULT_DIR WM_DEFAULT_DIR "/aws"
 #define WM_AWS_SCRIPT_PATH WM_AWS_DEFAULT_DIR "/aws.py"
 
@@ -22,14 +22,15 @@ typedef struct wm_aws_state_t {
 } wm_aws_state_t;
 
 typedef struct wm_aws_t {
-    char * tag;
-    char * command;
+    char * bucket;
+    char * access_key;
+    char * secret_key;
     unsigned long interval;
     int queue_fd;
     wm_aws_state_t state;
     unsigned int enabled:1;
     unsigned int run_on_start:1;
-    unsigned int ignore_output:1;
+    unsigned int remove_from_bucket:1;
     unsigned int agent_cfg:1;
 } wm_aws_t;
 
