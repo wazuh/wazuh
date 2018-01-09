@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - [Fixed oscap.py to support new versions of OpenSCAP scanner.](https://github.com/wazuh/wazuh/pull/331)
+- [Fixed timeout bug when the cluster port was closed.](https://github.com/wazuh/wazuh/pull/343)
+- [Improve exception handling in `cluster_control`.](https://github.com/wazuh/wazuh/pull/343)
 
 ## [v3.1.0]
 
