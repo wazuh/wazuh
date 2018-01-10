@@ -522,16 +522,18 @@ def get_file_status_all_managers(file_list, manager):
 
     nodes = get_remote_nodes(False)
     if manager:
-        remote_nodes = filter(lambda x: x in manager, nodes)
+        remote_nodes = filter(lambda x: x in manager, map(itemgetter(0), nodes))
     else:
-        remote_nodes = nodes
+        remote_nodes = map(itemgetter(0), nodes)
 
     for node in remote_nodes:
-        all_files = get_file_status(node[0], cluster_socket)
+        all_files = get_file_status(node, cluster_socket)
         if file_list == []:
-            file_list = all_files.keys()
+            filenames = all_files.keys()
+        else:
+            filenames = file_list
 
-        files.extend([[node[0], file, all_files[file]] for file in file_list])
+        files.extend([[node, file, all_files[file]] for file in filenames])
 
     cluster_socket.close()
     return files
