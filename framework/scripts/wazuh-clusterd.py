@@ -7,6 +7,7 @@ try:
     import asynchat
     import socket
     import json
+    import ast
     from distutils.util import strtobool
     from sys import argv, exit, path
     from os.path import dirname
@@ -95,6 +96,16 @@ class WazuhClusterHandler(asynchat.async_chat):
             elif command[0] == 'zip':
                 zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 res = extract_zip(zip_bytes)
+            elif command[0] == 'restart':
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                if (len(args) == 2):
+                    agents = args[0].split("-")
+                    restart_all = ast.literal_eval(args[1])
+                else:
+                    agents = None
+                    restart_all = ast.literal_eval(args[0])
+                res = restart_agents(agents, restart_all)
             elif command[0] == 'ready':
                 # sync_one_node(False, self.addr)
                 res = "Starting to sync client's files"

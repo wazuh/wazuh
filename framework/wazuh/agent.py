@@ -42,7 +42,7 @@ def create_exception_dic(id, e):
     exception_dic['error'] = {'message': e.message, 'code': e.code}
     return exception_dic
 
-    
+
 def get_timeframe_int(timeframe):
 
     if not isinstance(timeframe, int):
@@ -109,6 +109,7 @@ class Agent:
         self.mergedSum     = None
         self.group         = None
         self.manager_host  = None
+        self.node_name  = None
 
         # if the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
@@ -163,7 +164,7 @@ class Agent:
                                "last_keepalive", "config_sum", "merged_sum",
                                "group", "manager_host", "os_name", "os_version",
                                "os_major", "os_minor", "os_codename", "os_build",
-                               "os_platform", "os_uname"}
+                               "os_platform", "os_uname", "node_name"}
         # we need to retrieve the fields that are used to compute other fields from the DB
         select_fields = {'id', 'version', 'last_keepalive'}
 
@@ -252,6 +253,8 @@ class Agent:
                     self.os['arch'] = "armv6"
                 elif "armv7" in self.os['uname']:
                     self.os['arch'] = "armv7"
+            if field == 'node_name' and value != None:
+                self.node_name = value
 
         if self.id != "000":
             self.status = Agent.calculate_status(self.lastKeepAlive, pending)
@@ -303,13 +306,15 @@ class Agent:
             info['group'] = self.group
         if self.manager_host:
             info['manager_host'] = self.manager_host
+        if self.node_name:
+            info['node_name'] = self.node_name
 
         return info
 
     def compute_key(self):
         str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
         return b64encode(str_key.encode()).decode()
-        
+
 
     def get_key(self):
         """
@@ -370,11 +375,11 @@ class Agent:
 
         manager_status = manager.status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
-        
+
         if self.use_only_authd():
             if not is_authd_running:
                 raise WazuhException(1726)
-                
+
         if not is_authd_running:
             data = self._remove_manual(backup, purge)
         else:
@@ -515,7 +520,7 @@ class Agent:
         if self.use_only_authd():
             if not is_authd_running:
                 raise WazuhException(1726)
-                
+
         if not is_authd_running:
             data = self._add_manual(name, ip, id, key, force)
         else:
@@ -1076,7 +1081,7 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM agent WHERE name = :name", {'name': agent_name})
         agent_id = str(conn.fetch()[0]).zfill(3)
-        
+
         return Agent(agent_id).get_basic_information(select)
 
     @staticmethod

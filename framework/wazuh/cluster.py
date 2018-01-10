@@ -168,6 +168,13 @@ def get_status_json():
             "running": "yes" if status()['wazuh-clusterd'] == 'running' else "no"}
 
 
+# API Messages
+
+request_type = []
+RESTART_AGENTS = "restart"  # restart
+request_type.append(RESTART_AGENTS)
+
+
 def check_cluster_cmd(cmd, node_type):
     # cmd must be a list
     if not isinstance(cmd, list):
@@ -186,7 +193,7 @@ def check_cluster_cmd(cmd, node_type):
         return True
 
     # check command type
-    if not cmd[0] in ['zip', 'node']:
+    if not cmd[0] in ['zip', 'node'] and not cmd[0] in request_type:
         return False
 
     # second argument of zip is a number
@@ -323,7 +330,7 @@ def get_nodes(updateDBname=False):
                          'status':'connected', 'cluster':response['cluster']})
 
             if updateDBname:
-                query = "insertname " +response['node'] + " " + url 
+                query = "insertname " +response['node'] + " " + url
                 send_to_socket(cluster_socket, query)
                 receive_data_from_db_socket(cluster_socket)
 
@@ -388,7 +395,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
 def connect_to_db_socket(retry=False):
     if not  check_cluster_status():
         raise WazuhException(3013)
-        
+
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     max_retries = 100 if retry else 1
     n_retries = 0
@@ -525,7 +532,7 @@ def get_last_sync():
     cluster_socket = connect_to_db_socket()
 
     send_to_socket(cluster_socket, "sellast")
-    
+
     date, duration = receive_data_from_db_socket(cluster_socket).split(" ")
 
     cluster_socket.close()
@@ -549,7 +556,7 @@ def clear_file_status_one_node(manager, cluster_socket):
 
 def update_file_info_bd(cluster_socket, files):
     """
-    Function to update the files' information in database 
+    Function to update the files' information in database
     """
     query = "insertfile "
     for file in divide_list(files.items()):
@@ -563,13 +570,13 @@ def update_file_info_bd(cluster_socket, files):
 def clear_file_status():
     """
     Function to set all database files' status to pending
-    """    
+    """
     # Get information of files from filesystem
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
-    own_items = list_files_from_filesystem(config_cluster['node_type'], get_cluster_items())  
-       
+    own_items = list_files_from_filesystem(config_cluster['node_type'], get_cluster_items())
+
     cluster_socket = connect_to_db_socket(retry=True)
 
     # n files DB
@@ -577,7 +584,7 @@ def clear_file_status():
     n_files_db = int(receive_data_from_db_socket(cluster_socket))
 
     # Only update status for modified files
-    if n_files_db > 0: 
+    if n_files_db > 0:
         # Get information of files from DB (limit = 100)
         query = "selfiles 100 "
         file_status = ""
@@ -585,16 +592,16 @@ def clear_file_status():
             query += str(offset)
             send_to_socket(cluster_socket, query)
             file_status += receive_data_from_db_socket(cluster_socket)
-        
-        db_items = {filename:{'md5': md5, 'timestamp': timestamp} for filename, 
-                    md5, timestamp in map(lambda x: x.split('*'), 
+
+        db_items = {filename:{'md5': md5, 'timestamp': timestamp} for filename,
+                    md5, timestamp in map(lambda x: x.split('*'),
                     filter(lambda x: x != '', file_status.split(' ')))}
 
         # Update status
         query = "update1 "
         new_items = {}
         for files_slice in divide_list(own_items.items()):
-            local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5'] 
+            local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5']
                             or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
             query += ' '.join(local_items.keys())
             send_to_socket(cluster_socket, query)
@@ -821,7 +828,7 @@ def receive_zip(zip_file):
             except KeyError:
                 remote_umask = int(cluster_items['/etc/']['umask'], base=0)
                 remote_write_mode = cluster_items['/etc/']['write_mode']
-            
+
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],
@@ -902,7 +909,7 @@ def push_updates_single_node(all_files, node_dest, config_cluster, result_queue)
     pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
     if len(pending_files) > 0:
         logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
-        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)), 
+        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
                                   node_type=config_cluster['node_type'])
 
         error, response = send_request(host=node_dest, port=config_cluster['port'],
@@ -1116,3 +1123,148 @@ def sync(debug, force=False):
                       'error': data['error'],
                       'reason': data['reason']}
                       for node,data in thread_results.items()}
+
+
+def get_node_agent(agent_id):
+    cluster_socket = connect_to_db_socket()
+    try:
+        node_name = Agent(agent_id).get_basic_information()['node_name']
+        send_to_socket(cluster_socket, "getip {0}".format(node_name))
+        data = receive_data_from_db_socket(cluster_socket)
+    except:
+        logging.warning("Unknown manager of agent {0}".format(agent_id))
+        data = None
+    cluster_socket.close()
+    return data
+
+
+def get_agents_by_node(agent_id):
+    # Return remote_nodes[addr_node] = {agent_id_0, agent_id_1, ...}
+    node_agents = {}
+    if isinstance(agent_id, list):
+        for id in agent_id:
+            addr = get_node_agent(id)
+            if node_agents.get(addr) is None:
+                node_agents[addr] = []
+            node_agents[addr].append(str(id).zfill(3))
+    else:
+        if agent_id is not None:
+            node_agents[get_node_agent(agent_id)] = [str(agent_id).zfill(3)]
+    return node_agents
+
+
+def send_request_to_node(node, config_cluster, request_type, args, result_queue):
+    error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
+                        data="{1} {0}".format('a'*(common.cluster_protocol_plain_size - len(request_type + " ")), request_type),
+                         file=args)
+
+    if error != 0 or response['error'] != 0:
+        logging.debug(response)
+        result_queue.put({'node': node, 'reason': "{0} - {1}".format(error, response), 'error': 1})
+    else:
+        result_queue.put(response)
+
+
+def append_node_result_by_type(node, result_node, request_type, current_result=None):
+    if current_result == None:
+        current_result = {}
+    if request_type == RESTART_AGENTS:
+        if isinstance(result_node.get('data'), dict):
+            if result_node.get('data').get('affected_agents') != None:
+                if current_result.get('affected_agents') is None:
+                    current_result['affected_agents'] = []
+                current_result['affected_agents'].extend(result_node['data']['affected_agents'])
+
+            if result_node.get('data').get('failed_ids'):
+                if current_result.get('failed_ids') is None:
+                    current_result['failed_ids'] = []
+                current_result['failed_ids'].extend(result_node['data']['failed_ids'])
+
+            if result_node.get('data').get('failed_ids') != None and result_node.get('data').get('msg') != None:
+                current_result['msg'] = result_node['data']['msg']
+            if current_result.get('failed_ids') == None and result_node.get('data').get('msg') != None:
+                current_result['msg'] = result_node['data']['msg']
+            if current_result.get('failed_ids') != None and current_result.get('affected_agents') != None:
+                current_result['msg'] = "Some agents were not restarted"
+        else:
+            if current_result.get('data') == None:
+                current_result = result_node
+    else:
+        current_result[node] = result_node
+    return current_result
+
+
+def send_request_to_nodes(remote_nodes, config_cluster, request_type, args):
+    threads = []
+    result = {}
+    result_node = {}
+    result_nodes = {}
+    result_queue = queue()
+    local_node = get_node()['node']
+    remote_nodes_addr = []
+    msg = None
+    if len(remote_nodes) == 0:
+        remote_nodes_addr = get_remote_nodes(True, True)
+    else:
+        remote_nodes_addr = remote_nodes.keys()
+
+    args_str = " ".join(args)
+
+    for node_id in remote_nodes_addr:
+        if node_id != None:
+            logging.info("Sending {2} request from {0} to {1}".format(local_node, str(remote_nodes), args[0]))
+
+            # Push agents id
+            if remote_nodes.get(node_id) != None:
+                agents = "-".join(remote_nodes[node_id])
+                msg = agents + " " + args_str
+            else:
+                msg = args_str
+
+            t = threading.Thread(target=send_request_to_node, args=(str(node_id), config_cluster, request_type, msg, result_queue))
+            threads.append(t)
+            t.start()
+            result_node = result_queue.get()
+        else:
+            result_node['data'] = {}
+            result_node['data']['failed_ids'] = []
+            for id in remote_nodes[node_id]:
+                node = {}
+                node['id'] = id
+                node['error'] = {'message':"Unknown manager of agent",'code':-1}
+                result_node['data']['failed_ids'].append(node)
+        result_nodes[node_id] = result_node
+
+    for t in threads:
+        t.join()
+    for node, result_node in result_nodes.iteritems():
+        result = append_node_result_by_type(node, result_node, request_type, result)
+    return result
+
+
+def is_a_local_request():
+    config_cluster = read_config()
+    return not config_cluster or not check_cluster_status() or config_cluster['node_type'] == 'client'
+
+
+def is_cluster_running():
+    return status()['wazuh-clusterd'] == 'running'
+
+
+def restart_agents(agent_id=None, restart_all=False):
+    if is_a_local_request():
+        return Agent.restart_agents(agent_id, restart_all)
+    else:
+        if not is_cluster_running():
+            raise WazuhException("Cluster is not running. Cluster status: {0}".format(status()['wazuh-clusterd']))
+
+        request_type = RESTART_AGENTS
+        node_agents = get_agents_by_node(agent_id)
+        args = [str(restart_all)]
+        return distributed_api_request(request_type, node_agents, args)
+
+
+def distributed_api_request(request_type, node_agents, args):
+    config_cluster = read_config()
+    if request_type is RESTART_AGENTS:
+        return send_request_to_nodes(node_agents, config_cluster, request_type, args)
