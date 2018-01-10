@@ -333,10 +333,10 @@ def get_nodes(updateDBname=False):
 
         if not chosen_master and response['type'] == 'master':
             chosen_master = True
-            response['type'] = 'actual master'
+            response['type'] = 'master(*)'
             actual_master = response['node']
             if response['localhost']:
-                config_cluster['node_type'] = 'actual master'
+                config_cluster['node_type'] = 'master(*)'
 
         if 'master' in config_cluster['node_type'] or \
             'master' in response['type'] or response['localhost']:
