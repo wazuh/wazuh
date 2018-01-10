@@ -96,10 +96,13 @@ class WazuhClusterHandler(asynchat.async_chat):
                 zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 res = extract_zip(zip_bytes)
             elif command[0] == 'ready':
-                # sync_one_node(False, self.addr)
                 res = "Starting to sync client's files"
                 # execute an independent process to "crontab" the sync interval
                 kill(child_pid, SIGUSR1)
+            elif command[0] == 'data':
+                res = "Saving data from actual master"
+                actual_master_data = json.loads(self.f.decrypt(response[common.cluster_sync_msg_size:]).decode())
+                save_actual_master_data_on_db(actual_master_data)
 
             logging.debug("Command {0} executed for {1}".format(command[0], self.addr))
 
@@ -173,7 +176,7 @@ def crontab_sync_master(interval):
     while True:
         logging.debug("Crontab: starting to sync")
         try:
-            sync(False)
+            sync_results = sync(True)
         except Exception as e:
             logging.error(str(e))
             kill(child_pid, SIGINT)
@@ -181,10 +184,16 @@ def crontab_sync_master(interval):
         config_cluster = read_config()
         for node in get_remote_nodes():
             if node[1] == 'master':
-                continue
-            # ask clients to send updates
+                # send the synchronization results to the rest of masters
+                message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
+                file = json.dumps(sync_results).encode()
+            else:
+                # ask clients to send updates
+                message = "ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready ")))
+                file = None
+            
             error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
-                                data="ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready "))))
+                                data=message, file=file)
 
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 

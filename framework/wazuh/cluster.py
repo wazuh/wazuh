@@ -187,6 +187,10 @@ def check_cluster_cmd(cmd, node_type):
     if cmd[0] == 'ready' and node_type == 'client':
         return True
 
+    # 'data' cmd can only be sent by a master node to another master node
+    if cmd[0] == 'data' and node_type == 'master':
+        return True
+
     # check command type
     if not cmd[0] in ['zip', 'node']:
         return False
@@ -333,8 +337,8 @@ def get_nodes(updateDBname=False):
             if url == "localhost":
                 config_cluster['node_type'] = 'actual master'
 
-        if config_cluster['node_type'] == 'actual master' or \
-            response['type'] == 'actual master' or url == "localhost":
+        if 'master' in config_cluster['node_type'] or \
+            'master' in response['type'] or url == "localhost":
             data.append({'url':url, 'node':response['node'], 'type': response['type'],
                          'status':'connected', 'cluster':response['cluster']})
 
@@ -520,7 +524,7 @@ def get_file_status_all_managers(file_list, manager):
 
     files = []
 
-    nodes = get_remote_nodes(False)
+    nodes = get_remote_nodes(connected=False, return_info_for_masters=True)
     if manager:
         remote_nodes = filter(lambda x: x in manager, map(itemgetter(0), nodes))
     else:
@@ -864,7 +868,7 @@ def receive_zip(zip_file):
 def divide_list(l, size=1000):
     return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
 
-def get_remote_nodes(connected=True, updateDBname=False):
+def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters=False):
     all_nodes = get_nodes(updateDBname)['items']
 
     # Get connected nodes in the cluster
@@ -880,7 +884,7 @@ def get_remote_nodes(connected=True, updateDBname=False):
         logging.error("Cluster nodes are not correctly configured at ossec.conf.")
         raise WazuhException(3004, "Cluster nodes are not correctly configured at ossec.conf.")
 
-    if cluster[localhost_index][1] == 'master':
+    if not return_info_for_masters and cluster[localhost_index][1] == 'master':
         return [] # if the master is no the actual one, it doesnt send any messages
     
     return list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
@@ -998,6 +1002,17 @@ def update_node_db_after_sync(data, node, cluster_socket):
 
         send_to_socket(cluster_socket, update_sql)
         received = receive_data_from_db_socket(cluster_socket)
+
+
+def save_actual_master_data_on_db(data):
+    logging.info("Updating database with information received from actual master.")
+    cluster_socket = connect_to_db_socket()
+    localhost_ips = get_localhost_ips()
+    for node_ip, node_data in data.items():
+        if not node_ip in localhost_ips:
+            get_file_status_of_one_node((node_ip, 'client'), list_files_from_filesystem('master', get_cluster_items()).keys(), cluster_socket)
+            update_node_db_after_sync(node_data, node_ip, cluster_socket)
+    cluster_socket.close()
 
 
 def sync_one_node(debug, node, force=False):
