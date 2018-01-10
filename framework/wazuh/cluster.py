@@ -320,27 +320,29 @@ def get_nodes(updateDBname=False):
                                 data="node {0}".format('a'*(common.cluster_protocol_plain_size - len("node "))))
             if error == 0:
                 response = response['data']
+                response['localhost'] = False 
         else:
             error = 0
-            url = "localhost"
             response = get_node()
+            response['localhost'] = True
 
         if error:
             logging.warning("Error connecting with {0}: {1}".format(url, response))
-            data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url, 'type':'unknown'})
+            data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url, 'type':'unknown', 'localhost': False})
             continue
 
         if not chosen_master and response['type'] == 'master':
             chosen_master = True
             response['type'] = 'actual master'
             actual_master = response['node']
-            if url == "localhost":
+            if response['localhost']:
                 config_cluster['node_type'] = 'actual master'
 
         if 'master' in config_cluster['node_type'] or \
-            'master' in response['type'] or url == "localhost":
+            'master' in response['type'] or response['localhost']:
             data.append({'url':url, 'node':response['node'], 'type': response['type'],
-                         'status':'connected', 'cluster':response['cluster']})
+                         'status':'connected', 'cluster':response['cluster'], 
+                         'localhost': response['localhost']})
 
             if updateDBname:
                 cluster_socket = connect_to_db_socket()
@@ -873,13 +875,13 @@ def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters
 
     # Get connected nodes in the cluster
     if connected:
-        cluster = [(n['url'], n['type']) for n in filter(lambda x: x['status'] == 'connected',
-                    all_nodes)]
+        cluster = [(n['url'], n['type'], n['localhost']) for n in 
+                    filter(lambda x: x['status'] == 'connected', all_nodes)]
     else:
-        cluster = [(n['url'], n['type']) for n in all_nodes]
+        cluster = [(n['url'], n['type'], n['localhost']) for n in all_nodes]
     # search the index of the localhost in the cluster
     try:
-        localhost_index = next (x[0] for x in enumerate(cluster) if x[1][0] == 'localhost')
+        localhost_index = next (x[0] for x in enumerate(cluster) if x[1][2])
     except StopIteration:
         logging.error("Cluster nodes are not correctly configured at ossec.conf.")
         raise WazuhException(3004, "Cluster nodes are not correctly configured at ossec.conf.")
@@ -887,7 +889,7 @@ def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters
     if not return_info_for_masters and cluster[localhost_index][1] == 'master':
         return [] # if the master is no the actual one, it doesnt send any messages
     
-    return list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
+    return list(map(itemgetter(0,1), compress(cluster, map(lambda x: x != localhost_index, range(len(cluster))))))
 
 def get_file_status_of_one_node(node, own_items_names, cluster_socket, all_items=None):
     # check files in database
