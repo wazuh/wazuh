@@ -54,6 +54,8 @@ try:
 except:
     compression = zipfile.ZIP_STORED
 
+actual_master = ''
+
 def check_cluster_status():
     """
     Function to check if cluster is enabled
@@ -297,6 +299,8 @@ def get_nodes(updateDBname=False):
 
     :param updateDBname: Flag to decide if update cluster nodes name database or not
     """
+    global actual_master
+    
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
@@ -325,6 +329,7 @@ def get_nodes(updateDBname=False):
         if not chosen_master and response['type'] == 'master':
             chosen_master = True
             response['type'] = 'actual master'
+            actual_master = response['node']
             if url == "localhost":
                 config_cluster['node_type'] = 'actual master'
 
@@ -738,14 +743,15 @@ def _check_removed_agents(new_client_keys):
                 logging.error("Error deleting agent {0}: {1}".format(agent_id, str(e)))
 
 
-def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master'):
+def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master', node_name=''):
     # Set Timezone to epoch converter
     # environ['TZ']='UTC'
+    global actual_master
 
     if path.basename(fullpath) == 'client.keys':
         if node_type=='client':
             _check_removed_agents(new_content.split('\n'))
-        else:
+        elif node_name == actual_master:
             logging.warning("Client.keys file received in a master node.")
             raise WazuhException(3007)
 
@@ -840,7 +846,8 @@ def receive_zip(zip_file):
                             umask_int=remote_umask,
                             mtime=content['time'],
                             w_mode=remote_write_mode,
-                            node_type=config['node_type'])
+                            node_type=config['node_type'],
+                            node_name=config['name'])
 
         except Exception as e:
             logging.error("Error extracting zip file: {0}".format(str(e)))
@@ -880,7 +887,7 @@ def get_file_status_of_one_node(node, own_items_names, cluster_socket, all_items
     # check files in database
     node_url, node_type = node
 
-    own_items = own_items_names if node_type == 'client' and not all_items else all_items
+    own_items = own_items_names if node_type == 'client' or not all_items else all_items
 
     count_query = "count {0}".format(node_url)
     send_to_socket(cluster_socket, count_query)
