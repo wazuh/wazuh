@@ -124,11 +124,11 @@ def _get_nodes_status(node_list):
     all_nodes = get_nodes()
 
     if node_list:
-        node_info = [[y['node'], y['status'], y['url']] for y in all_nodes['items'] if y['node'] in node_list]
+        node_info = [[y['node'], y['type'], y['status'], y['url']] for y in all_nodes['items'] if y['node'] in node_list]
     else:
-        node_info = [[x['node'], x['status'], x['url']] for x in all_nodes['items']]
+        node_info = [[x['node'], x['type'], x['status'], x['url']] for x in all_nodes['items']]
 
-    print pprint_table(data=node_info, headers=["Node","Status","Address"], show_header=True)
+    print pprint_table(data=node_info, headers=["Node","Type","Status","Address"], show_header=True)
 
 def signal_handler(n_signal, frame):
     exit(1)
