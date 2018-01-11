@@ -44,6 +44,7 @@ try:
         from wazuh.exception import WazuhException
         from wazuh.utils import check_output
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
+        import wazuh.syscheck as syscheck
     except Exception as e:
         print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
         exit()
@@ -109,7 +110,27 @@ class WazuhClusterHandler(asynchat.async_chat):
             elif command[0] == SYSCHECK_LAST_SCAN:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 agent = args.split(" ")
-                res = syscheck_last_scan(agent[0])
+                res = syscheck.last_scan(agent[0])
+            elif command[0] == SYSCHECK_RUN:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                if (len(args) == 2):
+                    agents = args[0]
+                    all_agents = ast.literal_eval(args[1])
+                else:
+                    agents = None
+                    all_agents = ast.literal_eval(args[0])
+                res = syscheck.run(agents, all_agents)
+            elif command[0] == SYSCHECK_CLEAR:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                if (len(args) == 2):
+                    agents = args[0]
+                    all_agents = ast.literal_eval(args[1])
+                else:
+                    agents = None
+                    all_agents = ast.literal_eval(args[0])
+                res = syscheck.clear(agents, all_agents)
             elif command[0] == 'ready':
                 # sync_one_node(False, self.addr)
                 res = "Starting to sync client's files"

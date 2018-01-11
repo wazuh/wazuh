@@ -31,7 +31,6 @@ import re
 import socket
 import asyncore
 import asynchat
-import wazuh.syscheck as syscheck
 
 # import the C accelerated API of ElementTree
 try:
@@ -170,13 +169,15 @@ def get_status_json():
 
 
 # API Messages
-
-request_type = []
-RESTART_AGENTS = "restart"  # restart
-request_type.append(RESTART_AGENTS)
-SYSCHECK_LAST_SCAN = "syscheck_last"  # restart
-request_type.append(SYSCHECK_LAST_SCAN)
-
+list_request_type = []
+RESTART_AGENTS = "restart"
+list_request_type.append(RESTART_AGENTS)
+SYSCHECK_LAST_SCAN = "syscheck_last"
+list_request_type.append(SYSCHECK_LAST_SCAN)
+SYSCHECK_RUN = "syscheck_run"
+list_request_type.append(SYSCHECK_RUN)
+SYSCHECK_CLEAR = "syscheck_clear"
+list_request_type.append(SYSCHECK_CLEAR)
 
 def check_cluster_cmd(cmd, node_type):
     # cmd must be a list
@@ -196,7 +197,7 @@ def check_cluster_cmd(cmd, node_type):
         return True
 
     # check command type
-    if not cmd[0] in ['zip', 'node'] and not cmd[0] in request_type:
+    if not cmd[0] in ['zip', 'node'] and not cmd[0] in list_request_type:
         return False
 
     # second argument of zip is a number
@@ -1193,7 +1194,20 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
             if current_result.get('data') == None:
                 current_result = result_node
     elif request_type == SYSCHECK_LAST_SCAN:
-        current_result = result_node['data']
+        if result_node.get('data') != None:
+            current_result = result_node['data']
+        elif result_node.get('message') != None:
+            current_result = result_node['message']
+    elif request_type == SYSCHECK_RUN:
+        if result_node.get('data') != None:
+            current_result = result_node['data']
+        elif result_node.get('message') != None:
+            current_result = result_node['message']
+    elif request_type == SYSCHECK_CLEAR:
+        if result_node.get('data') != None:
+            current_result = result_node['data']
+        elif result_node.get('message') != None:
+            current_result = result_node['message']
     else:
         current_result[node] = result_node
     return current_result
@@ -1258,8 +1272,9 @@ def is_cluster_running():
     return status()['wazuh-clusterd'] == 'running'
 
 
-def distributed_api_request(request_type, node_agents, args):
+def distributed_api_request(request_type, agent_id, args):
     config_cluster = read_config()
+    node_agents = get_agents_by_node(agent_id)
     return send_request_to_nodes(node_agents, config_cluster, request_type, args)
 
 
@@ -1268,22 +1283,8 @@ def restart_agents(agent_id=None, restart_all=False):
         return Agent.restart_agents(agent_id, restart_all)
     else:
         if not is_cluster_running():
-            raise WazuhException(3015, str(e))
+            raise WazuhException(3015)
 
         request_type = RESTART_AGENTS
-        node_agents = get_agents_by_node(agent_id)
         args = [str(restart_all)]
-        return distributed_api_request(request_type, node_agents, args)
-
-
-def syscheck_last_scan(agent_id):
-    if is_a_local_request():
-        return syscheck.last_scan(agent_id)
-    else:
-        if not is_cluster_running():
-            raise WazuhException(3015, str(e))
-
-        request_type = SYSCHECK_LAST_SCAN
-        node_agents = get_agents_by_node(agent_id)
-        args = []
-        return distributed_api_request(request_type, node_agents, args)
+        return distributed_api_request(request_type, agent_id, args)

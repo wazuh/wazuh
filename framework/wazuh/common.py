@@ -82,7 +82,7 @@ database_limit = 500
 
 # Cluster protocol
 global cluster_protocol_plain_size
-cluster_protocol_plain_size = 14
+cluster_protocol_plain_size = 18
 
 def get_encrypted_size(plain_size):
     # Token format: https://github.com/fernet/spec/blob/master/Spec.md
