@@ -295,20 +295,33 @@ def read_config():
 
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
 
-def get_actual_master():
-    cluster_socket = connect_to_db_socket()
+def get_actual_master(csocket=None):
+    if not csocket:
+        cluster_socket = connect_to_db_socket()
+    else:
+        cluster_socket = csocket
+
     send_to_socket(cluster_socket, "selactual")
     name = receive_data_from_db_socket(cluster_socket)
-    cluster_socket.close()
+
+    if not csocket:
+        cluster_socket.close()
+
     return name
 
-def insert_actual_master(node_name):
-    cluster_socket = connect_to_db_socket()
+def insert_actual_master(node_name, csocket=None):
+    if not csocket:
+        cluster_socket = connect_to_db_socket()
+    else:
+        cluster_socket = csocket
+
     send_to_socket(cluster_socket, "insertactual {0}".format(node_name))
     receive_data_from_db_socket(cluster_socket)
-    cluster_socket.close()
 
-def select_actual_master(nodes):
+    if not csocket:
+        cluster_socket.close()
+
+def select_actual_master(nodes, cluster_socket=None):
     # check if there's already one actual master
     if len(list(filter(lambda x: x == 'master(*)', map(itemgetter('type'), nodes)))) > 0:
         return nodes
@@ -317,13 +330,13 @@ def select_actual_master(nodes):
     for node in nodes:
         if node['type'] == 'master':
             node['type'] = 'master(*)'
-            insert_actual_master(node['node'])
+            insert_actual_master(node['node'], cluster_socket)
             break
 
     return nodes
 
 
-def get_nodes(updateDBname=False):
+def get_nodes(updateDBname=False, cluster_socket=None):
     """
     Function to get information about all nodes in the cluster.
 
@@ -351,7 +364,7 @@ def get_nodes(updateDBname=False):
                     error_response = True
         else:
             error = 0
-            response = get_node()
+            response = get_node(cluster_socket=cluster_socket)
             response['localhost'] = True
 
         if error == 1:
@@ -370,21 +383,25 @@ def get_nodes(updateDBname=False):
                          'localhost': response['localhost']})
 
             if updateDBname:
-                cluster_socket = connect_to_db_socket()
+                if not cluster_socket:
+                    csocket = connect_to_db_socket()
+                else:
+                    csocket = cluster_socket
 
                 query = "insertname " +response['node'] + " " + url 
-                send_to_socket(cluster_socket, query)
-                receive_data_from_db_socket(cluster_socket)
+                send_to_socket(csocket, query)
+                receive_data_from_db_socket(csocket)
 
-                cluster_socket.close()
+                if not cluster_socket:
+                    csocket.close()
 
-    select_actual_master(data)
+    select_actual_master(data, cluster_socket)
 
     return {'items': data, 'totalItems': len(data)}
 
 
 
-def get_node(name=None):
+def get_node(name=None, cluster_socket=None):
     data = {}
     if not name:
         config_cluster = read_config()
@@ -394,7 +411,7 @@ def get_node(name=None):
 
         data["node"]    = config_cluster["node_name"]
         data["cluster"] = config_cluster["name"]
-        if get_actual_master() == data['node']:
+        if get_actual_master(cluster_socket) == data['node']:
             data["type"] = "master(*)"
         else:
             data["type"] = config_cluster["node_type"]
@@ -553,7 +570,7 @@ def get_file_status_all_managers(file_list, manager):
                 raise WazuhException(3014, m)
 
         manager = fix_manager
-
+    cluster_socket.close()
 
     files = []
 
@@ -563,6 +580,7 @@ def get_file_status_all_managers(file_list, manager):
     else:
         remote_nodes = map(itemgetter(0), nodes)
 
+    cluster_socket = connect_to_db_socket()
     for node in remote_nodes:
         all_files = get_file_status(node, cluster_socket)
         if file_list == []:
@@ -904,8 +922,8 @@ def receive_zip(zip_file):
 def divide_list(l, size=1000):
     return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
 
-def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters=False):
-    all_nodes = get_nodes(updateDBname)['items']
+def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters=False, cluster_socket=None):
+    all_nodes = get_nodes(updateDBname=updateDBname, cluster_socket=cluster_socket)['items']
 
     # Get connected nodes in the cluster
     if connected:
