@@ -1066,6 +1066,13 @@ def save_actual_master_data_on_db(data):
         if not node_ip in localhost_ips:
             get_file_status_of_one_node((node_ip, 'client'), list_files_from_filesystem('master', get_cluster_items()).keys(), cluster_socket)
             update_node_db_after_sync(node_data, node_ip, cluster_socket)
+        else:
+            # save files status received from master in database
+            send_to_socket(cluster_socket, "getip {0}".format(get_actual_master(csocket=cluster_socket)))
+            actual_master_ip = receive_data_from_db_socket(cluster_socket)
+            get_file_status_of_one_node((actual_master_ip, 'master'), list_files_from_filesystem('master', get_cluster_items()).keys(), cluster_socket)
+            update_node_db_after_sync(node_data, actual_master_ip, cluster_socket)
+            
     cluster_socket.close()
 
 
