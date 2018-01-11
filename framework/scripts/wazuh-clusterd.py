@@ -96,7 +96,7 @@ class WazuhClusterHandler(asynchat.async_chat):
             elif command[0] == 'zip':
                 zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 res = extract_zip(zip_bytes)
-            elif command[0] == 'restart':
+            elif command[0] == RESTART_AGENTS:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 if (len(args) == 2):
@@ -106,6 +106,10 @@ class WazuhClusterHandler(asynchat.async_chat):
                     agents = None
                     restart_all = ast.literal_eval(args[0])
                 res = restart_agents(agents, restart_all)
+            elif command[0] == SYSCHECK_LAST_SCAN:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                agent = args.split(" ")
+                res = syscheck_last_scan(agent[0])
             elif command[0] == 'ready':
                 # sync_one_node(False, self.addr)
                 res = "Starting to sync client's files"

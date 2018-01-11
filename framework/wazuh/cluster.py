@@ -31,6 +31,7 @@ import re
 import socket
 import asyncore
 import asynchat
+import wazuh.syscheck as syscheck
 
 # import the C accelerated API of ElementTree
 try:
@@ -173,6 +174,8 @@ def get_status_json():
 request_type = []
 RESTART_AGENTS = "restart"  # restart
 request_type.append(RESTART_AGENTS)
+SYSCHECK_LAST_SCAN = "syscheck_last"  # restart
+request_type.append(SYSCHECK_LAST_SCAN)
 
 
 def check_cluster_cmd(cmd, node_type):
@@ -1132,7 +1135,7 @@ def get_node_agent(agent_id):
         send_to_socket(cluster_socket, "getip {0}".format(node_name))
         data = receive_data_from_db_socket(cluster_socket)
     except:
-        logging.warning("Unknown manager of agent {0}".format(agent_id))
+        logging.warning("Can't find agent {0}".format(agent_id))
         data = None
     cluster_socket.close()
     return data
@@ -1189,6 +1192,8 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
         else:
             if current_result.get('data') == None:
                 current_result = result_node
+    elif request_type == SYSCHECK_LAST_SCAN:
+        current_result = result_node['data']
     else:
         current_result[node] = result_node
     return current_result
@@ -1212,12 +1217,14 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args):
 
     for node_id in remote_nodes_addr:
         if node_id != None:
-            logging.info("Sending {2} request from {0} to {1}".format(local_node, str(remote_nodes), args[0]))
+            logging.info("Sending {2} request from {0} to {1}".format(local_node, node_id, request_type))
 
             # Push agents id
             if remote_nodes.get(node_id) != None:
                 agents = "-".join(remote_nodes[node_id])
-                msg = agents + " " + args_str
+                msg = agents
+                if args_str > 0:
+                    msg = msg + " " + args_str
             else:
                 msg = args_str
 
@@ -1231,7 +1238,7 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args):
             for id in remote_nodes[node_id]:
                 node = {}
                 node['id'] = id
-                node['error'] = {'message':"Unknown manager of agent",'code':-1}
+                node['error'] = {'message':"Agent not found",'code':-1}
                 result_node['data']['failed_ids'].append(node)
         result_nodes[node_id] = result_node
 
@@ -1251,12 +1258,17 @@ def is_cluster_running():
     return status()['wazuh-clusterd'] == 'running'
 
 
+def distributed_api_request(request_type, node_agents, args):
+    config_cluster = read_config()
+    return send_request_to_nodes(node_agents, config_cluster, request_type, args)
+
+
 def restart_agents(agent_id=None, restart_all=False):
     if is_a_local_request():
         return Agent.restart_agents(agent_id, restart_all)
     else:
         if not is_cluster_running():
-            raise WazuhException("Cluster is not running. Cluster status: {0}".format(status()['wazuh-clusterd']))
+            raise WazuhException(3015, str(e))
 
         request_type = RESTART_AGENTS
         node_agents = get_agents_by_node(agent_id)
@@ -1264,7 +1276,14 @@ def restart_agents(agent_id=None, restart_all=False):
         return distributed_api_request(request_type, node_agents, args)
 
 
-def distributed_api_request(request_type, node_agents, args):
-    config_cluster = read_config()
-    if request_type is RESTART_AGENTS:
-        return send_request_to_nodes(node_agents, config_cluster, request_type, args)
+def syscheck_last_scan(agent_id):
+    if is_a_local_request():
+        return syscheck.last_scan(agent_id)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015, str(e))
+
+        request_type = SYSCHECK_LAST_SCAN
+        node_agents = get_agents_by_node(agent_id)
+        args = []
+        return distributed_api_request(request_type, node_agents, args)
