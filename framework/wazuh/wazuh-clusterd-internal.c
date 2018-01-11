@@ -143,9 +143,17 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
         }
 
         char *create4 = "CREATE TABLE IF NOT EXISTS node_name_ip (" \
-                        "name      TEXT," \
+                        "name       TEXT," \
                         "id_manager TEXT PRIMARY KEY)";
         rc = sqlite3_exec(db, create4, NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            sqlite3_close(db);
+            mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
+        }
+
+        char *create5 = "CREATE TABLE IF NOT EXISTS actual_master (" \
+                        "node_name TEXT PRIMARY KEY)";
+        rc = sqlite3_exec(db, create5, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
             mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
@@ -230,6 +238,10 @@ void* daemon_socket() {
     char *sql_sel_ip_by_name = "SELECT id_manager FROM node_name_ip WHERE name = ?";
     char *sql_upd_ip_name = "UPDATE node_name_ip SET name = ? WHERE id_manager = ?";
     char *sql_ins_ip_name = "INSERT OR REPLACE INTO node_name_ip VALUES (?,?)";
+    // SQL sentence to get the actual master
+    char *sql_sel_actual = "SELECT * FROM actual_master";
+    char *sql_ins_actual = "INSERT OR REPLACE INTO actual_master VALUES (?)";
+    char *sql_del_actual = "DELETE FROM actual_master";
 
     char *sql;
     bool has1, has2, has3, select, count, select_last_sync, select_files, response_str;
@@ -331,6 +343,15 @@ void* daemon_socket() {
                 sql = sql_ins_ip_name;
                 has1 = true; // name
                 has2 = true; // ip
+            } else if (cmd != NULL && strcmp(cmd, "insertactual") == 0) {
+                sql = sql_ins_actual;
+                has1 = true;
+            } else if (cmd != NULL && strcmp(cmd, "selactual") == 0) {
+                sql = sql_sel_actual;
+                select = true;
+                strcpy(response, " ");
+            } else if (cmd != NULL && strcmp(cmd, "delactual") == 0) {
+                sql = sql_del_actual;
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
@@ -411,12 +432,13 @@ void* daemon_socket() {
                     sqlite3_close(db);
                     mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
                 }
-                if (select_last_sync || count) {
+                if (select_last_sync || count || select) {
                     do {
                         step = sqlite3_step(res);
                         if (step != SQLITE_ROW && step != SQLITE_OK) break;
                         if (select_last_sync) sprintf(response, "%d %lf", sqlite3_column_int(res, 0), sqlite3_column_double(res, 1));
                         else if (count) sprintf(response, "%d", sqlite3_column_int(res, 0));
+                        else if (select) sprintf(response, "%s", (char *)sqlite3_column_text(res, 0));
                     } while (step == SQLITE_ROW || step == SQLITE_OK);
                 } else strcpy(response, "Command OK");
             }

@@ -54,8 +54,6 @@ try:
 except:
     compression = zipfile.ZIP_STORED
 
-actual_master = ''
-
 def check_cluster_status():
     """
     Function to check if cluster is enabled
@@ -297,14 +295,40 @@ def read_config():
 
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
 
+def get_actual_master():
+    cluster_socket = connect_to_db_socket()
+    send_to_socket(cluster_socket, "selactual")
+    name = receive_data_from_db_socket(cluster_socket)
+    cluster_socket.close()
+    return name
+
+def insert_actual_master(node_name):
+    cluster_socket = connect_to_db_socket()
+    send_to_socket(cluster_socket, "insertactual {0}".format(node_name))
+    receive_data_from_db_socket(cluster_socket)
+    cluster_socket.close()
+
+def select_actual_master(nodes):
+    # check if there's already one actual master
+    if len(list(filter(lambda x: x == 'master(*)', map(itemgetter('type'), nodes)))) > 0:
+        return nodes
+
+    # if there's no actual master, select one
+    for node in nodes:
+        if node['type'] == 'master':
+            node['type'] = 'master(*)'
+            insert_actual_master(node['node'])
+            break
+
+    return nodes
+
+
 def get_nodes(updateDBname=False):
     """
     Function to get information about all nodes in the cluster.
 
     :param updateDBname: Flag to decide if update cluster nodes name database or not
     """
-    global actual_master
-    
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
@@ -312,7 +336,6 @@ def get_nodes(updateDBname=False):
     # list with all the ips the localhost has
     localhost_ips = get_localhost_ips()
     data = []
-    chosen_master = False
     error_response = False
 
     for url in sorted(config_cluster["nodes"]):
@@ -340,13 +363,6 @@ def get_nodes(updateDBname=False):
             error_response = False
             continue
 
-        if not chosen_master and response['type'] == 'master':
-            chosen_master = True
-            response['type'] = 'master(*)'
-            actual_master = response['node']
-            if response['localhost']:
-                config_cluster['node_type'] = 'master(*)'
-
         if 'master' in config_cluster['node_type'] or \
             'master' in response['type'] or response['localhost']:
             data.append({'url':url, 'node':response['node'], 'type': response['type'],
@@ -362,6 +378,8 @@ def get_nodes(updateDBname=False):
 
                 cluster_socket.close()
 
+    select_actual_master(data)
+
     return {'items': data, 'totalItems': len(data)}
 
 
@@ -376,7 +394,10 @@ def get_node(name=None):
 
         data["node"]    = config_cluster["node_name"]
         data["cluster"] = config_cluster["name"]
-        data["type"]    = config_cluster["node_type"]
+        if get_actual_master() == data['node']:
+            data["type"] = "master(*)"
+        else:
+            data["type"] = config_cluster["node_type"]
 
     return data
 
@@ -600,14 +621,19 @@ def update_file_info_bd(cluster_socket, files):
 def clear_file_status():
     """
     Function to set all database files' status to pending
+
+    Cleans actual_master table
     """
+    cluster_socket = connect_to_db_socket(retry=True)
+    # clean last actual master node
+    send_to_socket(cluster_socket, "delactual");
+    receive_data_from_db_socket(cluster_socket)
+
     # Get information of files from filesystem
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
     own_items = list_files_from_filesystem(config_cluster['node_type'], get_cluster_items())
-
-    cluster_socket = connect_to_db_socket(retry=True)
 
     # n files DB
     send_to_socket(cluster_socket, "countfiles")
@@ -764,12 +790,10 @@ def _check_removed_agents(new_client_keys):
 def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master', node_name=''):
     # Set Timezone to epoch converter
     # environ['TZ']='UTC'
-    global actual_master
-
     if path.basename(fullpath) == 'client.keys':
         if node_type=='client':
             _check_removed_agents(new_content.split('\n'))
-        elif node_name == actual_master:
+        elif node_name == get_actual_master():
             logging.warning("Client.keys file received in a master node.")
             raise WazuhException(3007)
 
