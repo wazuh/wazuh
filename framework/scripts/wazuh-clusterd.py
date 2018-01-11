@@ -117,7 +117,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         else:
             error = str(v)
 
-        logging.error("Error handling client request: {0}".format(error))
+        logging.error("Error handling request: {0}".format(error))
         self.data = json.dumps({'error': 1, 'data': error})
         self.handle_write()
 
@@ -150,7 +150,7 @@ class WazuhClusterServer(asyncore.dispatcher):
         self.listen(50)
 
         cluster_info = read_config()
-        logging.info("Starting cluster {0}".format(cluster_info['name']))
+        logging.info("Starting cluster '{0}'".format(cluster_info['name']))
         logging.info("Listening on port {0}.".format(port))
         logging.info("{0} nodes found in configuration".format(len(cluster_info['nodes'])))
         logging.info("Synchronization interval: {0}".format(cluster_info['interval']))
@@ -199,8 +199,8 @@ def crontab_sync_master(interval):
 
 def crontab_sync_client():
     def sync_handler(n_signal, frame):
-        master = get_remote_nodes()[0][0]
-        sync_one_node(False, master)
+        master_ip, _, master_name = get_remote_nodes()[0]
+        sync_one_node(False, master_ip, master_name)
 
     signal(SIGUSR1, sync_handler)
     while True:
