@@ -737,7 +737,7 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", node_name="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None):
         """
         Gets a list of available agents with basic attributes.
 
@@ -776,7 +776,6 @@ class Agent:
                                     format(valid_select_fields, incorrect_fields))
             select_fields |= set(select['fields'])
         else:
-            valid_select_fields.remove('node_name') # only return node_type if asked
             select_fields = valid_select_fields
 
         set_select_fields = set(select['fields']) if select else select_fields
@@ -802,6 +801,9 @@ class Agent:
         if manager_host != "all":
             request['manager_host'] = manager_host
             query += ' AND manager_host = :manager_host'
+        if node_name != "all":
+            request['node_name'] = node_name
+            query += ' AND node_name = :node_name'
 
         # Search
         if search:
