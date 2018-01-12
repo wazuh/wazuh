@@ -383,6 +383,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
     else:
         logging.debug("Retrieving {0}'s files from database".format(node))
         all_files = get_file_status(node, cluster_socket)
+        all_files = {f['filename']:f['status'] for f in all_files}
         # if there are missing files that are not being controled in database
         # add them as pending
         for missing in divide_list(set(own_items_names) - set(all_files.keys())):
@@ -472,20 +473,24 @@ def list_files_from_filesystem(node_type, cluster_items):
 
     return dict(filter(lambda x: not x[1]['is_synced'], final_items.items()))
 
-def get_file_status(manager, cluster_socket):
-    count_query = "count {0}".format(manager)
-    send_to_socket(cluster_socket, count_query)
-    n_files = int(receive_data_from_db_socket(cluster_socket))
+def get_file_status(manager, cluster_socket, offset=0, limit=None):
+    if not limit:
+        count_query = "count {0}".format(manager)
+        send_to_socket(cluster_socket, count_query)
+        n_files = int(receive_data_from_db_socket(cluster_socket))
+        limit = n_files
+        step = 100
+    else:
+        step = limit if limit < 100 else 100 
 
-    query = "select {0} 100 ".format(manager)
+    query = "select {0} {1} ".format(manager, step)
     file_status = ""
-    # limit = 100
-    for offset in range(0,n_files,100):
-        send_to_socket(cluster_socket, query + str(offset))
+    for off in range(offset,limit,step):
+        send_to_socket(cluster_socket, query + str(off))
         file_status += receive_data_from_db_socket(cluster_socket)
 
     # retrieve all files for a node in database with its status
-    all_files = {f[0]:f[1] for f in map(lambda x: x.split('*'), filter(lambda x: x != '', file_status.split(' ')))}
+    all_files = [{'filename':f[0], 'status':f[1]} for f in map(lambda x: x.split('*'), filter(lambda x: x != '', file_status.split(' ')))]
 
     return all_files
 
@@ -520,9 +525,11 @@ def get_file_status_all_managers(file_list, manager):
     for node in remote_nodes:
         all_files = get_file_status(node, cluster_socket)
         if file_list == []:
-            file_list = all_files.keys()
+            local_file_list = all_files
+        else:
+            local_file_list = filter(lambda x: x['filename'] in file_list, all_files)
 
-        files.extend([[node, file, all_files[file]] for file in file_list])
+        files.extend([[node, file['filename'], file['status']] for file in local_file_list])
 
     cluster_socket.close()
     return files
@@ -547,7 +554,7 @@ def clear_file_status_one_node(manager, cluster_socket):
     """
     Function to set the status of all manager's files to pending
     """
-    files = get_file_status(manager, cluster_socket).keys()
+    files = map(itemgetter('filename'), get_file_status(manager, cluster_socket))
 
     update_sql = "update2"
     for file in files:
@@ -642,6 +649,19 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, off
     cluster_dict['totalItems'] = len(cluster_dict['items'])
     cluster_dict['items'] = dict(cluster_dict['items'].items()[offset:offset+limit])
     return cluster_dict
+
+def get_file_status_one_node_json(node_id, file_list = {'fields':[]}, offset=0, limit=common.database_limit):
+    cluster_socket = connect_to_db_socket()
+
+    count_query = "count {0}".format(node_id)
+    send_to_socket(cluster_socket, count_query)
+    n_files = int(receive_data_from_db_socket(cluster_socket))
+
+    files = get_file_status(manager=node_id, cluster_socket=cluster_socket, offset=int(offset), limit=int(limit))
+
+    cluster_socket.close()
+
+    return {'items': files, 'totalItems': n_files}
 
 def get_agents_status():
     """
@@ -896,6 +916,7 @@ def get_file_status_of_one_node(node, own_items_names, cluster_socket):
     else:
         logging.debug("Retrieving {0}'s files from database".format(node))
         all_files = get_file_status(node, cluster_socket)
+        all_files = {f['filename']:f['status'] for f in all_files}
         # if there are missing files that are not being controled in database
         # add them as pending
         for missing in divide_list(set(own_items_names) - set(all_files.keys())):
