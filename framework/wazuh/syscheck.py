@@ -56,7 +56,7 @@ def run(agent_id=None, all_agents=False):
     :param all_agents: Run rootcheck/syscheck in all agents.
     :return: Message.
     """
-    if cluster.is_a_local_request():
+    if cluster.is_a_local_request() or agent_id == "000":
         return run_local(agent_id, all_agents)
     else:
         if not cluster.is_cluster_running():
@@ -114,7 +114,7 @@ def clear(agent_id=None, all_agents=False):
     :param all_agents: For all agents.
     :return: Message.
     """
-    if cluster.is_a_local_request():
+    if cluster.is_a_local_request() or agent_id == "000":
         return clear_local(agent_id, all_agents)
     else:
         if not cluster.is_cluster_running():
@@ -158,7 +158,7 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
-    if cluster.is_a_local_request():
+    if cluster.is_a_local_request() or agent_id == "000":
         return last_scan_local(agent_id)
     else:
         if not cluster.is_cluster_running():

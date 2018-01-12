@@ -45,6 +45,7 @@ try:
         from wazuh.utils import check_output
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
         import wazuh.syscheck as syscheck
+        import wazuh.rootcheck as rootcheck
     except Exception as e:
         print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
         exit()
@@ -131,6 +132,65 @@ class WazuhClusterHandler(asynchat.async_chat):
                     agents = None
                     all_agents = ast.literal_eval(args[0])
                 res = syscheck.clear(agents, all_agents)
+            elif command[0] == ROOTCHECK_PCI:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                index = 0
+                agents = None
+                if (len(args) == 5):
+                    agents = args[0]
+                    index = index + 1
+                offset = ast.literal_eval(args[index])
+                index = index + 1
+                limit = ast.literal_eval(args[index])
+                index = index + 1
+                sort = ast.literal_eval(args[index])
+                index = index + 1
+                search = ast.literal_eval(args[index])
+                res = args
+                res = rootcheck.get_pci(agents, offset, limit, sort, search)
+            elif command[0] == ROOTCHECK_CIS:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                index = 0
+                agents = None
+                if (len(args) == 5):
+                    agents = args[0]
+                    index = index + 1
+                offset = ast.literal_eval(args[index])
+                index = index + 1
+                limit = ast.literal_eval(args[index])
+                index = index + 1
+                sort = ast.literal_eval(args[index])
+                index = index + 1
+                search = ast.literal_eval(args[index])
+                res = args
+                res = rootcheck.get_cis(agents, offset, limit, sort, search)
+            elif command[0] == ROOTCHECK_LAST_SCAN:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                agent = args.split(" ")
+                res = rootcheck.last_scan(agent[0])
+            elif command[0] == ROOTCHECK_RUN:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                if (len(args) == 2):
+                    agents = args[0]
+                    all_agents = ast.literal_eval(args[1])
+                else:
+                    agents = None
+                    all_agents = ast.literal_eval(args[0])
+                res = rootcheck.run(agents, all_agents)
+            elif command[0] == ROOTCHECK_CLEAR:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                if (len(args) == 2):
+                    agents = args[0]
+                    all_agents = ast.literal_eval(args[1])
+                else:
+                    agents = None
+                    all_agents = ast.literal_eval(args[0])
+                res = rootcheck.clear(agents, all_agents)
+
             elif command[0] == 'ready':
                 # sync_one_node(False, self.addr)
                 res = "Starting to sync client's files"

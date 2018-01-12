@@ -178,6 +178,16 @@ SYSCHECK_RUN = "syscheck_run"
 list_request_type.append(SYSCHECK_RUN)
 SYSCHECK_CLEAR = "syscheck_clear"
 list_request_type.append(SYSCHECK_CLEAR)
+ROOTCHECK_PCI = "rootcheck_pci"
+list_request_type.append(ROOTCHECK_PCI)
+ROOTCHECK_CIS = "rootcheck_cis"
+list_request_type.append(ROOTCHECK_CIS)
+ROOTCHECK_LAST_SCAN = "rootcheck_last"
+list_request_type.append(ROOTCHECK_LAST_SCAN)
+ROOTCHECK_RUN = "rootcheck_run"
+list_request_type.append(ROOTCHECK_RUN)
+ROOTCHECK_CLEAR = "rootcheck_clear"
+list_request_type.append(ROOTCHECK_CLEAR)
 
 def check_cluster_cmd(cmd, node_type):
     # cmd must be a list
@@ -1193,23 +1203,12 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
         else:
             if current_result.get('data') == None:
                 current_result = result_node
-    elif request_type == SYSCHECK_LAST_SCAN:
-        if result_node.get('data') != None:
-            current_result = result_node['data']
-        elif result_node.get('message') != None:
-            current_result = result_node['message']
-    elif request_type == SYSCHECK_RUN:
-        if result_node.get('data') != None:
-            current_result = result_node['data']
-        elif result_node.get('message') != None:
-            current_result = result_node['message']
-    elif request_type == SYSCHECK_CLEAR:
-        if result_node.get('data') != None:
-            current_result = result_node['data']
-        elif result_node.get('message') != None:
-            current_result = result_node['message']
     else:
-        current_result[node] = result_node
+        if result_node.get('data') != None:
+            current_result = result_node['data']
+        elif result_node.get('message') != None:
+            current_result = result_node['message']
+        #current_result[node] = result_node
     return current_result
 
 
@@ -1272,7 +1271,7 @@ def is_cluster_running():
     return status()['wazuh-clusterd'] == 'running'
 
 
-def distributed_api_request(request_type, agent_id, args):
+def distributed_api_request(request_type, agent_id, args=[]):
     config_cluster = read_config()
     node_agents = get_agents_by_node(agent_id)
     return send_request_to_nodes(node_agents, config_cluster, request_type, args)
