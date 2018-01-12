@@ -172,6 +172,12 @@ def get_status_json():
 list_request_type = []
 RESTART_AGENTS = "restart"
 list_request_type.append(RESTART_AGENTS)
+AGENTS_UPGRADE_RESULT = "agents_upg_result"
+list_request_type.append(AGENTS_UPGRADE_RESULT)
+AGENTS_UPGRADE = "agents_upg"
+list_request_type.append(AGENTS_UPGRADE)
+AGENTS_UPGRADE_CUSTOM = "agents_upg_custom"
+list_request_type.append(AGENTS_UPGRADE_CUSTOM)
 SYSCHECK_LAST_SCAN = "syscheck_last"
 list_request_type.append(SYSCHECK_LAST_SCAN)
 SYSCHECK_RUN = "syscheck_run"
@@ -1207,7 +1213,8 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
         if result_node.get('data') != None:
             current_result = result_node['data']
         elif result_node.get('message') != None:
-            current_result = result_node['message']
+            current_result['message'] = result_node['message']
+            current_result['error'] = result_node['error']
         #current_result[node] = result_node
     return current_result
 
@@ -1286,4 +1293,40 @@ def restart_agents(agent_id=None, restart_all=False):
 
         request_type = RESTART_AGENTS
         args = [str(restart_all)]
+        return distributed_api_request(request_type, agent_id, args)
+
+
+def get_upgrade_result(agent_id, timeout=3):
+    if is_a_local_request():
+        return Agent.get_upgrade_result(agent_id, timeout)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = AGENTS_UPGRADE_RESULT
+        args = [str(timeout)]
+        return distributed_api_request(request_type, agent_id, args)
+
+
+def upgrade_agent(agent_id, wpk_repo=None, version=None, force=False, chunk_size=None):
+    if is_a_local_request():
+        return Agent.upgrade_agent(agent_id, wpk_repo, version, force, chunk_size)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = AGENTS_UPGRADE
+        args = [str(wpk_repo), str(version), str(force), str(chunk_size)]
+        return distributed_api_request(request_type, agent_id, args)
+
+
+def upgrade_agent_custom(agent_id, file_path=None, installer=None):
+    if is_a_local_request():
+        return Agent.upgrade_agent_custom(agent_id, file_path, installer)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = AGENTS_UPGRADE_CUSTOM
+        args = [str(wpk_repo), str(version), str(force), str(chunk_size)]
         return distributed_api_request(request_type, agent_id, args)

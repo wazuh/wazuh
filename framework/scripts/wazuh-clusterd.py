@@ -108,6 +108,37 @@ class WazuhClusterHandler(asynchat.async_chat):
                     agents = None
                     restart_all = ast.literal_eval(args[0])
                 res = restart_agents(agents, restart_all)
+            elif command[0] == AGENTS_UPGRADE_RESULT:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                agent = args[0]
+                timeout = args[1]
+                try:
+                    res = get_upgrade_result(agent, timeout)
+                except Exception as e:
+                    res = str(e)
+            elif command[0] == AGENTS_UPGRADE:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                agent_id = args[0]
+                wpk_repo = ast.literal_eval(args[1])
+                version = ast.literal_eval(args[2])
+                force = ast.literal_eval(args[3])
+                chunk_size = ast.literal_eval(args[4])
+                try:
+                    res = upgrade_agent(agent_id, wpk_repo, version, force, chunk_size)
+                except Exception as e:
+                    res = str(e)
+            elif command[0] == AGENTS_UPGRADE_CUSTOM:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                agent_id = args[0]
+                file_path = ast.literal_eval(args[1])
+                installer = ast.literal_eval(args[2])
+                try:
+                    res = upgrade_agent_custom(agent_id, file_path, installer)
+                except Exception as e:
+                    res = str(e)
             elif command[0] == SYSCHECK_LAST_SCAN:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 agent = args.split(" ")
