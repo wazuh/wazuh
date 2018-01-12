@@ -618,26 +618,29 @@ def clear_file_status():
     cluster_socket.close()
 
 
-def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
+def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, offset=0, limit=common.database_limit):
     """
     Return a nested list where each element has the following structure
     {
-        manager: {
-            status: [
-                files
-            ]
-        }
+        manager: [
+            {'filename': ____, 'status': ____}
+        ]
     }
     """
+    offset = int(offset)
+    limit = int(limit)
+
     files = get_file_status_all_managers(file_list['fields'], manager['fields'])
-    cluster_dict = {}
+    cluster_dict = {'items':{}}
     for manager, file, status in files:
         try:
-            cluster_dict[manager][status].append(file)
+            cluster_dict['items'][manager].append({'filename':file, 'status':status})
         except KeyError:
-            cluster_dict[manager] = {}
-            cluster_dict[manager][status] = [file]
+            cluster_dict['items'][manager] = []
+            cluster_dict['items'][manager].append({'filename':file, 'status':status})
 
+    cluster_dict['totalItems'] = len(cluster_dict['items'])
+    cluster_dict['items'] = dict(cluster_dict['items'].items()[offset:offset+limit])
     return cluster_dict
 
 def get_agents_status():
