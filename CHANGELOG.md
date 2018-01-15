@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.2.0]
 
+### Added
+
+- [Add field `status` to `GET/agents/groups/:group_id` API call.](https://github.com/wazuh/wazuh/pull/338)
+
 ### Fixed
 
 - [Fixed oscap.py to support new versions of OpenSCAP scanner.](https://github.com/wazuh/wazuh/pull/331)
