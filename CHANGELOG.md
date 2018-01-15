@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- [API: Get agents from a group also returns agent status.](https://github.com/wazuh/wazuh/pull/338)
+- [Add field `status` to `GET/agents/groups/:group_id` API call.](https://github.com/wazuh/wazuh/pull/338)
 
 
 ## [v3.1.0]
