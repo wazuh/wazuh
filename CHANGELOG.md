@@ -1,6 +1,18 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.2.0]
+
+### Added
+- [Added support for multiple masters in cluster.](https://github.com/wazuh/wazuh/pull/353)
+- [Added type of node in API call `GET/cluster/nodes` and `cluster_control --nodes`](https://github.com/wazuh/wazuh/pull/353)
+
+### Fixed
+
+- [Fixed oscap.py to support new versions of OpenSCAP scanner.](https://github.com/wazuh/wazuh/pull/331)
+- [Fixed bug in cluster when receive an error response from client.](https://github.com/wazuh/wazuh/pull/346)
+- [Improved cluster logs](https://github.com/wazuh/wazuh/pull/353)
+
 ## [v3.1.0]
 
 ### Added
@@ -14,7 +26,7 @@ All notable changes to this project will be documented in this file.
 - Added alert and archive output files rotation capabilities.
 - Added rule option to discard field "firedtimes".
 - Added VULS integration for running vulnerability assessments.
-- CIS-CAT Wazuh Module to scan CIS policies. 
+- CIS-CAT Wazuh Module to scan CIS policies.
 
 ### Changed
 

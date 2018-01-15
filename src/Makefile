@@ -444,22 +444,26 @@ BUILD_AGENT+=wazuh-modulesd
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
-server: | external ${BUILD_SERVER}
+server: external
+	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
 endif
-local: | external ${BUILD_SERVER}
+local: external
+	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
 endif
-hybrid: | external ${BUILD_SERVER}
+hybrid: external
+	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
-agent: | external ${BUILD_AGENT}
+agent: external
+	${MAKE} ${BUILD_AGENT}
 
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
@@ -1068,7 +1072,7 @@ wazuh-modulesd: ${wmodulesd_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 
 ### wazuh-framework ##
 
-wazuh-framework: ${sqlite_o} ${shared_o} ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+wazuh-framework: ${sqlite_o} ${shared_o}
 	${MAKE} -C ../framework build PREFIX=${PREFIX}
 
 

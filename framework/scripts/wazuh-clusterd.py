@@ -223,10 +223,13 @@ class WazuhClusterHandler(asynchat.async_chat):
                 res = rootcheck.clear(agents, all_agents)
 
             elif command[0] == 'ready':
-                # sync_one_node(False, self.addr)
                 res = "Starting to sync client's files"
                 # execute an independent process to "crontab" the sync interval
                 kill(child_pid, SIGUSR1)
+            elif command[0] == 'data':
+                res = "Saving data from actual master"
+                actual_master_data = json.loads(self.f.decrypt(response[common.cluster_sync_msg_size:]).decode())
+                save_actual_master_data_on_db(actual_master_data)
 
             logging.debug("Command {0} executed for {1}".format(command[0], self.addr))
 
@@ -241,7 +244,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         else:
             error = str(v)
 
-        logging.error("Error handling client request: {0}".format(error))
+        logging.error("Error handling request: {0}".format(error))
         self.data = json.dumps({'error': 1, 'data': error})
         self.handle_write()
 
@@ -274,7 +277,7 @@ class WazuhClusterServer(asyncore.dispatcher):
         self.listen(50)
 
         cluster_info = read_config()
-        logging.info("Starting cluster {0}".format(cluster_info['name']))
+        logging.info("Starting cluster '{0}'".format(cluster_info['name']))
         logging.info("Listening on port {0}.".format(port))
         logging.info("{0} nodes found in configuration".format(len(cluster_info['nodes'])))
         logging.info("Synchronization interval: {0}".format(cluster_info['interval']))
@@ -300,23 +303,31 @@ def crontab_sync_master(interval):
     while True:
         logging.debug("Crontab: starting to sync")
         try:
-            sync(False)
+            sync_results = sync(True)
         except Exception as e:
             logging.error(str(e))
             kill(child_pid, SIGINT)
 
         config_cluster = read_config()
         for node in get_remote_nodes():
-            # ask clients to send updates
-            error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
-                                data="ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready "))))
+            if node[1] == 'master':
+                # send the synchronization results to the rest of masters
+                message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
+                file = json.dumps(sync_results).encode()
+            else:
+                # ask clients to send updates
+                message = "ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready ")))
+                file = None
+            
+            error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
+                                data=message, file=file)
 
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
 def crontab_sync_client():
     def sync_handler(n_signal, frame):
-        master = get_remote_nodes()[0]
-        sync_one_node(False, master)
+        master_ip, _, master_name = get_remote_nodes()[0]
+        sync_one_node(False, master_ip, master_name)
 
     signal(SIGUSR1, sync_handler)
     while True:
