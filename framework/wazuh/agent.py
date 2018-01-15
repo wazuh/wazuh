@@ -1330,7 +1330,7 @@ class Agent:
 
 
         if search:
-            data = search_array(data, search['value'], search['negation'])
+            data = search_array(data, search['value'], search['negation'], fields=['name'])
 
         if sort:
             data = sort_array(data, sort['fields'], sort['order'])

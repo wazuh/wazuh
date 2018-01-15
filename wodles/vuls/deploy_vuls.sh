@@ -23,7 +23,6 @@ WAZUH=`cat /etc/ossec-init.conf | head -1 | cut -d '"' -f 2 | sed 's/ossec\//oss
 INSTALL_PATH=$WAZUH"/wodles/vuls"
 LOG_PATH=$WAZUH"/logs/vuls"
 VULS_AGENT=$INSTALL_PATH"/vuls.py"
-PYTHON_PATH="/usr/bin/python"
 
 echo "  OS NAME: $OS_NAME"
 echo "  OS VERSION: $OS_VER"
@@ -38,13 +37,15 @@ if [ "$OS_NAME" = "redhat" ] || [ "$OS_NAME" = "centos" ] || [ "$OS_NAME" = "ora
     if [ "$OS_NAME" = "centos" ]; then
         OS_NAME="redhat"
     fi
-    sudo yum -y install sqlite git gcc make wget yum-utils
+    sudo yum -y install python which sqlite git gcc make wget yum-utils
 elif [ "$OS_NAME" = "ubuntu" ] || [ "$OS_NAME" = "debian" ]; then
-    sudo apt -y install sqlite git gcc make wget reboot-notifier
+    sudo apt -y install python which sqlite git gcc make wget reboot-notifier
 else
     echo "  Enter a valid OS"
     exit 1
 fi
+
+PYTHON_PATH=`which python`
 
 wget -O go1.8.3.linux-amd64.tar.gz https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.8.3.linux-amd64.tar.gz

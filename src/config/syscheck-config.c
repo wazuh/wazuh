@@ -1032,13 +1032,39 @@ void Free_Syscheck(syscheck_config * config) {
         }
 
     #ifdef WIN32
-        free(config->registry_ignore);
-        free(config->registry_ignore_regex);
-        free(config->registry);
-        free(config->reg_fp);
+        if (config->registry_ignore) {
+            for (i=0; config->registry_ignore[i].entry != NULL; i++) {
+                free(config->registry_ignore[i].entry);
+            }
+            free(config->registry_ignore);
+        }
+        if (config->registry_ignore_regex) {
+            for (i=0; config->registry_ignore_regex[i].regex != NULL; i++) {
+                OSMatch_FreePattern(config->registry_ignore_regex[i].regex);
+            }
+            free(config->registry_ignore_regex);
+        }
+        if (config->registry) {
+            for (i=0; config->registry[i].entry != NULL; i++) {
+                free(config->registry[i].entry);
+            }
+            free(config->registry);
+        }
+        if (config->reg_fp) {
+            fclose(config->reg_fp);
+        }
     #endif
-        free(config->fp);
-        free(config->realtime);
+        if (config->fp) {
+            OSHash_Free(config->fp);
+        }
+
+        if (config->realtime) {
+            OSHash_Free(config->realtime->dirtb);
+#ifdef WIN32
+            CloseEventLog(config->realtime->evt);
+#endif
+            free(config->realtime);
+        }
         free(config->prefilter_cmd);
     }
 }
