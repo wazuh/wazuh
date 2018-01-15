@@ -1405,9 +1405,11 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
-        valid_select_fiels = ["id", "name", "ip", "last_keepalive", "os_name",
+        valid_select_fiels = {"id", "name", "ip", "last_keepalive", "os_name",
                              "os_version", "os_platform", "os_uname", "version",
-                             "config_sum", "merged_sum", "manager_host"]
+                             "config_sum", "merged_sum", "manager_host", "status"}
+        # fields like status need to retrieve others to be properly computed.
+        dependent_select_fields = {'status': {'last_keepalive','version'}} 
         search_fields = {"id", "name", "os_name"}
 
         # Init query
@@ -1417,13 +1419,23 @@ class Agent:
 
         # Select
         if select:
-            if not set(select['fields']).issubset(valid_select_fiels):
-                uncorrect_fields = map(lambda x: str(x), set(select['fields']) - set(valid_select_fiels))
+            select_fields_param = set(select['fields'])
+
+            if not select_fields_param.issubset(valid_select_fiels):
+                uncorrect_fields = select_fields_param - valid_select_fiels
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
-                        format(valid_select_fiels, uncorrect_fields))
-            select_fields = select['fields']
+                        format(', '.join(list(valid_select_fiels)), ', '.join(uncorrect_fields)))
+
+            select_fields = select_fields_param
         else:
             select_fields = valid_select_fiels
+
+        # add dependent select fields to the database select query
+        db_select_fields = set()
+        for dependent, fields in dependent_select_fields.items():
+            if dependent in select_fields:
+                db_select_fields |= fields
+        db_select_fields |= (select_fields - set(dependent_select_fields.keys()))
 
         # Search
         if search:
@@ -1439,7 +1451,7 @@ class Agent:
         # Sorting
         if sort:
             if sort['fields']:
-                allowed_sort_fields = select_fields
+                allowed_sort_fields = db_select_fields
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
                 if not set(sort['fields']).issubset(allowed_sort_fields):
                     raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.\
@@ -1459,12 +1471,19 @@ class Agent:
             request['limit'] = limit
 
         # Data query
-        conn.execute(query.format(','.join(select_fields)), request)
+        conn.execute(query.format(','.join(db_select_fields)), request)
 
         non_nested = [{field:tuple_elem for field,tuple_elem \
-                in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
-        map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
-        map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+                in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
+
+        if 'id' in select_fields:
+            map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+
+        if 'status' in select_fields:
+            map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+
+        # return only the fields requested by the user (saved in select_fields) and not the dependent ones
+        non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
 
         data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
 
