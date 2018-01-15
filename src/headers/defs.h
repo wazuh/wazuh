@@ -119,6 +119,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Local requests socket
 #define COM_LOCAL_SOCK  "/queue/ossec/com"
 
+// Database socket
+#define WDB_LOCAL_SOCK "/queue/db/wdb"
+
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
 
@@ -167,6 +170,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Wazuh Database */
 #define WDB_DIR         "var/db"
+#define WDB2_DIR        "queue/db"
 #define WDB_GLOB_NAME   "global.db"
 #define WDB_PROF_NAME   ".profile.db"
 

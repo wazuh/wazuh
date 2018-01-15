@@ -12,6 +12,8 @@
 #ifndef WDB_H
 #define WDB_H
 
+#include <shared.h>
+#include <pthread.h>
 #include "external/sqlite/sqlite3.h"
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
@@ -39,11 +41,35 @@
 #define WDB_NETINFO_IPV4 0
 #define WDB_NETINFO_IPV6 1
 
+typedef struct wdb_t {
+    sqlite3 * db;
+    sqlite3_stmt * stmt;
+    char * agent_id;
+    unsigned int refcount;
+    unsigned int transaction:1;
+    time_t last;
+    pthread_mutex_t mutex;
+    struct wdb_t * next;
+} wdb_t;
+
+typedef struct wdb_config {
+    int sock_queue_size;
+    int worker_pool_size;
+    int commit_time;
+    int open_db_limit;
+} wdb_config;
+
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
 
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
+
+extern wdb_config config;
+extern pthread_mutex_t pool_mutex;
+extern wdb_t * db_pool;
+extern int db_pool_size;
+extern OSHash * open_dbs;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global();
@@ -53,6 +79,9 @@ void wdb_close_global();
 
 /* Open database for agent */
 sqlite3* wdb_open_agent(int id_agent, const char *name);
+
+// Open database for agent and store in DB pool. It returns a locked database or NULL
+wdb_t * wdb_open_agent2(int agent_id);
 
 /* Get the file offset. Returns -1 on error or NULL. */
 long wdb_get_agent_offset(int id_agent, int type);
@@ -111,6 +140,8 @@ char* wdb_agent_name(int id);
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_create_agent_db(int id, const char *name);
 
+int wdb_create_agent_db2(const char * agent_id);
+
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_remove_agent_db(int id);
 
@@ -122,9 +153,11 @@ int wdb_step(sqlite3_stmt *stmt);
 
 /* Begin transaction */
 int wdb_begin(sqlite3 *db);
+int wdb_begin2(wdb_t * wdb);
 
 /* Commit transaction */
 int wdb_commit(sqlite3 *db);
+int wdb_commit2(wdb_t * wdb);
 
 /* Create global database */
 int wdb_create_global(const char *path);
@@ -179,5 +212,27 @@ int wdb_insert_hwinfo(sqlite3 * db, const char * board_serial, const char * cpu_
 
 // Clean hardware info table. Return number of affected rows on success or -1 on error.
 int wdb_delete_hwinfo(sqlite3 * db);
+
+wdb_t * wdb_init(sqlite3 * db, const char * agent_id);
+
+void wdb_destroy(wdb_t * wdb);
+
+void wdb_pool_append(wdb_t * wdb);
+
+void wdb_pool_remove(wdb_t * wdb);
+
+void wdb_close_all();
+
+void wdb_commit_old();
+
+void wdb_close_old();
+
+cJSON * wdb_exec(sqlite3 * db, const char * sql);
+
+int wdb_close(wdb_t * wdb);
+
+void wdb_leave(wdb_t * wdb);
+
+wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 
 #endif

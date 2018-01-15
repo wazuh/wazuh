@@ -1,0 +1,498 @@
+/*
+ * Wazuh Database Daemon
+ * Copyright (C) 2016 Wazuh Inc.
+ * January 03, 2018.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "wdb.h"
+#include <os_net/os_net.h>
+
+static void wdb_help() __attribute__ ((noreturn));
+static void handler(int signum);
+static void cleanup();
+static int parse(char * input, char * output);
+static void * run_dealer(void * args);
+static void * run_worker(void * args);
+static void * run_gc(void * args);
+
+static w_queue_t * sock_queue;
+static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t sock_cond = PTHREAD_COND_INITIALIZER;
+static volatile int running = 1;
+
+int main(int argc, char ** argv) {
+    int test_config = 0;
+    int run_foreground = 0;
+    int i;
+    int status;
+
+    pthread_t thread_dealer;
+    pthread_t * worker_pool;
+    pthread_t thread_gc;
+
+    OS_SetName(ARGV0);
+
+    // Get options
+
+    {
+        int c;
+
+        while (c = getopt(argc, argv, "Vdhtf"), c != -1) {
+            switch (c) {
+            case 'V':
+                print_version();
+                break;
+
+            case 'h':
+                wdb_help();
+                break;
+
+            case 'd':
+                nowDebug();
+                break;
+
+            case 't':
+                test_config = 1;
+                break;
+
+            case 'f':
+                run_foreground = 1;
+                break;
+
+            default:
+                wdb_help();
+            }
+        }
+    }
+
+    // Read internal options
+
+    config.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
+    config.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
+    config.commit_time = getDefine_Int("wazuh_db", "commit_time", 1, 3600);
+    config.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
+
+    if (test_config) {
+        exit(0);
+    }
+
+    // Initialize variables
+
+    sock_queue = queue_init(config.sock_queue_size);
+    open_dbs = OSHash_Create();
+
+    mdebug1(STARTED_MSG);
+
+    if (!run_foreground) {
+        goDaemon();
+        nowDaemon();
+    }
+
+    // Set user and group
+
+    {
+        uid_t uid = Privsep_GetUser(USER);
+        gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+
+        if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+            merror_exit(USER_ERROR, USER, GROUPGLOBAL);
+        }
+
+        if (Privsep_SetGroup(gid) < 0) {
+            merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
+        }
+
+        // Change root
+
+        if (Privsep_Chroot(DEFAULTDIR) < 0) {
+            merror_exit(CHROOT_ERROR, DEFAULTDIR, errno, strerror(errno));
+        }
+
+        if (Privsep_SetUser(uid) < 0) {
+            merror_exit(SETUID_ERROR, USER, errno, strerror(errno));
+        }
+    }
+
+    // Signal manipulation
+
+    {
+        struct sigaction action = { .sa_handler = handler, .sa_flags = SA_RESTART };
+        sigaction(SIGTERM, &action, NULL);
+        sigaction(SIGHUP, &action, NULL);
+        sigaction(SIGINT, &action, NULL);
+
+        action.sa_handler = SIG_IGN;
+        sigaction(SIGPIPE, &action, NULL);
+    }
+
+    atexit(cleanup);
+
+    // Create PID file
+
+    if (CreatePID(ARGV0, getpid()) < 0) {
+        merror_exit(PID_ERROR);
+    }
+
+    minfo(STARTUP_MSG, (int)getpid());
+
+    // Start threads
+
+    if (status = pthread_create(&thread_dealer, NULL, run_dealer, NULL), status != 0) {
+        merror("Couldn't create thread: %s", strerror(status));
+        return EXIT_FAILURE;
+    }
+
+    os_malloc(sizeof(pthread_t) * config.worker_pool_size, worker_pool);
+
+    for (i = 0; i < config.worker_pool_size; i++) {
+        if (status = pthread_create(worker_pool + i, NULL, run_worker, NULL), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (status = pthread_create(&thread_gc, NULL, run_gc, NULL), status != 0) {
+        merror("Couldn't create thread: %s", strerror(status));
+        return EXIT_FAILURE;
+    }
+
+    // Join threads
+
+    pthread_join(thread_dealer, NULL);
+
+    for (i = 0; i < config.worker_pool_size; i++) {
+        pthread_join(worker_pool[i], NULL);
+    }
+
+    free(worker_pool);
+    pthread_join(thread_gc, NULL);
+    wdb_close_all();
+
+    return EXIT_SUCCESS;
+}
+
+void * run_dealer(__attribute__((unused)) void * args) {
+    int sock;
+    int peer;
+    fd_set fdset;
+    struct timeval timeout;
+
+    if (sock = OS_BindUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        merror_exit("Unable to bind to socket '%s'. Closing local server.", AUTH_LOCAL_SOCK);
+    }
+
+    while (running) {
+        // Wait for socket
+
+        FD_ZERO(&fdset);
+        FD_SET(sock, &fdset);
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 0;
+
+        switch (select(sock + 1, &fdset, NULL, NULL, &timeout)) {
+        case -1:
+            if (errno == EINTR) {
+                minfo("at run_dealer(): select(): %s", strerror(EINTR));
+            } else {
+                merror_exit("at run_local_server(): select(): %s", strerror(errno));
+            }
+
+            continue;
+
+        case 0:
+            continue;
+        }
+
+        // Accept new peer
+
+        if (peer = accept(sock, NULL, NULL), peer < 0) {
+            if ((errno == EINTR)) {
+                minfo("at run_dealer(): accept(): %s", strerror(errno));
+            } else {
+                merror("at run_dealer(): accept(): %s", strerror(errno));
+            }
+
+            continue;
+        }
+
+        // Enqueue peer
+
+        w_mutex_lock(&queue_mutex);
+
+        if (queue_full(sock_queue)) {
+            static const char * MESSAGE = "err Queue is full";
+
+            w_mutex_unlock(&queue_mutex);
+            //TODO: remove _exit
+            merror_exit("Couldn't accept new connection: sock queue is full.");
+            send(peer, MESSAGE, strlen(MESSAGE), 0);
+            close(peer);
+        } else {
+            int * peer_copy;
+
+            os_malloc(sizeof(int), peer_copy);
+            *peer_copy = peer;
+            queue_push(sock_queue, peer_copy);
+            w_cond_signal(&sock_cond);
+            w_mutex_unlock(&queue_mutex);
+            mdebug2("New client enqueued.");
+        }
+    }
+
+    close(sock);
+    return NULL;
+}
+
+void * run_worker(__attribute__((unused)) void * args) {
+    struct timeval now;
+    struct timespec timeout = { 0, 0 };
+    char buffer[OS_MAXSTR + 1];
+    char response[OS_MAXSTR + 1];
+    ssize_t length;
+    int * peer;
+    int status;
+    int terminal;
+
+    while (running) {
+        // Dequeue peer
+        w_mutex_lock(&queue_mutex);
+
+        if (queue_empty(sock_queue)) {
+            gettimeofday(&now, NULL);
+            timeout.tv_sec = now.tv_sec + 1;
+            timeout.tv_nsec = now.tv_usec * 1000;
+
+            switch (status = pthread_cond_timedwait(&sock_cond, &queue_mutex, &timeout), status) {
+            case 0:
+            case ETIMEDOUT:
+                w_mutex_unlock(&queue_mutex);
+                continue;
+            default:
+                merror_exit("at run_worker(): at pthread_cond_timedwait(): %s (%d)", strerror(status), status);
+            }
+        }
+
+        peer = queue_pop(sock_queue);
+        w_mutex_unlock(&queue_mutex);
+
+        mdebug1("Dispatching new client.");
+        status = 0;
+
+        while (running && !status) {
+            switch (length = recv(*peer, buffer, OS_MAXSTR, 0), length) {
+            case -1:
+                merror("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
+                status = 1;
+                break;
+
+            case 0:
+                mdebug1("Client disconnected.");
+                status = 1;
+                break;
+
+            default:
+
+                if (length > 0 && buffer[length - 1] == '\n') {
+                    buffer[length - 1] = '\0';
+                    terminal = 1;
+                } else {
+                    buffer[length] = '\0';
+                    terminal = 0;
+                }
+
+                *response = '\0';
+                parse(buffer, response);
+
+                if (length = strlen(response), length > 0) {
+                    if (terminal && length < OS_MAXSTR - 1) {
+                        response[length++] = '\n';
+                    }
+
+                    send(*peer, response, length, 0);
+                }
+            }
+        }
+
+        close(*peer);
+        free(peer);
+    }
+
+    return NULL;
+}
+
+void * run_gc(__attribute__((unused)) void * args) {
+    while (running) {
+        wdb_commit_old();
+        wdb_close_old();
+        sleep(1);
+    }
+
+    return NULL;
+}
+
+int parse(char * input, char * output) {
+    char * actor;
+    char * id;
+    char * query;
+    char * sql;
+    char * next;
+    int agent_id;
+    wdb_t * wdb;
+    cJSON * data;
+    char * out;
+    int result = 0;
+
+    // Clean string
+
+    while (*input == ' ' || *input == '\n') {
+        input++;
+    }
+
+    if (!*input) {
+        mdebug1("Empty input query.");
+        return -1;
+    }
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid DB query syntax.");
+        mdebug2("DB query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    actor = input;
+    *next++ = '\0';
+
+    if (strcmp(actor, "agent") == 0) {
+        id = next;
+
+        if (next = strchr(id, ' '), !next) {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", id);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", id);
+            return -1;
+        }
+
+        *next++ = '\0';
+        query = next;
+
+        if (agent_id = strtol(id, &next, 10), *next) {
+            mdebug1("Invalid agent ID '%s'", id);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid agent ID '%.32s'", id);
+            return -1;
+        }
+
+        if (wdb = wdb_open_agent2(agent_id), !wdb) {
+            merror("Couldn't open DB for agent '%d'", agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB for agent %d", agent_id);
+            return -1;
+        }
+
+        mdebug2("Executing query: %s", query);
+
+        if (next = strchr(query, ' '), next) {
+            *next++ = '\0';
+        }
+
+        if (strcmp(query, "sql") == 0) {
+            if (!next) {
+                mdebug1("Invalid DB query syntax.");
+                mdebug2("DB query error near: %s", id);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", id);
+                result = -1;
+            } else {
+                sql = next;
+
+                if (data = wdb_exec(wdb->db, sql), data) {
+                    out = cJSON_PrintUnformatted(data);
+                    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+                    free(out);
+                    cJSON_Delete(data);
+                } else {
+                    mdebug1("Cannot execute SQL query.");
+                    mdebug2("SQL query: %s", sql);
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute SQL query");
+                    result = -1;
+                }
+            }
+        } else if (strcmp(query, "begin") == 0) {
+            if (wdb_begin2(wdb) < 0) {
+                mdebug1("Cannot begin transaction.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot begin transaction");
+                result = -1;
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+            }
+        } else if (strcmp(query, "commit") == 0) {
+            if (wdb_commit2(wdb) < 0) {
+                mdebug1("Cannot end transaction.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
+                result = -1;
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+            }
+        } else if (strcmp(query, "close") == 0) {
+            wdb_leave(wdb);
+            w_mutex_lock(&pool_mutex);
+
+            if (wdb_close(wdb) < 0) {
+                mdebug1("Cannot close database.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
+                result = -1;
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+                result = 0;
+            }
+
+            w_mutex_unlock(&pool_mutex);
+            return result;
+        } else {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", id);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", id);
+            return -1;
+        }
+
+        wdb_leave(wdb);
+        return result;
+    } else {
+        mdebug1("Invalid DB query actor: %s", actor);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
+        return -1;
+    }
+}
+
+void wdb_help() {
+    print_header();
+
+    print_out("  %s: -[Vhdtf]", ARGV0);
+    print_out("    -V          Version and license message.");
+    print_out("    -h          This help message.");
+    print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
+    print_out("    -t          Test configuration.");
+    print_out("    -f          Run in foreground.");
+
+    exit(EXIT_SUCCESS);
+}
+
+void handler(int signum) {
+    switch (signum) {
+    case SIGHUP:
+    case SIGINT:
+    case SIGTERM:
+        minfo(SIGNAL_RECV, signum, strsignal(signum));
+        running = 0;
+        break;
+    default:
+        merror("unknown signal (%d)", signum);
+    }
+}
+
+void cleanup() {
+    DeletePID(ARGV0);
+}
