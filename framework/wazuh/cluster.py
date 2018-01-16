@@ -323,8 +323,14 @@ def insert_actual_master(node_name, csocket=None):
 
 def select_actual_master(nodes, cluster_socket=None):
     # check if there's already one actual master
-    if len(list(filter(lambda x: x == 'master(*)', map(itemgetter('type'), nodes)))) > 0:
+    number_of_masters = len(list(filter(lambda x: x['type'] == 'master(*)', nodes)))
+    if number_of_masters == 1:
         return nodes
+    elif number_of_masters > 1:
+        logging.info("Found {} elected masters. Restarting lection process...".format(number_of_masters))
+        for node in nodes:
+            if node['type'] == 'master(*)':
+                node['type'] = 'master'
 
     # if there's no actual master, select one
     for node in nodes:
