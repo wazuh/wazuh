@@ -187,10 +187,12 @@ def crontab_sync_master(interval):
                 # send the synchronization results to the rest of masters
                 message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
                 file = json.dumps(sync_results).encode()
-            else:
+            elif node[1] == 'client':
                 # ask clients to send updates
                 message = "ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready ")))
                 file = None
+            else:
+                continue
             
             error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
                                 data=message, file=file)

@@ -946,7 +946,7 @@ def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters
         raise WazuhException(3004, "Cluster nodes are not correctly configured at ossec.conf.")
 
     if not return_info_for_masters and cluster[localhost_index][1] == 'master':
-        return [] # if the master is no the actual one, it doesnt send any messages
+        return list(map(itemgetter(0,1,3), filter(lambda x: x[1] == 'master(*)', cluster)))
     
     return list(map(itemgetter(0,1,3), compress(cluster, map(lambda x: x != localhost_index, range(len(cluster))))))
 
@@ -1159,6 +1159,13 @@ def sync(debug, force=False):
 
     cluster_items = get_cluster_items()
     before = time()
+
+    remote_nodes = get_remote_nodes(True, True)
+
+    cluster_socket = connect_to_db_socket()
+    if config_cluster['node_type'] == 'master' and config_cluster['node_name'] != get_actual_master(cluster_socket):
+        config_cluster['node_type'] = 'client'
+
     # Get own items status
     own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     if config_cluster['node_type'] == 'master':
@@ -1167,7 +1174,6 @@ def sync(debug, force=False):
         all_items = None
     own_items_names = own_items.keys()
 
-    remote_nodes = get_remote_nodes(True, True)
 
     # if there's no remote nodes, stop synchronization
     if remote_nodes == []:
@@ -1175,7 +1181,6 @@ def sync(debug, force=False):
 
     logging.info("Starting synchronization process...")
 
-    cluster_socket = connect_to_db_socket()
     logging.debug("Connected to cluster database socket")
 
     # for each connected manager, check its files. If the manager is not on database add it
