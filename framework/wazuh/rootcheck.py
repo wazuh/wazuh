@@ -48,7 +48,7 @@ def run_local(agent_id=None, all_agents=False):
     return ret_msg
 
 
-def run(agent_id=None, all_agents=False):
+def run(agent_id=None, all_agents=False, cluster_depth=1):
     """
     Runs rootcheck and syscheck.
 
@@ -56,7 +56,7 @@ def run(agent_id=None, all_agents=False):
     :param all_agents: Run rootcheck/syscheck in all agents.
     :return: Message.
     """
-    if cluster.is_a_local_request() or agent_id == "000":
+    if cluster.is_a_local_request() or agent_id == "000" or cluster_depth <= 0:
         return run_local(agent_id, all_agents)
     else:
         if not cluster.is_cluster_running():
@@ -64,7 +64,7 @@ def run(agent_id=None, all_agents=False):
 
         request_type = cluster.ROOTCHECK_RUN
         args = [str(all_agents)]
-        return cluster.distributed_api_request(request_type, agent_id, args)
+        return cluster.distributed_api_request(request_type, agent_id, args, cluster_depth)
 
 
 def clear_local(agent_id=None, all_agents=False):
@@ -105,7 +105,7 @@ def clear_local(agent_id=None, all_agents=False):
     return "Rootcheck database deleted"
 
 
-def clear(agent_id=None, all_agents=False):
+def clear(agent_id=None, all_agents=False, cluster_depth=1):
     """
     Clears the database.
 
@@ -113,7 +113,7 @@ def clear(agent_id=None, all_agents=False):
     :param all_agents: For all agents.
     :return: Message.
     """
-    if cluster.is_a_local_request() or agent_id == "000":
+    if cluster.is_a_local_request() or agent_id == "000" or cluster_depth <= 0:
         return clear_local(agent_id, all_agents)
     else:
         if not cluster.is_cluster_running():
@@ -121,7 +121,7 @@ def clear(agent_id=None, all_agents=False):
 
         request_type = cluster.ROOTCHECK_CLEAR
         args = [str(all_agents)]
-        return cluster.distributed_api_request(request_type, agent_id, args)
+        return cluster.distributed_api_request(request_type, agent_id, args, cluster_depth)
 
 
 def print_db(agent_id=None, status='all', pci=None, cis=None, offset=0, limit=common.database_limit, sort=None, search=None):

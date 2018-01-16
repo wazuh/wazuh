@@ -107,7 +107,8 @@ class WazuhClusterHandler(asynchat.async_chat):
                 else:
                     agents = None
                     restart_all = ast.literal_eval(args[0])
-                res = restart_agents(agents, restart_all)
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = restart_agents(agents, restart_all, cluster_depth)
             elif command[0] == AGENTS_UPGRADE_RESULT:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
@@ -152,7 +153,8 @@ class WazuhClusterHandler(asynchat.async_chat):
                 else:
                     agents = None
                     all_agents = ast.literal_eval(args[0])
-                res = syscheck.run(agents, all_agents)
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = syscheck.run(agents, all_agents, cluster_depth)
             elif command[0] == SYSCHECK_CLEAR:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
@@ -162,7 +164,8 @@ class WazuhClusterHandler(asynchat.async_chat):
                 else:
                     agents = None
                     all_agents = ast.literal_eval(args[0])
-                res = syscheck.clear(agents, all_agents)
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = syscheck.clear(agents, all_agents, cluster_depth)
             elif command[0] == ROOTCHECK_PCI:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
@@ -210,7 +213,8 @@ class WazuhClusterHandler(asynchat.async_chat):
                 else:
                     agents = None
                     all_agents = ast.literal_eval(args[0])
-                res = rootcheck.run(agents, all_agents)
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = rootcheck.run(agents, all_agents, cluster_depth)
             elif command[0] == ROOTCHECK_CLEAR:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
@@ -220,7 +224,8 @@ class WazuhClusterHandler(asynchat.async_chat):
                 else:
                     agents = None
                     all_agents = ast.literal_eval(args[0])
-                res = rootcheck.clear(agents, all_agents)
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = rootcheck.clear(agents, all_agents, cluster_depth)
 
             elif command[0] == 'ready':
                 res = "Starting to sync client's files"
@@ -318,7 +323,7 @@ def crontab_sync_master(interval):
                 # ask clients to send updates
                 message = "ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready ")))
                 file = None
-            
+
             error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
                                 data=message, file=file)
 

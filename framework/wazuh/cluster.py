@@ -54,6 +54,33 @@ try:
 except:
     compression = zipfile.ZIP_STORED
 
+# API Messages
+list_request_type = []
+RESTART_AGENTS = "restart"
+list_request_type.append(RESTART_AGENTS)
+AGENTS_UPGRADE_RESULT = "agents_upg_result"
+list_request_type.append(AGENTS_UPGRADE_RESULT)
+AGENTS_UPGRADE = "agents_upg"
+list_request_type.append(AGENTS_UPGRADE)
+AGENTS_UPGRADE_CUSTOM = "agents_upg_custom"
+list_request_type.append(AGENTS_UPGRADE_CUSTOM)
+SYSCHECK_LAST_SCAN = "syscheck_last"
+list_request_type.append(SYSCHECK_LAST_SCAN)
+SYSCHECK_RUN = "syscheck_run"
+list_request_type.append(SYSCHECK_RUN)
+SYSCHECK_CLEAR = "syscheck_clear"
+list_request_type.append(SYSCHECK_CLEAR)
+ROOTCHECK_PCI = "rootcheck_pci"
+list_request_type.append(ROOTCHECK_PCI)
+ROOTCHECK_CIS = "rootcheck_cis"
+list_request_type.append(ROOTCHECK_CIS)
+ROOTCHECK_LAST_SCAN = "rootcheck_last"
+list_request_type.append(ROOTCHECK_LAST_SCAN)
+ROOTCHECK_RUN = "rootcheck_run"
+list_request_type.append(ROOTCHECK_RUN)
+ROOTCHECK_CLEAR = "rootcheck_clear"
+list_request_type.append(ROOTCHECK_CLEAR)
+
 def check_cluster_status():
     """
     Function to check if cluster is enabled
@@ -168,40 +195,13 @@ def get_status_json():
             "running": "yes" if status()['wazuh-clusterd'] == 'running' else "no"}
 
 
-# API Messages
-list_request_type = []
-RESTART_AGENTS = "restart"
-list_request_type.append(RESTART_AGENTS)
-AGENTS_UPGRADE_RESULT = "agents_upg_result"
-list_request_type.append(AGENTS_UPGRADE_RESULT)
-AGENTS_UPGRADE = "agents_upg"
-list_request_type.append(AGENTS_UPGRADE)
-AGENTS_UPGRADE_CUSTOM = "agents_upg_custom"
-list_request_type.append(AGENTS_UPGRADE_CUSTOM)
-SYSCHECK_LAST_SCAN = "syscheck_last"
-list_request_type.append(SYSCHECK_LAST_SCAN)
-SYSCHECK_RUN = "syscheck_run"
-list_request_type.append(SYSCHECK_RUN)
-SYSCHECK_CLEAR = "syscheck_clear"
-list_request_type.append(SYSCHECK_CLEAR)
-ROOTCHECK_PCI = "rootcheck_pci"
-list_request_type.append(ROOTCHECK_PCI)
-ROOTCHECK_CIS = "rootcheck_cis"
-list_request_type.append(ROOTCHECK_CIS)
-ROOTCHECK_LAST_SCAN = "rootcheck_last"
-list_request_type.append(ROOTCHECK_LAST_SCAN)
-ROOTCHECK_RUN = "rootcheck_run"
-list_request_type.append(ROOTCHECK_RUN)
-ROOTCHECK_CLEAR = "rootcheck_clear"
-list_request_type.append(ROOTCHECK_CLEAR)
-
 def check_cluster_cmd(cmd, node_type):
     # cmd must be a list
     if not isinstance(cmd, list):
         return False
 
     # check cmd len list
-    if len(cmd) != 2:
+    if len(cmd) != 2 and len(cmd) != 3:
         return False
 
     # check cmd len
@@ -387,7 +387,7 @@ def get_nodes(updateDBname=False, cluster_socket=None, get_localhost=False):
                 if response['error'] == 0:
                     response = response['data']
                     if get_localhost:
-                        response['localhost'] = False 
+                        response['localhost'] = False
                 else:
                     logging.warning("Received an error response from {0}: {1}".format(url, response))
                     error_response = True
@@ -422,7 +422,7 @@ def get_nodes(updateDBname=False, cluster_socket=None, get_localhost=False):
                 else:
                     csocket = cluster_socket
 
-                query = "insertname " +response['node'] + " " + url 
+                query = "insertname " +response['node'] + " " + url
                 send_to_socket(csocket, query)
                 receive_data_from_db_socket(csocket)
 
@@ -961,7 +961,7 @@ def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters
 
     # Get connected nodes in the cluster
     if connected:
-        cluster = [(n['url'], n['type'], n['localhost'], n['node']) for n in 
+        cluster = [(n['url'], n['type'], n['localhost'], n['node']) for n in
                     filter(lambda x: x['status'] == 'connected', all_nodes)]
     else:
         cluster = [(n['url'], n['type'], n['localhost'], n['node']) for n in all_nodes]
@@ -974,7 +974,7 @@ def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters
 
     if not return_info_for_masters and cluster[localhost_index][1] == 'master':
         return [] # if the master is no the actual one, it doesnt send any messages
-    
+
     return list(map(itemgetter(0,1,3), compress(cluster, map(lambda x: x != localhost_index, range(len(cluster))))))
 
 def get_file_status_of_one_node(node, own_items_names, cluster_socket, all_items=None):
@@ -1268,16 +1268,25 @@ def sync(debug, force=False):
                       for node,data in thread_results.items()}
 
 
-def get_node_agent(agent_id):
+def get_ip_from_name(name):
     cluster_socket = connect_to_db_socket()
     try:
-        node_name = Agent(agent_id).get_basic_information()['node_name']
-        send_to_socket(cluster_socket, "getip {0}".format(node_name))
+        send_to_socket(cluster_socket, "getip {0}".format(name))
         data = receive_data_from_db_socket(cluster_socket)
+    except:
+        logging.warning("Can't get ip of {0}".format(name))
+        data = None
+    cluster_socket.close()
+    return data
+
+
+def get_node_agent(agent_id):
+    try:
+        node_name = Agent(agent_id).get_basic_information()['node_name']
+        data = get_ip_from_name(node_name)
     except:
         logging.warning("Can't find agent {0}".format(agent_id))
         data = None
-    cluster_socket.close()
     return data
 
 
@@ -1296,9 +1305,9 @@ def get_agents_by_node(agent_id):
     return node_agents
 
 
-def send_request_to_node(node, config_cluster, request_type, args, result_queue):
+def send_request_to_node(node, config_cluster, request_type, args, cluster_depth, result_queue):
     error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
-                        data="{1} {0}".format('a'*(common.cluster_protocol_plain_size - len(request_type + " ")), request_type),
+                        data="{1} {2} {0}".format('a'*(common.cluster_protocol_plain_size - len(request_type + " " + str(cluster_depth) + " ")), request_type, str(cluster_depth)),
                          file=args)
 
     if error != 0 or response['error'] != 0:
@@ -1342,7 +1351,7 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
     return current_result
 
 
-def send_request_to_nodes(remote_nodes, config_cluster, request_type, args):
+def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, cluster_depth=1):
     threads = []
     result = {}
     result_node = {}
@@ -1352,7 +1361,7 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args):
     remote_nodes_addr = []
     msg = None
     if len(remote_nodes) == 0:
-        remote_nodes_addr = get_remote_nodes(True, True)
+        remote_nodes_addr = list(map(lambda x: x['url'], get_nodes()['items']))
     else:
         remote_nodes_addr = remote_nodes.keys()
 
@@ -1371,7 +1380,7 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args):
             else:
                 msg = args_str
 
-            t = threading.Thread(target=send_request_to_node, args=(str(node_id), config_cluster, request_type, msg, result_queue))
+            t = threading.Thread(target=send_request_to_node, args=(str(node_id), config_cluster, request_type, msg, cluster_depth, result_queue))
             threads.append(t)
             t.start()
             result_node = result_queue.get()
@@ -1401,14 +1410,14 @@ def is_cluster_running():
     return status()['wazuh-clusterd'] == 'running'
 
 
-def distributed_api_request(request_type, agent_id, args=[]):
+def distributed_api_request(request_type, agent_id, args=[], cluster_depth=1):
     config_cluster = read_config()
     node_agents = get_agents_by_node(agent_id)
-    return send_request_to_nodes(node_agents, config_cluster, request_type, args)
+    return send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
 
 
-def restart_agents(agent_id=None, restart_all=False):
-    if is_a_local_request():
+def restart_agents(agent_id=None, restart_all=False, cluster_depth=1):
+    if is_a_local_request() or cluster_depth <= 0:
         return Agent.restart_agents(agent_id, restart_all)
     else:
         if not is_cluster_running():
@@ -1416,7 +1425,7 @@ def restart_agents(agent_id=None, restart_all=False):
 
         request_type = RESTART_AGENTS
         args = [str(restart_all)]
-        return distributed_api_request(request_type, agent_id, args)
+        return distributed_api_request(request_type, agent_id, args, cluster_depth)
 
 
 def get_upgrade_result(agent_id, timeout=3):
@@ -1453,4 +1462,3 @@ def upgrade_agent_custom(agent_id, file_path=None, installer=None):
         request_type = AGENTS_UPGRADE_CUSTOM
         args = [str(wpk_repo), str(version), str(force), str(chunk_size)]
         return distributed_api_request(request_type, agent_id, args)
-
