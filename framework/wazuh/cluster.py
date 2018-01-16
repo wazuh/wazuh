@@ -336,6 +336,10 @@ def get_actual_master(csocket=None):
 
     return name
 
+
+def get_actual_master_json():
+    return {'name':get_actual_master(), 'url':get_ip_from_name(get_actual_master())}
+
 def insert_actual_master(node_name, csocket=None):
     if not csocket:
         cluster_socket = connect_to_db_socket()
