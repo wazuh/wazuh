@@ -3,41 +3,25 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import cut_array, sort_array, search_array, md5
+from wazuh.utils import md5, divide_list
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
-from wazuh.manager import status
-from wazuh.configuration import get_ossec_conf
-from wazuh.InputValidator import InputValidator
-from wazuh import common
-import sqlite3
+from wazuh.group import get_all_groups, remove_group
+from wazuh.cluster.management import *
 from datetime import datetime
-from hashlib import sha512
 from time import time, mktime, sleep
-from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror
+from os import path, listdir, rename, utime, umask, stat, mkdir, chmod
 from subprocess import check_output
-from shutil import rmtree
 from io import BytesIO
-from itertools import compress, chain
-from operator import itemgetter, eq
+from itertools import compress
+from operator import itemgetter
 from ast import literal_eval
-import socket
-import json
 import threading
 from stat import S_IRWXG, S_IRWXU
 from sys import version
 from difflib import unified_diff
 import re
 import socket
-import asyncore
-import asynchat
-
-# import the C accelerated API of ElementTree
-try:
-    import xml.etree.cElementTree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
-
 import logging
 
 is_py2 = version[0] == '2'
@@ -54,201 +38,6 @@ try:
 except:
     compression = zipfile.ZIP_STORED
 
-# API Messages
-list_request_type = []
-RESTART_AGENTS = "restart"
-list_request_type.append(RESTART_AGENTS)
-AGENTS_UPGRADE_RESULT = "agents_upg_result"
-list_request_type.append(AGENTS_UPGRADE_RESULT)
-AGENTS_UPGRADE = "agents_upg"
-list_request_type.append(AGENTS_UPGRADE)
-AGENTS_UPGRADE_CUSTOM = "agents_upg_custom"
-list_request_type.append(AGENTS_UPGRADE_CUSTOM)
-SYSCHECK_LAST_SCAN = "syscheck_last"
-list_request_type.append(SYSCHECK_LAST_SCAN)
-SYSCHECK_RUN = "syscheck_run"
-list_request_type.append(SYSCHECK_RUN)
-SYSCHECK_CLEAR = "syscheck_clear"
-list_request_type.append(SYSCHECK_CLEAR)
-ROOTCHECK_PCI = "rootcheck_pci"
-list_request_type.append(ROOTCHECK_PCI)
-ROOTCHECK_CIS = "rootcheck_cis"
-list_request_type.append(ROOTCHECK_CIS)
-ROOTCHECK_LAST_SCAN = "rootcheck_last"
-list_request_type.append(ROOTCHECK_LAST_SCAN)
-ROOTCHECK_RUN = "rootcheck_run"
-list_request_type.append(ROOTCHECK_RUN)
-ROOTCHECK_CLEAR = "rootcheck_clear"
-list_request_type.append(ROOTCHECK_CLEAR)
-
-def check_cluster_status():
-    """
-    Function to check if cluster is enabled
-    """
-    with open("/etc/ossec-init.conf") as f:
-        # the osec directory is the first line of ossec-init.conf
-        directory = f.readline().split("=")[1][:-1].replace('"', "")
-
-    try:
-        # wrap the data
-        with open("{0}/etc/ossec.conf".format(directory)) as f:
-            txt_data = f.read()
-
-        txt_data = re.sub("(<!--.*?-->)", "", txt_data, flags=re.MULTILINE | re.DOTALL)
-        txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
-        txt_data = '<root_tag>' + txt_data + '</root_tag>'
-
-        conf = ET.fromstring(txt_data)
-
-        return conf.find('ossec_config').find('cluster').find('disabled').text == 'no'
-    except:
-        return False
-
-# import python-cryptography lib only if cluster is enabled
-if check_cluster_status():
-    try:
-        from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
-    except ImportError as e:
-        raise WazuhException(3008, str(e))
-
-
-class WazuhClusterClient(asynchat.async_chat):
-    def __init__(self, host, port, key, data, file):
-        asynchat.async_chat.__init__(self)
-        self.can_read = False
-        self.can_write = True
-        self.received_data = []
-        self.response = ""
-        self.f = key
-        self.data = data
-        self.file = file
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.settimeout(common.cluster_timeout)
-        try:
-            self.connect((host, port))
-        except socket.error as e:
-            self.close()
-            raise WazuhException(3010, strerror(e[0]))
-        self.set_terminator('\n')
-
-    def handle_close(self):
-        self.close()
-
-    def readable(self):
-        return self.can_read
-
-    def writable(self):
-        return self.can_write
-
-    def handle_error(self):
-        nil, t, v, tbinfo = asyncore.compact_traceback()
-        self.close()
-        if InvalidToken == t or InvalidSignature == t:
-            raise WazuhException(3010, "Could not decrypt message from {0}".format(self.addr[0]))
-        else:
-            raise WazuhException(3010, str(v))
-
-    def collect_incoming_data(self, data):
-        self.received_data.append(data)
-
-    def found_terminator(self):
-        self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
-        self.close()
-
-    def handle_write(self):
-        if self.file is not None:
-            msg = self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file) + '\n\t\t\n'
-        else:
-            msg = self.f.encrypt(self.data.encode()) + '\n\t\t\n'
-
-        i = 0
-        while i < len(msg):
-            next_i = i+4096 if i+4096 < len(msg) else len(msg)
-            sent = self.send(msg[i:next_i])
-            i += sent
-
-
-        self.can_read=True
-        self.can_write=False
-
-
-def send_request(host, port, key, data, file=None):
-    error = 0
-    try:
-        fernet_key = Fernet(key.encode('base64','strict'))
-        client = WazuhClusterClient(host, int(port), fernet_key, data, file)
-        asyncore.loop()
-        data = client.response
-
-    except NameError as e:
-        data = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"
-        error = 1
-
-    except WazuhException as e:
-        error = 1
-        data = str(e)
-
-    return error, data
-
-def get_status_json():
-    return {"enabled": "yes" if check_cluster_status() else "no",
-            "running": "yes" if status()['wazuh-clusterd'] == 'running' else "no"}
-
-
-def check_cluster_cmd(cmd, node_type):
-    # cmd must be a list
-    if not isinstance(cmd, list):
-        return False
-
-    # check cmd len list
-    if len(cmd) != 2 and len(cmd) != 3:
-        return False
-
-    # check cmd len
-    if len(' '.join(cmd)) != common.cluster_protocol_plain_size:
-        return False
-
-    # 'ready' cmd can only be sent by a master node to a client node
-    if cmd[0] == 'ready' and node_type == 'client':
-        return True
-
-    # 'data' cmd can only be sent by a master node to another master node
-    if cmd[0] == 'data' and node_type == 'master':
-        return True
-
-    # check command type
-    if not cmd[0] in ['zip', 'node'] and not cmd[0] in list_request_type:
-        return False
-
-    # second argument of zip is a number
-    if cmd[0] == 'zip' and not re.compile('\d+').match(cmd[1]):
-        return False
-
-    return True
-
-
-def check_cluster_config(config):
-    iv = InputValidator()
-
-    if not 'key' in config.keys():
-        raise WazuhException(3004, 'Unspecified key')
-    elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
-        raise WazuhException(3004, 'Key must be 32 characters long and only have alphanumeric characters')
-
-    if config['node_type'] != 'master' and config['node_type'] != 'client':
-        raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
-    if not re.compile("\d+[m|s]").match(config['interval']):
-        raise WazuhException(3004, 'Invalid interval specification. Please, specify it with format <number>s or <number>m')
-    if config['nodes'][0] == 'localhost' and len(config['nodes']) == 1:
-        raise WazuhException(3004, 'Please specify IPs of all cluster nodes')
-
-
-def get_cluster_items():
-    try:
-        cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
-        return cluster_items
-    except Exception as e:
-        raise WazuhException(3005, str(e))
 
 def get_file_info(filename, cluster_items):
     def is_synced_file(mtime, node_type):
@@ -297,164 +86,12 @@ def compress_files(list_path, node_type):
         # write a file with the name of all the groups only if the node type is master
         if node_type == 'master':
             try:
-                local_groups = [x['name'] for x in Agent.get_all_groups(limit=None)['items']]
+                local_groups = [x['name'] for x in get_all_groups(limit=None)['items']]
                 zf.writestr("remote_groups.txt", '\n'.join(local_groups), compression)
             except Exception as e:
                 raise WazuhException(3001, str(e))
 
     return zipped_file.getvalue()
-
-def read_config():
-    # Get api/configuration/config.js content
-    try:
-        config_cluster = get_ossec_conf('cluster')
-
-    except WazuhException as e:
-        if e.code == 1102:
-            raise WazuhException(3006, "Cluster configuration not present in ossec.conf")
-        else:
-            raise WazuhException(3006, e.message)
-    except Exception as e:
-        raise WazuhException(3006, str(e))
-
-    return config_cluster
-
-
-get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
-
-def get_actual_master(csocket=None):
-    if not csocket:
-        cluster_socket = connect_to_db_socket()
-    else:
-        cluster_socket = csocket
-
-    send_to_socket(cluster_socket, "selactual")
-    name = receive_data_from_db_socket(cluster_socket)
-
-    if not csocket:
-        cluster_socket.close()
-
-    return name
-
-
-def get_actual_master_json():
-    return {'name':get_actual_master(), 'url':get_ip_from_name(get_actual_master())}
-
-def insert_actual_master(node_name, csocket=None):
-    if not csocket:
-        cluster_socket = connect_to_db_socket()
-    else:
-        cluster_socket = csocket
-
-    send_to_socket(cluster_socket, "insertactual {0}".format(node_name))
-    receive_data_from_db_socket(cluster_socket)
-
-    if not csocket:
-        cluster_socket.close()
-
-def select_actual_master(nodes, cluster_socket=None):
-    # check if there's already one actual master
-    if len(list(filter(lambda x: x == 'master(*)', map(itemgetter('type'), nodes)))) > 0:
-        return nodes
-
-    # if there's no actual master, select one
-    for node in nodes:
-        if node['type'] == 'master':
-            logging.info("The new elected master is {0}.".format(node['node']))
-            node['type'] = 'master(*)'
-            insert_actual_master(node['node'], cluster_socket)
-            break
-
-    return nodes
-
-
-def get_nodes(updateDBname=False, cluster_socket=None, get_localhost=False):
-    """
-    Function to get information about all nodes in the cluster.
-
-    :param updateDBname: Flag to decide if update cluster nodes name database or not
-    """
-    config_cluster = read_config()
-    if not config_cluster:
-        raise WazuhException(3000, "No config found")
-
-    # list with all the ips the localhost has
-    localhost_ips = get_localhost_ips()
-    data = []
-    error_response = False
-
-    for url in sorted(config_cluster["nodes"]):
-        if not url in localhost_ips:
-            error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
-                                data="node {0}".format('a'*(common.cluster_protocol_plain_size - len("node "))))
-            if error == 0:
-                if response['error'] == 0:
-                    response = response['data']
-                    if get_localhost:
-                        response['localhost'] = False
-                else:
-                    logging.warning("Received an error response from {0}: {1}".format(url, response))
-                    error_response = True
-        else:
-            error = 0
-            response = get_node(cluster_socket=cluster_socket)
-            response['localhost'] = True
-
-        if error == 1:
-            logging.warning("Error connecting with {0}: {1}".format(url, response))
-            error_response = True
-
-        if error_response:
-            res_dict = {'error': response, 'node':'unknown', 'status':'disconnected', 'url':url, 'type':'unknown'}
-            if get_localhost:
-                res_dict['localhost'] = False
-            data.append(res_dict)
-            error_response = False
-            continue
-
-        if 'master' in config_cluster['node_type'] or \
-            'master' in response['type'] or (get_localhost and response['localhost']):
-            res_dict = {'url':url, 'node':response['node'], 'type': response['type'],
-                         'status':'connected', 'cluster':response['cluster']}
-            if get_localhost:
-                res_dict['localhost'] = response['localhost']
-            data.append(res_dict)
-
-            if updateDBname:
-                if not cluster_socket:
-                    csocket = connect_to_db_socket()
-                else:
-                    csocket = cluster_socket
-
-                query = "insertname " +response['node'] + " " + url
-                send_to_socket(csocket, query)
-                receive_data_from_db_socket(csocket)
-
-                if not cluster_socket:
-                    csocket.close()
-
-    select_actual_master(data, cluster_socket)
-
-    return {'items': data, 'totalItems': len(data)}
-
-
-
-def get_node(name=None, cluster_socket=None):
-    data = {}
-    if not name:
-        config_cluster = read_config()
-
-        if not config_cluster:
-            raise WazuhException(3000, "No config found")
-
-        data["node"]    = config_cluster["node_name"]
-        data["cluster"] = config_cluster["name"]
-        if get_actual_master(cluster_socket) == data['node']:
-            data["type"] = "master(*)"
-        else:
-            data["type"] = config_cluster["node_type"]
-
-    return data
 
 
 def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket=None, own_items=None):
@@ -495,34 +132,6 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
             send_to_socket(cluster_socket, insert_sql)
             data = receive_data_from_db_socket(cluster_socket)
 
-
-def connect_to_db_socket(retry=False):
-    if not  check_cluster_status():
-        raise WazuhException(3013)
-
-    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    max_retries = 100 if retry else 1
-    n_retries = 0
-    while n_retries <= max_retries:
-        try:
-            cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
-        except socket.error as e:
-            error_msg = str(e)
-            n_retries += 1
-            sleep(1)
-            continue
-        break
-
-    if n_retries >= max_retries:
-        raise WazuhException(3009, error_msg)
-
-    return cluster_socket
-
-def receive_data_from_db_socket(cluster_socket):
-    return ''.join(filter(lambda x: x != '\x00', cluster_socket.recv(10000).decode()))
-
-def send_to_socket(cluster_socket, query):
-    cluster_socket.send(query.encode())
 
 def scan_for_new_files():
     cluster_socket = connect_to_db_socket()
@@ -572,78 +181,6 @@ def list_files_from_filesystem(node_type, cluster_items, get_all=False):
             continue
 
     return dict(filter(lambda x: not x[1]['is_synced'], final_items.items()))
-
-def get_file_status(manager, cluster_socket):
-    count_query = "count {0}".format(manager)
-    send_to_socket(cluster_socket, count_query)
-    n_files = int(receive_data_from_db_socket(cluster_socket))
-
-    query = "select {0} 100 ".format(manager)
-    file_status = ""
-    # limit = 100
-    for offset in range(0,n_files,100):
-        send_to_socket(cluster_socket, query + str(offset))
-        file_status += receive_data_from_db_socket(cluster_socket)
-
-    # retrieve all files for a node in database with its status
-    all_files = {f[0]:f[1] for f in map(lambda x: x.split('*'), filter(lambda x: x != '', file_status.split(' ')))}
-
-    return all_files
-
-def get_file_status_all_managers(file_list, manager):
-    """
-    Return a nested list where each element has the following structure
-    [manager, filename, status]
-    """
-    fix_manager = []
-    cluster_socket = connect_to_db_socket()
-    if manager:
-        for m in manager:
-            if re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(m):
-                fix_manager.append(m)
-            elif re.compile(r"\w+").match(m):
-                fix_manager.append(get_ip_from_name(m, cluster_socket))
-            else:
-                raise WazuhException(3014, m)
-
-        manager = fix_manager
-    cluster_socket.close()
-
-    files = []
-
-    nodes = get_remote_nodes(connected=False, return_info_for_masters=True)
-    if manager:
-        remote_nodes = filter(lambda x: x in manager, map(itemgetter(0), nodes))
-    else:
-        remote_nodes = map(itemgetter(0), nodes)
-
-    cluster_socket = connect_to_db_socket()
-    for node in remote_nodes:
-        all_files = get_file_status(node, cluster_socket)
-        if file_list == []:
-            filenames = all_files.keys()
-        else:
-            filenames = file_list
-
-        files.extend([[node, file, all_files[file]] for file in filenames])
-
-    cluster_socket.close()
-    return files
-
-
-def get_last_sync():
-    """
-    Function to retrieve information about the last synchronization
-    """
-    cluster_socket = connect_to_db_socket()
-
-    send_to_socket(cluster_socket, "sellast")
-
-    date, duration = receive_data_from_db_socket(cluster_socket).split(" ")
-
-    cluster_socket.close()
-
-    return str(datetime.fromtimestamp(int(date))), float(duration)
 
 
 def clear_file_status_one_node(manager, cluster_socket):
@@ -726,95 +263,6 @@ def clear_file_status():
     cluster_socket.close()
 
 
-def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
-    """
-    Return a nested list where each element has the following structure
-    {
-        manager: {
-            status: [
-                files
-            ]
-        }
-    }
-    """
-    files = get_file_status_all_managers(file_list['fields'], manager['fields'])
-    cluster_dict = {}
-    for manager, file, status in files:
-        try:
-            cluster_dict[manager][status].append(file)
-        except KeyError:
-            cluster_dict[manager] = {}
-            cluster_dict[manager][status] = [file]
-
-    return cluster_dict
-
-def get_agents_status():
-    """
-    Return a nested list where each element has the following structure
-    [agent_id, agent_name, agent_status, manager_hostname]
-    """
-    agent_list = []
-    for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']}, limit=None)['items']:
-        if int(agent['id']) == 0:
-            continue
-        try:
-            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
-        except KeyError:
-            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "None"])
-
-    return agent_list
-
-
-def get_agent_status_json():
-    """
-    Return a nested list where each element has the following structure
-    {
-        manager: {
-            status: [
-                id: name
-            ]
-        }
-    }
-    """
-    agents = get_agents_status()
-    cluster_dict = {}
-    for agent_id, agent_ip, name, status, manager in agents:
-        try:
-            cluster_dict[manager].append({
-                'id': agent_id,
-                'ip': agent_ip,
-                'name': name,
-                'status': status
-            })
-        except KeyError:
-            cluster_dict[manager] = [{
-                'id': agent_id,
-                'ip': agent_ip,
-                'name': name,
-                'status': status
-            }]
-
-    return cluster_dict
-
-
-def get_token():
-    config_cluster = read_config()
-
-    if not config_cluster:
-        raise WazuhException(3000, "No config found")
-
-    raw_key = config_cluster["key"]
-    token = sha512(raw_key).hexdigest()
-    return token
-
-
-def _check_token(other_token):
-    my_token = get_token()
-    if my_token == other_token:
-        return True
-    else:
-        return False
-
 def _check_removed_agents(new_client_keys):
     """
     Function to delete agents that have been deleted in a synchronized
@@ -843,12 +291,10 @@ def _check_removed_agents(new_client_keys):
 
 
 def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master', node_name=''):
-    # Set Timezone to epoch converter
-    # environ['TZ']='UTC'
     if path.basename(fullpath) == 'client.keys':
         if node_type=='client':
             _check_removed_agents(new_content.split('\n'))
-        elif node_name == get_actual_master():
+        elif node_name == get_actual_master()['name']:
             logging.warning("Client.keys file received in a elected master node.")
             raise WazuhException(3007)
 
@@ -908,10 +354,10 @@ def receive_zip(zip_file):
         """
         Function to remove the groups that are on the local node and not in the remote node
         """
-        local_groups = {x['name'] for x in Agent.get_all_groups(limit=None)['items']}
+        local_groups = {x['name'] for x in get_all_groups(limit=None)['items']}
         for removed_group in local_groups - remote_group_set:
             try:
-                Agent.remove_group(removed_group)
+                remove_group(removed_group)
                 logging.info("Group {0} removed successfully".format(removed_group))
             except Exception as e:
                 logging.error("Error deleting group {0}: {1}".format(removed_group, str(e)))
@@ -956,8 +402,6 @@ def receive_zip(zip_file):
     return final_dict
 
 
-def divide_list(l, size=1000):
-    return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
 
 def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters=False, cluster_socket=None):
     all_nodes = get_nodes(updateDBname=updateDBname, cluster_socket=cluster_socket, get_localhost=True)['items']
@@ -979,6 +423,7 @@ def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters
         return [] # if the master is no the actual one, it doesnt send any messages
 
     return list(map(itemgetter(0,1,3), compress(cluster, map(lambda x: x != localhost_index, range(len(cluster))))))
+
 
 def get_file_status_of_one_node(node, own_items_names, cluster_socket, all_items=None):
     # check files in database
@@ -1105,7 +550,7 @@ def save_actual_master_data_on_db(data):
             update_node_db_after_sync(node_data, node_ip, node_data['name'], cluster_socket)
         else:
             # save files status received from master in database
-            master_name = get_actual_master(csocket=cluster_socket)
+            master_name = get_actual_master(csocket=cluster_socket)['name']
             actual_master_ip = get_ip_from_name(master_name, cluster_socket)
             get_file_status_of_one_node((actual_master_ip, 'master', ''), list_files_from_filesystem('master', get_cluster_items()).keys(), cluster_socket)
             update_node_db_after_sync(node_data, actual_master_ip, master_name, cluster_socket)
@@ -1268,206 +713,3 @@ def sync(debug, force=False):
                       'error': data['error'],
                       'reason': data['reason']}
                       for node,data in thread_results.items()}
-
-
-def get_ip_from_name(name, csocket=None):
-    if not csocket:
-        cluster_socket = connect_to_db_socket()
-    else:
-        cluster_socket = csocket
-
-    try:
-        send_to_socket(cluster_socket, "getip {0}".format(name))
-        data = receive_data_from_db_socket(cluster_socket)
-    except:
-        logging.warning("Can't get ip of {0}".format(name))
-        data = None
-
-    if not csocket:
-        cluster_socket.close()
-    
-    return data
-
-
-def get_node_agent(agent_id):
-    try:
-        node_name = Agent(agent_id).get_basic_information()['node_name']
-        data = get_ip_from_name(node_name)
-    except:
-        logging.warning("Can't find agent {0}".format(agent_id))
-        data = None
-    return data
-
-
-def get_agents_by_node(agent_id):
-    # Return remote_nodes[addr_node] = {agent_id_0, agent_id_1, ...}
-    node_agents = {}
-    if isinstance(agent_id, list):
-        for id in agent_id:
-            addr = get_node_agent(id)
-            if node_agents.get(addr) is None:
-                node_agents[addr] = []
-            node_agents[addr].append(str(id).zfill(3))
-    else:
-        if agent_id is not None:
-            node_agents[get_node_agent(agent_id)] = [str(agent_id).zfill(3)]
-    return node_agents
-
-
-def send_request_to_node(node, config_cluster, request_type, args, cluster_depth, result_queue):
-    error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
-                        data="{1} {2} {0}".format('a'*(common.cluster_protocol_plain_size - len(request_type + " " + str(cluster_depth) + " ")), request_type, str(cluster_depth)),
-                         file=args)
-
-    if error != 0 or response['error'] != 0:
-        logging.debug(response)
-        result_queue.put({'node': node, 'reason': "{0} - {1}".format(error, response), 'error': 1})
-    else:
-        result_queue.put(response)
-
-
-def append_node_result_by_type(node, result_node, request_type, current_result=None):
-    if current_result == None:
-        current_result = {}
-    if request_type == RESTART_AGENTS:
-        if isinstance(result_node.get('data'), dict):
-            if result_node.get('data').get('affected_agents') != None:
-                if current_result.get('affected_agents') is None:
-                    current_result['affected_agents'] = []
-                current_result['affected_agents'].extend(result_node['data']['affected_agents'])
-
-            if result_node.get('data').get('failed_ids'):
-                if current_result.get('failed_ids') is None:
-                    current_result['failed_ids'] = []
-                current_result['failed_ids'].extend(result_node['data']['failed_ids'])
-
-            if result_node.get('data').get('failed_ids') != None and result_node.get('data').get('msg') != None:
-                current_result['msg'] = result_node['data']['msg']
-            if current_result.get('failed_ids') == None and result_node.get('data').get('msg') != None:
-                current_result['msg'] = result_node['data']['msg']
-            if current_result.get('failed_ids') != None and current_result.get('affected_agents') != None:
-                current_result['msg'] = "Some agents were not restarted"
-        else:
-            if current_result.get('data') == None:
-                current_result = result_node
-    else:
-        if result_node.get('data') != None:
-            current_result = result_node['data']
-        elif result_node.get('message') != None:
-            current_result['message'] = result_node['message']
-            current_result['error'] = result_node['error']
-        #current_result[node] = result_node
-    return current_result
-
-
-def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, cluster_depth=1):
-    threads = []
-    result = {}
-    result_node = {}
-    result_nodes = {}
-    result_queue = queue()
-    local_node = get_node()['node']
-    remote_nodes_addr = []
-    msg = None
-    if len(remote_nodes) == 0:
-        remote_nodes_addr = list(map(lambda x: x['url'], get_nodes()['items']))
-    else:
-        remote_nodes_addr = remote_nodes.keys()
-
-    args_str = " ".join(args)
-
-    for node_id in remote_nodes_addr:
-        if node_id != None:
-            logging.info("Sending {2} request from {0} to {1}".format(local_node, node_id, request_type))
-
-            # Push agents id
-            if remote_nodes.get(node_id) != None:
-                agents = "-".join(remote_nodes[node_id])
-                msg = agents
-                if args_str > 0:
-                    msg = msg + " " + args_str
-            else:
-                msg = args_str
-
-            t = threading.Thread(target=send_request_to_node, args=(str(node_id), config_cluster, request_type, msg, cluster_depth, result_queue))
-            threads.append(t)
-            t.start()
-            result_node = result_queue.get()
-        else:
-            result_node['data'] = {}
-            result_node['data']['failed_ids'] = []
-            for id in remote_nodes[node_id]:
-                node = {}
-                node['id'] = id
-                node['error'] = {'message':"Agent not found",'code':-1}
-                result_node['data']['failed_ids'].append(node)
-        result_nodes[node_id] = result_node
-
-    for t in threads:
-        t.join()
-    for node, result_node in result_nodes.iteritems():
-        result = append_node_result_by_type(node, result_node, request_type, result)
-    return result
-
-
-def is_a_local_request():
-    config_cluster = read_config()
-    return not config_cluster or not check_cluster_status() or config_cluster['node_type'] == 'client'
-
-
-def is_cluster_running():
-    return status()['wazuh-clusterd'] == 'running'
-
-
-def distributed_api_request(request_type, agent_id, args=[], cluster_depth=1):
-    config_cluster = read_config()
-    node_agents = get_agents_by_node(agent_id)
-    return send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
-
-
-def restart_agents(agent_id=None, restart_all=False, cluster_depth=1):
-    if is_a_local_request() or cluster_depth <= 0:
-        return Agent.restart_agents(agent_id, restart_all)
-    else:
-        if not is_cluster_running():
-            raise WazuhException(3015)
-
-        request_type = RESTART_AGENTS
-        args = [str(restart_all)]
-        return distributed_api_request(request_type, agent_id, args, cluster_depth)
-
-
-def get_upgrade_result(agent_id, timeout=3):
-    if is_a_local_request():
-        return Agent.get_upgrade_result(agent_id, timeout)
-    else:
-        if not is_cluster_running():
-            raise WazuhException(3015)
-
-        request_type = AGENTS_UPGRADE_RESULT
-        args = [str(timeout)]
-        return distributed_api_request(request_type, agent_id, args)
-
-
-def upgrade_agent(agent_id, wpk_repo=None, version=None, force=False, chunk_size=None):
-    if is_a_local_request():
-        return Agent.upgrade_agent(agent_id, wpk_repo, version, force, chunk_size)
-    else:
-        if not is_cluster_running():
-            raise WazuhException(3015)
-
-        request_type = AGENTS_UPGRADE
-        args = [str(wpk_repo), str(version), str(force), str(chunk_size)]
-        return distributed_api_request(request_type, agent_id, args)
-
-
-def upgrade_agent_custom(agent_id, file_path=None, installer=None):
-    if is_a_local_request():
-        return Agent.upgrade_agent_custom(agent_id, file_path, installer)
-    else:
-        if not is_cluster_running():
-            raise WazuhException(3015)
-
-        request_type = AGENTS_UPGRADE_CUSTOM
-        args = [str(wpk_repo), str(version), str(force), str(chunk_size)]
-        return distributed_api_request(request_type, agent_id, args)
