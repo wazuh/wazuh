@@ -36,7 +36,7 @@ def status():
     return data
 
 def __get_ossec_log_fields(log):
-    regex_category = re.compile("^(\d\d\d\d/\d\d/\d\d)\s\d\d:\d\d:\d\d\s(\S+):\s(\S+):\s(.+)$")
+    regex_category = re.compile("^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.+)$")
 
     match = re.search(regex_category, log)
 
@@ -79,7 +79,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
         date, log_category, level, description = __get_ossec_log_fields(line)
 
         try:
-            log_date = datetime.strptime(date, '%Y/%m/%d')
+            log_date = datetime.strptime(date, '%Y/%m/%d %H:%M:%S')
         except ValueError as e:
             continue
 
@@ -139,7 +139,7 @@ def ossec_log_summary(months=3):
                 break
             lines_count = lines_count + 1
             try:
-                log_date = datetime.strptime(line[:10], '%Y/%m/%d')
+                log_date = datetime.strptime(line[:10], '%Y/%m/%d %H:%M:%S')
             except ValueError:
                 continue
 
