@@ -126,3 +126,15 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         snprintf(lf->fields[SK_INODE].value, 20, "%ld", sum->inode);
     }
 }
+
+int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
+    int r;
+
+    if (sum->uname || sum->gname || sum->mtime || sum->inode) {
+        r = snprintf(output, size, "%s:%d:%s:%s:%s:%s:%s:%s:%ld:%ld", sum->size, sum->perm, sum->uid, sum->gid, sum->md5, sum->sha1, sum->uname, sum->gname, sum->mtime, sum->inode);
+    } else {
+        r = snprintf(output, size, "%s:%d:%s:%s:%s:%s", sum->size, sum->perm, sum->uid, sum->gid, sum->md5, sum->sha1);
+    }
+
+    return r < (int)size ? 0 : -1;
+}

@@ -41,9 +41,15 @@
 #define WDB_NETINFO_IPV4 0
 #define WDB_NETINFO_IPV6 1
 
+#define WDB_STMT_FIM_LOAD 0
+#define WDB_STMT_FIM_FIND_ENTRY 1
+#define WDB_STMT_FIM_INSERT_ENTRY 2
+#define WDB_STMT_FIM_UPDATE_ENTRY 3
+#define WDB_STMT_SIZE 4
+
 typedef struct wdb_t {
     sqlite3 * db;
-    sqlite3_stmt * stmt;
+    sqlite3_stmt * stmt[WDB_STMT_SIZE];
     char * agent_id;
     unsigned int refcount;
     unsigned int transaction:1;
@@ -109,6 +115,17 @@ int wdb_get_last_fim(sqlite3 *db, const char *path, int type);
 
 /* Insert FIM entry. Returns ID, or -1 on error. */
 int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, const char *event, const sk_sum_t *sum);
+
+int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size);
+
+int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file);
+
+// Find file entry: returns 1 if found, 0 if not, or -1 on error.
+int wdb_fim_find_entry(wdb_t * wdb, const char * path);
+
+int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum_t * sum);
+
+int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 
 /* Insert policy monitoring entry. Returns ID on success or -1 on error. */
 int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
@@ -234,5 +251,11 @@ int wdb_close(wdb_t * wdb);
 void wdb_leave(wdb_t * wdb);
 
 wdb_t * wdb_pool_find_prev(wdb_t * wdb);
+
+int wdb_stmt_cache(wdb_t * wdb, int index);
+
+int wdb_parse(char * input, char * output);
+
+int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
 
 #endif

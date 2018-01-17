@@ -1,6 +1,6 @@
 /*
  * Wazuh Database Daemon
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2018 Wazuh Inc.
  * January 03, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -15,7 +15,6 @@
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
 static void cleanup();
-static int parse(char * input, char * output);
 static void * run_dealer(void * args);
 static void * run_worker(void * args);
 static void * run_gc(void * args);
@@ -199,7 +198,7 @@ void * run_dealer(__attribute__((unused)) void * args) {
             if (errno == EINTR) {
                 minfo("at run_dealer(): select(): %s", strerror(EINTR));
             } else {
-                merror_exit("at run_local_server(): select(): %s", strerror(errno));
+                merror_exit("at run_dealer(): select(): %s", strerror(errno));
             }
 
             continue;
@@ -228,8 +227,7 @@ void * run_dealer(__attribute__((unused)) void * args) {
             static const char * MESSAGE = "err Queue is full";
 
             w_mutex_unlock(&queue_mutex);
-            //TODO: remove _exit
-            merror_exit("Couldn't accept new connection: sock queue is full.");
+            merror("Couldn't accept new connection: sock queue is full.");
             send(peer, MESSAGE, strlen(MESSAGE), 0);
             close(peer);
         } else {
@@ -245,18 +243,19 @@ void * run_dealer(__attribute__((unused)) void * args) {
     }
 
     close(sock);
+    unlink(WDB_LOCAL_SOCK);
     return NULL;
 }
 
 void * run_worker(__attribute__((unused)) void * args) {
     struct timeval now;
-    struct timespec timeout = { 0, 0 };
     char buffer[OS_MAXSTR + 1];
     char response[OS_MAXSTR + 1];
     ssize_t length;
     int * peer;
     int status;
     int terminal;
+    fd_set fdset;
 
     while (running) {
         // Dequeue peer
@@ -264,8 +263,7 @@ void * run_worker(__attribute__((unused)) void * args) {
 
         if (queue_empty(sock_queue)) {
             gettimeofday(&now, NULL);
-            timeout.tv_sec = now.tv_sec + 1;
-            timeout.tv_nsec = now.tv_usec * 1000;
+            struct timespec timeout = { now.tv_sec + 1, now.tv_usec * 1000 };
 
             switch (status = pthread_cond_timedwait(&sock_cond, &queue_mutex, &timeout), status) {
             case 0:
@@ -284,6 +282,27 @@ void * run_worker(__attribute__((unused)) void * args) {
         status = 0;
 
         while (running && !status) {
+            struct timeval timeout = { 1, 0 };
+
+            // Wait for socket
+
+            FD_ZERO(&fdset);
+            FD_SET(*peer, &fdset);
+
+            switch (select(*peer + 1, &fdset, NULL, NULL, &timeout)) {
+            case -1:
+                if (errno == EINTR) {
+                    minfo("at run_worker(): select(): %s", strerror(EINTR));
+                } else {
+                    merror_exit("at run_worker(): select(): %s", strerror(errno));
+                }
+
+                continue;
+
+            case 0:
+                continue;
+            }
+
             switch (length = recv(*peer, buffer, OS_MAXSTR, 0), length) {
             case -1:
                 merror("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
@@ -306,7 +325,7 @@ void * run_worker(__attribute__((unused)) void * args) {
                 }
 
                 *response = '\0';
-                parse(buffer, response);
+                wdb_parse(buffer, response);
 
                 if (length = strlen(response), length > 0) {
                     if (terminal && length < OS_MAXSTR - 1) {
@@ -333,138 +352,6 @@ void * run_gc(__attribute__((unused)) void * args) {
     }
 
     return NULL;
-}
-
-int parse(char * input, char * output) {
-    char * actor;
-    char * id;
-    char * query;
-    char * sql;
-    char * next;
-    int agent_id;
-    wdb_t * wdb;
-    cJSON * data;
-    char * out;
-    int result = 0;
-
-    // Clean string
-
-    while (*input == ' ' || *input == '\n') {
-        input++;
-    }
-
-    if (!*input) {
-        mdebug1("Empty input query.");
-        return -1;
-    }
-
-    if (next = strchr(input, ' '), !next) {
-        mdebug1("Invalid DB query syntax.");
-        mdebug2("DB query: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
-        return -1;
-    }
-
-    actor = input;
-    *next++ = '\0';
-
-    if (strcmp(actor, "agent") == 0) {
-        id = next;
-
-        if (next = strchr(id, ' '), !next) {
-            mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", id);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", id);
-            return -1;
-        }
-
-        *next++ = '\0';
-        query = next;
-
-        if (agent_id = strtol(id, &next, 10), *next) {
-            mdebug1("Invalid agent ID '%s'", id);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid agent ID '%.32s'", id);
-            return -1;
-        }
-
-        if (wdb = wdb_open_agent2(agent_id), !wdb) {
-            merror("Couldn't open DB for agent '%d'", agent_id);
-            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB for agent %d", agent_id);
-            return -1;
-        }
-
-        mdebug2("Executing query: %s", query);
-
-        if (next = strchr(query, ' '), next) {
-            *next++ = '\0';
-        }
-
-        if (strcmp(query, "sql") == 0) {
-            if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", id);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", id);
-                result = -1;
-            } else {
-                sql = next;
-
-                if (data = wdb_exec(wdb->db, sql), data) {
-                    out = cJSON_PrintUnformatted(data);
-                    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-                    free(out);
-                    cJSON_Delete(data);
-                } else {
-                    mdebug1("Cannot execute SQL query.");
-                    mdebug2("SQL query: %s", sql);
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute SQL query");
-                    result = -1;
-                }
-            }
-        } else if (strcmp(query, "begin") == 0) {
-            if (wdb_begin2(wdb) < 0) {
-                mdebug1("Cannot begin transaction.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot begin transaction");
-                result = -1;
-            } else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-            }
-        } else if (strcmp(query, "commit") == 0) {
-            if (wdb_commit2(wdb) < 0) {
-                mdebug1("Cannot end transaction.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
-                result = -1;
-            } else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-            }
-        } else if (strcmp(query, "close") == 0) {
-            wdb_leave(wdb);
-            w_mutex_lock(&pool_mutex);
-
-            if (wdb_close(wdb) < 0) {
-                mdebug1("Cannot close database.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
-                result = -1;
-            } else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-                result = 0;
-            }
-
-            w_mutex_unlock(&pool_mutex);
-            return result;
-        } else {
-            mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", id);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", id);
-            return -1;
-        }
-
-        wdb_leave(wdb);
-        return result;
-    } else {
-        mdebug1("Invalid DB query actor: %s", actor);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
-        return -1;
-    }
 }
 
 void wdb_help() {

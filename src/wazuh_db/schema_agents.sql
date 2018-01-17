@@ -37,6 +37,23 @@ CREATE INDEX IF NOT EXISTS fim_event_date ON fim_event (date);
 CREATE INDEX IF NOT EXISTS fim_event_md5 ON fim_event (md5);
 CREATE INDEX IF NOT EXISTS fim_event_sha1 ON fim_event (sha1);
 
+CREATE TABLE IF NOT EXISTS fim_entry (
+    file TEXT PRIMARY KEY,
+    type TEXT NOT NULL CHECK (type IN ('file', 'registry')),
+    date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    changes INTEGER NOT NULL DEFAULT 0,
+    size INTEGER,
+    perm TEXT,
+    uid TEXT,
+    gid TEXT,
+    md5 TEXT,
+    sha1 TEXT,
+    uname TEXT,
+    gname TEXT,
+    mtime INTEGER,
+    inode TEXT
+);
+
 CREATE TABLE IF NOT EXISTS pm_event (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date_first TEXT,

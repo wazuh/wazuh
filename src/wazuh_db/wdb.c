@@ -18,6 +18,12 @@ static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
+static const char * SQL_STMT[] = {
+    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode FROM fim_entry WHERE file = ?;",
+    "SELECT 1 FROM fim_entry WHERE file = ?",
+    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = changes + 1, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ? WHERE file = ?;"
+};
 
 sqlite3 *wdb_global = NULL;
 wdb_config config;
@@ -384,17 +390,30 @@ int wdb_create_file(const char *path, const char *source) {
 
     sqlite3_close_v2(db);
 
-    uid = Privsep_GetUser(ROOT);
-    gid = Privsep_GetGroup(GROUPGLOBAL);
-
-    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, ROOT, GROUPGLOBAL);
+    switch (getuid()) {
+    case -1:
+        merror("at getuid(): %s (%d)", strerror(errno), errno);
         return -1;
-    }
 
-    if (chown(path, uid, gid) < 0) {
-        merror(CHOWN_ERROR, path, errno, strerror(errno));
-        return -1;
+    case 0:
+        uid = Privsep_GetUser(ROOT);
+        gid = Privsep_GetGroup(GROUPGLOBAL);
+
+        if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+            merror(USER_ERROR, ROOT, GROUPGLOBAL);
+            return -1;
+        }
+
+        if (chown(path, uid, gid) < 0) {
+            merror(CHOWN_ERROR, path, errno, strerror(errno));
+            return -1;
+        }
+
+        break;
+
+    default:
+        mdebug1("Ignoring chown when creating file from SQL.");
+        break;
     }
 
     if (chmod(path, 0660) < 0) {
@@ -611,10 +630,17 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
 
 int wdb_close(wdb_t * wdb) {
     int result;
+    int i;
 
     if (wdb->refcount == 0) {
         if (wdb->transaction) {
             wdb_commit2(wdb);
+        }
+
+        for (i = 0; i < WDB_STMT_SIZE; i++) {
+            if (wdb->stmt[i]) {
+                sqlite3_finalize(wdb->stmt[i]);
+            }
         }
 
         result = sqlite3_close_v2(wdb->db);
@@ -649,4 +675,31 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb) {
     }
 
     return NULL;
+}
+
+int wdb_stmt_cache(wdb_t * wdb, int index) {
+    if (index >= WDB_STMT_SIZE) {
+        merror("SQL statement index (%d) out of bounds", index);
+        return -1;
+    }
+
+    if (!wdb->stmt[index]) {
+        if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
+            merror("at wdb_stmt_cache(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
+        }
+    } else if (sqlite3_reset(wdb->stmt[index]) != SQLITE_OK) {
+        merror("at wdb_stmt_cache(): at sqlite3_reset(): %s", sqlite3_errmsg(wdb->db));
+
+        // Retry to prepare
+
+        sqlite3_finalize(wdb->stmt[index]);
+
+        if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
+            merror("at wdb_stmt_cache(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
+        }
+    }
+
+    return 0;
 }
