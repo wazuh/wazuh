@@ -602,8 +602,7 @@ def get_file_status_all_managers(file_list, manager):
             if re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(m):
                 fix_manager.append(m)
             elif re.compile(r"\w+").match(m):
-                send_to_socket(cluster_socket, "getip {0}".format(m))
-                fix_manager.append(receive_data_from_db_socket(cluster_socket))
+                fix_manager.append(get_ip_from_name(m, cluster_socket))
             else:
                 raise WazuhException(3014, m)
 
@@ -1107,8 +1106,7 @@ def save_actual_master_data_on_db(data):
         else:
             # save files status received from master in database
             master_name = get_actual_master(csocket=cluster_socket)
-            send_to_socket(cluster_socket, "getip {0}".format(master_name))
-            actual_master_ip = receive_data_from_db_socket(cluster_socket)
+            actual_master_ip = get_ip_from_name(master_name, cluster_socket)
             get_file_status_of_one_node((actual_master_ip, 'master', ''), list_files_from_filesystem('master', get_cluster_items()).keys(), cluster_socket)
             update_node_db_after_sync(node_data, actual_master_ip, master_name, cluster_socket)
 
@@ -1272,15 +1270,22 @@ def sync(debug, force=False):
                       for node,data in thread_results.items()}
 
 
-def get_ip_from_name(name):
-    cluster_socket = connect_to_db_socket()
+def get_ip_from_name(name, csocket=None):
+    if not csocket:
+        cluster_socket = connect_to_db_socket()
+    else:
+        cluster_socket = csocket
+
     try:
         send_to_socket(cluster_socket, "getip {0}".format(name))
         data = receive_data_from_db_socket(cluster_socket)
     except:
         logging.warning("Can't get ip of {0}".format(name))
         data = None
-    cluster_socket.close()
+
+    if not csocket:
+        cluster_socket.close()
+    
     return data
 
 
