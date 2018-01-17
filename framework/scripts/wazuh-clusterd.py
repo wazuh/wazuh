@@ -226,6 +226,11 @@ class WazuhClusterHandler(asynchat.async_chat):
                     all_agents = ast.literal_eval(args[0])
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 res = rootcheck.clear(agents, all_agents, cluster_depth)
+            elif command[0] == MANAGERS_STATUS:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = managers_status(cluster_depth=cluster_depth)
 
             elif command[0] == 'ready':
                 res = "Starting to sync client's files"

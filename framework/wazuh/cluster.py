@@ -80,6 +80,9 @@ ROOTCHECK_RUN = "rootcheck_run"
 list_request_type.append(ROOTCHECK_RUN)
 ROOTCHECK_CLEAR = "rootcheck_clear"
 list_request_type.append(ROOTCHECK_CLEAR)
+MANAGERS_STATUS = "manager_status"
+list_request_type.append(MANAGERS_STATUS)
+
 
 def check_cluster_status():
     """
@@ -1277,9 +1280,27 @@ def get_ip_from_name(name):
     try:
         send_to_socket(cluster_socket, "getip {0}".format(name))
         data = receive_data_from_db_socket(cluster_socket)
+        if data == "":
+            data = None
     except:
-        logging.warning("Can't get ip of {0}".format(name))
         data = None
+    if data == None:
+        logging.warning("Can't get ip of {0}".format(name))
+    cluster_socket.close()
+    return data
+
+
+def get_name_from_ip(addr):
+    cluster_socket = connect_to_db_socket()
+    try:
+        send_to_socket(cluster_socket, "getname {0}".format(addr))
+        data = receive_data_from_db_socket(cluster_socket)
+        if data == "":
+            data = None
+    except:
+        data = None
+    if data == None:
+        logging.warning("Can't get ip of {0}".format(addr))
     cluster_socket.close()
     return data
 
@@ -1345,6 +1366,8 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
         else:
             if current_result.get('data') == None:
                 current_result = result_node
+    elif request_type == MANAGERS_STATUS:
+        current_result[get_name_from_ip(node)] = result_node
     else:
         if result_node.get('data') != None:
             current_result = result_node['data']
@@ -1414,11 +1437,32 @@ def is_cluster_running():
     return status()['wazuh-clusterd'] == 'running'
 
 
-def distributed_api_request(request_type, agent_id, args=[], cluster_depth=1):
+def distributed_api_request(request_type, agent_id=None, args=[], cluster_depth=1, affected_nodes=None):
     config_cluster = read_config()
     node_agents = get_agents_by_node(agent_id)
+
+    if affected_nodes != None and len(affected_nodes) > 0:
+        if not isinstance(affected_nodes, list):
+            affected_nodes = [affected_nodes]
+        affected_nodes_addr = []
+        for node in affected_nodes:
+            if not re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(node):
+                addr = get_ip_from_name(node)
+                if addr != None:
+                    affected_nodes_addr.append(addr)
+            else:
+                affected_nodes_addr.append(node)
+        if len(affected_nodes_addr) == 0:
+            return {}
+        if node_agents != None and len(node_agents) > 0: #filter existing dict
+            node_agents = {node: node_agents[node] for node in affected_nodes_addr}
+        else: #make nodes dict
+            node_agents = {node: [] for node in affected_nodes_addr}
+
     return send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
 
+
+# agent.py
 
 def restart_agents(agent_id=None, restart_all=False, cluster_depth=1):
     if is_a_local_request() or cluster_depth <= 0:
@@ -1466,3 +1510,21 @@ def upgrade_agent_custom(agent_id, file_path=None, installer=None):
         request_type = AGENTS_UPGRADE_CUSTOM
         args = [str(wpk_repo), str(version), str(force), str(chunk_size)]
         return distributed_api_request(request_type, agent_id, args)
+
+
+# manager.py
+
+def managers_status(node_id=None, cluster_depth=1):
+    """
+    Returns the Manager processes that are running.
+    :return: Array of dictionaries (keys: status, daemon).
+    """
+
+    if is_a_local_request() or cluster_depth <= 0 :
+        return status()
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = MANAGERS_STATUS
+        return distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
