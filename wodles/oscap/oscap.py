@@ -23,6 +23,7 @@ OSCAP_BIN = "oscap"
 XSLT_BIN = "xsltproc"
 PATTERN_HEAD = "Profiles:\n"
 PATTERN_PROFILE = "(\t+)(\S+)\n"
+PATTERN_ID_PROFILE = "\t+Id:\s(\S+)\n"
 OSCAP_LOG_ERROR = "oscap: ERROR:"
 TEMPLATE_XCCDF = "wodles/oscap/template_xccdf.xsl"
 TEMPLATE_OVAL = "wodles/oscap/template_oval.xsl"
@@ -59,6 +60,7 @@ except ImportError:
 def extract_profiles_from_file(oscap_file):
     regex_head = compile(PATTERN_HEAD)
     regex_profile = compile(PATTERN_PROFILE)
+    regex_id_profile = compile(PATTERN_ID_PROFILE)
 
     try:
         profiles_output = check_output([OSCAP_BIN, "info", oscap_file], stderr=STDOUT)
@@ -77,7 +79,15 @@ def extract_profiles_from_file(oscap_file):
             print("oscap: No profiles at file \"{0}\".".format(oscap_file))
         return None
 
-    # Extract profiles
+    # Extract profiles (> v1.2.15)
+
+    match_id_profile = regex_id_profile.search(profiles_output)
+
+    if match_id_profile:
+        ex_profiles = regex_id_profile.findall(profiles_output)
+        return ex_profiles
+
+    # Extract profiles (< v1.2.15)
 
     match_profile = regex_profile.match(profiles_output, match_head.end())
 

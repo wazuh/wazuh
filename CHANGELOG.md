@@ -3,10 +3,15 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.2.0]
 
+### Added
+
+- [Add field `status` to `GET/agents/groups/:group_id` API call.](https://github.com/wazuh/wazuh/pull/338)
+
 ### Fixed
 
+- [Fixed oscap.py to support new versions of OpenSCAP scanner.](https://github.com/wazuh/wazuh/pull/331)
+- [Fixed bug in cluster when receive an error response from client.](https://github.com/wazuh/wazuh/pull/346)
 - [Fixed bug in framework when the manager is installed in different path than /var/ossec.](https://github.com/wazuh/wazuh/pull/335)
-
 
 ## [v3.1.0]
 
@@ -21,7 +26,7 @@ All notable changes to this project will be documented in this file.
 - Added alert and archive output files rotation capabilities.
 - Added rule option to discard field "firedtimes".
 - Added VULS integration for running vulnerability assessments.
-- CIS-CAT Wazuh Module to scan CIS policies. 
+- CIS-CAT Wazuh Module to scan CIS policies.
 
 ### Changed
 
