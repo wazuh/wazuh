@@ -1106,12 +1106,30 @@ void wm_ciscat_send_scan(wm_scan_data *info){
     if (ID < 0)
         ID = -ID;
 
+#ifdef WIN32
+
+    char *random_id;
+    os_calloc(OS_MAXSTR, sizeof(char), random_id);
+
+    int ID2 = os_random();
+    if (ID2 < 0)
+        ID2 = -ID2;
+
+    snprintf(random_id, OS_MAXSTR - 1, "%d%d", ID, ID2);
+
+    int final_id = atoi(random_id);
+#endif
+
     // Send global scan information
 
     object = cJSON_CreateObject();
     data = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "scan_info");
+#ifdef WIN32
+    cJSON_AddNumberToObject(object, "scan_id", final_id);
+#else
     cJSON_AddNumberToObject(object, "scan_id", ID);
+#endif
     cJSON_AddItemToObject(object, "cis", data);
     cJSON_AddStringToObject(data, "benchmark", info->benchmark);
     cJSON_AddStringToObject(data, "hostname", info->hostname);
@@ -1145,7 +1163,11 @@ void wm_ciscat_send_scan(wm_scan_data *info){
         object = cJSON_CreateObject();
         data = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "scan_result");
+    #ifdef WIN32
+        cJSON_AddNumberToObject(object, "scan_id", final_id);
+    #else
         cJSON_AddNumberToObject(object, "scan_id", ID);
+    #endif
         cJSON_AddItemToObject(object, "cis", data);
 
         cJSON_AddStringToObject(data, "rule_id", rule->id);
