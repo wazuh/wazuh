@@ -8,6 +8,7 @@ from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh.manager import status
 from wazuh.manager import ossec_log
+from wazuh.manager import ossec_log_summary
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh import common
@@ -85,6 +86,8 @@ MANAGERS_STATUS = "manager_status"
 list_request_type.append(MANAGERS_STATUS)
 MANAGERS_LOGS = "manager_logs"
 list_request_type.append(MANAGERS_LOGS)
+MANAGERS_LOGS_SUMMARY = "manager_logs_sum"
+list_request_type.append(MANAGERS_LOGS_SUMMARY)
 
 
 def check_cluster_status():
@@ -1369,7 +1372,7 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
         else:
             if current_result.get('data') == None:
                 current_result = result_node
-    elif request_type == MANAGERS_STATUS or request_type == MANAGERS_LOGS:
+    elif request_type == MANAGERS_STATUS or request_type == MANAGERS_LOGS or request_type == MANAGERS_LOGS_SUMMARY :
         current_result[get_name_from_ip(node)] = result_node
     else:
         if result_node.get('data') != None:
@@ -1537,4 +1540,16 @@ def managers_ossec_log(type_log='all', category='all', months=3, offset=0, limit
 
         request_type = MANAGERS_LOGS
         args = [str(type_log), str(category), str(months), str(offset), str(limit), str(sort), str(search)]
+        return distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)
+
+
+def managers_ossec_log_summary(months=3, node_id=None, cluster_depth=1):
+    if is_a_local_request() or cluster_depth <= 0 :
+        return ossec_log_summary(months)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = MANAGERS_LOGS_SUMMARY
+        args = [str(months)]
         return distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)
