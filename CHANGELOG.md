@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 
 - [Fixed oscap.py to support new versions of OpenSCAP scanner.](https://github.com/wazuh/wazuh/pull/331)
 - [Fixed bug in cluster when receive an error response from client.](https://github.com/wazuh/wazuh/pull/346)
+- [Fixed bug in framework when the manager is installed in different path than /var/ossec.](https://github.com/wazuh/wazuh/pull/335)
 
 ## [v3.1.0]
 
