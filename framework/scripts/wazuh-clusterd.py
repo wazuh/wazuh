@@ -7,6 +7,7 @@ try:
     import asynchat
     import socket
     import json
+    import ast
     from distutils.util import strtobool
     from sys import argv, exit, path
     from os.path import dirname
@@ -39,10 +40,16 @@ try:
         myWazuh = Wazuh(get_init=True)
 
         from wazuh.common import *
-        from wazuh.cluster import *
+        from wazuh.cluster.management import *
+        from wazuh.cluster.handler import *
+        from wazuh.cluster.distributed_api import *
+        from wazuh.agent import Agent
         from wazuh.exception import WazuhException
         from wazuh.utils import check_output
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
+        import wazuh.syscheck as syscheck
+        import wazuh.rootcheck as rootcheck
+        import wazuh.stats as stats
     except Exception as e:
         print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
         exit()
@@ -95,6 +102,192 @@ class WazuhClusterHandler(asynchat.async_chat):
             elif command[0] == 'zip':
                 zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 res = extract_zip(zip_bytes)
+            elif command[0] == RESTART_AGENTS:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                if (len(args) == 2):
+                    agents = args[0].split("-")
+                    restart_all = ast.literal_eval(args[1])
+                else:
+                    agents = None
+                    restart_all = ast.literal_eval(args[0])
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = restart_agents(agents, restart_all, cluster_depth)
+            elif command[0] == AGENTS_UPGRADE_RESULT:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                agent = args[0]
+                timeout = args[1]
+                try:
+                    res = Agent.get_upgrade_result(agent, timeout)
+                except Exception as e:
+                    res = str(e)
+            elif command[0] == AGENTS_UPGRADE:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                agent_id = args[0]
+                wpk_repo = ast.literal_eval(args[1])
+                version = ast.literal_eval(args[2])
+                force = ast.literal_eval(args[3])
+                chunk_size = ast.literal_eval(args[4])
+                try:
+                    res = Agent.upgrade_agent(agent_id, wpk_repo, version, force, chunk_size)
+                except Exception as e:
+                    res = str(e)
+            elif command[0] == AGENTS_UPGRADE_CUSTOM:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                agent_id = args[0]
+                file_path = ast.literal_eval(args[1])
+                installer = ast.literal_eval(args[2])
+                try:
+                    res = Agent.upgrade_agent_custom(agent_id, file_path, installer)
+                except Exception as e:
+                    res = str(e)
+            elif command[0] == SYSCHECK_LAST_SCAN:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                agent = args.split(" ")
+                res = syscheck.last_scan(agent[0])
+            elif command[0] == SYSCHECK_RUN:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                if (len(args) == 2):
+                    agents = args[0]
+                    all_agents = ast.literal_eval(args[1])
+                else:
+                    agents = None
+                    all_agents = ast.literal_eval(args[0])
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = syscheck.run(agents, all_agents, cluster_depth)
+            elif command[0] == SYSCHECK_CLEAR:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                if (len(args) == 2):
+                    agents = args[0]
+                    all_agents = ast.literal_eval(args[1])
+                else:
+                    agents = None
+                    all_agents = ast.literal_eval(args[0])
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = syscheck.clear(agents, all_agents, cluster_depth)
+            elif command[0] == ROOTCHECK_PCI:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                index = 0
+                agents = None
+                if (len(args) == 5):
+                    agents = args[0]
+                    index = index + 1
+                offset = ast.literal_eval(args[index])
+                index = index + 1
+                limit = ast.literal_eval(args[index])
+                index = index + 1
+                sort = ast.literal_eval(args[index])
+                index = index + 1
+                search = ast.literal_eval(args[index])
+                res = args
+                res = rootcheck.get_pci(agents, offset, limit, sort, search)
+            elif command[0] == ROOTCHECK_CIS:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                index = 0
+                agents = None
+                if (len(args) == 5):
+                    agents = args[0]
+                    index = index + 1
+                offset = ast.literal_eval(args[index])
+                index = index + 1
+                limit = ast.literal_eval(args[index])
+                index = index + 1
+                sort = ast.literal_eval(args[index])
+                index = index + 1
+                search = ast.literal_eval(args[index])
+                res = args
+                res = rootcheck.get_cis(agents, offset, limit, sort, search)
+            elif command[0] == ROOTCHECK_LAST_SCAN:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                agent = args.split(" ")
+                res = rootcheck.last_scan(agent[0])
+            elif command[0] == ROOTCHECK_RUN:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                if (len(args) == 2):
+                    agents = args[0]
+                    all_agents = ast.literal_eval(args[1])
+                else:
+                    agents = None
+                    all_agents = ast.literal_eval(args[0])
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = rootcheck.run(agents, all_agents, cluster_depth)
+            elif command[0] == ROOTCHECK_CLEAR:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                if (len(args) == 2):
+                    agents = args[0]
+                    all_agents = ast.literal_eval(args[1])
+                else:
+                    agents = None
+                    all_agents = ast.literal_eval(args[0])
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = rootcheck.clear(agents, all_agents, cluster_depth)
+            elif command[0] == MANAGERS_STATUS:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = managers_status(cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_LOGS:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                type_log = args[0]
+                category = args[1]
+                months = ast.literal_eval(args[2])
+                offset = ast.literal_eval(args[3])
+                limit = ast.literal_eval( args[4])
+                sort = ast.literal_eval(args[5])
+                search = ast.literal_eval(args[6])
+                res = managers_ossec_log(type_log=type_log, category=category, months=months, offset=offset, limit=limit, sort=sort, search=search, cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_LOGS_SUMMARY:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                months = ast.literal_eval(args[0])
+                res = managers_ossec_log_summary(months=months, cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_STATS_TOTALS:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                year = ast.literal_eval(args[0])
+                month = ast.literal_eval(args[1])
+                day = ast.literal_eval(args[2])
+                res = stats.totals(year=year, month=month, day=day, cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_STATS_HOURLY:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = stats.hourly(cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_STATS_WEEKLY:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = stats.weekly(cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_OSSEC_CONF:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                section = args[0]
+                field = ast.literal_eval(args[1])
+                res = managers_get_ossec_conf(section=section, field=field, cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_INFO:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = managers_get_ossec_init(cluster_depth=cluster_depth)
+            elif command[0] == CLUSTER_CONFIG:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = get_config_distributed(cluster_depth=cluster_depth)
             elif command[0] == 'ready':
                 res = "Starting to sync client's files"
                 # execute an independent process to "crontab" the sync interval
@@ -193,7 +386,7 @@ def crontab_sync_master(interval):
                 file = None
             else:
                 continue
-            
+
             error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
                                 data=message, file=file)
 

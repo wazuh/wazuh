@@ -11,17 +11,10 @@ from wazuh.ossec_queue import OssecQueue
 from wazuh import common
 from glob import glob
 from os import remove, path
+from wazuh.cluster.distributed_api import is_a_local_request, distributed_api_request, is_cluster_running, SYSCHECK_LAST_SCAN, SYSCHECK_CLEAR, SYSCHECK_RUN
 
 
-def run(agent_id=None, all_agents=False):
-    """
-    Runs rootcheck and syscheck.
-
-    :param agent_id: Run rootcheck/syscheck in the agent.
-    :param all_agents: Run rootcheck/syscheck in all agents.
-    :return: Message.
-    """
-
+def run_local(agent_id=None, all_agents=False):
     if agent_id == "000" or all_agents:
         try:
             SYSCHECK_RESTART = "{0}/var/run/.syscheck_run".format(common.ossec_path)
@@ -55,15 +48,26 @@ def run(agent_id=None, all_agents=False):
     return ret_msg
 
 
-def clear(agent_id=None, all_agents=False):
+def run(agent_id=None, all_agents=False, cluster_depth=1):
     """
-    Clears the database.
+    Runs rootcheck and syscheck.
 
-    :param agent_id: For an agent.
-    :param all_agents: For all agents.
+    :param agent_id: Run rootcheck/syscheck in the agent.
+    :param all_agents: Run rootcheck/syscheck in all agents.
     :return: Message.
     """
+    if is_a_local_request() or agent_id == "000" or cluster_depth <= 0:
+        return run_local(agent_id, all_agents)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
 
+        request_type = SYSCHECK_RUN
+        args = [str(all_agents)]
+        return distributed_api_request(request_type, agent_id, args, cluster_depth)
+
+
+def clear_local(agent_id=None, all_agents=False):
     # Clear DB
     if int(all_agents):
         db_agents = glob('{0}/*-*.db'.format(common.database_path_agents))
@@ -102,14 +106,26 @@ def clear(agent_id=None, all_agents=False):
     return "Syscheck database deleted"
 
 
-def last_scan(agent_id):
+def clear(agent_id=None, all_agents=False, cluster_depth=1):
     """
-    Gets the last scan of the agent.
+    Clears the database.
 
-    :param agent_id: Agent ID.
-    :return: Dictionary: end, start.
+    :param agent_id: For an agent.
+    :param all_agents: For all agents.
+    :return: Message.
     """
+    if is_a_local_request() or agent_id == "000" or cluster_depth <= 0:
+        return clear_local(agent_id, all_agents)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
 
+        request_type = SYSCHECK_CLEAR
+        args = [str(all_agents)]
+        return distributed_api_request(request_type, agent_id, args, cluster_depth)
+
+
+def last_scan_local(agent_id):
     # Connection
     db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
     if not db_agent:
@@ -133,6 +149,24 @@ def last_scan(agent_id):
         data['start'] = tuple[0]
 
     return data
+
+
+def last_scan(agent_id):
+    """
+    Gets the last scan of the agent.
+
+    :param agent_id: Agent ID.
+    :return: Dictionary: end, start.
+    """
+    if is_a_local_request() or agent_id == "000":
+        return last_scan_local(agent_id)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = SYSCHECK_LAST_SCAN
+        args = []
+        return distributed_api_request(request_type, agent_id, args)
 
 
 def files(agent_id=None, event=None, filename=None, filetype='file', md5=None, sha1=None, hash=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None):

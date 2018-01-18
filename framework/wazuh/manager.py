@@ -6,12 +6,13 @@
 from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
 from wazuh import common
 from datetime import datetime
+from wazuh.configuration import get_ossec_conf
+from wazuh.cluster.distributed_api import is_a_local_request, distributed_api_request, is_cluster_running, MANAGERS_STATUS, MANAGERS_LOGS, MANAGERS_LOGS_SUMMARY, MANAGERS_OSSEC_CONF
 import time
 from os.path import exists
 from glob import glob
 import re
 import hashlib
-
 
 def status():
     """
@@ -160,3 +161,50 @@ def ossec_log_summary(months=3):
             else:
                 continue
     return categories
+
+
+def managers_status(node_id=None, cluster_depth=1):
+    if is_a_local_request() or cluster_depth <= 0 :
+        return status()
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = MANAGERS_STATUS
+        return distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
+
+
+def managers_ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort=None, search=None, node_id=None, cluster_depth=1):
+    if is_a_local_request() or cluster_depth <= 0 :
+        return ossec_log(type_log, category, months, offset, limit, sort, search)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = MANAGERS_LOGS
+        args = [str(type_log), str(category), str(months), str(offset), str(limit), str(sort), str(search)]
+        return distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)
+
+
+def managers_ossec_log_summary(months=3, node_id=None, cluster_depth=1):
+    if is_a_local_request() or cluster_depth <= 0 :
+        return ossec_log_summary(months)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = MANAGERS_LOGS_SUMMARY
+        args = [str(months)]
+        return distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)
+
+
+def managers_get_ossec_conf(section=None, field=None, node_id=None, cluster_depth=1):
+    if is_a_local_request() or cluster_depth <= 0 :
+        return get_ossec_conf(section, field)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = MANAGERS_OSSEC_CONF
+        args = [str(section), str(field)]
+        return distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)
