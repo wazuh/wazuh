@@ -49,6 +49,7 @@ try:
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
         import wazuh.syscheck as syscheck
         import wazuh.rootcheck as rootcheck
+        import wazuh.stats as stats
     except Exception as e:
         print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
         exit()
@@ -229,7 +230,59 @@ class WazuhClusterHandler(asynchat.async_chat):
                     all_agents = ast.literal_eval(args[0])
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 res = rootcheck.clear(agents, all_agents, cluster_depth)
-
+            elif command[0] == MANAGERS_STATUS:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = managers_status(cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_LOGS:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                type_log = args[0]
+                category = args[1]
+                months = ast.literal_eval(args[2])
+                offset = ast.literal_eval(args[3])
+                limit = ast.literal_eval( args[4])
+                sort = ast.literal_eval(args[5])
+                search = ast.literal_eval(args[6])
+                res = managers_ossec_log(type_log=type_log, category=category, months=months, offset=offset, limit=limit, sort=sort, search=search, cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_LOGS_SUMMARY:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                months = ast.literal_eval(args[0])
+                res = managers_ossec_log_summary(months=months, cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_STATS_TOTALS:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                year = ast.literal_eval(args[0])
+                month = ast.literal_eval(args[1])
+                day = ast.literal_eval(args[2])
+                res = stats.totals(year=year, month=month, day=day, cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_STATS_HOURLY:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = stats.hourly(cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_STATS_WEEKLY:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = stats.weekly(cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_OSSEC_CONF:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                section = args[0]
+                field = ast.literal_eval(args[1])
+                res = managers_get_ossec_conf(section=section, field=field, cluster_depth=cluster_depth)
+            elif command[0] == MANAGERS_INFO:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = managers_get_ossec_init(cluster_depth=cluster_depth)
             elif command[0] == 'ready':
                 res = "Starting to sync client's files"
                 # execute an independent process to "crontab" the sync interval

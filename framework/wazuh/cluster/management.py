@@ -5,7 +5,6 @@
 
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.manager import status
 from wazuh.InputValidator import InputValidator
 from wazuh.configuration import get_ossec_conf
 import socket
@@ -17,6 +16,7 @@ from time import sleep
 import json
 from subprocess import check_output
 import logging
+from glob import glob
 
 # import the C accelerated API of ElementTree
 try:
@@ -137,8 +137,11 @@ def send_request(host, port, key, data, file=None):
 
 
 def get_status_json():
+    def check_if_the_cluster_is_running():
+        return glob("{0}/var/run/{1}-*.pid".format(common.ossec_path, 'wazuh-clusterd')) != []
+
     return {"enabled": "yes" if check_cluster_status() else "no",
-            "running": "yes" if status()['wazuh-clusterd'] == 'running' else "no"}
+            "running": "yes" if check_if_the_cluster_is_running() else "no"}
 
 
 def check_cluster_cmd(cmd, node_type):
@@ -253,13 +256,40 @@ def get_ip_from_name(name, csocket=None):
     try:
         send_to_socket(cluster_socket, "getip {0}".format(name))
         data = receive_data_from_db_socket(cluster_socket)
+        if data == "":
+            data = None
     except:
-        logging.warning("Can't get ip of {0}".format(name))
         data = None
+    
+    if not data:
+        logging.warning("Can't get ip of {0}".format(name))
 
     if not csocket:
         cluster_socket.close()
     
+    return data
+
+
+def get_name_from_ip(addr, csocket=None):
+    if not csocket:
+        cluster_socket = connect_to_db_socket()
+    else:
+        cluster_socket = csocket
+
+    try:
+        send_to_socket(cluster_socket, "getname {0}".format(addr))
+        data = receive_data_from_db_socket(cluster_socket)
+        if data == "":
+            data = None
+    except:
+        data = None
+
+    if data == None:
+        logging.warning("Can't get name of {0}".format(addr))
+    
+    if not csocket:
+        cluster_socket.close()
+
     return data
 
 

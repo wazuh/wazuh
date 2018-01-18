@@ -39,6 +39,22 @@ ROOTCHECK_RUN = "rootcheck_run"
 list_request_type.append(ROOTCHECK_RUN)
 ROOTCHECK_CLEAR = "rootcheck_clear"
 list_request_type.append(ROOTCHECK_CLEAR)
+MANAGERS_STATUS = "manager_status"
+list_request_type.append(MANAGERS_STATUS)
+MANAGERS_LOGS = "manager_logs"
+list_request_type.append(MANAGERS_LOGS)
+MANAGERS_LOGS_SUMMARY = "manager_logs_sum"
+list_request_type.append(MANAGERS_LOGS_SUMMARY)
+MANAGERS_STATS_TOTALS = "manager_stats_to"
+list_request_type.append(MANAGERS_STATS_TOTALS)
+MANAGERS_STATS_WEEKLY = "manager_stats_we"
+list_request_type.append(MANAGERS_STATS_WEEKLY)
+MANAGERS_STATS_HOURLY = "manager_stats_ho"
+list_request_type.append(MANAGERS_STATS_HOURLY)
+MANAGERS_OSSEC_CONF = "manager_ossec_conf"
+list_request_type.append(MANAGERS_OSSEC_CONF)
+MANAGERS_INFO = "manager_info"
+list_request_type.append(MANAGERS_INFO)
 
 
 def send_request_to_node(node, config_cluster, request_type, args, cluster_depth, result_queue):
@@ -77,6 +93,8 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
         else:
             if current_result.get('data') == None:
                 current_result = result_node
+    elif request_type == MANAGERS_STATUS or request_type == MANAGERS_LOGS or request_type == MANAGERS_LOGS_SUMMARY  or request_type == MANAGERS_STATS_TOTALS or request_type == MANAGERS_STATS_WEEKLY or request_type == MANAGERS_STATS_HOURLY or request_type == MANAGERS_OSSEC_CONF or request_type == MANAGERS_INFO:
+        current_result[get_name_from_ip(node)] = result_node
     else:
         if result_node.get('data') != None:
             current_result = result_node['data']
@@ -108,7 +126,7 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, clus
             logging.info("Sending {2} request from {0} to {1}".format(local_node, node_id, request_type))
 
             # Push agents id
-            if remote_nodes.get(node_id) != None:
+            if remote_nodes.get(node_id) != None and len(remote_nodes[node_id]) > 0:
                 agents = "-".join(remote_nodes[node_id])
                 msg = agents
                 if args_str > 0:
@@ -146,6 +164,26 @@ def is_cluster_running():
     return get_status_json()['running'] == 'yes'
 
 
-def distributed_api_request(request_type, node_agents, args=[], cluster_depth=1):
+def distributed_api_request(request_type, agent_id=None, args=[], cluster_depth=1, affected_nodes=None):
     config_cluster = read_config()
+    node_agents = get_agents_by_node(agent_id)
+
+    if affected_nodes != None and len(affected_nodes) > 0:
+        if not isinstance(affected_nodes, list):
+            affected_nodes = [affected_nodes]
+        affected_nodes_addr = []
+        for node in affected_nodes:
+            if not re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(node):
+                addr = get_ip_from_name(node)
+                if addr != None:
+                    affected_nodes_addr.append(addr)
+            else:
+                affected_nodes_addr.append(node)
+        if len(affected_nodes_addr) == 0:
+            return {}
+        if node_agents != None and len(node_agents) > 0: #filter existing dict
+            node_agents = {node: node_agents[node] for node in affected_nodes_addr}
+        else: #make nodes dict
+            node_agents = {node: [] for node in affected_nodes_addr}
+
     return send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
