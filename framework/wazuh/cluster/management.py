@@ -258,11 +258,12 @@ def get_ip_from_name(name, csocket=None):
         data = receive_data_from_db_socket(cluster_socket)
         if data == "":
             data = None
-    except:
+    except Exception as e:
+        logging.warning("Error getting IP of node {}: {}".format(name, str(e)))
         data = None
     
     if not data:
-        logging.warning("Can't get ip of {0}".format(name))
+        logging.warning("Error getting IP of node: Received empty name")
 
     if not csocket:
         cluster_socket.close()
@@ -305,7 +306,10 @@ def get_actual_master(csocket=None):
     if not csocket:
         cluster_socket.close()
 
-    return {'name': name, 'url': get_ip_from_name(name, csocket)}
+    if name != " ":
+        return {'name': name, 'url': get_ip_from_name(name, csocket)}
+    else:
+        return {'name': None, 'url': None} 
 
 
 def insert_actual_master(node_name, csocket=None):
