@@ -99,6 +99,8 @@ MANAGERS_OSSEC_CONF = "manager_ossec_conf"
 list_request_type.append(MANAGERS_OSSEC_CONF)
 MANAGERS_INFO = "manager_info"
 list_request_type.append(MANAGERS_INFO)
+CLUSTER_CONFIG = "cluster_config"
+list_request_type.append(CLUSTER_CONFIG)
 
 
 def check_cluster_status():
@@ -1383,7 +1385,10 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
         else:
             if current_result.get('data') == None:
                 current_result = result_node
-    elif request_type == MANAGERS_STATUS or request_type == MANAGERS_LOGS or request_type == MANAGERS_LOGS_SUMMARY  or request_type == MANAGERS_STATS_TOTALS or request_type == MANAGERS_STATS_WEEKLY or request_type == MANAGERS_STATS_HOURLY or request_type == MANAGERS_OSSEC_CONF or request_type == MANAGERS_INFO:
+    elif request_type == MANAGERS_STATUS or request_type == MANAGERS_LOGS or request_type == MANAGERS_LOGS_SUMMARY  \
+    or request_type == MANAGERS_STATS_TOTALS or request_type == MANAGERS_STATS_WEEKLY \
+    or request_type == MANAGERS_STATS_HOURLY or request_type == MANAGERS_OSSEC_CONF \
+    or request_type == MANAGERS_INFO or request_type == CLUSTER_CONFIG:
         current_result[get_name_from_ip(node)] = result_node
     else:
         if result_node.get('data') != None:
@@ -1477,6 +1482,19 @@ def distributed_api_request(request_type, agent_id=None, args=[], cluster_depth=
             node_agents = {node: [] for node in affected_nodes_addr}
 
     return send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
+
+
+# API Cluster
+
+def get_config_distributed(node_id=None, cluster_depth=1):
+    if is_a_local_request() or cluster_depth <= 0 :
+        return read_config()
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = CLUSTER_CONFIG
+        return distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
 
 
 # agent.py

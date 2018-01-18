@@ -280,6 +280,11 @@ class WazuhClusterHandler(asynchat.async_chat):
                 args = args.split(" ")
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 res = managers_get_ossec_init(cluster_depth=cluster_depth)
+            elif command[0] == CLUSTER_CONFIG:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                cluster_depth = ast.literal_eval(command[1]) - 1
+                res = get_config_distributed(cluster_depth=cluster_depth)
             elif command[0] == 'ready':
                 res = "Starting to sync client's files"
                 # execute an independent process to "crontab" the sync interval
