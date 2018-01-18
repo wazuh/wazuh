@@ -635,8 +635,6 @@ InstallCommon(){
 	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/vuls/go
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/vuls.py ${PREFIX}/wodles/vuls
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/deploy_vuls.sh ${PREFIX}/wodles/vuls
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/ciscat
-	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/ciscat/template_*.xsl ${PREFIX}/wodles/ciscat
 
 	InstallOpenSCAPFiles
 

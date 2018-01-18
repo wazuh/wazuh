@@ -20,6 +20,28 @@
 #define WM_CISCAT_DEFAULT_DIR_WIN "wodles\\ciscat"
 #define WM_CISCAT_REPORTS DEFAULTDIR "/tmp"
 
+#define WM_CISCAT_GROUP_START   "<Group id="
+#define WM_CISCAT_RESULT_START  "<TestResult"
+#define WM_CISCAT_RULE_START    "<Rule id="
+#define WM_CISCAT_RULE_END      "</Rule>"
+#define WM_CISCAT_DESC_START    "<description"
+#define WM_CISCAT_RATIO_START   "<rationale"
+#define WM_CISCAT_FIXTEXT_START "<fixtext"
+#define WM_CISCAT_DESC_END      "</description>"
+#define WM_CISCAT_RATIO_END     "</rationale>"
+#define WM_CISCAT_FIXTEXT_END   "</fixtext>"
+#define WM_CISCAT_GROUP_START2   "<xccdf:Group id="
+#define WM_CISCAT_RULE_START2    "<xccdf:Rule id="
+#define WM_CISCAT_RULE_END2      "</xccdf:Rule>"
+#define WM_CISCAT_DESC_START2    "<xccdf:description"
+#define WM_CISCAT_RATIO_START2   "<xccdf:rationale"
+#define WM_CISCAT_FIXTEXT_START2 "<xccdf:fixtext"
+#define WM_CISCAT_DESC_END2      "</xccdf:description>"
+#define WM_CISCAT_RATIO_END2     "</xccdf:rationale>"
+#define WM_CISCAT_FIXTEXT_END2   "</xccdf:fixtext>"
+
+
+
 typedef enum wm_ciscat_eval_t { WM_CISCAT_XCCDF = 1, WM_CISCAT_OVAL } wm_ciscat_eval_t;
 
 typedef struct wm_ciscat_flags {
@@ -51,9 +73,32 @@ typedef struct wm_ciscat {
     wm_ciscat_eval *evals;          // Evaluations (linked list)
 } wm_ciscat;
 
+typedef struct wm_scan_data {
+    char *benchmark;                // Benchmark evaluated
+    char *timestamp;                // Time of scan
+    char *hostname;                 // Target of the evaluation
+    unsigned int pass;              // Number of checks passed
+    unsigned int fail;              // Number of checks failed
+    unsigned int error;             // Number of check errors
+    unsigned int unknown;           // Number of unknown checks
+    unsigned int notchecked;        // Number of not selected checks
+    char *score;                    // Pass/Fail checks ratio
+} wm_scan_data;
+
+typedef struct wm_rule_data {
+    char *title;                    // Rule title
+    char *id;                       // Rule ID
+    char *group;                    // Group title
+    char *description;              // Rule description
+    char *rationale;                // Rule rationale
+    char *remediation;              // Rule remediation
+    char *result;                   // Rule result
+    struct wm_rule_data *next;      // Pointer to the next rule data
+} wm_rule_data;
+
 extern const wm_context WM_CISCAT_CONTEXT;   // Context
 
-// Parse XML
+// Parse XML configuration
 int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 #endif // WM_OSCAP
