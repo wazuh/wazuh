@@ -12,6 +12,7 @@ from wazuh.manager import ossec_log_summary
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh import common
+from wazuh import Wazuh
 import sqlite3
 from datetime import datetime
 from hashlib import sha512
@@ -88,6 +89,16 @@ MANAGERS_LOGS = "manager_logs"
 list_request_type.append(MANAGERS_LOGS)
 MANAGERS_LOGS_SUMMARY = "manager_logs_sum"
 list_request_type.append(MANAGERS_LOGS_SUMMARY)
+MANAGERS_STATS_TOTALS = "manager_stats_to"
+list_request_type.append(MANAGERS_STATS_TOTALS)
+MANAGERS_STATS_WEEKLY = "manager_stats_we"
+list_request_type.append(MANAGERS_STATS_WEEKLY)
+MANAGERS_STATS_HOURLY = "manager_stats_ho"
+list_request_type.append(MANAGERS_STATS_HOURLY)
+MANAGERS_OSSEC_CONF = "manager_ossec_conf"
+list_request_type.append(MANAGERS_OSSEC_CONF)
+MANAGERS_INFO = "manager_info"
+list_request_type.append(MANAGERS_INFO)
 
 
 def check_cluster_status():
@@ -1372,7 +1383,7 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
         else:
             if current_result.get('data') == None:
                 current_result = result_node
-    elif request_type == MANAGERS_STATUS or request_type == MANAGERS_LOGS or request_type == MANAGERS_LOGS_SUMMARY :
+    elif request_type == MANAGERS_STATUS or request_type == MANAGERS_LOGS or request_type == MANAGERS_LOGS_SUMMARY  or request_type == MANAGERS_STATS_TOTALS or request_type == MANAGERS_STATS_WEEKLY or request_type == MANAGERS_STATS_HOURLY or request_type == MANAGERS_OSSEC_CONF or request_type == MANAGERS_INFO:
         current_result[get_name_from_ip(node)] = result_node
     else:
         if result_node.get('data') != None:
@@ -1553,3 +1564,29 @@ def managers_ossec_log_summary(months=3, node_id=None, cluster_depth=1):
         request_type = MANAGERS_LOGS_SUMMARY
         args = [str(months)]
         return distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)
+
+
+def managers_get_ossec_conf(section=None, field=None, node_id=None, cluster_depth=1):
+    if is_a_local_request() or cluster_depth <= 0 :
+        return get_ossec_conf(section, field)
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = MANAGERS_OSSEC_CONF
+        args = [str(section), str(field)]
+        return distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)
+
+
+# __init__.py
+
+def managers_get_ossec_init(node_id=None, cluster_depth=1):
+    if is_a_local_request() or cluster_depth <= 0 :
+        wazuh = Wazuh(ossec_path=common.ossec_path)
+        return wazuh.get_ossec_init()
+    else:
+        if not is_cluster_running():
+            raise WazuhException(3015)
+
+        request_type = MANAGERS_INFO
+        return distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
