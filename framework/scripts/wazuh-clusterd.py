@@ -40,7 +40,10 @@ try:
         myWazuh = Wazuh(get_init=True)
 
         from wazuh.common import *
-        from wazuh.cluster import *
+        from wazuh.cluster.management import *
+        from wazuh.cluster.handler import *
+        from wazuh.cluster.distributed_api import *
+        from wazuh.agent import Agent
         from wazuh.exception import WazuhException
         from wazuh.utils import check_output
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
@@ -116,7 +119,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                 agent = args[0]
                 timeout = args[1]
                 try:
-                    res = get_upgrade_result(agent, timeout)
+                    res = Agent.get_upgrade_result(agent, timeout)
                 except Exception as e:
                     res = str(e)
             elif command[0] == AGENTS_UPGRADE:
@@ -128,7 +131,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                 force = ast.literal_eval(args[3])
                 chunk_size = ast.literal_eval(args[4])
                 try:
-                    res = upgrade_agent(agent_id, wpk_repo, version, force, chunk_size)
+                    res = Agent.upgrade_agent(agent_id, wpk_repo, version, force, chunk_size)
                 except Exception as e:
                     res = str(e)
             elif command[0] == AGENTS_UPGRADE_CUSTOM:
@@ -138,7 +141,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                 file_path = ast.literal_eval(args[1])
                 installer = ast.literal_eval(args[2])
                 try:
-                    res = upgrade_agent_custom(agent_id, file_path, installer)
+                    res = Agent.upgrade_agent_custom(agent_id, file_path, installer)
                 except Exception as e:
                     res = str(e)
             elif command[0] == SYSCHECK_LAST_SCAN:

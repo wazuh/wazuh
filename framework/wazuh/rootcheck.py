@@ -11,7 +11,7 @@ from wazuh.ossec_queue import OssecQueue
 from wazuh import common
 from glob import glob
 from os import remove, path
-import wazuh.cluster as cluster
+from wazuh.cluster.distributed_api import is_a_local_request, distributed_api_request, is_cluster_running, ROOTCHECK_LAST_SCAN, ROOTCHECK_CIS, ROOTCHECK_CLEAR, ROOTCHECK_RUN, ROOTCHECK_PCI
 
 
 def run_local(agent_id=None, all_agents=False):
@@ -56,15 +56,15 @@ def run(agent_id=None, all_agents=False, cluster_depth=1):
     :param all_agents: Run rootcheck/syscheck in all agents.
     :return: Message.
     """
-    if cluster.is_a_local_request() or agent_id == "000" or cluster_depth <= 0:
+    if is_a_local_request() or agent_id == "000" or cluster_depth <= 0:
         return run_local(agent_id, all_agents)
     else:
-        if not cluster.is_cluster_running():
+        if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = cluster.ROOTCHECK_RUN
+        request_type = ROOTCHECK_RUN
         args = [str(all_agents)]
-        return cluster.distributed_api_request(request_type, agent_id, args, cluster_depth)
+        return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args, cluster_depth)
 
 
 def clear_local(agent_id=None, all_agents=False):
@@ -113,15 +113,15 @@ def clear(agent_id=None, all_agents=False, cluster_depth=1):
     :param all_agents: For all agents.
     :return: Message.
     """
-    if cluster.is_a_local_request() or agent_id == "000" or cluster_depth <= 0:
+    if is_a_local_request() or agent_id == "000" or cluster_depth <= 0:
         return clear_local(agent_id, all_agents)
     else:
-        if not cluster.is_cluster_running():
+        if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = cluster.ROOTCHECK_CLEAR
+        request_type = ROOTCHECK_CLEAR
         args = [str(all_agents)]
-        return cluster.distributed_api_request(request_type, agent_id, args, cluster_depth)
+        return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args, cluster_depth)
 
 
 def print_db(agent_id=None, status='all', pci=None, cis=None, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -294,15 +294,15 @@ def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    if cluster.is_a_local_request() or agent_id == "000":
+    if is_a_local_request() or agent_id == "000":
         return get_pci_local(agent_id, offset, limit, sort, search)
     else:
-        if not cluster.is_cluster_running():
+        if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = cluster.ROOTCHECK_PCI
+        request_type = ROOTCHECK_PCI
         args = [str(offset), str(limit), str(sort), str(search)]
-        return cluster.distributed_api_request(request_type, agent_id, args)
+        return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args)
 
 
 def get_cis_local(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -370,15 +370,15 @@ def get_cis(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    if cluster.is_a_local_request() or agent_id == "000":
+    if is_a_local_request() or agent_id == "000":
         return get_cis_local(agent_id, offset, limit, sort, search)
     else:
-        if not cluster.is_cluster_running():
+        if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = cluster.ROOTCHECK_CIS
+        request_type = ROOTCHECK_CIS
         args = [str(offset), str(limit), str(sort), str(search)]
-        return cluster.distributed_api_request(request_type, agent_id, args)
+        return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args)
 
 
 def last_scan_local(agent_id):
@@ -414,12 +414,12 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
-    if cluster.is_a_local_request() or agent_id == "000":
+    if is_a_local_request() or agent_id == "000":
         return last_scan_local(agent_id)
     else:
-        if not cluster.is_cluster_running():
+        if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = cluster.ROOTCHECK_LAST_SCAN
+        request_type = ROOTCHECK_LAST_SCAN
         args = []
-        return cluster.distributed_api_request(request_type, agent_id, args)
+        return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args)

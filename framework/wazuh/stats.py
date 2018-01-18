@@ -5,7 +5,7 @@
 
 from wazuh.exception import WazuhException
 from wazuh import common
-import wazuh.cluster as cluster
+from wazuh.cluster.distributed_api import is_a_local_request, distributed_api_request, is_cluster_running, MANAGERS_STATS_TOTALS, MANAGERS_STATS_HOURLY, MANAGERS_STATS_WEEKLY
 
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -96,15 +96,15 @@ def totals(year, month, day, cluster_depth=1, node_id=None):
     :param day: Day, e.g. 9
     :return: Array of dictionaries. Each dictionary represents an hour.
     """
-    if cluster.is_a_local_request() or cluster_depth <= 0 :
+    if is_a_local_request() or cluster_depth <= 0 :
         return totals_local(year, month, day)
     else:
-        if not cluster.is_cluster_running():
+        if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = cluster.MANAGERS_STATS_TOTALS
+        request_type = MANAGERS_STATS_TOTALS
         args = [str(year), str(month), str(day)]
-        return cluster.distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)
+        return distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)
 
 
 def hourly_local():
@@ -142,14 +142,14 @@ def hourly(cluster_depth=1, node_id=None):
 
     :return: Dictionary: averages and interactions.
     """
-    if cluster.is_a_local_request() or cluster_depth <= 0 :
+    if is_a_local_request() or cluster_depth <= 0 :
         return hourly_local()
     else:
-        if not cluster.is_cluster_running():
+        if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = cluster.MANAGERS_STATS_HOURLY
-        return cluster.distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
+        request_type = MANAGERS_STATS_HOURLY
+        return distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
 
 
 def weekly_local():
@@ -192,11 +192,11 @@ def weekly(cluster_depth=1, node_id=None):
 
     :return: Dictionary: averages and interactions.
     """
-    if cluster.is_a_local_request() or cluster_depth <= 0 :
+    if is_a_local_request() or cluster_depth <= 0 :
         return weekly_local()
     else:
-        if not cluster.is_cluster_running():
+        if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = cluster.MANAGERS_STATS_WEEKLY
-        return cluster.distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
+        request_type = MANAGERS_STATS_WEEKLY
+        return distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
