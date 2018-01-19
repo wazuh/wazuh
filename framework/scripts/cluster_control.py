@@ -72,6 +72,7 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 try:
     from wazuh import Wazuh
     from wazuh.cluster.management import *
+    from wazuh.cluster.handler import *
     from wazuh.agent import Agent
     from wazuh.exception import WazuhException
 except Exception as e:

@@ -10,13 +10,14 @@ from wazuh.configuration import get_ossec_conf
 import socket
 import asyncore
 import asynchat
-from operator import itemgetter, eq
+from operator import eq
 import re
 from time import sleep
 import json
 from subprocess import check_output
 import logging
 from glob import glob
+from datetime import datetime
 
 # import the C accelerated API of ElementTree
 try:
@@ -422,20 +423,19 @@ def get_nodes(updateDBname=False, cluster_socket=None, get_localhost=False):
 
 
 
-def get_node(name=None, cluster_socket=None):
+def get_node(cluster_socket=None):
     data = {}
-    if not name:
-        config_cluster = read_config()
+    config_cluster = read_config()
 
-        if not config_cluster:
-            raise WazuhException(3000, "No config found")
+    if not config_cluster:
+        raise WazuhException(3000, "No config found")
 
-        data["node"]    = config_cluster["node_name"]
-        data["cluster"] = config_cluster["name"]
-        if get_actual_master(cluster_socket)['name'] == data['node']:
-            data["type"] = "master(*)"
-        else:
-            data["type"] = config_cluster["node_type"]
+    data["node"]    = config_cluster["node_name"]
+    data["cluster"] = config_cluster["name"]
+    if get_actual_master(cluster_socket)['name'] == data['node']:
+        data["type"] = "master(*)"
+    else:
+        data["type"] = config_cluster["node_type"]
 
     return data
 
@@ -493,11 +493,12 @@ def get_file_status_all_managers(file_list, manager):
 
     files = []
 
-    nodes = get_remote_nodes(connected=False, return_info_for_masters=True, cluster_socket=cluster_socket)
+    nodes = set(read_config()['nodes']) - set(get_localhost_ips())
+
     if manager:
-        remote_nodes = filter(lambda x: x in manager, map(itemgetter(0), nodes))
+        remote_nodes = filter(lambda x: x in manager, nodes)
     else:
-        remote_nodes = map(itemgetter(0), nodes)
+        remote_nodes = nodes
 
     for node in remote_nodes:
         all_files = get_file_status(node, cluster_socket)

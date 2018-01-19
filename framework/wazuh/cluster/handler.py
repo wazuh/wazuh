@@ -637,7 +637,8 @@ def sync(debug, force=False):
     remote_nodes = get_remote_nodes(True, True)
 
     cluster_socket = connect_to_db_socket()
-    if config_cluster['node_type'] == 'master' and config_cluster['node_name'] != get_actual_master(cluster_socket):
+    my_data = get_node(cluster_socket)
+    if my_data['type'] == 'master' and my_data['node'] != get_actual_master(cluster_socket):
         config_cluster['node_type'] = 'client'
 
     # Get own items status
