@@ -147,10 +147,11 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
             raise WazuhException(1404)
 
 
-def get_values(o):
+def get_values(o, fields=None):
     """
     Converts the values of an object to an array of strings.
     :param o: Object.
+    :param fields: fields to get values of (only for dictionaries)
     :return: Array of strings.
     """
     strings = []
@@ -165,20 +166,22 @@ def get_values(o):
             strings.extend(get_values(o))
     elif type(obj) is dict:
         for key in obj:
-            strings.extend(get_values(obj[key]))
+            if not fields or key in fields:
+                strings.extend(get_values(obj[key]))
     else:
         strings.append(str(obj).lower())
 
     return strings
 
 
-def search_array(array, text, negation=False):
+def search_array(array, text, negation=False, fields=None):
     """
     Looks for the string 'text' in the elements of the array.
 
     :param array: Array.
     :param text: Text to search.
     :param negation: the text must not be in the array.
+    :param fields: fields of the array to search in
     :return: True or False.
     """
 
@@ -186,7 +189,7 @@ def search_array(array, text, negation=False):
 
     for item in array:
 
-        values = get_values(item)
+        values = get_values(o=item, fields=fields)
 
         # print("'{0}' in '{1}'?".format(text, values))
 
