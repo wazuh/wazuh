@@ -43,6 +43,7 @@ try:
         from wazuh.cluster.management import *
         from wazuh.cluster.handler import *
         from wazuh.cluster.distributed_api import *
+        from wazuh.cluster.protocol_messages import *
         from wazuh.agent import Agent
         from wazuh.exception import WazuhException
         from wazuh.utils import check_output
@@ -50,6 +51,7 @@ try:
         import wazuh.syscheck as syscheck
         import wazuh.rootcheck as rootcheck
         import wazuh.stats as stats
+        import wazuh.manager as manager
     except Exception as e:
         print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
         exit()
@@ -97,12 +99,12 @@ class WazuhClusterHandler(asynchat.async_chat):
             res = "Received invalid cluster command {0}".format(command[0])
 
         if error == 0:
-            if command[0] == 'node':
+            if command[0] == list_requests_cluster['node']:
                 res = get_node()
-            elif command[0] == 'zip':
+            elif command[0] == list_requests_cluster['zip']:
                 zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 res = extract_zip(zip_bytes)
-            elif command[0] == RESTART_AGENTS:
+            elif command[0] == list_requests_agents['RESTART_AGENTS']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 if (len(args) == 2):
@@ -113,7 +115,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                     restart_all = ast.literal_eval(args[0])
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 res = restart_agents(agents, restart_all, cluster_depth)
-            elif command[0] == AGENTS_UPGRADE_RESULT:
+            elif command[0] == list_requests_agents['AGENTS_UPGRADE_RESULT']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 agent = args[0]
@@ -122,7 +124,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                     res = Agent.get_upgrade_result(agent, timeout)
                 except Exception as e:
                     res = str(e)
-            elif command[0] == AGENTS_UPGRADE:
+            elif command[0] == list_requests_agents['AGENTS_UPGRADE']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 agent_id = args[0]
@@ -134,7 +136,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                     res = Agent.upgrade_agent(agent_id, wpk_repo, version, force, chunk_size)
                 except Exception as e:
                     res = str(e)
-            elif command[0] == AGENTS_UPGRADE_CUSTOM:
+            elif command[0] == list_requests_agents['AGENTS_UPGRADE_CUSTOM']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 agent_id = args[0]
@@ -144,11 +146,11 @@ class WazuhClusterHandler(asynchat.async_chat):
                     res = Agent.upgrade_agent_custom(agent_id, file_path, installer)
                 except Exception as e:
                     res = str(e)
-            elif command[0] == SYSCHECK_LAST_SCAN:
+            elif command[0] == list_requests_syscheck['SYSCHECK_LAST_SCAN']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 agent = args.split(" ")
                 res = syscheck.last_scan(agent[0])
-            elif command[0] == SYSCHECK_RUN:
+            elif command[0] == list_requests_syscheck['SYSCHECK_RUN']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 if (len(args) == 2):
@@ -159,7 +161,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                     all_agents = ast.literal_eval(args[0])
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 res = syscheck.run(agents, all_agents, cluster_depth)
-            elif command[0] == SYSCHECK_CLEAR:
+            elif command[0] == list_requests_syscheck['SYSCHECK_CLEAR']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 if (len(args) == 2):
@@ -170,7 +172,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                     all_agents = ast.literal_eval(args[0])
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 res = syscheck.clear(agents, all_agents, cluster_depth)
-            elif command[0] == ROOTCHECK_PCI:
+            elif command[0] == list_requests_rootcheck['ROOTCHECK_PCI']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 index = 0
@@ -187,7 +189,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                 search = ast.literal_eval(args[index])
                 res = args
                 res = rootcheck.get_pci(agents, offset, limit, sort, search)
-            elif command[0] == ROOTCHECK_CIS:
+            elif command[0] == list_requests_rootcheck['ROOTCHECK_CIS']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 index = 0
@@ -204,11 +206,11 @@ class WazuhClusterHandler(asynchat.async_chat):
                 search = ast.literal_eval(args[index])
                 res = args
                 res = rootcheck.get_cis(agents, offset, limit, sort, search)
-            elif command[0] == ROOTCHECK_LAST_SCAN:
+            elif command[0] == list_requests_rootcheck['ROOTCHECK_LAST_SCAN']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 agent = args.split(" ")
                 res = rootcheck.last_scan(agent[0])
-            elif command[0] == ROOTCHECK_RUN:
+            elif command[0] == list_requests_rootcheck['ROOTCHECK_RUN']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 if (len(args) == 2):
@@ -219,7 +221,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                     all_agents = ast.literal_eval(args[0])
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 res = rootcheck.run(agents, all_agents, cluster_depth)
-            elif command[0] == ROOTCHECK_CLEAR:
+            elif command[0] == list_requests_rootcheck['ROOTCHECK_CLEAR']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 if (len(args) == 2):
@@ -230,12 +232,12 @@ class WazuhClusterHandler(asynchat.async_chat):
                     all_agents = ast.literal_eval(args[0])
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 res = rootcheck.clear(agents, all_agents, cluster_depth)
-            elif command[0] == MANAGERS_STATUS:
+            elif command[0] == list_requests_managers['MANAGERS_STATUS']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 cluster_depth = ast.literal_eval(command[1]) - 1
-                res = managers_status(cluster_depth=cluster_depth)
-            elif command[0] == MANAGERS_LOGS:
+                res = manager.managers_status(cluster_depth=cluster_depth)
+            elif command[0] == list_requests_managers['MANAGERS_LOGS']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 cluster_depth = ast.literal_eval(command[1]) - 1
@@ -246,14 +248,14 @@ class WazuhClusterHandler(asynchat.async_chat):
                 limit = ast.literal_eval( args[4])
                 sort = ast.literal_eval(args[5])
                 search = ast.literal_eval(args[6])
-                res = managers_ossec_log(type_log=type_log, category=category, months=months, offset=offset, limit=limit, sort=sort, search=search, cluster_depth=cluster_depth)
-            elif command[0] == MANAGERS_LOGS_SUMMARY:
+                res = manager.managers_ossec_log(type_log=type_log, category=category, months=months, offset=offset, limit=limit, sort=sort, search=search, cluster_depth=cluster_depth)
+            elif command[0] == list_requests_managers['MANAGERS_LOGS_SUMMARY']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 months = ast.literal_eval(args[0])
-                res = managers_ossec_log_summary(months=months, cluster_depth=cluster_depth)
-            elif command[0] == MANAGERS_STATS_TOTALS:
+                res = manager.managers_ossec_log_summary(months=months, cluster_depth=cluster_depth)
+            elif command[0] == list_requests_managers['MANAGERS_STATS_TOTALS']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 cluster_depth = ast.literal_eval(command[1]) - 1
@@ -261,38 +263,52 @@ class WazuhClusterHandler(asynchat.async_chat):
                 month = ast.literal_eval(args[1])
                 day = ast.literal_eval(args[2])
                 res = stats.totals(year=year, month=month, day=day, cluster_depth=cluster_depth)
-            elif command[0] == MANAGERS_STATS_HOURLY:
+            elif command[0] == list_requests_managers['MANAGERS_STATS_HOURLY']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 res = stats.hourly(cluster_depth=cluster_depth)
-            elif command[0] == MANAGERS_STATS_WEEKLY:
+            elif command[0] == list_requests_managers['MANAGERS_STATS_WEEKLY']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 res = stats.weekly(cluster_depth=cluster_depth)
-            elif command[0] == MANAGERS_OSSEC_CONF:
+            elif command[0] == list_requests_managers['MANAGERS_OSSEC_CONF']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 section = args[0]
                 field = ast.literal_eval(args[1])
-                res = managers_get_ossec_conf(section=section, field=field, cluster_depth=cluster_depth)
-            elif command[0] == MANAGERS_INFO:
+                res = manager.managers_get_ossec_conf(section=section, field=field, cluster_depth=cluster_depth)
+            elif command[0] == list_requests_managers['MANAGERS_INFO']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 cluster_depth = ast.literal_eval(command[1]) - 1
-                res = managers_get_ossec_init(cluster_depth=cluster_depth)
-            elif command[0] == CLUSTER_CONFIG:
+                res = myWazuh.managers_get_ossec_init(cluster_depth=cluster_depth)
+            elif command[0] == list_requests_cluster['CLUSTER_CONFIG']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 cluster_depth = ast.literal_eval(command[1]) - 1
                 res = get_config_distributed(cluster_depth=cluster_depth)
-            elif command[0] == 'ready':
+
+            elif command[0] == list_requests_cluster['MASTER_FORW']:
+                args = self.f.decrypt(response[common.cluster_sync_msg_size:])
+                args = args.split(" ")
+                if len(args) == 3:
+                    agent_id = args[0].split("-")
+                    request_type = args[1]
+                    args = args[2:]
+                else:
+                    agent_id = None
+                    request_type = args[1]
+                    args = args[1:]
+                res = "Received from " + self.addr
+
+            elif command[0] == list_requests_cluster['ready']:
                 res = "Starting to sync client's files"
                 # execute an independent process to "crontab" the sync interval
                 kill(child_pid, SIGUSR1)
-            elif command[0] == 'data':
+            elif command[0] == list_requests_cluster['data']:
                 res = "Saving data from actual master"
                 actual_master_data = json.loads(self.f.decrypt(response[common.cluster_sync_msg_size:]).decode())
                 save_actual_master_data_on_db(actual_master_data)

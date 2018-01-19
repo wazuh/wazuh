@@ -3,11 +3,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from wazuh.exception import WazuhException
 from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
 from wazuh import common
 from datetime import datetime
 from wazuh.configuration import get_ossec_conf
-from wazuh.cluster.distributed_api import is_a_local_request, distributed_api_request, is_cluster_running, MANAGERS_STATUS, MANAGERS_LOGS, MANAGERS_LOGS_SUMMARY, MANAGERS_OSSEC_CONF
+from wazuh.cluster.distributed_api import is_a_local_request, distributed_api_request, is_cluster_running
+from wazuh.cluster.protocol_messages import list_requests_managers
 import time
 from os.path import exists
 from glob import glob
@@ -20,9 +22,9 @@ def status():
     :return: Array of dictionaries (keys: status, daemon).
     """
 
-    processes = ['ossec-monitord', 'ossec-logcollector', 'ossec-remoted', 
-                 'ossec-syscheckd', 'ossec-analysisd', 'ossec-maild', 
-                 'ossec-execd', 'wazuh-modulesd', 'ossec-authd', 
+    processes = ['ossec-monitord', 'ossec-logcollector', 'ossec-remoted',
+                 'ossec-syscheckd', 'ossec-analysisd', 'ossec-maild',
+                 'ossec-execd', 'wazuh-modulesd', 'ossec-authd',
                  'wazuh-clusterd']
 
     data = {}
@@ -170,7 +172,7 @@ def managers_status(node_id=None, cluster_depth=1):
         if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = MANAGERS_STATUS
+        request_type = list_requests_managers['MANAGERS_STATUS']
         return distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
 
 
@@ -181,7 +183,7 @@ def managers_ossec_log(type_log='all', category='all', months=3, offset=0, limit
         if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = MANAGERS_LOGS
+        request_type = list_requests_managers['MANAGERS_LOGS']
         args = [str(type_log), str(category), str(months), str(offset), str(limit), str(sort), str(search)]
         return distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)
 
@@ -193,7 +195,7 @@ def managers_ossec_log_summary(months=3, node_id=None, cluster_depth=1):
         if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = MANAGERS_LOGS_SUMMARY
+        request_type = list_requests_managers['MANAGERS_LOGS_SUMMARY']
         args = [str(months)]
         return distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)
 
@@ -205,6 +207,6 @@ def managers_get_ossec_conf(section=None, field=None, node_id=None, cluster_dept
         if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = MANAGERS_OSSEC_CONF
+        request_type = list_requests_managers['MANAGERS_OSSEC_CONF']
         args = [str(section), str(field)]
         return distributed_api_request(request_type=request_type, args=args, cluster_depth=cluster_depth, affected_nodes=node_id)

@@ -11,7 +11,8 @@ from wazuh.ossec_queue import OssecQueue
 from wazuh import common
 from glob import glob
 from os import remove, path
-from wazuh.cluster.distributed_api import is_a_local_request, distributed_api_request, is_cluster_running, SYSCHECK_LAST_SCAN, SYSCHECK_CLEAR, SYSCHECK_RUN
+from wazuh.cluster.distributed_api import is_a_local_request, distributed_api_request, is_cluster_running
+from wazuh.cluster.protocol_messages import list_requests_syscheck
 
 
 def run_local(agent_id=None, all_agents=False):
@@ -62,7 +63,7 @@ def run(agent_id=None, all_agents=False, cluster_depth=1):
         if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = SYSCHECK_RUN
+        request_type = list_requests_syscheck['SYSCHECK_RUN']
         args = [str(all_agents)]
         return distributed_api_request(request_type, agent_id, args, cluster_depth)
 
@@ -120,7 +121,7 @@ def clear(agent_id=None, all_agents=False, cluster_depth=1):
         if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = SYSCHECK_CLEAR
+        request_type = list_requests_syscheck['SYSCHECK_CLEAR']
         args = [str(all_agents)]
         return distributed_api_request(request_type, agent_id, args, cluster_depth)
 
@@ -164,7 +165,7 @@ def last_scan(agent_id):
         if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = SYSCHECK_LAST_SCAN
+        request_type = list_requests_syscheck['SYSCHECK_LAST_SCAN']
         args = []
         return distributed_api_request(request_type, agent_id, args)
 

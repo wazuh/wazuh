@@ -3,60 +3,20 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.cluster.management import send_request, read_config, check_cluster_status, get_node, get_status_json
+from wazuh.cluster.management import send_request, read_config, check_cluster_status, get_node, get_nodes, get_status_json, get_name_from_ip, get_ip_from_name
+from wazuh.cluster.protocol_messages import *
+from wazuh.exception import WazuhException
+from wazuh import common
 import threading
 from sys import version
+import logging
+import re
 
 is_py2 = version[0] == '2'
 if is_py2:
     from Queue import Queue as queue
 else:
     from queue import Queue as queue
-
-# API Messages
-list_request_type = []
-RESTART_AGENTS = "restart"
-list_request_type.append(RESTART_AGENTS)
-AGENTS_UPGRADE_RESULT = "agents_upg_result"
-list_request_type.append(AGENTS_UPGRADE_RESULT)
-AGENTS_UPGRADE = "agents_upg"
-list_request_type.append(AGENTS_UPGRADE)
-AGENTS_UPGRADE_CUSTOM = "agents_upg_custom"
-list_request_type.append(AGENTS_UPGRADE_CUSTOM)
-SYSCHECK_LAST_SCAN = "syscheck_last"
-list_request_type.append(SYSCHECK_LAST_SCAN)
-SYSCHECK_RUN = "syscheck_run"
-list_request_type.append(SYSCHECK_RUN)
-SYSCHECK_CLEAR = "syscheck_clear"
-list_request_type.append(SYSCHECK_CLEAR)
-ROOTCHECK_PCI = "rootcheck_pci"
-list_request_type.append(ROOTCHECK_PCI)
-ROOTCHECK_CIS = "rootcheck_cis"
-list_request_type.append(ROOTCHECK_CIS)
-ROOTCHECK_LAST_SCAN = "rootcheck_last"
-list_request_type.append(ROOTCHECK_LAST_SCAN)
-ROOTCHECK_RUN = "rootcheck_run"
-list_request_type.append(ROOTCHECK_RUN)
-ROOTCHECK_CLEAR = "rootcheck_clear"
-list_request_type.append(ROOTCHECK_CLEAR)
-MANAGERS_STATUS = "manager_status"
-list_request_type.append(MANAGERS_STATUS)
-MANAGERS_LOGS = "manager_logs"
-list_request_type.append(MANAGERS_LOGS)
-MANAGERS_LOGS_SUMMARY = "manager_logs_sum"
-list_request_type.append(MANAGERS_LOGS_SUMMARY)
-MANAGERS_STATS_TOTALS = "manager_stats_to"
-list_request_type.append(MANAGERS_STATS_TOTALS)
-MANAGERS_STATS_WEEKLY = "manager_stats_we"
-list_request_type.append(MANAGERS_STATS_WEEKLY)
-MANAGERS_STATS_HOURLY = "manager_stats_ho"
-list_request_type.append(MANAGERS_STATS_HOURLY)
-MANAGERS_OSSEC_CONF = "manager_ossec_conf"
-list_request_type.append(MANAGERS_OSSEC_CONF)
-MANAGERS_INFO = "manager_info"
-list_request_type.append(MANAGERS_INFO)
-CLUSTER_CONFIG = "cluster_config"
-list_request_type.append(CLUSTER_CONFIG)
 
 
 def send_request_to_node(node, config_cluster, request_type, args, cluster_depth, result_queue):
@@ -74,7 +34,7 @@ def send_request_to_node(node, config_cluster, request_type, args, cluster_depth
 def append_node_result_by_type(node, result_node, request_type, current_result=None):
     if current_result == None:
         current_result = {}
-    if request_type == RESTART_AGENTS:
+    if request_type == list_requests_agents['RESTART_AGENTS']:
         if isinstance(result_node.get('data'), dict):
             if result_node.get('data').get('affected_agents') != None:
                 if current_result.get('affected_agents') is None:
@@ -95,10 +55,8 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
         else:
             if current_result.get('data') == None:
                 current_result = result_node
-    elif request_type == MANAGERS_STATUS or request_type == MANAGERS_LOGS or request_type == MANAGERS_LOGS_SUMMARY  \
-    or request_type == MANAGERS_STATS_TOTALS or request_type == MANAGERS_STATS_WEEKLY \
-    or request_type == MANAGERS_STATS_HOURLY or request_type == MANAGERS_OSSEC_CONF \
-    or request_type == MANAGERS_INFO or request_type == CLUSTER_CONFIG:
+
+    elif request_type in list_requests_managers.values() or request_type == list_requests_managers['CLUSTER_CONFIG']:
         current_result[get_name_from_ip(node)] = result_node
     else:
         if result_node.get('data') != None:
@@ -106,7 +64,6 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
         elif result_node.get('message') != None:
             current_result['message'] = result_node['message']
             current_result['error'] = result_node['error']
-        #current_result[node] = result_node
     return current_result
 
 
@@ -169,15 +126,25 @@ def is_cluster_running():
     return get_status_json()['running'] == 'yes'
 
 
-def distributed_api_request(request_type, agent_id=None, args=[], cluster_depth=1, affected_nodes=None):
+def distributed_api_request(request_type, node_agents={}, args=[], cluster_depth=1, affected_nodes=None):
     config_cluster = read_config()
-    node_agents = get_agents_by_node(agent_id)
+
+    # Redirect request to elected master
+    '''
+    if not from_cluster and get_actual_master() != config_cluster["node_name"]:
+        if not isinstance(agent_id, list):
+            agent_id = [agent_id]
+        node_agents = {get_ip_from_name(get_actual_master()): agent_id}
+        args = [request_type] + args
+        request_type = MASTER_FORW
+    '''
 
     if affected_nodes != None and len(affected_nodes) > 0:
         if not isinstance(affected_nodes, list):
             affected_nodes = [affected_nodes]
         affected_nodes_addr = []
         for node in affected_nodes:
+            # Is name or addr?
             if not re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(node):
                 addr = get_ip_from_name(node)
                 if addr != None:
@@ -186,7 +153,8 @@ def distributed_api_request(request_type, agent_id=None, args=[], cluster_depth=
                 affected_nodes_addr.append(node)
         if len(affected_nodes_addr) == 0:
             return {}
-        if node_agents != None and len(node_agents) > 0: #filter existing dict
+        #filter existing dict
+        if len(node_agents) > 0:
             node_agents = {node: node_agents[node] for node in affected_nodes_addr}
         else: #make nodes dict
             node_agents = {node: [] for node in affected_nodes_addr}

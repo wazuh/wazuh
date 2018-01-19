@@ -10,7 +10,8 @@ from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
 from wazuh.database import Connection
 from wazuh.group import group_exists, create_group
-from wazuh.cluster.distributed_api import is_a_local_request, is_cluster_running, distributed_api_request, RESTART_AGENTS, AGENTS_UPGRADE_RESULT, AGENTS_UPGRADE, AGENTS_UPGRADE_CUSTOM
+from wazuh.cluster.distributed_api import is_a_local_request, is_cluster_running, distributed_api_request
+from wazuh.cluster.protocol_messages import list_requests_agents
 from wazuh import manager
 from wazuh import common
 from glob import glob
@@ -1097,7 +1098,7 @@ class Agent:
             if not is_cluster_running():
                 raise WazuhException(3015)
 
-            request_type = RESTART_AGENTS
+            request_type = list_requests_agents['RESTART_AGENTS']
             args = [str(restart_all)]
             return distributed_api_request(request_type, get_agents_by_node(agent_id), args, cluster_depth)
 
@@ -1638,7 +1639,7 @@ class Agent:
             if not is_cluster_running():
                 raise WazuhException(3015)
 
-            request_type = AGENTS_UPGRADE
+            request_type = list_requests_agents['AGENTS_UPGRADE']
             args = [str(wpk_repo), str(version), str(force), str(chunk_size)]
             return distributed_api_request(request_type, get_agents_by_node(agent_id), args)
 
@@ -1700,7 +1701,7 @@ class Agent:
             if not is_cluster_running():
                 raise WazuhException(3015)
 
-            request_type = AGENTS_UPGRADE_RESULT
+            request_type = list_requests_agents['AGENTS_UPGRADE_RESULT']
             args = [str(timeout)]
             return distributed_api_request(request_type, get_agents_by_node(agent_id), args)
 
@@ -1880,7 +1881,7 @@ class Agent:
             if not is_cluster_running():
                 raise WazuhException(3015)
 
-            request_type = AGENTS_UPGRADE_CUSTOM
+            request_type = list_requests_agents['AGENTS_UPGRADE_CUSTOM']
             args = [str(wpk_repo), str(version), str(force), str(chunk_size)]
             return distributed_api_request(request_type, get_agents_by_node(agent_id), args)
 
