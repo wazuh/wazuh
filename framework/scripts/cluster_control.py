@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(me
 class WazuhHelpFormatter(argparse.ArgumentParser):
     def format_help(self):
         msg = """
-    {0} [-h] | [-d] | [-s] | [-p] | [-f  [-m MANAGER [MANAGER ...]]] | [-l [FILE [FILE ...]]] [-m MANAGER [MANAGER ...]]] | [-a [AGENT [AGENT ...]]] | [ -n [NODE [NODE ...]]] 
+    {0} [-h] | [-d] | [-s] | [-p] | [-f  [-m MANAGER [MANAGER ...]]] | [-l [FILE [FILE ...]]] [-m MANAGER [MANAGER ...]]] | [-a [AGENT [AGENT ...]]] | [ -n [NODE [NODE ...]]]
     Usage:
 \t-h                                  # Show this help message
 \t-d                                  # Get last synchronization date and duration
@@ -28,7 +28,7 @@ class WazuhHelpFormatter(argparse.ArgumentParser):
 \t-l FILE [FILE ...]                  # List the status of specified files
 \t-l -m MANAGER [MANAGER ...]         # List the status of all files of specified managers (name or IP)
 \t
-\t-a                                  # List the status of all agents 
+\t-a                                  # List the status of all agents
 \t-a AGENT [AGENT ...]                # List the status of specified agents (IP)
 \t
 \t-n                                  # List nodes status
@@ -134,96 +134,99 @@ def _get_nodes_status(node_list):
 
 def signal_handler(n_signal, frame):
     exit(1)
-    
+
 def _get_last_sync():
     date, duration = get_last_sync()
 
     print pprint_table(data=[[date, str(duration)]], headers=["Date", "Duration (s)"], show_header=True)
 
 if __name__ == '__main__':
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
+    try:
+        # Initialize framework
+        myWazuh = Wazuh(get_init=True)
 
-    # get arguments
-    args = parser.parse_args()
+        # get arguments
+        args = parser.parse_args()
 
-    if args.push:
-        try:
-            check_cluster_config(read_config())
-        except WazuhException as e:
-            print("Error doing synchronization: {0}".format(str(e)))
-            exit(1)
+        if args.push:
+            try:
+                check_cluster_config(read_config())
+            except WazuhException as e:
+                print("Error doing synchronization: {0}".format(str(e)))
+                exit(1)
 
-        sync_results = sync(debug=True)
-        if get_node()['type'] == 'master(*)':
-            for node in get_remote_nodes():
-                if node[1] == 'master':
-                    config_cluster = read_config()
-                    # send the synchronization results to the rest of masters
-                    message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
-                    file = json.dumps(sync_results).encode()
-                    error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
-                                        data=message, file=file)
+            sync_results = sync(debug=True)
+            if get_node()['type'] == 'master(*)':
+                for node in get_remote_nodes():
+                    if node[1] == 'master':
+                        config_cluster = read_config()
+                        # send the synchronization results to the rest of masters
+                        message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
+                        file = json.dumps(sync_results).encode()
+                        error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
+                                            data=message, file=file)
 
 
-    elif args.manager is not None and args.files is None and args.force is None:
-        logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
+        elif args.manager is not None and args.files is None and args.force is None:
+            logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
 
-    elif args.files is not None:
-        try:
-            _get_file_status(args.files, args.manager)
-        except WazuhException as e:
-            print("{0}".format(str(e)))
-            exit(1)
+        elif args.files is not None:
+            try:
+                _get_file_status(args.files, args.manager)
+            except WazuhException as e:
+                print("{0}".format(str(e)))
+                exit(1)
 
-    elif args.agents is not None:
-        try:
-            _get_agents_status()
-        except WazuhException as e:
-            print("{0}".format(str(e)))
-            exit(1)
+        elif args.agents is not None:
+            try:
+                _get_agents_status()
+            except WazuhException as e:
+                print("{0}".format(str(e)))
+                exit(1)
 
-    elif args.nodes is not None:
-        _get_nodes_status(args.nodes)
+        elif args.nodes is not None:
+            _get_nodes_status(args.nodes)
 
-    elif args.force is not None:
-        try:
-            check_cluster_config(read_config())
-        except WazuhException as e:
-            print("Error doing synchronization: {0}".format(str(e)))
-            exit(1)
+        elif args.force is not None:
+            try:
+                check_cluster_config(read_config())
+            except WazuhException as e:
+                print("Error doing synchronization: {0}".format(str(e)))
+                exit(1)
 
-        if args.manager is None:
-            sync_results = sync(debug=True, force=True)
-        else:
-            sync_results = {}
-            for node in args.manager:
-                sync_results[node] = sync_one_node(debug=True, node=node, force=True)
+            if args.manager is None:
+                sync_results = sync(debug=True, force=True)
+            else:
+                sync_results = {}
+                for node in args.manager:
+                    sync_results[node] = sync_one_node(debug=True, node=node, force=True)
 
-        if get_node()['type'] == 'master(*)':
-            for node in get_remote_nodes():
-                if node[1] == 'master':
-                    config_cluster = read_config()
-                    # send the synchronization results to the rest of masters
-                    message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
-                    file = json.dumps(sync_results).encode()
-                    error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
-                                        data=message, file=file)
+            if get_node()['type'] == 'master(*)':
+                for node in get_remote_nodes():
+                    if node[1] == 'master':
+                        config_cluster = read_config()
+                        # send the synchronization results to the rest of masters
+                        message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
+                        file = json.dumps(sync_results).encode()
+                        error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
+                                            data=message, file=file)
 
-    elif args.scan is not None:
-        try:
-            scan_for_new_files()
-        except socket.error as e:
-            print("Error connecting to wazuh cluster service: {0}".format(str(e)))
-            exit(1)
+        elif args.scan is not None:
+            try:
+                scan_for_new_files()
+            except socket.error as e:
+                print("Error connecting to wazuh cluster service: {0}".format(str(e)))
+                exit(1)
 
-    elif args.date is not None:
-        try:
-            _get_last_sync()
-        except socket.error as e:
-            print("Error connecting to wazuh cluster service: {0}".format(str(e)))
-            exit(1)
+        elif args.date is not None:
+            try:
+                _get_last_sync()
+            except socket.error as e:
+                print("Error connecting to wazuh cluster service: {0}".format(str(e)))
+                exit(1)
 
-    else:
-        parser.print_help()
-        exit()
+            else:
+                parser.print_help()
+                exit()
+    except Exception as e:
+        print "ERROR: {0}".format(str(e))
