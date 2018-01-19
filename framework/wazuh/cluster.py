@@ -31,6 +31,7 @@ import re
 import socket
 import asyncore
 import asynchat
+import errno
 
 # import the C accelerated API of ElementTree
 try:
@@ -812,11 +813,14 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
 
     try:
         dest_file = open(f_temp, "w")
-    except IOError:
-        dirpath = path.dirname(fullpath)
-        mkdir(dirpath)
-        chmod(dirpath, S_IRWXU | S_IRWXG)
-        dest_file = open(f_temp, "a+")
+    except IOError as e:
+        if e.errno == errno.ENOENT:
+            dirpath = path.dirname(fullpath)
+            mkdir(dirpath)
+            chmod(dirpath, S_IRWXU | S_IRWXG)
+            dest_file = open(f_temp, "a+")
+        else:
+            raise e
 
     dest_file.write(new_content)
 
@@ -903,14 +907,13 @@ def receive_zip(zip_file):
                 remote_write_mode = cluster_items[dir_name]['write_mode']
                 restart.append(cluster_items[dir_name]['restart'])
             except KeyError:
-                if '/etc/' in file_path:
-                    remote_umask = int(cluster_items['/etc/']['umask'], base=0)
-                    remote_write_mode = cluster_items['/etc/']['write_mode']
-                    restart.append(cluster_items['/etc/']['restart'])
-                elif '/etc/rules/' in file_path or '/etc/decoders/' in file_path:
-                    remote_umask = int(cluster_items['/etc/rules/']['umask'], base=0)
-                    remote_write_mode = cluster_items['/etc/rules/']['write_mode']
-                    restart.append(cluster_items['/etc/rules/']['restart'])
+                # cluster_items entries with the flag recursive = true will make
+                # some paths to not match directly in this loop.
+                key = path.split(dir_name[:-1])[0] + '/'
+
+                remote_umask = int(cluster_items[key]['umask'], base=0)
+                remote_write_mode = cluster_items[key]['write_mode']
+                restart.append(cluster_items[key]['restart'])
 
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
