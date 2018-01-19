@@ -44,6 +44,12 @@ def list_outdated():
         print("\nTotal outdated agents: {0}".format(agents['totalItems']))
 
 def main():
+    # Capture Ctrl + C
+    signal(SIGINT, signal_handler)
+    
+    # Initialize framework
+    myWazuh = Wazuh(get_init=True)
+
     # Check arguments
     if args.list_outdated:
         list_outdated()
@@ -55,12 +61,6 @@ def main():
 
     if args.silent:
         args.debug = False
-
-    # Capture Ctrl + C
-    signal(SIGINT, signal_handler)
-
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
 
     agent = Agent(id=args.agent)
     agent._load_info_from_DB()
