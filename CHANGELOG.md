@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - [Fixed oscap.py to support new versions of OpenSCAP scanner.](https://github.com/wazuh/wazuh/pull/331)
+- [Fixed timeout bug when the cluster port was closed.](https://github.com/wazuh/wazuh/pull/343)
+- [Improve exception handling in `cluster_control`.](https://github.com/wazuh/wazuh/pull/343)
 - [Fixed bug in cluster when receive an error response from client.](https://github.com/wazuh/wazuh/pull/346)
 - [Fixed bug in framework when the manager is installed in different path than /var/ossec.](https://github.com/wazuh/wazuh/pull/335)
 

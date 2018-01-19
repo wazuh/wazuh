@@ -98,10 +98,11 @@ class WazuhClusterClient(asynchat.async_chat):
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(common.cluster_timeout)
         try:
-            self.connect((host, port))
+            self.socket.connect((host, port))
         except socket.error as e:
             self.close()
-            raise WazuhException(3010, strerror(e[0]))
+            # raise WazuhException(3010, strerror(e[0]))
+            raise WazuhException(3010, str(e))
         self.set_terminator('\n')
 
     def handle_close(self):
