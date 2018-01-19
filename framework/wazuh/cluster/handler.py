@@ -140,8 +140,8 @@ def scan_for_new_files():
     cluster_config = read_config()
     own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
 
-    for node in get_remote_nodes():
-        scan_for_new_files_one_node(node[0], cluster_items, cluster_config, cluster_socket, own_items)
+    for node in set(cluster_config['nodes']) - set(get_localhost_ips()):
+        scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket, own_items)
 
     cluster_socket.close()
 
@@ -403,8 +403,8 @@ def receive_zip(zip_file):
 
 
 
-def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters=False, cluster_socket=None):
-    all_nodes = get_nodes(updateDBname=updateDBname, cluster_socket=cluster_socket, get_localhost=True)['items']
+def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters=False):
+    all_nodes = get_nodes(updateDBname=updateDBname, get_localhost=True)['items']
 
     # Get connected nodes in the cluster
     if connected:
@@ -425,7 +425,7 @@ def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters
     return list(map(itemgetter(0,1,3), compress(cluster, map(lambda x: x != localhost_index, range(len(cluster))))))
 
 
-def get_file_status_of_one_node(node, own_items_names, cluster_socket, all_items=None):
+def get_file_status_of_one_node(node, own_items_names, cluster_socket, my_type, all_items=None):
     # check files in database
     node_url, node_type, _ = node
 
@@ -463,6 +463,11 @@ def get_file_status_of_one_node(node, own_items_names, cluster_socket, all_items
 
             send_to_socket(cluster_socket, insert_sql)
             data = receive_data_from_db_socket(cluster_socket)
+
+        if my_type == 'master':
+            # non elected master only send their agent-infos, and not all files they have
+            # on the database
+            all_files = dict(filter(lambda x: x[0] in own_items, all_files.items()))
 
     return all_files
 
@@ -503,7 +508,7 @@ def push_updates_single_node(all_files, node_dest, node_dest_name, config_cluste
         result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
 
 
-def update_node_db_after_sync(data, node, node_name, cluster_socket):
+def update_node_db_after_sync(data, node, node_name, cluster_socket, my_type):
     logging.info("Updating {}'s ({}) file status in DB".format(node_name, node))
     for updated in divide_list(data['files']['updated']):
         update_sql = "update2"
@@ -518,7 +523,7 @@ def update_node_db_after_sync(data, node, node_name, cluster_socket):
         update_sql = "update2"
         for f in failed:
             if isinstance(f, dict):
-                if f['reason'] == 'Error 3012 - Received an old agent-info file.':
+                if f['reason'] == 'Error 3012 - Received an old agent-info file.' and my_type=='client':
                     delete_sql += " /{0}".format(f['item'])
                 else:
                     update_sql += " failed {0} /{1}".format(node, f['item'])
@@ -546,14 +551,14 @@ def save_actual_master_data_on_db(data):
     localhost_ips = get_localhost_ips()
     for node_ip, node_data in data.items():
         if not node_ip in localhost_ips:
-            get_file_status_of_one_node((node_ip, 'client', ''), list_files_from_filesystem('master', get_cluster_items()).keys(), cluster_socket)
-            update_node_db_after_sync(node_data, node_ip, node_data['name'], cluster_socket)
+            get_file_status_of_one_node((node_ip, 'client', ''), list_files_from_filesystem('master', get_cluster_items()).keys(), cluster_socket, 'master')
+            update_node_db_after_sync(node_data, node_ip, node_data['name'], cluster_socket, 'master')
         else:
             # save files status received from master in database
             master_name = get_actual_master(csocket=cluster_socket)['name']
             actual_master_ip = get_ip_from_name(master_name, cluster_socket)
-            get_file_status_of_one_node((actual_master_ip, 'master', ''), list_files_from_filesystem('master', get_cluster_items()).keys(), cluster_socket)
-            update_node_db_after_sync(node_data, actual_master_ip, master_name, cluster_socket)
+            get_file_status_of_one_node((actual_master_ip, 'master', ''), list_files_from_filesystem('master', get_cluster_items()).keys(), cluster_socket, 'master')
+            update_node_db_after_sync(node_data, actual_master_ip, master_name, cluster_socket, 'master')
 
     cluster_socket.close()
 
@@ -579,9 +584,11 @@ def sync_one_node(debug, node, node_name, force=False):
     cluster_socket = connect_to_db_socket()
     logging.debug("Connected to cluster database socket")
 
+    my_type = get_node(cluster_socket)['type']
+
     if force:
         clear_file_status_one_node(node, cluster_socket)
-    all_files = get_file_status_of_one_node((node, 'master', ''), own_items_names, cluster_socket)
+    all_files = get_file_status_of_one_node((node, 'master', ''), own_items_names, cluster_socket, my_type)
 
     after = time()
     synchronization_duration += after-before
@@ -597,7 +604,7 @@ def sync_one_node(debug, node, node_name, force=False):
     before = time()
 
     result = result_queue.get()
-    update_node_db_after_sync(result, node, node_name, cluster_socket)
+    update_node_db_after_sync(result, node, node_name, cluster_socket, my_type)
     after = time()
     synchronization_duration += after-before
 
@@ -634,9 +641,11 @@ def sync(debug, force=False):
     cluster_items = get_cluster_items()
     before = time()
 
-    remote_nodes = get_remote_nodes(True, True)
+    remote_nodes = get_remote_nodes(connected=True, updateDBname=True)
 
     cluster_socket = connect_to_db_socket()
+    logging.debug("Connected to cluster database socket")
+
     my_data = get_node(cluster_socket)
     if my_data['type'] == 'master' and my_data['node'] != get_actual_master(cluster_socket):
         config_cluster['node_type'] = 'client'
@@ -656,7 +665,6 @@ def sync(debug, force=False):
 
     logging.info("Starting synchronization process...")
 
-    logging.debug("Connected to cluster database socket")
 
     # for each connected manager, check its files. If the manager is not on database add it
     # with all files marked as pending
@@ -668,7 +676,7 @@ def sync(debug, force=False):
     for node in remote_nodes:
         if force:
             clear_file_status_one_node(node[0], cluster_socket)
-        all_nodes_files[node[0]] = get_file_status_of_one_node(node, own_items_names, cluster_socket, all_items)
+        all_nodes_files[node[0]] = get_file_status_of_one_node(node, own_items_names, cluster_socket, my_data['type'], all_items)
 
     after = time()
     synchronization_duration += after-before
@@ -691,13 +699,14 @@ def sync(debug, force=False):
 
     for t in threads:
         t.join()
+
     after = time()
     synchronization_duration += after-before
     logging.debug("Time sending info: {0}".format(after-before))
 
     before = time()
     for node,data in thread_results.items():
-        update_node_db_after_sync(data, node, data['name'], cluster_socket)
+        update_node_db_after_sync(data, node, data['name'], cluster_socket, my_data['type'])
 
     after = time()
     synchronization_duration += after-before

@@ -154,7 +154,17 @@ if __name__ == '__main__':
             print("Error doing synchronization: {0}".format(str(e)))
             exit(1)
 
-        sync(debug=False)
+        sync_results = sync(debug=True)
+        if get_node()['type'] == 'master(*)':
+            for node in get_remote_nodes():
+                if node[1] == 'master':
+                    config_cluster = read_config()
+                    # send the synchronization results to the rest of masters
+                    message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
+                    file = json.dumps(sync_results).encode()
+                    error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
+                                        data=message, file=file)
+
 
     elif args.manager is not None and args.files is None and args.force is None:
         logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
@@ -184,10 +194,21 @@ if __name__ == '__main__':
             exit(1)
 
         if args.manager is None:
-            sync(debug=False, force=True)
+            sync_results = sync(debug=True, force=True)
         else:
+            sync_results = {}
             for node in args.manager:
-                sync_one_node(debug=False, node=node, force=True)
+                sync_results[node] = sync_one_node(debug=True, node=node, force=True)
+
+        if get_node()['type'] == 'master(*)':
+            for node in get_remote_nodes():
+                if node[1] == 'master':
+                    config_cluster = read_config()
+                    # send the synchronization results to the rest of masters
+                    message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
+                    file = json.dumps(sync_results).encode()
+                    error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
+                                        data=message, file=file)
 
     elif args.scan is not None:
         try:

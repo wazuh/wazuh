@@ -392,12 +392,14 @@ def crontab_sync_master(interval):
 
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
+
 def crontab_sync_client():
     def sync_handler(n_signal, frame):
-        master_ip, _, master_name = get_remote_nodes()[0]
+        master_ip, _, master_name = get_remote_nodes(updateDBname=True)[0]
         sync_one_node(False, master_ip, master_name)
 
     signal(SIGUSR1, sync_handler)
+
     while True:
         sleep(30)
 
