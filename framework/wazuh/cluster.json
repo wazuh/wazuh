@@ -7,6 +7,7 @@
         "flags": ["IN_MOVED_TO"],
         "files": ["client.keys"],
         "recursive": false,
+        "restart": false,
         "description": "client keys file database"
     },
 
@@ -18,6 +19,7 @@
         "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE", "IN_DELETE"],
         "files": ["all"],
         "recursive": true,
+        "restart": false,
         "description": "shared configuration files"
     },
 
@@ -29,6 +31,7 @@
         "flags": ["IN_CLOSE_WRITE", "IN_ATTRIB", "IN_MOVED_TO", "IN_DELETE"],
         "files": ["all"],
         "recursive": false,
+        "restart": false,
         "description": "agent status"
     },
 
@@ -40,7 +43,44 @@
         "flags": ["IN_CLOSE_WRITE", "IN_MOVED_TO", "IN_DELETE"],
         "files": ["all"],
         "recursive": false,
+        "restart": false,
         "description": "agents group configuration"
+    },
+
+    "/etc/rules/": {
+        "umask": "0o137",
+        "format": "plain",
+        "source": "master",
+        "write_mode": "atomic",
+        "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE", "IN_DELETE"],
+        "files": ["all"],
+        "recursive": false,
+        "restart": true,
+        "description": "user rules"
+    },
+
+    "/etc/decoders/": {
+        "umask": "0o137",
+        "format": "plain",
+        "source": "master",
+        "write_mode": "atomic",
+        "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE", "IN_DELETE"],
+        "files": ["all"],
+        "recursive": false,
+        "restart": true,
+        "description": "user decoders"
+    },
+
+    "/etc/lists/": {
+        "umask": "0o137",
+        "format": "plain",
+        "source": "master",
+        "write_mode": "atomic",
+        "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE", "IN_DELETE"],
+        "files": ["all"],
+        "recursive": true,
+        "restart": true,
+        "description": "user CDB lists"
     },
 
     "excluded_files": [
