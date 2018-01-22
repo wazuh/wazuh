@@ -106,6 +106,7 @@ class WazuhClusterHandler(asynchat.async_chat):
             elif self.command[0] == list_requests_cluster['zip']:
                 zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 res = extract_zip(zip_bytes)
+                self.restart = res['restart']
             elif self.command[0] == list_requests_agents['RESTART_AGENTS']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
