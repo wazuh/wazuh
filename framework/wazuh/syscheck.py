@@ -65,7 +65,7 @@ def run(agent_id=None, all_agents=False, cluster_depth=1):
 
         request_type = list_requests_syscheck['SYSCHECK_RUN']
         args = [str(all_agents)]
-        return distributed_api_request(request_type, agent_id, args, cluster_depth)
+        return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args, cluster_depth)
 
 
 def clear_local(agent_id=None, all_agents=False):
@@ -123,7 +123,7 @@ def clear(agent_id=None, all_agents=False, cluster_depth=1):
 
         request_type = list_requests_syscheck['SYSCHECK_CLEAR']
         args = [str(all_agents)]
-        return distributed_api_request(request_type, agent_id, args, cluster_depth)
+        return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args, cluster_depth)
 
 
 def last_scan_local(agent_id):
@@ -167,7 +167,7 @@ def last_scan(agent_id):
 
         request_type = list_requests_syscheck['SYSCHECK_LAST_SCAN']
         args = []
-        return distributed_api_request(request_type, agent_id, args)
+        return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args)
 
 
 def files(agent_id=None, event=None, filename=None, filetype='file', md5=None, sha1=None, hash=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None):

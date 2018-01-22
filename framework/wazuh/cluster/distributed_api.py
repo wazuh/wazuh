@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.cluster.management import send_request, read_config, check_cluster_status, get_node, get_nodes, get_status_json, get_name_from_ip, get_ip_from_name
+from wazuh.cluster.management import send_request, read_config, check_cluster_status, get_node, get_nodes, get_status_json, get_name_from_ip, get_ip_from_name, get_actual_master
 from wazuh.cluster.protocol_messages import *
 from wazuh.exception import WazuhException
 from wazuh import common
@@ -56,7 +56,7 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
             if current_result.get('data') == None:
                 current_result = result_node
 
-    elif request_type in list_requests_managers.values() or request_type == list_requests_managers['CLUSTER_CONFIG']:
+    elif request_type in list_requests_managers.values() or request_type == list_requests_cluster['CLUSTER_CONFIG']:
         current_result[get_name_from_ip(node)] = result_node
     else:
         if result_node.get('data') != None:
@@ -76,7 +76,8 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, clus
     local_node = get_node()['node']
     remote_nodes_addr = []
     msg = None
-    if len(remote_nodes) == 0:
+
+    if remote_nodes == None or len(remote_nodes) == 0:
         remote_nodes_addr = list(map(lambda x: x['url'], get_nodes()['items']))
     else:
         remote_nodes_addr = remote_nodes.keys()
@@ -95,7 +96,6 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, clus
                     msg = msg + " " + args_str
             else:
                 msg = args_str
-
             t = threading.Thread(target=send_request_to_node, args=(str(node_id), config_cluster, request_type, msg, cluster_depth, result_queue))
             threads.append(t)
             t.start()
@@ -109,7 +109,6 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, clus
                 node['error'] = {'message':"Agent not found",'code':-1}
                 result_node['data']['failed_ids'].append(node)
         result_nodes[node_id] = result_node
-
     for t in threads:
         t.join()
     for node, result_node in result_nodes.iteritems():
@@ -126,22 +125,28 @@ def is_cluster_running():
     return get_status_json()['running'] == 'yes'
 
 
-def distributed_api_request(request_type, node_agents={}, args=[], cluster_depth=1, affected_nodes=None):
+def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1, affected_nodes=[]):
     config_cluster = read_config()
+
+    if agent_id != None:
+        node_agents = agent_id
+    else:
+        node_agents = {}
+
+    if affected_nodes is None:
+        affected_nodes = []
+    if affected_nodes != None and not isinstance(affected_nodes, list):
+        affected_nodes = [affected_nodes]
 
     # Redirect request to elected master
     '''
-    if not from_cluster and get_actual_master() != config_cluster["node_name"]:
-        if not isinstance(agent_id, list):
-            agent_id = [agent_id]
-        node_agents = {get_ip_from_name(get_actual_master()): agent_id}
+    if not from_cluster and get_actual_master()['name'] != config_cluster["node_name"]:
+        node_agents = {get_actual_master()['url']: agent_id}
         args = [request_type] + args
-        request_type = MASTER_FORW
+        request_type = list_requests_cluster['MASTER_FORW']
     '''
 
-    if affected_nodes != None and len(affected_nodes) > 0:
-        if not isinstance(affected_nodes, list):
-            affected_nodes = [affected_nodes]
+    if len(affected_nodes) > 0:
         affected_nodes_addr = []
         for node in affected_nodes:
             # Is name or addr?
@@ -155,9 +160,10 @@ def distributed_api_request(request_type, node_agents={}, args=[], cluster_depth
             return {}
         #filter existing dict
         if len(node_agents) > 0:
-            node_agents = {node: node_agents[node] for node in affected_nodes_addr}
-        else: #make nodes dict
-            node_agents = {node: [] for node in affected_nodes_addr}
+            node_agents_filter = {node: node_agents[node] for node in affected_nodes_addr}
+            node_agents = node_agents_filter
+        else: #There aren't nodes with agents, set affected nodes
+            node_agents = {node: None for node in affected_nodes_addr}
 
     return send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
 
@@ -169,5 +175,5 @@ def get_config_distributed(node_id=None, cluster_depth=1):
         if not is_cluster_running():
             raise WazuhException(3015)
 
-        request_type = CLUSTER_CONFIG
+        request_type = list_requests_cluster['CLUSTER_CONFIG']
         return distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)

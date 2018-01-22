@@ -114,13 +114,13 @@ class WazuhClusterHandler(asynchat.async_chat):
                     agents = None
                     restart_all = ast.literal_eval(args[0])
                 cluster_depth = ast.literal_eval(command[1]) - 1
-                res = restart_agents(agents, restart_all, cluster_depth)
+                res = Agent.restart_agents(agents, restart_all, cluster_depth)
             elif command[0] == list_requests_agents['AGENTS_UPGRADE_RESULT']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
-                agent = args[0]
-                timeout = args[1]
                 try:
+                    agent = args[0]
+                    timeout = args[1]
                     res = Agent.get_upgrade_result(agent, timeout)
                 except Exception as e:
                     res = str(e)
@@ -294,15 +294,18 @@ class WazuhClusterHandler(asynchat.async_chat):
             elif command[0] == list_requests_cluster['MASTER_FORW']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
-                if len(args) == 3:
+                args_list = []
+                if args[0] in all_list_requests.values():
+                    agent_id = None
+                    request_type = args[0]
+                    if (len(args) > 1):
+                        args_list = args[1:]
+                elif len(args) > 1 and args[1] in all_list_requests.values():
                     agent_id = args[0].split("-")
                     request_type = args[1]
-                    args = args[2:]
-                else:
-                    agent_id = None
-                    request_type = args[1]
-                    args = args[1:]
-                res = "Received from " + self.addr
+                    if (len(args) > 2):
+                        args_list = args[2:]
+                res = distributed_api_request(request_type=request_type, agent_id=agent_id, args=args_list, cluster_depth=1, affected_nodes=None, from_cluster=True)
 
             elif command[0] == list_requests_cluster['ready']:
                 res = "Starting to sync client's files"
