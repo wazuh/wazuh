@@ -290,11 +290,11 @@ def _check_removed_agents(new_client_keys):
                 logging.error("Error deleting agent {0}: {1}".format(agent_id, str(e)))
 
 
-def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master', node_name=''):
+def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master'):
     if path.basename(fullpath) == 'client.keys':
         if node_type=='client':
             _check_removed_agents(new_content.split('\n'))
-        elif node_name == get_actual_master()['name']:
+        elif get_actual_master()['url'] in get_localhost_ips():
             logging.warning("Client.keys file received in a elected master node.")
             raise WazuhException(3007)
 
@@ -389,8 +389,7 @@ def receive_zip(zip_file):
                             umask_int=remote_umask,
                             mtime=content['time'],
                             w_mode=remote_write_mode,
-                            node_type=config['node_type'],
-                            node_name=config['name'])
+                            node_type=config['node_type'])
 
         except Exception as e:
             logging.error("Error extracting zip file: {0}".format(str(e)))

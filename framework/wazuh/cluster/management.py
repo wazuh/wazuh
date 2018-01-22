@@ -303,10 +303,10 @@ def get_actual_master(csocket=None):
         cluster_socket = csocket
 
     send_to_socket(cluster_socket, "selactual")
-    name = receive_data_from_db_socket(cluster_socket)
+    url = receive_data_from_db_socket(cluster_socket)
 
-    if name != " ":
-        url = get_ip_from_name(name, cluster_socket)
+    if url != " ":
+        name = get_name_from_ip(url, cluster_socket)
         final_dict = {'name': name, 'url': url}
     else:
         final_dict = {'name': None, 'url': None}
@@ -334,7 +334,7 @@ def select_actual_master(nodes):
     # check if there's already one actual master
     number_of_masters = len(list(filter(lambda x: x['type'] == 'master(*)', nodes)))
     if number_of_masters == 1:
-        insert_actual_master(next (x['node'] for x in nodes if x['type'] == 'master(*)'))
+        insert_actual_master(next (x['url'] for x in nodes if x['type'] == 'master(*)'))
         return nodes
     elif number_of_masters > 1:
         logging.info("Found {} elected masters. Restarting lection process...".format(number_of_masters))
@@ -347,7 +347,7 @@ def select_actual_master(nodes):
         if node['type'] == 'master':
             logging.info("The new elected master is {0}.".format(node['node']))
             node['type'] = 'master(*)'
-            insert_actual_master(node['node'])
+            insert_actual_master(node['url'])
             break
 
     return nodes
@@ -432,7 +432,7 @@ def get_node(cluster_socket=None):
 
     data["node"]    = config_cluster["node_name"]
     data["cluster"] = config_cluster["name"]
-    if get_actual_master(csocket=cluster_socket)['name'] == data['node']:
+    if get_actual_master(csocket=cluster_socket)['url'] in get_localhost_ips():
         data["type"] = "master(*)"
     else:
         data["type"] = config_cluster["node_type"]
@@ -507,7 +507,7 @@ def get_file_status_all_managers(file_list, manager):
         else:
             filenames = file_list
 
-        files.extend([[node, file, all_files[file]] for file in filenames])
+        files.extend([[get_name_from_ip(node), file, all_files[file]] for file in filenames])
 
     cluster_socket.close()
     return files
