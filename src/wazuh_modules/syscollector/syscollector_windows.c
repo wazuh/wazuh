@@ -486,7 +486,8 @@ void sys_programs_windows(const char* LOCATION){
             cJSON *program = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
             cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddItemToObject(object, "data", program);
+            cJSON_AddItemToObject(object, "program", program);
+            cJSON_AddStringToObject(program, "format", "win");
 
             char *string;
             char ** parts = NULL;

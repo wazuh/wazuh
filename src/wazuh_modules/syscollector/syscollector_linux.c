@@ -349,13 +349,13 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
         os_calloc(FORMAT_LENGTH, sizeof(char), format);
         snprintf(format, FORMAT_LENGTH -1, "%s", "rpm");
         os_calloc(OS_MAXSTR + 1, sizeof(char), command);
-        snprintf(command, OS_MAXSTR, "%s", "rpm -qa --queryformat '%{NAME}|%{VENDOR}|%{VERSION}|%{SUMMARY}\n'");
+        snprintf(command, OS_MAXSTR, "%s", "rpm -qa --queryformat '%{NAME}|%{VENDOR}|%{VERSION}|%{ARCH}|%{SUMMARY}\n'");
         closedir(dir);
     } else if ((dir = opendir("/var/lib/dpkg/"))){
         os_calloc(FORMAT_LENGTH, sizeof(char), format);
         snprintf(format, FORMAT_LENGTH -1, "%s", "deb");
         os_calloc(OS_MAXSTR + 1, sizeof(char), command);
-        snprintf(command, OS_MAXSTR, "%s", "dpkg-query --showformat='${Package}|${Maintainer}|${Version}|${binary:Summary}\n' --show");
+        snprintf(command, OS_MAXSTR, "%s", "dpkg-query --showformat='${Package}|${Maintainer}|${Version}|${Architecture}|${binary:Summary}\n' --show");
         closedir(dir);
     }else{
         mtwarn(WM_SYS_LOGTAG, "Unable to get installed programs inventory.");
@@ -372,19 +372,20 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             cJSON *program = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
             cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "format", format);
-            cJSON_AddItemToObject(object, "data", program);
+            cJSON_AddItemToObject(object, "program", program);
+            cJSON_AddStringToObject(program, "format", format);
 
             char *string;
             char ** parts = NULL;
 
-            parts = OS_StrBreak('|', read_buff, 4);
+            parts = OS_StrBreak('|', read_buff, 5);
             cJSON_AddStringToObject(program, "name", parts[0]);
             cJSON_AddStringToObject(program, "vendor", parts[1]);
             cJSON_AddStringToObject(program, "version", parts[2]);
+            cJSON_AddStringToObject(program, "architecture", parts[3]);
 
             char ** description = NULL;
-            description = OS_StrBreak('\n', parts[3], 2);
+            description = OS_StrBreak('\n', parts[4], 2);
             cJSON_AddStringToObject(program, "description", description[0]);
             for (i=0; description[i]; i++){
                 free(description[i]);
