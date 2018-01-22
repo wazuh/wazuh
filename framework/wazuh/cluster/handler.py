@@ -14,7 +14,7 @@ from os import path, listdir, rename, utime, umask, stat, mkdir, chmod
 from subprocess import check_output
 from io import BytesIO
 from itertools import compress
-from operator import itemgetter
+from operator import itemgetter, or_
 from ast import literal_eval
 import threading
 from stat import S_IRWXG, S_IRWXU
@@ -23,6 +23,7 @@ from difflib import unified_diff
 import re
 import socket
 import logging
+import errno
 
 is_py2 = version[0] == '2'
 if is_py2:
@@ -249,8 +250,15 @@ def clear_file_status():
         query = "update1 "
         new_items = {}
         for files_slice in divide_list(own_items.items()):
-            local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5']
-                            or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
+            try:
+                local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5']
+                                or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
+            except KeyError as e:
+                new_items[e.args[0]] = {'md5': own_items[e.args[0]]['md5'],
+                                        'timestamp': own_items[e.args[0]]['timestamp']}
+                logging.warning("File not found in database: {0}".format(e.args[0]))
+                continue
+
             query += ' '.join(local_items.keys())
             send_to_socket(cluster_socket, query)
             received = receive_data_from_db_socket(cluster_socket)
@@ -319,11 +327,14 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
 
     try:
         dest_file = open(f_temp, "w")
-    except IOError:
-        dirpath = path.dirname(fullpath)
-        mkdir(dirpath)
-        chmod(dirpath, S_IRWXU | S_IRWXG)
-        dest_file = open(f_temp, "a+")
+    except IOError as e:
+        if e.errno == errno.ENOENT:
+            dirpath = path.dirname(fullpath)
+            mkdir(dirpath)
+            chmod(dirpath, S_IRWXU | S_IRWXG)
+            dest_file = open(f_temp, "a+")
+        else:
+            raise e
 
     dest_file.write(new_content)
 
@@ -368,6 +379,7 @@ def receive_zip(zip_file):
     logging.info("Receiving package with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'invalid': []}
+    restart = []
 
     if 'remote_groups.txt' in zip_file.keys():
         check_groups(set(zip_file['remote_groups.txt']['data'].split('\n')))
@@ -381,9 +393,15 @@ def receive_zip(zip_file):
             try:
                 remote_umask = int(cluster_items[dir_name]['umask'], base=0)
                 remote_write_mode = cluster_items[dir_name]['write_mode']
+                restart.append(cluster_items[dir_name]['restart'])
             except KeyError:
-                remote_umask = int(cluster_items['/etc/']['umask'], base=0)
-                remote_write_mode = cluster_items['/etc/']['write_mode']
+                # cluster_items entries with the flag recursive = true will make
+                # some paths to not match directly in this loop.
+                key = path.split(dir_name[:-1])[0] + '/'
+
+                remote_umask = int(cluster_items[key]['umask'], base=0)
+                remote_write_mode = cluster_items[key]['write_mode']
+                restart.append(cluster_items[key]['restart'])
 
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
@@ -397,6 +415,8 @@ def receive_zip(zip_file):
             continue
 
         final_dict['updated'].append(name)
+
+    final_dict['restart'] = reduce(or_, restart)
 
     return final_dict
 
