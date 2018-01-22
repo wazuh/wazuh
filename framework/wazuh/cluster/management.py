@@ -7,6 +7,7 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.InputValidator import InputValidator
 from wazuh.configuration import get_ossec_conf
+from wazuh.cluster.protocol_messages import all_list_requests
 import socket
 import asyncore
 import asynchat
@@ -168,7 +169,7 @@ def check_cluster_cmd(cmd, node_type):
         return True
 
     # check command type
-    if not cmd[0] in ['zip', 'node'] and not cmd[0] in list_request_type:
+    if not cmd[0] in ['zip', 'node'] and not cmd[0] in all_list_requests.values():
         return False
 
     # second argument of zip is a number
