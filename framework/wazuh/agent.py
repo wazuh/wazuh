@@ -1989,7 +1989,7 @@ class Agent:
             }
         }
         """
-        agents = get_cluster_agents_status()
+        agents = Agent.get_cluster_agents_status()
         cluster_dict = {}
         for agent_id, agent_ip, name, status, manager in agents:
             try:
