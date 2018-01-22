@@ -803,7 +803,7 @@ class Agent:
             query += ' AND manager_host = :manager_host'
         if node_name != "all":
             request['node_name'] = node_name
-            query += ' AND node_name = :node_name'
+            query += ' AND node_name = :node_name AND id != 0'
 
         # Search
         if search:
