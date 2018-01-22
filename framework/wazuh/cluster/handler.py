@@ -511,7 +511,7 @@ def push_updates_single_node(all_files, node_dest, node_dest_name, config_cluste
 
     else:
         logging.info("No pending files to send to {0} ".format(node_dest))
-        res = {'error': 0, 'data':{'updated':[], 'error':[], 'invalid':[]}}
+        res = {'error': 0, 'data':{'updated':[], 'error':[], 'invalid':[], 'restart': False}}
         error = 0
 
 
@@ -519,7 +519,7 @@ def push_updates_single_node(all_files, node_dest, node_dest_name, config_cluste
         logging.debug(res)
         result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
                           'error': 1, 'files':{'updated':[], 'invalid':[],
-                                        'error':list(map(itemgetter(0), pending_files))}})
+                                        'error':list(map(itemgetter(0), pending_files)), 'restart':False}})
     else:
         logging.debug({'updated': len(res['data']['updated']),
                       'error': res['data']['error'],
@@ -568,18 +568,23 @@ def save_actual_master_data_on_db(data):
     logging.info("Updating database with information received from elected master.")
     cluster_socket = connect_to_db_socket()
     localhost_ips = get_localhost_ips()
+    cluster_items = get_cluster_items()
+    own_items = list_files_from_filesystem('master', cluster_items).keys()
+    restart = False
     for node_ip, node_data in data.items():
         if not node_ip in localhost_ips:
-            get_file_status_of_one_node((node_ip, 'client', ''), list_files_from_filesystem('master', get_cluster_items()).keys(), cluster_socket, 'master')
+            get_file_status_of_one_node((node_ip, 'client', ''), own_items, cluster_socket, 'master')
             update_node_db_after_sync(node_data, node_ip, node_data['name'], cluster_socket, 'master')
         else:
+            restart = node_data['files']['restart']
             # save files status received from master in database
             master_name = get_actual_master(csocket=cluster_socket)['name']
             actual_master_ip = get_ip_from_name(master_name, cluster_socket)
-            get_file_status_of_one_node((actual_master_ip, 'master', ''), list_files_from_filesystem('master', get_cluster_items()).keys(), cluster_socket, 'master')
+            get_file_status_of_one_node((actual_master_ip, 'master', ''), own_items, cluster_socket, 'master')
             update_node_db_after_sync(node_data, actual_master_ip, master_name, cluster_socket, 'master')
 
     cluster_socket.close()
+    return restart
 
 
 def sync_one_node(debug, node, node_name, force=False):

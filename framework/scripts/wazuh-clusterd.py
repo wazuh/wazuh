@@ -317,7 +317,8 @@ class WazuhClusterHandler(asynchat.async_chat):
             elif self.command[0] == list_requests_cluster['data']:
                 res = "Saving data from actual master"
                 actual_master_data = json.loads(self.f.decrypt(response[common.cluster_sync_msg_size:]).decode())
-                save_actual_master_data_on_db(actual_master_data)
+                if save_actual_master_data_on_db(actual_master_data):
+                    restart_manager()
 
             logging.debug("Command {0} executed for {1}".format(self.command[0], self.addr))
 
@@ -327,23 +328,9 @@ class WazuhClusterHandler(asynchat.async_chat):
 
     def handle_close(self):
         self.close()
-        if self.command[0] == 'zip' and self.restart:
+        if self.command[0] == 'zip' and self.restart and self.node_type == 'client':
             self.restart = False
-            try:
-                # check synchronized rules are correct before restarting the manager
-                check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
-                logging.debug("Synchronized rules are correct.")
-            except CalledProcessError as e:
-                logging.warning("Synchronized rules are not correct. Manager not restarted: {0}.".format(str(e)))
-                return
-
-            try:
-                logging.info("Restarting manager...")
-                sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                sock.connect("{0}/queue/alerts/execq".format(common.ossec_path))
-                sock.send("restart-ossec0 cluster restart")
-            except CalledProcessError as e:
-                logging.warning("Could not restart manager: {0}.".format(str(e)))
+            restart_manager()
 
 
     def handle_error(self):
@@ -407,6 +394,24 @@ class WazuhClusterServer(asyncore.dispatcher):
         self.close()
         raise t(v)
 
+
+def restart_manager():
+    try:
+        # check synchronized rules are correct before restarting the manager
+        check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
+        logging.debug("Synchronized rules are correct.")
+    except CalledProcessError as e:
+        logging.warning("Synchronized rules are not correct. Manager not restarted: {0}.".format(str(e)))
+        return
+
+    try:
+        logging.info("Restarting manager...")
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        sock.connect("{0}/queue/alerts/execq".format(common.ossec_path))
+        sock.send("restart-ossec0 cluster restart")
+    except CalledProcessError as e:
+        logging.warning("Could not restart manager: {0}.".format(str(e)))
+    
 
 def crontab_sync_master(interval):
     interval_number  = int(search('\d+', interval).group(0))
