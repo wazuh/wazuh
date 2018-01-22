@@ -7,6 +7,9 @@ All notable changes to this project will be documented in this file.
 
 - [Added support to synchronize custom rules and decoders in the cluster.](https://github.com/wazuh/wazuh/pull/344)
 - [Add field `status` to `GET/agents/groups/:group_id` API call.](https://github.com/wazuh/wazuh/pull/338)
+- [Added support for multiple masters in cluster.](https://github.com/wazuh/wazuh/pull/353)
+- [Added type of node in API call `GET/cluster/nodes` and `cluster_control --nodes`](https://github.com/wazuh/wazuh/pull/353)
+- Added support for API in cluster ([#362](https://github.com/wazuh/wazuh/pull/362)).
 
 ### Fixed
 
@@ -15,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - [Improve exception handling in `cluster_control`.](https://github.com/wazuh/wazuh/pull/343)
 - [Fixed bug in cluster when receive an error response from client.](https://github.com/wazuh/wazuh/pull/346)
 - [Fixed bug in framework when the manager is installed in different path than /var/ossec.](https://github.com/wazuh/wazuh/pull/335)
+- [Improved cluster logs](https://github.com/wazuh/wazuh/pull/353)
 
 ## [v3.1.0]
 

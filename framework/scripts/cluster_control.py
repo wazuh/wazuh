@@ -71,7 +71,8 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 # Import framework
 try:
     from wazuh import Wazuh
-    from wazuh.cluster import *
+    from wazuh.cluster.management import *
+    from wazuh.agent import Agent
     from wazuh.exception import WazuhException
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -117,18 +118,18 @@ def _get_file_status(file_list, manager):
     print pprint_table(data=all_files, headers=["Manager","Filename","Status"], show_header=True)
 
 def _get_agents_status():
-    print pprint_table(data=get_agents_status(), headers=["ID", "IP", "Name", "Status", "Node name"], show_header=True)
+    print pprint_table(data=Agent.get_cluster_agents_status(), headers=["ID", "IP", "Name", "Status", "Node name"], show_header=True)
 
 def _get_nodes_status(node_list):
     logging.disable(logging.WARNING)
     all_nodes = get_nodes()
 
     if node_list:
-        node_info = [[y['node'], y['status'], y['url']] for y in all_nodes['items'] if y['node'] in node_list]
+        node_info = [[y['node'], y['url'], y['type'], y['status']] for y in all_nodes['items'] if y['node'] in node_list]
     else:
-        node_info = [[x['node'], x['status'], x['url']] for x in all_nodes['items']]
+        node_info = [[x['node'], x['url'], x['type'], x['status']] for x in all_nodes['items']]
 
-    print pprint_table(data=node_info, headers=["Node","Status","Address"], show_header=True)
+    print pprint_table(data=node_info, headers=["Node","Address","Type","Status"], show_header=True)
 
 def signal_handler(n_signal, frame):
     exit(1)
