@@ -10,7 +10,9 @@ from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
 from wazuh.database import Connection
 from wazuh.group import group_exists, create_group
-from wazuh.cluster.distributed_api import is_a_local_request, is_cluster_running, distributed_api_request, RESTART_AGENTS, AGENTS_UPGRADE_RESULT, AGENTS_UPGRADE, AGENTS_UPGRADE_CUSTOM
+from wazuh.cluster.distributed_api import is_a_local_request, is_cluster_running, distributed_api_request
+from wazuh.cluster.protocol_messages import list_requests_agents
+from wazuh.cluster.management import get_ip_from_name
 from wazuh import manager
 from wazuh import common
 from glob import glob
@@ -28,6 +30,7 @@ import hashlib
 import re
 import fcntl
 from json import loads
+import logging
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -1097,9 +1100,9 @@ class Agent:
             if not is_cluster_running():
                 raise WazuhException(3015)
 
-            request_type = RESTART_AGENTS
+            request_type = list_requests_agents['RESTART_AGENTS']
             args = [str(restart_all)]
-            return distributed_api_request(request_type, get_agents_by_node(agent_id), args, cluster_depth)
+            return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args, cluster_depth)
 
 
     @staticmethod
@@ -1638,9 +1641,9 @@ class Agent:
             if not is_cluster_running():
                 raise WazuhException(3015)
 
-            request_type = AGENTS_UPGRADE
+            request_type = list_requests_agents['AGENTS_UPGRADE']
             args = [str(wpk_repo), str(version), str(force), str(chunk_size)]
-            return distributed_api_request(request_type, get_agents_by_node(agent_id), args)
+            return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args)
 
 
     def upgrade_result(self, debug=False, timeout=common.upgrade_result_retries):
@@ -1700,9 +1703,9 @@ class Agent:
             if not is_cluster_running():
                 raise WazuhException(3015)
 
-            request_type = AGENTS_UPGRADE_RESULT
+            request_type = list_requests_agents['AGENTS_UPGRADE_RESULT']
             args = [str(timeout)]
-            return distributed_api_request(request_type, get_agents_by_node(agent_id), args)
+            return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args)
 
 
     def _send_custom_wpk_file(self, file_path, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries):
@@ -1880,9 +1883,9 @@ class Agent:
             if not is_cluster_running():
                 raise WazuhException(3015)
 
-            request_type = AGENTS_UPGRADE_CUSTOM
-            args = [str(wpk_repo), str(version), str(force), str(chunk_size)]
-            return distributed_api_request(request_type, get_agents_by_node(agent_id), args)
+            request_type = list_requests_agents['AGENTS_UPGRADE_CUSTOM']
+            args = [str(file_path), str(installer)]
+            return distributed_api_request(request_type, Agent.get_agents_by_node(agent_id), args)
 
 
 
@@ -1986,7 +1989,7 @@ class Agent:
             }
         }
         """
-        agents = get_cluster_agents_status()
+        agents = Agent.get_cluster_agents_status()
         cluster_dict = {}
         for agent_id, agent_ip, name, status, manager in agents:
             try:
@@ -2008,14 +2011,14 @@ class Agent:
 
 
     def get_node_agent(self):
+        data = None
         try:
-            node_name = self.get_basic_information(select={'fields':['node_name']})['node_name']
+            node_name = self.get_basic_information()['node_name']
             data = get_ip_from_name(node_name)
-        except:
-            logging.warning("Can't find agent {0}".format(agent_id))
+        except Exception as e:
+            logging.warning("Can't find agent " + str(e))
             data = None
         return data
-
 
     @staticmethod
     def get_agents_by_node(agent_id):
