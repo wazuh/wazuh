@@ -129,21 +129,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.close()
         if self.command[0] == 'zip' and self.restart:
             self.restart = False
-            try:
-                # check synchronized rules are correct before restarting the manager
-                check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
-                logging.debug("Synchronized rules are correct.")
-            except CalledProcessError as e:
-                logging.warning("Synchronized rules are not correct. Manager not restarted: {0}.".format(str(e)))
-                return
-
-            try:
-                logging.info("Restarting manager...")
-                sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                sock.connect("{0}/queue/alerts/execq".format(common.ossec_path))
-                sock.send("restart-ossec0 cluster restart")
-            except CalledProcessError as e:
-                logging.warning("Could not restart manager: {0}.".format(str(e)))
+            restart_manager()
 
 
     def handle_error(self):
@@ -209,6 +195,24 @@ class WazuhClusterServer(asyncore.dispatcher):
         nil, t, v, tbinfo = asyncore.compact_traceback()
         self.close()
         raise t(v)
+
+
+def restart_manager():
+    try:
+        # check synchronized rules are correct before restarting the manager
+        check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
+        logging.debug("Synchronized rules are correct.")
+    except CalledProcessError as e:
+        logging.warning("Synchronized rules are not correct. Manager not restarted: {0}.".format(str(e)))
+        return
+
+    try:
+        logging.info("Restarting manager...")
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        sock.connect("{0}/queue/alerts/execq".format(common.ossec_path))
+        sock.send("restart-ossec0 cluster restart")
+    except CalledProcessError as e:
+        logging.warning("Could not restart manager: {0}.".format(str(e)))
 
 
 def crontab_sync_master(interval, config_cluster, requests_queue):

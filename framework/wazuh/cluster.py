@@ -977,7 +977,7 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, resu
 
     else:
         logging.info("No pending files to send to {0} ".format(node_dest))
-        res = {'error': 0, 'data':{'updated':[], 'error':[], 'deleted':[]}}
+        res = {'error': 0, 'data':{'updated':[], 'error':[], 'deleted':[], 'restart': False}}
         error = 0
 
 
@@ -991,7 +991,7 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, resu
         logging.debug(res)
         result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
                           'error': 1, 'files':{'updated':[], 'deleted':[],
-                                        'error':list(map(itemgetter(0), pending_files))}})
+                                        'error':list(map(itemgetter(0), pending_files)), 'restart': False}})
     else:
         logging.debug({'updated': len(res['data']['updated']),
                       'error': res['data']['error'],
