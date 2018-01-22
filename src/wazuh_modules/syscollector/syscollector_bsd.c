@@ -48,7 +48,7 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
         ID = -ID;
 
     os_calloc(OS_MAXSTR + 1, sizeof(char), command);
-    snprintf(command, OS_MAXSTR, "%s", "pkg query -a '\%n|%m|%v|\%c'");
+    snprintf(command, OS_MAXSTR, "%s", "pkg query -a '\%n|%m|%v|%q|\%c'");
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -60,18 +60,20 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
             cJSON *program = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
             cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddItemToObject(object, "data", program);
+            cJSON_AddItemToObject(object, "program", program);
+            cJSON_AddStringToObject(program, "format", "pkg");
 
             char *string;
             char ** parts = NULL;
 
-            parts = OS_StrBreak('|', read_buff, 4);
+            parts = OS_StrBreak('|', read_buff, 5);
             cJSON_AddStringToObject(program, "name", parts[0]);
             cJSON_AddStringToObject(program, "vendor", parts[1]);
             cJSON_AddStringToObject(program, "version", parts[2]);
+            cJSON_AddStringToObject(program, "architecture", parts[3]);
 
             char ** description = NULL;
-            description = OS_StrBreak('\n', parts[3], 2);
+            description = OS_StrBreak('\n', parts[4], 2);
             cJSON_AddStringToObject(program, "description", description[0]);
             for (i=0; description[i]; i++){
                 free(description[i]);

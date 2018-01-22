@@ -34,6 +34,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     syscollector->flags.hwinfo = 1;
     syscollector->flags.programinfo = 1;
     syscollector->flags.portsinfo = 1;
+    syscollector->flags.allports = 0;
     syscollector->flags.procinfo = 1;
     module->context = &WM_SYS_CONTEXT;
     module->data = syscollector;
@@ -134,6 +135,21 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_PORTS)) {
+            if (node[i]->attributes) {
+                if (!strcmp(node[i]->attributes[0], "all")) {
+                    if (!strcmp(node[i]->values[0], "no")) {
+                        syscollector->flags.allports = 0;
+                    } else if (!strcmp(node[i]->values[0], "yes")) {
+                        syscollector->flags.allports = 1;
+                    } else {
+                        merror("Invalid content for attribute '%s' at module '%s'.", node[i]->attributes[0], WM_SYS_CONTEXT.name);
+                        return OS_INVALID;
+                    }
+                } else {
+                    merror("Invalid attribute for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
+                    return OS_INVALID;
+                }
+            }
             if (!strcmp(node[i]->content, "yes"))
                 syscollector->flags.portsinfo = 1;
             else if (!strcmp(node[i]->content, "no"))

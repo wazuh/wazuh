@@ -59,6 +59,7 @@ typedef struct wm_sys_flags_t {
     unsigned int osinfo:1;                  // OS inventory
     unsigned int programinfo:1;             // Installed programs inventory
     unsigned int portsinfo:1;               // Opened ports inventory
+    unsigned int allports:1;                // Scan only listening ports or all
     unsigned int procinfo:1;                // Running processes inventory
 } wm_sys_flags_t;
 
@@ -78,10 +79,10 @@ extern const wm_context WM_SYS_CONTEXT;     // Context
 int wm_sys_read(XML_NODE node, wmodule *module);
 
 // Opened ports inventory for Linux
-void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION);
+void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all);
 
 // Opened ports inventory for Windows
-void sys_ports_windows(const char* LOCATION);
+void sys_ports_windows(const char* LOCATION, int check_all);
 
 // Installed programs inventory for Linux
 void sys_programs_linux(int queue_fd, const char* WM_SYS_LOCATION);
