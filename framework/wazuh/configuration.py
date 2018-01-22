@@ -34,6 +34,10 @@ conf_sections = {
         'type': 'simple',
         'list_options': ['content']
     },
+    'cis-cat': {
+        'type': 'simple',
+        'list_options': []
+    },
     'rootcheck': {
         'type': 'simple',
         'list_options': ['rootkit_files', 'rootkit_trojans', 'windows_audit', 'system_audit', 'windows_apps', 'windows_malware']
@@ -112,7 +116,7 @@ def _read_option(section_name, opt):
                 opt_value[a] = opt.attrib[a]
             # profiles
             profiles_list = []
-            for profiles in opt.getchildren():
+            for profiles in opt.iter():
                 profiles_list.append(profiles.text)
 
             if profiles_list:
@@ -150,11 +154,11 @@ def _conf2json(src_xml, dst_json):
     Parses src_xml to json. It is inserted in dst_json.
     """
 
-    for section in src_xml.getchildren():
-        section_name = 'open-scap' if section.tag.lower() == 'wodle' else section.tag.lower()
+    for section in list(src_xml):
+        section_name = section.attrib['name'] if section.tag.lower() == 'wodle' else section.tag.lower()
         section_json = {}
 
-        for option in section.getchildren():
+        for option in list(section):
             option_name, option_value = _read_option(section_name, option)
             if type(option_value) is list:
                 for ov in option_value:
@@ -171,7 +175,7 @@ def _ossecconf2json(xml_conf):
     """
     final_json = {}
 
-    for root in xml_conf.getchildren():
+    for root in list(xml_conf):
         if root.tag.lower() == "ossec_config":
             _conf2json(root, final_json)
 
