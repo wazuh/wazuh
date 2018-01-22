@@ -116,7 +116,7 @@ char* get_port_state(int state){
 
 // Get opened ports inventory
 
-void sys_ports_windows(const char* LOCATION){
+void sys_ports_windows(const char* LOCATION, int check_all){
 
     /* Declare and initialize variables */
     PMIB_TCPTABLE_OWNER_PID pTcpTable;
@@ -126,6 +126,7 @@ void sys_ports_windows(const char* LOCATION){
     DWORD dwSize = 0;
     BOOL bOrder = TRUE;
     DWORD dwRetVal = 0;
+    int listening;
 
     int i = 0;
     int ID = os_random();
@@ -168,14 +169,14 @@ void sys_ports_windows(const char* LOCATION){
 
         for (i=0; i < (int) pTcpTable->dwNumEntries; i++){
 
-            char *string;
+            listening = 0;
 
             cJSON *object = cJSON_CreateObject();
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddStringToObject(object, "protocol", "tcp");
-            cJSON_AddItemToObject(object, "data", port);
+            cJSON_AddItemToObject(object, "port", port);
 
             ipaddress.S_un.S_addr = (u_long) pTcpTable->table[i].dwLocalAddr;
             snprintf(local_addr, NI_MAXHOST, "%s", inet_ntoa(ipaddress));
@@ -192,6 +193,9 @@ void sys_ports_windows(const char* LOCATION){
             char *port_state;
             port_state = get_port_state((int)pTcpTable->table[i].dwState);
             cJSON_AddStringToObject(port, "state", port_state);
+            if (!strcmp(port_state, "listening")) {
+                listening = 1;
+            }
             free(port_state);
 
             /* Get PID and process name */
@@ -202,12 +206,18 @@ void sys_ports_windows(const char* LOCATION){
             cJSON_AddStringToObject(port, "process", pid_name);
             free(pid_name);
 
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
+            if (check_all || listening) {
 
-            free(string);
+                char *string;
+                string = cJSON_PrintUnformatted(object);
+                mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
+                SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+                cJSON_Delete(object);
+                free(string);
+
+            } else
+                cJSON_Delete(object);
+
         }
 
     } else {
@@ -261,7 +271,7 @@ void sys_ports_windows(const char* LOCATION){
 
         for (i=0; i < (int) pTcp6Table->dwNumEntries; i++){
 
-            char *string;
+            listening = 0;
             char *laddress = NULL;
             char *raddress = NULL;
 
@@ -270,7 +280,7 @@ void sys_ports_windows(const char* LOCATION){
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddStringToObject(object, "protocol", "tcp6");
-            cJSON_AddItemToObject(object, "data", port);
+            cJSON_AddItemToObject(object, "port", port);
 
             laddress = _wm_inet_ntop(pTcp6Table->table[i].ucLocalAddr);
             cJSON_AddStringToObject(port, "local_ip", laddress);
@@ -284,6 +294,10 @@ void sys_ports_windows(const char* LOCATION){
             char *port_state;
             port_state = get_port_state((int)pTcp6Table->table[i].dwState);
             cJSON_AddStringToObject(port, "state", port_state);
+            if (!strcmp(port_state, "listening")) {
+                listening = 1;
+            }
+            free(port_state);
 
             /* Get PID and process name */
             cJSON_AddNumberToObject(port, "PID", pTcp6Table->table[i].dwOwningPid);
@@ -293,15 +307,20 @@ void sys_ports_windows(const char* LOCATION){
             cJSON_AddStringToObject(port, "process", pid_name);
             free(pid_name);
 
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
+            if (check_all || listening) {
+                char *string;
+                string = cJSON_PrintUnformatted(object);
+                mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
+                SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+                cJSON_Delete(object);
+                free(string);
+
+            } else
+                cJSON_Delete(object);
+
 
             free(laddress);
             free(raddress);
-            free(port_state);
-            free(string);
         }
 
     } else {
@@ -313,6 +332,12 @@ void sys_ports_windows(const char* LOCATION){
     if (pTcp6Table != NULL) {
         FREE(pTcp6Table);
         pTcp6Table = NULL;
+    }
+
+    if (!check_all) {
+        mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", SYSCOLLECTOR_PORTS_END);
+        SendMSG(0, SYSCOLLECTOR_PORTS_END, LOCATION, SYSCOLLECTOR_MQ);
+        return;
     }
 
     /* UDP opened ports inventory */
@@ -348,7 +373,7 @@ void sys_ports_windows(const char* LOCATION){
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddStringToObject(object, "protocol", "udp");
-            cJSON_AddItemToObject(object, "data", port);
+            cJSON_AddItemToObject(object, "port", port);
 
             ipaddress.S_un.S_addr = (u_long) pUdpTable->table[i].dwLocalAddr;
             snprintf(local_addr, NI_MAXHOST, "%s", inet_ntoa(ipaddress));
@@ -417,7 +442,7 @@ void sys_ports_windows(const char* LOCATION){
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddStringToObject(object, "protocol", "udp6");
-            cJSON_AddItemToObject(object, "data", port);
+            cJSON_AddItemToObject(object, "port", port);
 
             laddress = _wm_inet_ntop(pUdp6Table->table[i].ucLocalAddr);
             cJSON_AddStringToObject(port, "local_ip", laddress);

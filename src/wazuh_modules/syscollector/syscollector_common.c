@@ -127,10 +127,16 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         /* Opened ports inventory */
         if (sys->flags.portsinfo){
+
+            int check_all = 0;
+            if (sys->flags.allports)
+                check_all = 1;
+
             #if defined(WIN32)
-                sys_ports_windows(WM_SYS_LOCATION);
+                sys_ports_windows(WM_SYS_LOCATION, check_all);
             #elif defined(__linux__)
-                sys_ports_linux(queue_fd, WM_SYS_LOCATION);
+                sys_ports_linux(queue_fd, WM_SYS_LOCATION, check_all);
+            #else
                 sys->flags.portsinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this OS version.");
             #endif
@@ -214,7 +220,7 @@ void wm_sys_check() {
     // Check if disabled
 
     if (!sys->flags.enabled) {
-        mterror(WM_SYS_LOGTAG, "Module disabled. Exiting...");
+        mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
     }
 
