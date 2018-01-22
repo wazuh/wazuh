@@ -371,7 +371,8 @@ class WazuhClusterServer(asyncore.dispatcher):
         logging.info("Starting cluster '{0}'".format(cluster_info['name']))
         logging.info("Listening on port {0}.".format(port))
         logging.info("{0} nodes found in configuration".format(len(cluster_info['nodes'])))
-        logging.info("Synchronization interval: {0}".format(cluster_info['interval']))
+        if cluster_info['node_type'] == 'master':
+            logging.info("Synchronization interval: {0}".format(cluster_info['interval']))
 
 
     def handle_accept(self):
