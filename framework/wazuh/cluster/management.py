@@ -11,13 +11,15 @@ from wazuh.cluster.protocol_messages import all_list_requests
 import socket
 import asyncore
 import asynchat
-from operator import itemgetter, eq
+from operator import eq
 import re
 from time import sleep
 import json
 from subprocess import check_output
 import logging
 from glob import glob
+from datetime import datetime
+from os import strerror
 
 # import the C accelerated API of ElementTree
 try:
@@ -127,7 +129,7 @@ def send_request(host, port, key, data, file=None):
         data = client.response
 
     except NameError as e:
-        data = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"
+        data = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography): {}".format(str(e))
         error = 1
 
     except WazuhException as e:
@@ -187,7 +189,7 @@ def check_cluster_config(config):
 
     if config['node_type'] != 'master' and config['node_type'] != 'client':
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
-    if not re.compile("\d+[m|s]").match(config['interval']):
+    if config['node_type'] == 'master' and not re.compile("\d+[m|s]").match(config['interval']):
         raise WazuhException(3004, 'Invalid interval specification. Please, specify it with format <number>s or <number>m')
     if config['nodes'][0] == 'localhost' and len(config['nodes']) == 1:
         raise WazuhException(3004, 'Please specify IPs of all cluster nodes')
@@ -249,7 +251,7 @@ def send_to_socket(cluster_socket, query):
 
 
 def get_ip_from_name(name, csocket=None):
-    if not csocket:
+    if csocket is None:
         cluster_socket = connect_to_db_socket()
     else:
         cluster_socket = csocket
@@ -266,14 +268,14 @@ def get_ip_from_name(name, csocket=None):
     if not data:
         logging.warning("Error getting IP of node: Received empty name")
 
-    if not csocket:
+    if csocket is None:
         cluster_socket.close()
 
     return data
 
 
 def get_name_from_ip(addr, csocket=None):
-    if not csocket:
+    if csocket is None:
         cluster_socket = connect_to_db_socket()
     else:
         cluster_socket = csocket
@@ -283,38 +285,41 @@ def get_name_from_ip(addr, csocket=None):
         data = receive_data_from_db_socket(cluster_socket)
         if data == "":
             data = None
-    except:
+    except Exception as e:
         data = None
 
     if data == None:
-        logging.warning("Can't get name of {0}".format(addr))
+        logging.warning("Error getting name of node {}: {}".format(addr, str(e)))
 
-    if not csocket:
+    if csocket is None:
         cluster_socket.close()
 
     return data
 
 
 def get_actual_master(csocket=None):
-    if not csocket:
+    if csocket is None:
         cluster_socket = connect_to_db_socket()
     else:
         cluster_socket = csocket
 
     send_to_socket(cluster_socket, "selactual")
-    name = receive_data_from_db_socket(cluster_socket)
+    url = receive_data_from_db_socket(cluster_socket)
 
-    if not csocket:
+    if url != " ":
+        name = get_name_from_ip(url, cluster_socket)
+        final_dict = {'name': name, 'url': url}
+    else:
+        final_dict = {'name': None, 'url': None}
+
+    if csocket is None:
         cluster_socket.close()
 
-    if name != " ":
-        return {'name': name, 'url': get_ip_from_name(name, csocket)}
-    else:
-        return {'name': None, 'url': None}
+    return final_dict
 
 
 def insert_actual_master(node_name, csocket=None):
-    if not csocket:
+    if csocket is None:
         cluster_socket = connect_to_db_socket()
     else:
         cluster_socket = csocket
@@ -322,20 +327,28 @@ def insert_actual_master(node_name, csocket=None):
     send_to_socket(cluster_socket, "insertactual {0}".format(node_name))
     receive_data_from_db_socket(cluster_socket)
 
-    if not csocket:
+    if csocket is None:
         cluster_socket.close()
 
-def select_actual_master(nodes, cluster_socket=None):
+
+def select_actual_master(nodes):
     # check if there's already one actual master
-    if len(list(filter(lambda x: x == 'master(*)', map(itemgetter('type'), nodes)))) > 0:
+    number_of_masters = len(list(filter(lambda x: x['type'] == 'master(*)', nodes)))
+    if number_of_masters == 1:
+        insert_actual_master(next (x['url'] for x in nodes if x['type'] == 'master(*)'))
         return nodes
+    elif number_of_masters > 1:
+        logging.info("Found {} elected masters. Restarting lection process...".format(number_of_masters))
+        for node in nodes:
+            if node['type'] == 'master(*)':
+                node['type'] = 'master'
 
     # if there's no actual master, select one
     for node in nodes:
         if node['type'] == 'master':
             logging.info("The new elected master is {0}.".format(node['node']))
             node['type'] = 'master(*)'
-            insert_actual_master(node['node'], cluster_socket)
+            insert_actual_master(node['url'])
             break
 
     return nodes
@@ -344,7 +357,7 @@ def select_actual_master(nodes, cluster_socket=None):
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
 
 
-def get_nodes(updateDBname=False, cluster_socket=None, get_localhost=False):
+def get_nodes(updateDBname=False, get_localhost=False):
     """
     Function to get information about all nodes in the cluster.
 
@@ -373,7 +386,7 @@ def get_nodes(updateDBname=False, cluster_socket=None, get_localhost=False):
                     error_response = True
         else:
             error = 0
-            response = get_node(cluster_socket=cluster_socket)
+            response = get_node()
             response['localhost'] = True
 
         if error == 1:
@@ -396,39 +409,34 @@ def get_nodes(updateDBname=False, cluster_socket=None, get_localhost=False):
                 res_dict['localhost'] = response['localhost']
             data.append(res_dict)
 
-            if updateDBname:
-                if not cluster_socket:
-                    csocket = connect_to_db_socket()
-                else:
-                    csocket = cluster_socket
+        if updateDBname:
+            csocket = connect_to_db_socket()
 
-                query = "insertname " +response['node'] + " " + url
-                send_to_socket(csocket, query)
-                receive_data_from_db_socket(csocket)
+            query = "insertname " +response['node'] + " " + url
+            send_to_socket(csocket, query)
+            receive_data_from_db_socket(csocket)
 
-                if not cluster_socket:
-                    csocket.close()
+            csocket.close()
 
-    select_actual_master(data, cluster_socket)
+    select_actual_master(data)
 
     return {'items': data, 'totalItems': len(data)}
 
 
 
-def get_node(name=None, cluster_socket=None):
+def get_node(cluster_socket=None):
     data = {}
-    if not name:
-        config_cluster = read_config()
+    config_cluster = read_config()
 
-        if not config_cluster:
-            raise WazuhException(3000, "No config found")
+    if not config_cluster:
+        raise WazuhException(3000, "No config found")
 
-        data["node"]    = config_cluster["node_name"]
-        data["cluster"] = config_cluster["name"]
-        if get_actual_master(cluster_socket)['name'] == data['node']:
-            data["type"] = "master(*)"
-        else:
-            data["type"] = config_cluster["node_type"]
+    data["node"]    = config_cluster["node_name"]
+    data["cluster"] = config_cluster["name"]
+    if get_actual_master(csocket=cluster_socket)['url'] in get_localhost_ips():
+        data["type"] = "master(*)"
+    else:
+        data["type"] = config_cluster["node_type"]
 
     return data
 
@@ -483,17 +491,16 @@ def get_file_status_all_managers(file_list, manager):
                 raise WazuhException(3014, m)
 
         manager = fix_manager
-    cluster_socket.close()
 
     files = []
 
-    nodes = get_remote_nodes(connected=False, return_info_for_masters=True)
-    if manager:
-        remote_nodes = filter(lambda x: x in manager, map(itemgetter(0), nodes))
-    else:
-        remote_nodes = map(itemgetter(0), nodes)
+    nodes = set(read_config()['nodes']) - set(get_localhost_ips())
 
-    cluster_socket = connect_to_db_socket()
+    if manager:
+        remote_nodes = filter(lambda x: x in manager, nodes)
+    else:
+        remote_nodes = nodes
+
     for node in remote_nodes:
         all_files = get_file_status(node, cluster_socket)
         if file_list == []:
@@ -501,7 +508,7 @@ def get_file_status_all_managers(file_list, manager):
         else:
             filenames = file_list
 
-        files.extend([[node, file, all_files[file]] for file in filenames])
+        files.extend([[get_name_from_ip(node), file, all_files[file]] for file in filenames])
 
     cluster_socket.close()
     return files

@@ -389,7 +389,8 @@ class WazuhClusterServer(asyncore.dispatcher):
         logging.info("Starting cluster '{0}'".format(cluster_info['name']))
         logging.info("Listening on port {0}.".format(port))
         logging.info("{0} nodes found in configuration".format(len(cluster_info['nodes'])))
-        logging.info("Synchronization interval: {0}".format(cluster_info['interval']))
+        if cluster_info['node_type'] == 'master':
+            logging.info("Synchronization interval: {0}".format(cluster_info['interval']))
 
 
     def handle_accept(self):
@@ -423,22 +424,27 @@ def crontab_sync_master(interval):
                 # send the synchronization results to the rest of masters
                 message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
                 file = json.dumps(sync_results).encode()
-            else:
+            elif node[1] == 'client':
                 # ask clients to send updates
                 message = "ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready ")))
                 file = None
+            else:
+                continue
 
             error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
                                 data=message, file=file)
 
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
+
 def crontab_sync_client():
     def sync_handler(n_signal, frame):
-        master_ip, _, master_name = get_remote_nodes()[0]
+        master_ip, _, master_name = get_remote_nodes(updateDBname=True)[0]
         sync_one_node(False, master_ip, master_name)
 
     signal(SIGUSR1, sync_handler)
+    # send a keep alive to the rest of nodes
+    get_remote_nodes(connected=True, updateDBname=True)
     while True:
         sleep(30)
 

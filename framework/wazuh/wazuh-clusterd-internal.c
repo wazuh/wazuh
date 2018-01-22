@@ -595,7 +595,8 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
         cJSON *source_item = cJSON_GetObjectItemCaseSensitive(subitem, "source");
 
         if (strcmp(source_item->valuestring, node_type) == 0 ||
-            strcmp(source_item->valuestring, "all") == 0) {
+            strcmp(source_item->valuestring, "all") == 0 ||
+            strcmp(node_type, "master") == 0) { // master nodes monitor all files
 
             char aux_path[PATH_MAX];
             if (snprintf(aux_path, PATH_MAX, "%s%s", DEFAULTDIR, subitem->string) >= PATH_MAX)
