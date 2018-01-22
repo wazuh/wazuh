@@ -508,7 +508,7 @@ def get_file_status_all_managers(file_list, manager):
         else:
             filenames = file_list
 
-        files.extend([[get_name_from_ip(node), file, all_files[file]] for file in filenames])
+        files.extend([[get_name_from_ip(node, cluster_socket), file, all_files[file]] for file in filenames])
 
     cluster_socket.close()
     return files
