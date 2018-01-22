@@ -424,7 +424,8 @@ def crontab_sync_client():
         sync_one_node(False, master_ip, master_name)
 
     signal(SIGUSR1, sync_handler)
-
+    # send a keep alive to the rest of nodes
+    get_remote_nodes(connected=True, updateDBname=True)
     while True:
         sleep(30)
 
