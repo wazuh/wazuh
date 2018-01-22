@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- [Added support to synchronize custom rules and decoders in the cluster.](https://github.com/wazuh/wazuh/pull/344)
 - [Add field `status` to `GET/agents/groups/:group_id` API call.](https://github.com/wazuh/wazuh/pull/338)
 
 ### Fixed
