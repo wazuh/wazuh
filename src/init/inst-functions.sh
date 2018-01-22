@@ -730,7 +730,7 @@ InstallLocal(){
     ${INSTALL} -m 0750 -o root -g 0 syscheck_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 rootcheck_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 -b update/ruleset/update_ruleset.py ${PREFIX}/bin/update_ruleset
+    ${INSTALL} -m 0750 -o root -g 0 -b update/ruleset/update_ruleset ${PREFIX}/bin/update_ruleset
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
@@ -751,11 +751,11 @@ InstallLocal(){
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
     fi
     if [ ! -f ${PREFIX}/etc/lists ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
     fi
     if [ ! -f ${PREFIX}/etc/lists/amazon ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
+        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
     fi
     if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys

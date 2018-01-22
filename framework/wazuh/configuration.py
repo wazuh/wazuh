@@ -7,7 +7,7 @@ from xml.etree.ElementTree import fromstring
 from os import listdir, path as os_path
 import re
 from wazuh.exception import WazuhException
-from wazuh.agent import Agent
+from wazuh.group import group_exists
 from wazuh import common
 from wazuh.utils import cut_array
 
@@ -420,7 +420,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     """
 
     if group_id:
-        if not Agent.group_exists(group_id):
+        if not group_exists(group_id):
             raise WazuhException(1710, group_id)
 
         agent_conf = "{0}/{1}".format(common.shared_path, group_id)
@@ -463,7 +463,7 @@ def get_file_conf(filename, group_id=None, type_conf=None):
     """
 
     if group_id:
-        if not Agent.group_exists(group_id):
+        if not group_exists(group_id):
             raise WazuhException(1710, group_id)
 
         file_path = "{0}/{1}".format(common.shared_path, filename) \

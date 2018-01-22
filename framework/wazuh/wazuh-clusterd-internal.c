@@ -143,9 +143,17 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
         }
 
         char *create4 = "CREATE TABLE IF NOT EXISTS node_name_ip (" \
-                        "name      TEXT," \
+                        "name       TEXT," \
                         "id_manager TEXT PRIMARY KEY)";
         rc = sqlite3_exec(db, create4, NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            sqlite3_close(db);
+            mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
+        }
+
+        char *create5 = "CREATE TABLE IF NOT EXISTS actual_master (" \
+                        "node_name TEXT PRIMARY KEY)";
+        rc = sqlite3_exec(db, create5, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
             mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
@@ -156,7 +164,7 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
             sqlite3_close(db);
             mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
         }
-    } 
+    }
     return 0;
 }
 
@@ -228,8 +236,13 @@ void* daemon_socket() {
     // sql sentence to manage IP from name
     char *sql_sel_by_name = "SELECT manager_file_status.id_manager as id_manager, manager_file_status.id_file as id_file, manager_file_status.status as status FROM node_name_ip INNER JOIN manager_file_status ON manager_file_status.id_manager = node_name_ip.id_manager WHERE node_name_ip.name = ? LIMIT ? OFFSET ?";
     char *sql_sel_ip_by_name = "SELECT id_manager FROM node_name_ip WHERE name = ?";
+    char *sql_sel_name_by_ip = "SELECT name FROM node_name_ip WHERE id_manager = ?";
     char *sql_upd_ip_name = "UPDATE node_name_ip SET name = ? WHERE id_manager = ?";
     char *sql_ins_ip_name = "INSERT OR REPLACE INTO node_name_ip VALUES (?,?)";
+    // SQL sentence to get the actual master
+    char *sql_sel_actual = "SELECT * FROM actual_master";
+    char *sql_ins_actual = "INSERT OR REPLACE INTO actual_master VALUES (?)";
+    char *sql_del_actual = "DELETE FROM actual_master";
 
     char *sql;
     bool has1, has2, has3, select, count, select_last_sync, select_files, response_str;
@@ -323,6 +336,10 @@ void* daemon_socket() {
                 sql = sql_sel_ip_by_name;
                 has1 = true; // name
                 response_str = true;
+            } else if (cmd != NULL && strcmp(cmd, "getname") == 0) {
+                sql = sql_sel_name_by_ip;
+                has1 = true; // name
+                response_str = true;
             } else if (cmd != NULL && strcmp(cmd, "updatename") == 0) {
                 sql = sql_upd_ip_name;
                 has1 = true; // name
@@ -331,11 +348,20 @@ void* daemon_socket() {
                 sql = sql_ins_ip_name;
                 has1 = true; // name
                 has2 = true; // ip
+            } else if (cmd != NULL && strcmp(cmd, "insertactual") == 0) {
+                sql = sql_ins_actual;
+                has1 = true;
+            } else if (cmd != NULL && strcmp(cmd, "selactual") == 0) {
+                sql = sql_sel_actual;
+                select = true;
+                strcpy(response, " ");
+            } else if (cmd != NULL && strcmp(cmd, "delactual") == 0) {
+                sql = sql_del_actual;
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
             }
-            
+
             int step;
             prepare_db(db, &res, sql);
             if (has1) {
@@ -361,7 +387,7 @@ void* daemon_socket() {
                         }
                         else rc = sqlite3_bind_text(res,2,cmd,-1,0);
                         if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 2nd parameter of query: %s", sqlite3_errmsg(db));
-                    } 
+                    }
                     if (has3) {
                         cmd = strtok(NULL, " ");
                         if (strcmp(sql, sql_ins_fi) == 0) {
@@ -372,7 +398,7 @@ void* daemon_socket() {
                         else rc = sqlite3_bind_text(res,3,cmd,-1,0);
                         if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 3rd parameter of query: %s", sqlite3_errmsg(db));
                     }
-                    
+
                     do {
                         step = sqlite3_step(res);
                         if (step == SQLITE_DONE && !count && !select && !select_files && !response_str) {
@@ -396,7 +422,7 @@ void* daemon_socket() {
                             strcat(response, str);
                         } else if (response_str) {
                             strcpy(response, (char *)sqlite3_column_text(res,0));
-                        } else 
+                        } else
                             strcpy(response, "Command OK");
                     } while (step == SQLITE_ROW || step == SQLITE_OK);
                     sqlite3_clear_bindings(res);
@@ -411,12 +437,13 @@ void* daemon_socket() {
                     sqlite3_close(db);
                     mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
                 }
-                if (select_last_sync || count) {
+                if (select_last_sync || count || select) {
                     do {
                         step = sqlite3_step(res);
                         if (step != SQLITE_ROW && step != SQLITE_OK) break;
                         if (select_last_sync) sprintf(response, "%d %lf", sqlite3_column_int(res, 0), sqlite3_column_double(res, 1));
                         else if (count) sprintf(response, "%d", sqlite3_column_int(res, 0));
+                        else if (select) sprintf(response, "%s", (char *)sqlite3_column_text(res, 0));
                     } while (step == SQLITE_ROW || step == SQLITE_OK);
                 } else strcpy(response, "Command OK");
             }
@@ -494,7 +521,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
     char **more_subdirs;
     for (i=0; i<max_files_to_watch; i++) if (subdirs[i] == 0) break;
 
-    if ((dirp = opendir(path)) == NULL) 
+    if ((dirp = opendir(path)) == NULL)
         mterror_exit(INOTIFY_TAG, "Error listing subdirectories of %s: %s", path, strerror(errno));
 
     while ((direntp = readdir(dirp)) != NULL) {
@@ -510,7 +537,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
                 } else *_subdirs = subdirs = more_subdirs;
                 memset(subdirs + found_subdirs + i, 0, 30 * sizeof(char *));
             }
-            
+
             size_t name_size = (sizeof(path) + sizeof(direntp->d_name) + sizeof("/")  + 1) * sizeof(char);
             subdirs[found_subdirs+i] = (char *) malloc(name_size);
             if (snprintf(subdirs[found_subdirs+i], name_size, "%s%s/", path, direntp->d_name) >= (ssize_t)name_size)
@@ -520,7 +547,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
         }
     }
 
-    if (closedir(dirp) < 0) 
+    if (closedir(dirp) < 0)
         mterror(INOTIFY_TAG, "Error closing directory %s: %s", path, strerror(errno));
 
     return found_subdirs;
@@ -568,7 +595,8 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
         cJSON *source_item = cJSON_GetObjectItemCaseSensitive(subitem, "source");
 
         if (strcmp(source_item->valuestring, node_type) == 0 ||
-            strcmp(source_item->valuestring, "all") == 0) {
+            strcmp(source_item->valuestring, "all") == 0 ||
+            strcmp(node_type, "master") == 0) { // master nodes monitor all files
 
             char aux_path[PATH_MAX];
             if (snprintf(aux_path, PATH_MAX, "%s%s", DEFAULTDIR, subitem->string) >= PATH_MAX)
@@ -799,7 +827,7 @@ void* daemon_inotify(void * args) {
     strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path)-1);
 
     // Create hash table
-    if (ptable = OSHash_Create(), !ptable) 
+    if (ptable = OSHash_Create(), !ptable)
         mterror_exit(INOTIFY_TAG, "At daemon_inotify(): OSHash_Create()");
 
     // Create queue
@@ -820,7 +848,7 @@ void* daemon_inotify(void * args) {
         mtdebug1(INOTIFY_TAG, "Monitoring %s files from directory %s", cJSON_Print(files[i].files), files[i].name);
         files[i].watcher = inotify_add_watch(fd, files[i].path, files[i].flags);
         if (files[i].watcher < 0)
-            mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 
+            mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s",
                 files[i].path, strerror(errno));
     }
 
