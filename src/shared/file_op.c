@@ -1996,7 +1996,7 @@ cJSON* getunameJSON()
             free(read_info->sysname);
         }
         if (read_info->nodename && (strcmp(read_info->nodename, "unknown") != 0)){
-            cJSON_AddStringToObject(root, "nodename", read_info->nodename);
+            cJSON_AddStringToObject(root, "hostname", read_info->nodename);
             free(read_info->nodename);
         }
         if (read_info->release){
@@ -2008,7 +2008,7 @@ cJSON* getunameJSON()
             free(read_info->version);
         }
         if (read_info->machine && (strcmp(read_info->machine, "unknown") != 0)){
-            cJSON_AddStringToObject(root, "machine", read_info->machine);
+            cJSON_AddStringToObject(root, "architecture", read_info->machine);
             free(read_info->machine);
         }
 

@@ -924,8 +924,8 @@ void sys_proc_windows(const char* LOCATION) {
             cJSON *object = cJSON_CreateObject();
             cJSON *process = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "process");
-            cJSON_AddNumberToObject(object, "msg_id", random);
-            cJSON_AddItemToObject(object, "info", process);
+            cJSON_AddNumberToObject(object, "ID", random);
+            cJSON_AddItemToObject(object, "process", process);
 
             char ** parts = NULL;
             parts = OS_StrBreak(',', read_buff, 12);
@@ -948,7 +948,7 @@ void sys_proc_windows(const char* LOCATION) {
         }
 
         cJSON_AddStringToObject(id_msg, "type", "process_list");
-        cJSON_AddNumberToObject(id_msg, "msg_id", random);
+        cJSON_AddNumberToObject(id_msg, "ID", random);
         cJSON_AddItemToObject(id_msg, "list", id_array);
 
         string = cJSON_PrintUnformatted(id_msg);
