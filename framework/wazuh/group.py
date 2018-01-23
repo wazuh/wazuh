@@ -50,71 +50,71 @@ def _remove_single_group(group_id):
     return {'msg': msg, 'affected_agents': ids}
 
 
-    def get_all_groups_sql(offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Gets the existing groups.
+def get_all_groups_sql(offset=0, limit=common.database_limit, sort=None, search=None):
+    """
+    Gets the existing groups.
 
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param search: Looks for items with the specified string.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
 
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
+    # Connect DB
+    db_global = glob(common.database_path_global)
+    if not db_global:
+        raise WazuhException(1600)
 
-        conn = Connection(db_global[0])
+    conn = Connection(db_global[0])
 
-        # Init query
-        query = "SELECT DISTINCT {0} FROM agent WHERE `group` IS NOT null"
-        fields = {'name': 'group'}  # field: db_column
-        select = ["`group`"]
-        request = {}
+    # Init query
+    query = "SELECT DISTINCT {0} FROM agent WHERE `group` IS NOT null"
+    fields = {'name': 'group'}  # field: db_column
+    select = ["`group`"]
+    request = {}
 
-        # Search
-        if search:
-            query += " AND NOT" if bool(search['negation']) else ' AND'
-            query += " ( `group` LIKE :search )"
-            request['search'] = '%{0}%'.format(search['value'])
+    # Search
+    if search:
+        query += " AND NOT" if bool(search['negation']) else ' AND'
+        query += " ( `group` LIKE :search )"
+        request['search'] = '%{0}%'.format(search['value'])
 
-        # Count
-        conn.execute(query.format('COUNT(DISTINCT `group`)'), request)
-        data = {'totalItems': conn.fetch()[0]}
+    # Count
+    conn.execute(query.format('COUNT(DISTINCT `group`)'), request)
+    data = {'totalItems': conn.fetch()[0]}
 
-        # Sorting
-        if sort:
-            if sort['fields']:
-                allowed_sort_fields = fields.keys()
-                # Check if every element in sort['fields'] is in allowed_sort_fields.
-                if not set(sort['fields']).issubset(allowed_sort_fields):
-                    raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
+    # Sorting
+    if sort:
+        if sort['fields']:
+            allowed_sort_fields = fields.keys()
+            # Check if every element in sort['fields'] is in allowed_sort_fields.
+            if not set(sort['fields']).issubset(allowed_sort_fields):
+                raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
 
-                order_str_fields = ['`{0}` {1}'.format(fields[i], sort['order']) for i in sort['fields']]
-                query += ' ORDER BY ' + ','.join(order_str_fields)
-            else:
-                query += ' ORDER BY `group` {0}'.format(sort['order'])
+            order_str_fields = ['`{0}` {1}'.format(fields[i], sort['order']) for i in sort['fields']]
+            query += ' ORDER BY ' + ','.join(order_str_fields)
         else:
-            query += ' ORDER BY `group` ASC'
+            query += ' ORDER BY `group` {0}'.format(sort['order'])
+    else:
+        query += ' ORDER BY `group` ASC'
 
-        # OFFSET - LIMIT
-        if limit:
-            query += ' LIMIT :offset,:limit'
-            request['offset'] = offset
-            request['limit'] = limit
+    # OFFSET - LIMIT
+    if limit:
+        query += ' LIMIT :offset,:limit'
+        request['offset'] = offset
+        request['limit'] = limit
 
-        # Data query
-        conn.execute(query.format(','.join(select)), request)
+    # Data query
+    conn.execute(query.format(','.join(select)), request)
 
-        data['items'] = []
+    data['items'] = []
 
-        for tuple in conn:
-            if tuple[0] != None:
-                data['items'].append(tuple[0])
+    for tuple in conn:
+        if tuple[0] != None:
+            data['items'].append(tuple[0])
 
-        return data
+    return data
 
 
 def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, hash_algorithm='md5'):
