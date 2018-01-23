@@ -493,7 +493,7 @@ def read_id_manager_param(manager, cluster_socket):
     return fix_manager
 
 
-def get_file_status_all_managers(file_list, manager, status="all"):
+def get_file_status_all_managers(file_list, manager, status="all", offset=0, limit=None):
     """
     Return a nested list where each element has the following structure
     [manager, filename, status]
@@ -512,7 +512,7 @@ def get_file_status_all_managers(file_list, manager, status="all"):
         remote_nodes = nodes
 
     for node in remote_nodes:
-        all_files = get_file_status(manager=node, cluster_socket=cluster_socket, status=status)
+        all_files = get_file_status(manager=node, cluster_socket=cluster_socket, status=status, offset=offset, limit=limit)
         if file_list == []:
             local_file_list = all_files
         else:
@@ -538,21 +538,22 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, off
     offset = int(offset)
     limit = int(limit)
 
-    files = get_file_status_all_managers(file_list['fields'], manager['fields'], filter_status)
-    cluster_dict = {'items':{}}
+    files = get_file_status_all_managers(file_list['fields'], manager['fields'], filter_status, offset, limit)
+    cluster_socket = connect_to_db_socket()
+    cluster_dict = {}
     for manager, file, status in files:
         try:
-            cluster_dict['items'][manager]['totalItems'] += 1
             if not count:
-                cluster_dict['items'][manager]['items'].append({'filename': file, 'status': status})
+                cluster_dict[manager]['items'].append({'filename': file, 'status': status})
         except KeyError:
-            cluster_dict['items'][manager] = {'totalItems': 1, 'items': []}
+            manager_ip = get_ip_from_name(manager, cluster_socket)
+            count_query = "count {0}".format(manager_ip) if status == "all" else "countstatus {0} {1}".format(manager_ip, status)
+            send_to_socket(cluster_socket, count_query)
+            cluster_dict[manager] = {'totalItems': int(receive_data_from_db_socket(cluster_socket)), 'items': []}
             if not count:
-                cluster_dict['items'][manager]['items'].append({'filename': file, 'status': status})
+                cluster_dict[manager]['items'].append({'filename': file, 'status': status})
 
-    cluster_dict['totalItems'] = len(cluster_dict['items'])
-    cluster_dict['items'] = dict(cluster_dict['items'].items()[offset:offset+limit])
-
+    cluster_socket.close()
     return cluster_dict
 
 
