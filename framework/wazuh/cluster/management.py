@@ -524,7 +524,7 @@ def get_file_status_all_managers(file_list, manager):
     return files
 
 
-def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, offset=0, limit=common.database_limit):
+def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, offset=0, limit=common.database_limit, count=False):
     """
     Return a nested list where each element has the following structure
     {
@@ -542,16 +542,21 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, off
     cluster_dict = {'items':{}}
     for manager, file, status in files:
         try:
-            cluster_dict['items'][manager].append({'filename': file, 'status': status})
+            cluster_dict['items'][manager]['totalItems'] += 1
+            if not count:
+                cluster_dict['items'][manager]['items'].append({'filename': file, 'status': status})
         except KeyError:
-            cluster_dict['items'][manager] = []
-            cluster_dict['items'][manager].append({'filename': file, 'status': status})
+            cluster_dict['items'][manager] = {'totalItems': 1, 'items': []}
+            if not count:
+                cluster_dict['items'][manager]['items'].append({'filename': file, 'status': status})
 
     cluster_dict['totalItems'] = len(cluster_dict['items'])
     cluster_dict['items'] = dict(cluster_dict['items'].items()[offset:offset+limit])
+
     return cluster_dict
 
-def get_file_status_one_node_json(node_id, file_list = {'fields':[]}, offset=0, limit=common.database_limit):
+
+def get_file_status_one_node_json(node_id, file_list = {'fields':[]}, offset=0, limit=common.database_limit, count=False):
     cluster_socket = connect_to_db_socket()
 
     node_id = read_id_manager_param([node_id], cluster_socket)[0]
@@ -560,8 +565,12 @@ def get_file_status_one_node_json(node_id, file_list = {'fields':[]}, offset=0, 
     send_to_socket(cluster_socket, count_query)
     n_files = int(receive_data_from_db_socket(cluster_socket))
 
-    files = get_file_status(manager=node_id, cluster_socket=cluster_socket, offset=int(offset), limit=int(limit))
+    if not count:
+        files = get_file_status(manager=node_id, cluster_socket=cluster_socket, offset=int(offset), limit=int(limit))
 
     cluster_socket.close()
 
-    return {'items': files, 'totalItems': n_files}
+    if not count:
+        return {'items': files, 'totalItems': n_files}
+    else:
+        return {'totalItems': n_files}
