@@ -545,13 +545,17 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, off
         try:
             if not count:
                 cluster_dict[manager]['items'].append({'filename': file, 'status': status})
+            else:
+                cluster_dict[manager]['items'] = []
         except KeyError:
             manager_ip = get_ip_from_name(manager, cluster_socket)
-            count_query = "count {0}".format(manager_ip) if status == "all" else "countstatus {0} {1}".format(manager_ip, status)
+            count_query = "count {0}".format(manager_ip) if filter_status == "all" else "countstatus {0} {1}".format(manager_ip, status)
             send_to_socket(cluster_socket, count_query)
             cluster_dict[manager] = {'totalItems': int(receive_data_from_db_socket(cluster_socket)), 'items': []}
             if not count:
                 cluster_dict[manager]['items'].append({'filename': file, 'status': status})
+            else:
+                cluster_dict[manager]['items'] = []
 
     cluster_socket.close()
     return cluster_dict
