@@ -222,7 +222,9 @@ void* daemon_socket() {
     char *sql_ins = "INSERT OR REPLACE INTO manager_file_status VALUES (?,?,'pending')";
     // sql sentence to perform a select query
     char *sql_sel = "SELECT * FROM manager_file_status WHERE id_manager = ? LIMIT ? OFFSET ?";
+    char *sql_sel_status = "SELECT * FROM manager_file_status WHERE id_manager = ? AND status = ? LIMIT ? OFFSET ?";
     char *sql_count = "SELECT Count(*) FROM manager_file_status WHERE id_manager = ?";
+    char *sql_count_status = "SELECT Count(*) FROM manager_file_status WHERE id_manager = ? AND status = ?";
     char *sql_del1 = "DELETE FROM manager_file_status WHERE id_file = ?";
     // sql sentences to insert a new row in the last_sync table
     char *sql_del_lastsync = "DELETE FROM last_sync";
@@ -245,7 +247,7 @@ void* daemon_socket() {
     char *sql_del_actual = "DELETE FROM actual_master";
 
     char *sql;
-    bool has1, has2, has3, select, count, select_last_sync, select_files, response_str;
+    bool has1, has2, has3, has4, select, count, select_last_sync, select_files, response_str;
 
     if (listen(fd, 5) == -1) {
         mterror_exit(DB_TAG, "Error listening in socket: %s", strerror(errno));
@@ -264,7 +266,7 @@ void* daemon_socket() {
         memset(buf, 0, sizeof(buf));
         memset(response, 0, sizeof(response));
         while ( (rc=recv(cl,buf,sizeof(buf),0)) > 0) {
-            has1=false; has2=false; has3=false; select=false; count=false; select_last_sync=false; select_files=false; response_str=false;
+            has1=false; has2=false; has3=false; has4=false; select=false; count=false; select_last_sync=false; select_files=false; response_str=false;
 
             cmd = strtok(buf, " ");
             mtdebug2(DB_TAG,"Received %s command", cmd);
@@ -290,6 +292,14 @@ void* daemon_socket() {
                 has2 = true;
                 has3 = true;
                 strcpy(response, " ");
+            } else if (cmd != NULL && strcmp(cmd, "selectstatus") == 0) {
+                sql = sql_sel_status;
+                select = true;
+                has1 = true;
+                has2 = true;
+                has3 = true;
+                has4 = true;
+                strcpy(response, " ");
             } else if (cmd != NULL && strcmp(cmd, "sellast") == 0) {
                 sql = sql_sel_sync;
                 select_last_sync = true;
@@ -298,6 +308,11 @@ void* daemon_socket() {
                 sql = sql_count;
                 count = true;
                 has1 = true;
+            } else if (cmd != NULL && strcmp(cmd, "countstatus") == 0) {
+                sql = sql_count_status;
+                count = true;
+                has1 = true;
+                has2 = true;
             } else if (cmd != NULL && strcmp(cmd, "clear") == 0) {
                 sql = sql_clr;
             } else if (cmd != NULL && strcmp(cmd, "clearlast") == 0) {
@@ -397,6 +412,16 @@ void* daemon_socket() {
                         }
                         else rc = sqlite3_bind_text(res,3,cmd,-1,0);
                         if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 3rd parameter of query: %s", sqlite3_errmsg(db));
+                    }
+                    if (has4) {
+                        cmd = strtok(NULL, " ");
+                        if (strcmp(sql, sql_ins_fi) == 0) {
+                            long int value = strtol(cmd, &endptr, 10);
+                            if (endptr == cmd) mterror_exit(DB_TAG, "No integer found in database request. Found: %s", cmd);
+                            rc = sqlite3_bind_int(res,4,value);
+                        }
+                        else rc = sqlite3_bind_text(res,4,cmd,-1,0);
+                        if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 4th parameter of query: %s", sqlite3_errmsg(db));
                     }
 
                     do {

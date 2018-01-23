@@ -456,9 +456,9 @@ def get_last_sync():
     return str(datetime.fromtimestamp(int(date))), float(duration)
 
 
-def get_file_status(manager, cluster_socket, offset=0, limit=None):
+def get_file_status(manager, cluster_socket, offset=0, limit=None, status="all"):
     if not limit:
-        count_query = "count {0}".format(manager)
+        count_query = "count {0}".format(manager) if status == "all" else "countstatus {0} {1}".format(manager, status)
         send_to_socket(cluster_socket, count_query)
         n_files = int(receive_data_from_db_socket(cluster_socket))
         limit = n_files
@@ -466,7 +466,7 @@ def get_file_status(manager, cluster_socket, offset=0, limit=None):
     else:
         step = limit if limit < 100 else 100
 
-    query = "select {0} {1} ".format(manager, step)
+    query = "select {0} {1} ".format(manager, step) if status == "all" else "selectstatus {0} {1} {2} ".format(manager, status, step)
     file_status = ""
     # limit = 100
     for offset in range(offset,limit,step):
@@ -493,7 +493,7 @@ def read_id_manager_param(manager, cluster_socket):
     return fix_manager
 
 
-def get_file_status_all_managers(file_list, manager):
+def get_file_status_all_managers(file_list, manager, status="all"):
     """
     Return a nested list where each element has the following structure
     [manager, filename, status]
@@ -512,7 +512,7 @@ def get_file_status_all_managers(file_list, manager):
         remote_nodes = nodes
 
     for node in remote_nodes:
-        all_files = get_file_status(node, cluster_socket)
+        all_files = get_file_status(manager=node, cluster_socket=cluster_socket, status=status)
         if file_list == []:
             local_file_list = all_files
         else:
@@ -524,7 +524,7 @@ def get_file_status_all_managers(file_list, manager):
     return files
 
 
-def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, offset=0, limit=common.database_limit, count=False):
+def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, offset=0, limit=common.database_limit, count=False, filter_status="all"):
     """
     Return a nested list where each element has the following structure
     {
@@ -538,7 +538,7 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, off
     offset = int(offset)
     limit = int(limit)
 
-    files = get_file_status_all_managers(file_list['fields'], manager['fields'])
+    files = get_file_status_all_managers(file_list['fields'], manager['fields'], filter_status)
     cluster_dict = {'items':{}}
     for manager, file, status in files:
         try:
@@ -556,17 +556,17 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, off
     return cluster_dict
 
 
-def get_file_status_one_node_json(node_id, file_list = {'fields':[]}, offset=0, limit=common.database_limit, count=False):
+def get_file_status_one_node_json(node_id, file_list = {'fields':[]}, offset=0, limit=common.database_limit, count=False, status="all"):
     cluster_socket = connect_to_db_socket()
 
     node_id = read_id_manager_param([node_id], cluster_socket)[0]
 
-    count_query = "count {0}".format(node_id)
+    count_query = "count {0}".format(node_id) if status == "all" else "countstatus {0} {1}".format(node_id, status)
     send_to_socket(cluster_socket, count_query)
     n_files = int(receive_data_from_db_socket(cluster_socket))
 
     if not count:
-        files = get_file_status(manager=node_id, cluster_socket=cluster_socket, offset=int(offset), limit=int(limit))
+        files = get_file_status(manager=node_id, cluster_socket=cluster_socket, offset=int(offset), limit=int(limit), status=status)
 
     cluster_socket.close()
 
