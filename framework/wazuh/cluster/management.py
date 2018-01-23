@@ -481,23 +481,26 @@ def get_file_status(manager, cluster_socket, offset=0, limit=None):
     return all_files
 
 
+def read_id_manager_param(manager, cluster_socket):
+    fix_manager = []
+    for m in manager:
+        if re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(m):
+            fix_manager.append(m)
+        elif re.compile(r"\w+").match(m):
+            fix_manager.append(get_ip_from_name(m, cluster_socket))
+        else:
+            raise WazuhException(3014, m)
+    return fix_manager
+
+
 def get_file_status_all_managers(file_list, manager):
     """
     Return a nested list where each element has the following structure
     [manager, filename, status]
     """
-    fix_manager = []
     cluster_socket = connect_to_db_socket()
     if manager:
-        for m in manager:
-            if re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(m):
-                fix_manager.append(m)
-            elif re.compile(r"\w+").match(m):
-                fix_manager.append(get_ip_from_name(m, cluster_socket))
-            else:
-                raise WazuhException(3014, m)
-
-        manager = fix_manager
+        manager = read_id_manager_param(manager, cluster_socket)
 
     files = []
 
@@ -550,6 +553,8 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, off
 
 def get_file_status_one_node_json(node_id, file_list = {'fields':[]}, offset=0, limit=common.database_limit):
     cluster_socket = connect_to_db_socket()
+
+    node_id = read_id_manager_param([node_id], cluster_socket)[0]
 
     count_query = "count {0}".format(node_id)
     send_to_socket(cluster_socket, count_query)
