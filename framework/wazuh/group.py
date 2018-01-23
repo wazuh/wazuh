@@ -172,7 +172,7 @@ def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None
         merged_sum = get_hash(entry + "/merged.mg")
         conf_sum   = get_hash(entry + "/agent.conf")
 
-        item = {'count':conn.fetch()[0], 'name': entry}
+        item = {'count':conn.fetch()[0], 'name': entry, 'file_count': len(listdir(full_entry))}
 
         if merged_sum:
             item['merged_sum'] = merged_sum
