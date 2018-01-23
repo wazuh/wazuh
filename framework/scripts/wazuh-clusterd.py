@@ -106,6 +106,7 @@ class WazuhClusterHandler(asynchat.async_chat):
             elif self.command[0] == list_requests_cluster['zip']:
                 zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 res = extract_zip(zip_bytes)
+                self.restart = res['restart']
             elif self.command[0] == list_requests_agents['RESTART_AGENTS']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
@@ -316,7 +317,8 @@ class WazuhClusterHandler(asynchat.async_chat):
             elif self.command[0] == list_requests_cluster['data']:
                 res = "Saving data from actual master"
                 actual_master_data = json.loads(self.f.decrypt(response[common.cluster_sync_msg_size:]).decode())
-                save_actual_master_data_on_db(actual_master_data)
+                if save_actual_master_data_on_db(actual_master_data):
+                    restart_manager()
 
             logging.debug("Command {0} executed for {1}".format(self.command[0], self.addr))
 
@@ -326,23 +328,9 @@ class WazuhClusterHandler(asynchat.async_chat):
 
     def handle_close(self):
         self.close()
-        if self.command[0] == 'zip' and self.restart:
+        if self.command[0] == 'zip' and self.restart and self.node_type == 'client':
             self.restart = False
-            try:
-                # check synchronized rules are correct before restarting the manager
-                check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
-                logging.debug("Synchronized rules are correct.")
-            except CalledProcessError as e:
-                logging.warning("Synchronized rules are not correct. Manager not restarted: {0}.".format(str(e)))
-                return
-
-            try:
-                logging.info("Restarting manager...")
-                sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                sock.connect("{0}/queue/alerts/execq".format(common.ossec_path))
-                sock.send("restart-ossec0 cluster restart")
-            except CalledProcessError as e:
-                logging.warning("Could not restart manager: {0}.".format(str(e)))
+            restart_manager()
 
 
     def handle_error(self):
@@ -389,7 +377,8 @@ class WazuhClusterServer(asyncore.dispatcher):
         logging.info("Starting cluster '{0}'".format(cluster_info['name']))
         logging.info("Listening on port {0}.".format(port))
         logging.info("{0} nodes found in configuration".format(len(cluster_info['nodes'])))
-        logging.info("Synchronization interval: {0}".format(cluster_info['interval']))
+        if cluster_info['node_type'] == 'master':
+            logging.info("Synchronization interval: {0}".format(cluster_info['interval']))
 
 
     def handle_accept(self):
@@ -405,6 +394,24 @@ class WazuhClusterServer(asyncore.dispatcher):
         self.close()
         raise t(v)
 
+
+def restart_manager():
+    try:
+        # check synchronized rules are correct before restarting the manager
+        check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
+        logging.debug("Synchronized rules are correct.")
+    except CalledProcessError as e:
+        logging.warning("Synchronized rules are not correct. Manager not restarted: {0}.".format(str(e)))
+        return
+
+    try:
+        logging.info("Restarting manager...")
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        sock.connect("{0}/queue/alerts/execq".format(common.ossec_path))
+        sock.send("restart-ossec0 cluster restart")
+    except CalledProcessError as e:
+        logging.warning("Could not restart manager: {0}.".format(str(e)))
+    
 
 def crontab_sync_master(interval):
     interval_number  = int(search('\d+', interval).group(0))
@@ -442,7 +449,8 @@ def crontab_sync_client():
         sync_one_node(False, master_ip, master_name)
 
     signal(SIGUSR1, sync_handler)
-
+    # send a keep alive to the rest of nodes
+    get_remote_nodes(connected=True, updateDBname=True)
     while True:
         sleep(30)
 

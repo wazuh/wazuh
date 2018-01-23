@@ -189,7 +189,7 @@ def check_cluster_config(config):
 
     if config['node_type'] != 'master' and config['node_type'] != 'client':
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
-    if not re.compile("\d+[m|s]").match(config['interval']):
+    if config['node_type'] == 'master' and not re.compile("\d+[m|s]").match(config['interval']):
         raise WazuhException(3004, 'Invalid interval specification. Please, specify it with format <number>s or <number>m')
     if config['nodes'][0] == 'localhost' and len(config['nodes']) == 1:
         raise WazuhException(3004, 'Please specify IPs of all cluster nodes')
@@ -515,7 +515,7 @@ def get_file_status_all_managers(file_list, manager):
         else:
             local_file_list = filter(lambda x: x['filename'] in file_list, all_files)
 
-        files.extend([[node, file['filename'], file['status']] for file in local_file_list])
+        files.extend([[get_name_from_ip(node, cluster_socket), file['filename'], file['status']] for file in local_file_list])
 
     cluster_socket.close()
     return files
