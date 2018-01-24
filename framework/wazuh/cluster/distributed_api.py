@@ -115,7 +115,6 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, clus
                 node['error'] = {'message':"Agent not found",'code':-1}
                 result_node['data']['failed_ids'].append(node)
         result_nodes[node_id] = result_node
-    logging.debug("Waiting threads (total = " + str(len(threads)) + ")")
     for t in threads:
         t.join()
     for node, result_node in result_nodes.iteritems():
@@ -177,7 +176,6 @@ def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1,
         else: #There aren't nodes with agents, set affected nodes
             node_agents = {node: None for node in affected_nodes_addr}
 
-    logging.debug("distributed_api_request: calling send_request_to_nodes wirh params NODE AGENTS ---> " + str(node_agents)  + " | REQUEST TYPE ---> " + str(request_type) + " | ARGS ---> " + str(args))
     return send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
 
 

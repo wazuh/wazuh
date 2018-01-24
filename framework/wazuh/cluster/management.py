@@ -125,7 +125,7 @@ def send_request(host, port, key, data, file=None):
     try:
         fernet_key = Fernet(key.encode('base64','strict'))
         client = WazuhClusterClient(host, int(port), fernet_key, data, file)
-        asyncore.loop()
+        asyncore.loop(count=2)
         data = client.response
 
     except NameError as e:
