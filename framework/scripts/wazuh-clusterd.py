@@ -292,23 +292,58 @@ class WazuhClusterHandler(asynchat.async_chat):
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 cluster_depth = ast.literal_eval(self.command[1]) - 1
-                res = get_config_distributed(cluster_depth=cluster_depth)
+
+                logging.debug("CLUSTERD: Received CLUSTER_CONFIG")
+                res = "OK CLUSTER_CONFIG"#get_config_distributed(cluster_depth=cluster_depth)
+                logging.debug("CLUSTERD: sending: " + str(res))
+
 
             elif self.command[0] == list_requests_cluster['MASTER_FORW']:
                 args = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 args = args.split(" ")
                 args_list = []
-                if args[0] in all_list_requests.values():
-                    agent_id = None
-                    request_type = args[0]
-                    if (len(args) > 1):
-                        args_list = args[1:]
-                elif len(args) > 1 and args[1] in all_list_requests.values():
-                    agent_id = args[0].split("-")
-                    request_type = args[1]
-                    if (len(args) > 2):
-                        args_list = args[2:]
-                res = distributed_api_request(request_type=request_type, agent_id=agent_id, args=args_list, cluster_depth=1, affected_nodes=None, from_cluster=True)
+                try:
+                    if args[0] in all_list_requests.values():
+                        agent_id = None
+                        request_type = args[0]
+                        if args[1] != "-":
+                            affected_nodes = args[1].split("-")
+                        else:
+                            affected_nodes = None
+                        if (len(args) > 2):
+                            args_list = args[2:]
+                    elif len(args) > 2 and args[1] in all_list_requests.values():
+                        agent_id = args[0].split("-")
+                        request_type = args[1]
+                        if args[2] != "-":
+                            affected_nodes = args[2].split("-")
+                        else:
+                            affected_nodes = None
+                        if (len(args) > 3):
+                            args_list = args[3:]
+
+                    logging.warning("CLUSTERD: received MASTER_FORW")
+                    self.data = json.dumps({'error': error, 'data': 'OK MASTER_FORW'})
+                    self.handle_write()
+                    self.close()
+                    #logging.warning("Clusterd send to distributed_api_request: request_type->" + str(request_type) + " -- agent_id->" + str(agent_id) + " -- args_list->" + str(args_list) +  " -- affected_nodes->" + str(affected_nodes))
+
+
+                    # execute an independent process to "crontab" the sync interval
+                    logging.warning("CLUSTERD: Abriendo nueva peticion...")
+                    '''
+                    p = Process(target=distributed_api_request, args=(request_type, agent_id, args_list, 1, affected_nodes, True,))
+                    if not args.f:
+                        p.daemon=True
+                    p.start()
+                    '''
+
+                    #res = distributed_api_request(request_type=request_type, agent_id=agent_id, args=args_list, cluster_depth=1, affected_nodes=affected_nodes, from_cluster=True)
+                    logging.debug("CLUSTERD: Received response: ")
+                    logging.warning(res)
+
+                except Exception as e:
+                    res = e
 
             elif self.command[0] == list_requests_cluster['ready']:
                 res = "Starting to sync client's files"
@@ -321,9 +356,10 @@ class WazuhClusterHandler(asynchat.async_chat):
 
             logging.debug("Command {0} executed for {1}".format(self.command[0], self.addr))
 
-        self.data = json.dumps({'error': error, 'data': res})
+        if self.command[0] != list_requests_cluster['MASTER_FORW']:
+            self.data = json.dumps({'error': error, 'data': res})
+            self.handle_write()
 
-        self.handle_write()
 
     def handle_close(self):
         self.close()

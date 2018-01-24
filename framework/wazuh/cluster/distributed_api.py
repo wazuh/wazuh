@@ -24,7 +24,7 @@ def send_request_to_node(node, config_cluster, request_type, args, cluster_depth
                         data="{1} {2} {0}".format('a'*(common.cluster_protocol_plain_size - len(request_type + " " + str(cluster_depth) + " ")), request_type, str(cluster_depth)),
                          file=args)
 
-    if error != 0 or response['error'] != 0:
+    if error != 0 or (response.get('error') != None and response['error'] != 0):
         logging.debug(response)
         result_queue.put({'node': node, 'reason': "{0} - {1}".format(error, response), 'error': 1})
     else:
@@ -103,6 +103,7 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, clus
                 msg = args_str
             t = threading.Thread(target=send_request_to_node, args=(str(node_id), config_cluster, request_type, msg, cluster_depth, result_queue))
             threads.append(t)
+            logging.info("Starting thread node " + str(node_id))
             t.start()
             result_node = result_queue.get()
         else:
@@ -114,9 +115,11 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, clus
                 node['error'] = {'message':"Agent not found",'code':-1}
                 result_node['data']['failed_ids'].append(node)
         result_nodes[node_id] = result_node
+    logging.debug("Waiting threads (total = " + str(len(threads)) + ")")
     for t in threads:
         t.join()
     for node, result_node in result_nodes.iteritems():
+        logging.warning("Received: {0} - from {1} ".format(str(result_node), node))
         result = append_node_result_by_type(node, result_node, request_type, result)
     return result
 
@@ -130,7 +133,8 @@ def is_cluster_running():
     return get_status_json()['running'] == 'yes'
 
 
-def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1, affected_nodes=[]):
+def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1, affected_nodes=[], from_cluster=False):
+
     config_cluster = read_config()
 
     if agent_id != None:
@@ -144,14 +148,17 @@ def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1,
         affected_nodes = [affected_nodes]
 
     # Redirect request to elected master
-    '''
     if not from_cluster and get_actual_master()['name'] != config_cluster["node_name"]:
         node_agents = {get_actual_master()['url']: agent_id}
-        args = [request_type] + args
+        if len(affected_nodes) == 0:
+            args = [request_type, "-"] + args
+        else:
+            args = [request_type, "-".join(affected_nodes)] + args
         request_type = list_requests_cluster['MASTER_FORW']
-    '''
+        logging.info("[*] Redirecting request to elected master " + str(node_agents))
 
-    if len(affected_nodes) > 0:
+
+    if len(affected_nodes) > 0 and request_type != list_requests_cluster['MASTER_FORW']:
         affected_nodes_addr = []
         for node in affected_nodes:
             # Is name or addr?
@@ -165,11 +172,12 @@ def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1,
             return {}
         #filter existing dict
         if len(node_agents) > 0:
-            node_agents_filter = {node: node_agents[node] for node in affected_nodes_addr}
+            node_agents_filter = {node: node_agents.get(node) for node in affected_nodes_addr}
             node_agents = node_agents_filter
         else: #There aren't nodes with agents, set affected nodes
             node_agents = {node: None for node in affected_nodes_addr}
 
+    logging.debug("distributed_api_request: calling send_request_to_nodes wirh params NODE AGENTS ---> " + str(node_agents)  + " | REQUEST TYPE ---> " + str(request_type) + " | ARGS ---> " + str(args))
     return send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
 
 
