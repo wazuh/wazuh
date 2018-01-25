@@ -438,7 +438,7 @@ def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters
         logging.error("Cluster nodes are not correctly configured at ossec.conf.")
         raise WazuhException(3004, "Cluster nodes are not correctly configured at ossec.conf.")
 
-    if not return_info_for_masters and cluster[localhost_index][1] == 'master':
+    if not return_info_for_masters and cluster[localhost_index][1] == 'master' or cluster[localhost_index][1] == 'client':
         return list(map(itemgetter(0,1,3), filter(lambda x: x[1] == 'master(*)', cluster)))
 
     return list(map(itemgetter(0,1,3), compress(cluster, map(lambda x: x != localhost_index, range(len(cluster))))))
