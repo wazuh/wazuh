@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(me
 class WazuhHelpFormatter(argparse.ArgumentParser):
     def format_help(self):
         msg = """
-    {0} [-h] | [-d] | [-s] | [-p] | [-f  [-m MANAGER [MANAGER ...]]] | [-l [FILE [FILE ...]]] [-m MANAGER [MANAGER ...]]] | [-a [AGENT [AGENT ...]]] | [ -n [NODE [NODE ...]]]
+    {0} [-h] | [-d] | [-s] | [-p] | [-f  [-m MANAGER [MANAGER ...]]] | [-l [FILE [FILE ...]]] [-m MANAGER [MANAGER ...]]] [-t STATUS] | [-a [AGENT [AGENT ...]]] | [ -n [NODE [NODE ...]]]
     Usage:
 \t-h                                  # Show this help message
 \t-d                                  # Get last synchronization date and duration
@@ -27,6 +27,7 @@ class WazuhHelpFormatter(argparse.ArgumentParser):
 \t-l                                  # List the status of all files
 \t-l FILE [FILE ...]                  # List the status of specified files
 \t-l -m MANAGER [MANAGER ...]         # List the status of all files of specified managers (name or IP)
+\t-l -t STATUS                        # List the files with status STATUS
 \t
 \t-a                                  # List the status of all agents
 \t-a AGENT [AGENT ...]                # List the status of specified agents (IP)
@@ -55,6 +56,7 @@ parser=WazuhHelpFormatter(usage='custom usage')
 parser._positionals.title = 'Wazuh Cluster control interface'
 
 parser.add_argument('-m', '--manager', dest='manager', nargs='*', type=str, help="List the status of the files of that manager")
+parser.add_argument('-t', '--status', dest='status', nargs='?', type=str, help="List files with given status", default="all")
 
 exclusive = parser.add_mutually_exclusive_group()
 exclusive.add_argument('-d', '--date', action='store_const', const='date', help="Get last synchronization date and duration")
@@ -109,9 +111,9 @@ def pprint_table(data, headers, show_header=False):
     return table_str
 
 
-def _get_file_status(file_list, manager):
+def _get_file_status(file_list, manager, status):
     try:
-        all_files = get_file_status_all_managers(file_list, manager)
+        all_files = get_file_status_all_managers(file_list, manager, status)
     except socket.error as e:
         print("Error connecting to wazuh cluster service: {0}".format(str(e)))
         exit(1)
@@ -170,9 +172,12 @@ if __name__ == '__main__':
         elif args.manager is not None and args.files is None and args.force is None:
             logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
 
+        elif args.status is not None and args.files is None:
+            logging.error("Invalid argument: -t parameter -l (--files)")
+
         elif args.files is not None:
             try:
-                _get_file_status(args.files, args.manager)
+                _get_file_status(args.files, args.manager, args.status)
             except WazuhException as e:
                 print("{0}".format(str(e)))
                 exit(1)
