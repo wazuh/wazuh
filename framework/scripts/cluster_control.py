@@ -225,8 +225,9 @@ if __name__ == '__main__':
                 print("Error connecting to wazuh cluster service: {0}".format(str(e)))
                 exit(1)
 
-            else:
-                parser.print_help()
-                exit()
+        else:
+            parser.print_help()
+            exit()
+
     except Exception as e:
         print "ERROR: {0}".format(str(e))
