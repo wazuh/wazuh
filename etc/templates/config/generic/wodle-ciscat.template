@@ -5,5 +5,5 @@
     <scan-on-start>yes</scan-on-start>
 
     <java_path>/usr/bin</java_path>
-    <ciscat_path>/var/ossec/wodles/ciscat</ciscat_path>
+    <ciscat_path>${INSTALLDIR}/wodles/ciscat</ciscat_path>
   </wodle>
