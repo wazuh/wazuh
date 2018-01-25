@@ -172,8 +172,8 @@ if __name__ == '__main__':
         elif args.manager is not None and args.files is None and args.force is None:
             logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
 
-        elif args.status is not None and args.files is None:
-            logging.error("Invalid argument: -t parameter -l (--files)")
+        elif args.status != "all" and args.files is None:
+            logging.error("Invalid argument: -t parameter requires -l (--files)")
 
         elif args.files is not None:
             try:
