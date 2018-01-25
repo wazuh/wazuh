@@ -319,6 +319,8 @@ class WazuhClusterHandler(asynchat.async_chat):
                 actual_master_data = json.loads(self.f.decrypt(response[common.cluster_sync_msg_size:]).decode())
                 if save_actual_master_data_on_db(actual_master_data):
                     restart_manager()
+            elif self.command[0] == list_requests_cluster['sendme']:
+                res = get_file_status_json()
 
             logging.debug("Command {0} executed for {1}".format(self.command[0], self.addr))
 
@@ -416,6 +418,7 @@ def restart_manager():
 def crontab_sync_master(interval):
     interval_number  = int(search('\d+', interval).group(0))
     interval_measure = interval[-1]
+    first_iteration = True
     while True:
         logging.debug("Crontab: starting to sync")
         try:
@@ -430,6 +433,10 @@ def crontab_sync_master(interval):
                 # send the synchronization results to the rest of masters
                 message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
                 file = json.dumps(sync_results).encode()
+            if node[1] == 'master(*)' and config_cluster['node_type'] == 'master' and first_iteration:
+                # send the synchronization results to the rest of masters
+                message = "sendme {0}".format('a'*(common.cluster_protocol_plain_size - len('sendme ')))
+                file = None
             elif node[1] == 'client':
                 # ask clients to send updates
                 message = "ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready ")))
@@ -437,8 +444,13 @@ def crontab_sync_master(interval):
             else:
                 continue
 
+            first_iteration = False
             error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
                                 data=message, file=file)
+
+            if message.startswith('sendme') and error == 0:
+                logging.info(response)
+                save_actual_master_data_on_db(response['data'])
 
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 

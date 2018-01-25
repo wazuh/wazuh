@@ -45,7 +45,8 @@ list_requests_cluster = {
     'zip'                   : 'zip',
     'node'                  : 'node',
     'ready'                 : 'ready',
-    'data'                  : 'data'
+    'data'                  : 'data',
+    'sendme'                : 'sendme'
 }
 
 # All dicts that start with "list_requests"
