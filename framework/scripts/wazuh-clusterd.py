@@ -308,7 +308,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                         if (len(args) > 2):
                             args_list = args[2:]
                     elif len(args) > 2 and args[1] in all_list_requests.values():
-                        agent_id = args[0].split("-")
+                        agent_id = parse_node_agents_to_dic(args[0])
                         request_type = args[1]
                         if args[2] != "-":
                             affected_nodes = args[2].split("-")
