@@ -594,8 +594,14 @@ def clear_file_status():
         query = "update1 "
         new_items = {}
         for files_slice in divide_list(own_items.items()):
-            local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5'] 
-                            or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
+            try:
+                local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5'] 
+                                or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
+            except KeyError as e:
+                new_items[e.args[0]] = {'md5': own_items[e.args[0]]['md5'],
+                                        'timestamp': own_items[e.args[0]]['timestamp']}
+                logging.debug("File not found in database: {0}".format(e.args[0]))
+                continue
             query += ' '.join(local_items.keys())
             send_to_socket(cluster_socket, query)
             received = receive_data_from_db_socket(cluster_socket)
