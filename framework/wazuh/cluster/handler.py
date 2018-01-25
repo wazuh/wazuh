@@ -573,12 +573,13 @@ def save_actual_master_data_on_db(data):
     cluster_items = get_cluster_items()
     own_items = list_files_from_filesystem('master', cluster_items).keys()
     restart = False
+    logging.debug(data)
     for node_ip, node_data in data.items():
         if not node_ip in localhost_ips:
             get_file_status_of_one_node((node_ip, 'client', ''), own_items, cluster_socket, 'master')
             update_node_db_after_sync(node_data, node_ip, node_data['name'], cluster_socket, 'master')
         else:
-            restart = node_data['files']['restart']
+            restart = node_data['restart']
             # save files status received from master in database
             master_name = get_actual_master(csocket=cluster_socket)['name']
             actual_master_ip = get_ip_from_name(master_name, cluster_socket)

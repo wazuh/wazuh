@@ -493,7 +493,7 @@ def read_id_manager_param(manager, cluster_socket):
     return fix_manager
 
 
-def get_file_status_all_managers(file_list, manager, status="all", offset=0, limit=None):
+def get_file_status_all_managers(file_list, manager, status="all", offset=0, limit=None, return_name=True):
     """
     Return a nested list where each element has the following structure
     [manager, filename, status]
@@ -518,13 +518,15 @@ def get_file_status_all_managers(file_list, manager, status="all", offset=0, lim
         else:
             local_file_list = filter(lambda x: x['filename'] in file_list, all_files)
 
-        files.extend([[get_name_from_ip(node, cluster_socket), file['filename'], file['status']] for file in local_file_list])
+        manager = node if not return_name else get_name_from_ip(node, cluster_socket)
+
+        files.extend([[manager, file['filename'], file['status']] for file in local_file_list])
 
     cluster_socket.close()
     return files
 
 
-def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, offset=0, limit=common.database_limit, count=False, filter_status="all"):
+def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, offset=0, limit=common.database_limit, count=False, filter_status="all", return_name=True):
     """
     Return a nested list where each element has the following structure
     {
@@ -538,7 +540,7 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, off
     offset = int(offset)
     limit = int(limit)
 
-    files = get_file_status_all_managers(file_list['fields'], manager['fields'], filter_status, offset, limit)
+    files = get_file_status_all_managers(file_list['fields'], manager['fields'], filter_status, offset, limit, return_name)
     cluster_socket = connect_to_db_socket()
     cluster_dict = {}
     for manager, file, status in files:
@@ -548,7 +550,7 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, off
             else:
                 cluster_dict[manager]['items'] = []
         except KeyError:
-            manager_ip = get_ip_from_name(manager, cluster_socket)
+            manager_ip = get_ip_from_name(manager, cluster_socket) if return_name else manager
             count_query = "count {0}".format(manager_ip) if filter_status == "all" else "countstatus {0} {1}".format(manager_ip, status)
             send_to_socket(cluster_socket, count_query)
             cluster_dict[manager] = {'totalItems': int(receive_data_from_db_socket(cluster_socket)), 'items': []}
