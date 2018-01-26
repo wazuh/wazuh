@@ -286,10 +286,11 @@ def get_name_from_ip(addr, csocket=None):
         if data == "":
             data = None
     except Exception as e:
+        logging.warning("Error getting name of node {}: {}".format(addr, str(e)))
         data = None
 
     if data == None:
-        logging.warning("Error getting name of node {}: {}".format(addr, str(e)))
+        logging.warning("Error getting name of node {}: Not found in database.".format(addr))
 
     if csocket is None:
         cluster_socket.close()
