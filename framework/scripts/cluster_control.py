@@ -147,6 +147,14 @@ if __name__ == '__main__':
         # Initialize framework
         myWazuh = Wazuh(get_init=True)
 
+        cluster_status = get_status_json()
+        if  cluster_status['enabled'] == 'no':
+            logging.error("Cluster is not enabled")
+            exit(1)
+        elif  cluster_status['running'] == 'no':
+            logging.error("Cluster is not running")
+            exit(1)
+
         # get arguments
         args = parser.parse_args()
 
