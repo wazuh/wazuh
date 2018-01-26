@@ -30,13 +30,19 @@ list_requests_rootcheck = {
 
 list_requests_managers = {
     'MANAGERS_STATUS'       : 'manager_status',
-    'MANAGERS_LOGS'         : 'manager_logs',
+    'MANAGERS_OSSEC_CONF'   : 'manager_ossec_conf',
     'MANAGERS_LOGS_SUMMARY' : 'manager_logs_sum',
+    'MANAGERS_LOGS'         : 'manager_logs'
+}
+
+list_requests_wazuh = {
+    'MANAGERS_INFO'         : 'manager_info'
+}
+
+list_requests_stats = {
     'MANAGERS_STATS_TOTALS' : 'manager_stats_to',
     'MANAGERS_STATS_WEEKLY' : 'manager_stats_we',
-    'MANAGERS_STATS_HOURLY' : 'manager_stats_ho',
-    'MANAGERS_OSSEC_CONF'   : 'manager_ossec_conf',
-    'MANAGERS_INFO'         : 'manager_info'
+    'MANAGERS_STATS_HOURLY' : 'manager_stats_ho'
 }
 
 list_requests_cluster = {

@@ -7,10 +7,12 @@ from wazuh import common
 from wazuh.utils import execute
 from wazuh.database import Connection
 from wazuh.cluster.distributed_api import is_a_local_request, distributed_api_request, is_cluster_running
-from wazuh.cluster.protocol_messages import list_requests_managers
+from wazuh.cluster.protocol_messages import list_requests_wazuh
+from wazuh.exception import WazuhException
 
 from time import strftime
 import re
+import logging
 
 
 """
@@ -142,7 +144,7 @@ class Wazuh:
             if not is_cluster_running():
                 raise WazuhException(3015)
 
-            request_type = list_requests_managers['MANAGERS_INFO']
+            request_type = list_requests_wazuh['MANAGERS_INFO']
             return distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
 
 

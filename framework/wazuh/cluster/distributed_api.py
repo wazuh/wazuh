@@ -11,6 +11,7 @@ import threading
 from sys import version
 import logging
 import re
+import ast
 
 is_py2 = version[0] == '2'
 if is_py2:
@@ -24,7 +25,7 @@ def send_request_to_node(node, config_cluster, request_type, args, cluster_depth
                         data="{1} {2} {0}".format('a'*(common.cluster_protocol_plain_size - len(request_type + " " + str(cluster_depth) + " ")), request_type, str(cluster_depth)),
                          file=args)
 
-    if error != 0 or (response.get('error') != None and response['error'] != 0):
+    if error != 0 or (isinstance(response, dict) and response.get('error') != None and response['error'] != 0):
         logging.debug(response)
         result_queue.put({'node': node, 'reason': "{0} - {1}".format(error, response), 'error': 1})
     else:
@@ -56,7 +57,7 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
             if current_result.get('data') == None:
                 current_result = result_node
 
-    elif request_type in list_requests_managers.values() or request_type == list_requests_cluster['CLUSTER_CONFIG']:
+    elif request_type in list_requests_managers.values() or request_type in list_requests_wazuh.values() or request_type in list_requests_stats.values() or request_type == list_requests_cluster['CLUSTER_CONFIG']:
         if current_result.get('items') == None:
             current_result['items'] = {}
         current_result['items'][get_name_from_ip(node)] = result_node
@@ -64,11 +65,14 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
             current_result['totalItems'] = 0
         current_result['totalItems'] += 1
     else:
-        if result_node.get('data') != None:
-            current_result = result_node['data']
-        elif result_node.get('message') != None:
-            current_result['message'] = result_node['message']
-            current_result['error'] = result_node['error']
+        if isinstance(result_node, dict):
+            if result_node.get('data') != None:
+                current_result = result_node['data']
+            elif result_node.get('message') != None:
+                current_result['message'] = result_node['message']
+                current_result['error'] = result_node['error']
+        else:
+            current_result = result_node
     return current_result
 
 
@@ -174,7 +178,7 @@ def parse_node_agents_to_dic(node_agents_str):
     return result
 
 
-def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1, affected_nodes=[], from_cluster=False):
+def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1, affected_nodes=[], from_cluster=False, instance=None):
 
     config_cluster = read_config()
 
@@ -190,6 +194,9 @@ def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1,
 
     # Redirect request to elected master
     if not from_cluster and get_actual_master()['name'] != config_cluster["node_name"]:
+        if len(node_agents) == 0 and len(affected_nodes) == 0:
+            affected_nodes = list(map(lambda x: x['url'], get_nodes()['items']))
+
         node_agents = {get_actual_master()['url']: node_agents}
         if len(affected_nodes) == 0:
             args = [request_type, "-"] + args
@@ -198,7 +205,7 @@ def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1,
         request_type = list_requests_cluster['MASTER_FORW']
         logging.info("Redirecting request to elected master. args=" + str(args))
 
-
+    # Put affected nodes in node_agents (not in MASTER_FORW)
     if len(affected_nodes) > 0 and request_type != list_requests_cluster['MASTER_FORW']:
         affected_nodes_addr = []
         for node in affected_nodes:
@@ -218,11 +225,36 @@ def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1,
         else: #There aren't nodes with agents, set affected nodes
             node_agents = {node: None for node in affected_nodes_addr}
 
-    return send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
+    # Resolve his request in local (only for elected master)
+    result_local = None
+    if instance != None and get_actual_master()['name'] == config_cluster["node_name"] and get_ip_from_name(config_cluster["node_name"]) in node_agents:
+        logging.warning("distributed_api_request: local ")#TODO remove
+        try:
+            result_local = {'data':api_request(request_type=request_type, args=args, cluster_depth=0, instance=instance), 'error':0}
+        except Exception as e:
+            result_local = {'data':str(e), 'error':1}
+        del node_agents[get_ip_from_name(config_cluster["node_name"])]
+
+    #logging.warning("distributed_api_request: result_local: --> " + str(result_local)) #TODO remove
+
+    result = None
+    if len(node_agents) != 0:
+
+        logging.warning("distributed_api_request: distributed ")#TODO remove
+        logging.warning("distributed_api_request: Sending ----> node_agents->" + str(node_agents) + " || request_type->" + str(request_type) + " || args->" + str(args))#TODO remove
+
+        result = send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
+        #logging.warning("distributed_api_request: result_distributed: --> " + str(result)) #TODO remove
+        if result_local != None:
+            result = append_node_result_by_type(get_ip_from_name(config_cluster["node_name"]), result_local, request_type, current_result=result)
+    else:
+        result = result_local
+
+    return result
 
 
 def get_config_distributed(node_id=None, cluster_depth=1):
-    if is_a_local_request() or cluster_depth <= 0 :
+    if is_a_local_request() or cluster_depth <= 0:
         return read_config()
     else:
         if not is_cluster_running():
@@ -230,3 +262,162 @@ def get_config_distributed(node_id=None, cluster_depth=1):
 
         request_type = list_requests_cluster['CLUSTER_CONFIG']
         return distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
+
+
+def api_request(request_type, args, cluster_depth, instance=None):
+    res = ""
+
+    if request_type == list_requests_agents['RESTART_AGENTS']:
+        if (len(args) == 2):
+            agents = args[0].split("-")
+            restart_all = ast.literal_eval(args[1])
+        else:
+            agents = None
+            restart_all = ast.literal_eval(args[0])
+        res = instance.restart_agents(agents, restart_all, cluster_depth)
+
+    elif request_type == list_requests_agents['AGENTS_UPGRADE_RESULT']:
+        try:
+            agent = args[0]
+            timeout = args[1]
+            res = instance.get_upgrade_result(agent, timeout)
+        except Exception as e:
+            res = str(e)
+
+    elif request_type == list_requests_agents['AGENTS_UPGRADE']:
+        agent_id = args[0]
+        wpk_repo = ast.literal_eval(args[1])
+        version = ast.literal_eval(args[2])
+        force = ast.literal_eval(args[3])
+        chunk_size = ast.literal_eval(args[4])
+        try:
+            res = instance.upgrade_agent(agent_id, wpk_repo, version, force, chunk_size)
+        except Exception as e:
+            res = str(e)
+
+    elif request_type == list_requests_agents['AGENTS_UPGRADE_CUSTOM']:
+        agent_id = args[0]
+        file_path = ast.literal_eval(args[1])
+        installer = ast.literal_eval(args[2])
+        try:
+            res = instance.upgrade_agent_custom(agent_id, file_path, installer)
+        except Exception as e:
+            res = str(e)
+
+    elif request_type == list_requests_syscheck['SYSCHECK_LAST_SCAN']:
+        res = instance.last_scan(agent[0])
+
+    elif request_type == list_requests_syscheck['SYSCHECK_RUN']:
+        if (len(args) == 2):
+            agents = args[0]
+            all_agents = ast.literal_eval(args[1])
+        else:
+            agents = None
+            all_agents = ast.literal_eval(args[0])
+        res = instance.run(agents, all_agents, cluster_depth)
+
+    elif request_type == list_requests_syscheck['SYSCHECK_CLEAR']:
+        if (len(args) == 2):
+            agents = args[0]
+            all_agents = ast.literal_eval(args[1])
+        else:
+            agents = None
+            all_agents = ast.literal_eval(args[0])
+        res = instance.clear(agents, all_agents, cluster_depth)
+
+    elif request_type == list_requests_rootcheck['ROOTCHECK_PCI']:
+        index = 0
+        agents = None
+        if (len(args) == 5):
+            agents = args[0]
+            index = index + 1
+        offset = ast.literal_eval(args[index])
+        index = index + 1
+        limit = ast.literal_eval(args[index])
+        index = index + 1
+        sort = ast.literal_eval(args[index])
+        index = index + 1
+        search = ast.literal_eval(args[index])
+        res = args
+        res = instance.get_pci(agents, offset, limit, sort, search)
+
+    elif request_type == list_requests_rootcheck['ROOTCHECK_CIS']:
+        index = 0
+        agents = None
+        if (len(args) == 5):
+            agents = args[0]
+            index = index + 1
+        offset = ast.literal_eval(args[index])
+        index = index + 1
+        limit = ast.literal_eval(args[index])
+        index = index + 1
+        sort = ast.literal_eval(args[index])
+        index = index + 1
+        search = ast.literal_eval(args[index])
+        res = args
+        res = instance.get_cis(agents, offset, limit, sort, search)
+
+    elif request_type == list_requests_rootcheck['ROOTCHECK_LAST_SCAN']:
+        res = instance.last_scan(agent[0])
+
+    elif request_type == list_requests_rootcheck['ROOTCHECK_RUN']:
+        args = args.split(" ")
+        if (len(args) == 2):
+            agents = args[0]
+            all_agents = ast.literal_eval(args[1])
+        else:
+            agents = None
+            all_agents = ast.literal_eval(args[0])
+        res = instance.run(agents, all_agents, cluster_depth)
+
+    elif request_type == list_requests_rootcheck['ROOTCHECK_CLEAR']:
+        if (len(args) == 2):
+            agents = args[0]
+            all_agents = ast.literal_eval(args[1])
+        else:
+            agents = None
+            all_agents = ast.literal_eval(args[0])
+        res = instance.clear(agents, all_agents, cluster_depth)
+
+    elif request_type == list_requests_managers['MANAGERS_STATUS']:
+        res = instance.managers_status(cluster_depth=cluster_depth)
+
+    elif request_type == list_requests_managers['MANAGERS_LOGS']:
+        type_log = args[0]
+        category = args[1]
+        months = ast.literal_eval(args[2])
+        offset = ast.literal_eval(args[3])
+        limit = ast.literal_eval( args[4])
+        sort = ast.literal_eval(args[5])
+        search = ast.literal_eval(args[6])
+        res = instance.managers_ossec_log(type_log=type_log, category=category, months=months, offset=offset, limit=limit, sort=sort, search=search, cluster_depth=cluster_depth)
+
+    elif request_type == list_requests_managers['MANAGERS_LOGS_SUMMARY']:
+        months = ast.literal_eval(args[0])
+        res = instance.managers_ossec_log_summary(months=months, cluster_depth=cluster_depth)
+
+    elif request_type == list_requests_stats['MANAGERS_STATS_TOTALS']:
+        year = ast.literal_eval(args[0])
+        month = ast.literal_eval(args[1])
+        day = ast.literal_eval(args[2])
+        res = instance.totals(year=year, month=month, day=day, cluster_depth=cluster_depth)
+
+    elif request_type == list_requests_stats['MANAGERS_STATS_HOURLY']:
+        res = instance.hourly(cluster_depth=cluster_depth)
+
+    elif request_type == list_requests_stats['MANAGERS_STATS_WEEKLY']:
+        res = instance.weekly(cluster_depth=cluster_depth)
+
+    elif request_type == list_requests_managers['MANAGERS_OSSEC_CONF']:
+        section = args[0]
+        field = ast.literal_eval(args[1])
+        res = instance.managers_get_ossec_conf(section=section, field=field, cluster_depth=cluster_depth)
+
+    elif request_type == list_requests_wazuh['MANAGERS_INFO']:
+        logging.warning("MANAGERS_INFO args --> "+ str(args))#TODO remove
+        res = instance.managers_get_ossec_init(cluster_depth=cluster_depth)
+        logging.warning("MANAGERS_INFO res --> "+ str(res))#TODO remove
+
+    elif request_type == list_requests_cluster['CLUSTER_CONFIG']:
+        res = get_config_distributed(cluster_depth=cluster_depth)
+    return res

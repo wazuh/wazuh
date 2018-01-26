@@ -97,10 +97,12 @@ class WazuhClusterClient(asynchat.async_chat):
             raise WazuhException(3010, str(v))
 
     def collect_incoming_data(self, data):
+        logging.warning("Part received ---> " + str(len(data))) #TODO remove
         self.received_data.append(data)
 
     def found_terminator(self):
         self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
+        logging.warning("TOTAL received ---> " + str(self.response)) #TODO remove
         self.close()
 
     def handle_write(self):
