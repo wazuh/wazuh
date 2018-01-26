@@ -729,14 +729,14 @@ void* inotify_reader(void * args) {
                         mtinfo(INOTIFY_TAG, "Adding directory %s to inotify watch", event->name);
                         files = realloc(files, (n_files_to_watch+1)*sizeof(inotify_watch_file));
 
-                        if (snprintf(files[n_files_to_watch].name, PATH_MAX, "%s%s", files[j].name, event->name) >= PATH_MAX)
+                        if (snprintf(files[n_files_to_watch].name, PATH_MAX, "%s%s/", files[j].name, event->name) >= PATH_MAX)
                             mterror(INOTIFY_TAG, "Overflow error copying %s's name in memory", files[n_files_to_watch].name);
 
                         files[n_files_to_watch].flags = files[j].flags;
 
                         files[n_files_to_watch].files = files[j].files;
 
-                        if (snprintf(files[n_files_to_watch].path, PATH_MAX, "%s%s%s", DEFAULTDIR, files[j].name, event->name) >= PATH_MAX)
+                        if (snprintf(files[n_files_to_watch].path, PATH_MAX, "%s%s%s/", DEFAULTDIR, files[j].name, event->name) >= PATH_MAX)
                             mterror(INOTIFY_TAG, "Overflow error copying %s's path in memory", files[n_files_to_watch].path);
 
                         files[n_files_to_watch].watcher = inotify_add_watch(fd, files[n_files_to_watch].path, files[j].flags);
