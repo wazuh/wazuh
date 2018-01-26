@@ -480,6 +480,7 @@ uint32_t get_flag_mask(cJSON * flags) {
         else if (strcmp(flag, "IN_ONLYDIR") == 0) mask |= IN_ONLYDIR;
         else if (strcmp(flag, "IN_MOVE") == 0) mask |= IN_MOVE;
         else if (strcmp(flag, "IN_CLOSE") == 0) mask |= IN_CLOSE;
+        else if (strcmp(flag, "IN_ISDIR") == 0) mask |= IN_ISDIR;
     }
     return mask;
 }
@@ -642,6 +643,7 @@ typedef struct {
 
 // Insert request into internal structure
 void inotify_push_request(char * cmd) {
+    if (strcmp(cmd,"") == 0) return;
     char * dup;
     int error;
 
@@ -706,7 +708,8 @@ void* inotify_reader(void * args) {
             char cmd[100];
 
             event = (struct inotify_event*)&buffer[i];
-            mtdebug2(INOTIFY_TAG,"inotify: i='%d', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
+            if (strstr(event->name, "merged.mg") == NULL)
+                mtdebug2(INOTIFY_TAG,"inotify: i='%d', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
             unsigned int j;
             for (j = 0; j < n_files_to_watch; j++) {
                 if (event->wd == files[j].watcher) {
@@ -716,12 +719,35 @@ void* inotify_reader(void * args) {
                         continue;
                     }
 
+                    mtdebug2(INOTIFY_TAG, "Not ignoring");
+
                     if (event->mask & IN_DELETE) {
                         strcpy(cmd, "delete1 ");
                         strcat(cmd, files[j].name);
                         strcat(cmd, event->name);
-                    }
-                    else if (event->mask & files[j].flags) {
+                    } else if (event->mask & IN_ISDIR) {
+                        mtinfo(INOTIFY_TAG, "Adding directory %s to inotify watch", event->name);
+                        files = realloc(files, (n_files_to_watch+1)*sizeof(inotify_watch_file));
+
+                        if (snprintf(files[n_files_to_watch].name, PATH_MAX, "%s%s", files[j].name, event->name) >= PATH_MAX)
+                            mterror(INOTIFY_TAG, "Overflow error copying %s's name in memory", files[n_files_to_watch].name);
+
+                        files[n_files_to_watch].flags = files[j].flags;
+
+                        files[n_files_to_watch].files = files[j].files;
+
+                        if (snprintf(files[n_files_to_watch].path, PATH_MAX, "%s%s%s", DEFAULTDIR, files[j].name, event->name) >= PATH_MAX)
+                            mterror(INOTIFY_TAG, "Overflow error copying %s's path in memory", files[n_files_to_watch].path);
+
+                        files[n_files_to_watch].watcher = inotify_add_watch(fd, files[n_files_to_watch].path, files[j].flags);
+
+                        if (files[n_files_to_watch].watcher < 0)
+                            mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 
+                                files[n_files_to_watch].path, strerror(errno));
+
+                        n_files_to_watch++;
+
+                    } else if (event->mask & files[j].flags) {
                         strcpy(cmd, "update1 ");
                         strcat(cmd, files[j].name);
                         strcat(cmd, event->name);
@@ -742,6 +768,7 @@ void* inotify_reader(void * args) {
                             continue;
                         }
 
+
                     } else if (event->mask & IN_Q_OVERFLOW) {
                         mtinfo(INOTIFY_TAG, "Inotify event queue overflowed");
                         ignore = true;
@@ -758,6 +785,7 @@ void* inotify_reader(void * args) {
                 ignore = false;
                 continue;
             }
+
             inotify_push_request(cmd);
             memset(cmd,0,sizeof(cmd));
         }
