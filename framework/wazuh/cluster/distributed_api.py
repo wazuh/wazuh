@@ -181,7 +181,7 @@ def parse_node_agents_to_dic(node_agents_str):
 def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1, affected_nodes=[], from_cluster=False, instance=None):
 
     config_cluster = read_config()
-
+    logging.warning("Received request_type-> " + str(request_type) + " | agent_id-> " + str(agent_id) + " | cluster_depth-> " + str(cluster_depth) + " | affected_nodes-> " + str(affected_nodes) + " | from_cluster-> " + str(from_cluster))#TODO remove
     if agent_id != None and isinstance(agent_id, dict):
         node_agents = agent_id
     else:
@@ -238,7 +238,7 @@ def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1,
     #logging.warning("distributed_api_request: result_local: --> " + str(result_local)) #TODO remove
 
     result = None
-    if len(node_agents) != 0:
+    if result_local == None or len(node_agents) != 0 :
 
         logging.warning("distributed_api_request: distributed ")#TODO remove
         logging.warning("distributed_api_request: Sending ----> node_agents->" + str(node_agents) + " || request_type->" + str(request_type) + " || args->" + str(args))#TODO remove
