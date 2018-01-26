@@ -17,7 +17,7 @@ static const char * SQL_UPDATE_NET_ADDR_IPV4 = "UPDATE netiface SET id_ipv4 = ? 
 static const char * SQL_UPDATE_NET_ADDR_IPV6 = "UPDATE netiface SET id_ipv6 = ? WHERE name = ?;";
 static const char * SQL_DELETE_NET_IFACE = "DELETE FROM netiface;";
 static const char * SQL_DELETE_NET_ADDR = "DELETE FROM netaddr;";
-static const char * SQL_INSERT_OS_INFO = "INSERT INTO osinfo (os_name, os_version, nodename, machine, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+static const char * SQL_INSERT_OS_INFO = "INSERT INTO osinfo (os_name, os_version, hostname, architecture, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 static const char * SQL_DELETE_OS_INFO = "DELETE FROM osinfo;";
 static const char * SQL_INSERT_HW_INFO = "INSERT INTO hwinfo (board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?);";
 static const char * SQL_DELETE_HW_INFO = "DELETE FROM hwinfo;";
@@ -147,7 +147,7 @@ int wdb_delete_network(sqlite3 * db) {
 }
 
 // Insert OS info tuple. Return ID on success or -1 on error.
-int wdb_insert_osinfo(sqlite3 * db, const char * os_name, const char * os_version, const char * nodename, const char * machine, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version) {
+int wdb_insert_osinfo(sqlite3 * db, const char * os_name, const char * os_version, const char * hostname, const char * architecture, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version) {
     sqlite3_stmt *stmt = NULL;
     int result;
 
@@ -156,17 +156,17 @@ int wdb_insert_osinfo(sqlite3 * db, const char * os_name, const char * os_versio
         return -1;
     }
 
-    sqlite3_bind_text(stmt, 1, os_name, -1, NULL);
-    sqlite3_bind_text(stmt, 2, os_version, -1, NULL);
-    sqlite3_bind_text(stmt, 3, nodename, -1, NULL);
-    sqlite3_bind_text(stmt, 4, machine, -1, NULL);
-    sqlite3_bind_text(stmt, 5, os_major, -1, NULL);
-    sqlite3_bind_text(stmt, 6, os_minor, -1, NULL);
-    sqlite3_bind_text(stmt, 7, os_build, -1, NULL);
-    sqlite3_bind_text(stmt, 8, os_platform, -1, NULL);
-    sqlite3_bind_text(stmt, 9, sysname, -1, NULL);
-    sqlite3_bind_text(stmt, 10, release, -1, NULL);
-    sqlite3_bind_text(stmt, 11, version, -1, NULL);
+    sqlite3_bind_text(stmt, 3, os_name, -1, NULL);
+    sqlite3_bind_text(stmt, 4, os_version, -1, NULL);
+    sqlite3_bind_text(stmt, 5, hostname, -1, NULL);
+    sqlite3_bind_text(stmt, 6, architecture, -1, NULL);
+    sqlite3_bind_text(stmt, 7, os_major, -1, NULL);
+    sqlite3_bind_text(stmt, 8, os_minor, -1, NULL);
+    sqlite3_bind_text(stmt, 9, os_build, -1, NULL);
+    sqlite3_bind_text(stmt, 10, os_platform, -1, NULL);
+    sqlite3_bind_text(stmt, 11, sysname, -1, NULL);
+    sqlite3_bind_text(stmt, 12, release, -1, NULL);
+    sqlite3_bind_text(stmt, 13, version, -1, NULL);
 
     if (wdb_step(stmt) == SQLITE_DONE)
         result = (int)sqlite3_last_insert_rowid(db);
@@ -177,6 +177,88 @@ int wdb_insert_osinfo(sqlite3 * db, const char * os_name, const char * os_versio
 
     sqlite3_finalize(stmt);
     return result;
+}
+
+// Function to save OS info into the DB. Return 0 on success or -1 on error.
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        merror("at wdb_osinfo_save(): cannot begin transaction");
+        return -1;
+    }
+
+    /* Delete old OS information before insert the new scan */
+    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) > 0) {
+        merror("at wdb_osinfo_save(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_OSINFO_DEL];
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Unable to delete old information from 'osinfo' table.");
+        return -1;
+    }
+
+    if (wdb_insert_osinfo2(wdb,
+        scan_id,
+        scan_time,
+        hostname,
+        architecture,
+        os_name,
+        os_version,
+        os_codename,
+        os_major,
+        os_minor,
+        os_build,
+        os_platform,
+        sysname,
+        release,
+        version) < 0) {
+
+        mdebug1("at wdb_osinfo_save(): cannot insert osinfo tuple.");
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert OS info tuple. Return 0 on success or -1 on error. (v2)
+int wdb_insert_osinfo2(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_INSERT) > 0) {
+        merror("at wdb_insert_osinfo2(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_OSINFO_INSERT];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, hostname, -1, NULL);
+    sqlite3_bind_text(stmt, 4, architecture, -1, NULL);
+    sqlite3_bind_text(stmt, 5, os_name, -1, NULL);
+    sqlite3_bind_text(stmt, 6, os_version, -1, NULL);
+    sqlite3_bind_text(stmt, 7, os_codename, -1, NULL);
+    sqlite3_bind_text(stmt, 8, os_major, -1, NULL);
+    sqlite3_bind_text(stmt, 9, os_minor, -1, NULL);
+    sqlite3_bind_text(stmt, 10, os_build, -1, NULL);
+    sqlite3_bind_text(stmt, 11, os_platform, -1, NULL);
+    sqlite3_bind_text(stmt, 12, sysname, -1, NULL);
+    sqlite3_bind_text(stmt, 13, release, -1, NULL);
+    sqlite3_bind_text(stmt, 14, version, -1, NULL);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE){
+        return 0;
+    }
+    else {
+        mdebug1("at wdb_insert_osinfo2(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
 }
 
 // Clean OS info table. Return number of affected rows on success or -1 on error.

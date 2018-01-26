@@ -22,7 +22,9 @@ static const char * SQL_STMT[] = {
     "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode FROM fim_entry WHERE file = ?;",
     "SELECT 1 FROM fim_entry WHERE file = ?",
     "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = changes + 1, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ? WHERE file = ?;"
+    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = changes + 1, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ? WHERE file = ?;",
+    "INSERT INTO osinfo (scan_id, scan_time, os_name, os_version, hostname, architecture, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM osinfo;"
 };
 
 sqlite3 *wdb_global = NULL;

@@ -74,13 +74,15 @@ CREATE TABLE IF NOT EXISTS netaddr (
     netmask TEXT NOT NULL,
     broadcast TEXT,
     gateway TEXT,
-    dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'bootp')) DEFAULT 'unknown'
+    dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown'
 );
 
 CREATE INDEX IF NOT EXISTS netaddr_address ON netaddr (address);
 
 CREATE TABLE IF NOT EXISTS netiface (
-    name TEXT PRIMARY KEY,
+    scan_id INTEGER,
+    scan_time TEXT,
+    name TEXT,
     adapter TEXT,
     type TEXT,
     state TEXT,
@@ -91,30 +93,110 @@ CREATE TABLE IF NOT EXISTS netiface (
     tx_bytes INTEGER,
     rx_bytes INTEGER,
     id_ipv4 INTEGER REFERENCES netaddr (id),
-    id_ipv6 INTEGER REFERENCES netaddr (id)
+    id_ipv6 INTEGER REFERENCES netaddr (id),
+    PRIMARY KEY (scan_id, name)
 );
 
 CREATE INDEX IF NOT EXISTS netiface_mac ON netiface (mac);
 
 CREATE TABLE IF NOT EXISTS osinfo (
-    os_name TEXT PRIMARY KEY,
+    scan_id INTEGER,
+    scan_time TEXT,
+    hostname TEXT,
+    architecture TEXT,
+    os_name TEXT,
     os_version TEXT,
-    nodename TEXT,
-    machine TEXT,
+    os_codename TEXT,
     os_major TEXT,
     os_minor TEXT,
     os_build TEXT,
     os_platform TEXT,
     sysname TEXT,
     release TEXT,
-    version TEXT
+    version TEXT,
+    PRIMARY KEY (scan_id, os_name)
 );
 
+CREATE INDEX IF NOT EXISTS osinfo_osname ON osinfo (os_name);
+
 CREATE TABLE IF NOT EXISTS hwinfo (
-    board_serial TEXT PRIMARY KEY,
+    scan_id INTEGER,
+    scan_time TEXT,
+    board_serial TEXT,
     cpu_name TEXT,
     cpu_cores INTEGER CHECK (cpu_cores > 0),
     cpu_mhz REAL CHECK (cpu_mhz > 0),
     ram_total INTEGER CHECK (ram_total > 0),
-    ram_free INTEGER CHECK (ram_free > 0)
+    ram_free INTEGER CHECK (ram_free > 0),
+    PRIMARY KEY (scan_id, board_serial)
 );
+
+CREATE INDEX IF NOT EXISTS hwinfo_board ON hwinfo (board_serial);
+
+CREATE TABLE IF NOT EXISTS ports (
+    scan_id INTEGER,
+    scan_time TEXT,
+    protocol TEXT,
+    local_ip TEXT,
+    local_port INTEGER CHECK (local_port >= 0),
+    remote_ip TEXT,
+    remote_port INTEGER CHECK (remote_port >= 0),
+    tx_queue INTEGER,
+    rx_queue INTEGER,
+    state TEXT,
+    PID TEXT,
+    process TEXT,
+    PRIMARY KEY (scan_id, PID)
+);
+
+CREATE INDEX IF NOT EXISTS ports_process ON ports (process);
+
+CREATE TABLE IF NOT EXISTS programs (
+    scan_id INTEGER,
+    scan_time TEXT,
+    name TEXT,
+    format TEXT NOT NULL CHECK (format IN ('deb', 'rpm', 'win', 'pkg')),
+    vendor TEXT,
+    version TEXT,
+    architecture TEXT,
+    description TEXT,
+    PRIMARY KEY (scan_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS programs_name ON programs (name);
+
+CREATE TABLE IF NOT EXISTS processes (
+    scan_id INTEGER,
+    scan_time TEXT,
+    pid TEXT,
+    name TEXT,
+    state TEXT,
+    ppid INTEGER,
+    utime INTEGER,
+    stime INTEGER,
+    cmd TEXT,
+    argvs TEXT,
+    euser TEXT,
+    ruser TEXT,
+    suser TEXT,
+    rgroup TEXT,
+    egroup TEXT,
+    sgroup TEXT,
+    fgroup TEXT,
+    priority INTEGER,
+    nice INTEGER,
+    size INTEGER,
+    vm_size INTEGER,
+    resident INTEGER,
+    share INTEGER,
+    start_time INTEGER,
+    pgrp INTEGER,
+    session INTEGER,
+    nlwp INTEGER,
+    tgid INTEGER,
+    tty INTEGER,
+    processor INTEGER,
+    PRIMARY KEY (scan_id, pid)
+);
+
+CREATE INDEX IF NOT EXISTS processes_name ON processes (name);

@@ -45,7 +45,9 @@
 #define WDB_STMT_FIM_FIND_ENTRY 1
 #define WDB_STMT_FIM_INSERT_ENTRY 2
 #define WDB_STMT_FIM_UPDATE_ENTRY 3
-#define WDB_STMT_SIZE 4
+#define WDB_STMT_OSINFO_INSERT 4
+#define WDB_STMT_OSINFO_DEL 5
+#define WDB_STMT_SIZE 6
 
 typedef struct wdb_t {
     sqlite3 * db;
@@ -219,7 +221,13 @@ int wdb_insert_net_addr(sqlite3 * db, const char * name, int type, const char * 
 int wdb_delete_network(sqlite3 * db);
 
 // Insert OS info tuple. Return ID on success or -1 on error.
-int wdb_insert_osinfo(sqlite3 * db, const char * os_name, const char * os_version, const char * node_name, const char * machine, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
+int wdb_insert_osinfo(sqlite3 * db, const char * os_name, const char * os_version, const char * hostname, const char * architecture, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
+
+// Insert OS info tuple. Return 0 on success or -1 on error.
+int wdb_insert_osinfo2(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
+
+// Save OS info into DB.
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
 
 // Clean OS info table. Return number of affected rows on success or -1 on error.
 int wdb_delete_osinfo(sqlite3 * db);
@@ -257,5 +265,7 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 int wdb_parse(char * input, char * output);
 
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output);
 
 #endif

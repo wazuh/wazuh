@@ -130,8 +130,8 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "protocol", protocol);
             cJSON_AddItemToObject(object, "port", port);
+            cJSON_AddStringToObject(port, "protocol", protocol);
             cJSON_AddStringToObject(port, "local_ip", laddress);
             cJSON_AddNumberToObject(port, "local_port", local_port);
             cJSON_AddStringToObject(port, "remote_ip", raddress);
@@ -246,8 +246,8 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "protocol", protocol);
             cJSON_AddItemToObject(object, "port", port);
+            cJSON_AddStringToObject(port, "protocol", protocol);
             cJSON_AddStringToObject(port, "local_ip", laddress);
             cJSON_AddNumberToObject(port, "local_port", local_port);
             cJSON_AddStringToObject(port, "remote_ip", raddress);
@@ -516,9 +516,6 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
     cJSON_Delete(object);
 
     free(string);
-
-    mtdebug2(WM_SYS_LOGTAG, "sys_os_unix() sending '%s'", SYSCOLLECTOR_OS_END);
-    SendMSG(queue_fd, SYSCOLLECTOR_OS_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 #if defined(__linux__)

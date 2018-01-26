@@ -182,7 +182,7 @@ void * run_dealer(__attribute__((unused)) void * args) {
     struct timeval timeout;
 
     if (sock = OS_BindUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror_exit("Unable to bind to socket '%s'. Closing local server.", AUTH_LOCAL_SOCK);
+        merror_exit("Unable to bind to socket '%s'. Closing local server.", WDB_LOCAL_SOCK);
     }
 
     while (running) {
@@ -326,12 +326,10 @@ void * run_worker(__attribute__((unused)) void * args) {
 
                 *response = '\0';
                 wdb_parse(buffer, response);
-
                 if (length = strlen(response), length > 0) {
                     if (terminal && length < OS_MAXSTR - 1) {
                         response[length++] = '\n';
                     }
-
                     send(*peer, response, length, 0);
                 }
             }

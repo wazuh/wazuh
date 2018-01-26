@@ -39,7 +39,6 @@
 #define SYSCOLLECTOR_PORTS_END      "{\"type\":\"port_end\"}"
 #define SYSCOLLECTOR_PROGRAMS_END   "{\"type\":\"program_end\"}"
 #define SYSCOLLECTOR_HARDWARE_END   "{\"type\":\"hardware_end\"}"
-#define SYSCOLLECTOR_OS_END         "{\"type\":\"OS_end\"}"
 #define SYSCOLLECTOR_NETWORK_END    "{\"type\":\"network_end\"}"
 #define SYSCOLLECTOR_PROCESSES_END  "{\"type\":\"process_end\"}"
 

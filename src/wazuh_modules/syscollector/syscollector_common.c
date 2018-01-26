@@ -57,6 +57,9 @@ void* wm_sys_main(wm_sys_t *sys) {
             mtinfo(WM_SYS_LOGTAG, "Waiting for turn to evaluate.");
             delay(1000 * (sys->state.next_time - time_start));
         }
+    } else {
+        // Wait for Wazuh DB start
+        delay(1000);
     }
 
     #ifdef WIN32

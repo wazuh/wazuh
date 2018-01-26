@@ -1137,8 +1137,8 @@ int wm_fill_syscollector(sqlite3 *db, const char *path) {
                 if (inventory = cJSON_GetObjectItem(json, "inventory"), inventory) {
                     cJSON * os_name = cJSON_GetObjectItem(inventory, "os_name");
                     cJSON * os_version = cJSON_GetObjectItem(inventory, "os_version");
-                    cJSON * nodename = cJSON_GetObjectItem(inventory, "nodename");
-                    cJSON * machine = cJSON_GetObjectItem(inventory, "machine");
+                    cJSON * hostname = cJSON_GetObjectItem(inventory, "hostname");
+                    cJSON * architecture = cJSON_GetObjectItem(inventory, "architecture");
                     cJSON * os_major = cJSON_GetObjectItem(inventory, "os_major");
                     cJSON * os_minor = cJSON_GetObjectItem(inventory, "os_minor");
                     cJSON * os_build = cJSON_GetObjectItem(inventory, "os_build");
@@ -1150,8 +1150,8 @@ int wm_fill_syscollector(sqlite3 *db, const char *path) {
                     if (wdb_insert_osinfo(db,
                         os_name ? os_name->valuestring : NULL,
                         os_version ? os_version->valuestring : NULL,
-                        nodename ? nodename->valuestring : NULL,
-                        machine ? machine->valuestring : NULL,
+                        hostname ? hostname->valuestring : NULL,
+                        architecture ? architecture->valuestring : NULL,
                         os_major ? os_major->valuestring : NULL,
                         os_minor ? os_minor->valuestring : NULL,
                         os_build ? os_build->valuestring : NULL,

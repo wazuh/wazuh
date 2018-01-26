@@ -175,8 +175,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "protocol", "tcp");
             cJSON_AddItemToObject(object, "port", port);
+            cJSON_AddStringToObject(port, "protocol", "tcp");
 
             ipaddress.S_un.S_addr = (u_long) pTcpTable->table[i].dwLocalAddr;
             snprintf(local_addr, NI_MAXHOST, "%s", inet_ntoa(ipaddress));
@@ -279,8 +279,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "protocol", "tcp6");
             cJSON_AddItemToObject(object, "port", port);
+            cJSON_AddStringToObject(port, "protocol", "tcp6");
 
             laddress = _wm_inet_ntop(pTcp6Table->table[i].ucLocalAddr);
             cJSON_AddStringToObject(port, "local_ip", laddress);
@@ -372,8 +372,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "protocol", "udp");
             cJSON_AddItemToObject(object, "port", port);
+            cJSON_AddStringToObject(port, "protocol", "udp");
 
             ipaddress.S_un.S_addr = (u_long) pUdpTable->table[i].dwLocalAddr;
             snprintf(local_addr, NI_MAXHOST, "%s", inet_ntoa(ipaddress));
@@ -441,8 +441,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "protocol", "udp6");
             cJSON_AddItemToObject(object, "port", port);
+            cJSON_AddStringToObject(port, "protocol", "udp6");
 
             laddress = _wm_inet_ntop(pUdp6Table->table[i].ucLocalAddr);
             cJSON_AddStringToObject(port, "local_ip", laddress);
@@ -652,9 +652,6 @@ void sys_os_windows(const char* LOCATION){
     cJSON_Delete(object);
 
     free(string);
-
-    mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", SYSCOLLECTOR_OS_END);
-    SendMSG(0, SYSCOLLECTOR_OS_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 /* Network inventory for Windows systems (Vista or later) */
