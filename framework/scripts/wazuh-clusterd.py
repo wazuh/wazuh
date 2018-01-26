@@ -426,16 +426,15 @@ def crontab_sync_master(interval):
             kill(child_pid, SIGINT)
 
         config_cluster = read_config()
-        statuses = {'updated': 'synchronized', 'error':'failed', 'invalid':'invalid'}
         for node in get_remote_nodes():
             if node[1] == 'master':
                 # send the synchronization results to the rest of masters
                 message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
                 file_status = get_file_status_json(return_name=False)
-                file_status = {node_id:{'files':{status:[f['filename'] for f in ndata['items'] 
-                            if f['status'] == statuses[status]] for status in statuses.keys()}, 
-                            'name': get_name_from_ip(node_id), 'restart': sync_results[node_id]['files']['restart']}
-                            for node_id, ndata in file_status.items()}
+                file_status = {node_id:{'files':{status:[f['filename'] for f in node_data['items'] if status == f['status']] 
+                              for status in set(map(itemgetter('status'), node_data['items']))},
+                              'name': get_name_from_ip(node_id), 'restart': sync_results[node_id]['files']['restart']}
+                              for node_id, node_data in file_status.items()}
                 file = json.dumps(file_status).encode()
             elif node[1] == 'client':
                 # ask clients to send updates

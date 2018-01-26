@@ -531,39 +531,33 @@ def push_updates_single_node(all_files, node_dest, node_dest_name, config_cluste
 
 def update_node_db_after_sync(data, node, node_name, cluster_socket, my_type):
     logging.info("Updating {}'s ({}) file status in DB".format(node_name, node))
-    for updated in divide_list(data['files']['updated']):
-        update_sql = "update2"
-        for u in updated:
-            update_sql += " synchronized {0} /{1}".format(node, u)
+    statuses = {'updated': 'synchronized', 'error': 'failed', 'invalid': 'invalid', 'pending': 'pending'}
 
-        send_to_socket(cluster_socket, update_sql)
-        received = receive_data_from_db_socket(cluster_socket)
+    for file_status, file_list in data['files'].items():
+        status   = file_status if not file_status in statuses.keys() else statuses[file_status]
+        if status not in statuses.values():
+            logging.debug("Can't save status {} in database".format(status))
+            continue
 
-    for failed in divide_list(data['files']['error']):
-        delete_sql = "delete1"
-        update_sql = "update2"
-        for f in failed:
-            if isinstance(f, dict):
-                if f['reason'] == 'Error 3012 - Received an old agent-info file.' and my_type=='client':
-                    delete_sql += " /{0}".format(f['item'])
+        for files in divide_list(file_list):
+            update_sql = "update2"
+            delete_sql = "delete1"
+            for f in files:
+                if isinstance(f, dict):
+                    filename = '/' + f['item'] if f['item'][0] != '/' else f['item']
+                    if f['reason'] == 'Error 3012 - Received an old agent-info file.' and my_type=='client':
+                        delete_sql += " {}".format(filename)
+                    else:
+                        update_sql += " {} {} {}".format(status, node, filename)
                 else:
-                    update_sql += " failed {0} /{1}".format(node, f['item'])
-            else:
-                update_sql += " failed {0} {1}".format(node, f)
+                    filename = '/' + f if f[0] != '/' else f
+                    update_sql += " {} {} {}".format(status, node, filename)
 
-        send_to_socket(cluster_socket, update_sql)
-        received = receive_data_from_db_socket(cluster_socket)
-        if len(delete_sql) > len("delete1"):
-            send_to_socket(cluster_socket, delete_sql)
+            send_to_socket(cluster_socket, update_sql)
             received = receive_data_from_db_socket(cluster_socket)
-
-    for invalid in divide_list(data['files']['invalid']):
-        update_sql = "update2"
-        for i in invalid:
-            update_sql += " invalid {0} {1}".format(node, i)
-
-        send_to_socket(cluster_socket, update_sql)
-        received = receive_data_from_db_socket(cluster_socket)
+            if len(delete_sql) > len("delete1"):
+                send_to_socket(cluster_socket, delete_sql)
+                received = receive_data_from_db_socket(cluster_socket)
 
 
 def save_actual_master_data_on_db(data):
