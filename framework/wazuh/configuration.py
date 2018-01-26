@@ -56,6 +56,10 @@ conf_sections = {
     'auth': {
         'type': 'simple',
         'list_options': []
+    },
+    'integration': {
+        'type': 'duplicate',
+        'list_options': []
     }
 }
 
