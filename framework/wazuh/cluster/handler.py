@@ -447,7 +447,7 @@ def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters
 
 def get_file_status_of_one_node(node, own_items_names, cluster_socket, my_type, all_items=None):
     # check files in database
-    node_url, node_type, _ = node
+    node_url, node_type, node_name = node
 
     own_items = own_items_names if node_type == 'client' or not all_items else all_items
 
@@ -455,8 +455,8 @@ def get_file_status_of_one_node(node, own_items_names, cluster_socket, my_type, 
     send_to_socket(cluster_socket, count_query)
     n_files = int(receive_data_from_db_socket(cluster_socket))
     if n_files == 0:
-        logging.info("New manager found: {0}".format(node_url))
-        logging.debug("Adding {0}'s files to database".format(node_url))
+        logging.debug("Node {} ({}) not found in database.".format(node_name, node_url))
+        logging.info("Adding {}'s' ({}) files to database".format(node_name, node_url))
 
         # if the manager is not in the database, add it with all files
         for files in divide_list(own_items):
@@ -471,7 +471,7 @@ def get_file_status_of_one_node(node, own_items_names, cluster_socket, my_type, 
         all_files = {file:'pending' for file in own_items}
 
     else:
-        logging.debug("Retrieving {0}'s files from database".format(node_url))
+        logging.info("Retrieving {0}'s files from database".format(node_url))
         all_files = get_file_status(node_url, cluster_socket)
         all_files = {f['filename']:f['status'] for f in all_files}
         # if there are missing files that are not being controled in database
@@ -570,14 +570,14 @@ def save_actual_master_data_on_db(data):
     logging.debug(data)
     for node_ip, node_data in data.items():
         if not node_ip in localhost_ips:
-            get_file_status_of_one_node((node_ip, 'client', ''), own_items, cluster_socket, 'master')
+            get_file_status_of_one_node((node_ip, 'client', node_data['name']), own_items, cluster_socket, 'master')
             update_node_db_after_sync(node_data, node_ip, node_data['name'], cluster_socket, 'master')
         else:
             restart = node_data['restart']
             # save files status received from master in database
             master_name = get_actual_master(csocket=cluster_socket)['name']
             actual_master_ip = get_ip_from_name(master_name, cluster_socket)
-            get_file_status_of_one_node((actual_master_ip, 'master', ''), own_items, cluster_socket, 'master')
+            get_file_status_of_one_node((actual_master_ip, 'master', node_data['name']), own_items, cluster_socket, 'master')
             update_node_db_after_sync(node_data, actual_master_ip, master_name, cluster_socket, 'master')
 
     cluster_socket.close()
@@ -609,7 +609,7 @@ def sync_one_node(debug, node, node_name, force=False):
 
     if force:
         clear_file_status_one_node(node, cluster_socket)
-    all_files = get_file_status_of_one_node((node, 'master', ''), own_items_names, cluster_socket, my_type)
+    all_files = get_file_status_of_one_node((node, 'master', node_name), own_items_names, cluster_socket, my_type)
 
     after = time()
     synchronization_duration += after-before
