@@ -97,6 +97,17 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
     }
     free(command);
+
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "program_end");
+    cJSON_AddNumberToObject(object, "ID", ID);
+
+    char *string;
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_programs_bsd() sending '%s'", string);
+    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(string);
 }
 
 #endif
@@ -554,6 +565,17 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         free(ifaces_list[i]);
     }
     free(ifaces_list);
+
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "network_end");
+    cJSON_AddNumberToObject(object, "ID", ID);
+
+    char *string;
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_network_bsd() sending '%s'", string);
+    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(string);
 
 }
 

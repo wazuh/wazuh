@@ -343,8 +343,16 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
     free(protocol);
 
-    mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", SYSCOLLECTOR_PORTS_END);
-    SendMSG(queue_fd, SYSCOLLECTOR_PORTS_END, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "port_end");
+    cJSON_AddNumberToObject(object, "ID", ID);
+
+    char *string;
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
+    SendMSG(queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(string);
 }
 
 // Get installed programs inventory
@@ -372,7 +380,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
         os_calloc(FORMAT_LENGTH, sizeof(char), format);
         snprintf(format, FORMAT_LENGTH -1, "%s", "rpm");
         os_calloc(OS_MAXSTR + 1, sizeof(char), command);
-        snprintf(command, OS_MAXSTR, "%s", "rpm -qa --queryformat '%{NAME}|%{VENDOR}|%{VERSION}|%{ARCH}|%{SUMMARY}\n'");
+        snprintf(command, OS_MAXSTR, "%s", "rpm -qa --queryformat '%{NAME}|%{VENDOR}|%{EPOCH}-%{VERSION}-%{RELEASE}|%{ARCH}|%{SUMMARY}\n'");
         closedir(dir);
     } else if ((dir = opendir("/var/lib/dpkg/"))){
         os_calloc(FORMAT_LENGTH, sizeof(char), format);
@@ -404,7 +412,17 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             parts = OS_StrBreak('|', read_buff, 5);
             cJSON_AddStringToObject(program, "name", parts[0]);
             cJSON_AddStringToObject(program, "vendor", parts[1]);
-            cJSON_AddStringToObject(program, "version", parts[2]);
+            if (!strcmp(parts[2], "(none)")) {
+                char ** epoch = NULL;
+                epoch = OS_StrBreak(':', parts[2], 2);
+                cJSON_AddStringToObject(program, "version", epoch[1]);
+                for (i=0; epoch[i]; i++) {
+                    free(epoch[i]);
+                }
+                free(epoch);
+            } else {
+                cJSON_AddStringToObject(program, "version", parts[2]);
+            }
             cJSON_AddStringToObject(program, "architecture", parts[3]);
 
             char ** description = NULL;
@@ -434,8 +452,17 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     free(format);
     free(command);
 
-    mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", SYSCOLLECTOR_PROGRAMS_END);
-    SendMSG(queue_fd, SYSCOLLECTOR_PROGRAMS_END, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "program_end");
+    cJSON_AddNumberToObject(object, "ID", ID);
+
+    char *string;
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", string);
+    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(string);
+
 }
 
 // Get Hardware inventory
@@ -482,8 +509,6 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
     free(string);
 
-    mtdebug2(WM_SYS_LOGTAG, "sys_hw_linux() sending '%s'", SYSCOLLECTOR_HARDWARE_END);
-    SendMSG(queue_fd, SYSCOLLECTOR_HARDWARE_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 #endif /* __linux__ */
@@ -762,8 +787,16 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     }
     free(ifaces_list);
 
-    mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", SYSCOLLECTOR_NETWORK_END);
-    SendMSG(queue_fd, SYSCOLLECTOR_NETWORK_END, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "network_end");
+    cJSON_AddNumberToObject(object, "ID", ID);
+
+    char *string;
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
+    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(string);
 }
 
 /* Get System information */
@@ -1288,8 +1321,17 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     cJSON_Delete(proc_array);
     closeproc(proc);
 
-    mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", SYSCOLLECTOR_PROCESSES_END);
-    SendMSG(queue_fd, SYSCOLLECTOR_PROCESSES_END, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "process_end");
+    cJSON_AddNumberToObject(object, "ID", random);
+
+    char *end_msg;
+    end_msg = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", end_msg);
+    SendMSG(queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(end_msg);
+
 }
 
 #endif /* __linux__ */

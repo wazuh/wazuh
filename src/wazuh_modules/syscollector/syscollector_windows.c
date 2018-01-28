@@ -335,8 +335,16 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     }
 
     if (!check_all) {
-        mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", SYSCOLLECTOR_PORTS_END);
-        SendMSG(0, SYSCOLLECTOR_PORTS_END, LOCATION, SYSCOLLECTOR_MQ);
+        cJSON *object = cJSON_CreateObject();
+        cJSON_AddStringToObject(object, "type", "port_end");
+        cJSON_AddNumberToObject(object, "ID", ID);
+
+        char *string;
+        string = cJSON_PrintUnformatted(object);
+        mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
+        SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+        cJSON_Delete(object);
+        free(string);
         return;
     }
 
@@ -476,8 +484,17 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         pUdp6Table = NULL;
     }
 
-    mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", SYSCOLLECTOR_PORTS_END);
-    SendMSG(0, SYSCOLLECTOR_PORTS_END, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "port_end");
+    cJSON_AddNumberToObject(object, "ID", ID);
+
+    char *string;
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
+    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(string);
+
 }
 
 // Get installed programs inventory
@@ -543,8 +560,17 @@ void sys_programs_windows(const char* LOCATION){
     }
     pclose(output);
 
-    mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", SYSCOLLECTOR_PROGRAMS_END);
-    SendMSG(0, SYSCOLLECTOR_PROGRAMS_END, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "program_end");
+    cJSON_AddNumberToObject(object, "ID", ID);
+
+    char *string;
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
+    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(string);
+
 }
 
 void sys_hw_windows(const char* LOCATION){
@@ -623,8 +649,6 @@ void sys_hw_windows(const char* LOCATION){
 
     free(string);
 
-    mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", SYSCOLLECTOR_HARDWARE_END);
-    SendMSG(0, SYSCOLLECTOR_HARDWARE_END, LOCATION, SYSCOLLECTOR_MQ);
 }
 
 void sys_os_windows(const char* LOCATION){
@@ -761,8 +785,16 @@ void sys_network_windows(const char* LOCATION){
 
             FreeLibrary(sys_library);
 
-            mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", SYSCOLLECTOR_NETWORK_END);
-            SendMSG(0, SYSCOLLECTOR_NETWORK_END, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON *object = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "network_end");
+            cJSON_AddNumberToObject(object, "ID", ID);
+
+            char *string;
+            string = cJSON_PrintUnformatted(object);
+            mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
+            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(object);
+            free(string);
         }
     }else{
         mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll.");
@@ -919,7 +951,6 @@ hw_info *get_system_windows(){
 
 void sys_proc_windows(const char* LOCATION) {
     char *command;
-    char *string;
     FILE *output;
     char read_buff[OS_MAXSTR];
     unsigned int random = (unsigned int)os_random();
@@ -938,6 +969,7 @@ void sys_proc_windows(const char* LOCATION) {
     if (!output){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
     }else{
+        char *string;
         while(strncmp(fgets(read_buff, OS_MAXSTR, output),"Node,ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize", 132) != 0){
             continue;
         }
@@ -989,8 +1021,16 @@ void sys_proc_windows(const char* LOCATION) {
     }
     pclose(output);
 
-    mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", SYSCOLLECTOR_PROCESSES_END);
-    SendMSG(0, SYSCOLLECTOR_PROCESSES_END, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "process_end");
+    cJSON_AddNumberToObject(object, "ID", random);
+
+    char *string;
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
+    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(string);
 }
 
 #endif
