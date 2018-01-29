@@ -61,8 +61,13 @@ if check_cluster_status():
 
 
 class WazuhClusterClient(asynchat.async_chat):
-    def __init__(self, host, port, key, data, file):
-        asynchat.async_chat.__init__(self)
+    def __init__(self, host, port, key, data, file, map=None):
+        asynchat.async_chat.__init__(self, map=map)
+        if not map:
+            self.map = asyncore.socket_map
+        else:
+            self.map = map
+
         self.can_read = False
         self.can_write = True
         self.received_data = []
@@ -78,6 +83,8 @@ class WazuhClusterClient(asynchat.async_chat):
             self.close()
             raise WazuhException(3010, strerror(e[0]))
         self.set_terminator('\n')
+
+        logging.debug("Sockect map items: {}".format(asyncore.socket_map.items()))
 
     def handle_close(self):
         self.close()
@@ -97,12 +104,14 @@ class WazuhClusterClient(asynchat.async_chat):
             raise WazuhException(3010, str(v))
 
     def collect_incoming_data(self, data):
-        logging.warning("Part received ---> " + str(len(data))) #TODO remove
+        logging.warning(read_config()["node_name"] + ": Part from " + self.addr[0] +" received ---> " + str(len(data))) #TODO remove
+        logging.warning("Sockect map items: {}  --- Total".format(asyncore.socket_map.items(), len(asyncore.socket_map.items())))#TODO remove
         self.received_data.append(data)
 
     def found_terminator(self):
         self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
-        logging.warning("TOTAL received ---> " + str(self.response)) #TODO remove
+        logging.warning(read_config()["node_name"] + ": TOTAL " + self.addr[0] +" received ---> " + str(len(self.response))) #TODO remove
+        logging.warning("Sockect map items: {}  --- Total".format(asyncore.socket_map.items(), len(asyncore.socket_map.items())))#TODO remove
         self.close()
 
     def handle_write(self):
@@ -126,8 +135,9 @@ def send_request(host, port, key, data, file=None):
     error = 0
     try:
         fernet_key = Fernet(key.encode('base64','strict'))
-        client = WazuhClusterClient(host, int(port), fernet_key, data, file)
-        asyncore.loop(count=2)
+        mymap = dict()
+        client = WazuhClusterClient(host, int(port), fernet_key, data, file, mymap)
+        asyncore.loop(map=mymap)
         data = client.response
 
     except NameError as e:
@@ -291,7 +301,7 @@ def get_name_from_ip(addr, csocket=None):
         data = None
 
     if data == None:
-        logging.warning("Error getting name of node {}: {}".format(addr, str(e)))
+        logging.warning("Error getting name of node {}".format(addr))
 
     if csocket is None:
         cluster_socket.close()
