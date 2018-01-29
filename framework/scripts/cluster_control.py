@@ -172,7 +172,7 @@ if __name__ == '__main__':
                         config_cluster = read_config()
                         # send the synchronization results to the rest of masters
                         message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
-                        file = json.dumps(sync_results).encode()
+                        file = file = prepare_sync_db_info(sync_results)
                         error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
                                             data=message, file=file)
 
@@ -220,7 +220,7 @@ if __name__ == '__main__':
                         config_cluster = read_config()
                         # send the synchronization results to the rest of masters
                         message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
-                        file = json.dumps(sync_results).encode()
+                        file = prepare_sync_db_info(sync_results)
                         error, response = send_request(host=node[0], port=config_cluster["port"], key=config_cluster['key'],
                                             data=message, file=file)
 

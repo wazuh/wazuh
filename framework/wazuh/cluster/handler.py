@@ -584,6 +584,19 @@ def save_actual_master_data_on_db(data):
     return restart
 
 
+def prepare_sync_db_info(sync_results):
+    """
+    Prepare file database information to be sent to the other masters
+    """
+    file_status = get_file_status_json(return_name=False)
+    file_status = {node_id:{'files':{status:[f['filename'] for f in node_data['items'] if status == f['status']] 
+                  for status in set(map(itemgetter('status'), node_data['items']))},
+                  'name': get_name_from_ip(node_id), 'restart': sync_results[node_id]['files']['restart']}
+                  for node_id, node_data in file_status.items()}
+    return json.dumps(file_status).encode()
+
+
+
 def sync_one_node(debug, node, node_name, force=False):
     """
     Sync files with only one node. This function is only called from client nodes
