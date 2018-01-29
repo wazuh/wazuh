@@ -122,6 +122,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
     else:
         logging.debug("Retrieving {0}'s files from database".format(node))
         all_files = get_file_status(node, cluster_socket)
+        all_files = {f['filename']:f['status'] for f in all_files}
         # if there are missing files that are not being controled in database
         # add them as pending
         for missing in divide_list(set(own_items_names) - set(all_files.keys())):
@@ -188,7 +189,7 @@ def clear_file_status_one_node(manager, cluster_socket):
     """
     Function to set the status of all manager's files to pending
     """
-    files = get_file_status(manager, cluster_socket).keys()
+    files = map(itemgetter('filename'), get_file_status(manager, cluster_socket))
 
     update_sql = "update2"
     for file in files:
@@ -472,6 +473,7 @@ def get_file_status_of_one_node(node, own_items_names, cluster_socket, my_type, 
     else:
         logging.debug("Retrieving {0}'s files from database".format(node_url))
         all_files = get_file_status(node_url, cluster_socket)
+        all_files = {f['filename']:f['status'] for f in all_files}
         # if there are missing files that are not being controled in database
         # add them as pending
         for missing in divide_list(set(own_items) - set(all_files.keys())):
