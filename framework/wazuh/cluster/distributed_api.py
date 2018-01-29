@@ -21,11 +21,9 @@ else:
 
 
 def send_request_to_node(node, config_cluster, request_type, args, cluster_depth, result_queue):
-    logging.debug("Sendind request {} to {}".format(request_type, node))# TODO remove
     error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
                         data="{1} {2} {0}".format('a'*(common.cluster_protocol_plain_size - len(request_type + " " + str(cluster_depth) + " ")), request_type, str(cluster_depth)),
-                         file=args)
-    logging.debug("Received response {} from {}".format(response, node))# TODO remove
+                         file=args.encode())
     if error != 0 or (isinstance(response, dict) and response.get('error') != None and response['error'] != 0):
         logging.debug(response)
         result_queue.put({'node': node, 'reason': "{0} - {1}".format(error, response), 'error': 1})
@@ -97,11 +95,9 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, clus
 
     args_str = " ".join(args)
 
-    logging.info("Sending request {} to {}".format(request_type, remote_nodes_addr))
-
     for node_id in remote_nodes_addr:
         if node_id != None:
-            logging.info("Sending {2} request from {0} to {1}".format(local_node, node_id, request_type))
+            logging.warning("Sending {2} request from {0} to {1}".format(local_node, node_id, request_type))
 
             # Put agents id
             if remote_nodes.get(node_id) != None and len(remote_nodes[node_id]) > 0:
@@ -420,9 +416,7 @@ def api_request(request_type, args, cluster_depth, instance=None):
         res = instance.managers_get_ossec_conf(section=section, field=field, cluster_depth=cluster_depth)
 
     elif request_type == list_requests_wazuh['MANAGERS_INFO']:
-        logging.warning("MANAGERS_INFO args --> "+ str(args))#TODO remove
         res = instance.managers_get_ossec_init(cluster_depth=cluster_depth)
-        logging.warning("MANAGERS_INFO res --> "+ str(res))#TODO remove
 
     elif request_type == list_requests_cluster['CLUSTER_CONFIG']:
         res = get_config_distributed(cluster_depth=cluster_depth)

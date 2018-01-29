@@ -186,8 +186,9 @@ class WazuhClusterHandler(asynchat.async_chat):
 
 
     def handle_close(self):
+        logging.debug("Closing connection with {}".format(self.addr))
         self.close()
-        if self.command[0] == 'zip' and self.restart:
+        if len(self.command) > 1 and self.command[0] == 'zip' and self.restart:
             self.restart = False
             try:
                 # check synchronized rules are correct before restarting the manager
@@ -224,7 +225,6 @@ class WazuhClusterHandler(asynchat.async_chat):
         while i < len(msg):
             next_i = i+4096 if i+4096 < len(msg) else len(msg)
             sent = self.send(msg[i:next_i])
-            logging.warning("Sending part-> " + str(i) + " --- " +  str(sent) + " bytes")#TODO remove
             if sent == 4096 or next_i == len(msg):
                 i = next_i
 

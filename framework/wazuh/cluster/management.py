@@ -84,8 +84,6 @@ class WazuhClusterClient(asynchat.async_chat):
             raise WazuhException(3010, strerror(e[0]))
         self.set_terminator('\n')
 
-        logging.debug("Sockect map items: {}".format(asyncore.socket_map.items()))
-
     def handle_close(self):
         self.close()
 
@@ -104,14 +102,10 @@ class WazuhClusterClient(asynchat.async_chat):
             raise WazuhException(3010, str(v))
 
     def collect_incoming_data(self, data):
-        logging.warning(read_config()["node_name"] + ": Part from " + self.addr[0] +" received ---> " + str(len(data))) #TODO remove
-        logging.warning("Sockect map items: {}  --- Total".format(asyncore.socket_map.items(), len(asyncore.socket_map.items())))#TODO remove
         self.received_data.append(data)
 
     def found_terminator(self):
         self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
-        logging.warning(read_config()["node_name"] + ": TOTAL " + self.addr[0] +" received ---> " + str(len(self.response))) #TODO remove
-        logging.warning("Sockect map items: {}  --- Total".format(asyncore.socket_map.items(), len(asyncore.socket_map.items())))#TODO remove
         self.close()
 
     def handle_write(self):
@@ -125,7 +119,6 @@ class WazuhClusterClient(asynchat.async_chat):
             next_i = i+4096 if i+4096 < len(msg) else len(msg)
             sent = self.send(msg[i:next_i])
             i += sent
-
 
         self.can_read=True
         self.can_write=False
