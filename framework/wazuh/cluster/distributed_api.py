@@ -61,8 +61,22 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
       request_type in list_requests_stats.values() or \
        request_type == list_requests_cluster['CLUSTER_CONFIG']:
         if current_result.get('items') == None:
-            current_result['items'] = {}
-        current_result['items'][get_name_from_ip(node)] = result_node
+            current_result['items'] = []
+        if result_node.get('data') != None:
+            current_result['items'].append(result_node['data'])
+        else:
+            current_result['items'].append(result_node)
+        index = 0
+        if (len(current_result['items']) > 0):
+            index = len(current_result['items']) -1
+
+        if (isinstance(current_result['items'][len(current_result['items'])-1], dict)):
+            current_result['items'][index]['node'] = get_name_from_ip(node)
+            current_result['items'][index]['ip'] = node
+        elif (isinstance(current_result['items'][len(current_result['items'])-1], list)):
+            current_result['items'][index].append({
+                'node':get_name_from_ip(node),
+                'ip':node})
         if current_result.get('totalItems') == None:
             current_result['totalItems'] = 0
         current_result['totalItems'] += 1
@@ -229,28 +243,22 @@ def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1,
 
     # Resolve his request in local (only for elected master)
     result_local = None
+    result = None
     if instance != None and get_actual_master()['name'] == config_cluster["node_name"] and get_ip_from_name(config_cluster["node_name"]) in node_agents:
-        logging.warning("distributed_api_request: local ")#TODO remove
         try:
             result_local = {'data':api_request(request_type=request_type, args=args, cluster_depth=0, instance=instance), 'error':0}
         except Exception as e:
             result_local = {'data':str(e), 'error':1}
         del node_agents[get_ip_from_name(config_cluster["node_name"])]
+        result = append_node_result_by_type(get_ip_from_name(config_cluster["node_name"]), result_local, request_type, current_result=result)
 
     #logging.warning("distributed_api_request: result_local: --> " + str(result_local)) #TODO remove
 
-    result = None
     if result_local == None or len(node_agents) != 0 :
-
-        logging.warning("distributed_api_request: distributed ")#TODO remove
-        logging.warning("distributed_api_request: Sending ----> node_agents->" + str(node_agents) + " || request_type->" + str(request_type) + " || args->" + str(args))#TODO remove
-
         result = send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
         #logging.warning("distributed_api_request: result_distributed: --> " + str(result)) #TODO remove
         if result_local != None:
-            result = append_node_result_by_type(get_ip_from_name(config_cluster["node_name"]), result_local, request_type, current_result=result)
-    else:
-        result = result_local
+            result = append_node_result_by_type(get_ip_from_name(config_cluster["node_name"]), result, request_type, current_result=result)
 
     return result
 
