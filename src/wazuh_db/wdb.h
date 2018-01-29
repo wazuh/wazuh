@@ -49,7 +49,9 @@
 #define WDB_STMT_OSINFO_DEL 5
 #define WDB_STMT_PROGRAM_INSERT 6
 #define WDB_STMT_PROGRAM_DEL 7
-#define WDB_STMT_SIZE 8
+#define WDB_STMT_HWINFO_INSERT 8
+#define WDB_STMT_HWINFO_DEL 9
+#define WDB_STMT_SIZE 10
 
 typedef struct wdb_t {
     sqlite3 * db;
@@ -222,7 +224,7 @@ int wdb_insert_net_addr(sqlite3 * db, const char * name, int type, const char * 
 // Clean network tables. Return number of affected rows on success or -1 on error.
 int wdb_delete_network(sqlite3 * db);
 
-// Insert OS info tuple. Return ID on success or -1 on error.
+// Insert OS info tuple. Return ID on success or -1 on error. (Old)
 int wdb_insert_osinfo(sqlite3 * db, const char * os_name, const char * os_version, const char * hostname, const char * architecture, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
@@ -231,8 +233,14 @@ int wdb_insert_osinfo2(wdb_t * wdb, const char * scan_id, const char * scan_time
 // Save OS info into DB.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
 
-// Clean OS info table. Return number of affected rows on success or -1 on error.
+// Clean OS info table. Return number of affected rows on success or -1 on error. (Old)
 int wdb_delete_osinfo(sqlite3 * db);
+
+// Insert HW info tuple. Return 0 on success or -1 on error.
+int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free);
+
+// Save HW info into DB.
+int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free);
 
 // Insert program info tuple. Return 0 on success or -1 on error.
 int wdb_program_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description);
@@ -243,10 +251,10 @@ int wdb_program_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 // Delete Program info about previous scan from DB.
 int wdb_program_delete(wdb_t * wdb, const char * scan_id);
 
-// Insert hardware info tuple. Return id on success or -1 on error.
+// Insert hardware info tuple. Return id on success or -1 on error. (Old)
 int wdb_insert_hwinfo(sqlite3 * db, const char * board_serial, const char * cpu_name, int cpu_cores, double cpu_mhz, long ram_total, long ram_free);
 
-// Clean hardware info table. Return number of affected rows on success or -1 on error.
+// Clean hardware info table. Return number of affected rows on success or -1 on error. (Old)
 int wdb_delete_hwinfo(sqlite3 * db);
 
 wdb_t * wdb_init(sqlite3 * db, const char * agent_id);
@@ -278,6 +286,8 @@ int wdb_parse(char * input, char * output);
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_hardware(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_programs(wdb_t * wdb, char * input, char * output);
 

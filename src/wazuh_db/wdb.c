@@ -26,7 +26,9 @@ static const char * SQL_STMT[] = {
     "INSERT INTO osinfo (scan_id, scan_time, os_name, os_version, hostname, architecture, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM osinfo;",
     "INSERT INTO programs (scan_id, scan_time, format, name, vendor, version, architecture, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
-    "DELETE FROM programs WHERE scan_id != ?;"
+    "DELETE FROM programs WHERE scan_id != ?;",
+    "INSERT INTO hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM hwinfo;"
 };
 
 sqlite3 *wdb_global = NULL;

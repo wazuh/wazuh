@@ -358,7 +358,93 @@ int wdb_program_delete(wdb_t * wdb, const char * scan_id) {
     return 0;
 }
 
-// Insert hardware info tuple. Return ID on success or -1 on error.
+// Function to save OS info into the DB. Return 0 on success or -1 on error.
+int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        merror("at wdb_hardware_save(): cannot begin transaction");
+        return -1;
+    }
+
+    /* Delete old OS information before insert the new scan */
+    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_DEL) > 0) {
+        merror("at wdb_hardware_save(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_HWINFO_DEL];
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Unable to delete old information from 'hardware' table.");
+        return -1;
+    }
+
+    if (wdb_hardware_insert(wdb,
+        scan_id,
+        scan_time,
+        serial,
+        cpu_name,
+        cpu_cores,
+        cpu_mhz,
+        ram_total,
+        ram_free) < 0) {
+
+        mdebug1("at wdb_hardware_save(): cannot insert hardware tuple.");
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert HW info tuple. Return ID on success or -1 on error.
+int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_INSERT) > 0) {
+        merror("at wdb_hardware_insert(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_HWINFO_INSERT];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, serial, -1, NULL);
+    sqlite3_bind_text(stmt, 4, cpu_name, -1, NULL);
+
+    if (cpu_cores > 0) {
+        sqlite3_bind_int(stmt, 5, cpu_cores);
+    } else {
+        sqlite3_bind_null(stmt, 5);
+    }
+
+    sqlite3_bind_text(stmt, 6, cpu_mhz, -1, NULL);
+
+    if (ram_total > 0) {
+        sqlite3_bind_int(stmt, 7, ram_total);
+    } else {
+        sqlite3_bind_null(stmt, 7);
+    }
+
+    if (ram_free > 0) {
+        sqlite3_bind_int(stmt, 8, ram_free);
+    } else {
+        sqlite3_bind_null(stmt, 8);
+    }
+
+    if (sqlite3_step(stmt) == SQLITE_DONE){
+        return 0;
+    }
+    else {
+        mdebug1("at wdb_hardware_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+
+// Insert hardware info tuple. Return ID on success or -1 on error. (Old)
 int wdb_insert_hwinfo(sqlite3 * db, const char * board_serial, const char * cpu_name, int cpu_cores, double cpu_mhz, long ram_total, long ram_free) {
     sqlite3_stmt *stmt = NULL;
     int result;
@@ -406,7 +492,7 @@ int wdb_insert_hwinfo(sqlite3 * db, const char * board_serial, const char * cpu_
     return result;
 }
 
-// Clean hardware info table. Return number of affected rows on success or -1 on error.
+// Clean hardware info table. Return number of affected rows on success or -1 on error. (Old)
 int wdb_delete_hwinfo(sqlite3 * db) {
     sqlite3_stmt *stmt = NULL;
     int result;

@@ -95,6 +95,17 @@ int wdb_parse(char * input, char * output) {
                     mdebug2("Stored OS information in DB for agent '%d'", agent_id);
                 }
             }
+        } else if (strcmp(query, "hardware") == 0) {
+            if (!next) {
+                mdebug1("Invalid DB query syntax.");
+                mdebug2("DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                if (wdb_parse_hardware(wdb, next, output) == 0){
+                    mdebug2("Stored HW information in DB for agent '%d'", agent_id);
+                }
+            }
         } else if (strcmp(query, "program") == 0) {
             if (!next) {
                 mdebug1("Invalid DB query syntax.");
@@ -480,6 +491,140 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
         mdebug1("Invalid OS info query syntax.");
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    char * scan_id;
+    char * scan_time;
+    char * serial;
+    char * cpu_name;
+    int cpu_cores;
+    char * cpu_mhz;
+    long ram_total;
+    long ram_free;
+    int result;
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid HW info query syntax.");
+        mdebug2("HW info query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strcmp(curr, "save") == 0) {
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid HW info query syntax.");
+            mdebug2("HW info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_id = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_id, "NULL"))
+            scan_id = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid HW info query syntax.");
+            mdebug2("HW info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_time = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_time, "NULL"))
+            scan_time = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid HW info query syntax.");
+            mdebug2("HW info query: %s", scan_time);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", scan_time);
+            return -1;
+        }
+
+        serial = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(serial, "NULL"))
+            serial = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid HW info query syntax.");
+            mdebug2("HW info query: %s", serial);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", serial);
+            return -1;
+        }
+
+        cpu_name = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(cpu_name, "NULL"))
+            cpu_name = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid HW info query syntax.");
+            mdebug2("HW info query: %s", cpu_name);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", cpu_name);
+            return -1;
+        }
+
+        cpu_cores = strtol(curr,NULL,10);
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid HW info query syntax.");
+            mdebug2("HW info query: %d", cpu_cores);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        cpu_mhz = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(cpu_mhz, "NULL"))
+            cpu_mhz = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid HW info query syntax.");
+            mdebug2("HW info query: %s", cpu_mhz);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        ram_total = strtol(curr,NULL,10);
+        *next++ = '\0';
+        ram_free = strtol(next,NULL,10);
+
+        if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free), result < 0) {
+            mdebug1("Cannot save HW information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save HW information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else {
+        mdebug1("Invalid HW info query syntax.");
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
         return -1;
     }
 }

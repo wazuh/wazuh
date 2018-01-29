@@ -21,6 +21,7 @@
 #define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
 static int decode_osinfo(char *agent_id, cJSON * logJSON, int sock);
+static int decode_hardware(char *agent_id, cJSON * logJSON, int sock);
 static int decode_program(char *agent_id, cJSON * logJSON, int sock);
 
 /* Special decoder for syscollector */
@@ -79,6 +80,10 @@ int DecodeSyscollector(Eventinfo *lf, int sock)
     }
     else if (strcmp(msg_type, "hardware") == 0 || strcmp(msg_type, "hardware_end") == 0) {
         snprintf(file_name, OS_SIZE_1024, "%s/hardware/%s", SYSCOLLECTOR_DIR, lf->agent_id);
+        if (decode_hardware(lf->agent_id, logJSON, sock) < 0) {
+            merror("Unable to send hardware information to Wazuh DB.");
+            return (0);
+        }
     }
     else if (strcmp(msg_type, "OS") == 0) {
         snprintf(file_name, OS_SIZE_1024, "%s/os/%s", SYSCOLLECTOR_DIR, lf->agent_id);
@@ -261,6 +266,109 @@ int decode_osinfo(char *agent_id, cJSON * logJSON, int sock) {
 
         if (send(sock, msg, size + 1, 0) < size) {
             merror("At decode_osinfo(): '%s'.", strerror(errno));
+            free(msg);
+            return -1;
+        }
+
+        free(msg);
+    }
+
+    return 0;
+}
+
+int decode_hardware(char *agent_id, cJSON * logJSON, int sock) {
+
+    char * msg = NULL;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+
+    cJSON * inventory;
+
+    if (inventory = cJSON_GetObjectItem(logJSON, "inventory"), inventory) {
+        cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+        cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
+        cJSON * serial = cJSON_GetObjectItem(inventory, "board_serial");
+        cJSON * cpu_name = cJSON_GetObjectItem(inventory, "cpu_name");
+        cJSON * cpu_cores = cJSON_GetObjectItem(inventory, "cpu_cores");
+        cJSON * cpu_mhz = cJSON_GetObjectItem(inventory, "cpu_mhz");
+        cJSON * ram_total = cJSON_GetObjectItem(inventory, "ram_total");
+        cJSON * ram_free = cJSON_GetObjectItem(inventory, "ram_free");
+
+        snprintf(msg, OS_MAXSTR - 1, "agent %s hardware save", agent_id);
+
+
+        if (scan_id) {
+            char * id;
+            os_calloc(OS_MAXSTR, sizeof(char), id);
+            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+            wm_strcat(&msg, id, ' ');
+            free(id);
+        } else {
+            wm_strcat(&msg, "NULL", ' ');
+        }
+
+        if (scan_time) {
+            wm_strcat(&msg, scan_time->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (serial) {
+            wm_strcat(&msg, serial->valuestring, '|');
+        } else {
+                wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (cpu_name) {
+            wm_strcat(&msg, cpu_name->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (cpu_cores) {
+            char * cores;
+            os_calloc(OS_MAXSTR, sizeof(char), cores);
+            snprintf(cores, OS_MAXSTR - 1, "%d", cpu_cores->valueint);
+            wm_strcat(&msg, cores, '|');
+            free(cores);
+        } else {
+                wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (cpu_mhz) {
+            char * freq;
+            os_calloc(OS_MAXSTR, sizeof(char), freq);
+            snprintf(freq, OS_MAXSTR - 1, "%f", cpu_mhz->valuedouble);
+            wm_strcat(&msg, freq, '|');
+            free(freq);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (ram_total) {
+            char * total;
+            os_calloc(OS_MAXSTR, sizeof(char), total);
+            snprintf(total, OS_MAXSTR - 1, "%d", ram_total->valueint);
+            wm_strcat(&msg, total, '|');
+            free(total);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (ram_free) {
+            char * rfree;
+            os_calloc(OS_MAXSTR, sizeof(char), rfree);
+            snprintf(rfree, OS_MAXSTR - 1, "%d", ram_free->valueint);
+            wm_strcat(&msg, rfree, '|');
+            free(rfree);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        int size = strlen(msg);
+
+        if (send(sock, msg, size + 1, 0) < size) {
+            merror("At decode_hardware(): '%s'.", strerror(errno));
             free(msg);
             return -1;
         }
