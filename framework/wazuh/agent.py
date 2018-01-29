@@ -352,12 +352,15 @@ class Agent:
         """
         Function to know the value of the option "use_only_authd" in API configuration
         """
-        with open(common.api_config_path) as f:
-            data = f.readlines()
+        try:
+            with open(common.api_config_path) as f:
+                data = f.readlines()
 
-        use_only_authd = filter(lambda x: x.strip().startswith('config.use_only_authd'), data)
+            use_only_authd = filter(lambda x: x.strip().startswith('config.use_only_authd'), data)
 
-        return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
+            return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
+        except IOError:
+            return False
 
     def remove(self, backup=False, purge=False):
         """
