@@ -484,14 +484,15 @@ int main_analysisd(int argc, char **argv)
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
-    /* Open a socket with the Wazuh DB to save data in there. 3 attempts */
+    /* Open a socket with the Wazuh DB to save data in there. 4 attempts */
 
     i = 0;
 
     while (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         i++;
-        if (i >= 3){
-            merror_exit("Unable to connect to socket '%s'. Exiting...", WDB_LOCAL_SOCK);
+        if (i >= 4){
+            merror("Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
+            break;
         }
         merror("Unable to connect to socket '%s'. Waiting %d seconds.", WDB_LOCAL_SOCK, i);
         sleep(i);

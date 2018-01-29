@@ -21,6 +21,7 @@
 #define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
 static int decode_osinfo(char *agent_id, cJSON * logJSON, int sock);
+static int decode_program(char *agent_id, cJSON * logJSON, int sock);
 
 /* Special decoder for syscollector */
 int DecodeSyscollector(Eventinfo *lf, int sock)
@@ -71,6 +72,10 @@ int DecodeSyscollector(Eventinfo *lf, int sock)
     }
     else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
         snprintf(file_name, OS_SIZE_1024, "%s/programs/%s", SYSCOLLECTOR_DIR, lf->agent_id);
+        if (decode_program(lf->agent_id, logJSON, sock) < 0) {
+            merror("Unable to send program information to Wazuh DB.");
+            return (0);
+        }
     }
     else if (strcmp(msg_type, "hardware") == 0 || strcmp(msg_type, "hardware_end") == 0) {
         snprintf(file_name, OS_SIZE_1024, "%s/hardware/%s", SYSCOLLECTOR_DIR, lf->agent_id);
@@ -143,7 +148,7 @@ int decode_osinfo(char *agent_id, cJSON * logJSON, int sock) {
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
-        cJSON * inventory;
+    cJSON * inventory;
 
     if (inventory = cJSON_GetObjectItem(logJSON, "inventory"), inventory) {
         cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
@@ -261,6 +266,133 @@ int decode_osinfo(char *agent_id, cJSON * logJSON, int sock) {
         }
 
         free(msg);
+    }
+
+    return 0;
+}
+
+int decode_program(char *agent_id, cJSON * logJSON, int sock) {
+
+    char * msg = NULL;
+    char response[OS_MAXSTR];
+    ssize_t length;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+
+    cJSON * program;
+
+    if (program = cJSON_GetObjectItem(logJSON, "program"), program) {
+        cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+        cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
+        cJSON * format = cJSON_GetObjectItem(program, "format");
+        cJSON * name = cJSON_GetObjectItem(program, "name");
+        cJSON * vendor = cJSON_GetObjectItem(program, "vendor");
+        cJSON * version = cJSON_GetObjectItem(program, "version");
+        cJSON * architecture = cJSON_GetObjectItem(program, "architecture");
+        cJSON * description = cJSON_GetObjectItem(program, "description");
+
+        snprintf(msg, OS_MAXSTR - 1, "agent %s program save", agent_id);
+
+
+        if (scan_id) {
+            char * id;
+            os_calloc(OS_MAXSTR, sizeof(char), id);
+            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+            wm_strcat(&msg, id, ' ');
+            free(id);
+        } else {
+            wm_strcat(&msg, "NULL", ' ');
+        }
+
+        if (scan_time) {
+            wm_strcat(&msg, scan_time->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (format) {
+            wm_strcat(&msg, format->valuestring, '|');
+        } else {
+                wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (name) {
+            wm_strcat(&msg, name->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (vendor) {
+            wm_strcat(&msg, vendor->valuestring, '|');
+        } else {
+                wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (version) {
+            wm_strcat(&msg, version->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (architecture) {
+            wm_strcat(&msg, architecture->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (description) {
+            wm_strcat(&msg, description->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        int size = strlen(msg);
+
+        if (send(sock, msg, size + 1, 0) < size) {
+            merror("At decode_program(): '%s'.", strerror(errno));
+            free(msg);
+            return -1;
+        }
+
+        switch (length = recv(sock, response, OS_MAXSTR, 0), length) {
+            case -1:
+                merror("At decode_program: at recv(): %s (%d)", strerror(errno), errno);
+            case 0:
+                mdebug1("Client disconnected.");
+            default:
+                if (strcmp(response, "ok")) {
+                    merror("At decode_program: received: '%s'", response);
+                    return -1;
+                }
+        }
+
+        free(msg);
+
+    } else {
+
+        // Look for 'end' message.
+        char * msg_type = NULL;
+
+        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+
+        if (!msg_type) {
+            merror("Invalid message. Type not found.");
+            free(msg);
+            return -1;
+        } else if (strcmp(msg_type, "program_end") == 0) {
+
+            cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+            snprintf(msg, OS_MAXSTR - 1, "agent %s program del %d", agent_id, scan_id->valueint);
+            int size = strlen(msg);
+
+            if (send(sock, msg, size + 1, 0) < size) {
+                merror("At decode_program(): '%s'.", strerror(errno));
+                free(msg);
+                return -1;
+            }
+
+            free(msg);
+        }
     }
 
     return 0;

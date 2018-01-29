@@ -117,8 +117,6 @@ CREATE TABLE IF NOT EXISTS osinfo (
     PRIMARY KEY (scan_id, os_name)
 );
 
-CREATE INDEX IF NOT EXISTS osinfo_osname ON osinfo (os_name);
-
 CREATE TABLE IF NOT EXISTS hwinfo (
     scan_id INTEGER,
     scan_time TEXT,
@@ -154,16 +152,16 @@ CREATE INDEX IF NOT EXISTS ports_process ON ports (process);
 CREATE TABLE IF NOT EXISTS programs (
     scan_id INTEGER,
     scan_time TEXT,
-    name TEXT,
     format TEXT NOT NULL CHECK (format IN ('deb', 'rpm', 'win', 'pkg')),
+    name TEXT,
     vendor TEXT,
     version TEXT,
     architecture TEXT,
     description TEXT,
-    PRIMARY KEY (scan_id, name)
+    PRIMARY KEY (scan_id, name, version, architecture)
 );
 
-CREATE INDEX IF NOT EXISTS programs_name ON programs (name);
+CREATE INDEX IF NOT EXISTS programs_id ON programs (scan_id);
 
 CREATE TABLE IF NOT EXISTS processes (
     scan_id INTEGER,

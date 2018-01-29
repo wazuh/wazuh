@@ -380,7 +380,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
         os_calloc(FORMAT_LENGTH, sizeof(char), format);
         snprintf(format, FORMAT_LENGTH -1, "%s", "rpm");
         os_calloc(OS_MAXSTR + 1, sizeof(char), command);
-        snprintf(command, OS_MAXSTR, "%s", "rpm -qa --queryformat '%{NAME}|%{VENDOR}|%{EPOCH}-%{VERSION}-%{RELEASE}|%{ARCH}|%{SUMMARY}\n'");
+        snprintf(command, OS_MAXSTR, "%s", "rpm -qa --queryformat '%{NAME}|%{VENDOR}|%{EPOCH}:%{VERSION}-%{RELEASE}|%{ARCH}|%{SUMMARY}\n'");
         closedir(dir);
     } else if ((dir = opendir("/var/lib/dpkg/"))){
         os_calloc(FORMAT_LENGTH, sizeof(char), format);
@@ -399,6 +399,9 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
 
         while(fgets(read_buff, OS_MAXSTR, output)){
 
+            if (!strcmp(read_buff, "gpg-pubkey"))
+                continue;
+
             cJSON *object = cJSON_CreateObject();
             cJSON *program = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
@@ -410,9 +413,10 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             char ** parts = NULL;
 
             parts = OS_StrBreak('|', read_buff, 5);
+
             cJSON_AddStringToObject(program, "name", parts[0]);
             cJSON_AddStringToObject(program, "vendor", parts[1]);
-            if (!strcmp(parts[2], "(none)")) {
+            if (!strcmp(parts[2], "(none):")) {
                 char ** epoch = NULL;
                 epoch = OS_StrBreak(':', parts[2], 2);
                 cJSON_AddStringToObject(program, "version", epoch[1]);
@@ -423,6 +427,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             } else {
                 cJSON_AddStringToObject(program, "version", parts[2]);
             }
+            cJSON_AddStringToObject(program, "version", parts[2]);
             cJSON_AddStringToObject(program, "architecture", parts[3]);
 
             char ** description = NULL;
@@ -456,12 +461,12 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", ID);
 
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    char *end_msg;
+    end_msg = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", end_msg);
+    SendMSG(queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
-    free(string);
+    free(end_msg);
 
 }
 

@@ -276,6 +276,88 @@ int wdb_delete_osinfo(sqlite3 * db) {
     return result;
 }
 
+// Function to save Program info into the DB. Return 0 on success or -1 on error.
+int wdb_program_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        merror("at wdb_program_save(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_program_insert(wdb,
+        scan_id,
+        scan_time,
+        format,
+        name,
+        vendor,
+        version,
+        architecture,
+        description) < 0) {
+
+        mdebug1("at wdb_program_save(): cannot insert program tuple.");
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert Program info tuple. Return 0 on success or -1 on error.
+int wdb_program_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_INSERT) > 0) {
+        merror("at wdb_program_insert(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PROGRAM_INSERT];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, format, -1, NULL);
+    sqlite3_bind_text(stmt, 4, name, -1, NULL);
+    sqlite3_bind_text(stmt, 5, vendor, -1, NULL);
+    sqlite3_bind_text(stmt, 6, version, -1, NULL);
+    sqlite3_bind_text(stmt, 7, architecture, -1, NULL);
+    sqlite3_bind_text(stmt, 8, description, -1, NULL);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE){
+        return 0;
+    }
+    else {
+        mdebug1("at wdb_program_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+}
+
+// Function to delete old Program information from DB. Return 0 on success or -1 on error.
+int wdb_program_delete(wdb_t * wdb, const char * scan_id) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        merror("at wdb_program_delete(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL) > 0) {
+        merror("at wdb_program_delete(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PROGRAM_DEL];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Unable to delete old information from 'programs' table.");
+        return -1;
+    }
+
+    return 0;
+}
+
 // Insert hardware info tuple. Return ID on success or -1 on error.
 int wdb_insert_hwinfo(sqlite3 * db, const char * board_serial, const char * cpu_name, int cpu_cores, double cpu_mhz, long ram_total, long ram_free) {
     sqlite3_stmt *stmt = NULL;

@@ -95,6 +95,17 @@ int wdb_parse(char * input, char * output) {
                     mdebug2("Stored OS information in DB for agent '%d'", agent_id);
                 }
             }
+        } else if (strcmp(query, "program") == 0) {
+            if (!next) {
+                mdebug1("Invalid DB query syntax.");
+                mdebug2("DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                if (wdb_parse_programs(wdb, next, output) == 0){
+                    mdebug2("Updated 'programs' table in DB for agent '%d'", agent_id);
+                }
+            }
         } else if (strcmp(query, "sql") == 0) {
             if (!next) {
                 mdebug1("Invalid DB query syntax.");
@@ -239,7 +250,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     }
 }
 
-int wdb_parse_osinfo (wdb_t * wdb, char * input, char * output) {
+int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
     char * scan_id;
@@ -469,6 +480,169 @@ int wdb_parse_osinfo (wdb_t * wdb, char * input, char * output) {
         mdebug1("Invalid OS info query syntax.");
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    char * scan_id;
+    char * scan_time;
+    char * format;
+    char * name;
+    char * vendor;
+    char * version;
+    char * architecture;
+    char * description;
+    int result;
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid Program info query syntax.");
+        mdebug2("Program info query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strcmp(curr, "save") == 0) {
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Program info query syntax.");
+            mdebug2("Program info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_id = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_id, "NULL"))
+            scan_id = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Program info query syntax.");
+            mdebug2("Program info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_time = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_time, "NULL"))
+            scan_time = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Program info query syntax.");
+            mdebug2("Program info query: %s", scan_time);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", scan_time);
+            return -1;
+        }
+
+        format = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(format, "NULL"))
+            format = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Program info query syntax.");
+            mdebug2("Program info query: %s", format);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", format);
+            return -1;
+        }
+
+        name = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(name, "NULL"))
+            name = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Program info query syntax.");
+            mdebug2("Program info query: %s", name);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", name);
+            return -1;
+        }
+
+        vendor = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(vendor, "NULL"))
+            vendor = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Program info query syntax.");
+            mdebug2("Program info query: %s", vendor);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", vendor);
+            return -1;
+        }
+
+        version = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(version, "NULL"))
+            version = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Program info query syntax.");
+            mdebug2("Program info query: %s", version);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", version);
+            return -1;
+        }
+
+        architecture = curr;
+        *next++ = '\0';
+
+        if (!strcmp(architecture, "NULL"))
+            architecture = NULL;
+
+        if (!strcmp(next, "NULL"))
+            description = NULL;
+        else
+            description = next;
+
+        if (result = wdb_program_save(wdb, scan_id, scan_time, format, name, vendor, version, architecture, description), result < 0) {
+            mdebug1("Cannot save Program information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Program information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+
+    } else if (strcmp(curr, "del") == 0) {
+
+        curr = next;
+
+        if (!strcmp(next, "NULL"))
+            scan_id = NULL;
+        else
+            scan_id = next;
+
+        if (result = wdb_program_delete(wdb, scan_id), result < 0) {
+            mdebug1("Cannot delete old Program information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Program information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+
+    } else {
+        mdebug1("Invalid Program info query syntax.");
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", curr);
         return -1;
     }
 }
