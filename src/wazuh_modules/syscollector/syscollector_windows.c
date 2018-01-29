@@ -17,7 +17,7 @@
 #include <netioapi.h>
 #include <iphlpapi.h>
 
-typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID);
+typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 typedef char* (*CallFunc1)(UCHAR ucLocalAddr[]);
 
 #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
@@ -134,6 +134,19 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     if (ID < 0)
         ID = -ID;
 
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+
     char local_addr[NI_MAXHOST];
     char rem_addr[NI_MAXHOST];
     struct in_addr ipaddress;
@@ -175,6 +188,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "port", port);
             cJSON_AddStringToObject(port, "protocol", "tcp");
 
@@ -279,6 +293,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "port", port);
             cJSON_AddStringToObject(port, "protocol", "tcp6");
 
@@ -338,6 +353,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         cJSON *object = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "port_end");
         cJSON_AddNumberToObject(object, "ID", ID);
+        cJSON_AddStringToObject(object, "timestamp", timestamp);
 
         char *string;
         string = cJSON_PrintUnformatted(object);
@@ -345,6 +361,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
         cJSON_Delete(object);
         free(string);
+        free(timestamp);
         return;
     }
 
@@ -380,6 +397,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "port", port);
             cJSON_AddStringToObject(port, "protocol", "udp");
 
@@ -449,6 +467,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "port", port);
             cJSON_AddStringToObject(port, "protocol", "udp6");
 
@@ -487,6 +506,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "port_end");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
     string = cJSON_PrintUnformatted(object);
@@ -494,6 +514,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
+    free(timestamp);
 
 }
 
@@ -506,6 +527,18 @@ void sys_programs_windows(const char* LOCATION){
     char read_buff[OS_MAXSTR];
     int i;
     int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (ID < 0)
         ID = -ID;
@@ -528,6 +561,7 @@ void sys_programs_windows(const char* LOCATION){
             cJSON *program = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
             cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "program", program);
             cJSON_AddStringToObject(program, "format", "win");
 
@@ -554,7 +588,6 @@ void sys_programs_windows(const char* LOCATION){
             mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
             SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
-
             free(string);
         }
     }
@@ -570,6 +603,7 @@ void sys_programs_windows(const char* LOCATION){
     SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
+    free(timestamp);
 
 }
 
@@ -582,6 +616,18 @@ void sys_hw_windows(const char* LOCATION){
     size_t buf_length = 1024;
     char read_buff[buf_length];
     int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (ID < 0)
         ID = -ID;
@@ -592,6 +638,7 @@ void sys_hw_windows(const char* LOCATION){
     cJSON *hw_inventory = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "hardware");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
     cJSON_AddItemToObject(object, "inventory", hw_inventory);
 
     /* Get Serial number */
@@ -648,6 +695,7 @@ void sys_hw_windows(const char* LOCATION){
     cJSON_Delete(object);
 
     free(string);
+    free(timestamp);
 
 }
 
@@ -655,6 +703,18 @@ void sys_os_windows(const char* LOCATION){
 
     char *string;
     int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (ID < 0)
         ID = -ID;
@@ -664,6 +724,7 @@ void sys_os_windows(const char* LOCATION){
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "OS");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     cJSON *os_inventory = getunameJSON();
 
@@ -676,17 +737,13 @@ void sys_os_windows(const char* LOCATION){
     cJSON_Delete(object);
 
     free(string);
+    free(timestamp);
 }
 
 /* Network inventory for Windows systems (Vista or later) */
 void sys_network_windows(const char* LOCATION){
 
     mtinfo(WM_SYS_LOGTAG, "Starting network inventory.");
-
-    int ID = os_random();
-
-    if (ID < 0)
-        ID = -ID;
 
     CallFunc _get_network_win;
 
@@ -700,6 +757,26 @@ void sys_network_windows(const char* LOCATION){
             mterror(WM_SYS_LOGTAG, "Unable to access 'get_network' on syscollector_win_ext.dll.");
             return;
         }else{
+
+            // Set random ID and timestamp
+
+            int ID = os_random();
+
+            if (ID < 0)
+                ID = -ID;
+
+            char *timestamp;
+            time_t now;
+            struct tm localtm;
+
+            now = time(NULL);
+            localtime_r(&now, &localtm);
+
+            os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+            snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+                    localtm.tm_year + 1900, localtm.tm_mon + 1,
+                    localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
             DWORD dwRetVal = 0;
 
@@ -751,7 +828,7 @@ void sys_network_windows(const char* LOCATION){
 
                     char* string;
                     /* Call function get_network in syscollector_win_ext.dll */
-                    string = _get_network_win(pCurrAddresses, ID);
+                    string = _get_network_win(pCurrAddresses, ID, timestamp);
 
                     mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
                     SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
@@ -788,6 +865,7 @@ void sys_network_windows(const char* LOCATION){
             cJSON *object = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "network_end");
             cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
 
             char *string;
             string = cJSON_PrintUnformatted(object);
@@ -795,6 +873,7 @@ void sys_network_windows(const char* LOCATION){
             SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
             free(string);
+            free(timestamp);
         }
     }else{
         mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll.");
@@ -954,6 +1033,18 @@ void sys_proc_windows(const char* LOCATION) {
     FILE *output;
     char read_buff[OS_MAXSTR];
     unsigned int random = (unsigned int)os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     cJSON *item;
     cJSON *id_msg = cJSON_CreateObject();
@@ -979,6 +1070,7 @@ void sys_proc_windows(const char* LOCATION) {
             cJSON *process = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "process");
             cJSON_AddNumberToObject(object, "ID", random);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "process", process);
 
             char ** parts = NULL;
@@ -1003,6 +1095,7 @@ void sys_proc_windows(const char* LOCATION) {
 
         cJSON_AddStringToObject(id_msg, "type", "process_list");
         cJSON_AddNumberToObject(id_msg, "ID", random);
+        cJSON_AddStringToObject(id_msg, "timestamp", timestamp);
         cJSON_AddItemToObject(id_msg, "list", id_array);
 
         string = cJSON_PrintUnformatted(id_msg);
@@ -1024,6 +1117,7 @@ void sys_proc_windows(const char* LOCATION) {
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");
     cJSON_AddNumberToObject(object, "ID", random);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
     string = cJSON_PrintUnformatted(object);
@@ -1031,6 +1125,7 @@ void sys_proc_windows(const char* LOCATION) {
     SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
+    free(timestamp);
 }
 
 #endif

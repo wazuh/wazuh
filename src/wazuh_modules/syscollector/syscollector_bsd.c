@@ -39,6 +39,18 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
     FILE *output;
     int i;
     int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     mtinfo(WM_SYS_LOGTAG, "Starting installed programs inventory.");
 
@@ -60,6 +72,7 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
             cJSON *program = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
             cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "program", program);
             cJSON_AddStringToObject(program, "format", "pkg");
 
@@ -101,6 +114,7 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
     string = cJSON_PrintUnformatted(object);
@@ -108,6 +122,7 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
     SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
+    free(timestamp);
 }
 
 #endif
@@ -118,6 +133,18 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
     char *string;
     int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (ID < 0)
         ID = -ID;
@@ -128,6 +155,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     cJSON *hw_inventory = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "hardware");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
     cJSON_AddItemToObject(object, "inventory", hw_inventory);
 
     /* Motherboard serial-number */
@@ -206,6 +234,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     cJSON_Delete(object);
 
     free(string);
+    free(timestamp);
 }
 
 hw_info *get_system_bsd(){
@@ -322,6 +351,18 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     struct ifaddrs *ifaddrs_ptr, *ifa;
     int family;
     int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (ID < 0)
         ID = -ID;
@@ -373,6 +414,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         cJSON *interface = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "network");
         cJSON_AddNumberToObject(object, "ID", ID);
+        cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "iface", interface);
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
@@ -569,6 +611,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network_end");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
     string = cJSON_PrintUnformatted(object);
@@ -576,6 +619,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
+    free(timestamp);
 
 }
 

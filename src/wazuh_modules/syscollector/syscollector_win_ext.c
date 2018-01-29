@@ -13,7 +13,7 @@
 
 #define _WIN32_WINNT 0x600  // Windows Vista or later
 
-#define OS_MAXSTR 1024
+#define MAXSTR 1024
 
 #include <external/cJSON/cJSON.h>
 #include <stdio.h>
@@ -39,7 +39,7 @@ __declspec( dllexport ) char* wm_inet_ntop(UCHAR ucLocalAddr[]){
 
 }
 
-__declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID){
+__declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp){
 
     PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
     PIP_ADAPTER_GATEWAY_ADDRESS_LH pGateway = NULL;
@@ -56,16 +56,17 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
     cJSON *iface_info = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
     cJSON_AddItemToObject(object, "iface", iface_info);
 
     /* Iface Name */
-    char iface_name[OS_MAXSTR];
-    snprintf(iface_name, OS_MAXSTR, "%S", pCurrAddresses->FriendlyName);
+    char iface_name[MAXSTR];
+    snprintf(iface_name, MAXSTR, "%S", pCurrAddresses->FriendlyName);
     cJSON_AddStringToObject(iface_info, "name", iface_name);
 
     /* Iface adapter */
-    char description[OS_MAXSTR];
-    snprintf(description, OS_MAXSTR, "%S", pCurrAddresses->Description);
+    char description[MAXSTR];
+    snprintf(description, MAXSTR, "%S", pCurrAddresses->Description);
     cJSON_AddStringToObject(iface_info, "adapter", description);
 
     /* Type of interface */

@@ -81,7 +81,7 @@ char* get_port_state(int state){
 
 // Get opened ports related to IPv4 sockets
 
-void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID, int check_all){
+void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID, const char* timestamp, int check_all){
 
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
@@ -130,6 +130,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "port", port);
             cJSON_AddStringToObject(port, "protocol", protocol);
             cJSON_AddStringToObject(port, "local_ip", laddress);
@@ -195,7 +196,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
 // Get opened ports related to IPv6 sockets
 
-void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID, int check_all){
+void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, int ID, const char * timestamp, int check_all){
 
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
@@ -246,6 +247,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
             cJSON *port = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "port");
             cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "port", port);
             cJSON_AddStringToObject(port, "protocol", protocol);
             cJSON_AddStringToObject(port, "local_ip", laddress);
@@ -313,6 +315,18 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
     char *protocol;
     int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (ID < 0)
         ID = -ID;
@@ -323,22 +337,22 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
     /* TCP opened ports inventory */
     snprintf(protocol, PROTO_LENGTH, "%s", "tcp");
-    get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, ID, check_all);
+    get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, ID, timestamp, check_all);
 
     if (check_all) {
         /* UDP opened ports inventory */
         snprintf(protocol, PROTO_LENGTH, "%s", "udp");
-        get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, ID, check_all);
+        get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, ID, timestamp, check_all);
     }
 
     /* TCP6 opened ports inventory */
     snprintf(protocol, PROTO_LENGTH, "%s", "tcp6");
-    get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, ID, check_all);
+    get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, ID, timestamp, check_all);
 
     if (check_all) {
         /* UDP6 opened ports inventory */
         snprintf(protocol, PROTO_LENGTH, "%s", "udp6");
-        get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, ID, check_all);
+        get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, ID, timestamp, check_all);
     }
 
     free(protocol);
@@ -346,6 +360,7 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "port_end");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
     string = cJSON_PrintUnformatted(object);
@@ -353,6 +368,7 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
     SendMSG(queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
+    free(timestamp);
 }
 
 // Get installed programs inventory
@@ -366,6 +382,18 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     DIR *dir;
     int i;
     int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     mtinfo(WM_SYS_LOGTAG, "Starting installed programs inventory.");
 
@@ -406,6 +434,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             cJSON *program = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
             cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "program", program);
             cJSON_AddStringToObject(program, "format", format);
 
@@ -460,6 +489,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *end_msg;
     end_msg = cJSON_PrintUnformatted(object);
@@ -467,6 +497,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     SendMSG(queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(end_msg);
+    free(timestamp);
 
 }
 
@@ -476,6 +507,18 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
     char *string;
     int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (ID < 0)
         ID = -ID;
@@ -486,6 +529,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     cJSON *hw_inventory = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "hardware");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
     cJSON_AddItemToObject(object, "inventory", hw_inventory);
 
     /* Motherboard serial-number */
@@ -513,6 +557,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     cJSON_Delete(object);
 
     free(string);
+    free(timestamp);
 
 }
 
@@ -524,6 +569,18 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
 
     char *string;
     int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (ID < 0)
         ID = -ID;
@@ -533,6 +590,7 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "OS");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     cJSON *os_inventory = getunameJSON();
 
@@ -559,6 +617,18 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     int family;
     struct ifaddrs *ifaddr, *ifa;
     int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (ID < 0)
         ID = -ID;
@@ -611,6 +681,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         cJSON *interface = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "network");
         cJSON_AddNumberToObject(object, "ID", ID);
+        cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "iface", interface);
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
@@ -795,6 +866,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network_end");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
     string = cJSON_PrintUnformatted(object);
@@ -802,6 +874,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
+    free(timestamp);
 }
 
 /* Get System information */
@@ -1243,6 +1316,19 @@ char* get_default_gateway(char *ifa_name){
 
 void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+
     PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV);
 
     proc_t proc_info;
@@ -1264,6 +1350,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         cJSON *process = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "process");
         cJSON_AddNumberToObject(object, "ID", random);
+        cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "process", process);
         cJSON_AddNumberToObject(process,"pid",proc_info.tid);
         cJSON_AddItemToArray(id_array, cJSON_CreateNumber(proc_info.tid));
@@ -1309,6 +1396,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     cJSON_AddStringToObject(id_msg, "type", "process_list");
     cJSON_AddNumberToObject(id_msg, "ID", random);
+    cJSON_AddStringToObject(id_msg, "timestamp", timestamp);
     cJSON_AddItemToObject(id_msg, "list", id_array);
 
     string = cJSON_PrintUnformatted(id_msg);
@@ -1329,6 +1417,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");
     cJSON_AddNumberToObject(object, "ID", random);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *end_msg;
     end_msg = cJSON_PrintUnformatted(object);
@@ -1336,6 +1425,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     SendMSG(queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(end_msg);
+    free(timestamp);
 
 }
 
