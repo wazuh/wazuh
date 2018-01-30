@@ -106,6 +106,17 @@ int wdb_parse(char * input, char * output) {
                     mdebug2("Stored HW information in DB for agent '%d'", agent_id);
                 }
             }
+        } else if (strcmp(query, "port") == 0) {
+            if (!next) {
+                mdebug1("Invalid DB query syntax.");
+                mdebug2("DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                if (wdb_parse_ports(wdb, next, output) == 0){
+                    mdebug2("Stored Port information in DB for agent '%d'", agent_id);
+                }
+            }
         } else if (strcmp(query, "program") == 0) {
             if (!next) {
                 mdebug1("Invalid DB query syntax.");
@@ -115,6 +126,17 @@ int wdb_parse(char * input, char * output) {
             } else {
                 if (wdb_parse_programs(wdb, next, output) == 0){
                     mdebug2("Updated 'programs' table in DB for agent '%d'", agent_id);
+                }
+            }
+        } else if (strcmp(query, "process") == 0) {
+            if (!next) {
+                mdebug1("Invalid DB query syntax.");
+                mdebug2("DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                if (wdb_parse_processes(wdb, next, output) == 0){
+                    mdebug2("Stored process information in DB for agent '%d'", agent_id);
                 }
             }
         } else if (strcmp(query, "sql") == 0) {
@@ -629,6 +651,249 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
     }
 }
 
+int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    char * scan_id;
+    char * scan_time;
+    char * protocol;
+    char * local_ip;
+    int local_port;
+    char * remote_ip;
+    int remote_port;
+    int tx_queue;
+    int rx_queue;
+    int inode;
+    char * state;
+    char * pid;
+    char * process;
+    int result;
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid Port query syntax.");
+        mdebug2("Port query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strcmp(curr, "save") == 0) {
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_id = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_id, "NULL"))
+            scan_id = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_time = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_time, "NULL"))
+            scan_time = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %s", scan_time);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", scan_time);
+            return -1;
+        }
+
+        protocol = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(protocol, "NULL"))
+            protocol = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %s", protocol);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", protocol);
+            return -1;
+        }
+
+        local_ip = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(local_ip, "NULL"))
+            local_ip = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %s", local_ip);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", local_ip);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            local_port = -1;
+        else
+            local_port = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %d", local_port);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        remote_ip = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(remote_ip, "NULL"))
+            remote_ip = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %s", remote_ip);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", remote_ip);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            remote_port = -1;
+        else
+            remote_port = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %d", remote_port);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            tx_queue = -1;
+        else
+            tx_queue = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %d", tx_queue);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            rx_queue = -1;
+        else
+            rx_queue = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %d", rx_queue);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            inode = -1;
+        else
+            inode = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %d", inode);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        state = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(state, "NULL"))
+            state = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Port query syntax.");
+            mdebug2("Port query: %s", state);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", state);
+            return -1;
+        }
+
+        pid = curr;
+        *next++ = '\0';
+
+        if (!strcmp(pid, "NULL"))
+            pid = NULL;
+
+        if (!strcmp(next, "NULL"))
+            process = NULL;
+        else
+            process = next;
+
+        if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process), result < 0) {
+            mdebug1("Cannot save Port information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Port information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "del") == 0) {
+
+        curr = next;
+
+        if (!strcmp(next, "NULL"))
+            scan_id = NULL;
+        else
+            scan_id = next;
+
+        if (result = wdb_port_delete(wdb, scan_id), result < 0) {
+            mdebug1("Cannot delete old Port information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Port information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+
+    } else {
+        mdebug1("Invalid Port query syntax.");
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+
 int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
@@ -788,6 +1053,497 @@ int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
         mdebug1("Invalid Program info query syntax.");
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    char * scan_id;
+    char * scan_time;
+    int pid, ppid, utime, stime, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor;
+    char * name;
+    char * state;
+    char * cmd;
+    char * argvs;
+    char * euser;
+    char * ruser;
+    char * suser;
+    char * egroup;
+    char * rgroup;
+    char * sgroup;
+    char * fgroup;
+    int result;
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid Process query syntax.");
+        mdebug2("Process query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strcmp(curr, "save") == 0) {
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_id = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_id, "NULL"))
+            scan_id = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_time = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_time, "NULL"))
+            scan_time = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", scan_time);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", scan_time);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pid = -1;
+        else
+            pid = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", pid);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        name = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(name, "NULL"))
+            name = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", name);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", name);
+            return -1;
+        }
+
+        state = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(state, "NULL"))
+            state = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", state);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", state);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            ppid = -1;
+        else
+            ppid = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", ppid);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            utime = -1;
+        else
+            utime = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", utime);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            stime = -1;
+        else
+            stime = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", stime);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        cmd = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(cmd, "NULL"))
+            cmd = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", cmd);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", cmd);
+            return -1;
+        }
+
+        argvs = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(argvs, "NULL"))
+            argvs = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", argvs);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", argvs);
+            return -1;
+        }
+
+        euser = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(euser, "NULL"))
+            euser = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", euser);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", euser);
+            return -1;
+        }
+
+        ruser = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(ruser, "NULL"))
+            ruser = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", ruser);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", ruser);
+            return -1;
+        }
+
+        suser = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(suser, "NULL"))
+            suser = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", suser);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", suser);
+            return -1;
+        }
+
+        egroup = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(egroup, "NULL"))
+            egroup = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", egroup);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", egroup);
+            return -1;
+        }
+
+        rgroup = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(rgroup, "NULL"))
+            rgroup = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", rgroup);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", rgroup);
+            return -1;
+        }
+
+        sgroup = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(sgroup, "NULL"))
+            sgroup = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", sgroup);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", sgroup);
+            return -1;
+        }
+
+        fgroup = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(fgroup, "NULL"))
+            fgroup = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %s", fgroup);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", fgroup);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            priority = -1;
+        else
+            priority = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", priority);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            nice = -1;
+        else
+            nice = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", nice);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            size = -1;
+        else
+            size = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", size);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            vm_size = -1;
+        else
+            vm_size = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", vm_size);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            resident = -1;
+        else
+            resident = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", resident);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            share = -1;
+        else
+            share = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", share);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            start_time = -1;
+        else
+            start_time = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", start_time);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pgrp = -1;
+        else
+            pgrp = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", pgrp);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            session = -1;
+        else
+            session = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", session);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            nlwp = -1;
+        else
+            nlwp = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", nlwp);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            tgid = -1;
+        else
+            tgid = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Process query syntax.");
+            mdebug2("Process query: %d", tgid);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            tty = -1;
+        else
+            tty = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        if (!strncmp(next, "NULL", 4))
+            processor = -1;
+        else
+            processor = strtol(next,NULL,10);
+
+        if (result = wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor), result < 0) {
+            mdebug1("Cannot save Process information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Process information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "del") == 0) {
+
+        curr = next;
+
+        if (!strcmp(next, "NULL"))
+            scan_id = NULL;
+        else
+            scan_id = next;
+
+        if (result = wdb_process_delete(wdb, scan_id), result < 0) {
+            mdebug1("Cannot delete old Process information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Process information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+
+    } else {
+        mdebug1("Invalid Process query syntax.");
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
         return -1;
     }
 }

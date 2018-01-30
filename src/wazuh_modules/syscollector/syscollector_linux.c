@@ -1373,8 +1373,8 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         cJSON_AddStringToObject(process,"euser",proc_info.euser);
         cJSON_AddStringToObject(process,"ruser",proc_info.ruser);
         cJSON_AddStringToObject(process,"suser",proc_info.suser);
-        cJSON_AddStringToObject(process,"rgroup",proc_info.rgroup);
         cJSON_AddStringToObject(process,"egroup",proc_info.egroup);
+        cJSON_AddStringToObject(process,"rgroup",proc_info.rgroup);
         cJSON_AddStringToObject(process,"sgroup",proc_info.sgroup);
         cJSON_AddStringToObject(process,"fgroup",proc_info.fgroup);
         cJSON_AddNumberToObject(process,"priority",proc_info.priority);

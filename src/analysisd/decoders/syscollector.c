@@ -23,6 +23,8 @@
 static int decode_osinfo(char *agent_id, cJSON * logJSON, int sock);
 static int decode_hardware(char *agent_id, cJSON * logJSON, int sock);
 static int decode_program(char *agent_id, cJSON * logJSON, int sock);
+static int decode_port(char *agent_id, cJSON * logJSON, int sock);
+static int decode_process(char *agent_id, cJSON * logJSON, int sock);
 
 /* Special decoder for syscollector */
 int DecodeSyscollector(Eventinfo *lf, int sock)
@@ -70,11 +72,15 @@ int DecodeSyscollector(Eventinfo *lf, int sock)
 
     if (strcmp(msg_type, "port") == 0 || strcmp(msg_type, "port_end") == 0) {
         snprintf(file_name, OS_SIZE_1024, "%s/ports/%s", SYSCOLLECTOR_DIR, lf->agent_id);
+        if (decode_port(lf->agent_id, logJSON, sock) < 0) {
+            merror("Unable to send ports information to Wazuh DB.");
+            return (0);
+        }
     }
     else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
         snprintf(file_name, OS_SIZE_1024, "%s/programs/%s", SYSCOLLECTOR_DIR, lf->agent_id);
         if (decode_program(lf->agent_id, logJSON, sock) < 0) {
-            merror("Unable to send program information to Wazuh DB.");
+            merror("Unable to send programs information to Wazuh DB.");
             return (0);
         }
     }
@@ -97,6 +103,10 @@ int DecodeSyscollector(Eventinfo *lf, int sock)
     }
     else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_list") == 0  || strcmp(msg_type, "process_end") == 0) {
         snprintf(file_name, OS_SIZE_1024, "%s/processes/%s", SYSCOLLECTOR_DIR, lf->agent_id);
+        if (decode_process(lf->agent_id, logJSON, sock) < 0) {
+            merror("Unable to send processes information to Wazuh DB.");
+            return (0);
+        }
     }
     else {
         merror("Invalid message type: %s.", msg_type);
@@ -175,11 +185,9 @@ int decode_osinfo(char *agent_id, cJSON * logJSON, int sock) {
 
 
         if (scan_id) {
-            char * id;
-            os_calloc(OS_MAXSTR, sizeof(char), id);
+            char id[OS_MAXSTR];
             snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
             wm_strcat(&msg, id, ' ');
-            free(id);
         } else {
             wm_strcat(&msg, "NULL", ' ');
         }
@@ -276,6 +284,174 @@ int decode_osinfo(char *agent_id, cJSON * logJSON, int sock) {
     return 0;
 }
 
+int decode_port(char *agent_id, cJSON * logJSON, int sock) {
+
+    char * msg = NULL;
+    char response[OS_MAXSTR];
+    ssize_t length;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+
+    cJSON * inventory;
+
+    if (inventory = cJSON_GetObjectItem(logJSON, "port"), inventory) {
+        cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+        cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
+        cJSON * protocol = cJSON_GetObjectItem(inventory, "protocol");
+        cJSON * local_ip = cJSON_GetObjectItem(inventory, "local_ip");
+        cJSON * local_port = cJSON_GetObjectItem(inventory, "local_port");
+        cJSON * remote_ip = cJSON_GetObjectItem(inventory, "remote_ip");
+        cJSON * remote_port = cJSON_GetObjectItem(inventory, "remote_port");
+        cJSON * tx_queue = cJSON_GetObjectItem(inventory, "tx_queue");
+        cJSON * rx_queue = cJSON_GetObjectItem(inventory, "rx_queue");
+        cJSON * inode = cJSON_GetObjectItem(inventory, "inode");
+        cJSON * state = cJSON_GetObjectItem(inventory, "state");
+        cJSON * pid = cJSON_GetObjectItem(inventory, "PID");
+        cJSON * process = cJSON_GetObjectItem(inventory, "process");
+
+        snprintf(msg, OS_MAXSTR - 1, "agent %s port save", agent_id);
+
+        if (scan_id) {
+            char id[OS_MAXSTR];
+            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+            wm_strcat(&msg, id, ' ');
+        } else {
+            wm_strcat(&msg, "NULL", ' ');
+        }
+
+        if (scan_time) {
+            wm_strcat(&msg, scan_time->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (protocol) {
+            wm_strcat(&msg, protocol->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (local_ip) {
+            wm_strcat(&msg, local_ip->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (local_port) {
+            char lport[OS_MAXSTR];
+            snprintf(lport, OS_MAXSTR - 1, "%d", local_port->valueint);
+            wm_strcat(&msg, lport, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (remote_ip) {
+            wm_strcat(&msg, remote_ip->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (remote_port) {
+            char rport[OS_MAXSTR];
+            snprintf(rport, OS_MAXSTR - 1, "%d", remote_port->valueint);
+            wm_strcat(&msg, rport, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (tx_queue) {
+            char txq[OS_MAXSTR];
+            snprintf(txq, OS_MAXSTR - 1, "%d", tx_queue->valueint);
+            wm_strcat(&msg, txq, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (rx_queue) {
+            char rxq[OS_MAXSTR];
+            snprintf(rxq, OS_MAXSTR - 1, "%d", rx_queue->valueint);
+            wm_strcat(&msg, rxq, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (inode) {
+            char _inode[OS_MAXSTR];
+            snprintf(_inode, OS_MAXSTR - 1, "%d", inode->valueint);
+            wm_strcat(&msg, _inode, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (state) {
+            wm_strcat(&msg, state->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (pid) {
+            wm_strcat(&msg, pid->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (process) {
+            wm_strcat(&msg, process->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        int size = strlen(msg);
+
+        if (send(sock, msg, size + 1, 0) < size) {
+            merror("At decode_port(): '%s'.", strerror(errno));
+            free(msg);
+            return -1;
+        }
+
+        switch (length = recv(sock, response, OS_MAXSTR, 0), length) {
+            case -1:
+                merror("At decode_port: at recv(): %s (%d)", strerror(errno), errno);
+            case 0:
+                mdebug1("Client disconnected.");
+            default:
+                if (strcmp(response, "ok")) {
+                    merror("At decode_port: received: '%s'", response);
+                    return -1;
+                }
+        }
+
+        free(msg);
+
+    } else {
+        // Looking for 'end' message.
+        char * msg_type = NULL;
+
+        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+
+        if (!msg_type) {
+            merror("Invalid message. Type not found.");
+            free(msg);
+            return -1;
+        } else if (strcmp(msg_type, "port_end") == 0) {
+
+            cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+            snprintf(msg, OS_MAXSTR - 1, "agent %s port del %d", agent_id, scan_id->valueint);
+            int size = strlen(msg);
+
+            if (send(sock, msg, size + 1, 0) < size) {
+                merror("At decode_port(): '%s'.", strerror(errno));
+                free(msg);
+                return -1;
+            }
+
+            free(msg);
+        }
+    }
+
+    return 0;
+}
+
 int decode_hardware(char *agent_id, cJSON * logJSON, int sock) {
 
     char * msg = NULL;
@@ -296,13 +472,10 @@ int decode_hardware(char *agent_id, cJSON * logJSON, int sock) {
 
         snprintf(msg, OS_MAXSTR - 1, "agent %s hardware save", agent_id);
 
-
         if (scan_id) {
-            char * id;
-            os_calloc(OS_MAXSTR, sizeof(char), id);
+            char id[OS_MAXSTR];
             snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
             wm_strcat(&msg, id, ' ');
-            free(id);
         } else {
             wm_strcat(&msg, "NULL", ' ');
         }
@@ -316,7 +489,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON, int sock) {
         if (serial) {
             wm_strcat(&msg, serial->valuestring, '|');
         } else {
-                wm_strcat(&msg, "NULL", '|');
+            wm_strcat(&msg, "NULL", '|');
         }
 
         if (cpu_name) {
@@ -326,41 +499,33 @@ int decode_hardware(char *agent_id, cJSON * logJSON, int sock) {
         }
 
         if (cpu_cores) {
-            char * cores;
-            os_calloc(OS_MAXSTR, sizeof(char), cores);
+            char cores[OS_MAXSTR];
             snprintf(cores, OS_MAXSTR - 1, "%d", cpu_cores->valueint);
             wm_strcat(&msg, cores, '|');
-            free(cores);
         } else {
-                wm_strcat(&msg, "NULL", '|');
+            wm_strcat(&msg, "NULL", '|');
         }
 
         if (cpu_mhz) {
-            char * freq;
-            os_calloc(OS_MAXSTR, sizeof(char), freq);
+            char freq[OS_MAXSTR];
             snprintf(freq, OS_MAXSTR - 1, "%f", cpu_mhz->valuedouble);
             wm_strcat(&msg, freq, '|');
-            free(freq);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
         if (ram_total) {
-            char * total;
-            os_calloc(OS_MAXSTR, sizeof(char), total);
+            char total[OS_MAXSTR];
             snprintf(total, OS_MAXSTR - 1, "%d", ram_total->valueint);
             wm_strcat(&msg, total, '|');
-            free(total);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
         if (ram_free) {
-            char * rfree;
-            os_calloc(OS_MAXSTR, sizeof(char), rfree);
+            char rfree[OS_MAXSTR];
             snprintf(rfree, OS_MAXSTR - 1, "%d", ram_free->valueint);
             wm_strcat(&msg, rfree, '|');
-            free(rfree);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
@@ -403,11 +568,9 @@ int decode_program(char *agent_id, cJSON * logJSON, int sock) {
 
 
         if (scan_id) {
-            char * id;
-            os_calloc(OS_MAXSTR, sizeof(char), id);
+            char id[OS_MAXSTR];
             snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
             wm_strcat(&msg, id, ' ');
-            free(id);
         } else {
             wm_strcat(&msg, "NULL", ' ');
         }
@@ -421,7 +584,7 @@ int decode_program(char *agent_id, cJSON * logJSON, int sock) {
         if (format) {
             wm_strcat(&msg, format->valuestring, '|');
         } else {
-                wm_strcat(&msg, "NULL", '|');
+            wm_strcat(&msg, "NULL", '|');
         }
 
         if (name) {
@@ -433,7 +596,7 @@ int decode_program(char *agent_id, cJSON * logJSON, int sock) {
         if (vendor) {
             wm_strcat(&msg, vendor->valuestring, '|');
         } else {
-                wm_strcat(&msg, "NULL", '|');
+            wm_strcat(&msg, "NULL", '|');
         }
 
         if (version) {
@@ -478,7 +641,7 @@ int decode_program(char *agent_id, cJSON * logJSON, int sock) {
 
     } else {
 
-        // Look for 'end' message.
+        // Looking for 'end' message.
         char * msg_type = NULL;
 
         msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
@@ -495,6 +658,322 @@ int decode_program(char *agent_id, cJSON * logJSON, int sock) {
 
             if (send(sock, msg, size + 1, 0) < size) {
                 merror("At decode_program(): '%s'.", strerror(errno));
+                free(msg);
+                return -1;
+            }
+
+            free(msg);
+        }
+    }
+
+    return 0;
+}
+
+int decode_process(char *agent_id, cJSON * logJSON, int sock) {
+
+    char * msg = NULL;
+    char response[OS_MAXSTR];
+    ssize_t length;
+    int i;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+
+    cJSON * inventory;
+
+    if (inventory = cJSON_GetObjectItem(logJSON, "process"), inventory) {
+        cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+        cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
+        cJSON * pid = cJSON_GetObjectItem(logJSON, "pid");
+        cJSON * name = cJSON_GetObjectItem(inventory, "name");
+        cJSON * state = cJSON_GetObjectItem(inventory, "state");
+        cJSON * ppid = cJSON_GetObjectItem(inventory, "ppid");
+        cJSON * utime = cJSON_GetObjectItem(inventory, "utime");
+        cJSON * stime = cJSON_GetObjectItem(inventory, "stime");
+        cJSON * cmd = cJSON_GetObjectItem(inventory, "cmd");
+        cJSON * argvs = cJSON_GetObjectItem(inventory, "argvs");
+        cJSON * euser = cJSON_GetObjectItem(inventory, "euser");
+        cJSON * ruser = cJSON_GetObjectItem(inventory, "ruser");
+        cJSON * suser = cJSON_GetObjectItem(inventory, "suser");
+        cJSON * egroup = cJSON_GetObjectItem(inventory, "egroup");
+        cJSON * rgroup = cJSON_GetObjectItem(inventory, "rgroup");
+        cJSON * sgroup = cJSON_GetObjectItem(inventory, "sgroup");
+        cJSON * fgroup = cJSON_GetObjectItem(inventory, "fgroup");
+        cJSON * priority = cJSON_GetObjectItem(inventory, "priority");
+        cJSON * nice = cJSON_GetObjectItem(inventory, "nice");
+        cJSON * size = cJSON_GetObjectItem(inventory, "size");
+        cJSON * vm_size = cJSON_GetObjectItem(inventory, "vm_size");
+        cJSON * resident = cJSON_GetObjectItem(inventory, "resident");
+        cJSON * share = cJSON_GetObjectItem(inventory, "share");
+        cJSON * start_time = cJSON_GetObjectItem(inventory, "start_time");
+        cJSON * pgrp = cJSON_GetObjectItem(inventory, "pgrp");
+        cJSON * session = cJSON_GetObjectItem(inventory, "session");
+        cJSON * nlwp = cJSON_GetObjectItem(inventory, "nlwp");
+        cJSON * tgid = cJSON_GetObjectItem(inventory, "tgid");
+        cJSON * tty = cJSON_GetObjectItem(inventory, "tty");
+        cJSON * processor = cJSON_GetObjectItem(inventory, "processor");
+
+        snprintf(msg, OS_MAXSTR - 1, "agent %s process save", agent_id);
+
+        if (scan_id) {
+            char id[OS_MAXSTR];
+            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+            wm_strcat(&msg, id, ' ');
+        } else {
+            wm_strcat(&msg, "NULL", ' ');
+        }
+
+        if (scan_time) {
+            wm_strcat(&msg, scan_time->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (pid) {
+            char _pid[OS_MAXSTR];
+            snprintf(_pid, OS_MAXSTR - 1, "%d", pid->valueint);
+            wm_strcat(&msg, _pid, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (name) {
+            wm_strcat(&msg, name->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (state) {
+            wm_strcat(&msg, state->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (ppid) {
+            char _ppid[OS_MAXSTR];
+            snprintf(_ppid, OS_MAXSTR - 1, "%d", ppid->valueint);
+            wm_strcat(&msg, _ppid, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (utime) {
+            char _utime[OS_MAXSTR];
+            snprintf(_utime, OS_MAXSTR - 1, "%d", utime->valueint);
+            wm_strcat(&msg, _utime, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (stime) {
+            char _stime[OS_MAXSTR];
+            snprintf(_stime, OS_MAXSTR - 1, "%d", stime->valueint);
+            wm_strcat(&msg, _stime, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (cmd) {
+            wm_strcat(&msg, cmd->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (argvs) {
+            char * args = NULL;
+            for (i = 0; i < cJSON_GetArraySize(argvs); i++){
+                wm_strcat(&args, cJSON_GetArrayItem(argvs,i)->valuestring, ',');
+            }
+            wm_strcat(&msg, args, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (euser) {
+            wm_strcat(&msg, euser->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (ruser) {
+            wm_strcat(&msg, ruser->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (suser) {
+            wm_strcat(&msg, suser->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (egroup) {
+            wm_strcat(&msg, egroup->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (rgroup) {
+            wm_strcat(&msg, rgroup->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (sgroup) {
+            wm_strcat(&msg, sgroup->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (fgroup) {
+            wm_strcat(&msg, fgroup->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (priority) {
+            char prior[OS_MAXSTR];
+            snprintf(prior, OS_MAXSTR - 1, "%d", priority->valueint);
+            wm_strcat(&msg, prior, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (nice) {
+            char _nice[OS_MAXSTR];
+            snprintf(_nice, OS_MAXSTR - 1, "%d", nice->valueint);
+            wm_strcat(&msg, _nice, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (size) {
+            char _size[OS_MAXSTR];
+            snprintf(_size, OS_MAXSTR - 1, "%d", size->valueint);
+            wm_strcat(&msg, _size, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (vm_size) {
+            char vms[OS_MAXSTR];
+            snprintf(vms, OS_MAXSTR - 1, "%d", vm_size->valueint);
+            wm_strcat(&msg, vms, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (resident) {
+            char _resident[OS_MAXSTR];
+            snprintf(_resident, OS_MAXSTR - 1, "%d", resident->valueint);
+            wm_strcat(&msg, _resident, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (share) {
+            char _share[OS_MAXSTR];
+            snprintf(_share, OS_MAXSTR - 1, "%d", share->valueint);
+            wm_strcat(&msg, _share, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (start_time) {
+            char start[OS_MAXSTR];
+            snprintf(start, OS_MAXSTR - 1, "%d", start_time->valueint);
+            wm_strcat(&msg, start, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (pgrp) {
+            char _pgrp[OS_MAXSTR];
+            snprintf(_pgrp, OS_MAXSTR - 1, "%d", pgrp->valueint);
+            wm_strcat(&msg, _pgrp, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (session) {
+            char _session[OS_MAXSTR];
+            snprintf(_session, OS_MAXSTR - 1, "%d", session->valueint);
+            wm_strcat(&msg, _session, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (nlwp) {
+            char _nlwp[OS_MAXSTR];
+            snprintf(_nlwp, OS_MAXSTR - 1, "%d", nlwp->valueint);
+            wm_strcat(&msg, _nlwp, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (tgid) {
+            char _tgid[OS_MAXSTR];
+            snprintf(_tgid, OS_MAXSTR - 1, "%d", tgid->valueint);
+            wm_strcat(&msg, _tgid, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (tty) {
+            char _tty[OS_MAXSTR];
+            snprintf(_tty, OS_MAXSTR - 1, "%d", tty->valueint);
+            wm_strcat(&msg, _tty, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (processor) {
+            char proc[OS_MAXSTR];
+            snprintf(proc, OS_MAXSTR - 1, "%d", processor->valueint);
+            wm_strcat(&msg, proc, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        int msgsize = strlen(msg);
+
+        if (send(sock, msg, msgsize + 1, 0) < msgsize) {
+            merror("At decode_process(): '%s'.", strerror(errno));
+            free(msg);
+            return -1;
+        }
+
+        switch (length = recv(sock, response, OS_MAXSTR, 0), length) {
+            case -1:
+                merror("At decode_process: at recv(): %s (%d)", strerror(errno), errno);
+            case 0:
+                mdebug1("Client disconnected.");
+            default:
+                if (strcmp(response, "ok")) {
+                    merror("At decode_process: received: '%s'", response);
+                    return -1;
+                }
+        }
+
+        free(msg);
+
+    } else {
+        // Looking for 'end' message.
+        char * msg_type = NULL;
+
+        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+
+        if (!msg_type) {
+            merror("Invalid message. Type not found.");
+            free(msg);
+            return -1;
+        } else if (strcmp(msg_type, "process_end") == 0) {
+
+            cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+            snprintf(msg, OS_MAXSTR - 1, "agent %s process del %d", agent_id, scan_id->valueint);
+            int size = strlen(msg);
+
+            if (send(sock, msg, size + 1, 0) < size) {
+                merror("At decode_process(): '%s'.", strerror(errno));
                 free(msg);
                 return -1;
             }

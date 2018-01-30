@@ -51,7 +51,11 @@
 #define WDB_STMT_PROGRAM_DEL 7
 #define WDB_STMT_HWINFO_INSERT 8
 #define WDB_STMT_HWINFO_DEL 9
-#define WDB_STMT_SIZE 10
+#define WDB_STMT_PORT_INSERT 10
+#define WDB_STMT_PORT_DEL 11
+#define WDB_STMT_PROC_INSERT 12
+#define WDB_STMT_PROC_DEL 13
+#define WDB_STMT_SIZE 14
 
 typedef struct wdb_t {
     sqlite3 * db;
@@ -251,6 +255,24 @@ int wdb_program_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 // Delete Program info about previous scan from DB.
 int wdb_program_delete(wdb_t * wdb, const char * scan_id);
 
+// Insert program info tuple. Return 0 on success or -1 on error.
+int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor);
+
+// Save Program info into DB.
+int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor);
+
+// Delete Program info about previous scan from DB.
+int wdb_process_delete(wdb_t * wdb, const char * scan_id);
+
+// Insert port info tuple. Return 0 on success or -1 on error.
+int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, const char * pid, const char * process);
+
+// Save port info into DB.
+int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, const char * pid, const char * process);
+
+// Delete port info about previous scan from DB.
+int wdb_port_delete(wdb_t * wdb, const char * scan_id);
+
 // Insert hardware info tuple. Return id on success or -1 on error. (Old)
 int wdb_insert_hwinfo(sqlite3 * db, const char * board_serial, const char * cpu_name, int cpu_cores, double cpu_mhz, long ram_total, long ram_free);
 
@@ -290,5 +312,9 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output);
 int wdb_parse_hardware(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_programs(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
 
 #endif

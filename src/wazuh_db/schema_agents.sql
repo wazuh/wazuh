@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS netiface (
     PRIMARY KEY (scan_id, name)
 );
 
-CREATE INDEX IF NOT EXISTS netiface_mac ON netiface (mac);
+CREATE INDEX IF NOT EXISTS netiface_id ON netiface (scan_id);
 
 CREATE TABLE IF NOT EXISTS osinfo (
     scan_id INTEGER,
@@ -129,8 +129,6 @@ CREATE TABLE IF NOT EXISTS hwinfo (
     PRIMARY KEY (scan_id, board_serial)
 );
 
-CREATE INDEX IF NOT EXISTS hwinfo_board ON hwinfo (board_serial);
-
 CREATE TABLE IF NOT EXISTS ports (
     scan_id INTEGER,
     scan_time TEXT,
@@ -141,13 +139,13 @@ CREATE TABLE IF NOT EXISTS ports (
     remote_port INTEGER CHECK (remote_port >= 0),
     tx_queue INTEGER,
     rx_queue INTEGER,
+    inode INTEGER,
     state TEXT,
-    PID TEXT,
-    process TEXT,
-    PRIMARY KEY (scan_id, PID)
+    PID INTEGER,
+    process TEXT
 );
 
-CREATE INDEX IF NOT EXISTS ports_process ON ports (process);
+CREATE INDEX IF NOT EXISTS ports_id ON ports (scan_id);
 
 CREATE TABLE IF NOT EXISTS programs (
     scan_id INTEGER,
@@ -177,8 +175,8 @@ CREATE TABLE IF NOT EXISTS processes (
     euser TEXT,
     ruser TEXT,
     suser TEXT,
-    rgroup TEXT,
     egroup TEXT,
+    rgroup TEXT,
     sgroup TEXT,
     fgroup TEXT,
     priority INTEGER,
@@ -197,4 +195,4 @@ CREATE TABLE IF NOT EXISTS processes (
     PRIMARY KEY (scan_id, pid)
 );
 
-CREATE INDEX IF NOT EXISTS processes_name ON processes (name);
+CREATE INDEX IF NOT EXISTS processes_id ON processes (scan_id);

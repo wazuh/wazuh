@@ -28,7 +28,11 @@ static const char * SQL_STMT[] = {
     "INSERT INTO programs (scan_id, scan_time, format, name, vendor, version, architecture, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM programs WHERE scan_id != ?;",
     "INSERT INTO hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
-    "DELETE FROM hwinfo;"
+    "DELETE FROM hwinfo;",
+    "INSERT INTO ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM ports WHERE scan_id != ?;",
+    "INSERT INTO processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "DELETE FROM processes WHERE scan_id != ?;"
 };
 
 sqlite3 *wdb_global = NULL;
