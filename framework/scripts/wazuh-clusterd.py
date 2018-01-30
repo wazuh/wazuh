@@ -14,12 +14,14 @@ try:
     from subprocess import check_call, CalledProcessError
     from os import devnull, seteuid, setgid, getpid, kill
     from multiprocessing import Process
+    from multiprocessing.sharedctypes import Value
     from re import search
     from time import sleep
     from pwd import getpwnam
-    from signal import signal, SIGINT, SIGTERM, SIGUSR1
+    from signal import signal, pause, SIGINT, SIGTERM, SIGUSR1
     import ctypes
     import ctypes.util
+    from operator import itemgetter
 
     import argparse
     parser =argparse.ArgumentParser()
@@ -31,6 +33,7 @@ try:
     path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
 
     child_pid = 0
+    can_restart = Value('i',0)
 
     # Import framework
     try:
@@ -317,6 +320,11 @@ class WazuhClusterHandler(asynchat.async_chat):
             elif self.command[0] == list_requests_cluster['data']:
                 res = "Saving data from actual master"
                 actual_master_data = json.loads(self.f.decrypt(response[common.cluster_sync_msg_size:]).decode())
+                kill(child_pid, SIGUSR1)
+                local_can_restart = can_restart.value
+                while local_can_restart == 0:
+                    local_can_restart = can_restart.value
+                can_restart.value = 0
                 if save_actual_master_data_on_db(actual_master_data):
                     restart_manager()
 
@@ -416,20 +424,26 @@ def restart_manager():
 def crontab_sync_master(interval):
     interval_number  = int(search('\d+', interval).group(0))
     interval_measure = interval[-1]
+    signal(SIGUSR1, sync_handler)
     while True:
         logging.debug("Crontab: starting to sync")
         try:
-            sync_results = sync(True)
+            remote_nodes = get_remote_nodes(connected=True, updateDBname=True)
+            logging.debug("Remote node types: {}".format(map(itemgetter(1), remote_nodes)))
+            if 'master(*)' not in map(itemgetter(1), remote_nodes):
+                sync_results = sync(True)
+            else:
+                pause()
         except Exception as e:
             logging.error(str(e))
             kill(child_pid, SIGINT)
 
         config_cluster = read_config()
-        for node in get_remote_nodes():
+        for node in remote_nodes:
             if node[1] == 'master':
                 # send the synchronization results to the rest of masters
                 message = "data {0}".format('a'*(common.cluster_protocol_plain_size - len('data ')))
-                file = json.dumps(sync_results).encode()
+                file = prepare_sync_db_info(sync_results)
             elif node[1] == 'client':
                 # ask clients to send updates
                 message = "ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready ")))
@@ -443,11 +457,13 @@ def crontab_sync_master(interval):
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
 
-def crontab_sync_client():
-    def sync_handler(n_signal, frame):
-        master_ip, _, master_name = get_remote_nodes(updateDBname=True)[0]
-        sync_one_node(False, master_ip, master_name)
+def sync_handler(n_signal, frame):
+    remote_nodes = get_remote_nodes(updateDBname=True)
+    master_ip, _, master_name = remote_nodes[0]
+    sync_one_node(False, master_ip, master_name)
+    can_restart.value = 1
 
+def crontab_sync_client():
     signal(SIGUSR1, sync_handler)
     # send a keep alive to the rest of nodes
     get_remote_nodes(connected=True, updateDBname=True)
@@ -553,7 +569,6 @@ if __name__ == '__main__':
 
     logging.info("Cleaning database before starting service...")
     clear_file_status()
-
     if cluster_config['node_type'] == 'master':
         # execute an independent process to "crontab" the sync interval
         p = Process(target=crontab_sync_master, args=(cluster_config['interval'],))

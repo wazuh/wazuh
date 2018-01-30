@@ -286,10 +286,11 @@ def get_name_from_ip(addr, csocket=None):
         if data == "":
             data = None
     except Exception as e:
+        logging.warning("Error getting name of node {}: {}".format(addr, str(e)))
         data = None
 
     if data == None:
-        logging.warning("Error getting name of node {}: {}".format(addr, str(e)))
+        logging.warning("Error getting name of node {}: Not found in database.".format(addr))
 
     if csocket is None:
         cluster_socket.close()
@@ -456,41 +457,51 @@ def get_last_sync():
     return str(datetime.fromtimestamp(int(date))), float(duration)
 
 
-def get_file_status(manager, cluster_socket):
-    count_query = "count {0}".format(manager)
-    send_to_socket(cluster_socket, count_query)
-    n_files = int(receive_data_from_db_socket(cluster_socket))
+def get_file_status(manager, cluster_socket, offset=0, limit=None, status="all"):
+    if not limit:
+        count_query = "count {0}".format(manager) if status == "all" else "countstatus {0} {1}".format(manager, status)
+        send_to_socket(cluster_socket, count_query)
+        n_files = int(receive_data_from_db_socket(cluster_socket))
+        limit = n_files
+        step = 100
+    else:
+        step = limit if limit < 100 else 100
 
-    query = "select {0} 100 ".format(manager)
+    query = "select {0} {1} ".format(manager, step) if status == "all" else "selectstatus {0} {1} {2} ".format(manager, status, step)
     file_status = ""
     # limit = 100
-    for offset in range(0,n_files,100):
+    for offset in range(offset,limit,step):
         send_to_socket(cluster_socket, query + str(offset))
         file_status += receive_data_from_db_socket(cluster_socket)
 
     # retrieve all files for a node in database with its status
-    all_files = {f[0]:f[1] for f in map(lambda x: x.split('*'), filter(lambda x: x != '', file_status.split(' ')))}
+    all_files = [{'filename':f[0], 'status':f[1]} for f in
+                    map(lambda x: x.split('*'), filter(lambda x: x != '',
+                    file_status.split(' ')))]
 
     return all_files
 
 
-def get_file_status_all_managers(file_list, manager):
+def read_id_manager_param(manager, cluster_socket):
+    fix_manager = []
+    for m in manager:
+        if re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(m):
+            fix_manager.append(m)
+        elif re.compile(r"\w+").match(m):
+            fix_manager.append(get_ip_from_name(m, cluster_socket))
+        else:
+            raise WazuhException(3014, m)
+    return fix_manager
+
+
+def get_file_status_all_managers(file_list, manager, status="all", offset=0, limit=None, return_name=True):
     """
     Return a nested list where each element has the following structure
     [manager, filename, status]
     """
-    fix_manager = []
     cluster_socket = connect_to_db_socket()
     if manager:
-        for m in manager:
-            if re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(m):
-                fix_manager.append(m)
-            elif re.compile(r"\w+").match(m):
-                fix_manager.append(get_ip_from_name(m, cluster_socket))
-            else:
-                raise WazuhException(3014, m)
-
-        manager = fix_manager
+        manager = read_id_manager_param(manager, cluster_socket)
 
     files = []
 
@@ -502,19 +513,21 @@ def get_file_status_all_managers(file_list, manager):
         remote_nodes = nodes
 
     for node in remote_nodes:
-        all_files = get_file_status(node, cluster_socket)
+        all_files = get_file_status(manager=node, cluster_socket=cluster_socket, status=status, offset=offset, limit=limit)
         if file_list == []:
-            filenames = all_files.keys()
+            local_file_list = all_files
         else:
-            filenames = file_list
+            local_file_list = filter(lambda x: x['filename'] in file_list, all_files)
 
-        files.extend([[get_name_from_ip(node, cluster_socket), file, all_files[file]] for file in filenames])
+        manager = node if not return_name else get_name_from_ip(node, cluster_socket)
+
+        files.extend([[manager, file['filename'], file['status']] for file in local_file_list])
 
     cluster_socket.close()
     return files
 
 
-def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
+def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}, offset=0, limit=common.database_limit, count=False, filter_status="all", return_name=True):
     """
     Return a nested list where each element has the following structure
     {
@@ -525,13 +538,47 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
         }
     }
     """
-    files = get_file_status_all_managers(file_list['fields'], manager['fields'])
+    offset = int(offset)
+    limit = int(limit)
+
+    files = get_file_status_all_managers(file_list['fields'], manager['fields'], filter_status, offset, limit, return_name)
+    cluster_socket = connect_to_db_socket()
     cluster_dict = {}
     for manager, file, status in files:
         try:
-            cluster_dict[manager][status].append(file)
+            if not count:
+                cluster_dict[manager]['items'].append({'filename': file, 'status': status})
+            else:
+                cluster_dict[manager]['items'] = []
         except KeyError:
-            cluster_dict[manager] = {}
-            cluster_dict[manager][status] = [file]
+            manager_ip = get_ip_from_name(manager, cluster_socket) if return_name else manager
+            count_query = "count {0}".format(manager_ip) if filter_status == "all" else "countstatus {0} {1}".format(manager_ip, status)
+            send_to_socket(cluster_socket, count_query)
+            cluster_dict[manager] = {'totalItems': int(receive_data_from_db_socket(cluster_socket)), 'items': []}
+            if not count:
+                cluster_dict[manager]['items'].append({'filename': file, 'status': status})
+            else:
+                cluster_dict[manager]['items'] = []
 
+    cluster_socket.close()
     return cluster_dict
+
+
+def get_file_status_one_node_json(node_id, file_list = {'fields':[]}, offset=0, limit=common.database_limit, count=False, status="all"):
+    cluster_socket = connect_to_db_socket()
+
+    node_id = read_id_manager_param([node_id], cluster_socket)[0]
+
+    count_query = "count {0}".format(node_id) if status == "all" else "countstatus {0} {1}".format(node_id, status)
+    send_to_socket(cluster_socket, count_query)
+    n_files = int(receive_data_from_db_socket(cluster_socket))
+
+    if not count:
+        files = get_file_status(manager=node_id, cluster_socket=cluster_socket, offset=int(offset), limit=int(limit), status=status)
+
+    cluster_socket.close()
+
+    if not count:
+        return {'items': files, 'totalItems': n_files}
+    else:
+        return {'totalItems': n_files}

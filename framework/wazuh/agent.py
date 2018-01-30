@@ -352,12 +352,15 @@ class Agent:
         """
         Function to know the value of the option "use_only_authd" in API configuration
         """
-        with open(common.api_config_path) as f:
-            data = f.readlines()
+        try:
+            with open(common.api_config_path) as f:
+                data = f.readlines()
 
-        use_only_authd = filter(lambda x: x.strip().startswith('config.use_only_authd'), data)
+            use_only_authd = filter(lambda x: x.strip().startswith('config.use_only_authd'), data)
 
-        return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
+            return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
+        except IOError:
+            return False
 
     def remove(self, backup=False, purge=False):
         """
@@ -704,7 +707,7 @@ class Agent:
         self.key = self.compute_key()
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", node_name="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None):
         """
         Gets a list of available agents with basic attributes.
 
@@ -743,7 +746,6 @@ class Agent:
                                     format(valid_select_fields, incorrect_fields))
             select_fields |= set(select['fields'])
         else:
-            valid_select_fields.remove('node_name') # only return node_type if asked
             select_fields = valid_select_fields
 
         set_select_fields = set(select['fields']) if select else select_fields
@@ -769,6 +771,9 @@ class Agent:
         if manager_host != "all":
             request['manager_host'] = manager_host
             query += ' AND manager_host = :manager_host'
+        if node_name != "all":
+            request['node_name'] = node_name
+            query += ' AND node_name = :node_name AND id != 0'
 
         # Search
         if search:
