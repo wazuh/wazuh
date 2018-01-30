@@ -567,7 +567,6 @@ def save_actual_master_data_on_db(data):
     cluster_items = get_cluster_items()
     own_items = list_files_from_filesystem('master', cluster_items).keys()
     restart = False
-    logging.debug(data)
     for node_ip, node_data in data.items():
         if not node_ip in localhost_ips:
             get_file_status_of_one_node((node_ip, 'client', node_data['name']), own_items, cluster_socket, 'master')
@@ -610,12 +609,16 @@ def sync_one_node(debug, node, node_name, force=False):
 
     cluster_items = get_cluster_items()
 
+    cluster_socket = connect_to_db_socket()
+    my_data = get_node(cluster_socket)
+    if my_data['type'] == 'master' and my_data['node'] != get_actual_master(cluster_socket):
+        config_cluster['node_type'] = 'client'
+
     before = time()
     # Get own items status
     own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     own_items_names = own_items.keys()
 
-    cluster_socket = connect_to_db_socket()
     logging.debug("Connected to cluster database socket")
 
     my_type = get_node(cluster_socket)['type']
@@ -660,7 +663,7 @@ def sync_one_node(debug, node, node_name, force=False):
                   'reason': result['reason']}
 
 
-def sync(debug, force=False):
+def sync(debug, force=False, remote_nodes=[]):
     """
     Sync this node with others
     :return: Files synced.
@@ -675,7 +678,8 @@ def sync(debug, force=False):
     cluster_items = get_cluster_items()
     before = time()
 
-    remote_nodes = get_remote_nodes(connected=True, updateDBname=True)
+    if remote_nodes == []:
+        remote_nodes = get_remote_nodes(connected=True, updateDBname=True)
 
     cluster_socket = connect_to_db_socket()
     logging.debug("Connected to cluster database socket")
