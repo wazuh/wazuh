@@ -95,44 +95,68 @@ def compress_files(list_path, node_type):
     return zipped_file.getvalue()
 
 
-def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket=None, own_items=None):
+def scan_for_new_files_one_node(node, cluster_items, cluster_config, my_type, cluster_socket=None, own_items=None, all_items=None):
+    node_url, node_type, node_name = node
     if not own_items:
         own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
-    own_items_names = own_items.keys()
+
+    own_items_names = own_items.keys() if node_type == 'client' or not all_items else all_items
 
     # check files in database
-    count_query = "count {0}".format(node)
+    count_query = "count {0}".format(node_url)
     send_to_socket(cluster_socket, count_query)
-    n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
+    n_files = int(receive_data_from_db_socket(cluster_socket))
+    removed = False
 
     if n_files == 0:
-        logging.info("New manager found: {0}".format(node))
-        logging.debug("Adding {0}'s files to database".format(node))
+        logging.debug("Node {} ({}) not found in database.".format(node_name, node_url))
+        logging.debug("Adding {}'s ({}) files to database".format(node_name, node_url))
 
         # if the manager is not in the database, add it with all files
         for files in divide_list(own_items_names):
 
             insert_sql = "insert"
             for file in files:
-                insert_sql += " {0} {1}".format(node, file)
+                insert_sql += " {0} {1}".format(node_url, file)
 
             send_to_socket(cluster_socket, insert_sql)
-            data = cluster_socket.recv(10000)
+            data = receive_data_from_db_socket(cluster_socket)
+
+        all_files = {file:'pending' for file in own_items_names}
 
     else:
-        logging.debug("Retrieving {0}'s files from database".format(node))
+        logging.info("Retrieving {}'s ({}) files from database".format(node_name, node_url))
         all_files = get_file_status(node, cluster_socket)
         all_files = {f['filename']:f['status'] for f in all_files}
         # if there are missing files that are not being controled in database
         # add them as pending
-        for missing in divide_list(set(own_items_names) - set(all_files.keys())):
+        set_own_items = set(own_items_names)
+        set_all_files = set(all_files.keys())
+        for missing in divide_list(set_own_items - set_all_files):
             insert_sql = "insert"
             for m in missing:
                 all_files[m] = 'pending'
-                insert_sql += " {0} {1}".format(node,m)
+                insert_sql += " {0} {1}".format(node_url,m)
 
             send_to_socket(cluster_socket, insert_sql)
             data = receive_data_from_db_socket(cluster_socket)
+
+        # remove files that are not present in the filesystem but present in the database
+        for missing in divide_list(set_all_files - set_own_items):
+            removed = True
+            delete_sql = "delete1"
+            for m in missing:
+                delete_sql += " {}".format(m)
+
+            send_to_socket(cluster_socket, delete_sql)
+            data = receive_data_from_db_socket(cluster_socket)
+
+        if my_type == 'master':
+            # non elected master only send their agent-infos, and not all files they have
+            # on the database
+            all_files = dict(filter(lambda x: x[0] in own_items, all_files.items()))
+
+    return all_files, removed
 
 
 def scan_for_new_files():
@@ -142,8 +166,10 @@ def scan_for_new_files():
     cluster_config = read_config()
     own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
 
+    my_type = get_node(cluster_socket)['type']
+
     for node in set(cluster_config['nodes']) - set(get_localhost_ips()):
-        scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket, own_items)
+        scan_for_new_files_one_node((node, '', get_name_from_ip(node, cluster_socket)), cluster_items, cluster_config, my_type, cluster_socket, own_items)
 
     cluster_socket.close()
 
@@ -257,9 +283,8 @@ def clear_file_status():
             except KeyError as e:
                 new_items[e.args[0]] = {'md5': own_items[e.args[0]]['md5'],
                                         'timestamp': own_items[e.args[0]]['timestamp']}
-                logging.warning("File not found in database: {0}".format(e.args[0]))
+                logging.debug("File not found in database: {0}".format(e.args[0]))
                 continue
-
             query += ' '.join(local_items.keys())
             send_to_socket(cluster_socket, query)
             received = receive_data_from_db_socket(cluster_socket)
@@ -445,58 +470,10 @@ def get_remote_nodes(connected=True, updateDBname=False, return_info_for_masters
     return list(map(itemgetter(0,1,3), compress(cluster, map(lambda x: x != localhost_index, range(len(cluster))))))
 
 
-def get_file_status_of_one_node(node, own_items_names, cluster_socket, my_type, all_items=None):
-    # check files in database
-    node_url, node_type, node_name = node
-
-    own_items = own_items_names if node_type == 'client' or not all_items else all_items
-
-    count_query = "count {0}".format(node_url)
-    send_to_socket(cluster_socket, count_query)
-    n_files = int(receive_data_from_db_socket(cluster_socket))
-    if n_files == 0:
-        logging.debug("Node {} ({}) not found in database.".format(node_name, node_url))
-        logging.info("Adding {}'s' ({}) files to database".format(node_name, node_url))
-
-        # if the manager is not in the database, add it with all files
-        for files in divide_list(own_items):
-
-            insert_sql = "insert"
-            for file in files:
-                insert_sql += " {0} {1}".format(node_url, file)
-
-            send_to_socket(cluster_socket, insert_sql)
-            data = receive_data_from_db_socket(cluster_socket)
-
-        all_files = {file:'pending' for file in own_items}
-
-    else:
-        logging.info("Retrieving {0}'s files from database".format(node_url))
-        all_files = get_file_status(node_url, cluster_socket)
-        all_files = {f['filename']:f['status'] for f in all_files}
-        # if there are missing files that are not being controled in database
-        # add them as pending
-        for missing in divide_list(set(own_items) - set(all_files.keys())):
-            insert_sql = "insert"
-            for m in missing:
-                all_files[m] = 'pending'
-                insert_sql += " {0} {1}".format(node_url,m)
-
-            send_to_socket(cluster_socket, insert_sql)
-            data = receive_data_from_db_socket(cluster_socket)
-
-        if my_type == 'master':
-            # non elected master only send their agent-infos, and not all files they have
-            # on the database
-            all_files = dict(filter(lambda x: x[0] in own_items, all_files.items()))
-
-    return all_files
-
-
-def push_updates_single_node(all_files, node_dest, node_dest_name, config_cluster, result_queue):
+def push_updates_single_node(all_files, node_dest, node_dest_name, config_cluster, removed, result_queue):
     # filter to send only pending files
     pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
-    if len(pending_files) > 0:
+    if len(pending_files) > 0 or removed:
         logging.info("Sending {} ({}) {} files".format(node_dest_name, node_dest, len(pending_files)))
         zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
                                   node_type=config_cluster['node_type'])
@@ -512,7 +489,7 @@ def push_updates_single_node(all_files, node_dest, node_dest_name, config_cluste
             res = response
 
     else:
-        logging.info("No pending files to send to {0} ".format(node_dest))
+        logging.info("No pending files to send to {} ({}) ".format(node_dest_name, node_dest))
         res = {'error': 0, 'data':{'updated':[], 'error':[], 'invalid':[], 'restart': False}}
         error = 0
 
@@ -565,18 +542,23 @@ def save_actual_master_data_on_db(data):
     cluster_socket = connect_to_db_socket()
     localhost_ips = get_localhost_ips()
     cluster_items = get_cluster_items()
-    own_items = list_files_from_filesystem('master', cluster_items).keys()
+    own_items = list_files_from_filesystem('master', cluster_items)
     restart = False
+    cluster_config = read_config()
     for node_ip, node_data in data.items():
         if not node_ip in localhost_ips:
-            get_file_status_of_one_node((node_ip, 'client', node_data['name']), own_items, cluster_socket, 'master')
+            scan_for_new_files_one_node((node_ip, 'client', node_data['name']),
+                                        cluster_items, cluster_config, 'master',
+                                        cluster_socket, own_items)
             update_node_db_after_sync(node_data, node_ip, node_data['name'], cluster_socket, 'master')
         else:
             restart = node_data['restart']
             # save files status received from master in database
             master_name = get_actual_master(csocket=cluster_socket)['name']
             actual_master_ip = get_ip_from_name(master_name, cluster_socket)
-            get_file_status_of_one_node((actual_master_ip, 'master', node_data['name']), own_items, cluster_socket, 'master')
+            scan_for_new_files_one_node((actual_master_ip, 'master', node_data['name']),
+                                        cluster_items, cluster_config, 'master',
+                                        cluster_socket, own_items)
             update_node_db_after_sync(node_data, actual_master_ip, master_name, cluster_socket, 'master')
 
     cluster_socket.close()
@@ -588,7 +570,7 @@ def prepare_sync_db_info(sync_results):
     Prepare file database information to be sent to the other masters
     """
     file_status = get_file_status_json(return_name=False)
-    file_status = {node_id:{'files':{status:[f['filename'] for f in node_data['items'] if status == f['status']] 
+    file_status = {node_id:{'files':{status:[f['filename'] for f in node_data['items'] if status == f['status']]
                   for status in set(map(itemgetter('status'), node_data['items']))},
                   'name': get_name_from_ip(node_id), 'restart': sync_results[node_id]['files']['restart']}
                   for node_id, node_data in file_status.items()}
@@ -625,7 +607,7 @@ def sync_one_node(debug, node, node_name, force=False):
 
     if force:
         clear_file_status_one_node(node, cluster_socket)
-    all_files = get_file_status_of_one_node((node, 'master', node_name), own_items_names, cluster_socket, my_type)
+    all_files, removed = scan_for_new_files_one_node((node, 'master', node_name), cluster_items, config_cluster, my_type, cluster_socket, own_items)
 
     after = time()
     synchronization_duration += after-before
@@ -633,7 +615,7 @@ def sync_one_node(debug, node, node_name, force=False):
 
     before = time()
     result_queue = queue()
-    push_updates_single_node(all_files, node, node_name, config_cluster, result_queue)
+    push_updates_single_node(all_files, node, node_name, config_cluster, removed, result_queue)
 
     after = time()
     synchronization_duration += after-before
@@ -714,7 +696,7 @@ def sync(debug, force=False, remote_nodes=[]):
     for node in remote_nodes:
         if force:
             clear_file_status_one_node(node[0], cluster_socket)
-        all_nodes_files[node[0]] = get_file_status_of_one_node(node, own_items_names, cluster_socket, my_data['type'], all_items)
+        all_nodes_files[node[0]], removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, my_data['type'], cluster_socket, own_items)
 
     after = time()
     synchronization_duration += after-before
@@ -727,7 +709,7 @@ def sync(debug, force=False, remote_nodes=[]):
     for node in remote_nodes:
         t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node[0]],
                                                                     node[0], node[2],
-                                                                    config_cluster,
+                                                                    config_cluster, removed,
                                                                     result_queue))
         threads.append(t)
         t.start()

@@ -16,7 +16,7 @@
         "format": "plain",
         "source": "master",
         "write_mode": "atomic",
-        "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE", "IN_DELETE"],
+        "flags": ["IN_MOVED_TO", "IN_CLOSE_WRITE", "IN_DELETE", "IN_CREATE", "IN_ISDIR"],
         "files": ["all"],
         "recursive": true,
         "restart": false,
