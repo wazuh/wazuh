@@ -76,6 +76,14 @@ int main(int argc, char ** argv) {
     config.commit_time = getDefine_Int("wazuh_db", "commit_time", 1, 3600);
     config.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
 
+    if (!isDebug()) {
+        int debug_level;
+
+        for (debug_level = getDefine_Int("wazuh_db", "debug", 0, 2); debug_level; debug_level--) {
+            nowDebug();
+        }
+    }
+
     if (test_config) {
         exit(0);
     }
