@@ -9,7 +9,6 @@ from wazuh.InputValidator import InputValidator
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
 from wazuh.database import Connection
-from wazuh.group import group_exists, create_group
 from wazuh.cluster.distributed_api import is_a_local_request, is_cluster_running, distributed_api_request
 from wazuh.cluster.protocol_messages import list_requests_agents
 from wazuh.cluster.management import get_ip_from_name
@@ -882,74 +881,6 @@ class Agent:
             data['items'].append(data_tuple)
 
         return data
-
-    @staticmethod
-    def set_group(agent_id, group_id, force=False):
-        """
-        Set a group to an agent.
-
-        :param agent_id: Agent ID.
-        :param group_id: Group ID.
-        :param force: No check if agent exists
-        :return: Confirmation message.
-        """
-        # Input Validation of group_id
-        if not InputValidator().group(group_id):
-            raise WazuhException(1722)
-
-        agent_id = agent_id.zfill(3)
-        if agent_id == "000":
-            raise WazuhException(1703)
-
-        # Check if agent exists
-        if not force:
-            Agent(agent_id).get_basic_information()
-
-        # Assign group in /queue/agent-groups
-        agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
-        try:
-            new_file = False if path.exists(agent_group_path) else True
-
-            f_group = open(agent_group_path, 'w')
-            f_group.write(group_id)
-            f_group.close()
-
-            if new_file:
-                ossec_uid = getpwnam("ossec").pw_uid
-                ossec_gid = getgrnam("ossec").gr_gid
-                chown(agent_group_path, ossec_uid, ossec_gid)
-                chmod(agent_group_path, 0o660)
-        except Exception as e:
-            raise WazuhException(1005, str(e))
-
-        # Create group in /etc/shared
-        if not group_exists(group_id):
-            create_group(group_id)
-
-        return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
-
-
-    @staticmethod
-    def unset_group(agent_id, force=False):
-        """
-        Unset the agent group. The group will be 'default'.
-
-        :param agent_id: Agent ID.
-        :param force: No check if agent exists
-        :return: Confirmation message.
-        """
-        # Check if agent exists
-        if not force:
-            Agent(agent_id).get_basic_information()
-
-        agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
-        if path.exists(agent_group_path):
-            # remove(agent_group_path)
-            fo = open(agent_group_path, "rw+")
-            fo.truncate()
-            fo.close()
-
-        return "Group unset for agent '{0}'.".format(agent_id)
 
 
     @staticmethod

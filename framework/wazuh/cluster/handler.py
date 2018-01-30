@@ -126,7 +126,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, my_type, cl
 
     else:
         logging.info("Retrieving {}'s ({}) files from database".format(node_name, node_url))
-        all_files = get_file_status(node, cluster_socket)
+        all_files = get_file_status(node_url, cluster_socket)
         all_files = {f['filename']:f['status'] for f in all_files}
         # if there are missing files that are not being controled in database
         # add them as pending
