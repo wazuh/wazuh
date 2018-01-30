@@ -152,6 +152,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, my_type, cl
             data = receive_data_from_db_socket(cluster_socket)
 
         if my_type == 'master':
+            removed = False
             # non elected master only send their agent-infos, and not all files they have
             # on the database
             all_files = dict(filter(lambda x: x[0] in own_items, all_files.items()))
@@ -408,6 +409,7 @@ def receive_zip(zip_file):
     restart = []
 
     if 'remote_groups.txt' in zip_file.keys():
+        restart.append(False)
         check_groups(set(zip_file['remote_groups.txt']['data'].split('\n')))
         del zip_file['remote_groups.txt']
 
