@@ -355,6 +355,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
     count_query = "count {0}".format(node)
     send_to_socket(cluster_socket, count_query)
     n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
+    removed = False
 
     if n_files == 0:
         logging.info("New manager found: {0}".format(node))
@@ -390,6 +391,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
 
         # remove files that are not present in the filesystem but present in the database
         for missing in divide_list(set_all_files - set_own_items):
+            removed = True
             delete_sql = "delete1"
             for m in missing:
                 delete_sql += " {}".format(m)
@@ -397,7 +399,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
             send_to_socket(cluster_socket, delete_sql)
             data = receive_data_from_db_socket(cluster_socket)
 
-    return all_files
+    return all_files, removed
 
 
 def connect_to_db_socket(retry=False):
@@ -881,10 +883,10 @@ def get_remote_nodes(connected=True, updateDBname=False):
     return list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
 
 
-def push_updates_single_node(all_files, node_dest, config_cluster, result_queue):
+def push_updates_single_node(all_files, node_dest, config_cluster, removed, result_queue):
     # filter to send only pending files
     pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
-    if len(pending_files) > 0:
+    if len(pending_files) > 0 or removed:
         logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
         zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)), 
                                   node_type=config_cluster['node_type'])
@@ -977,7 +979,7 @@ def sync_one_node(debug, node, force=False):
 
     if force:
         clear_file_status_one_node(node, cluster_socket)
-    all_files = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items)
+    all_files, removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items)
 
     after = time()
     synchronization_duration += after-before
@@ -985,7 +987,7 @@ def sync_one_node(debug, node, force=False):
 
     before = time()
     result_queue = queue()
-    push_updates_single_node(all_files, node, config_cluster, result_queue)
+    push_updates_single_node(all_files, node, config_cluster, removed, result_queue)
 
     after = time()
     synchronization_duration += after-before
@@ -1050,7 +1052,7 @@ def sync(debug, force=False):
     for node in remote_nodes:
         if force:
             clear_file_status_one_node(node, cluster_socket)
-        all_nodes_files[node] = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items)
+        all_nodes_files[node], removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items)
 
     after = time()
     synchronization_duration += after-before
@@ -1062,7 +1064,7 @@ def sync(debug, force=False):
     thread_results = {}
     for node in remote_nodes:
         t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node],node,
-                                                                    config_cluster,
+                                                                    config_cluster, removed,
                                                                     result_queue))
         threads.append(t)
         t.start()
