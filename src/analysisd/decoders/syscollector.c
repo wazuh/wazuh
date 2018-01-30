@@ -32,10 +32,6 @@ static int decode_process(char *agent_id, cJSON * logJSON, int sock);
 int DecodeSyscollector(Eventinfo *lf, int sock)
 {
     cJSON *logJSON;
-    FILE *fp;
-    int file_status = 0;
-    char file_name[OS_SIZE_1024 + 1];
-    char file_name_lock[OS_SIZE_1024 + 1];
     char *msg_type = NULL;
 
     // Decoding JSON
@@ -73,38 +69,33 @@ int DecodeSyscollector(Eventinfo *lf, int sock)
     }
 
     if (strcmp(msg_type, "port") == 0 || strcmp(msg_type, "port_end") == 0) {
-        snprintf(file_name, OS_SIZE_1024, "%s/ports/%s", SYSCOLLECTOR_DIR, lf->agent_id);
         if (decode_port(lf->agent_id, logJSON, sock) < 0) {
             merror("Unable to send ports information to Wazuh DB.");
             return (0);
         }
     }
     else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
-        snprintf(file_name, OS_SIZE_1024, "%s/programs/%s", SYSCOLLECTOR_DIR, lf->agent_id);
         if (decode_program(lf->agent_id, logJSON, sock) < 0) {
             merror("Unable to send programs information to Wazuh DB.");
             return (0);
         }
     }
-    else if (strcmp(msg_type, "hardware") == 0 || strcmp(msg_type, "hardware_end") == 0) {
-        snprintf(file_name, OS_SIZE_1024, "%s/hardware/%s", SYSCOLLECTOR_DIR, lf->agent_id);
+    else if (strcmp(msg_type, "hardware") == 0) {
         if (decode_hardware(lf->agent_id, logJSON, sock) < 0) {
             merror("Unable to send hardware information to Wazuh DB.");
             return (0);
         }
     }
     else if (strcmp(msg_type, "OS") == 0) {
-        snprintf(file_name, OS_SIZE_1024, "%s/os/%s", SYSCOLLECTOR_DIR, lf->agent_id);
         if (decode_osinfo(lf->agent_id, logJSON, sock) < 0) {
             merror("Unable to send osinfo message to Wazuh DB.");
             return (0);
         }
     }
     else if (strcmp(msg_type, "network") == 0 || strcmp(msg_type, "network_end") == 0) {
-        snprintf(file_name, OS_SIZE_1024, "%s/network/%s", SYSCOLLECTOR_DIR, lf->agent_id);
+        return (1);
     }
     else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_list") == 0  || strcmp(msg_type, "process_end") == 0) {
-        snprintf(file_name, OS_SIZE_1024, "%s/processes/%s", SYSCOLLECTOR_DIR, lf->agent_id);
         if (decode_process(lf->agent_id, logJSON, sock) < 0) {
             merror("Unable to send processes information to Wazuh DB.");
             return (0);
@@ -115,46 +106,6 @@ int DecodeSyscollector(Eventinfo *lf, int sock)
         return (0);
     }
 
-    if (strcmp(&msg_type[strlen(msg_type) - 3], "end") == 0) {
-        mtdebug2(ARGV0, "Scan finished message received: %s ", msg_type);
-        file_status = 1;
-    }
-
-    // Opening syscollector file
-    if (IsFile(file_name) == 0) { // File already exists
-        if (file_status == 1) { // Lock file
-            snprintf(file_name_lock, OS_SIZE_1024, "%s.lock", file_name);
-            mtdebug2(ARGV0, "Locking file: %s ", file_name);
-            if (!rename(file_name, file_name_lock) == 0) {
-                merror(file_name_lock, errno, strerror(errno));
-                return (0);
-            }
-        }
-        else { // Append message
-            fp = fopen(file_name, "a");
-            if (!fp) {
-                merror(FOPEN_ERROR, file_name, errno, strerror(errno));
-                return (0);
-            }
-            fprintf(fp, "%s\n", lf->log);
-            fclose(fp);
-        }
-    }
-    else {
-        if (!file_status) {
-            fp = fopen(file_name, "w");
-            if (!fp) {
-                merror(FOPEN_ERROR, file_name, errno, strerror(errno));
-                return (0);
-            }
-            fprintf(fp, "%s\n", lf->log);
-            fclose(fp);
-        }
-        else {
-            merror("Invalid message. File already locked.");
-            return (0);
-        }
-    }
     cJSON_Delete (logJSON);
     return (1);
 }

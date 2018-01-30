@@ -38,7 +38,6 @@ int wd_groups = -2;
 #endif // !LOCAL
 int wd_syscheck = -2;
 int wd_rootcheck = -2;
-int wd_syscollector = -2;
 
 /* Get current inotify queued events limit */
 static int get_max_queued_events();
@@ -86,8 +85,6 @@ static int wm_sync_file(const char *dirname, const char *path);
 static long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registry);
 // Fill complete rootcheck database.
 static int wm_fill_rootcheck(sqlite3 *db, const char *path);
-// Fill complete Syscollector database.
-static int wm_fill_syscollector(sqlite3 *db, const char *path);
 /*
  * Extract agent name, IP and whether it's a Windows registry database from the file name.
  * Returns 0 on success, 1 to ignore and -1 on error.
@@ -168,10 +165,6 @@ void* wm_database_main(wm_database *data) {
 
             if (data->sync_rootcheck) {
                 wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
-            }
-
-            if (data->sync_syscollector) {
-                wm_scan_directory(DEFAULTDIR SYSCOLLECTOR_DIR);
             }
 
             gettime(&spec1);
@@ -668,13 +661,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
             id_agent = 0;
             strcpy(name, "localhost");
         }
-    } else if (!strcmp(dirname, DEFAULTDIR SYSCOLLECTOR_DIR)) {
-        type = WDB_SYSCOLLECTOR;
-
-        if (!strcmp(fname, "000")) {
-            id_agent = 0;
-            strcpy(name, "localhost");
-        }
     } else if (!strcmp(dirname, DEFAULTDIR GROUPS_DIR)) {
         type = WDB_GROUPS;
     } else {
@@ -689,28 +675,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
         if (!id_agent) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
             return -1;
-        }
-
-        break;
-
-    case WDB_SYSCOLLECTOR:
-
-        if (id_agent) {
-            char * _name;
-
-            if (id_agent = atoi(fname), !id_agent) {
-                mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
-                return -1;
-            }
-
-            if (_name = wdb_agent_name(id_agent), !_name) {
-                mterror(WM_DATABASE_LOGTAG, "Couldn't find agent name from ID %d (dispatching file %s/%s)", id_agent, dirname, fname);
-                return -1;
-            }
-
-            strncpy(name, _name, sizeof(name));
-            name[sizeof(name) - 1] = 0;
-            free(_name);
         }
 
         break;
@@ -844,31 +808,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
     case WDB_GROUPS:
         result = wm_sync_agent_group(id_agent, fname);
         break;
-
-    case WDB_SYSCOLLECTOR:
-        if (!(db = wdb_open_agent(id_agent, name))) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't open database for file '%s/%s'.", dirname, fname);
-            return -1;
-        }
-
-        if (wdb_set_agent_status(id_agent, WDB_AGENT_PENDING) < 1) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
-            sqlite3_close_v2(db);
-            return -1;
-        }
-
-        result = wm_fill_syscollector(db, path);
-        sqlite3_close_v2(db);
-
-        if (wdb_set_agent_status(id_agent, WDB_AGENT_UPDATED) < 1) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't write agent status on database for agent %d (%s).", id_agent, name);
-            return -1;
-        }
-
-        if (result < 0) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't fill syscollector database for file '%s/%s'.", dirname, fname);
-            return -1;
-        }
     }
 
     return result;
@@ -1030,186 +969,6 @@ int wm_fill_rootcheck(sqlite3 *db, const char *path) {
     return 0;
 }
 
-// Fill complete Syscollector database.
-int wm_fill_syscollector(sqlite3 *db, const char *path) {
-    char buffer[OS_MAXSTR];
-    int count = 0;
-    clock_t clock_ini;
-    FILE * fp;
-    cJSON * json;
-    cJSON * type;
-
-    if (fp = fopen(path, "r"), !fp) {
-        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
-        return -1;
-    }
-
-    clock_ini = clock();
-    wdb_begin(db);
-    wdb_delete_network(db);
-    wdb_delete_osinfo(db);
-    wdb_delete_hwinfo(db);
-
-    while (fgets(buffer, OS_MAXSTR, fp)) {
-        if (json = cJSON_Parse(buffer), !json) {
-            mterror(WM_DATABASE_LOGTAG, "Corrupt line found at file '%s'.", path);
-            continue;
-        }
-
-        if (type = cJSON_GetObjectItem(json, "type"), type) {
-            if (!strcmp(type->valuestring, "network")) {
-                cJSON * iface;
-
-                if (iface = cJSON_GetObjectItem(json, "iface"), iface) {
-                    cJSON * name = cJSON_GetObjectItem(iface, "name");
-                    cJSON * adapter = cJSON_GetObjectItem(iface, "adapter");
-                    cJSON * iftype = cJSON_GetObjectItem(iface, "type");
-                    cJSON * state = cJSON_GetObjectItem(iface, "state");
-                    cJSON * mac = cJSON_GetObjectItem(iface, "mac");
-                    cJSON * tx_packets = cJSON_GetObjectItem(iface, "tx_packets");
-                    cJSON * rx_packets = cJSON_GetObjectItem(iface, "rx_packets");
-                    cJSON * tx_bytes = cJSON_GetObjectItem(iface, "tx_bytes");
-                    cJSON * rx_bytes = cJSON_GetObjectItem(iface, "rx_bytes");
-                    cJSON * mtu = cJSON_GetObjectItem(iface, "mtu");
-
-                    if (wdb_insert_net_iface(db,
-                        name ? name->valuestring : NULL,
-                        adapter ? adapter->valuestring : NULL,
-                        iftype ? iftype->valuestring : NULL,
-                        state ? state->valuestring : NULL,
-                        mtu ? mtu->valueint : 0,
-                        mac ? mac->valuestring : NULL,
-                        tx_packets ? tx_packets->valueint : 0,
-                        rx_packets ? rx_packets->valueint : 0,
-                        tx_bytes ? tx_bytes->valueint : 0,
-                        rx_bytes ? rx_bytes->valueint : 0) < 0) {
-
-                        mterror(WM_DATABASE_LOGTAG, "Could not insert network tuple reading file '%s'.", path);
-                    } else {
-                        cJSON * ip;
-
-                        if (ip = cJSON_GetObjectItem(iface, "IPv4"), ip) {
-                            cJSON * address = cJSON_GetObjectItem(ip, "address");
-                            cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
-                            cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
-                            cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
-                            cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
-
-                            if (wdb_insert_net_addr(db,
-                                name ? name->valuestring : NULL,
-                                WDB_NETINFO_IPV4,
-                                address ? address->valuestring : NULL,
-                                netmask ? netmask->valuestring : NULL,
-                                broadcast ? broadcast->valuestring : NULL,
-                                gateway ? gateway->valuestring : NULL,
-                                dhcp ? dhcp->valuestring : NULL) < 0) {
-
-                                mterror(WM_DATABASE_LOGTAG, "Could not insert IPv4 tuple reading file '%s'.", path);
-                            }
-                        }
-
-                        if (ip = cJSON_GetObjectItem(iface, "IPv6"), ip) {
-                            cJSON * address = cJSON_GetObjectItem(ip, "address");
-                            cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
-                            cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
-                            cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
-                            cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
-
-                            if (wdb_insert_net_addr(db,
-                                name ? name->valuestring : NULL,
-                                WDB_NETINFO_IPV6,
-                                address ? address->valuestring : NULL,
-                                netmask ? netmask->valuestring : NULL,
-                                broadcast ? broadcast->valuestring : NULL,
-                                gateway ? gateway->valuestring : NULL,
-                                dhcp ? dhcp->valuestring : NULL) < 0) {
-
-                                mterror(WM_DATABASE_LOGTAG, "Could not insert IPv6 tuple reading file '%s'.", path);
-                            }
-                        }
-                    }
-                } else {
-                    mterror(WM_DATABASE_LOGTAG, "Corrupt line found at file '%s': iface field not found.", path);
-                }
-            } else if (!strcmp(type->valuestring, "OS")) {
-                cJSON * inventory;
-
-                if (inventory = cJSON_GetObjectItem(json, "inventory"), inventory) {
-                    cJSON * os_name = cJSON_GetObjectItem(inventory, "os_name");
-                    cJSON * os_version = cJSON_GetObjectItem(inventory, "os_version");
-                    cJSON * hostname = cJSON_GetObjectItem(inventory, "hostname");
-                    cJSON * architecture = cJSON_GetObjectItem(inventory, "architecture");
-                    cJSON * os_major = cJSON_GetObjectItem(inventory, "os_major");
-                    cJSON * os_minor = cJSON_GetObjectItem(inventory, "os_minor");
-                    cJSON * os_build = cJSON_GetObjectItem(inventory, "os_build");
-                    cJSON * os_platform = cJSON_GetObjectItem(inventory, "os_platform");
-                    cJSON * sysname = cJSON_GetObjectItem(inventory, "sysname");
-                    cJSON * release = cJSON_GetObjectItem(inventory, "release");
-                    cJSON * version = cJSON_GetObjectItem(inventory, "version");
-
-                    if (wdb_insert_osinfo(db,
-                        os_name ? os_name->valuestring : NULL,
-                        os_version ? os_version->valuestring : NULL,
-                        hostname ? hostname->valuestring : NULL,
-                        architecture ? architecture->valuestring : NULL,
-                        os_major ? os_major->valuestring : NULL,
-                        os_minor ? os_minor->valuestring : NULL,
-                        os_build ? os_build->valuestring : NULL,
-                        os_platform ? os_platform->valuestring : NULL,
-                        sysname ? sysname->valuestring : NULL,
-                        release ? release->valuestring : NULL,
-                        version ? version->valuestring : NULL) < 0) {
-
-                        mterror(WM_DATABASE_LOGTAG, "Could not insert OS tuple reading file '%s'.", path);
-                    }
-                } else {
-                    mterror(WM_DATABASE_LOGTAG, "Corrupt line found at file '%s': inventory field not found for OS info.", path);
-                }
-            } else if (!strcmp(type->valuestring, "hardware")) {
-                cJSON * inventory;
-
-                if (inventory = cJSON_GetObjectItem(json, "inventory"), inventory) {
-                    cJSON * board_serial = cJSON_GetObjectItem(inventory, "board_serial");
-                    cJSON * cpu_name = cJSON_GetObjectItem(inventory, "cpu_name");
-                    cJSON * cpu_cores = cJSON_GetObjectItem(inventory, "cpu_cores");
-                    cJSON * cpu_mhz = cJSON_GetObjectItem(inventory, "cpu_mhz");
-                    cJSON * ram_total = cJSON_GetObjectItem(inventory, "ram_total");
-                    cJSON * ram_free = cJSON_GetObjectItem(inventory, "ram_free");
-
-                    if (wdb_insert_hwinfo(db,
-                        board_serial ? board_serial->valuestring : NULL,
-                        cpu_name ? cpu_name->valuestring : NULL,
-                        cpu_cores ? cpu_cores->valueint : 0,
-                        cpu_mhz ? cpu_mhz->valuedouble : 0,
-                        ram_total ? ram_total->valueint : 0,
-                        ram_free ? ram_free->valueint : 0) < 0) {
-
-                        mterror(WM_DATABASE_LOGTAG, "Could not insert hardware tuple reading file '%s'.", path);
-                    }
-                } else {
-                    mterror(WM_DATABASE_LOGTAG, "Corrupt line found at file '%s': inventory field not found for hardware info.", path);
-                }
-            } else {
-                mterror(WM_DATABASE_LOGTAG, "Corrupt line found at file '%s': Unknown type '%s'.", path, type->valuestring);
-                cJSON_Delete(json);
-                continue;
-            }
-
-            count++;
-        } else {
-            mterror(WM_DATABASE_LOGTAG, "Corrupt line found at file '%s': type field not found.", path);
-        }
-
-        cJSON_Delete(json);
-    }
-
-    wdb_commit(db);
-    mtdebug2(WM_DATABASE_LOGTAG, "Syscollector file sync finished. Count: %d. Time: %.3lf ms.", count, (double)(clock() - clock_ini) / CLOCKS_PER_SEC * 1000);
-
-    fclose(fp);
-    return 0;
-}
-
 /*
  * Extract agent name, IP and whether it's a Windows registry database from the file name.
  * Returns 0 on success, 1 to ignore and -1 on error.
@@ -1291,7 +1050,6 @@ wmodule* wm_database_read() {
     data.sync_agents = getDefine_Int("wazuh_database", "sync_agents", 0, 1);
     data.sync_syscheck = getDefine_Int("wazuh_database", "sync_syscheck", 0, 1);
     data.sync_rootcheck = getDefine_Int("wazuh_database", "sync_rootcheck", 0, 1);
-    data.sync_syscollector = getDefine_Int("wazuh_database", "sync_syscollector", 0, 1);
     data.full_sync = getDefine_Int("wazuh_database", "full_sync", 0, 1);
     data.real_time = getDefine_Int("wazuh_database", "real_time", 0, 1);
     data.interval = getDefine_Int("wazuh_database", "interval", 0, 86400);
@@ -1435,14 +1193,6 @@ void wm_inotify_setup(wm_database * data) {
         mtdebug2(WM_DATABASE_LOGTAG, "wd_rootcheck='%d'", wd_rootcheck);
         wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
     }
-
-    if (data->sync_syscollector) {
-        if ((wd_syscollector = inotify_add_watch(inotify_fd, DEFAULTDIR SYSCOLLECTOR_DIR, IN_CLOSE_WRITE | IN_MOVED_TO)) < 0)
-            mterror(WM_DATABASE_LOGTAG, "Couldn't watch Syscollector directory: %s.", strerror(errno));
-
-        mtdebug2(WM_DATABASE_LOGTAG, "wd_syscollector='%d'", wd_syscollector);
-        wm_scan_directory(DEFAULTDIR SYSCOLLECTOR_DIR);
-    }
 }
 
 // Real time inotify reader thread
@@ -1509,8 +1259,6 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                         dirname = DEFAULTDIR SYSCHECK_DIR;
                     } else if (event->wd == wd_rootcheck) {
                         dirname = DEFAULTDIR ROOTCHECK_DIR;
-                    } else if (event->wd == wd_syscollector) {
-                        dirname = DEFAULTDIR SYSCOLLECTOR_DIR;
                     } else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
                         mterror(WM_DATABASE_LOGTAG, "Inotify event queue overflowed.");
                         continue;

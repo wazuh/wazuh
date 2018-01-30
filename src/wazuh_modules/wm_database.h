@@ -18,7 +18,6 @@ typedef struct wm_database {
     int sync_agents;
     int sync_syscheck;
     int sync_rootcheck;
-    int sync_syscollector;
     int full_sync;
     int real_time;
     int interval;
