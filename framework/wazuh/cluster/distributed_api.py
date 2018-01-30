@@ -24,7 +24,7 @@ def send_request_to_node(node, config_cluster, request_type, args, cluster_depth
     error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
                         data="{1} {2} {0}".format('a'*(common.cluster_protocol_plain_size - len(request_type + " " + str(cluster_depth) + " ")), request_type, str(cluster_depth)),
                          file=args.encode())
-    if error != 0 or (isinstance(response, dict) and response.get('error') != None and response['error'] != 0):
+    if error != 0 or ((isinstance(response, dict) and response.get('error') is not None and response['error'] != 0)):
         logging.debug(response)
         result_queue.put({'node': node, 'reason': "{0} - {1}".format(error, response), 'error': 1})
     else:
@@ -56,10 +56,11 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
             if current_result.get('data') == None:
                 current_result = result_node
 
-    elif request_type in list_requests_managers.values() or \
+    elif  isinstance(current_result, dict) and \
+    (request_type in list_requests_managers.values() or \
      request_type in list_requests_wazuh.values() or \
       request_type in list_requests_stats.values() or \
-       request_type == list_requests_cluster['CLUSTER_CONFIG']:
+       request_type == list_requests_cluster['CLUSTER_CONFIG']):
         if current_result.get('items') == None:
             current_result['items'] = []
         if result_node.get('data') != None:
