@@ -73,22 +73,16 @@ def get_instance(request_type):
     instance = None
     if request_type in list_requests_agents.values():
             instance = Agent
-            logging.warning("instance = Agent") #TODO remove
     if request_type in list_requests_wazuh.values():
             instance = myWazuh
-            logging.warning("instance = myWazuh") #TODO remove
     if request_type in list_requests_stats.values():
             instance = stats
-            logging.warning("instance = stats") #TODO remove
     if request_type in list_requests_syscheck.values():
             instance = syscheck
-            logging.warning("instance = syscheck") #TODO remove
     if request_type in list_requests_rootcheck.values():
             instance = rootcheck
-            logging.warning("instance = rootcheck") #TODO remove
     if request_type in list_requests_managers.values():
             instance = manager
-            logging.warning("instance = manager") #TODO remove
     return instance
 
 class WazuhClusterHandler(asynchat.async_chat):

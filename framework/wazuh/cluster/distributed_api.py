@@ -71,12 +71,12 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
             index = len(current_result['items']) -1
 
         if (isinstance(current_result['items'][len(current_result['items'])-1], dict)):
-            current_result['items'][index]['node'] = get_name_from_ip(node)
-            current_result['items'][index]['ip'] = node
+            current_result['items'][index]['node_id'] = get_name_from_ip(node)
+            current_result['items'][index]['url'] = node
         elif (isinstance(current_result['items'][len(current_result['items'])-1], list)):
             current_result['items'][index].append({
-                'node':get_name_from_ip(node),
-                'ip':node})
+                'node_id':get_name_from_ip(node),
+                'url':node})
         if current_result.get('totalItems') == None:
             current_result['totalItems'] = 0
         current_result['totalItems'] += 1
@@ -110,7 +110,7 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, clus
     args_str = " ".join(args)
 
     for node_id in remote_nodes_addr:
-        if node_id != None:
+        if node_id is not None and node_id != "None":
             logging.warning("Sending {2} request from {0} to {1}".format(local_node, node_id, request_type))
 
             # Put agents id
@@ -244,28 +244,44 @@ def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1,
     # Resolve his request in local (only for elected master)
     result_local = None
     result = None
-    if instance != None and get_actual_master()['name'] == config_cluster["node_name"] and get_ip_from_name(config_cluster["node_name"]) in node_agents:
+    if (instance != None or request_type in list_requests_cluster.values()) \
+     and get_actual_master()['name'] == config_cluster["node_name"] \
+     and get_ip_from_name(config_cluster["node_name"]) in node_agents:
         try:
             result_local = {'data':api_request(request_type=request_type, args=args, cluster_depth=0, instance=instance), 'error':0}
         except Exception as e:
             result_local = {'data':str(e), 'error':1}
         del node_agents[get_ip_from_name(config_cluster["node_name"])]
-        result = append_node_result_by_type(get_ip_from_name(config_cluster["node_name"]), result_local, request_type, current_result=result)
 
-    #logging.warning("distributed_api_request: result_local: --> " + str(result_local)) #TODO remove
-
-    if result_local == None or len(node_agents) != 0 :
+    # Distributed
+    if result_local is None or len(node_agents) > 0:
         result = send_request_to_nodes(node_agents, config_cluster, request_type, args, cluster_depth)
-        #logging.warning("distributed_api_request: result_distributed: --> " + str(result)) #TODO remove
-        if result_local != None:
-            result = append_node_result_by_type(get_ip_from_name(config_cluster["node_name"]), result, request_type, current_result=result)
+
+    # Merge local and distributed
+    if result_local is not None:
+        result = append_node_result_by_type(get_ip_from_name(config_cluster["node_name"]), result_local, request_type, current_result=result)
 
     return result
 
 
+def get_node_json():
+    node = get_node()
+    node['node_id'] = node['node']
+    node['url'] = get_ip_from_name(node['node'])
+    del node['node']
+    return node
+
+
+def read_config_json():
+    config_cluster = read_config()
+    del config_cluster["node_name"]
+    del config_cluster["key"]
+    return config_cluster
+
+
 def get_config_distributed(node_id=None, cluster_depth=1):
     if is_a_local_request() or cluster_depth <= 0:
-        return read_config()
+        return read_config_json()
     else:
         if not is_cluster_running():
             raise WazuhException(3015)
@@ -315,7 +331,7 @@ def api_request(request_type, args, cluster_depth, instance=None):
             res = str(e)
 
     elif request_type == list_requests_syscheck['SYSCHECK_LAST_SCAN']:
-        res = instance.last_scan(agent[0])
+        res = instance.last_scan(args[0])
 
     elif request_type == list_requests_syscheck['SYSCHECK_RUN']:
         if (len(args) == 2):
@@ -368,10 +384,9 @@ def api_request(request_type, args, cluster_depth, instance=None):
         res = instance.get_cis(agents, offset, limit, sort, search)
 
     elif request_type == list_requests_rootcheck['ROOTCHECK_LAST_SCAN']:
-        res = instance.last_scan(agent[0])
+        res = instance.last_scan(args[0])
 
     elif request_type == list_requests_rootcheck['ROOTCHECK_RUN']:
-        args = args.split(" ")
         if (len(args) == 2):
             agents = args[0]
             all_agents = ast.literal_eval(args[1])
