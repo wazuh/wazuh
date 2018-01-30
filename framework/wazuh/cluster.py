@@ -370,12 +370,16 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
             send_to_socket(cluster_socket, insert_sql)
             data = cluster_socket.recv(10000)
 
+        all_files = {file:'pending' for file in own_items_names}
+
     else:
         logging.debug("Retrieving {0}'s files from database".format(node))
         all_files = get_file_status(node, cluster_socket)
         # if there are missing files that are not being controled in database
         # add them as pending
-        for missing in divide_list(set(own_items_names) - set(all_files.keys())):
+        set_own_items = set(own_items_names)
+        set_all_files = set(all_files.keys())
+        for missing in divide_list(set_own_items - set_all_files):
             insert_sql = "insert"
             for m in missing:
                 all_files[m] = 'pending'
@@ -383,6 +387,17 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
 
             send_to_socket(cluster_socket, insert_sql)
             data = receive_data_from_db_socket(cluster_socket)
+
+        # remove files that are not present in the filesystem but present in the database
+        for missing in divide_list(set_all_files - set_own_items):
+            delete_sql = "delete1"
+            for m in missing:
+                delete_sql += " {}".format(m)
+
+            send_to_socket(cluster_socket, delete_sql)
+            data = receive_data_from_db_socket(cluster_socket)
+
+    return all_files
 
 
 def connect_to_db_socket(retry=False):
@@ -865,43 +880,6 @@ def get_remote_nodes(connected=True, updateDBname=False):
 
     return list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
 
-def get_file_status_of_one_node(node, own_items_names, cluster_socket):
-    # check files in database
-    count_query = "count {0}".format(node)
-    send_to_socket(cluster_socket, count_query)
-    n_files = int(receive_data_from_db_socket(cluster_socket))
-    if n_files == 0:
-        logging.info("New manager found: {0}".format(node))
-        logging.debug("Adding {0}'s files to database".format(node))
-
-        # if the manager is not in the database, add it with all files
-        for files in divide_list(own_items_names):
-
-            insert_sql = "insert"
-            for file in files:
-                insert_sql += " {0} {1}".format(node, file)
-
-            send_to_socket(cluster_socket, insert_sql)
-            data = receive_data_from_db_socket(cluster_socket)
-
-        all_files = {file:'pending' for file in own_items_names}
-
-    else:
-        logging.debug("Retrieving {0}'s files from database".format(node))
-        all_files = get_file_status(node, cluster_socket)
-        # if there are missing files that are not being controled in database
-        # add them as pending
-        for missing in divide_list(set(own_items_names) - set(all_files.keys())):
-            insert_sql = "insert"
-            for m in missing:
-                all_files[m] = 'pending'
-                insert_sql += " {0} {1}".format(node,m)
-
-            send_to_socket(cluster_socket, insert_sql)
-            data = receive_data_from_db_socket(cluster_socket)
-
-    return all_files
-
 
 def push_updates_single_node(all_files, node_dest, config_cluster, result_queue):
     # filter to send only pending files
@@ -999,7 +977,7 @@ def sync_one_node(debug, node, force=False):
 
     if force:
         clear_file_status_one_node(node, cluster_socket)
-    all_files = get_file_status_of_one_node(node, own_items_names, cluster_socket)
+    all_files = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items)
 
     after = time()
     synchronization_duration += after-before
@@ -1072,7 +1050,7 @@ def sync(debug, force=False):
     for node in remote_nodes:
         if force:
             clear_file_status_one_node(node, cluster_socket)
-        all_nodes_files[node] = get_file_status_of_one_node(node, own_items_names, cluster_socket)
+        all_nodes_files[node] = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items)
 
     after = time()
     synchronization_duration += after-before
