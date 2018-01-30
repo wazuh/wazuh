@@ -15,6 +15,7 @@
 #include "maild.h"
 #include "mail_list.h"
 #include "error_messages/error_messages.h"
+#include "error_messages/debug_messages.h"
 
 static MailNode *n_node;
 static MailNode *lastnode;
@@ -152,4 +153,3 @@ void OS_AddMailtoList(MailMsg *ml)
 
     return;
 }
-

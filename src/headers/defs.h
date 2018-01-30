@@ -22,6 +22,7 @@
 #define OS_TEXT    1
 
 /* Size limit control */
+#define OS_SIZE_61440   61440
 #define OS_SIZE_8192    8192
 #define OS_SIZE_6144    6144
 #define OS_SIZE_4096    4096
@@ -334,6 +335,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MAX_QUEUED_EVENTS_PATH "/proc/sys/fs/inotify/max_queued_events"
 
 #define TMP_DIR "tmp"
+#define TMP_PATH DEFAULTDIR "/" TMP_DIR
 
 /* Windows COMSPEC */
 #define COMSPEC "C:\\Windows\\System32\\cmd.exe"

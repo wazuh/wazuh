@@ -32,6 +32,7 @@
 #include "debug_op.h"
 #include "syscheck.h"
 #include "error_messages/error_messages.h"
+#include "error_messages/debug_messages.h"
 
 /* Prototypes */
 int realtime_checksumfile(const char *file_name) __attribute__((nonnull));

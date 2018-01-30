@@ -29,6 +29,7 @@
 #include <file_op.h>
 #include <sys/stat.h>
 #include <error_messages.h>
+#include <debug_messages.h>
 #include <cJSON.h>
 #include <dirent.h>
 #include <pwd.h>
@@ -156,7 +157,7 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
             sqlite3_close(db);
             mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
         }
-    } 
+    }
     return 0;
 }
 
@@ -335,7 +336,7 @@ void* daemon_socket() {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
             }
-            
+
             int step;
             prepare_db(db, &res, sql);
             if (has1) {
@@ -361,7 +362,7 @@ void* daemon_socket() {
                         }
                         else rc = sqlite3_bind_text(res,2,cmd,-1,0);
                         if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 2nd parameter of query: %s", sqlite3_errmsg(db));
-                    } 
+                    }
                     if (has3) {
                         cmd = strtok(NULL, " ");
                         if (strcmp(sql, sql_ins_fi) == 0) {
@@ -372,7 +373,7 @@ void* daemon_socket() {
                         else rc = sqlite3_bind_text(res,3,cmd,-1,0);
                         if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 3rd parameter of query: %s", sqlite3_errmsg(db));
                     }
-                    
+
                     do {
                         step = sqlite3_step(res);
                         if (step == SQLITE_DONE && !count && !select && !select_files && !response_str) {
@@ -396,7 +397,7 @@ void* daemon_socket() {
                             strcat(response, str);
                         } else if (response_str) {
                             strcpy(response, (char *)sqlite3_column_text(res,0));
-                        } else 
+                        } else
                             strcpy(response, "Command OK");
                     } while (step == SQLITE_ROW || step == SQLITE_OK);
                     sqlite3_clear_bindings(res);
@@ -494,7 +495,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
     char **more_subdirs;
     for (i=0; i<max_files_to_watch; i++) if (subdirs[i] == 0) break;
 
-    if ((dirp = opendir(path)) == NULL) 
+    if ((dirp = opendir(path)) == NULL)
         mterror_exit(INOTIFY_TAG, "Error listing subdirectories of %s: %s", path, strerror(errno));
 
     while ((direntp = readdir(dirp)) != NULL) {
@@ -510,7 +511,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
                 } else *_subdirs = subdirs = more_subdirs;
                 memset(subdirs + found_subdirs + i, 0, 30 * sizeof(char *));
             }
-            
+
             size_t name_size = (sizeof(path) + sizeof(direntp->d_name) + sizeof("/")  + 1) * sizeof(char);
             subdirs[found_subdirs+i] = (char *) malloc(name_size);
             if (snprintf(subdirs[found_subdirs+i], name_size, "%s%s/", path, direntp->d_name) >= (ssize_t)name_size)
@@ -520,7 +521,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
         }
     }
 
-    if (closedir(dirp) < 0) 
+    if (closedir(dirp) < 0)
         mterror(INOTIFY_TAG, "Error closing directory %s: %s", path, strerror(errno));
 
     return found_subdirs;
@@ -799,7 +800,7 @@ void* daemon_inotify(void * args) {
     strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path)-1);
 
     // Create hash table
-    if (ptable = OSHash_Create(), !ptable) 
+    if (ptable = OSHash_Create(), !ptable)
         mterror_exit(INOTIFY_TAG, "At daemon_inotify(): OSHash_Create()");
 
     // Create queue
@@ -820,7 +821,7 @@ void* daemon_inotify(void * args) {
         mtdebug1(INOTIFY_TAG, "Monitoring %s files from directory %s", cJSON_Print(files[i].files), files[i].name);
         files[i].watcher = inotify_add_watch(fd, files[i].path, files[i].flags);
         if (files[i].watcher < 0)
-            mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s", 
+            mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s",
                 files[i].path, strerror(errno));
     }
 
