@@ -1,5 +1,5 @@
   <wodle name="syscollector">
-    <disabled>yes</disabled>
+    <disabled>no</disabled>
     <interval>1h</interval>
     <scan_on_start>yes</scan_on_start>
     <hardware>yes</hardware>
