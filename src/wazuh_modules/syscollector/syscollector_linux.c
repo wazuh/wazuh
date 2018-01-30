@@ -445,7 +445,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
 
             cJSON_AddStringToObject(program, "name", parts[0]);
             cJSON_AddStringToObject(program, "vendor", parts[1]);
-            if (!strcmp(parts[2], "(none):")) {
+            if (!strncmp(parts[2], "(none):", 7)) {
                 char ** epoch = NULL;
                 epoch = OS_StrBreak(':', parts[2], 2);
                 cJSON_AddStringToObject(program, "version", epoch[1]);

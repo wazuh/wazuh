@@ -17,9 +17,11 @@
 #include "external/cJSON/cJSON.h"
 #include "plugin_decoders.h"
 #include "wazuh_modules/wmodules.h"
+#include <time.h>
 
 #define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
+static int send_db(int sock, char * msg);
 static int decode_osinfo(char *agent_id, cJSON * logJSON, int sock);
 static int decode_hardware(char *agent_id, cJSON * logJSON, int sock);
 static int decode_program(char *agent_id, cJSON * logJSON, int sock);
@@ -270,15 +272,11 @@ int decode_osinfo(char *agent_id, cJSON * logJSON, int sock) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        int size = strlen(msg);
-
-        if (send(sock, msg, size + 1, 0) < size) {
+        if (send_db(sock, msg) < 0) {
             merror("At decode_osinfo(): '%s'.", strerror(errno));
-            free(msg);
             return -1;
         }
 
-        free(msg);
     }
 
     return 0;
@@ -287,8 +285,6 @@ int decode_osinfo(char *agent_id, cJSON * logJSON, int sock) {
 int decode_port(char *agent_id, cJSON * logJSON, int sock) {
 
     char * msg = NULL;
-    char response[OS_MAXSTR];
-    ssize_t length;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
@@ -401,27 +397,10 @@ int decode_port(char *agent_id, cJSON * logJSON, int sock) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        int size = strlen(msg);
-
-        if (send(sock, msg, size + 1, 0) < size) {
+        if (send_db(sock, msg) < 0) {
             merror("At decode_port(): '%s'.", strerror(errno));
-            free(msg);
             return -1;
         }
-
-        switch (length = recv(sock, response, OS_MAXSTR, 0), length) {
-            case -1:
-                merror("At decode_port: at recv(): %s (%d)", strerror(errno), errno);
-            case 0:
-                mdebug1("Client disconnected.");
-            default:
-                if (strcmp(response, "ok")) {
-                    merror("At decode_port: received: '%s'", response);
-                    return -1;
-                }
-        }
-
-        free(msg);
 
     } else {
         // Looking for 'end' message.
@@ -437,15 +416,11 @@ int decode_port(char *agent_id, cJSON * logJSON, int sock) {
 
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
             snprintf(msg, OS_MAXSTR - 1, "agent %s port del %d", agent_id, scan_id->valueint);
-            int size = strlen(msg);
 
-            if (send(sock, msg, size + 1, 0) < size) {
+            if (send_db(sock, msg) < 0) {
                 merror("At decode_port(): '%s'.", strerror(errno));
-                free(msg);
                 return -1;
             }
-
-            free(msg);
         }
     }
 
@@ -530,15 +505,10 @@ int decode_hardware(char *agent_id, cJSON * logJSON, int sock) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        int size = strlen(msg);
-
-        if (send(sock, msg, size + 1, 0) < size) {
+        if (send_db(sock, msg) < 0) {
             merror("At decode_hardware(): '%s'.", strerror(errno));
-            free(msg);
             return -1;
         }
-
-        free(msg);
     }
 
     return 0;
@@ -547,8 +517,6 @@ int decode_hardware(char *agent_id, cJSON * logJSON, int sock) {
 int decode_program(char *agent_id, cJSON * logJSON, int sock) {
 
     char * msg = NULL;
-    char response[OS_MAXSTR];
-    ssize_t length;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
@@ -617,27 +585,10 @@ int decode_program(char *agent_id, cJSON * logJSON, int sock) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        int size = strlen(msg);
-
-        if (send(sock, msg, size + 1, 0) < size) {
+        if (send_db(sock, msg) < 0) {
             merror("At decode_program(): '%s'.", strerror(errno));
-            free(msg);
             return -1;
         }
-
-        switch (length = recv(sock, response, OS_MAXSTR, 0), length) {
-            case -1:
-                merror("At decode_program: at recv(): %s (%d)", strerror(errno), errno);
-            case 0:
-                mdebug1("Client disconnected.");
-            default:
-                if (strcmp(response, "ok")) {
-                    merror("At decode_program: received: '%s'", response);
-                    return -1;
-                }
-        }
-
-        free(msg);
 
     } else {
 
@@ -654,15 +605,11 @@ int decode_program(char *agent_id, cJSON * logJSON, int sock) {
 
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
             snprintf(msg, OS_MAXSTR - 1, "agent %s program del %d", agent_id, scan_id->valueint);
-            int size = strlen(msg);
 
-            if (send(sock, msg, size + 1, 0) < size) {
+            if (send_db(sock, msg) < 0) {
                 merror("At decode_program(): '%s'.", strerror(errno));
-                free(msg);
                 return -1;
             }
-
-            free(msg);
         }
     }
 
@@ -672,8 +619,6 @@ int decode_program(char *agent_id, cJSON * logJSON, int sock) {
 int decode_process(char *agent_id, cJSON * logJSON, int sock) {
 
     char * msg = NULL;
-    char response[OS_MAXSTR];
-    ssize_t length;
     int i;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
@@ -934,27 +879,10 @@ int decode_process(char *agent_id, cJSON * logJSON, int sock) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        int msgsize = strlen(msg);
-
-        if (send(sock, msg, msgsize + 1, 0) < msgsize) {
+        if (send_db(sock, msg) < 0) {
             merror("At decode_process(): '%s'.", strerror(errno));
-            free(msg);
             return -1;
         }
-
-        switch (length = recv(sock, response, OS_MAXSTR, 0), length) {
-            case -1:
-                merror("At decode_process: at recv(): %s (%d)", strerror(errno), errno);
-            case 0:
-                mdebug1("Client disconnected.");
-            default:
-                if (strcmp(response, "ok")) {
-                    merror("At decode_process: received: '%s'", response);
-                    return -1;
-                }
-        }
-
-        free(msg);
 
     } else {
         // Looking for 'end' message.
@@ -970,17 +898,57 @@ int decode_process(char *agent_id, cJSON * logJSON, int sock) {
 
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
             snprintf(msg, OS_MAXSTR - 1, "agent %s process del %d", agent_id, scan_id->valueint);
-            int size = strlen(msg);
 
-            if (send(sock, msg, size + 1, 0) < size) {
+            if (send_db(sock, msg) < 0) {
                 merror("At decode_process(): '%s'.", strerror(errno));
-                free(msg);
                 return -1;
             }
-
-            free(msg);
         }
     }
+
+    return 0;
+}
+
+int send_db(int sock, char * msg) {
+
+    char response[OS_MAXSTR];
+    ssize_t length;
+    fd_set fdset;
+    struct timeval timeout = {0, 1000};
+    int size = strlen(msg);
+
+    // Send msg to Wazuh DB
+
+    if (send(sock, msg, size + 1, MSG_DONTWAIT) < size) {
+        merror("at send_db(): %s (%d)", strerror(errno), errno);
+        free(msg);
+        return -1;
+    }
+
+    // Wait for socket
+
+    FD_ZERO(&fdset);
+    FD_SET(sock, &fdset);
+
+    if (select(sock + 1, &fdset, NULL, NULL, &timeout) < 0) {
+        merror("at send_db(): at select(): %s (%d)", strerror(errno), errno);
+        free(msg);
+        return -1;
+    }
+
+    // Receive response from socket
+
+    switch (length = recv(sock, response, OS_MAXSTR, 0), length) {
+        case -1:
+            merror("at send_db(): at recv(): %s (%d)", strerror(errno), errno);
+        default:
+            if (strcmp(response, "ok")) {
+                merror("at send_db(): received: '%s'", response);
+                return -1;
+            }
+    }
+
+    free(msg);
 
     return 0;
 }
