@@ -117,9 +117,16 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         // Get time and execute
         time_start = time(NULL);
 
-        for (eval = ciscat->evals; eval; eval = eval->next)
-            if (!eval->flags.error)
-                wm_ciscat_run(eval, cis_path);
+        for (eval = ciscat->evals; eval; eval = eval->next) {
+            if (!eval->flags.error) {
+                if (IsFile(eval->path) < 0) {
+                    mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
+                } else {
+                    wm_ciscat_run(eval, cis_path);
+                }
+            }
+        }
+
 
         time_sleep = time(NULL) - time_start;
 
@@ -229,6 +236,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     case WM_CISCAT_OVAL:
         mterror(WM_CISCAT_LOGTAG, "Invalid content type. Exiting...");
         pthread_exit(NULL);
+        break;
     default:
         mterror(WM_CISCAT_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
         pthread_exit(NULL);
