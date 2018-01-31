@@ -30,8 +30,9 @@ int wm_config() {
 
     // Read configuration: ossec.conf
 
-    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg) < 0)
-        exit(EXIT_FAILURE);
+    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg) < 0) {
+        return -1;
+    }
 
 #ifdef CLIENT
     // Read configuration: agent.conf
