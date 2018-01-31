@@ -40,12 +40,17 @@
                                             "\"updated\":\"%s\","\
                                             "\"reference\":\"%s\","\
                                             "\"rationale\":\"%s\","\
-                                            "\"affected_packages\":\"%s\""\
+                                            "\"state\":\"%s\","\
+                                            "\"affected_package\":\"%s\""\
                                          "}"\
                                        "}"
+
+#define VU_UBUNTU   "UBUNTU"
 #define VU_PRECISE  "PRECISE"
 #define VU_TRUSTY   "TRUSTY"
 #define VU_XENIAL   "XENIAL"
+#define VU_RHEL     "REDHAT"
+#define VU_CENTOS   "CENTOS"
 #define VU_RHEL5    "RHEL5"
 #define VU_RHEL6    "RHEL6"
 #define VU_RHEL7    "RHEL7"

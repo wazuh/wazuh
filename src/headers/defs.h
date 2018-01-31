@@ -122,7 +122,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 // Database socket
 #define WDB_LOCAL_SOCK "/queue/db/wdb"
-#define WDB_LOCAL_SOCK_FULL_PATH DEFAULTDIR WDB_LOCAL_SOCK
+#ifndef WIN32
+#define WDB_LOCAL_SOCK_PATH DEFAULTDIR WDB_LOCAL_SOCK
+#endif
 
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
@@ -205,6 +207,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define AGENT_INFO_FILE "/queue/ossec/.agent_info"
 #define AGENT_INFO_FILEP DEFAULTDIR AGENT_INFO_FILE
+#define AGENT_INFO_FILEF DEFAULTDIR AGENTINFO_DIR "/%s-%s"
 #else
 #define AGENT_INFO_FILE ".agent_info"
 #define AGENT_INFO_FILEP AGENT_INFO_FILE

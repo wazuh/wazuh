@@ -28,6 +28,28 @@ static const char *XML_TARGET_AGENTS = "target_agents";
 static const char *XML_IGNORED_AGENTS = "ignored_agents";
 static const char *XML_VERSION = "version";
 
+agent_software * skip_agent(agent_software *agents, agent_software **agents_list) {
+    agent_software *next = NULL;
+    if (agents->prev && agents->next) {
+        next = agents->next;
+        agents->prev->next = next;
+        next->prev = agents->prev;
+    } else if (agents->prev) {
+        agents->prev->next = NULL;
+    } else if (agents->next) {
+        *agents_list = next = agents->next;
+        next->prev = NULL;
+    } else {
+        *agents_list = NULL;
+    }
+    free(agents->agent_id);
+    free(agents->agent_name);
+    free(agents->agent_ip);
+    free(agents);
+
+    return next;
+}
+
 int get_interval(char *source, unsigned long *interval) {
     char *endptr;
     *interval = strtoul(source, &endptr, 0);
@@ -56,9 +78,11 @@ int get_interval(char *source, unsigned long *interval) {
     return 0;
 }
 
-int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module)
-{
+int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
+    FILE *fp;
     unsigned int i, j;
+    size_t size;
+    char agent_info[OS_MAXSTR];
     agent_software *agents;
     keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
@@ -113,8 +137,6 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_MIN_CVSS)) {
-
-        } else if (!strcmp(nodes[i]->element, XML_SOURCE)) {
 
         } else if (!strcmp(nodes[i]->element, XML_ANTIQUITY_LIMIT)) {
 
@@ -298,7 +320,7 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module)
                 if (!strcmp(agents->agent_id, entry->id)) {
                     os_strdup(entry->name, agents->agent_name);
                     os_strdup(entry->ip->ip, agents->agent_ip);
-                    os_strdup(VU_XENIAL, agents->OS); //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    agents->OS = NULL;
                     break;
                 }
             }
@@ -332,10 +354,98 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module)
             os_strdup(entry->id, agents->agent_id);
             os_strdup(entry->name, agents->agent_name);
             os_strdup(entry->ip->ip, agents->agent_ip);
-            os_strdup(VU_XENIAL, agents->OS); //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            agents->OS = NULL;
             agents->info = 0;
             agents->next = NULL;
         }
+    }
+
+    // Extracts the operating system of the agents
+    for (agents = vulnerability_detector->agents_software; agents;) {
+        size = snprintf(agent_info, OS_MAXSTR, AGENT_INFO_FILEF, agents->agent_name, agents->agent_ip);
+        agent_info[size] = '\0';
+        // The agent has never been connected
+        if (fp = fopen(agent_info, "r" ), !fp) {
+            mterror(WM_VULNDETECTOR_LOGTAG, VU_AGENT_INFO_ERROR, agents->agent_name);
+            if (agents = skip_agent(agents, &vulnerability_detector->agents_software), !agents) {
+                break;
+            } else {
+                continue;
+            }
+        } else {
+            char *buffer = agent_info;
+            size_t max = OS_MAXSTR;
+
+            // Agent connected or disconnected
+            if (size = getline(&buffer, &max, fp), (int) size > 0) {
+                buffer[size] = '\0';
+                if (buffer = strchr(buffer, '['), buffer) {
+                    buffer++;
+                    *strchr(agent_info, ']') = '\0';
+                    if (strcasestr(buffer, VU_UBUNTU)) {
+                        if (strstr(buffer, " 16")) {
+                            os_strdup(VU_XENIAL, agents->OS);
+                        } else if (strstr(buffer, " 14")) {
+                            os_strdup(VU_TRUSTY, agents->OS);
+                        } else if (strstr(buffer, " 12")) {
+                            os_strdup(VU_PRECISE, agents->OS);
+                        } else {
+                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_UBUNTU, agents->agent_name);
+                            if (agents = skip_agent(agents, &vulnerability_detector->agents_software), !agents) {
+                                break;
+                            } else {
+                                continue;
+                            }
+                        }
+                    } else if (strcasestr(buffer, VU_CENTOS)) {
+                        if (strstr(buffer, " 7")) {
+                            os_strdup(VU_RHEL7, agents->OS);
+                        } else if (strstr(buffer, " 6")) {
+                            os_strdup(VU_RHEL6, agents->OS);
+                        } else if (strstr(buffer, " 5")) {
+                            os_strdup(VU_RHEL5, agents->OS);
+                        } else {
+                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_CENTOS, agents->agent_name);
+                            if (agents = skip_agent(agents, &vulnerability_detector->agents_software), !agents) {
+                                break;
+                            } else {
+                                continue;
+                            }
+                        }
+                    } else {
+                        mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS, agents->agent_name);
+                        if (agents = skip_agent(agents, &vulnerability_detector->agents_software), !agents) {
+                            break;
+                        }
+                    }
+                } else { // Operating system not supported in any of its versions
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_UNSOPPORTED, agents->agent_name);
+                    if (agents = skip_agent(agents, &vulnerability_detector->agents_software), !agents) {
+                        break;
+                    } else {
+                        continue;
+                    }
+                }
+            } else { // Agent in pending state
+                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_PENDING, agents->agent_name);
+                if (agents = skip_agent(agents, &vulnerability_detector->agents_software), !agents) {
+                    break;
+                } else {
+                    continue;
+                }
+            }
+            agents = agents->next;
+        }
+        fclose(fp);
+        fp = NULL;
+    }
+    if (fp) {
+        fclose(fp);
+    }
+
+    if (!vulnerability_detector->agents_software) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_REGISTERED);
+        vulnerability_detector->flags.enabled = 0;
     }
 
     return 0;

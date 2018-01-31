@@ -301,15 +301,13 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     char header[OS_SIZE_256];
     int size;
     agent_software *agents_it;
-    char package_list[OS_MAXSTR];
-    char cve[KEY_SIZE];
-    char title[KEY_SIZE];
-    char severity[KEY_SIZE];
-    char published[KEY_SIZE];
-    char updated[KEY_SIZE];
-    char reference[KEY_SIZE];
-    char rationale[KEY_SIZE];
-    char *pl_it;
+    char *cve;
+    char *title;
+    char *severity;
+    char *published;
+    char *updated;
+    char *reference;
+    char *rationale;
     int i;
 
     for (agents_it = agents, i = 0; agents_it && i < max; agents_it = agents_it->prev, i++) {
@@ -323,65 +321,50 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
         sqlite3_bind_int(stmt, 1,  strtol(agents_it->agent_id, NULL, 10));
         sqlite3_bind_text(stmt, 2, agents_it->OS, -1, NULL);
 
-        *cve = '\0';
-        *package_list = '\0';
-        size = OS_MAXSTR;
-        pl_it = package_list;
         while (sqlite3_step(stmt) == SQLITE_ROW) {
-            int offset = 0;
             char *package;
             char *version;
             char *operation;
             char *operation_value;
-            char *next_cve = NULL;
+            int pending = 0;
+            char state[50];
+            int v_type;
 
-            if (strcmp((next_cve = (char *)sqlite3_column_text(stmt, 0)), cve)) {
-                if (*package_list != '\0') {
-                    //report
-                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_DETECTED_VUL, cve, agents_it->agent_id, package_list);
-                    snprintf(header, OS_SIZE_256, VU_ALERT_HEADER, agents_it->agent_id, agents_it->agent_name, agents_it->agent_ip);
-                    snprintf(alert, OS_MAXSTR, VU_ALERT_JSON, cve, title, severity, published, updated, reference, rationale, package_list);
-                    if (SendMSG(*vu_queue, alert, header, SECURE_MQ) < 0) {
-                        mterror(WM_VULNDETECTOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-                        if ((*vu_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-                            mterror_exit(WM_VULNDETECTOR_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
-                        }
-                    }
-                }
-                snprintf(cve, KEY_SIZE, "%s", next_cve);
-                snprintf(title, KEY_SIZE, "%s", sqlite3_column_text(stmt, 2));
-                snprintf(severity, KEY_SIZE, "%s", sqlite3_column_text(stmt, 3));
-                snprintf(published, KEY_SIZE, "%s", sqlite3_column_text(stmt, 4));
-                snprintf(updated, KEY_SIZE, "%s", sqlite3_column_text(stmt, 5));
-                snprintf(reference, KEY_SIZE, "%s", sqlite3_column_text(stmt, 6));
-                snprintf(rationale, KEY_SIZE, "%s", sqlite3_column_text(stmt, 7));
-                *package_list = '\0';
-                size = OS_MAXSTR;
-                pl_it = package_list;
-            }
+            cve = (char *)sqlite3_column_text(stmt, 0);
             package = (char *)sqlite3_column_text(stmt, 1);
+            title = (char *)sqlite3_column_text(stmt, 2);
+            severity = (char *)sqlite3_column_text(stmt, 3);
+            published = (char *)sqlite3_column_text(stmt, 4);
+            updated = (char *)sqlite3_column_text(stmt, 5);
+            reference = (char *)sqlite3_column_text(stmt, 6);
+            rationale = (char *)sqlite3_column_text(stmt, 7);
             version = (char *)sqlite3_column_text(stmt, 8);
             operation = (char *)sqlite3_column_text(stmt, 9);
             operation_value = (char *)sqlite3_column_text(stmt, 10);
+            pending = sqlite3_column_int(stmt, 11);
 
-            int v_type;
-            if (v_type = wm_checks_package_vulnerability(package, version, operation, operation_value), v_type) {
-                offset = snprintf(pl_it, size, "%s%s %s", (*package_list != '\0')?", ":"", package, (v_type != 2)? "(fixable)": "(unfixed)");
-                if (size -= offset, size < 0) {
-                    pl_it[OS_MAXSTR -1] = pl_it[OS_MAXSTR -2] = pl_it[OS_MAXSTR -3] = '.';
-                    break;
-                }
-                pl_it += offset;
-            } else {
-                mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_NOT_VULN, package, version, operation_value, agents_it->agent_id);
+            if (*updated == '\0') {
+                updated = published;
             }
-        }
+            if (pending) {
+                size = snprintf(state, 30, "Pending confirmation");
+            } else if (v_type = wm_checks_package_vulnerability(package, version, operation, operation_value), v_type) {
+                if (v_type != 2) {
+                    size = snprintf(state, 15, "Fixed");
+                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VER_VULN, package, version, operation_value, agents_it->agent_id, cve);
+                } else {
+                    size = snprintf(state, 15, "Unfixed");
+                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VULN, package, cve);
+                }
+            } else {
+                mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_NOT_VULN, package, version, operation_value, agents_it->agent_id, cve);
+                continue;
+            }
+            state[size] = '\0';
 
-        if (strcmp(cve, " ")) {
-            //report
-            mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_DETECTED_VUL, cve, agents_it->agent_id, package_list);
             snprintf(header, OS_SIZE_256, VU_ALERT_HEADER, agents_it->agent_id, agents_it->agent_name, agents_it->agent_ip);
-            snprintf(alert, OS_MAXSTR, VU_ALERT_JSON, cve, title, severity, published, updated, reference, rationale, package_list);
+            snprintf(alert, OS_MAXSTR, VU_ALERT_JSON, cve, title, severity, published, updated, reference, rationale, state, package);
+
             if (SendMSG(*vu_queue, alert, header, SECURE_MQ) < 0) {
                 mterror(WM_VULNDETECTOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                 if ((*vu_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
@@ -413,7 +396,7 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     }
 
     wm_vulnerability_detector_remove_OS_table(db, AGENTS_TABLE2, NULL);
-    for (i = 1, agents_it = agents; agents_it; i++, agents_it = agents_it->next) {
+    for (i = 1, agents_it = agents;; i++) {
         if (wm_vulnerability_detector_get_software_info(agents_it, db)) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR);
             return OS_INVALID;
@@ -424,12 +407,16 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
             i = 0;
             wm_vulnerability_detector_remove_OS_table(db, AGENTS_TABLE2, NULL);
         }
+        if (agents_it->next) {
+            agents_it = agents_it->next;
+        } else {
+            break;
+        }
     }
 
     if (!VU_AGENT_REQUEST_LIMIT) {
-        wm_vulnerability_detector_report_agent_vulnerabilities(agents, db, i - 1);
+        wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
     }
-
 
     sqlite3_close(db);
     return 0;
@@ -1494,13 +1481,13 @@ int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 
 
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
 
-    for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_FULL_PATH, SOCK_STREAM, OS_MAXSTR)) < 1; i++) {
-        mterror(WM_VULNDETECTOR_LOGTAG, "Unable to connect to socket '%s'. Waiting %d seconds.", WDB_LOCAL_SOCK_FULL_PATH, i);
+    for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR)) < 1; i++) {
+        mterror(WM_VULNDETECTOR_LOGTAG, "Unable to connect to socket '%s'. Waiting %d seconds.", WDB_LOCAL_SOCK_PATH, i);
         sleep(i);
     }
 
     if (i == VU_MAX_WAZUH_DB_ATTEMPS) {
-        mterror(WM_VULNDETECTOR_LOGTAG, "Unable to connect to socket '%s'.", WDB_LOCAL_SOCK_FULL_PATH);
+        mterror(WM_VULNDETECTOR_LOGTAG, "Unable to connect to socket '%s'.", WDB_LOCAL_SOCK_PATH);
         return OS_INVALID;
     }
 
