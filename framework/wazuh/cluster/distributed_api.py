@@ -112,7 +112,7 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, clus
 
     for node_id in remote_nodes_addr:
         if node_id is not None and node_id != "None":
-            logging.warning("Sending {2} request from {0} to {1}".format(local_node, node_id, request_type))
+            logging.info("Sending {2} request from {0} to {1}".format(local_node, node_id, request_type))
 
             # Put agents id
             if remote_nodes.get(node_id) != None and len(remote_nodes[node_id]) > 0:
@@ -198,7 +198,7 @@ def parse_node_agents_to_dic(node_agents_str):
 def distributed_api_request(request_type, agent_id={}, args=[], cluster_depth=1, affected_nodes=[], from_cluster=False, instance=None):
 
     config_cluster = read_config()
-    logging.warning("Received request_type-> " + str(request_type) + " | agent_id-> " + str(agent_id) + " | cluster_depth-> " + str(cluster_depth) + " | affected_nodes-> " + str(affected_nodes) + " | from_cluster-> " + str(from_cluster))#TODO remove
+    logging.debug("Received request. request_type-> " + str(request_type) + " | agent_id-> " + str(agent_id) + " | cluster_depth-> " + str(cluster_depth) + " | affected_nodes-> " + str(affected_nodes) + " | from_cluster-> " + str(from_cluster))
     if agent_id != None and isinstance(agent_id, dict):
         node_agents = agent_id
     else:
