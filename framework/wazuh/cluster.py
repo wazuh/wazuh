@@ -950,6 +950,12 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, resu
         error = 0
 
 
+    if error != 0:
+        logging.error(res)
+        result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
+                          'error': 1, 'files':{'updated':[], 'deleted':[],
+                                        'error':list(map(itemgetter(0), pending_files))}})
+
     if res['error'] != 0:
         logging.debug(res)
         result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
