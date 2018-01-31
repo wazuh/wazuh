@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - [Added support for multiple masters in cluster.](https://github.com/wazuh/wazuh/pull/353)
 - [Added type of node in API call `GET/cluster/nodes` and `cluster_control --nodes`](https://github.com/wazuh/wazuh/pull/353)
 - Added support for API in cluster ([#362](https://github.com/wazuh/wazuh/pull/362)).
+- Added support for Windows to CIS-CAT integration module ([#369](https://github.com/wazuh/wazuh/pull/369))
 
 ### Changed
 - [Return API call `GET/cluster/files` by node name instead of by node IP.](https://github.com/wazuh/wazuh/pull/353)
