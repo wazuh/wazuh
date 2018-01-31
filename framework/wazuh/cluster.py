@@ -583,8 +583,8 @@ def update_file_info_bd(cluster_socket, files):
     """
     Function to update the files' information in database
     """
-    query = "insertfile "
     for file in divide_list(files.items()):
+        query = "insertfile "
         for fname, finfo in file:
             query += "{} {} {} ".format(fname, finfo['md5'], finfo['timestamp'])
 
