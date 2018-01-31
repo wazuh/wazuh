@@ -11,6 +11,7 @@
 
 #ifndef WIN32
 #include "wazuh_modules/wmodules.h"
+#include "addagent/manage_agents.h"
 
 //Options
 static const char *XML_DISABLED = "disabled";
@@ -57,7 +58,10 @@ int get_interval(char *source, unsigned long *interval) {
 
 int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module)
 {
-    int i, j;
+    unsigned int i, j;
+    agent_software *agents;
+    keystore keys = KEYSTORE_INITIALIZER;
+    keyentry *entry;
     wm_vulnerability_detector_t * vulnerability_detector;
 
     os_calloc(1, sizeof(wm_vulnerability_detector_t), vulnerability_detector);
@@ -117,7 +121,6 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module)
         } else if (!strcmp(nodes[i]->element, XML_TARGET_AGENTS)) {
             int k;
             int agent_id;
-            agent_software *agents;
             char * ids = nodes[i]->content;
 
             if (!vulnerability_detector->agents_software) {
@@ -128,6 +131,7 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module)
                 vulnerability_detector->agents_software->agent_ip = NULL;
                 vulnerability_detector->agents_software->prev = NULL;
                 vulnerability_detector->agents_software->OS = NULL;
+                vulnerability_detector->agents_software->info = 0;
                 //vulnerability_detector->agents_software->packages = NULL;
             }
             agents = vulnerability_detector->agents_software;
@@ -152,6 +156,7 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module)
                         agents->OS = NULL;
                         agents->agent_name = NULL;
                         agents->agent_ip = NULL;
+                        agents->info = 0;
                         //agents->packages = NULL;
                     }
                     os_calloc(1, 5, agents->agent_id);
@@ -276,6 +281,61 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module)
 
     if (vulnerability_detector->flags.u_flags.update_nvd || vulnerability_detector->flags.u_flags.update_ubuntu || vulnerability_detector->flags.u_flags.update_redhat) {
         vulnerability_detector->flags.u_flags.update = 1;
+    }
+
+    if (vulnerability_detector->agents_software) {
+        OS_PassEmptyKeyfile();
+        OS_ReadKeys(&keys, 0, 0, 0);
+        if (!keys.keysize) {
+            mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_REGISTERED);
+            vulnerability_detector->flags.enabled = 0;
+            return 0;
+        }
+
+        for (agents = vulnerability_detector->agents_software; agents; agents = agents->next) {
+            for (i = 0; i < keys.keysize; i++) {
+                entry = keys.keyentries[i];
+                if (!strcmp(agents->agent_id, entry->id)) {
+                    os_strdup(entry->name, agents->agent_name);
+                    os_strdup(entry->ip->ip, agents->agent_ip);
+                    os_strdup(VU_XENIAL, agents->OS); //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    break;
+                }
+            }
+            if (i == keys.keysize) {
+                mterror(WM_VULNDETECTOR_LOGTAG, "Agent %s does not exist.", agents->agent_id);
+                return OS_INVALID;
+            }
+        }
+    } else {
+        OS_PassEmptyKeyfile();
+        OS_ReadKeys(&keys, 0, 0, 0);
+        if (!keys.keysize) {
+            mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_REGISTERED);
+            vulnerability_detector->flags.enabled = 0;
+            return 0;
+        }
+        agents = NULL;
+
+        for (i = 0; i < keys.keysize; i++) {
+            entry = keys.keyentries[i];
+            if (agents) {
+                os_calloc(1, sizeof(agent_software), agents->next);
+                agents->next->prev = agents;
+                agents = agents->next;
+            } else {
+                os_calloc(1, sizeof(agent_software), vulnerability_detector->agents_software);
+                agents = vulnerability_detector->agents_software;
+                agents->prev = NULL;
+            }
+
+            os_strdup(entry->id, agents->agent_id);
+            os_strdup(entry->name, agents->agent_name);
+            os_strdup(entry->ip->ip, agents->agent_ip);
+            os_strdup(VU_XENIAL, agents->OS); //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            agents->info = 0;
+            agents->next = NULL;
+        }
     }
 
     return 0;

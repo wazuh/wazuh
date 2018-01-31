@@ -21,3 +21,4 @@
 #define VU_STOP_REFRESH_DB    "(5439): Refresh of Ubuntu %s database finished."
 #define VU_DB_TIMESTAMP_OVAL  "(5440): %s OVAL has not been downloaded before, so the download continues."
 #define VU_STARTING_UPDATE    "(5431): Starting %s DB update..."
+#define VU_AGENT_SOFTWARE_REQ "(5432): Requesting Agent %s software..."

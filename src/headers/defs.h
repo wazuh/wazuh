@@ -122,6 +122,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 // Database socket
 #define WDB_LOCAL_SOCK "/queue/db/wdb"
+#define WDB_LOCAL_SOCK_FULL_PATH DEFAULTDIR WDB_LOCAL_SOCK
 
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"

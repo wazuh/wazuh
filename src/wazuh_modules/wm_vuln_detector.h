@@ -27,7 +27,9 @@
 #define KEY_SIZE OS_SIZE_6144
 #define VU_SSL_BUFFER OS_MAXSTR
 #define VU_MAX_VERSION_ATTEMPS 15
+#define VU_MAX_WAZUH_DB_ATTEMPS 5
 #define VU_MAX_TIMESTAMP_ATTEMPS 4
+#define VU_AGENT_REQUEST_LIMIT   0
 #define VU_ALERT_HEADER "[%s] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":{"\
                                          "\"vulnerability\":{"\
@@ -80,6 +82,7 @@ typedef struct agent_software {
     char *agent_name;
     char *agent_ip;
     char *OS;
+    char info;
     struct agent_software *next;
     struct agent_software *prev;
 } agent_software;

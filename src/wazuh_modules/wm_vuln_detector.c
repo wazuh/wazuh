@@ -9,11 +9,14 @@
  * Foundation.
  */
 
+#ifndef WIN32
+
 #include "wmodules.h"
 #include "wm_vuln_detector_db.h"
 #include "external/sqlite/sqlite3.h"
 #include <netinet/tcp.h>
 #include <openssl/ssl.h>
+#include <os_net/os_net.h>
 
 static void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerability_detector);
 static void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerability_detector);
@@ -29,7 +32,7 @@ int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS
 int wm_vulnerability_detector_sql_error(sqlite3 *db);
 int wm_vulnerability_detector_sql_exec(sqlite3 *db, char *sql, size_t size, int allows_constr);
 int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db);
-int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db);
+int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, int max);
 int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents);
 int wm_vulnerability_detector_sql_prepare(sqlite3 *db, char *sql, size_t size, sqlite3_stmt **stmt);
 int wm_checks_package_vulnerability(const char *package, char *version, const char *operation, char *operation_value);
@@ -292,7 +295,7 @@ int wm_checks_package_vulnerability(const char *package, char *version, const ch
     return 2;
 }
 
-int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db) {
+int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, int max) {
     sqlite3_stmt *stmt = NULL;
     char alert[OS_MAXSTR];
     char header[OS_SIZE_256];
@@ -307,8 +310,13 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     char reference[KEY_SIZE];
     char rationale[KEY_SIZE];
     char *pl_it;
+    int i;
 
-    for (agents_it = agents; agents_it; agents_it = agents_it->prev) {
+    for (agents_it = agents, i = 0; agents_it && i < max; agents_it = agents_it->prev, i++) {
+        if (!agents_it->info) {
+            continue;
+        }
+
         if (sqlite3_prepare_v2(db, VU_JOIN_QUERY, -1, &stmt, NULL) != SQLITE_OK) {
             return wm_vulnerability_detector_sql_error(db);
         }
@@ -393,7 +401,6 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     agent_software *agents_it;
     sqlite3 *db;
     int i;
-    int limit = 0;
 
     if (!agents) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_AG_TARGET_ERROR);
@@ -406,21 +413,21 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     }
 
     wm_vulnerability_detector_remove_OS_table(db, AGENTS_TABLE2, NULL);
-    for (i = 0, agents_it = agents; agents_it; i++, agents_it = agents_it->next) {
+    for (i = 1, agents_it = agents; agents_it; i++, agents_it = agents_it->next) {
         if (wm_vulnerability_detector_get_software_info(agents_it, db)) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR);
             return OS_INVALID;
         }
 
-        if (limit && i > limit) {
-            wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db);
+        if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
+            wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
             i = 0;
             wm_vulnerability_detector_remove_OS_table(db, AGENTS_TABLE2, NULL);
         }
     }
 
-    if (!limit) {
-        wm_vulnerability_detector_report_agent_vulnerabilities(agents, db);
+    if (!VU_AGENT_REQUEST_LIMIT) {
+        wm_vulnerability_detector_report_agent_vulnerabilities(agents, db, i - 1);
     }
 
 
@@ -492,6 +499,7 @@ int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS
 int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) {
     sqlite3 *db;
     sqlite3_stmt *stmt = NULL;
+    int result;
     oval_metadata *met_it = &parsed_oval->metadata;
     vulnerability *vul_it = parsed_oval->vulnerabilities;
     info_state *state_it = parsed_oval->info_states;
@@ -501,7 +509,6 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
     if (sqlite3_open_v2(CVE_DB2, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
         return wm_vulnerability_detector_sql_error(db);
     }
-
     if (wm_vulnerability_detector_remove_OS_table(db, CVE_TABLE2, parsed_oval->OS)        ||
         wm_vulnerability_detector_remove_OS_table(db, METADATA_TABLE2, parsed_oval->OS)   ||
         wm_vulnerability_detector_remove_OS_table(db, CVE_INFO_TABLE2, parsed_oval->OS)) {
@@ -509,6 +516,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
     }
 
     sqlite3_exec(db, BEGIN_T, NULL, NULL, NULL);
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Previous OVAL removed.");
 
     while (vul_it) {
         // If you do not have this field, it has been discarded by the preparser and the OS is not affected
@@ -524,7 +532,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
             sqlite3_bind_text(stmt, 5, vul_it->state_id, -1, NULL);
             sqlite3_bind_text(stmt, 6, NULL, -1, NULL);
 
-            if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+            if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                 return wm_vulnerability_detector_sql_error(db);
             }
             sqlite3_finalize(stmt);
@@ -538,6 +546,8 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
         free(vul_aux);
     }
 
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Vulnerable packages have been inserted.");
+
     while (test_it) {
         if (test_it->state) {
             if (sqlite3_prepare_v2(db, VU_UPDATE_CVE, -1, &stmt, NULL) != SQLITE_OK) {
@@ -545,7 +555,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
             }
             sqlite3_bind_text(stmt, 1, test_it->state, -1, NULL);
             sqlite3_bind_text(stmt, 2, test_it->id, -1, NULL);
-            if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+            if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                 return wm_vulnerability_detector_sql_error(db);
             }
         } else {
@@ -554,7 +564,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
             }
             sqlite3_bind_text(stmt, 1, "exists", -1, NULL);
             sqlite3_bind_text(stmt, 2, test_it->id, -1, NULL);
-            if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+            if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                 return wm_vulnerability_detector_sql_error(db);
             }
         }
@@ -566,33 +576,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
         free(test_aux);
     }
 
-    while (test_it) {
-        if (test_it->state) {
-            if (sqlite3_prepare_v2(db, VU_UPDATE_CVE, -1, &stmt, NULL) != SQLITE_OK) {
-                return wm_vulnerability_detector_sql_error(db);
-            }
-            sqlite3_bind_text(stmt, 1, test_it->state, -1, NULL);
-            sqlite3_bind_text(stmt, 2, test_it->id, -1, NULL);
-            if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
-                return wm_vulnerability_detector_sql_error(db);
-            }
-        } else {
-            if (sqlite3_prepare_v2(db, VU_UPDATE_CVE, -1, &stmt, NULL) != SQLITE_OK) {
-                return wm_vulnerability_detector_sql_error(db);
-            }
-            sqlite3_bind_text(stmt, 1, "exists", -1, NULL);
-            sqlite3_bind_text(stmt, 2, test_it->id, -1, NULL);
-            if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
-                return wm_vulnerability_detector_sql_error(db);
-            }
-        }
-        sqlite3_finalize(stmt);
-        info_test *test_aux = test_it;
-        test_it = test_it->prev;
-        free(test_aux->id);
-        free(test_aux->state);
-        free(test_aux);
-    }
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Inserting vulnerability conditions...");
 
     while (state_it) {
         if (sqlite3_prepare_v2(db, VU_UPDATE_CVE2, -1, &stmt, NULL) != SQLITE_OK) {
@@ -601,7 +585,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
         sqlite3_bind_text(stmt, 1, state_it->operation, -1, NULL);
         sqlite3_bind_text(stmt, 2, state_it->operation_value, -1, NULL);
         sqlite3_bind_text(stmt, 3, state_it->id, -1, NULL);
-        if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+        if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
             return wm_vulnerability_detector_sql_error(db);
         }
         sqlite3_finalize(stmt);
@@ -612,6 +596,8 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
         free(state_aux->operation_value);
         free(state_aux);
     }
+
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Vulnerability conditions inserted.");
 
     while (info_it) {
         char date_diff;
@@ -637,7 +623,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
         sqlite3_bind_text(stmt, 6, info_it->reference, -1, NULL);
         sqlite3_bind_text(stmt, 7, parsed_oval->OS, -1, NULL);
         sqlite3_bind_text(stmt, 8, info_it->description, -1, NULL);
-        if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+        if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
             return wm_vulnerability_detector_sql_error(db);
         }
         sqlite3_finalize(stmt);
@@ -654,6 +640,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
         free(info_aux->description);
         free(info_aux);
     }
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Vulnerability conditions inserted.");
 
     if (sqlite3_prepare_v2(db, VU_INSERT_METADATA, -1, &stmt, NULL) != SQLITE_OK) {
         return wm_vulnerability_detector_sql_error(db);
@@ -663,16 +650,19 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
     sqlite3_bind_text(stmt, 3, met_it->product_version, -1, NULL);
     sqlite3_bind_text(stmt, 4, met_it->schema_version, -1, NULL);
     sqlite3_bind_text(stmt, 5, met_it->timestamp, -1, NULL);
-    if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+    if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         return wm_vulnerability_detector_sql_error(db);
     }
     sqlite3_finalize(stmt);
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Metadata inserted.");
+
     free(met_it->product_name);
     free(met_it->product_version);
     free(met_it->schema_version);
     free(met_it->timestamp);
 
     sqlite3_exec(db, END_T, NULL, NULL, NULL);
+
     return 0;
 }
 
@@ -1351,7 +1341,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
                 sqlite3 *db;
                 timestamp_found = 1;
 
-                if (sqlite3_open_v2(CVE_DB2, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
+                if (sqlite3_open_v2(CVE_DB2, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
                     update = 0;
                 } else {
                     char sql[MAX_QUERY_SIZE];
@@ -1361,6 +1351,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
                     snprintf(values, MAX_QUERY_SIZE, "OS = '%s'", OS);
                     query_size = snprintf(sql, MAX_QUERY_SIZE, SELECT_QUERY, "TIMESTAMP", METADATA_TABLE2, values);
                     if (wm_vulnerability_detector_sql_prepare(db, sql, query_size, &stmt)) {
+                        sqlite3_close(db);
                         return OS_INVALID;
                     }
 
@@ -1492,65 +1483,116 @@ int wm_vulnerability_detector_updatedb(update_flags *flags, time_intervals *max,
 };
 
 int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 *db) {
-    char str[OS_MAXSTR];
-    char *buffer;
+    int sock;
+    unsigned int i;
+    int size;
+    char buffer[OS_MAXSTR];
+    char json_str[OS_MAXSTR];
     sqlite3_stmt *stmt;
-    int max_size;
-    ssize_t read_size;
-    FILE *input;
+    cJSON *obj = NULL;
+    cJSON *package_list = NULL;
 
-    if (input = fopen(JSON_FILE_TEST, "r" ), !input) {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_OPEN_FILE_ERROR, JSON_FILE_TEST);
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
+
+    for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_FULL_PATH, SOCK_STREAM, OS_MAXSTR)) < 1; i++) {
+        mterror(WM_VULNDETECTOR_LOGTAG, "Unable to connect to socket '%s'. Waiting %d seconds.", WDB_LOCAL_SOCK_FULL_PATH, i);
+        sleep(i);
     }
 
-    sqlite3_exec(db, BEGIN_T, NULL, NULL, NULL);
+    if (i == VU_MAX_WAZUH_DB_ATTEMPS) {
+        mterror(WM_VULNDETECTOR_LOGTAG, "Unable to connect to socket '%s'.", WDB_LOCAL_SOCK_FULL_PATH);
+        return OS_INVALID;
+    }
 
-new_array:
-    max_size = OS_MAXSTR;
-    buffer = str;
-    while (read_size = getline(&buffer, (size_t *)&max_size, input), read_size > 0) {
-        size_t buffer_len = strlen(buffer);
-        if ((buffer_len == 3 && buffer[0] == '}' && buffer[1] == ',' && buffer[2] == '\n') ||
-            (buffer_len == 2 && buffer[0] == '}' && buffer[1] == '\n')) {
-                cJSON *obj2, *data;
-                buffer[1] = '\0';
+    i = 0;
+    size = snprintf(buffer, OS_MAXSTR, VU_SOFTWARE_REQUEST, agent->agent_id, VU_MAX_PACK_REQ, i);
+    if (send(sock, buffer, size + 1, 0) < size) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
+        return OS_INVALID;
+    }
 
-                if (obj2 = cJSON_Parse(str), !obj2 || !cJSON_IsObject(obj2)) {
-                    return OS_INVALID;
+    while (size = recv(sock, buffer, OS_MAXSTR, 0), size) {
+        if (size < 10) {
+            break;
+        }
+        buffer[size] = '\0';
+        if (size != -1) {
+            if (!strncmp(buffer, "ok", 2)) {
+                buffer[0] = buffer[1] = ' ';
+                size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
+                json_str[size] = '\0';
+            } else {
+                goto error;
+            }
+            if (obj) {
+                cJSON *new_obj;
+                cJSON *data;
+                if (new_obj = cJSON_Parse(json_str), !new_obj || !cJSON_IsObject(new_obj)) {
+                    goto error;
                 }
-                data = cJSON_GetObjectItem(obj2,"program");
-
-                if (sqlite3_prepare_v2(db, VU_INSERT_AGENTS, -1, &stmt, NULL) != SQLITE_OK) {
-                    return wm_vulnerability_detector_sql_error(db);
+                data = cJSON_GetObjectItem(new_obj, "data");
+                if (data) {
+                    cJSON_AddItemToArray(package_list, data->child);
                 }
-
-                sqlite3_bind_text(stmt, 1, agent->agent_id, -1, NULL);
-                sqlite3_bind_text(stmt, 2, cJSON_GetObjectItem(data, "name")->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt, 3, cJSON_GetObjectItem(data, "version")->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt, 4, cJSON_GetObjectItem(data, "arch")->valuestring, -1, NULL);
-
-                if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
-                    return wm_vulnerability_detector_sql_error(db);
+                free(new_obj);
+                free(data->string);
+                free(data);
+            } else if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
+                package_list = cJSON_GetObjectItem(obj, "data");
+                if (!package_list) {
+                    goto error;
                 }
-                sqlite3_finalize(stmt);
-
-                cJSON_Delete(obj2);
-                goto new_array;
+            } else {
+                goto error;
             }
 
-        max_size -= read_size;
-        buffer += read_size;
-        if (max_size < 0) {
-            break;
+
+            i += VU_MAX_PACK_REQ;
+            size = snprintf(buffer, OS_MAXSTR, VU_SOFTWARE_REQUEST, agent->agent_id, VU_MAX_PACK_REQ, i);
+            if (send(sock, buffer, size + 1, 0) < size) {
+                mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
+                goto error;
+            }
+        } else {
+            goto error;
         }
     }
 
-    sqlite3_exec(db, END_T, NULL, NULL, NULL);
-    fclose(input);
-    os_strdup(VU_XENIAL, agent->OS);
-    os_strdup("centt", agent->agent_name);
-    os_strdup("any", agent->agent_ip);
+
+    if (package_list) {
+        sqlite3_exec(db, BEGIN_T, NULL, NULL, NULL);
+        for (package_list = package_list->child; package_list; package_list = package_list->next) {
+            if (sqlite3_prepare_v2(db, VU_INSERT_AGENTS, -1, &stmt, NULL) != SQLITE_OK) {
+                return wm_vulnerability_detector_sql_error(db);
+            }
+
+            sqlite3_bind_text(stmt, 1, agent->agent_id, -1, NULL);
+            sqlite3_bind_text(stmt, 2, cJSON_GetObjectItem(package_list, "name")->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt, 3, cJSON_GetObjectItem(package_list, "version")->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt, 4, cJSON_GetObjectItem(package_list, "architecture")->valuestring, -1, NULL);
+
+            if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+                return wm_vulnerability_detector_sql_error(db);
+            }
+            sqlite3_finalize(stmt);
+        }
+        sqlite3_exec(db, END_T, NULL, NULL, NULL);
+        agent->info = 1;
+    } else {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
+    }
+
+    if (obj) {
+        cJSON_Delete(obj);
+    }
+    close(sock);
     return 0;
+error:
+    if (obj) {
+        cJSON_Delete(obj);
+    }
+    close(sock);
+    return OS_INVALID;
 }
 
 void wm_vulnerability_update_intervals(time_intervals *remaining, time_t time_sleep) {
@@ -1651,3 +1693,5 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
 void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerability_detector) {
 
 }
+
+#endif
