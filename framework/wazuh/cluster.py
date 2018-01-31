@@ -14,7 +14,7 @@ import sqlite3
 from datetime import datetime
 from hashlib import sha512
 from time import time, mktime, sleep
-from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror
+from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror, remove
 from subprocess import check_output
 from shutil import rmtree
 from io import BytesIO
@@ -253,7 +253,7 @@ def get_file_info(filename, cluster_items):
     return file_item
 
 
-def compress_files(list_path, node_type):
+def compress_files(list_path, node_type, tobedeleted_files):
     zipped_file = BytesIO()
     with zipfile.ZipFile(zipped_file, 'w') as zf:
         # write files
@@ -268,6 +268,10 @@ def compress_files(list_path, node_type):
             try:
                 local_groups = [x['name'] for x in Agent.get_all_groups(limit=None)['items']]
                 zf.writestr("remote_groups.txt", '\n'.join(local_groups), compression)
+
+                if len(tobedeleted_files) > 0:
+                    zf.writestr("remote_deleted.txt", '\n'.join(tobedeleted_files), compression)
+
             except Exception as e:
                 raise WazuhException(3001, str(e))
 
@@ -323,7 +327,7 @@ def get_nodes(updateDBname=False):
                          'status':'connected', 'cluster':response['cluster']})
 
             if updateDBname:
-                query = "insertname " +response['node'] + " " + url 
+                query = "insertname " +response['node'] + " " + url
                 send_to_socket(cluster_socket, query)
                 receive_data_from_db_socket(cluster_socket)
 
@@ -346,7 +350,7 @@ def get_node(name=None):
     return data
 
 
-def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket=None, own_items=None):
+def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket=None, own_items=None, remove_rows=False):
     if not own_items:
         own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
     own_items_names = own_items.keys()
@@ -390,14 +394,25 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
             data = receive_data_from_db_socket(cluster_socket)
 
         # remove files that are not present in the filesystem but present in the database
-        for missing in divide_list(set_all_files - set_own_items):
+        # and have not been marked as deleted
+        files_in_db = set_all_files - set_own_items
+        for missing in divide_list(filter(lambda x: all_files[x] != "tobedeleted"
+                                    and all_files[x] != 'deleted', files_in_db)):
+            delete_sql = "update2"
             removed = True
-            delete_sql = "delete1"
             for m in missing:
-                delete_sql += " {}".format(m)
+                delete_sql += " tobedeleted {} {}".format(node, m)
 
             send_to_socket(cluster_socket, delete_sql)
             data = receive_data_from_db_socket(cluster_socket)
+
+        if remove_rows:
+            for deleted in divide_list(filter(lambda x: all_files[x] == 'deleted', set_all_files)):
+                delete_sql = "delete2"
+                for d in deleted:
+                    delete_sql += " {} {}".format(node,d)
+                send_to_socket(cluster_socket, delete_sql)
+                data = receive_data_from_db_socket(cluster_socket)
 
     return all_files, removed
 
@@ -405,7 +420,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
 def connect_to_db_socket(retry=False):
     if not  check_cluster_status():
         raise WazuhException(3013)
-        
+
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     max_retries = 100 if retry else 1
     n_retries = 0
@@ -542,7 +557,7 @@ def get_last_sync():
     cluster_socket = connect_to_db_socket()
 
     send_to_socket(cluster_socket, "sellast")
-    
+
     date, duration = receive_data_from_db_socket(cluster_socket).split(" ")
 
     cluster_socket.close()
@@ -566,7 +581,7 @@ def clear_file_status_one_node(manager, cluster_socket):
 
 def update_file_info_bd(cluster_socket, files):
     """
-    Function to update the files' information in database 
+    Function to update the files' information in database
     """
     query = "insertfile "
     for file in divide_list(files.items()):
@@ -580,13 +595,13 @@ def update_file_info_bd(cluster_socket, files):
 def clear_file_status():
     """
     Function to set all database files' status to pending
-    """    
+    """
     # Get information of files from filesystem
     config_cluster = read_config()
     if not config_cluster:
         raise WazuhException(3000, "No config found")
-    own_items = list_files_from_filesystem(config_cluster['node_type'], get_cluster_items())  
-       
+    own_items = list_files_from_filesystem(config_cluster['node_type'], get_cluster_items())
+
     cluster_socket = connect_to_db_socket(retry=True)
 
     # n files DB
@@ -594,7 +609,7 @@ def clear_file_status():
     n_files_db = int(receive_data_from_db_socket(cluster_socket))
 
     # Only update status for modified files
-    if n_files_db > 0: 
+    if n_files_db > 0:
         # Get information of files from DB (limit = 100)
         query = "selfiles 100 "
         file_status = ""
@@ -602,9 +617,9 @@ def clear_file_status():
             query += str(offset)
             send_to_socket(cluster_socket, query)
             file_status += receive_data_from_db_socket(cluster_socket)
-        
-        db_items = {filename:{'md5': md5, 'timestamp': timestamp} for filename, 
-                    md5, timestamp in map(lambda x: x.split('*'), 
+
+        db_items = {filename:{'md5': md5, 'timestamp': timestamp} for filename,
+                    md5, timestamp in map(lambda x: x.split('*'),
                     filter(lambda x: x != '', file_status.split(' ')))}
 
         # Update status
@@ -612,7 +627,7 @@ def clear_file_status():
         new_items = {}
         for files_slice in divide_list(own_items.items()):
             try:
-                local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5'] 
+                local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5']
                                 or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
             except KeyError as e:
                 new_items[e.args[0]] = {'md5': own_items[e.args[0]]['md5'],
@@ -809,29 +824,55 @@ def extract_zip(zip_bytes):
 
     return receive_zip(zip_json)
 
+def check_groups(remote_group_set):
+    """
+    Function to remove the groups that are on the local node and not in the remote node
+    """
+    local_groups = {x['name'] for x in Agent.get_all_groups(limit=None)['items']}
+    for removed_group in local_groups - remote_group_set:
+        try:
+            Agent.remove_group(removed_group)
+            logging.info("Group {0} removed successfully".format(removed_group))
+        except Exception as e:
+            logging.error("Error deleting group {0}: {1}".format(removed_group, str(e)))
+
+
+def check_removed_files(removed_files):
+    """
+    Function to remove files not present in the remote node
+    """
+    deleted_files, failed_files = [], []
+    for file_name in removed_files:
+        try:
+            full_path = common.ossec_path + file_name
+            if path.exists(full_path):
+                remove(full_path)
+                logging.info("The file {0} has been deleted".format(full_path))
+            else:
+                logging.debug("The file {0} is not in the filesystem. Skipping.".format(full_path))
+            deleted_files.append(file_name)
+        except Exception as e:
+            logging.error("Error deleting the file {0}: {1}".format(file_name, str(e)))
+            failed_files.append({'item': file_name, 'reason': str(e)})
+
+    return deleted_files, failed_files
+
+
 def receive_zip(zip_file):
-    def check_groups(remote_group_set):
-        """
-        Function to remove the groups that are on the local node and not in the remote node
-        """
-        local_groups = {x['name'] for x in Agent.get_all_groups(limit=None)['items']}
-        for removed_group in local_groups - remote_group_set:
-            try:
-                Agent.remove_group(removed_group)
-                logging.info("Group {0} removed successfully".format(removed_group))
-            except Exception as e:
-                logging.error("Error deleting group {0}: {1}".format(removed_group, str(e)))
-
-
     cluster_items = get_cluster_items()
     config = read_config()
     logging.info("Receiving package with {0} files".format(len(zip_file)))
 
-    final_dict = {'error':[], 'updated': [], 'invalid': []}
+    final_dict = {'error':[], 'updated': [], 'deleted': []}
 
     if 'remote_groups.txt' in zip_file.keys():
         check_groups(set(zip_file['remote_groups.txt']['data'].split('\n')))
         del zip_file['remote_groups.txt']
+
+
+    if 'remote_deleted.txt' in zip_file.keys():
+        final_dict['deleted'], final_dict['error'] = check_removed_files(zip_file['remote_deleted.txt']['data'].split('\n'))
+        del zip_file['remote_deleted.txt']
 
     for name,content in zip_file.items():
         try:
@@ -844,7 +885,7 @@ def receive_zip(zip_file):
             except KeyError:
                 remote_umask = int(cluster_items['/etc/']['umask'], base=0)
                 remote_write_mode = cluster_items['/etc/']['write_mode']
-            
+
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],
@@ -885,11 +926,13 @@ def get_remote_nodes(connected=True, updateDBname=False):
 
 def push_updates_single_node(all_files, node_dest, config_cluster, removed, result_queue):
     # filter to send only pending files
-    pending_files = filter(lambda x: x[1] != 'synchronized', all_files.items())
-    if len(pending_files) > 0 or removed:
+    pending_files = filter(lambda x: x[1] != 'synchronized' and x[1] != 'tobedeleted' and x[1] != 'deleted', all_files.items())
+    tobedeleted_files = filter(lambda x: x[1] == 'tobedeleted', all_files.items())
+    if len(pending_files) > 0 or removed or len(tobedeleted_files) > 0:
         logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
-        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)), 
-                                  node_type=config_cluster['node_type'])
+        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
+                                  node_type=config_cluster['node_type'],
+                                  tobedeleted_files=map(itemgetter(0), tobedeleted_files))
 
         error, response = send_request(host=node_dest, port=config_cluster['port'],
                                        data="zip {0}".format(str(len(zip_file)).
@@ -903,19 +946,19 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, resu
 
     else:
         logging.info("No pending files to send to {0} ".format(node_dest))
-        res = {'error': 0, 'data':{'updated':[], 'error':[], 'invalid':[]}}
+        res = {'error': 0, 'data':{'updated':[], 'error':[], 'deleted':[]}}
         error = 0
 
 
     if res['error'] != 0:
         logging.debug(res)
         result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
-                          'error': 1, 'files':{'updated':[], 'invalid':[],
+                          'error': 1, 'files':{'updated':[], 'deleted':[],
                                         'error':list(map(itemgetter(0), pending_files))}})
     else:
         logging.debug({'updated': len(res['data']['updated']),
                       'error': res['data']['error'],
-                      'invalid': res['data']['invalid']})
+                      'deleted': res['data']['deleted']})
         result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
 
 
@@ -947,10 +990,10 @@ def update_node_db_after_sync(data, node, cluster_socket):
             send_to_socket(cluster_socket, delete_sql)
             received = receive_data_from_db_socket(cluster_socket)
 
-    for invalid in divide_list(data['files']['invalid']):
+    for deleted in divide_list(data['files']['deleted']):
         update_sql = "update2"
-        for i in invalid:
-            update_sql += " invalid {0} {1}".format(node, i)
+        for d in deleted:
+            update_sql += " deleted {0} {1}".format(node, d)
 
         send_to_socket(cluster_socket, update_sql)
         received = receive_data_from_db_socket(cluster_socket)
@@ -979,7 +1022,7 @@ def sync_one_node(debug, node, force=False):
 
     if force:
         clear_file_status_one_node(node, cluster_socket)
-    all_files, removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items)
+    all_files, removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
 
     after = time()
     synchronization_duration += after-before
@@ -1012,7 +1055,7 @@ def sync_one_node(debug, node, force=False):
     else:
         return {'updated': len(result['files']['updated']),
                   'error': result['files']['error'],
-                  'invalid': result['files']['invalid'],
+                  'deleted': result['files']['deleted'],
                   'error': result['error'],
                   'reason': result['reason']}
 
@@ -1052,7 +1095,7 @@ def sync(debug, force=False):
     for node in remote_nodes:
         if force:
             clear_file_status_one_node(node, cluster_socket)
-        all_nodes_files[node], removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items)
+        all_nodes_files[node], removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
 
     after = time()
     synchronization_duration += after-before
@@ -1098,7 +1141,7 @@ def sync(debug, force=False):
     else:
         return {node:{'updated': len(data['files']['updated']),
                       'error': data['files']['error'],
-                      'invalid': data['files']['invalid'],
+                      'deleted': data['files']['deleted'],
                       'error': data['error'],
                       'reason': data['reason']}
                       for node,data in thread_results.items()}
