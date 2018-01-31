@@ -57,7 +57,12 @@ def append_node_result_by_type(node, result_node, request_type, current_result=N
                 current_result = result_node
 
     elif request_type in list_requests_managers.values() or request_type == list_requests_cluster['CLUSTER_CONFIG']:
-        current_result[get_name_from_ip(node)] = result_node
+        if current_result.get('items') == None:
+            current_result['items'] = {}
+        current_result['items'][get_name_from_ip(node)] = result_node
+        if current_result.get('totalItems') == None:
+            current_result['totalItems'] = 0
+        current_result['totalItems'] += 1
     else:
         if result_node.get('data') != None:
             current_result = result_node['data']
@@ -88,7 +93,7 @@ def send_request_to_nodes(remote_nodes, config_cluster, request_type, args, clus
         if node_id != None:
             logging.info("Sending {2} request from {0} to {1}".format(local_node, node_id, request_type))
 
-            # Push agents id
+            # Put agents id
             if remote_nodes.get(node_id) != None and len(remote_nodes[node_id]) > 0:
                 agents = "-".join(remote_nodes[node_id])
                 msg = agents
