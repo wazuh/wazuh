@@ -100,6 +100,8 @@ class WazuhException(Exception):
         2001: 'Incompatible version of SQLite',
         2002: 'Maximum attempts exceeded for sqlite3 execute',
         2003: 'Error in database request',
+        2004: 'Database query not valid',
+        2005: 'Could not connect to wdb socket',
 
         # Cluster
         3000: 'Cluster',

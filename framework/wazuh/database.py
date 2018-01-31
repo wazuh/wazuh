@@ -5,7 +5,6 @@
 
 from wazuh import common
 from wazuh.exception import WazuhException
-from wazuh import common
 from os.path import isfile
 from distutils.version import LooseVersion
 import sqlite3
