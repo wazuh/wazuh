@@ -599,7 +599,7 @@ int update_fname(int i)
 int handle_file(int i, int do_fseek, int do_log)
 {
     int fd;
-    struct stat stat_fd;
+    struct stat stat_fd = { .st_mode = 0 };
 
     /* We must be able to open the file, fseek and get the
      * time of change from it.
