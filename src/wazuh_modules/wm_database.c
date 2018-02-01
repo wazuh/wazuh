@@ -187,7 +187,7 @@ void* wm_database_main(wm_database *data) {
 // Update manager information
 void wm_sync_manager() {
     char hostname[1024];
-    const char *os_uname;
+    char *os_uname;
     const char *path;
     char *os_name = NULL;
     char *os_major = NULL;
@@ -220,7 +220,7 @@ void wm_sync_manager() {
 
     OS_ClearXML(&xml);
 
-    if ((os_uname = getuname())) {
+    if ((os_uname = strdup(getuname()))) {
         char *ptr;
 
         if ((ptr = strstr(os_uname, " - ")))
@@ -270,6 +270,7 @@ void wm_sync_manager() {
         free(node_name);
         free(os_major);
         free(os_minor);
+        free(os_uname);
     }
 
     // Set starting offset if full_sync disabled

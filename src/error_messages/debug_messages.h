@@ -33,3 +33,4 @@
 #define VU_UPDATE_VU_CO       "(5471): Inserting vulnerability conditions..."
 #define VU_UPDATE_VU_INFO     "(5472): Inserting vulnerability info..."
 #define VU_UPDATE_VU          "(5473): Inserting vulnerabilities..."
+#define VU_AGENT_INFO_ERROR   "(5474): Agent %s operating system could not be obtained. Maybe it is never connected. It will be omitted..."

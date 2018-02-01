@@ -302,8 +302,7 @@
 #define VU_OVAL_UPDATE_ERROR        "(5426): CVE database could not be updated."
 #define VU_CREATE_DB_ERROR          "(5427): The database could not be checked or created."
 #define VU_SOFTWARE_REQUEST_ERROR   "(5428): Agent %s software could not be requested."
-#define VU_NO_AGENT_REGISTERED      "(5429): There are no registered agents. The module is deactivated."
-#define VU_AGENT_INFO_ERROR         "(5430): Agent %s operating system could not be obtained. It will be omitted..."
+#define VU_NO_AGENT_ERROR           "(5429): The agents information could not be processed."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

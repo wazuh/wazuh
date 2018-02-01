@@ -14,6 +14,7 @@
 #include "wmodules.h"
 #include "wm_vuln_detector_db.h"
 #include "external/sqlite/sqlite3.h"
+#include "addagent/manage_agents.h"
 #include <netinet/tcp.h>
 #include <openssl/ssl.h>
 #include <os_net/os_net.h>
@@ -1347,9 +1348,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
         goto fetch_error;
     }
 
-    if (oval_size = wm_read_http_header(buffer), oval_size < 0) {
-        goto fetch_error;
-    }
+    oval_size = wm_read_http_header(buffer);
 
     while (!readed || (oval_size != readed && (size = SSL_read(ssl, buffer, ((oval_size - readed) > VU_SSL_BUFFER)? VU_SSL_BUFFER : (oval_size - readed)))) > 0) {
         buffer[size] = '\0';
@@ -1695,11 +1694,27 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
             time_start = time(NULL);
             mtinfo(WM_VULNDETECTOR_LOGTAG, VU_START_SCAN);
 
-            if (wm_vulnerability_detector_check_agent_vulnerabilities(vulnerability_detector->agents_software)) {
-                mterror(WM_VULNDETECTOR_LOGTAG, VU_AG_CHECK_ERR);
-            }
+            if (wm_vunlnerability_detector_set_agents_info(&vulnerability_detector->agents_software)) {
+                mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_ERROR);
+            } else {
+                if (wm_vulnerability_detector_check_agent_vulnerabilities(vulnerability_detector->agents_software)) {
+                    mterror(WM_VULNDETECTOR_LOGTAG, VU_AG_CHECK_ERR);
+                    mtinfo(WM_VULNDETECTOR_LOGTAG, VU_END_SCAN);
+                }
+                agent_software *agent;
+                for (agent = vulnerability_detector->agents_software; agent;) {
+                    agent_software *agent_aux = agent->next;
+                    free(agent->agent_id);
+                    free(agent->agent_name);
+                    free(agent->agent_ip);
+                    free(agent->OS);
+                    free(agent);
 
-            mtinfo(WM_VULNDETECTOR_LOGTAG, VU_END_SCAN);
+                    if (agent_aux) {
+                        agent = agent->next;
+                    }
+                }
+            }
 
             wm_vulnerability_update_intervals(&vulnerability_detector->remaining_intervals, time(NULL) - time_start);
             remaining->detect = intervals->detect;
@@ -1723,6 +1738,185 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
         wm_vulnerability_update_intervals(&vulnerability_detector->remaining_intervals, time(NULL) - time_start);
     }
 
+}
+
+int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software) {
+    agent_software *agents;
+    keystore keys = KEYSTORE_INITIALIZER;
+    keyentry *entry;
+    unsigned int i;
+    size_t size;
+    char agent_info[OS_MAXSTR];
+    FILE *fp;
+    char manager_found = 0;
+    char *buffer;
+    char *uname;
+    char *uname_p = NULL;
+
+    uname = strdup(getuname());
+
+    OS_PassEmptyKeyfile();
+    OS_ReadKeys(&keys, 0, 0, 0);
+    if (keys.keysize) {
+        agents = NULL;
+        for (i = 0; i < keys.keysize; i++) {
+            entry = keys.keyentries[i];
+            if (agents) {
+                os_calloc(1, sizeof(agent_software), agents->next);
+                agents->next->prev = agents;
+                agents = agents->next;
+            } else {
+                os_calloc(1, sizeof(agent_software), *agents_software);
+                agents = *agents_software;
+                agents->prev = NULL;
+            }
+
+            os_strdup(entry->id, agents->agent_id);
+            os_strdup(entry->name, agents->agent_name);
+            os_strdup(entry->ip->ip, agents->agent_ip);
+            agents->OS = NULL;
+            agents->info = 0;
+            agents->next = NULL;
+        }
+    }
+
+    os_calloc(1, sizeof(agent_software), agents);
+    if (*agents_software) {
+        (*agents_software)->prev = agents;
+        agents->next = *agents_software;
+    }
+    *agents_software = agents;
+    agents->prev = NULL;
+    size = snprintf(agent_info, OS_MAXSTR, "%s", uname);
+    if (buffer = strchr(agent_info, '|'), buffer) {
+        uname_p = strchr(++buffer, '|');
+        *uname_p = '\0';
+    } else {
+        free(uname);
+        return OS_INVALID;
+    }
+    for (i = 0; buffer[i] != '\0'; i++) {
+        if (buffer[i] == ' ') {
+            buffer[i] = '\0';
+            break;
+        }
+    }
+    os_strdup("000", agents->agent_id);
+    os_strdup("", agents->agent_ip);
+    os_strdup(buffer, agents->agent_name);
+
+    ++uname_p;
+
+    // Extracts the operating system of the agents
+    for (agents = *agents_software; agents;) {
+        if (strcmp(agents->agent_id, "000")) {
+            manager_found = 0;
+            size = snprintf(agent_info, OS_MAXSTR, AGENT_INFO_FILEF, agents->agent_name, agents->agent_ip);
+            agent_info[size] = '\0';
+        } else {
+            manager_found = 1;
+            fp = NULL;
+        }
+        // The agent has never been connected
+        if (!manager_found && !(fp = fopen(agent_info, "r" ))) {
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_INFO_ERROR, agents->agent_name);
+            if (agents = skip_agent(agents, agents_software), !agents) {
+                break;
+            } else {
+                continue;
+            }
+        } else {
+            buffer = agent_info;
+            size_t max = OS_MAXSTR;
+
+            // Agent connected or disconnected
+            if ((manager_found && ((size = snprintf(agent_info, OS_MAXSTR, "%s", uname_p)) > 0)) ||
+                ((size = getline(&buffer, &max, fp)) > 0)) {
+                buffer[size] = '\0';
+                if (buffer = strchr(buffer, '['), buffer) {
+                    buffer++;
+                    *strchr(agent_info, ']') = '\0';
+                    if (strcasestr(buffer, VU_UBUNTU)) {
+                        if (strstr(buffer, " 16")) {
+                            os_strdup(VU_XENIAL, agents->OS);
+                        } else if (strstr(buffer, " 14")) {
+                            os_strdup(VU_TRUSTY, agents->OS);
+                        } else if (strstr(buffer, " 12")) {
+                            os_strdup(VU_PRECISE, agents->OS);
+                        } else {
+                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_UBUNTU, agents->agent_name);
+                            if (agents = skip_agent(agents, agents_software), !agents) {
+                                break;
+                            } else {
+                                continue;
+                            }
+                        }
+                    } else if (strcasestr(buffer, VU_RHEL)) {
+                        if (strstr(buffer, " 7")) {
+                            os_strdup(VU_RHEL7, agents->OS);
+                        } else if (strstr(buffer, " 6")) {
+                            os_strdup(VU_RHEL6, agents->OS);
+                        } else if (strstr(VU_RHEL5, " 5")) {
+                            os_strdup(VU_PRECISE, agents->OS);
+                        } else {
+                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_RHEL, agents->agent_name);
+                            if (agents = skip_agent(agents, agents_software), !agents) {
+                                break;
+                            } else {
+                                continue;
+                            }
+                        }
+                    } else if (strcasestr(buffer, VU_CENTOS)) {
+                        if (strstr(buffer, " 7")) {
+                            os_strdup(VU_RHEL7, agents->OS);
+                        } else if (strstr(buffer, " 6")) {
+                            os_strdup(VU_RHEL6, agents->OS);
+                        } else if (strstr(buffer, " 5")) {
+                            os_strdup(VU_RHEL5, agents->OS);
+                        } else {
+                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_CENTOS, agents->agent_name);
+                            if (agents = skip_agent(agents, agents_software), !agents) {
+                                break;
+                            } else {
+                                continue;
+                            }
+                        }
+                    } else {
+                        mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS, agents->agent_name);
+                        if (agents = skip_agent(agents, agents_software), !agents) {
+                            break;
+                        }
+                    }
+                } else { // Operating system not supported in any of its versions
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_UNSOPPORTED, agents->agent_name);
+                    if (agents = skip_agent(agents, agents_software), !agents) {
+                        break;
+                    } else {
+                        continue;
+                    }
+                }
+            } else { // Agent in pending state
+                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_PENDING, agents->agent_name);
+                if (agents = skip_agent(agents, agents_software), !agents) {
+                    break;
+                } else {
+                    continue;
+                }
+            }
+            agents = agents->next;
+        }
+        if (fp) {
+            fclose(fp);
+        }
+        fp = NULL;
+    }
+
+    if (fp) {
+        fclose(fp);
+    }
+
+    free(uname);
+    return 0;
 }
 
 void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerability_detector) {
