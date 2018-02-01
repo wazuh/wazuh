@@ -737,7 +737,7 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None, version="all"):
         """
         Gets a list of available agents with basic attributes.
 
@@ -767,7 +767,7 @@ class Agent:
         valid_select_fields = {"id", "name", "ip", "last_keepalive", "os_name", "os_version", "node_name",
                                "os_platform", "version", "manager_host", "date_add", 'status'}
         select_fields = {'id', 'version', 'last_keepalive'}
-        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host"}
+        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version"}
         request = {}
         if select:
             if not set(select['fields']).issubset(valid_select_fields):
@@ -802,9 +802,13 @@ class Agent:
         if manager_host != "all":
             request['manager_host'] = manager_host
             query += ' AND manager_host = :manager_host'
+        if version != "all":
+            request['version'] = re.sub( r'([a-zA-Z])([v])', r'\1 \2', version )
+            query += ' AND version = :version'
 
         # Search
         if search:
+            search['value'] = re.sub( r'([Wazuh])([v])', r'\1 \2', search['value'] )
             query += " AND NOT" if bool(search['negation']) else ' AND'
             query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
             request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
