@@ -73,7 +73,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             // Parse policy attributes
 
-            for (j = 0; nodes[i]->attributes[j]; j++) {
+            for (j = 0; nodes[i]->attributes && nodes[i]->attributes[j]; j++) {
                 if (!strcmp(nodes[i]->attributes[j], XML_PATH))
                     cur_eval->path = strdup(nodes[i]->values[j]);
                 else if (!strcmp(nodes[i]->attributes[j], XML_CONTENT_TYPE)) {

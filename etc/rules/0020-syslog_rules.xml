@@ -605,7 +605,7 @@
 <group name="syslog,dpkg,">
   <rule id="2900" level="0">
     <decoded_as>windows-date-format</decoded_as>
-    <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d \w+ </regex>
+    <regex offet="after_parent">^startup |^status |^remove |^configure |^install |^purge |^trigproc </regex> 
     <description>Dpkg (Debian Package) log.</description>
   </rule>
 

@@ -735,6 +735,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
                 event.category = "AUDIT_SUCCESS";
                 break;
             }
+            // fall through
         default:
             event.category = "Unknown";
             break;

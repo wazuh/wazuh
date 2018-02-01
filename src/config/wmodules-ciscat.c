@@ -9,7 +9,6 @@
  * Foundation.
  */
 
-#ifndef WIN32
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_CONTENT = "content";
@@ -71,7 +70,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             // Parse policy attributes
 
-            for (j = 0; nodes[i]->attributes[j]; j++) {
+            for (j = 0; nodes[i]->attributes && nodes[i]->attributes[j]; j++) {
                 if (!strcmp(nodes[i]->attributes[j], XML_PATH))
                     cur_eval->path = strdup(nodes[i]->values[j]);
                 else if (!strcmp(nodes[i]->attributes[j], XML_CONTENT_TYPE)) {
@@ -87,11 +86,6 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     merror("Invalid attribute '%s' at module '%s'.", nodes[i]->attributes[0], WM_CISCAT_CONTEXT.name);
                     return OS_INVALID;
                 }
-            }
-
-            if (!cur_eval->path) {
-                merror("No such attribute '%s' at module '%s'.", XML_PATH, WM_CISCAT_CONTEXT.name);
-                return OS_INVALID;
             }
 
             if (!cur_eval->type) {
@@ -128,6 +122,13 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
+                } else if (!strcmp(children[j]->element, XML_PATH)) {
+                    if (cur_eval->path) {
+                        mwarn("Duplicate path for content at module '%s'", WM_CISCAT_CONTEXT.name);
+                        free(cur_eval->path);
+                    }
+
+                    cur_eval->path = strdup(children[j]->content);
                 } else {
                     merror("No such tag '%s' at module '%s'.", children[j]->element, WM_CISCAT_CONTEXT.name);
                     OS_ClearNode(children);
@@ -136,6 +137,11 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
 
             OS_ClearNode(children);
+
+            if (!cur_eval->path) {
+                merror("No such content path at module '%s'.", WM_CISCAT_CONTEXT.name);
+                return OS_INVALID;
+            }
 
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
             char *endptr;
@@ -196,5 +202,3 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
     return 0;
 }
-
-#endif

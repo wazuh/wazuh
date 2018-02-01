@@ -108,6 +108,21 @@ WriteOpenSCAP()
 }
 
 ##########
+# WriteCISCAT()
+##########
+WriteCISCAT()
+{
+    # Adding to the config file
+    CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]
+    then
+        CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+}
+
+##########
 # InstallOpenSCAPFiles()
 ##########
 InstallOpenSCAPFiles()
@@ -290,10 +305,8 @@ WriteAgent()
     # OpenSCAP
     WriteOpenSCAP "agent"
 
-
     # CIS-CAT configuration
-    cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    WriteCISCAT "agent"
 
     # Syscheck
     WriteSyscheck "agent"
@@ -390,8 +403,7 @@ WriteManager()
     WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
-    cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    WriteCISCAT "manager"
 
     # Write syscheck
     WriteSyscheck "manager"
@@ -495,6 +507,9 @@ WriteLocal()
 
     # Write OpenSCAP
     WriteOpenSCAP "manager"
+
+    # CIS-CAT configuration
+    WriteCISCAT "agent"
 
     # Write syscheck
     WriteSyscheck "manager"
@@ -635,8 +650,6 @@ InstallCommon(){
 	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/vuls/go
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/vuls.py ${PREFIX}/wodles/vuls
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/deploy_vuls.sh ${PREFIX}/wodles/vuls
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/ciscat
-	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/ciscat/template_*.xsl ${PREFIX}/wodles/ciscat
 
 	InstallOpenSCAPFiles
 
@@ -751,11 +764,11 @@ InstallLocal(){
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
     fi
     if [ ! -f ${PREFIX}/etc/lists ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
     fi
     if [ ! -f ${PREFIX}/etc/lists/amazon ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
+        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
     fi
     if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
