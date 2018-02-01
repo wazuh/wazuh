@@ -122,11 +122,13 @@ class WazuhClusterHandler(asynchat.async_chat):
     def handle_write(self):
         msg = self.f.encrypt(self.data) + '\n'
         i = 0
-        while i < len(msg):
-            next_i = i+4096 if i+4096 < len(msg) else len(msg)
+        msg_len = len(msg)
+        while i < msg_len:
+            next_i = i+4096 if i+4096 < msg_len else msg_len
             sent = self.send(msg[i:next_i])
-            if sent == 4096 or next_i == len(msg):
+            if sent == 4096 or next_i == msg_len:
                 i = next_i
+            logging.debug("SERVER: Sending {} of {}".format(i, msg_len))
 
         logging.debug("Data sent to {0}".format(self.addr))
 

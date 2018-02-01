@@ -135,10 +135,13 @@ class WazuhClusterClient(asynchat.async_chat):
             msg = self.f.encrypt(self.data.encode()) + '\n\t\t\n'
 
         i = 0
-        while i < len(msg):
-            next_i = i+4096 if i+4096 < len(msg) else len(msg)
+        msg_len = len(msg)
+        while i < msg_len:
+            next_i = i+4096 if i+4096 < msg_len else msg_len
             sent = self.send(msg[i:next_i])
-            i += sent
+            if sent == 4096 or next_i == msg_len:
+                i = next_i
+            logging.debug("CLIENT: Sending {} of {}".format(i, msg_len))
 
 
         self.can_read=True
