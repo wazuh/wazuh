@@ -219,14 +219,13 @@ def get_cluster_items():
     except Exception as e:
         raise WazuhException(3005, str(e))
 
-def get_file_info(filename, cluster_items):
+def get_file_info(filename, cluster_items, node_type):
     def is_synced_file(mtime, node_type):
         if node_type == 'master':
             return False
         else:
             return (datetime.now() - datetime.fromtimestamp(mtime)).seconds / 60 > 30
 
-    node_type = read_config()['node_type']
     fullpath = common.ossec_path + filename
 
     if not path.isfile(fullpath):
@@ -308,7 +307,7 @@ def get_nodes(updateDBname=False):
     for url in config_cluster["nodes"]:
         if not url in localhost_ips:
             error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
-                                data="node {0}".format('a'*(common.cluster_protocol_plain_size - len("node "))))
+                                data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
             if error == 0:
                 response = response['data']
         else:
@@ -488,7 +487,7 @@ def list_files_from_filesystem(node_type, cluster_items):
     final_items = {}
     for new_item in expanded_items:
         try:
-            final_items[new_item] = get_file_info(new_item, cluster_items)
+            final_items[new_item] = get_file_info(new_item, cluster_items, node_type)
         except Exception as e:
             continue
 
@@ -956,7 +955,7 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, resu
                           'error': 1, 'files':{'updated':[], 'deleted':[],
                                         'error':list(map(itemgetter(0), pending_files))}})
 
-    if res['error'] != 0:
+    elif res['error'] != 0:
         logging.debug(res)
         result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
                           'error': 1, 'files':{'updated':[], 'deleted':[],
@@ -1005,18 +1004,21 @@ def update_node_db_after_sync(data, node, cluster_socket):
         received = receive_data_from_db_socket(cluster_socket)
 
 
-def sync_one_node(debug, node, force=False):
+def sync_one_node(debug, node, force=False, config_cluster=None, cluster_items=None):
     """
     Sync files with only one node
     """
     synchronization_date = time()
     synchronization_duration = 0.0
 
-    config_cluster = read_config()
     if not config_cluster:
-        raise WazuhException(3000, "No config found")
+        config_cluster = read_config()
 
-    cluster_items = get_cluster_items()
+        if not config_cluster:
+            raise WazuhException(3000, "No config found")
+
+    if not cluster_items:
+        cluster_items = get_cluster_items()
 
     before = time()
     # Get own items status
@@ -1066,7 +1068,7 @@ def sync_one_node(debug, node, force=False):
                   'reason': result['reason']}
 
 
-def sync(debug, force=False):
+def sync(debug, force=False, config_cluster=None, cluster_items=None):
     """
     Sync this node with others
     :return: Files synced.
@@ -1074,11 +1076,14 @@ def sync(debug, force=False):
     synchronization_date = time()
     synchronization_duration = 0.0
 
-    config_cluster = read_config()
     if not config_cluster:
-        raise WazuhException(3000, "No config found")
+        config_cluster = read_config()
+        if not config_cluster:
+            raise WazuhException(3000, "No config found")
 
-    cluster_items = get_cluster_items()
+    if not cluster_items:
+        cluster_items = get_cluster_items()
+
     before = time()
     # Get own items status
     own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
