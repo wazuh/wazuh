@@ -941,12 +941,8 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, resu
     if len(pending_files) > 0 or removed or len(tobedeleted_files) > 0:
         logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
         zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
-<<<<<<< HEAD
-                                  node_type=config_cluster['node_type'])
-=======
                                   node_type=config_cluster['node_type'],
                                   tobedeleted_files=map(itemgetter(0), tobedeleted_files))
->>>>>>> 3.1
 
         error, response = send_request(host=node_dest, port=config_cluster['port'],
                                        data="zip {0}".format(str(len(zip_file)).
