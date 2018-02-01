@@ -401,23 +401,6 @@ def plain_dict_to_nested_dict(data, force_fields):
 
     return nested_dict
 
-
-def divide_list(l, size=1000):
-    """
-    Divides a list in sublists of size 'size'
-    """
-    return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
-
-
-def create_exception_dic(id, e):
-    """
-    Creates a dictionary with a list of agent ids and it's error codes.
-    """
-    exception_dic = {}
-    exception_dic['id'] = id
-    exception_dic['error'] = {'message': e.message, 'code': e.code}
-    return exception_dic
-
 class WazuhVersion:
 
     def __init__(self, version):

@@ -6,9 +6,6 @@
 from wazuh import common
 from wazuh.utils import execute
 from wazuh.database import Connection
-from wazuh.cluster.distributed_api import is_a_local_request, distributed_api_request, is_cluster_running
-from wazuh.cluster.protocol_messages import list_requests_managers
-
 from time import strftime
 from wazuh.exception import WazuhException
 import re
@@ -21,7 +18,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '3.2.0'
+__version__ = '3.2.0-alpha1'
 
 
 msg = "\n\nPython 2.7 or newer not found."
@@ -137,17 +134,6 @@ class Wazuh:
             self.tz_name = None
 
         return self.to_dict()
-
-
-    def managers_get_ossec_init(self, node_id=None, cluster_depth=1):
-        if is_a_local_request() or cluster_depth <= 0 :
-            return self.get_ossec_init()
-        else:
-            if not is_cluster_running():
-                raise WazuhException(3015)
-
-            request_type = list_requests_managers['MANAGERS_INFO']
-            return distributed_api_request(request_type=request_type, cluster_depth=cluster_depth, affected_nodes=node_id)
 
 
 def main():

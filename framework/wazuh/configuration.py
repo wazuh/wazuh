@@ -7,6 +7,7 @@ from xml.etree.ElementTree import fromstring
 from os import listdir, path as os_path
 import re
 from wazuh.exception import WazuhException
+from wazuh.agent import Agent
 from wazuh import common
 from wazuh.utils import cut_array
 
@@ -32,10 +33,6 @@ conf_sections = {
     'open-scap': {
         'type': 'simple',
         'list_options': ['content']
-    },
-    'cis-cat': {
-        'type': 'simple',
-        'list_options': []
     },
     'rootcheck': {
         'type': 'simple',
@@ -119,7 +116,7 @@ def _read_option(section_name, opt):
                 opt_value[a] = opt.attrib[a]
             # profiles
             profiles_list = []
-            for profiles in opt.iter():
+            for profiles in opt.getchildren():
                 profiles_list.append(profiles.text)
 
             if profiles_list:
@@ -157,11 +154,11 @@ def _conf2json(src_xml, dst_json):
     Parses src_xml to json. It is inserted in dst_json.
     """
 
-    for section in list(src_xml):
-        section_name = section.attrib['name'] if section.tag.lower() == 'wodle' else section.tag.lower()
+    for section in src_xml.getchildren():
+        section_name = 'open-scap' if section.tag.lower() == 'wodle' else section.tag.lower()
         section_json = {}
 
-        for option in list(section):
+        for option in section.getchildren():
             option_name, option_value = _read_option(section_name, option)
             if type(option_value) is list:
                 for ov in option_value:
@@ -178,7 +175,7 @@ def _ossecconf2json(xml_conf):
     """
     final_json = {}
 
-    for root in list(xml_conf):
+    for root in xml_conf.getchildren():
         if root.tag.lower() == "ossec_config":
             _conf2json(root, final_json)
 
@@ -423,8 +420,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     """
 
     if group_id:
-        # if not group_exists(group_id):
-        if not os_path.exists("{0}/{1}".format(common.shared_path, group_id)):
+        if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
 
         agent_conf = "{0}/{1}".format(common.shared_path, group_id)
@@ -467,7 +463,7 @@ def get_file_conf(filename, group_id=None, type_conf=None):
     """
 
     if group_id:
-        if not group_exists(group_id):
+        if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
 
         file_path = "{0}/{1}".format(common.shared_path, filename) \
