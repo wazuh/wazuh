@@ -189,6 +189,9 @@ def check_cluster_cmd(cmd, node_type):
     if cmd[0] == 'ready' and node_type == 'client':
         return True
 
+    if cmd[0] == 'finished' and node_type == 'master':
+        return True
+
     # check command type
     if not cmd[0] in ['zip', 'node']:
         return False
