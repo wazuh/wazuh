@@ -122,11 +122,13 @@ class WazuhClusterHandler(asynchat.async_chat):
     def handle_write(self):
         msg = self.f.encrypt(self.data) + '\n'
         i = 0
-        while i < len(msg):
-            next_i = i+4096 if i+4096 < len(msg) else len(msg)
+        msg_len = len(msg)
+        while i < msg_len:
+            next_i = i+4096 if i+4096 < msg_len else msg_len
             sent = self.send(msg[i:next_i])
-            if sent == 4096 or next_i == len(msg):
+            if sent == 4096 or next_i == msg_len:
                 i = next_i
+            logging.debug("SERVER: Sending {} of {}".format(i, msg_len))
 
         logging.debug("Data sent to {0}".format(self.addr))
 
@@ -167,31 +169,32 @@ class WazuhClusterServer(asyncore.dispatcher):
         raise t(v)
 
 
-def crontab_sync_master(interval):
+def crontab_sync_master(interval, config_cluster):
     interval_number  = int(search('\d+', interval).group(0))
     interval_measure = interval[-1]
+    cluster_items = get_cluster_items()
     while True:
         logging.debug("Crontab: starting to sync")
         try:
-            sync(False)
+            sync(debug=False, config_cluster=config_cluster, cluster_items=cluster_items)
         except Exception as e:
             logging.error(str(e))
             kill(child_pid, SIGINT)
 
-        config_cluster = read_config()
         for node in get_remote_nodes():
             # ask clients to send updates
             error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
-                                data="ready {0}".format('a'*(common.cluster_protocol_plain_size - len("ready "))))
+                                data="ready {0}".format('-'*(common.cluster_protocol_plain_size - len("ready "))))
 
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
-def crontab_sync_client():
+def crontab_sync_client(config_cluster):
     def sync_handler(n_signal, frame):
         master = get_remote_nodes()[0]
-        sync_one_node(False, master)
+        sync_one_node(debug=False, node=master, config_cluster=config_cluster, cluster_items=cluster_items)
 
     signal(SIGUSR1, sync_handler)
+    cluster_items = get_cluster_items()
     while True:
         sleep(30)
 
@@ -297,14 +300,14 @@ if __name__ == '__main__':
 
     if cluster_config['node_type'] == 'master':
         # execute an independent process to "crontab" the sync interval
-        p = Process(target=crontab_sync_master, args=(cluster_config['interval'],))
+        p = Process(target=crontab_sync_master, args=(cluster_config['interval'],cluster_config,))
         if not args.f:
             p.daemon=True
         p.start()
         child_pid = p.pid
     else:
         # execute an independent process to "crontab" the sync interval
-        p = Process(target=crontab_sync_client)
+        p = Process(target=crontab_sync_client, args=(cluster_config,))
         if not args.f:
             p.daemon=True
         p.start()
