@@ -88,11 +88,6 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 }
             }
 
-            if (!cur_eval->path) {
-                merror("No such attribute '%s' at module '%s'.", XML_PATH, WM_CISCAT_CONTEXT.name);
-                return OS_INVALID;
-            }
-
             if (!cur_eval->type) {
                 merror("No such attribute '%s' at module '%s'.", XML_CONTENT_TYPE, WM_CISCAT_CONTEXT.name);
                 return OS_INVALID;
@@ -127,6 +122,13 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
+                } else if (!strcmp(children[j]->element, XML_PATH)) {
+                    if (cur_eval->path) {
+                        mwarn("Duplicate path for content at module '%s'", WM_CISCAT_CONTEXT.name);
+                        free(cur_eval->path);
+                    }
+
+                    cur_eval->path = strdup(children[j]->content);
                 } else {
                     merror("No such tag '%s' at module '%s'.", children[j]->element, WM_CISCAT_CONTEXT.name);
                     OS_ClearNode(children);
@@ -135,6 +137,11 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
 
             OS_ClearNode(children);
+
+            if (!cur_eval->path) {
+                merror("No such content path at module '%s'.", WM_CISCAT_CONTEXT.name);
+                return OS_INVALID;
+            }
 
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
             char *endptr;
