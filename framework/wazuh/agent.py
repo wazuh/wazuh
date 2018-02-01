@@ -42,7 +42,7 @@ def create_exception_dic(id, e):
     exception_dic['error'] = {'message': e.message, 'code': e.code}
     return exception_dic
 
-    
+
 def get_timeframe_int(timeframe):
 
     if not isinstance(timeframe, int):
@@ -210,9 +210,9 @@ class Agent:
                     self.lastKeepAlive = value
                 else:
                     self.lastKeepAlive = 0
-            if field == 'configSum' and value != None:
+            if field == 'config_sum' and value != None:
                 self.configSum = value
-            if field == 'mergedSum' and value != None:
+            if field == 'merged_sum' and value != None:
                 self.mergedSum = value
             if field == '`group`' and value != None:
                 self.group = value
@@ -309,7 +309,7 @@ class Agent:
     def compute_key(self):
         str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
         return b64encode(str_key.encode()).decode()
-        
+
 
     def get_key(self):
         """
@@ -370,11 +370,11 @@ class Agent:
 
         manager_status = manager.status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
-        
+
         if self.use_only_authd():
             if not is_authd_running:
                 raise WazuhException(1726)
-                
+
         if not is_authd_running:
             data = self._remove_manual(backup, purge)
         else:
@@ -515,7 +515,7 @@ class Agent:
         if self.use_only_authd():
             if not is_authd_running:
                 raise WazuhException(1726)
-                
+
         if not is_authd_running:
             data = self._add_manual(name, ip, id, key, force)
         else:
@@ -1076,7 +1076,7 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM agent WHERE name = :name", {'name': agent_name})
         agent_id = str(conn.fetch()[0]).zfill(3)
-        
+
         return Agent(agent_id).get_basic_information(select)
 
     @staticmethod
@@ -1409,7 +1409,7 @@ class Agent:
                              "os_version", "os_platform", "os_uname", "version",
                              "config_sum", "merged_sum", "manager_host", "status"}
         # fields like status need to retrieve others to be properly computed.
-        dependent_select_fields = {'status': {'last_keepalive','version'}} 
+        dependent_select_fields = {'status': {'last_keepalive','version'}}
         search_fields = {"id", "name", "os_name"}
 
         # Init query
