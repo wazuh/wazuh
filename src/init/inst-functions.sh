@@ -34,6 +34,7 @@ AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
+VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 ##########
 # WriteSyscheck()
@@ -400,6 +401,10 @@ WriteManager()
     cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
+    # Vulnerability Detector
+    cat ${VULN_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Write syscheck
     WriteSyscheck "manager"
 
@@ -502,6 +507,10 @@ WriteLocal()
 
     # Write OpenSCAP
     WriteOpenSCAP "manager"
+
+    # Vulnerability Detector
+    cat ${VULN_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # Write syscheck
     WriteSyscheck "manager"
