@@ -16,15 +16,16 @@
 static const char *XML_DISABLED = "disabled";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_RUN_ON_START = "run_on_start";
-static const char *XML_MIN_CVSS = "min_cvss";
-static const char *XML_ANTIQUITY_LIMIT = "antiquity_limit";
-static const char *XML_UPDATE_NVD = "update_nvd";
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
-static const char *XML_TARGET_GROUPS = "target_groups";
-static const char *XML_TARGET_AGENTS = "target_agents";
-static const char *XML_IGNORED_AGENTS = "ignored_agents";
 static const char *XML_VERSION = "version";
+// Upcoming parameters
+//static const char *XML_TARGET_GROUPS = "target_groups";
+//static const char *XML_MIN_CVSS = "min_cvss";
+//static const char *XML_ANTIQUITY_LIMIT = "antiquity_limit";
+//static const char *XML_UPDATE_NVD = "update_nvd";
+//static const char *XML_IGNORED_AGENTS = "ignored_agents";
+
 
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list) {
     agent_software *next = NULL;
@@ -129,66 +130,10 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(nodes[i]->element, XML_MIN_CVSS)) {
+        } /*else if (!strcmp(nodes[i]->element, XML_MIN_CVSS)) {
 
         } else if (!strcmp(nodes[i]->element, XML_ANTIQUITY_LIMIT)) {
 
-        } else if (!strcmp(nodes[i]->element, XML_TARGET_AGENTS)) {
-            int k;
-            int agent_id;
-            char * ids = nodes[i]->content;
-
-            if (!vulnerability_detector->agents_software) {
-                os_calloc(1, sizeof(agent_software), vulnerability_detector->agents_software);
-                vulnerability_detector->agents_software->agent_id = NULL;
-                vulnerability_detector->agents_software->next = NULL;
-                vulnerability_detector->agents_software->agent_name = NULL;
-                vulnerability_detector->agents_software->agent_ip = NULL;
-                vulnerability_detector->agents_software->prev = NULL;
-                vulnerability_detector->agents_software->OS = NULL;
-                vulnerability_detector->agents_software->info = 0;
-                //vulnerability_detector->agents_software->packages = NULL;
-            }
-            agents = vulnerability_detector->agents_software;
-
-            for (;agents->next;) {
-                agents = agents->next;
-            }
-
-            for (k = 0;; k++) {
-                int out = (ids[k] == '\0');
-                if (ids[k] == ',' || out) {
-                    ids[k] = '\0';
-                    if (agent_id = atoi(ids), !agent_id) {
-                        merror("Invalid agent ID ('%s') at module '%s'.", ids, WM_VULNDETECTOR_CONTEXT.name);
-                        return OS_INVALID;
-                    }
-                    if (agents->agent_id) {
-                        os_calloc(1, sizeof(wm_vulnerability_detector_t), agents->next);
-                        agents->next->prev = agents;
-                        agents = agents->next;
-                        agents->next = NULL;
-                        agents->OS = NULL;
-                        agents->agent_name = NULL;
-                        agents->agent_ip = NULL;
-                        agents->info = 0;
-                        //agents->packages = NULL;
-                    }
-                    os_calloc(1, 5, agents->agent_id);
-                    if (agent_id < 10) {
-                        snprintf(agents->agent_id, 5, "00%i", agent_id);
-                    } else if (agent_id < 1000) {
-                        snprintf(agents->agent_id, 5, "0%i", agent_id);
-                    } else {
-                        snprintf(agents->agent_id, 5, "%i", agent_id);
-                    }
-
-                    ids = &ids[k] + 1;
-                    k = 0;
-                }
-                if (out)
-                    break;
-            }
         } else if (!strcmp(nodes[i]->element, XML_UPDATE_NVD)) {
             if (!strcmp(nodes[i]->content, "yes")) {
                 vulnerability_detector->flags.u_flags.update_nvd = 1;
@@ -198,7 +143,7 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL)) {
+        }*/ else if (!strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL)) {
             if (!strcmp(nodes[i]->content, "yes")) {
                 vulnerability_detector->flags.u_flags.update_ubuntu = 1;
                 if (nodes[i]->attributes) {
@@ -284,11 +229,11 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(nodes[i]->element, XML_TARGET_GROUPS)) {
+        } /*else if (!strcmp(nodes[i]->element, XML_TARGET_GROUPS)) {
 
         } else if (!strcmp(nodes[i]->element, XML_IGNORED_AGENTS)) {
 
-        } else {
+        }*/ else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_VULNDETECTOR_CONTEXT.name);
             return OS_INVALID;
         }
