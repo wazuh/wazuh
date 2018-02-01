@@ -108,6 +108,21 @@ WriteOpenSCAP()
 }
 
 ##########
+# WriteCISCAT()
+##########
+WriteCISCAT()
+{
+    # Adding to the config file
+    CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]
+    then
+        CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+}
+
+##########
 # InstallOpenSCAPFiles()
 ##########
 InstallOpenSCAPFiles()
@@ -290,10 +305,8 @@ WriteAgent()
     # OpenSCAP
     WriteOpenSCAP "agent"
 
-
     # CIS-CAT configuration
-    cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    WriteCISCAT "agent"
 
     # Syscheck
     WriteSyscheck "agent"
@@ -390,8 +403,7 @@ WriteManager()
     WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
-    cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    WriteCISCAT "manager"
 
     # Write syscheck
     WriteSyscheck "manager"
@@ -495,6 +507,9 @@ WriteLocal()
 
     # Write OpenSCAP
     WriteOpenSCAP "manager"
+
+    # CIS-CAT configuration
+    WriteCISCAT "agent"
 
     # Write syscheck
     WriteSyscheck "manager"
