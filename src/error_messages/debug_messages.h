@@ -28,3 +28,8 @@
 #define VU_UNS_OS             "(5466): Unsupported OS. Agent %s will be omitted..."
 #define VU_PACK_VER_VULN      "(5467): The '%s' package with its version %s is lower than %s, so the agent %s is vulnerable to %s."
 #define VU_PACK_VULN          "(5468): The '%s' package is vulnerable to %s."
+#define VU_UPDATE_PRE         "(5469): Preparse step."
+#define VU_UPDATE_PAR         "(5470): Parse step."
+#define VU_UPDATE_VU_CO       "(5471): Inserting vulnerability conditions..."
+#define VU_UPDATE_VU_INFO     "(5472): Inserting vulnerability info..."
+#define VU_UPDATE_VU          "(5473): Inserting vulnerabilities..."

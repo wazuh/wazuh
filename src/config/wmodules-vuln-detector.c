@@ -18,7 +18,6 @@ static const char *XML_DISABLED = "disabled";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_MIN_CVSS = "min_cvss";
-static const char *XML_SOURCE = "source";
 static const char *XML_ANTIQUITY_LIMIT = "antiquity_limit";
 static const char *XML_UPDATE_NVD = "update_nvd";
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
@@ -391,6 +390,21 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                             os_strdup(VU_PRECISE, agents->OS);
                         } else {
                             mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_UBUNTU, agents->agent_name);
+                            if (agents = skip_agent(agents, &vulnerability_detector->agents_software), !agents) {
+                                break;
+                            } else {
+                                continue;
+                            }
+                        }
+                    } else if (strcasestr(buffer, VU_RHEL)) {
+                        if (strstr(buffer, " 7")) {
+                            os_strdup(VU_RHEL7, agents->OS);
+                        } else if (strstr(buffer, " 6")) {
+                            os_strdup(VU_RHEL6, agents->OS);
+                        } else if (strstr(VU_RHEL5, " 5")) {
+                            os_strdup(VU_PRECISE, agents->OS);
+                        } else {
+                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_RHEL, agents->agent_name);
                             if (agents = skip_agent(agents, &vulnerability_detector->agents_software), !agents) {
                                 break;
                             } else {

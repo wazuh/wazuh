@@ -503,7 +503,8 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
     }
 
     sqlite3_exec(db, BEGIN_T, NULL, NULL, NULL);
-    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Previous OVAL removed.");
+
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_VU);
 
     while (vul_it) {
         // If you do not have this field, it has been discarded by the preparser and the OS is not affected
@@ -533,8 +534,6 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
         free(vul_aux);
     }
 
-    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Vulnerable packages have been inserted.");
-
     while (test_it) {
         if (test_it->state) {
             if (sqlite3_prepare_v2(db, VU_UPDATE_CVE, -1, &stmt, NULL) != SQLITE_OK) {
@@ -563,7 +562,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
         free(test_aux);
     }
 
-    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Inserting vulnerability conditions...");
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_VU_CO);
 
     while (state_it) {
         if (sqlite3_prepare_v2(db, VU_UPDATE_CVE2, -1, &stmt, NULL) != SQLITE_OK) {
@@ -584,7 +583,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
         free(state_aux);
     }
 
-    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Vulnerability conditions inserted.");
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_VU_INFO);
 
     while (info_it) {
         char date_diff;
@@ -599,9 +598,6 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
             return wm_vulnerability_detector_sql_error(db);
         }
 
-        if (sqlite3_prepare_v2(db, VU_INSERT_CVE_INFO, -1, &stmt, NULL) != SQLITE_OK) {
-            return wm_vulnerability_detector_sql_error(db);
-        }
         sqlite3_bind_text(stmt, 1, info_it->cveid, -1, NULL);
         sqlite3_bind_text(stmt, 2, info_it->title, -1, NULL);
         sqlite3_bind_text(stmt, 3, info_it->severity, -1, NULL);
@@ -627,7 +623,6 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
         free(info_aux->description);
         free(info_aux);
     }
-    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Vulnerability conditions inserted.");
 
     if (sqlite3_prepare_v2(db, VU_INSERT_METADATA, -1, &stmt, NULL) != SQLITE_OK) {
         return wm_vulnerability_detector_sql_error(db);
@@ -641,7 +636,6 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
         return wm_vulnerability_detector_sql_error(db);
     }
     sqlite3_finalize(stmt);
-    mtdebug2(WM_VULNDETECTOR_LOGTAG, "Metadata inserted.");
 
     free(met_it->product_name);
     free(met_it->product_version);
@@ -845,6 +839,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     static const char *XML_ISSUED = "issued";
     static const char *XML_UPDATED = "updated";
     static const char *XML_DESCRIPTION = "description";
+    static const char *XML_DATE = "date";
 
     for (i = 0; node[i]; i++) {
         XML_NODE chld_node = NULL;
@@ -1064,10 +1059,26 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                 os_strdup("Unknow", parsed_oval->info_cves->severity);
             }
         } else if (!strcmp(node[i]->element, XML_UPDATED)) {
-            os_strdup(node[i]->content, parsed_oval->info_cves->updated);
+            if (node[i]->attributes) {
+                for (j = 0; node[i]->attributes[j]; j++) {
+                    if (!strcmp(node[i]->attributes[j], XML_DATE)) {
+                        os_strdup(node[i]->values[j], parsed_oval->info_cves->updated);
+                    }
+                }
+            }
         } else if ((dist == UBUNTU && !strcmp(node[i]->element, XML_PUBLIC_DATE)) ||
                    (dist == REDHAT && !strcmp(node[i]->element, XML_ISSUED))) {
-            os_strdup(node[i]->content, parsed_oval->info_cves->published);
+                       if (dist == REDHAT) {
+                           if (node[i]->attributes) {
+                               for (j = 0; node[i]->attributes[j]; j++) {
+                                   if (!strcmp(node[i]->attributes[j], XML_DATE)) {
+                                       os_strdup(node[i]->values[j], parsed_oval->info_cves->published);
+                                   }
+                               }
+                           }
+                       } else if (dist == UBUNTU) {
+                           os_strdup(node[i]->content, parsed_oval->info_cves->published);
+                       }
         } else if (!strcmp(node[i]->element, XML_OVAL_DEFINITIONS)  ||
                    !strcmp(node[i]->element, XML_DEFINITIONS)       ||
                    !strcmp(node[i]->element, XML_TESTS)             ||
@@ -1129,10 +1140,12 @@ int wm_vulnerability_update_oval(cve_db version) {
         break;
     }
 
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_PRE);
     if (tmp_file = wm_vulnerability_detector_preparser(dist), !tmp_file) {
         return OS_INVALID;
     }
 
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_PAR);
     if (OS_ReadXML(tmp_file, &xml) < 0) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_LOAD_CVE_ERROR, OS_VERSION);
         return OS_INVALID;
@@ -1225,6 +1238,11 @@ int wm_vulnerability_detector_socketconnect(char *url) {
         mterror(WM_VULNDETECTOR_LOGTAG, "Cannot connect to %s:%i.", host, (int)port);
         return OS_INVALID;
 	}
+
+    int one = 1;
+    if (setsockopt(sock, SOL_TCP, TCP_NODELAY, &one, sizeof(one)) < 0) {
+        return OS_INVALID;
+    }
 	return sock;
 }
 
@@ -1232,7 +1250,10 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
     int sock = 0;
     SSL_CTX *ctx = NULL;
     SSL *ssl = NULL;
+    const SSL_METHOD *method;
     int size;
+    unsigned int readed;
+    unsigned int oval_size;
     char buffer[VU_SSL_BUFFER];
     char *repo;
     FILE *fp;
@@ -1291,12 +1312,16 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
         goto fetch_error;
     }
 
-    if (ctx = SSL_CTX_new(SSLv23_client_method()), !ctx) {
+    if (method = SSLv23_client_method(), !method) {
+        return OS_INVALID;
+    }
+
+    if (ctx = SSL_CTX_new(method), !ctx) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SSL_CONTEXT_ERROR);
         goto fetch_error;
     }
 
-    SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
+    SSL_CTX_set_options(ctx, SSL_MODE_AUTO_RETRY);
 
     if (ssl = SSL_new(ctx), !ssl) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SSL_CREATE_ERROR);
@@ -1314,10 +1339,33 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
     }
 
     SSL_write(ssl, buffer, strlen(buffer));
-
+    readed = 0;
     fp = fopen(CVE_TEMP_FILE, "w");
     bzero(buffer, VU_SSL_BUFFER);
-    while (size = SSL_read(ssl, buffer, VU_SSL_BUFFER -1), size) {
+
+    if (size = SSL_read(ssl, buffer, WM_HEADER_SIZE), size < 1) {
+        goto fetch_error;
+    }
+
+    if (oval_size = wm_read_http_header(buffer), oval_size < 0) {
+        goto fetch_error;
+    }
+
+    while (!readed || (oval_size != readed && (size = SSL_read(ssl, buffer, ((oval_size - readed) > VU_SSL_BUFFER)? VU_SSL_BUFFER : (oval_size - readed)))) > 0) {
+        buffer[size] = '\0';
+        if (!readed) {
+            char *found;
+            if(!(found = strstr(buffer, "<?xml version=")) && !(found = strstr(buffer, "<oval_definitions"))) {
+                return OS_INVALID;
+            }
+            readed = strlen(found);
+            fwrite(buffer, 1, size, fp);
+            bzero(buffer, VU_SSL_BUFFER);
+            continue;
+        }
+
+        readed += size;
+
         if (!timestamp_found) {
             char *timst;
             if (timst = strstr(buffer, "timestamp>"), timst) {

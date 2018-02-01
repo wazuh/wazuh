@@ -212,6 +212,25 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     return nmemb - 1;
 }
 
+int wm_read_http_header(char *header) {
+    int size;
+    char *size_tag = "Content-Length:";
+    char *found;
+    char c_aux;
+
+    if (found = strstr(header, size_tag), !found) {
+        return 0;
+    }
+    found += strlen(size_tag);
+    for (header = found; isdigit(*found) || *found == ' '; found++);
+
+    c_aux = *found;
+    *found = '\0';
+    size = strtol(header, NULL, 10);
+    *found = c_aux;
+    return size;
+}
+
 void wm_free(wmodule * config) {
     wmodule *cur_module;
     wmodule *next_module;

@@ -32,6 +32,7 @@
 #define WM_IO_READ      1
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
 #define WM_POOL_SIZE    1                           // Child process pool size.
+#define WM_HEADER_SIZE  OS_SIZE_1024
 
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
@@ -96,6 +97,9 @@ void wm_remove_sid(pid_t sid);
 
 // Terminate every child process group
 void wm_kill_children();
+
+// Reads an HTTP header and extracts the size of the response
+int wm_read_http_header(char *header);
 
 /* Concatenate strings with optional separator
  *
