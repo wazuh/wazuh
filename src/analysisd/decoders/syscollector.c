@@ -17,19 +17,20 @@
 #include "external/cJSON/cJSON.h"
 #include "plugin_decoders.h"
 #include "wazuh_modules/wmodules.h"
+#include "os_net/os_net.h"
 #include <time.h>
 
 #define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
-static int send_db(int sock, char * msg);
-static int decode_osinfo(char *agent_id, cJSON * logJSON, int sock);
-static int decode_hardware(char *agent_id, cJSON * logJSON, int sock);
-static int decode_program(char *agent_id, cJSON * logJSON, int sock);
-static int decode_port(char *agent_id, cJSON * logJSON, int sock);
-static int decode_process(char *agent_id, cJSON * logJSON, int sock);
+static int sc_send_db(char * msg);
+static int decode_osinfo(char *agent_id, cJSON * logJSON);
+static int decode_hardware(char *agent_id, cJSON * logJSON);
+static int decode_program(char *agent_id, cJSON * logJSON);
+static int decode_port(char *agent_id, cJSON * logJSON);
+static int decode_process(char *agent_id, cJSON * logJSON);
 
 /* Special decoder for syscollector */
-int DecodeSyscollector(Eventinfo *lf, int sock)
+int DecodeSyscollector(Eventinfo *lf)
 {
     cJSON *logJSON;
     char *msg_type = NULL;
@@ -42,53 +43,53 @@ int DecodeSyscollector(Eventinfo *lf, int sock)
         char* search;
         search = strchr(lf->location, '>') + 1;
         if (!search) {
-            merror("Invalid received event.");
+            mdebug1("Invalid received event.");
             return (0);
         }
         else if (strcmp(search, "syscollector") != 0) {
-            merror("Invalid received event. Not syscollector.");
+            mdebug1("Invalid received event. Not syscollector.");
             return (0);
         }
     } else if (strcmp(lf->location, "syscollector") != 0) {
-        merror("Invalid received event. (Location)");
+        mdebug1("Invalid received event. (Location)");
         return (0);
     }
 
     // Parsing event.
     logJSON = cJSON_Parse(lf->log);
     if (!logJSON) {
-        merror("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
         return (0);
     }
 
     // Detect message type
     msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
     if (!msg_type) {
-        merror("Invalid message. Type not found.");
+        mdebug1("Invalid message. Type not found.");
         return (0);
     }
 
     if (strcmp(msg_type, "port") == 0 || strcmp(msg_type, "port_end") == 0) {
-        if (decode_port(lf->agent_id, logJSON, sock) < 0) {
-            merror("Unable to send ports information to Wazuh DB.");
+        if (decode_port(lf->agent_id, logJSON) < 0) {
+            mdebug1("Unable to send ports information to Wazuh DB.");
             return (0);
         }
     }
     else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
-        if (decode_program(lf->agent_id, logJSON, sock) < 0) {
-            merror("Unable to send programs information to Wazuh DB.");
+        if (decode_program(lf->agent_id, logJSON) < 0) {
+            mdebug1("Unable to send programs information to Wazuh DB.");
             return (0);
         }
     }
     else if (strcmp(msg_type, "hardware") == 0) {
-        if (decode_hardware(lf->agent_id, logJSON, sock) < 0) {
-            merror("Unable to send hardware information to Wazuh DB.");
+        if (decode_hardware(lf->agent_id, logJSON) < 0) {
+            mdebug1("Unable to send hardware information to Wazuh DB.");
             return (0);
         }
     }
     else if (strcmp(msg_type, "OS") == 0) {
-        if (decode_osinfo(lf->agent_id, logJSON, sock) < 0) {
-            merror("Unable to send osinfo message to Wazuh DB.");
+        if (decode_osinfo(lf->agent_id, logJSON) < 0) {
+            mdebug1("Unable to send osinfo message to Wazuh DB.");
             return (0);
         }
     }
@@ -96,13 +97,13 @@ int DecodeSyscollector(Eventinfo *lf, int sock)
         return (1);
     }
     else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_list") == 0  || strcmp(msg_type, "process_end") == 0) {
-        if (decode_process(lf->agent_id, logJSON, sock) < 0) {
-            merror("Unable to send processes information to Wazuh DB.");
+        if (decode_process(lf->agent_id, logJSON) < 0) {
+            mdebug1("Unable to send processes information to Wazuh DB.");
             return (0);
         }
     }
     else {
-        merror("Invalid message type: %s.", msg_type);
+        mdebug1("Invalid message type: %s.", msg_type);
         return (0);
     }
 
@@ -110,7 +111,7 @@ int DecodeSyscollector(Eventinfo *lf, int sock)
     return (1);
 }
 
-int decode_osinfo(char *agent_id, cJSON * logJSON, int sock) {
+int decode_osinfo(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
 
@@ -223,8 +224,7 @@ int decode_osinfo(char *agent_id, cJSON * logJSON, int sock) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (send_db(sock, msg) < 0) {
-            merror("At decode_osinfo(): '%s'.", strerror(errno));
+        if (sc_send_db(msg) < 0) {
             return -1;
         }
 
@@ -233,7 +233,7 @@ int decode_osinfo(char *agent_id, cJSON * logJSON, int sock) {
     return 0;
 }
 
-int decode_port(char *agent_id, cJSON * logJSON, int sock) {
+int decode_port(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
 
@@ -348,8 +348,7 @@ int decode_port(char *agent_id, cJSON * logJSON, int sock) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (send_db(sock, msg) < 0) {
-            merror("At decode_port(): '%s'.", strerror(errno));
+        if (sc_send_db(msg) < 0) {
             return -1;
         }
 
@@ -368,8 +367,7 @@ int decode_port(char *agent_id, cJSON * logJSON, int sock) {
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
             snprintf(msg, OS_MAXSTR - 1, "agent %s port del %d", agent_id, scan_id->valueint);
 
-            if (send_db(sock, msg) < 0) {
-                merror("At decode_port(): '%s'.", strerror(errno));
+            if (sc_send_db(msg) < 0) {
                 return -1;
             }
         }
@@ -378,7 +376,7 @@ int decode_port(char *agent_id, cJSON * logJSON, int sock) {
     return 0;
 }
 
-int decode_hardware(char *agent_id, cJSON * logJSON, int sock) {
+int decode_hardware(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
 
@@ -456,8 +454,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON, int sock) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (send_db(sock, msg) < 0) {
-            merror("At decode_hardware(): '%s'.", strerror(errno));
+        if (sc_send_db(msg) < 0) {
             return -1;
         }
     }
@@ -465,7 +462,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON, int sock) {
     return 0;
 }
 
-int decode_program(char *agent_id, cJSON * logJSON, int sock) {
+int decode_program(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
 
@@ -536,8 +533,7 @@ int decode_program(char *agent_id, cJSON * logJSON, int sock) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (send_db(sock, msg) < 0) {
-            merror("At decode_program(): '%s'.", strerror(errno));
+        if (sc_send_db(msg) < 0) {
             return -1;
         }
 
@@ -557,8 +553,7 @@ int decode_program(char *agent_id, cJSON * logJSON, int sock) {
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
             snprintf(msg, OS_MAXSTR - 1, "agent %s program del %d", agent_id, scan_id->valueint);
 
-            if (send_db(sock, msg) < 0) {
-                merror("At decode_program(): '%s'.", strerror(errno));
+            if (sc_send_db(msg) < 0) {
                 return -1;
             }
         }
@@ -567,7 +562,7 @@ int decode_program(char *agent_id, cJSON * logJSON, int sock) {
     return 0;
 }
 
-int decode_process(char *agent_id, cJSON * logJSON, int sock) {
+int decode_process(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
     int i;
@@ -830,8 +825,7 @@ int decode_process(char *agent_id, cJSON * logJSON, int sock) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (send_db(sock, msg) < 0) {
-            merror("At decode_process(): '%s'.", strerror(errno));
+        if (sc_send_db(msg) < 0) {
             return -1;
         }
 
@@ -850,8 +844,7 @@ int decode_process(char *agent_id, cJSON * logJSON, int sock) {
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
             snprintf(msg, OS_MAXSTR - 1, "agent %s process del %d", agent_id, scan_id->valueint);
 
-            if (send_db(sock, msg) < 0) {
-                merror("At decode_process(): '%s'.", strerror(errno));
+            if (sc_send_db(msg) < 0) {
                 return -1;
             }
         }
@@ -860,20 +853,63 @@ int decode_process(char *agent_id, cJSON * logJSON, int sock) {
     return 0;
 }
 
-int send_db(int sock, char * msg) {
-
+int sc_send_db(char * msg) {
+    static int sock = -1;
     char response[OS_MAXSTR];
     ssize_t length;
     fd_set fdset;
     struct timeval timeout = {0, 1000};
     int size = strlen(msg);
+    int retval = -1;
+    static time_t last_attempt = 0;
+    time_t mtime;
+
+    // Connect to socket if disconnected
+
+    if (sock < 0) {
+        if (mtime = time(NULL), mtime > last_attempt + 10) {
+            last_attempt = mtime;
+
+            if (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+                merror("Unable to connect to socket '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
+                goto end;
+            }
+        } else {
+            // Return silently
+            goto end;
+        }
+    }
 
     // Send msg to Wazuh DB
 
     if (send(sock, msg, size + 1, MSG_DONTWAIT) < size) {
-        merror("at send_db(): %s (%d)", strerror(errno), errno);
-        free(msg);
-        return -1;
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            merror("Syscollector decoder: database socket is full");
+        } else if (errno == EPIPE) {
+            if (mtime = time(NULL), mtime > last_attempt + 10) {
+                last_attempt = mtime;
+
+                // Retry to connect
+                mwarn("Connection with wazuh-db lost. Reconnecting.");
+
+                if (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+                    merror("Unable to connect to socket '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
+                    goto end;
+                }
+
+                if (send(sock, msg, size + 1, MSG_DONTWAIT) < size) {
+                    merror("at sc_send_db(): at send() (retry): %s (%d)", strerror(errno), errno);
+                    goto end;
+                }
+            } else {
+                // Return silently
+                goto end;
+            }
+
+        } else {
+            merror("at sc_send_db(): at send(): %s (%d)", strerror(errno), errno);
+            goto end;
+        }
     }
 
     // Wait for socket
@@ -882,29 +918,31 @@ int send_db(int sock, char * msg) {
     FD_SET(sock, &fdset);
 
     if (select(sock + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        merror("at send_db(): at select(): %s (%d)", strerror(errno), errno);
-        free(msg);
-        return -1;
+        merror("at sc_send_db(): at select(): %s (%d)", strerror(errno), errno);
+        goto end;
     }
 
     // Receive response from socket
 
     length = recv(sock, response, OS_MAXSTR, 0);
-    free(msg);
 
     switch (length) {
         case -1:
-            merror("at send_db(): at recv(): %s (%d)", strerror(errno), errno);
-            return -1;
+            merror("at sc_send_db(): at recv(): %s (%d)", strerror(errno), errno);
+            goto end;
 
         default:
             response[length] = '\0';
 
             if (strcmp(response, "ok")) {
-                merror("at send_db(): received: '%s'", response);
-                return -1;
+                merror("at sc_send_db(): received: '%s'", response);
+                goto end;
             }
     }
 
-    return 0;
+    retval = 0;
+
+end:
+    free(msg);
+    return retval;
 }

@@ -43,7 +43,7 @@
 #endif
 
 /** Prototypes **/
-void OS_ReadMSG(int m_queue, int sock);
+void OS_ReadMSG(int m_queue);
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 static void LoopRule(RuleNode *curr_node, FILE *flog);
 
@@ -52,7 +52,7 @@ void DecodeEvent(Eventinfo *lf);
 int DecodeSyscheck(Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
-int DecodeSyscollector(Eventinfo *lf, int sock);
+int DecodeSyscollector(Eventinfo *lf);
 
 /* For stats */
 static void DumpLogstats(void);
@@ -115,7 +115,6 @@ int main_analysisd(int argc, char **argv)
     const char *group = GROUPGLOBAL;
     uid_t uid;
     gid_t gid;
-    int sock = 0, i;
 
     const char *cfg = DEFAULTCPATH;
 
@@ -484,20 +483,6 @@ int main_analysisd(int argc, char **argv)
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
-    /* Open a socket with the Wazuh DB to save data in there. 4 attempts */
-
-    i = 0;
-
-    while (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        i++;
-        if (i >= 4){
-            merror("Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
-            break;
-        }
-        merror("Unable to connect to socket '%s'. Waiting %d seconds.", WDB_LOCAL_SOCK, i);
-        sleep(i);
-    }
-
     /* Whitelist */
     if (Config.white_list == NULL) {
         if (Config.ar) {
@@ -544,7 +529,7 @@ int main_analysisd(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     /* Going to main loop */
-    OS_ReadMSG(m_queue, sock);
+    OS_ReadMSG(m_queue);
 
     exit(0);
 }
@@ -552,10 +537,10 @@ int main_analysisd(int argc, char **argv)
 /* Main function. Receives the messages(events) and analyze them all */
 #ifndef TESTRULE
 __attribute__((noreturn))
-void OS_ReadMSG(int m_queue, int sock)
+void OS_ReadMSG(int m_queue)
 #else
 __attribute__((noreturn))
-void OS_ReadMSG_analysisd(int m_queue, int sock)
+void OS_ReadMSG_analysisd(int m_queue)
 #endif
 {
     int i;
@@ -790,7 +775,7 @@ void OS_ReadMSG_analysisd(int m_queue, int sock)
             }
             /* Syscollector decoding */
             else if (msg[0] == SYSCOLLECTOR_MQ) {
-                if (!DecodeSyscollector(lf, sock)) {
+                if (!DecodeSyscollector(lf)) {
                     /* We don't process hostinfo events further */
                     goto CLMEM;
                 }
