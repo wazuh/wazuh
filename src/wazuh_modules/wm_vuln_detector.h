@@ -31,20 +31,7 @@
 #define VU_MAX_TIMESTAMP_ATTEMPS 4
 #define VU_AGENT_REQUEST_LIMIT   0
 #define VU_ALERT_HEADER "[%s] (%s) %s"
-#define VU_ALERT_JSON "1:" VU_WM_NAME ":{"\
-                                         "\"vulnerability\":{"\
-                                            "\"cve\":\"%s\","\
-                                            "\"title\":\"%s\","\
-                                            "\"severity\":\"%s\","\
-                                            "\"published\":\"%s\","\
-                                            "\"updated\":\"%s\","\
-                                            "\"reference\":\"%s\","\
-                                            "\"rationale\":\"%s\","\
-                                            "\"state\":\"%s\","\
-                                            "\"affected_package\":\"%s\""\
-                                         "}"\
-                                       "}"
-
+#define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
 #define VU_UBUNTU   "UBUNTU"
 #define VU_PRECISE  "PRECISE"
 #define VU_TRUSTY   "TRUSTY"

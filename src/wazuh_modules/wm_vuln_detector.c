@@ -305,10 +305,13 @@ int wm_checks_package_vulnerability(const char *package, char *version, const ch
 
 int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, int max) {
     sqlite3_stmt *stmt = NULL;
-    char alert[OS_MAXSTR];
+    char alert_msg[OS_MAXSTR];
     char header[OS_SIZE_256];
     int size;
     agent_software *agents_it;
+    cJSON *alert = NULL;
+    cJSON *alert_cve = NULL;
+    char *str_json;
     char *cve;
     char *title;
     char *severity;
@@ -318,12 +321,17 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     char *rationale;
     int i;
 
+    if (alert = cJSON_CreateObject(), !alert) {
+        return OS_INVALID;
+    }
+
     for (agents_it = agents, i = 0; agents_it && i < max; agents_it = agents_it->prev, i++) {
         if (!agents_it->info) {
             continue;
         }
 
         if (sqlite3_prepare_v2(db, VU_JOIN_QUERY, -1, &stmt, NULL) != SQLITE_OK) {
+            cJSON_free(alert);
             return wm_vulnerability_detector_sql_error(db);
         }
         sqlite3_bind_int(stmt, 1,  strtol(agents_it->agent_id, NULL, 10));
@@ -370,19 +378,42 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             }
             state[size] = '\0';
 
-            snprintf(header, OS_SIZE_256, VU_ALERT_HEADER, agents_it->agent_id, agents_it->agent_name, agents_it->agent_ip);
-            snprintf(alert, OS_MAXSTR, VU_ALERT_JSON, cve, title, severity, published, updated, reference, rationale, state, package);
+            if (alert_cve = cJSON_CreateObject(), alert_cve) {
+                cJSON_AddStringToObject(alert_cve, "cve", cve);
+                cJSON_AddStringToObject(alert_cve, "title", title);
+                cJSON_AddStringToObject(alert_cve, "severity", severity);
+                cJSON_AddStringToObject(alert_cve, "published", published);
+                cJSON_AddStringToObject(alert_cve, "updated", updated);
+                cJSON_AddStringToObject(alert_cve, "reference", reference);
+                cJSON_AddStringToObject(alert_cve, "rationale", rationale);
+                cJSON_AddStringToObject(alert_cve, "state", state);
+                cJSON_AddStringToObject(alert_cve, "affected_package", package);
+                cJSON_AddItemToObject(alert, "vulnerability", alert_cve);
+            } else {
+                cJSON_Delete(alert);
+                return OS_INVALID;
+            }
 
-            if (SendMSG(*vu_queue, alert, header, SECURE_MQ) < 0) {
+            str_json = cJSON_PrintUnformatted(alert);
+            snprintf(header, OS_SIZE_256, VU_ALERT_HEADER, agents_it->agent_id, agents_it->agent_name, agents_it->agent_ip);
+            snprintf(alert_msg, OS_MAXSTR, VU_ALERT_JSON, str_json);
+            free(str_json);
+
+            if (SendMSG(*vu_queue, alert_msg, header, SECURE_MQ) < 0) {
                 mterror(WM_VULNDETECTOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                 if ((*vu_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
                     mterror_exit(WM_VULNDETECTOR_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
                 }
             }
+
+            cJSON_Delete(alert_cve);
+            alert->child = NULL;
         }
 
         sqlite3_finalize(stmt);
     }
+
+    cJSON_Delete(alert);
 
     return 0;
 }
@@ -803,7 +834,9 @@ free_buffer:
 final:
     free(buffer);
     fclose(input);
-    fclose(output);
+    if (output) {
+        fclose(output);
+    }
     return tmp_file;
 }
 
@@ -1270,7 +1303,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
     char buffer[VU_SSL_BUFFER];
     char *repo;
     FILE *fp;
-    char *OS;
+    char *OS = NULL;
     char timestamp_found = 0;
     int attemps = 0;
     *need_update = 1;
@@ -1310,6 +1343,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
         default:
             mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
             sucess = 0;
+            os_strdup("unknow OS", OS);
             goto final;
     }
 
@@ -1349,7 +1383,10 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
 
     SSL_write(ssl, buffer, strlen(buffer));
     readed = 0;
-    fp = fopen(CVE_TEMP_FILE, "w");
+    if (fp = fopen(CVE_TEMP_FILE, "w"), !fp) {
+        sucess = 0;
+        goto final;
+    }
     bzero(buffer, VU_SSL_BUFFER);
 
     if (size = SSL_read(ssl, buffer, WM_HEADER_SIZE), size < 1) {
@@ -1797,7 +1834,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
     char *uname;
     char *uname_p = NULL;
 
-    uname = strdup(getuname());
+    os_strdup(getuname(), uname);
 
     OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, 0, 0, 0);
