@@ -75,6 +75,7 @@
                     <Component Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9">
                         <File Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" Name="default-local_internal_options.conf" Source="default-local_internal_options.conf">
                             <CopyFile Id="LOCAL_INTERNAL_OPTIONS.CONF" DestinationName="default-local_internal_options.conf" />
+                            <CopyFile Id="EMPTY_LOCAL_INTERNAL_OPTIONS.CONF" DestinationName="local_internal_options.conf" />
                         </File>
                     </Component>
                     <Component Id="DEFAULT_OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="no">
