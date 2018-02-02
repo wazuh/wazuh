@@ -253,14 +253,14 @@ char* length_to_ipv6_mask(int mask_length){
         }else{
             switch (length){
                 case 3:
-                    string[j] = 'e';
-                    j++;
+                    string[j++] = 'e';
+                    break;
                 case 2:
-                    string[j] = 'c';
-                    j++;
+                    string[j++] = 'c';
+                    break;
                 case 1:
-                    string[j] = '8';
-                    j++;
+                    string[j++] = '8';
+                    break;
                 case 0:
                     break;
             }

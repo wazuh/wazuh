@@ -889,17 +889,22 @@ int send_db(int sock, char * msg) {
 
     // Receive response from socket
 
-    switch (length = recv(sock, response, OS_MAXSTR, 0), length) {
+    length = recv(sock, response, OS_MAXSTR, 0);
+    free(msg);
+
+    switch (length) {
         case -1:
             merror("at send_db(): at recv(): %s (%d)", strerror(errno), errno);
+            return -1;
+
         default:
+            response[length] = '\0';
+
             if (strcmp(response, "ok")) {
                 merror("at send_db(): received: '%s'", response);
                 return -1;
             }
     }
-
-    free(msg);
 
     return 0;
 }

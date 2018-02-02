@@ -79,7 +79,7 @@ int get_interval(char *source, unsigned long *interval) {
 
 int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
     unsigned int i, j;
-    agent_software *agents;
+    //agent_software *agents;
     wm_vulnerability_detector_t * vulnerability_detector;
 
     os_calloc(1, sizeof(wm_vulnerability_detector_t), vulnerability_detector);
