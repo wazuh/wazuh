@@ -789,13 +789,15 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
             logging.warning("Client.keys file received in a master node.")
             raise WazuhException(3007)
 
-    if 'agent-info' in fullpath:
+    is_agent_info   = 'agent-info' in fullpath
+    is_agent_groups = 'agent-groups' in fullpath
+    if is_agent_info or is_agent_groups:
         if node_type=='master':
             # check if the date is older than the manager's date
-            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
-                logging.warning("Receiving an old agent-info file ({})".format(path.basename(fullpath)))
+            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) >= mtime:
+                logging.warning("Receiving an old file ({})".format(fullpath))
                 raise WazuhException(3012)
-        else:
+        elif is_agent_info:
             logging.warning("Agent-info received in a client node.")
             raise WazuhException(3011)
 
@@ -999,8 +1001,12 @@ def update_node_db_after_sync(data, node, cluster_socket):
         update_sql = "update2"
         for f in failed:
             if isinstance(f, dict):
-                if f['reason'] == 'Error 3012 - Received an old agent-info file.':
-                    delete_sql += " /{0}".format(f['item'])
+                if f['reason'].startswith('Error 3012'):
+                    if 'agent-info' in f['item']:
+                        delete_sql += " /{0}".format(f['item'])
+                    else:
+                        # set old files as synchronized so the node doesn't send them anymore
+                        update_sql += " synchronized {} /{}".format(node, f['item'])
                 else:
                     update_sql += " failed {0} /{1}".format(node, f['item'])
             else:
