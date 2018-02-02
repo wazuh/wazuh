@@ -1487,7 +1487,10 @@ class Agent:
             map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
 
         if 'status' in select_fields:
-            map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+            try:
+                map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+            except KeyError:
+                pass
 
         # return only the fields requested by the user (saved in select_fields) and not the dependent ones
         non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
