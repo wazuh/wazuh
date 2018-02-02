@@ -23,11 +23,10 @@
 #define MYSQL_MQ        'a'
 #define POSTGRESQL_MQ   'b'
 #define AUTH_MQ         'c'
-#define WODLE_MQ    'd'
+#define SYSCOLLECTOR_MQ    'd'
 
 int StartMQ(const char *key, short int type) __attribute__((nonnull));
 
 int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
 
 #endif
-

@@ -224,7 +224,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
         timeout.tv_usec = usec;
         select(0 , NULL, NULL, NULL, &timeout);
-        SendMSG(queue_fd, line, WM_OSCAP_LOCATION, WODLE_MQ);
+        SendMSG(queue_fd, line, WM_OSCAP_LOCATION, LOCALFILE_MQ);
     }
 
     snprintf(msg, OS_MAXSTR, "Ending OpenSCAP scan. File: %s. ", eval->path);
@@ -259,14 +259,14 @@ void wm_oscap_check() {
     // Check if interval
 
     if (!oscap->interval)
-        oscap->interval = WM_DEF_INTERVAL;
+        oscap->interval = WM_OSCAP_DEF_INTERVAL;
 
     // Check timeout and flags for evals
 
     for (eval = oscap->evals; eval; eval = eval->next) {
         if (!eval->timeout)
             if (!(eval->timeout = oscap->timeout))
-                eval->timeout = WM_DEF_TIMEOUT;
+                eval->timeout = WM_OSCAP_DEF_TIMEOUT;
     }
 }
 

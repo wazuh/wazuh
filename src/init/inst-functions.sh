@@ -19,7 +19,7 @@
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
 GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
-
+SYSCOLLECTOR_TEMPLATE="./etc/templates/config/generic/wodle-syscollector.template"
 RULES_TEMPLATE="./etc/templates/config/generic/rules.template"
 AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
 AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
@@ -34,6 +34,7 @@ AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
+VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 ##########
 # WriteSyscheck()
@@ -305,6 +306,10 @@ WriteAgent()
     # OpenSCAP
     WriteOpenSCAP "agent"
 
+    # Syscollector configuration
+    cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # CIS-CAT configuration
     WriteCISCAT "agent"
 
@@ -402,8 +407,16 @@ WriteManager()
     # Write OpenSCAP
     WriteOpenSCAP "manager"
 
+    # Syscollector
+    cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # CIS-CAT configuration
     WriteCISCAT "manager"
+
+    # Vulnerability Detector
+    cat ${VULN_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # Write syscheck
     WriteSyscheck "manager"
@@ -510,6 +523,10 @@ WriteLocal()
 
     # CIS-CAT configuration
     WriteCISCAT "agent"
+
+    # Vulnerability Detector
+    cat ${VULN_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # Write syscheck
     WriteSyscheck "manager"
@@ -743,6 +760,7 @@ InstallLocal(){
     ${INSTALL} -m 0750 -o root -g 0 syscheck_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 rootcheck_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 -b update/ruleset/update_ruleset ${PREFIX}/bin/update_ruleset
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
@@ -776,10 +794,10 @@ InstallLocal(){
     fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
-
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/db
 
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
     ${INSTALL} -m 750 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations

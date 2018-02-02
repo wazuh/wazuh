@@ -29,6 +29,7 @@
 #include <file_op.h>
 #include <sys/stat.h>
 #include <error_messages.h>
+#include <debug_messages.h>
 #include <cJSON.h>
 #include <dirent.h>
 #include <pwd.h>

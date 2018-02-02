@@ -16,7 +16,7 @@ int wm_task_nice = 0;       // Nice value for tasks.
 int wm_max_eps;             // Maximum events per second sent by OpenScap and CIS-CAT Wazuh Module
 int wm_kill_timeout;        // Time for a process to quit before killing it
 
-// Read XML configuration and internal internal options
+// Read XML configuration and internal options
 
 int wm_config() {
 
@@ -98,7 +98,9 @@ void wm_check() {
             next = j->next;
 
             if (i->context->name == j->context->name) {
-                j->context->destroy(j->data);
+                if (j->context->destroy)
+                    j->context->destroy(j->data);
+
                 free(j);
 
                 if (j == wmodules)
@@ -209,6 +211,25 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     fclose(file);
 
     return nmemb - 1;
+}
+
+int wm_read_http_header(char *header) {
+    int size;
+    char *size_tag = "Content-Length:";
+    char *found;
+    char c_aux;
+
+    if (found = strstr(header, size_tag), !found) {
+        return 0;
+    }
+    found += strlen(size_tag);
+    for (header = found; isdigit(*found) || *found == ' '; found++);
+
+    c_aux = *found;
+    *found = '\0';
+    size = strtol(header, NULL, 10);
+    *found = c_aux;
+    return size;
 }
 
 void wm_free(wmodule * config) {

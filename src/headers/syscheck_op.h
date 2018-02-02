@@ -82,4 +82,6 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum);
 
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
 
+int sk_build_sum(const sk_sum_t * sum, char * output, size_t size);
+
 #endif

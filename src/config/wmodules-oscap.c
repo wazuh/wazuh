@@ -259,7 +259,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     }
 
     if (!oscap->interval)
-        oscap->interval = WM_DEF_INTERVAL;
+        oscap->interval = WM_OSCAP_DEF_INTERVAL;
 
     return 0;
 }

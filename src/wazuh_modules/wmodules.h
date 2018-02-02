@@ -25,12 +25,14 @@
 #define WM_DIR_WIN      "wodles"                    // Default directory for states (Windows)
 #define WM_STRING_MAX   67108864                    // Max. dynamic string size (64 MB).
 #define WM_BUFFER_MAX   1024                        // Max. static buffer size.
+#define WM_BUFFER_MIN   1024                        // Starting JSON buffer length.
 #define WM_MAX_ATTEMPTS 3                           // Max. number of attempts.
 #define WM_MAX_WAIT     1                           // Max. wait between attempts.
 #define WM_IO_WRITE     0
 #define WM_IO_READ      1
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
 #define WM_POOL_SIZE    1                           // Child process pool size.
+#define WM_HEADER_SIZE  OS_SIZE_1024
 
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
@@ -55,8 +57,10 @@ typedef struct wmodule {
 
 #include "wm_oscap.h"
 #include "wm_database.h"
+#include "syscollector/syscollector.h"
 #include "wm_command.h"
 #include "wm_ciscat.h"
+#include "wm_vuln_detector.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
@@ -93,6 +97,9 @@ void wm_remove_sid(pid_t sid);
 
 // Terminate every child process group
 void wm_kill_children();
+
+// Reads an HTTP header and extracts the size of the response
+int wm_read_http_header(char *header);
 
 /* Concatenate strings with optional separator
  *

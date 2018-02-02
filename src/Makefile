@@ -7,6 +7,9 @@ EXTERNAL_LUA=external/lua-5.2.3/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
+ifneq (${TARGET},winagent)
+EXTERNAL_PROCPS=external/procps/
+endif
 LUA_PLAT=posix
 MAXAGENTS?=8000
 REUSE_ID?=no
@@ -49,18 +52,21 @@ ifeq (${uname_S},Linux)
 #		DEFINES+=-DUSE_MAGIC
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
+		CFLAGS+=-Wl,--start-group
 else
 ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
 		DEFINES+=-DHIGHFIRST
 		PATH:=${PATH}:/usr/vac/bin
 		OSSEC_LDFLAGS+=-pthread
+		CFLAGS+=-Wl,--start-group
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-std=gnu99
+		CFLAGS+=-Wl,--start-group
 		OSSEC_LDFLAGS+=-z relax=secadj
 		OSSEC_LDFLAGS+=-lsocket -lnsl -lresolv
 		LUA_PLAT=solaris
@@ -79,19 +85,20 @@ ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
 		OSSEC_LDFLAGS+=-pthread
 		LUA_PLAT=freebsd
-		CFLAGS+=-I/usr/local/include
+		CFLAGS+=-I/usr/local/include -Wl,--start-group
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 else
 ifeq (${uname_S},NetBSD)
 		DEFINES+=-DNetBSD
 		OSSEC_LDFLAGS+=-pthread
+		CFLAGS+=-Wl,--start-group
 		LUA_PLAT=posix
 else
 ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
 		DEFINES+=-pthread
 		LUA_PLAT=posix
-		CFLAGS+=-I/usr/local/include
+		CFLAGS+=-I/usr/local/include -Wl,--start-group
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 else
 ifeq (${uname_S},HP-UX)
@@ -106,6 +113,7 @@ ifeq (${uname_S},HP-UX)
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
 		USE_LEGACY_SSL=yes
+		CFLAGS+=-Wl,--start-group
 else
 	    # Unknow platform
 endif # HPUX
@@ -430,6 +438,7 @@ BUILD_SERVER+=ossec-makelists
 BUILD_SERVER+=ossec-dbd
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
+BUILD_SERVER+=wazuh-db
 BUILD_SERVER+=wazuh-framework
 
 BUILD_AGENT+=ossec-agentd
@@ -472,8 +481,8 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a win32/libwinpthread-1.dll
-	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32"
+winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
+	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32 -liphlpapi -lws2_32"
 	cd ${EXTERNAL_LUA}src/ && ${MAKE} CC=${MING_BASE}${CC} -f Makefile.mingw mingw
 	cp ${EXTERNAL_LUA}src/ossec-lua.exe win32/
 	cp ${EXTERNAL_LUA}src/ossec-luac.exe win32/
@@ -496,7 +505,7 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 ####################
 
 .PHONY: external lua
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a
 
 lua:
 	cd ${EXTERNAL_LUA} && ${MAKE} ${LUA_PLAT}
@@ -574,11 +583,27 @@ libcJSON.a: ${cjson_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
+#### procps #########
+ifneq (${TARGET},winagent)
+PROCPS_LIB=libproc.a
+PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
+
+procps_c := $(wildcard ${EXTERNAL_PROCPS}*.c)
+procps_o := $(procps_c:.c=.o)
+
+${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+libproc.a: ${procps_o}
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
+endif
+
 ####################
 #### OSSEC Libs ####
 ####################
 
-ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a ${OPENSSL_LIB} ${CRYPTO_LIB}
+ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a ${JSON_LIB} ${OPENSSL_LIB} ${CRYPTO_LIB} ${PROCPS_LIB}
 
 #### os_xml ########
 
@@ -629,32 +654,44 @@ shared.a: ${shared_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
-#### Wazuh modules ##
+#### Wazuh DB ####
 
-wmodules_c := $(wildcard wazuh_modules/wm*.c)
-wmodules_o := $(wmodules_c:.c=.o)
-
-wazuh_modules/%.o: wazuh_modules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
-
-wmodules.a: ${wmodules_o}
-	${OSSEC_LINK} $@ $^
-	${OSSEC_RANLIB} $@
-
-#### SQLite ####
-
-sqlite_c := $(wildcard wazuh_db/*.c) ${EXTERNAL_SQLITE}sqlite3.c
-sqlite_sql := $(wildcard wazuh_db/*.sql)
-sqlite_o := $(sqlite_c:.c=.o) $(sqlite_sql:.sql=.o)
+wdb_sql := $(wildcard wazuh_db/*.sql)
+wdblib_c := $(wildcard wazuh_db/wdb*.c) ${EXTERNAL_SQLITE}sqlite3.c
+wdblib_o := $(wdblib_c:.c=.o) $(wdb_sql:.sql=.o)
+wdb_o := wazuh_db/main.o $(wdblib_o:.c=.o) $(wdb_c:.c=.o) $(wdb_sql:.sql=.o)
 
 wazuh_db/schema_%.o: wazuh_db/schema_%.sql
 	${QUIET_CC}echo 'const char *'$(word 2, $(subst /, ,$(subst .,_,$<))) '= "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
 
 wazuh_db/%.o: wazuh_db/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-analysisd\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-db\" -c $^ -o $@
 
 ${EXTERNAL_SQLITE}sqlite3.o: ${EXTERNAL_SQLITE}sqlite3.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -w -c $^ -o $@ -fPIC
+
+wazuh-db: ${wdb_o} ${ossec_libs}
+	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
+
+#### Wazuh modules ##
+
+wmodules_c := $(wildcard wazuh_modules/wm*.c wazuh_modules/syscollector/*.c)
+wmodules_o := $(wmodules_c:.c=.o)
+
+wazuh_modules/%.o: wazuh_modules/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
+
+ifeq (${TARGET},winagent)
+wazuh_modules/syscollector/syscollector_win_ext.dll: wazuh_modules/syscollector/syscollector_win_ext.o ${JSON_LIB}
+	${OSSEC_CC} -pipe -O2 -shared -o $@ $^ -liphlpapi -lws2_32
+endif # DLL for Windows
+
+wazuh_modules/syscollector/%.o: wazuh_modules/syscollector/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
+
+wmodules.a: ${wmodules_o} ${wdblib_o}
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
 
 #### Config ##########
 
@@ -769,7 +806,7 @@ os_agentlessd_o := $(os_agentlessd_c:.c=.o)
 agentlessd/%.o: agentlessd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-agentlessd\" -c $^ -o $@
 
-ossec-agentlessd: ${os_agentlessd_o} ${sqlite_o} ${ossec_libs} ${JSON_LIB} ${ZLIB_LIB}
+ossec-agentlessd: ${os_agentlessd_o} ${ossec_libs} ${sqlite_o} ${JSON_LIB} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 #### os_execd #####
@@ -807,7 +844,7 @@ remoted_o := $(remoted_c:.c=.o)
 remoted/%.o: remoted/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./remoted ${ZLIB_INCLUDE} -DARGV0=\"ossec-remoted\" -c $^ -o $@
 
-ossec-remoted: ${remoted_o} ${ossec_libs} ${ZLIB_LIB} ${sqlite_o} ${JSON_LIB} ${ZLIB_LIB}
+ossec-remoted: ${remoted_o} ${ossec_libs} ${sqlite_o} ${ZLIB_LIB} ${JSON_LIB} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
 #### ossec-agentd ####
@@ -830,7 +867,7 @@ addagent/%.o: addagent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./addagent ${ZLIB_INCLUDE} -DARGV0=\"manage_agents\" -c $^ -o $@
 
 
-manage_agents: ${addagent_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+manage_agents: ${addagent_o} ${ossec_libs} ${sqlite_o} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} ${JSON_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
 #### Util ##########
@@ -846,7 +883,7 @@ util_o := $(util_c:.c=.o)
 util/%.o: util/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./util ${ZLIB_INCLUDE} -DARGV0=\"utils\" -c $^ -o $@
 
-syscheck_update: util/syscheck_update.o addagent/validate.o ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+syscheck_update: util/syscheck_update.o addagent/validate.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} ${JSON_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
 clear_stats: util/clear_stats.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
@@ -861,10 +898,10 @@ verify-agent-conf: util/verify-agent-conf.o ${ossec_libs} ${sqlite_o} ${ZLIB_LIB
 agent_control: util/agent_control.o addagent/validate.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} ${JSON_INCLUDE} $^ -lm ${OSSEC_LDFLAGS} -o $@
 
-syscheck_control: util/syscheck_control.o addagent/validate.o ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+syscheck_control: util/syscheck_control.o addagent/validate.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} ${JSON_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
-rootcheck_control: util/rootcheck_control.o addagent/validate.o ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+rootcheck_control: util/rootcheck_control.o addagent/validate.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} ${JSON_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@
 
 ossec-regex: util/ossec-regex.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
@@ -1067,12 +1104,12 @@ ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} aler
 wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
-wazuh-modulesd: ${wmodulesd_o} ${sqlite_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+wazuh-modulesd: ${wmodulesd_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB} ${PROCPS_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 ### wazuh-framework ##
 
-wazuh-framework: ${sqlite_o} ${shared_o}
+wazuh-framework: ${shared_o} ${wdblib_o}
 	${MAKE} -C ../framework build PREFIX=${PREFIX}
 
 
@@ -1143,9 +1180,9 @@ test_coverage: build_tests
 	rm -rf coverage-report/
 	genhtml --branch-coverage --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
 
-####################
-#### RUule Tests ###
-####################
+###################
+#### Rule Tests ###
+###################
 
 test-rules:
 	( cd ../contrib/ossec-testing && sudo python runtests.py)
@@ -1226,6 +1263,7 @@ clean-external:
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
 	rm -f ${OPENSSL_LIB}
 	rm -f ${CRYPTO_LIB}
+	rm -f ${procps_o} libproc.a
 
 clean-internals:
 	rm -f ${os_zlib_o} os_zlib.a
@@ -1254,12 +1292,13 @@ clean-internals:
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
 	rm -f ${integrator_o} ossec-integratord
 	rm -f ${wmodulesd_o} ${wmodules_o} wazuh-modulesd wmodules.a
-	rm -f ${sqlite_o} sqlite.a
+	rm -f ${wdb_o} wazuh-db
 
 clean-framework:
 	${MAKE} -C ../framework clean
 
 clean-windows:
+	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt
 	rm -f win32/internal_options.conf

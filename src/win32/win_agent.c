@@ -10,6 +10,7 @@
 #ifdef WIN32
 
 #include "shared.h"
+#include "wazuh_modules/wmodules.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
 #include "wazuh_modules/wmodules.h"
