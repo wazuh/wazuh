@@ -159,7 +159,12 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                     parts = OS_StrBreak(' ', read_buff, 2);
                     proc_name = strdup(parts[0]);
                     int spaces = strspn(parts[1], " ");
-                    aux_string = parts[1] + spaces;
+                    aux_string = strdup(parts[1] + spaces);
+
+                    for (i=0; parts[i]; i++){
+                        free(parts[i]);
+                    }
+                    free(parts);
                     parts = OS_StrBreak(' ', aux_string, 2);
                     cJSON_AddStringToObject(port, "PID", parts[0]);
                     cJSON_AddStringToObject(port, "process", proc_name);
@@ -167,6 +172,8 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                         free(parts[i]);
                     }
                     free(parts);
+                    free(proc_name);
+                    free(aux_string);
                 }
             }else{
                 mtdebug1(WM_SYS_LOGTAG, "No process found for inode %lu", inode);
@@ -210,11 +217,10 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     FILE *fp;
     int first_line = 1, i;
     int listening;
-    char *command;
+    char command[OS_MAXSTR];
     FILE *output;
 
     snprintf(file, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, protocol);
-    os_calloc(OS_MAXSTR, sizeof(char), command);
     memset(read_buff, 0, OS_MAXSTR);
 
     if ((fp = fopen(file, "r"))){
@@ -277,7 +283,13 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                     parts = OS_StrBreak(' ', read_buff, 2);
                     proc_name = strdup(parts[0]);
                     int spaces = strspn(parts[1], " ");
-                    aux_string = parts[1] + spaces;
+                    aux_string = strdup(parts[1] + spaces);
+
+                    for (i=0; parts[i]; i++){
+                        free(parts[i]);
+                    }
+
+                    free(parts);
                     parts = OS_StrBreak(' ', aux_string, 2);
                     cJSON_AddStringToObject(port, "PID", parts[0]);
                     cJSON_AddStringToObject(port, "process", proc_name);
@@ -285,6 +297,8 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                         free(parts[i]);
                     }
                     free(parts);
+                    free(proc_name);
+                    free(aux_string);
                 }
             }else{
                 mtdebug1(WM_SYS_LOGTAG, "No process found for inode %lu", inode);
@@ -548,6 +562,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
         cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
 
         free(sys_info->cpu_name);
+        free(sys_info);
     }
 
     /* Send interface data in JSON format */
@@ -602,7 +617,7 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
     mtdebug2(WM_SYS_LOGTAG, "sys_os_unix() sending '%s'", string);
     SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
-
+    free(timestamp);
     free(string);
 }
 
@@ -661,14 +676,15 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             }
         }
         if (!found){
-
-            ifaces_list[j] = strdup(ifa->ifa_name);
+            os_calloc(OS_MAXSTR, sizeof(char), ifaces_list[j]);
+            strncpy(ifaces_list[j], ifa->ifa_name, OS_MAXSTR - 1);
+            ifaces_list[j][OS_MAXSTR - 1] = '\0';
             j++;
         }
     }
 
-    if(!ifaces_list[j-1]){
-        mterror(WM_SYS_LOGTAG, "Not found any interface. Network inventory suspended.");
+    if(!ifaces_list[0]){
+        mterror(WM_SYS_LOGTAG, "No interfaces found. Network inventory suspended.");
         return;
     }
 
@@ -902,8 +918,9 @@ hw_info *get_system_linux(){
                 if (cpuname[0] == '\"' && (end = strchr(++cpuname, '\"'), end)) {
                     *end = '\0';
                 }
-                info->cpu_name = strdup(cpuname);
 
+                free(info->cpu_name);
+                info->cpu_name = strdup(cpuname);
             } else if ((aux_string = strstr(string, "cpu cores")) != NULL){
 
                 char *cores;
@@ -1331,9 +1348,8 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV);
 
-    proc_t proc_info;
+    proc_t * proc_info;
     char *string;
-    memset(&proc_info, 0, sizeof(proc_info));
 
     unsigned int random = (unsigned int)os_random();
 
@@ -1345,53 +1361,57 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     mtinfo(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
-    while (readproc(proc, &proc_info) != NULL) {
+    while (proc_info = readproc(proc, NULL), proc_info != NULL) {
         cJSON *object = cJSON_CreateObject();
         cJSON *process = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "process");
         cJSON_AddNumberToObject(object, "ID", random);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "process", process);
-        cJSON_AddNumberToObject(process,"pid",proc_info.tid);
-        cJSON_AddItemToArray(id_array, cJSON_CreateNumber(proc_info.tid));
-        cJSON_AddStringToObject(process,"name",proc_info.cmd);
-        cJSON_AddStringToObject(process,"state",&proc_info.state);
-        cJSON_AddNumberToObject(process,"ppid",proc_info.ppid);
-        cJSON_AddNumberToObject(process,"utime",proc_info.utime);
-        cJSON_AddNumberToObject(process,"stime",proc_info.stime);
-        if (proc_info.cmdline && proc_info.cmdline[0]) {
+        cJSON_AddNumberToObject(process,"pid",proc_info->tid);
+        cJSON_AddItemToArray(id_array, cJSON_CreateNumber(proc_info->tid));
+        cJSON_AddStringToObject(process,"name",proc_info->cmd);
+        cJSON_AddStringToObject(process,"state",&proc_info->state);
+        cJSON_AddNumberToObject(process,"ppid",proc_info->ppid);
+        cJSON_AddNumberToObject(process,"utime",proc_info->utime);
+        cJSON_AddNumberToObject(process,"stime",proc_info->stime);
+        if (proc_info->cmdline && proc_info->cmdline[0]) {
             cJSON *argvs = cJSON_CreateArray();
-            cJSON_AddStringToObject(process, "cmd", proc_info.cmdline[0]);
-            for (i = 1; proc_info.cmdline[i]; i++) {
-                if (!strlen(proc_info.cmdline[i])==0) {
-                    cJSON_AddItemToArray(argvs, cJSON_CreateString(proc_info.cmdline[i]));
+            cJSON_AddStringToObject(process, "cmd", proc_info->cmdline[0]);
+            for (i = 1; proc_info->cmdline[i]; i++) {
+                if (!strlen(proc_info->cmdline[i])==0) {
+                    cJSON_AddItemToArray(argvs, cJSON_CreateString(proc_info->cmdline[i]));
                 }
             }
-            if (cJSON_GetArraySize(argvs) > 0)
+            if (cJSON_GetArraySize(argvs) > 0) {
                 cJSON_AddItemToObject(process, "argvs", argvs);
+            } else {
+                cJSON_Delete(argvs);
+            }
         }
-        cJSON_AddStringToObject(process,"euser",proc_info.euser);
-        cJSON_AddStringToObject(process,"ruser",proc_info.ruser);
-        cJSON_AddStringToObject(process,"suser",proc_info.suser);
-        cJSON_AddStringToObject(process,"egroup",proc_info.egroup);
-        cJSON_AddStringToObject(process,"rgroup",proc_info.rgroup);
-        cJSON_AddStringToObject(process,"sgroup",proc_info.sgroup);
-        cJSON_AddStringToObject(process,"fgroup",proc_info.fgroup);
-        cJSON_AddNumberToObject(process,"priority",proc_info.priority);
-        cJSON_AddNumberToObject(process,"nice",proc_info.nice);
-        cJSON_AddNumberToObject(process,"size",proc_info.size);
-        cJSON_AddNumberToObject(process,"vm_size",proc_info.vm_size);
-        cJSON_AddNumberToObject(process,"resident",proc_info.resident);
-        cJSON_AddNumberToObject(process,"share",proc_info.share);
-        cJSON_AddNumberToObject(process,"start_time",proc_info.start_time);
-        cJSON_AddNumberToObject(process,"pgrp",proc_info.pgrp);
-        cJSON_AddNumberToObject(process,"session",proc_info.session);
-        cJSON_AddNumberToObject(process,"nlwp",proc_info.nlwp);
-        cJSON_AddNumberToObject(process,"tgid",proc_info.tgid);
-        cJSON_AddNumberToObject(process,"tty",proc_info.tty);
-        cJSON_AddNumberToObject(process,"processor",proc_info.processor);
+        cJSON_AddStringToObject(process,"euser",proc_info->euser);
+        cJSON_AddStringToObject(process,"ruser",proc_info->ruser);
+        cJSON_AddStringToObject(process,"suser",proc_info->suser);
+        cJSON_AddStringToObject(process,"egroup",proc_info->egroup);
+        cJSON_AddStringToObject(process,"rgroup",proc_info->rgroup);
+        cJSON_AddStringToObject(process,"sgroup",proc_info->sgroup);
+        cJSON_AddStringToObject(process,"fgroup",proc_info->fgroup);
+        cJSON_AddNumberToObject(process,"priority",proc_info->priority);
+        cJSON_AddNumberToObject(process,"nice",proc_info->nice);
+        cJSON_AddNumberToObject(process,"size",proc_info->size);
+        cJSON_AddNumberToObject(process,"vm_size",proc_info->vm_size);
+        cJSON_AddNumberToObject(process,"resident",proc_info->resident);
+        cJSON_AddNumberToObject(process,"share",proc_info->share);
+        cJSON_AddNumberToObject(process,"start_time",proc_info->start_time);
+        cJSON_AddNumberToObject(process,"pgrp",proc_info->pgrp);
+        cJSON_AddNumberToObject(process,"session",proc_info->session);
+        cJSON_AddNumberToObject(process,"nlwp",proc_info->nlwp);
+        cJSON_AddNumberToObject(process,"tgid",proc_info->tgid);
+        cJSON_AddNumberToObject(process,"tty",proc_info->tty);
+        cJSON_AddNumberToObject(process,"processor",proc_info->processor);
 
         cJSON_AddItemToArray(proc_array, object);
+        freeproc(proc_info);
     }
 
     cJSON_AddStringToObject(id_msg, "type", "process_list");
@@ -1402,14 +1422,15 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     string = cJSON_PrintUnformatted(id_msg);
     mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
     SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    free(string);
 
     cJSON_ArrayForEach(item, proc_array) {
         string = cJSON_PrintUnformatted(item);
         mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
         SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        free(string);
     }
 
-    free(string);
     cJSON_Delete(id_msg);
     cJSON_Delete(proc_array);
     closeproc(proc);

@@ -31,4 +31,6 @@ os_info *get_win_version();
 
 os_info *get_unix_version();
 
+void free_osinfo(os_info * osinfo);
+
 #endif

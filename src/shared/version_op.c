@@ -520,3 +520,21 @@ os_info *get_unix_version()
 }
 
 #endif
+
+void free_osinfo(os_info * osinfo) {
+    if (osinfo) {
+        free(osinfo->os_name);
+        free(osinfo->os_major);
+        free(osinfo->os_minor);
+        free(osinfo->os_build);
+        free(osinfo->os_version);
+        free(osinfo->os_codename);
+        free(osinfo->os_platform);
+        free(osinfo->sysname);
+        free(osinfo->nodename);
+        free(osinfo->release);
+        free(osinfo->version);
+        free(osinfo->machine);
+        free(osinfo);
+    }
+}
