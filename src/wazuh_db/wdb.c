@@ -346,7 +346,7 @@ int wdb_begin(sqlite3 *db) {
     }
 
     if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("at wdb_commit(): wdb_step(): %s", sqlite3_errmsg(db));
+        mdebug1("at wdb_begin(): wdb_step(): %s", sqlite3_errmsg(db));
         result = -1;
     }
 
@@ -556,7 +556,7 @@ void wdb_pool_append(wdb_t * wdb) {
     db_pool_size++;
 
     if (r = OSHash_Add(open_dbs, wdb->agent_id, wdb), r != 2) {
-        merror_exit("at wdb_open_agent2(): OSHash_Add(%s) returned %d.", wdb->agent_id, r);
+        merror_exit("at wdb_pool_append(): OSHash_Add(%s) returned %d.", wdb->agent_id, r);
     }
 }
 
