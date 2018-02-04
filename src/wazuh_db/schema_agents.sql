@@ -196,3 +196,8 @@ CREATE TABLE IF NOT EXISTS processes (
 );
 
 CREATE INDEX IF NOT EXISTS processes_id ON processes (scan_id);
+
+CREATE TABLE IF NOT EXISTS metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);

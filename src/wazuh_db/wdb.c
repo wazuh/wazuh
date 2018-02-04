@@ -18,6 +18,7 @@ static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
+static const char *SQL_INSERT_METADATA = "INSERT INTO metadata (key, value) VALUES ('version_major', ?), ('version_minor', ?);";
 static const char * SQL_STMT[] = {
     "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode FROM fim_entry WHERE file = ?;",
     "SELECT 1 FROM fim_entry WHERE file = ?",
@@ -152,6 +153,11 @@ wdb_t * wdb_open_agent2(int agent_id) {
             sqlite3_close_v2(db);
             goto end;
         }
+
+        if (wdb_fill_metadata(db) < 0) {
+            merror("Couldn't fill metadata into database '%s'", path);
+            goto end;
+        }
     }
 
     wdb = wdb_init(db, sagent_id);
@@ -218,6 +224,55 @@ int wdb_create_agent_db2(const char * agent_id) {
     }
 
     return 0;
+}
+
+int wdb_fill_metadata(sqlite3 * db) {
+    sqlite3_stmt *stmt = NULL;
+    char version[] = __ossec_version;
+    char * strmajor;
+    char * strminor;
+    char * end;
+    int vmajor;
+    int vminor;
+    int result = 0;
+
+    // Extract version
+
+    strmajor = version + (*version == 'v');
+
+    if (end = strchr(strmajor, '.'), !end) {
+        merror("Couldn't parse internal version '%s'", strmajor);
+        return -1;
+    }
+
+    *end = '\0';
+    strminor = end + 1;
+
+    if (vmajor = (int)strtol(strmajor, &end, 10), end == strmajor) {
+        merror("Couldn't parse internal major version '%s'", strmajor);
+        return -1;
+    }
+
+    if (vminor = (int)strtol(strminor, &end, 10), end == strminor) {
+        merror("Couldn't parse internal minor version '%s'", strminor);
+        return -1;
+    }
+
+    if (sqlite3_prepare_v2(db, SQL_INSERT_METADATA, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("at wdb_fill_metadata(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    sqlite3_bind_int(stmt, 1, vmajor);
+    sqlite3_bind_int(stmt, 2, vminor);
+
+    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
+        mdebug1("at wdb_fill_metadata(): wdb_step(): %s", sqlite3_errmsg(db));
+        result = -1;
+    }
+
+    sqlite3_finalize(stmt);
+    return result;
 }
 
 /* Get agent name from location string */

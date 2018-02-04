@@ -166,6 +166,8 @@ int wdb_create_agent_db(int id, const char *name);
 
 int wdb_create_agent_db2(const char * agent_id);
 
+int wdb_fill_metadata(sqlite3 * db);
+
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_remove_agent_db(int id);
 
