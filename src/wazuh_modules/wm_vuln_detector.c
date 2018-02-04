@@ -430,11 +430,11 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     } else if (wm_vulnerability_detector_check_db()) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_CHECK_DB_ERROR);
         return OS_INVALID;
-    } else if (sqlite3_open_v2(CVE_DB2, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
+    } else if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
         return wm_vulnerability_detector_sql_error(db);
     }
 
-    wm_vulnerability_detector_remove_OS_table(db, AGENTS_TABLE2, NULL);
+    wm_vulnerability_detector_remove_OS_table(db, AGENTS_TABLE, NULL);
     for (i = 1, agents_it = agents;; i++) {
         if (wm_vulnerability_detector_get_software_info(agents_it, db)) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR);
@@ -444,7 +444,7 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
         if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
             wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
             i = 0;
-            wm_vulnerability_detector_remove_OS_table(db, AGENTS_TABLE2, NULL);
+            wm_vulnerability_detector_remove_OS_table(db, AGENTS_TABLE, NULL);
         }
         if (agents_it->next) {
             agents_it = agents_it->next;
@@ -532,12 +532,12 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
     info_test *test_it = parsed_oval->info_tests;
     info_cve *info_it = parsed_oval->info_cves;
 
-    if (sqlite3_open_v2(CVE_DB2, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
+    if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
         return wm_vulnerability_detector_sql_error(db);
     }
-    if (wm_vulnerability_detector_remove_OS_table(db, CVE_TABLE2, parsed_oval->OS)        ||
-        wm_vulnerability_detector_remove_OS_table(db, METADATA_TABLE2, parsed_oval->OS)   ||
-        wm_vulnerability_detector_remove_OS_table(db, CVE_INFO_TABLE2, parsed_oval->OS)) {
+    if (wm_vulnerability_detector_remove_OS_table(db, CVE_TABLE, parsed_oval->OS)        ||
+        wm_vulnerability_detector_remove_OS_table(db, METADATA_TABLE, parsed_oval->OS)   ||
+        wm_vulnerability_detector_remove_OS_table(db, CVE_INFO_TABLE, parsed_oval->OS)) {
         return wm_vulnerability_detector_sql_error(db);
     }
 
@@ -694,7 +694,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
 }
 
 int wm_vulnerability_detector_check_db() {
-    if (wm_vulnerability_create_file(CVE_DB2, schema_vuln_detector_sql)) {
+    if (wm_vulnerability_create_file(CVE_DB, schema_vuln_detector_sql)) {
         return OS_INVALID;
     }
     return 0;
@@ -1422,7 +1422,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
                 sqlite3 *db;
                 timestamp_found = 1;
 
-                if (sqlite3_open_v2(CVE_DB2, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
+                if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
                     update = 0;
                 } else {
                     char sql[MAX_QUERY_SIZE];
@@ -1430,7 +1430,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
                     size_t query_size;
 
                     snprintf(values, MAX_QUERY_SIZE, "OS = '%s'", OS);
-                    query_size = snprintf(sql, MAX_QUERY_SIZE, SELECT_QUERY, "TIMESTAMP", METADATA_TABLE2, values);
+                    query_size = snprintf(sql, MAX_QUERY_SIZE, SELECT_QUERY, "TIMESTAMP", METADATA_TABLE, values);
                     if (wm_vulnerability_detector_sql_prepare(db, sql, query_size, &stmt)) {
                         sqlite3_close(db);
                         sucess = 0;
