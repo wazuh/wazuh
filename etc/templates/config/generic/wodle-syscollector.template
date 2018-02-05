@@ -1,3 +1,4 @@
+  <!-- System inventory -->
   <wodle name="syscollector">
     <disabled>no</disabled>
     <interval>1h</interval>
