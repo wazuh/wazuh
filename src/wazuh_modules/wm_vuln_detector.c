@@ -422,6 +422,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
 int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents) {
     agent_software *agents_it;
     sqlite3 *db;
+    sqlite3_stmt *stmt = NULL;
     int i;
 
     if (!agents) {
@@ -434,7 +435,15 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
         return wm_vulnerability_detector_sql_error(db);
     }
 
-    wm_vulnerability_detector_remove_OS_table(db, AGENTS_TABLE, NULL);
+    if (sqlite3_prepare_v2(db, VU_AGENTS_TABLE, -1, &stmt, NULL) != SQLITE_OK) {
+            return wm_vulnerability_detector_sql_error(db);
+    }
+    if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        return wm_vulnerability_detector_sql_error(db);
+    }
+    sqlite3_finalize(stmt);
+
     for (i = 1, agents_it = agents;; i++) {
         if (wm_vulnerability_detector_get_software_info(agents_it, db)) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR);
@@ -444,7 +453,15 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
         if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
             wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
             i = 0;
-            wm_vulnerability_detector_remove_OS_table(db, AGENTS_TABLE, NULL);
+            if (sqlite3_prepare_v2(db, VU_AGENTS_TABLE, -1, &stmt, NULL) != SQLITE_OK) {
+                    sqlite3_finalize(stmt);
+                    return wm_vulnerability_detector_sql_error(db);
+            }
+            if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+                sqlite3_finalize(stmt);
+                return wm_vulnerability_detector_sql_error(db);
+            }
+            sqlite3_finalize(stmt);
         }
         if (agents_it->next) {
             agents_it = agents_it->next;
@@ -491,26 +508,22 @@ int wm_vulnerability_detector_sql_exec(sqlite3 *db, char *sql, size_t size, int 
 }
 
 int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS) {
-    char values[MAX_QUERY_SIZE];
-    char sql[MAX_QUERY_SIZE];
-
-    if (OS) {
-        snprintf(values, MAX_QUERY_SIZE, "OS='%s'", OS);
-    } else {
-        snprintf(values, MAX_QUERY_SIZE, "1");
-    }
-
     sqlite3_stmt *stmt = NULL;
+    char sql[MAX_QUERY_SIZE];
+    size_t size;
 
-    if (sqlite3_prepare_v2(db, VU_REMOVE_OS, -1, &stmt, NULL) != SQLITE_OK) {
+    if (size = snprintf(sql, MAX_QUERY_SIZE, VU_REMOVE_OS, TABLE), sql[size - 1] != ';') {
         return OS_INVALID;
     }
 
-    sqlite3_bind_text(stmt, 1, TABLE, -1, NULL);
-    sqlite3_bind_text(stmt, 2, OS, -1, NULL);
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        return wm_vulnerability_detector_sql_error(db);
+    }
 
-    if (wm_vulnerability_detector_step(stmt) != SQLI TE_DONE) {
-        return OS_INVALID;
+    sqlite3_bind_text(stmt, 1, OS, -1, NULL);
+
+    if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+        return wm_vulnerability_detector_sql_error(db);
     }
     sqlite3_finalize(stmt);
 
@@ -718,12 +731,12 @@ char * wm_vulnerability_detector_preparser(cve_db dist) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_OPEN_FILE_ERROR, CVE_TEMP_FILE);
         free(tmp_file);
         tmp_file = NULL;
-        goto final;
+        goto free_mem;
     } else if (output = fopen(tmp_file, "w" ), !output) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_OPEN_FILE_ERROR, tmp_file);
         free(tmp_file);
         tmp_file = NULL;
-        goto final;
+        goto free_mem;
     }
 
     while (size = getline(&buffer, &max_size, input), (int) size > 0) {
@@ -818,7 +831,7 @@ char * wm_vulnerability_detector_preparser(cve_db dist) {
         } else {
             free(tmp_file);
             tmp_file = NULL;
-            goto final;
+            goto free_mem;
         }
         fwrite(buffer, 1, size, output);
 free_buffer:
@@ -826,7 +839,7 @@ free_buffer:
         buffer = NULL;
     }
 
-final:
+free_mem:
     free(buffer);
     fclose(input);
     if (output) {
@@ -1146,10 +1159,11 @@ invalid_elem:
 int wm_vulnerability_update_oval(cve_db version) {
     OS_XML xml;
     XML_NODE node;
-    char *tmp_file;
+    char *tmp_file = NULL;
     wm_vulnerability_detector_db parsed_oval;
-    char *OS_VERSION;
+    char *OS_VERSION = NULL;
     cve_db dist;
+    char success = 0;
 
     switch (version) {
         case PRECISE:
@@ -1178,23 +1192,23 @@ int wm_vulnerability_update_oval(cve_db version) {
         break;
         default:
             mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
-            return OS_INVALID;
+            goto free_mem;
         break;
     }
 
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_PRE);
     if (tmp_file = wm_vulnerability_detector_preparser(dist), !tmp_file) {
-        return OS_INVALID;
+        goto free_mem;
     }
 
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_PAR);
     if (OS_ReadXML(tmp_file, &xml) < 0) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_LOAD_CVE_ERROR, OS_VERSION);
-        return OS_INVALID;
+        goto free_mem;
     }
 
     if (node = OS_GetElementsbyNode(&xml, NULL), !node) {
-        return OS_INVALID;
+        goto free_mem;
     };
 
     parsed_oval.vulnerabilities = NULL;
@@ -1205,27 +1219,39 @@ int wm_vulnerability_update_oval(cve_db version) {
 
     // Reduces a level of recurrence
     if (node = OS_GetElementsbyNode(&xml, *node), !node) {
-        return OS_INVALID;
+        goto free_mem;
     }
 
     if (wm_vulnerability_detector_parser(&xml, node, &parsed_oval, V_OVALDEFINITIONS, dist)) {
-        return OS_INVALID;
+        goto free_mem;
     }
 
     if (wm_vulnerability_detector_check_db()) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_CHECK_DB_ERROR);
-        return OS_INVALID;
+        goto free_mem;
     }
 
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_START_REFRESH_DB, OS_VERSION);
 
     if (wm_vulnerability_detector_insert(&parsed_oval)) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_REFRESH_DB_ERROR, OS_VERSION);
-        return OS_INVALID;
+        goto free_mem;
     }
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_STOP_REFRESH_DB, OS_VERSION);
 
-    return 0;
+success = 1;
+free_mem:
+    if (OS_VERSION) {
+        free(OS_VERSION);
+    }
+    if (tmp_file) {
+        free(tmp_file);
+    }
+    if (success) {
+        return 0;
+    } else {
+        return OS_INVALID;
+    }
 }
 
 int wm_vulnerability_detector_socketconnect(char *url) {
@@ -1302,7 +1328,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
     char timestamp_found = 0;
     int attemps = 0;
     *need_update = 1;
-    unsigned char sucess = 1;
+    unsigned char success = 1;
 
     switch (version) {
         case PRECISE:
@@ -1337,56 +1363,56 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
         break;
         default:
             mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
-            sucess = 0;
+            success = 0;
             os_strdup("unknow OS", OS);
-            goto final;
+            goto free_mem;
     }
 
     mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_DOWNLOAD, OS);
 
     if (sock = wm_vulnerability_detector_socketconnect(repo), sock < 0) {
         sock = 0;
-        sucess = 0;
-        goto final;
+        success = 0;
+        goto free_mem;
     }
 
     if (ctx = SSL_CTX_new(SSLv23_client_method()), !ctx) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SSL_CONTEXT_ERROR);
-        sucess = 0;
-        goto final;
+        success = 0;
+        goto free_mem;
     }
 
     SSL_CTX_set_options(ctx, SSL_MODE_AUTO_RETRY);
 
     if (ssl = SSL_new(ctx), !ssl) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SSL_CREATE_ERROR);
-        sucess = 0;
-        goto final;
+        success = 0;
+        goto free_mem;
     }
 
     if (!SSL_set_fd(ssl, sock)) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SSL_LINK_ERROR);
-        sucess = 0;
-        goto final;
+        success = 0;
+        goto free_mem;
     }
 
     if (SSL_connect(ssl) < 1) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SSL_CONNECT_ERROR, OS);
-        sucess = 0;
-        goto final;
+        success = 0;
+        goto free_mem;
     }
 
     SSL_write(ssl, buffer, strlen(buffer));
     readed = 0;
     if (fp = fopen(CVE_TEMP_FILE, "w"), !fp) {
-        sucess = 0;
-        goto final;
+        success = 0;
+        goto free_mem;
     }
     bzero(buffer, VU_SSL_BUFFER);
 
     if (size = SSL_read(ssl, buffer, WM_HEADER_SIZE), size < 1) {
-        sucess = 0;
-        goto final;
+        success = 0;
+        goto free_mem;
     }
 
     oval_size = wm_read_http_header(buffer);
@@ -1396,8 +1422,8 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
         if (!readed) {
             char *found;
             if(!(found = strstr(buffer, "<?xml version=")) && !(found = strstr(buffer, "<oval_definitions"))) {
-                sucess = 0;
-                goto final;
+                success = 0;
+                goto free_mem;
             }
             readed = strlen(found);
             fwrite(buffer, 1, size, fp);
@@ -1420,21 +1446,12 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
                 if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
                     update = 0;
                 } else {
-                    char sql[MAX_QUERY_SIZE];
-                    char values[MAX_QUERY_SIZE];
-
-    
                     if (sqlite3_prepare_v2(db, TIMESTAMP_QUERY, -1, &stmt, NULL) != SQLITE_OK) {
                         success = 0;
-                        goto final;
-                    }
-                    sqlite3_bind_text(stmt, 1,OS, -1, NULL);
-                   
-                    if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-                        success = 0;
                         sqlite3_finalize(stmt);
-                        goto final;
+                        goto free_mem;
                     }
+                    sqlite3_bind_text(stmt, 1, OS, -1, NULL);
 
                     if (sqlite3_step(stmt) == SQLITE_ROW) {
                         char *close_tag;
@@ -1473,7 +1490,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
                 if (update) {
                     mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_DATE, OS, stored_timestamp);
                     *need_update = 0;
-                    goto final;
+                    goto free_mem;
                 }
             }
 
@@ -1481,15 +1498,15 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
             if (attemps == VU_MAX_TIMESTAMP_ATTEMPS) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_TIMESTAMP_LABEL_ERROR, VU_MAX_TIMESTAMP_ATTEMPS);
                 close(sock);
-                sucess = 0;
-                goto final;
+                success = 0;
+                goto free_mem;
             }
         }
         fwrite(buffer, 1, size, fp);
         bzero(buffer, VU_SSL_BUFFER);
     }
 
-final:
+free_mem:
     CRYPTO_cleanup_all_ex_data();
     if (fp) {
         fclose(fp);
@@ -1503,15 +1520,19 @@ final:
     if (ctx) {
         SSL_CTX_free(ctx);
     }
-    if(OS){
-        free(OS);
-        OS = NULL;
-    }
-    if (sucess) {
+    if (success) {
         close(sock);
+        if (OS) {
+            free(OS);
+            OS = NULL;
+        }
         return 0;
     } else {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_FETCH_ERROR, OS);
+        if (OS) {
+            free(OS);
+            OS = NULL;
+        }
         return OS_INVALID;
     }
 }
