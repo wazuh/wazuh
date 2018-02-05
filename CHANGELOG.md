@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - [Added type of node in API call `GET/cluster/nodes` and `cluster_control --nodes`](https://github.com/wazuh/wazuh/pull/353)
 - Added support for API in cluster ([#362](https://github.com/wazuh/wazuh/pull/362)).
 - Added support for Windows to CIS-CAT integration module ([#369](https://github.com/wazuh/wazuh/pull/369))
+- New Wazuh Module "vulnerability-detector" to detect vulnerabilities in agents and managers.
 
 ### Changed
 - [Return API call `GET/cluster/files` by node name instead of by node IP.](https://github.com/wazuh/wazuh/pull/353)
