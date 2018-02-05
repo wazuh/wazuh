@@ -8,8 +8,7 @@ from wazuh.exception import WazuhException
 from os.path import isfile
 from os import strerror
 import socket
-from sys import exc_info
-from traceback import extract_tb
+from operator import or_, itemgetter
 import re
 import json
 
@@ -39,22 +38,16 @@ class WazuhDBConnection():
         query_elements = query.split(" ")
         sql_first_index = 2 if query_elements[0] == 'agent' else 1
 
-        try:
-            assert query_elements[sql_first_index] == 'sql'
+        input_val_errors = [
+            (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),
+            (query_elements[0] == 'agent' or query_elements[0] == 'global', "The {} database is not valid".format(query_elements[0])),
+            (query_elements[1].isdigit() if query_elements[0] == 'agent' else True, "Incorrect agent ID {}".format(query_elements[1])),
+            (query_elements[sql_first_index+1] == 'select', "The API can only send select requests to WDB")
+        ]
 
-            assert query_elements[0] == 'agent' or \
-                   query_elements[0] == 'global'
-
-            if query_elements[0] == 'agent':
-                assert query_elements[1].isdigit()
-
-            assert query_elements[sql_first_index+1] == 'select'
-        except AssertionError as e:
-            _, _, tb = exc_info()
-            tb_info = extract_tb(tb)
-            filename, line, func, text = tb_info[-1]
-            raise WazuhException(2004, text)
-
+        for check, error_text in input_val_errors:
+            if not check:
+                raise WazuhException(2004, error_text)
 
     def __send(self, msg):
         """
