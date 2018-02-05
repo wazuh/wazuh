@@ -493,33 +493,28 @@ int wm_vulnerability_detector_sql_exec(sqlite3 *db, char *sql, size_t size, int 
 int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS) {
     char values[MAX_QUERY_SIZE];
     char sql[MAX_QUERY_SIZE];
-    size_t size;
 
     if (OS) {
         snprintf(values, MAX_QUERY_SIZE, "OS='%s'", OS);
     } else {
         snprintf(values, MAX_QUERY_SIZE, "1");
     }
-    size = snprintf(sql, MAX_QUERY_SIZE, DELETE_QUERY, TABLE, values);
-    if (wm_vulnerability_detector_sql_exec(db, sql, size, 0)) {
-        return OS_INVALID;
-    }
-    return 0;
 
-/*
     sqlite3_stmt *stmt = NULL;
 
     if (sqlite3_prepare_v2(db, VU_REMOVE_OS, -1, &stmt, NULL) != SQLITE_OK) {
-        return wm_vulnerability_detector_sql_error(db);
+        return OS_INVALID;
     }
 
     sqlite3_bind_text(stmt, 1, TABLE, -1, NULL);
     sqlite3_bind_text(stmt, 2, OS, -1, NULL);
 
     if (wm_vulnerability_detector_step(stmt) != SQLI TE_DONE) {
-        return wm_vulnerability_detector_sql_error(db);
+        return OS_INVALID;
     }
-    sqlite3_finalize(stmt);*/
+    sqlite3_finalize(stmt);
+
+    return 0;
 }
 
 int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) {
@@ -1427,13 +1422,17 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
                 } else {
                     char sql[MAX_QUERY_SIZE];
                     char values[MAX_QUERY_SIZE];
-                    size_t query_size;
 
-                    snprintf(values, MAX_QUERY_SIZE, "OS = '%s'", OS);
-                    query_size = snprintf(sql, MAX_QUERY_SIZE, SELECT_QUERY, "TIMESTAMP", METADATA_TABLE, values);
-                    if (wm_vulnerability_detector_sql_prepare(db, sql, query_size, &stmt)) {
-                        sqlite3_close(db);
-                        sucess = 0;
+    
+                    if (sqlite3_prepare_v2(db, TIMESTAMP_QUERY, -1, &stmt, NULL) != SQLITE_OK) {
+                        success = 0;
+                        goto final;
+                    }
+                    sqlite3_bind_text(stmt, 1,OS, -1, NULL);
+                   
+                    if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+                        success = 0;
+                        sqlite3_finalize(stmt);
                         goto final;
                     }
 
@@ -1503,6 +1502,10 @@ final:
     }
     if (ctx) {
         SSL_CTX_free(ctx);
+    }
+    if(OS){
+        free(OS);
+        OS = NULL;
     }
     if (sucess) {
         close(sock);

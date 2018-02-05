@@ -26,6 +26,7 @@
 
 #define SELECT_QUERY        "SELECT %s FROM %s WHERE %s;"
 #define DELETE_QUERY        "DELETE FROM %s WHERE %s;"
+#define TIMESTAMP_QUERY     "SELECT * FROM TIMESTAMP WHERE OS = ?;"
 #define VU_INSERT_QUERY     "INSERT INTO "
 #define VU_INSERT_CVE       "INSERT INTO " CVE_TABLE " VALUES(?,?,?,?,?,?);"
 #define VU_INSERT_CVE_INFO  "INSERT INTO " CVE_INFO_TABLE " VALUES(?,?,?,?,?,?,?,?);"
