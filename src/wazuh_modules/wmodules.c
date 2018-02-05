@@ -203,7 +203,6 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     #endif
 
     if (!(file = fopen(path, op == WM_IO_WRITE ? "wb" : "rb"))) {
-        merror("Unable to open the file: %s. %s", path, strerror(errno));
         return -1;
     }
 
