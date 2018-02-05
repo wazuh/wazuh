@@ -32,15 +32,19 @@
 #define VU_AGENT_REQUEST_LIMIT   0
 #define VU_ALERT_HEADER "[%s] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
-#define VU_UBUNTU   "UBUNTU"
-#define VU_PRECISE  "PRECISE"
-#define VU_TRUSTY   "TRUSTY"
-#define VU_XENIAL   "XENIAL"
-#define VU_RHEL     "REDHAT"
-#define VU_CENTOS   "CENTOS"
-#define VU_RHEL5    "RHEL5"
-#define VU_RHEL6    "RHEL6"
-#define VU_RHEL7    "RHEL7"
+#define VU_UBUNTU     "UBUNTU"
+#define VU_PRECISE    "PRECISE"
+#define VU_TRUSTY     "TRUSTY"
+#define VU_XENIAL     "XENIAL"
+#define VU_RHEL       "REDHAT"
+#define VU_CENTOS     "CENTOS"
+#define VU_RHEL5      "RHEL5"
+#define VU_RHEL6      "RHEL6"
+#define VU_RHEL7      "RHEL7"
+#define VU_MODERATE   "Moderate"
+#define VU_MEDIUM     "Medium"
+#define VU_HIGH       "High"
+#define VU_IMPORTANT  "Important"
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 

@@ -1110,7 +1110,13 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             os_strdup(node[i]->content, parsed_oval->metadata.schema_version);
         } else if (!strcmp(node[i]->element, XML_SEVERITY)) {
             if (*node[i]->content != '\0') {
-                os_strdup(node[i]->content, parsed_oval->info_cves->severity);
+                if (!strcmp(node[i]->content, VU_MODERATE)) {
+                    os_strdup(VU_MEDIUM, parsed_oval->info_cves->severity);
+                } else if (!strcmp(node[i]->content, VU_IMPORTANT)) {
+                    os_strdup(VU_HIGH, parsed_oval->info_cves->severity);
+                } else {
+                    os_strdup(node[i]->content, parsed_oval->info_cves->severity);
+                }
             } else {
                 os_strdup("Unknow", parsed_oval->info_cves->severity);
             }
