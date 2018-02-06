@@ -234,7 +234,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
         }
         break;
     case WM_CISCAT_OVAL:
-        mterror(WM_CISCAT_LOGTAG, "Invalid content type. Exiting...");
+        mterror(WM_CISCAT_LOGTAG, "OVAL is an invalid content type. Exiting...");
         pthread_exit(NULL);
         break;
     default:
@@ -352,8 +352,9 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
         }
         break;
     case WM_CISCAT_OVAL:
-        mterror(WM_CISCAT_LOGTAG, "Invalid content type. Exiting...");
+        mterror(WM_CISCAT_LOGTAG, "OVAL is an invalid content type. Exiting...");
         pthread_exit(NULL);
+        break;
     default:
         mterror(WM_CISCAT_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
         pthread_exit(NULL);

@@ -88,9 +88,10 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 }
             }
 
+            // Set 'xccdf' type by default.
+
             if (!cur_eval->type) {
-                merror("No such attribute '%s' at module '%s'.", XML_CONTENT_TYPE, WM_CISCAT_CONTEXT.name);
-                return OS_INVALID;
+                cur_eval->type = WM_CISCAT_XCCDF;
             }
 
             // Expand policy children (optional)
@@ -167,6 +168,11 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 break;
             default:
                 merror("Invalid interval at module '%s'", WM_CISCAT_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            if (ciscat->interval < 60) {
+                merror("At module '%s': Interval must be greater than 60 seconds.", WM_CISCAT_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START)) {
