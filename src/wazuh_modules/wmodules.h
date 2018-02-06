@@ -60,6 +60,7 @@ typedef struct wmodule {
 #include "syscollector/syscollector.h"
 #include "wm_command.h"
 #include "wm_ciscat.h"
+#include "wm_aws.h"
 #include "wm_vuln_detector.h"
 
 extern wmodule *wmodules;       // Loaded modules.
