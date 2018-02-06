@@ -766,9 +766,14 @@ class Agent:
         query = "SELECT {0} FROM agent"
         fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive',
                   'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
-                  'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add'}
+                  'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add',
+                   'group': 'group', 'merged_sum': 'merged_sum', 'config_sum': 'config_sum',
+                   'os.codename': 'os_codename','os.major': 'os_major','os.uname': 'os_uname',
+                  'last_keepalive': 'last_keepalive','os.arch': 'os_arch'}
         valid_select_fields = {"id", "name", "ip", "last_keepalive", "os_name", "os_version", "node_name",
-                               "os_platform", "version", "manager_host", "date_add", 'status'}
+                               "os_platform", "version", "manager_host", "date_add", 'status',
+                               'group', 'merged_sum', 'config_sum','os_codename', 'os_major', 'os_uname',
+                               'last_keepalive', 'os_arch'}
         select_fields = {'id', 'version', 'last_keepalive'}
         search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version"}
         request = {}
@@ -813,8 +818,10 @@ class Agent:
         if search:
             search['value'] = re.sub( r'([Wazuh])([v])', r'\1 \2', search['value'] )
             query += " AND NOT" if bool(search['negation']) else ' AND'
-            query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
-            request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
+            query += " (" + " id LIKE :search_id"
+            query += " OR " + " OR ".join(x + ' LIKE :search' for x in (search_fields - {"id"})) + " )"
+            request['search'] = '%{0}%'.format(search['value'])
+            request['search_id'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
                                                                     else search['value'])
 
         if "FROM agent AND" in query:
@@ -858,6 +865,18 @@ class Agent:
             request['offset'] = offset
             request['limit'] = limit
 
+        if 'group' in select_fields:
+            select_fields.remove('group')
+            select_fields.add('`group`')
+
+        select_os_arch = 'os_arch' in select_fields
+        select_os_uname = 'os_uname' in select_fields
+        if select_os_arch:
+            select_fields.remove('os_arch')
+            if not select_os_uname:
+                select_fields.add('os_uname')
+                set_select_fields.add('os_uname')
+
         conn.execute(query.format(','.join(select_fields)), request)
 
         data['items'] = []
@@ -868,7 +887,6 @@ class Agent:
             pending = True
             os = {}
             for field, value in zip(select_fields, tuple):
-
                 if value != None and field == 'id':
                     data_tuple['id'] = str(value).zfill(3)
                 if value != None and field == 'name' and field in set_select_fields:
@@ -885,6 +903,34 @@ class Agent:
                     os['version'] = value
                 if value != None and field == 'os_platform' and field in set_select_fields:
                     os['platform'] = value
+                if value != None and field == 'os_codename' and field in set_select_fields:
+                    os['codename'] = value
+                if value != None and field == 'os_build' and field in set_select_fields:
+                    os['arch'] = value
+                if value != None and field == 'os_uname' and field in set_select_fields:
+                    if select_os_uname:
+                        os['uname'] = value
+                    if select_os_arch:
+                        if "x86_64" in value:
+                            os['arch'] = "x86_64"
+                        elif "i386" in value:
+                            os['arch'] = "i386"
+                        elif "i686" in value:
+                            os['arch'] = "i686"
+                        elif "sparc" in value:
+                            os['arch'] = "sparc"
+                        elif "amd64" in value:
+                            os['arch'] = "amd64"
+                        elif "ia64" in value:
+                            os['arch'] = "ia64"
+                        elif "AIX" in value:
+                            os['arch'] = "AIX"
+                        elif "armv6" in value:
+                            os['arch'] = "armv6"
+                        elif "armv7" in value:
+                            os['arch'] = "armv7"
+                if value != None and field == 'os_major' and field in set_select_fields:
+                    os['major'] = value
 
                 if value != None and field == 'version':
                     pending = False if value != "" else True
@@ -899,6 +945,18 @@ class Agent:
 
                 if value != None and field == 'node_name' and field in set_select_fields:
                     data_tuple['node_name'] = value
+
+                if value != None and field == '`group`' and 'group' in set_select_fields:
+                    data_tuple['group'] = value
+
+                if value != None and field == 'merged_sum' and field in set_select_fields:
+                    data_tuple['mergedSum'] = value
+
+                if value != None and field == 'config_sum' and field in set_select_fields:
+                    data_tuple['configSum'] = value
+
+                if value != None and field == 'last_keepalive' and field in set_select_fields:
+                    data_tuple['lastKeepAlive'] = value
 
             if os:
                 os_no_empty = dict((k, v) for k, v in os.items() if v)

@@ -139,7 +139,7 @@ def ossec_log_summary(months=3):
                 break
             lines_count = lines_count + 1
             try:
-                log_date = datetime.strptime(line[:10], '%Y/%m/%d %H:%M:%S')
+                log_date = datetime.strptime(line[:19], '%Y/%m/%d %H:%M:%S')
             except ValueError:
                 continue
 

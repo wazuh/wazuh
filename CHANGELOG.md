@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Added support for API in cluster ([#362](https://github.com/wazuh/wazuh/pull/362)).
 - Added support for Windows to CIS-CAT integration module ([#369](https://github.com/wazuh/wazuh/pull/369))
 - New Wazuh Module "vulnerability-detector" to detect vulnerabilities in agents and managers.
+- New Wazuh Module "aws-cloudtrail" fetching logs from S3 bucket. ([#351](https://github.com/wazuh/wazuh/pull/351))
 
 ### Changed
 - [Return API call `GET/cluster/files` by node name instead of by node IP.](https://github.com/wazuh/wazuh/pull/353)

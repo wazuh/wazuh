@@ -78,6 +78,11 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             return OS_INVALID;
         }
 #ifndef WIN32
+    } else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name)){
+        if (wm_aws_read(children, cur_wmodule, agent_cfg) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
     } else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name)){
         if (wm_vulnerability_detector_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
