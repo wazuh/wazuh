@@ -63,7 +63,7 @@ except:
     exit()
 
 class WazuhClusterHandler(asynchat.async_chat):
-    def __init__(self, sock, addr, key, node_type, requests_queue, finished_clients):
+    def __init__(self, sock, addr, key, node_type, requests_queue, finished_clients, connected_clients):
         asynchat.async_chat.__init__(self, sock)
         self.addr = addr
         self.f = Fernet(key.encode('base64','strict'))
@@ -74,6 +74,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.node_type = node_type
         self.requests_queue = requests_queue
         self.finished_clients = finished_clients
+        self.connected_clients = connected_clients
 
     def handle_close(self):
         self.requests_queue[self.addr] = False
@@ -111,10 +112,11 @@ class WazuhClusterHandler(asynchat.async_chat):
             elif command[0] == 'finished':
                 res = "Sleeping..."
                 self.finished_clients.value += 1
-                logging.debug("Finished clients: {} of {}".format(self.finished_clients, len(self.requests_queue.values())))
+                logging.debug("Finished clients: {} of {}".format(self.finished_clients.value, self.connected_clients.value))
                 # execute an independent process to "crontab" the sync interval
-                if self.finished_clients.value == len(self.requests_queue.values()):
+                if self.finished_clients.value == connected_clients.value:
                     self.finished_clients.value = 0
+                    self.connected_clients.value = 0
                     kill(child_pid, SIGUSR1)
 
             logging.debug("Command {0} executed for {1}".format(command[0], self.addr))
@@ -149,7 +151,7 @@ class WazuhClusterHandler(asynchat.async_chat):
 
 class WazuhClusterServer(asyncore.dispatcher):
 
-    def __init__(self, bind_addr, port, key, node_type, requests_queue, finished_clients):
+    def __init__(self, bind_addr, port, key, node_type, requests_queue, finished_clients, connected_clients):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(common.cluster_timeout)
@@ -158,6 +160,7 @@ class WazuhClusterServer(asyncore.dispatcher):
         self.node_type = node_type
         self.requests_queue = requests_queue
         self.finished_clients = finished_clients
+        self.connected_clients = connected_clients
         try:
             self.bind((bind_addr, port))
         except socket.error as e:
@@ -177,7 +180,7 @@ class WazuhClusterServer(asyncore.dispatcher):
         if pair is not None:
             sock, addr = pair
             logging.info("Accepted connection from host {0}".format(addr[0]))
-            handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type, self.requests_queue, self.finished_clients)
+            handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type, self.requests_queue, self.finished_clients, self.connected_clients)
         return
 
     def handle_error(self):
@@ -186,7 +189,7 @@ class WazuhClusterServer(asyncore.dispatcher):
         raise t(v)
 
 
-def crontab_sync_master(interval, config_cluster, requests_queue):
+def crontab_sync_master(interval, config_cluster, requests_queue, connected_clients):
     def sleep_handler(n_signal, frame):
         logging.debug("Sleeping for {}{}...".format(interval_number, interval_measure))
         sleep(interval_number if interval_measure == 's' else interval_number*60)
@@ -205,14 +208,20 @@ def crontab_sync_master(interval, config_cluster, requests_queue):
                 logging.error(str(e))
                 kill(child_pid, SIGINT)
 
-            for node in get_remote_nodes():
+            remote_nodes = get_remote_nodes()
+            connected_clients.value = len(remote_nodes)
+            for node in remote_nodes:
                 # ask clients to send updates
                 error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
                                     data="ready {0}".format('-'*(common.cluster_protocol_plain_size - len("ready "))))
 
         else:
             logging.debug("Receiving data...")
-        pause()
+        
+        if connected_clients.value == 0:
+            sleep_handler(0,0)
+        else:
+            pause()
 
 
 def crontab_sync_client(config_cluster):
@@ -331,10 +340,11 @@ if __name__ == '__main__':
     m = Manager()
     requests_queue = m.dict([(node_ip, False) for node_ip in set(cluster_config['nodes']) - set(get_localhost_ips())])
     finished_clients = Value('i',0)
+    connected_clients = Value('i',0)
 
     if cluster_config['node_type'] == 'master':
         # execute an independent process to "crontab" the sync interval
-        p = Process(target=crontab_sync_master, args=(cluster_config['interval'],cluster_config,requests_queue,))
+        p = Process(target=crontab_sync_master, args=(cluster_config['interval'],cluster_config,requests_queue,connected_clients,))
         if not args.f:
             p.daemon=True
         p.start()
@@ -349,5 +359,5 @@ if __name__ == '__main__':
 
     server = WazuhClusterServer('' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr'],
                                 int(cluster_config['port']), cluster_config['key'], cluster_config['node_type'],
-                                requests_queue, finished_clients)
+                                requests_queue, finished_clients, connected_clients)
     asyncore.loop()
