@@ -127,12 +127,21 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     BOOL bOrder = TRUE;
     DWORD dwRetVal = 0;
     int listening;
-
     int i = 0;
-    int ID = os_random();
 
+    // Set random ID for each scan
+
+    unsigned int ID1 = os_random();
+    unsigned int ID2 = os_random();
+
+    char random_id[OS_MAXSTR];
+    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+
+    int ID = atoi(random_id);
     if (ID < 0)
         ID = -ID;
+
+    // Set timestamp
 
     char *timestamp;
     time_t now;
@@ -207,7 +216,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             char *port_state;
             port_state = get_port_state((int)pTcpTable->table[i].dwState);
             cJSON_AddStringToObject(port, "state", port_state);
-            if (!strcmp(port_state, "listening")) {
+            if (strncmp(port_state, "listening", 9) == 0) {
                 listening = 1;
             }
             free(port_state);
@@ -309,7 +318,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             char *port_state;
             port_state = get_port_state((int)pTcp6Table->table[i].dwState);
             cJSON_AddStringToObject(port, "state", port_state);
-            if (!strcmp(port_state, "listening")) {
+            if (strncmp(port_state, "listening", 9) == 0) {
                 listening = 1;
             }
             free(port_state);
@@ -526,7 +535,9 @@ void sys_programs_windows(const char* LOCATION){
     FILE *output;
     char read_buff[OS_MAXSTR];
     int i;
-    int ID = os_random();
+
+    // Set timestamp
+
     char *timestamp;
     time_t now;
     struct tm localtm;
@@ -540,6 +551,15 @@ void sys_programs_windows(const char* LOCATION){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
+    // Set random ID for each scan
+
+    unsigned int ID1 = os_random();
+    unsigned int ID2 = os_random();
+
+    char random_id[OS_MAXSTR];
+    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+
+    int ID = atoi(random_id);
     if (ID < 0)
         ID = -ID;
 
@@ -615,7 +635,9 @@ void sys_hw_windows(const char* LOCATION){
     FILE *output;
     size_t buf_length = 1024;
     char read_buff[buf_length];
-    int ID = os_random();
+
+    // Set timestamp
+
     char *timestamp;
     time_t now;
     struct tm localtm;
@@ -629,6 +651,15 @@ void sys_hw_windows(const char* LOCATION){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
+    // Set random ID for each scan
+
+    unsigned int ID1 = os_random();
+    unsigned int ID2 = os_random();
+
+    char random_id[OS_MAXSTR];
+    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+
+    int ID = atoi(random_id);
     if (ID < 0)
         ID = -ID;
 
@@ -702,7 +733,9 @@ void sys_hw_windows(const char* LOCATION){
 void sys_os_windows(const char* LOCATION){
 
     char *string;
-    int ID = os_random();
+
+    // Set timestamp
+
     char *timestamp;
     time_t now;
     struct tm localtm;
@@ -716,6 +749,15 @@ void sys_os_windows(const char* LOCATION){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
+    // Set random ID for each scan
+
+    unsigned int ID1 = os_random();
+    unsigned int ID2 = os_random();
+
+    char random_id[OS_MAXSTR];
+    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+
+    int ID = atoi(random_id);
     if (ID < 0)
         ID = -ID;
 
@@ -760,8 +802,13 @@ void sys_network_windows(const char* LOCATION){
 
             // Set random ID and timestamp
 
-            int ID = os_random();
+            unsigned int ID1 = os_random();
+            unsigned int ID2 = os_random();
 
+            char random_id[OS_MAXSTR];
+            snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+
+            int ID = atoi(random_id);
             if (ID < 0)
                 ID = -ID;
 
@@ -1032,7 +1079,9 @@ void sys_proc_windows(const char* LOCATION) {
     char *command;
     FILE *output;
     char read_buff[OS_MAXSTR];
-    unsigned int random = (unsigned int)os_random();
+
+    // Set timestamp
+
     char *timestamp;
     time_t now;
     struct tm localtm;
@@ -1045,6 +1094,18 @@ void sys_proc_windows(const char* LOCATION) {
     snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+
+    // Set random ID for each scan
+
+    unsigned int ID1 = os_random();
+    unsigned int ID2 = os_random();
+
+    char random_id[OS_MAXSTR];
+    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+
+    int ID = atoi(random_id);
+    if (ID < 0)
+        ID = -ID;
 
     cJSON *item;
     cJSON *id_msg = cJSON_CreateObject();
@@ -1069,7 +1130,7 @@ void sys_proc_windows(const char* LOCATION) {
             cJSON *object = cJSON_CreateObject();
             cJSON *process = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "process");
-            cJSON_AddNumberToObject(object, "ID", random);
+            cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "process", process);
 
@@ -1094,7 +1155,7 @@ void sys_proc_windows(const char* LOCATION) {
         }
 
         cJSON_AddStringToObject(id_msg, "type", "process_list");
-        cJSON_AddNumberToObject(id_msg, "ID", random);
+        cJSON_AddNumberToObject(id_msg, "ID", ID);
         cJSON_AddStringToObject(id_msg, "timestamp", timestamp);
         cJSON_AddItemToObject(id_msg, "list", id_array);
 
@@ -1116,7 +1177,7 @@ void sys_proc_windows(const char* LOCATION) {
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");
-    cJSON_AddNumberToObject(object, "ID", random);
+    cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
