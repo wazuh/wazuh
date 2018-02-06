@@ -337,7 +337,9 @@ int decode_port(char *agent_id, cJSON * logJSON) {
         }
 
         if (pid) {
-            wm_strcat(&msg, pid->valuestring, '|');
+            char _pid[OS_MAXSTR];
+            snprintf(_pid, OS_MAXSTR - 1, "%d", pid->valueint);
+            wm_strcat(&msg, _pid, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }

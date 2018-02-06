@@ -30,7 +30,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     stmt = wdb->stmt[WDB_STMT_OSINFO_DEL];
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'osinfo' table.");
+        merror("Unable to delete old information from 'sys_osinfo' table.");
         return -1;
     }
 
@@ -168,7 +168,7 @@ int wdb_program_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'programs' table.");
+        merror("Unable to delete old information from 'sys_programs' table.");
         return -1;
     }
 
@@ -194,7 +194,7 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
     stmt = wdb->stmt[WDB_STMT_HWINFO_DEL];
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'hardware' table.");
+        merror("Unable to delete old information from 'sys_hwinfo' table.");
         return -1;
     }
 
@@ -261,7 +261,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
 }
 
 // Function to save Port info into the DB. Return 0 on success or -1 on error.
-int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, const char * pid, const char * process) {
+int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         merror("at wdb_port_save(): cannot begin transaction");
@@ -291,7 +291,7 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 }
 
 // Insert port info tuple. Return 0 on success or -1 on error.
-int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, const char * pid, const char * process) {
+int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_PORT_INSERT) > 0) {
@@ -339,7 +339,11 @@ int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     }
 
     sqlite3_bind_text(stmt, 11, state, -1, NULL);
-    sqlite3_bind_text(stmt, 12, pid, -1, NULL);
+    if (pid >= 0) {
+        sqlite3_bind_int(stmt, 12, pid);
+    } else {
+        sqlite3_bind_null(stmt, 12);
+    }
     sqlite3_bind_text(stmt, 13, process, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
@@ -371,7 +375,7 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'ports' table.");
+        merror("Unable to delete old information from 'sys_ports' table.");
         return -1;
     }
 
@@ -547,7 +551,7 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'processes' table.");
+        merror("Unable to delete old information from 'sys_processes' table.");
         return -1;
     }
 

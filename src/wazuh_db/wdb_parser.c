@@ -665,7 +665,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
     int rx_queue;
     int inode;
     char * state;
-    char * pid;
+    int pid;
     char * process;
     int result;
 
@@ -848,13 +848,13 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
-        pid = curr;
+        if (!strncmp(curr, "NULL", 4))
+            pid = -1;
+        else
+            pid = strtol(curr,NULL,10);
+
         *next++ = '\0';
-
-        if (!strcmp(pid, "NULL"))
-            pid = NULL;
-
-        if (!strcmp(next, "NULL"))
+        if (!strncmp(next, "NULL", 4))
             process = NULL;
         else
             process = next;

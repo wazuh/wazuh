@@ -166,7 +166,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                     }
                     free(parts);
                     parts = OS_StrBreak(' ', aux_string, 2);
-                    cJSON_AddStringToObject(port, "PID", parts[0]);
+                    cJSON_AddNumberToObject(port, "PID", atoi(parts[0]));
                     cJSON_AddStringToObject(port, "process", proc_name);
                     for (i=0; parts[i]; i++){
                         free(parts[i]);
@@ -194,7 +194,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
         }
         fclose(fp);
     }else{
-        printf("Unable to get list of %s opened ports.", protocol);
+        mterror(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
     }
     free(command);
     free(laddress);
@@ -291,7 +291,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
                     free(parts);
                     parts = OS_StrBreak(' ', aux_string, 2);
-                    cJSON_AddStringToObject(port, "PID", parts[0]);
+                    cJSON_AddNumberToObject(port, "PID", atoi(parts[0]));
                     cJSON_AddStringToObject(port, "process", proc_name);
                     for (i=0; parts[i]; i++){
                         free(parts[i]);
@@ -319,7 +319,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
         }
         fclose(fp);
     }else{
-        printf("Unable to get list of %s opened ports.", protocol);
+        mterror(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
     }
 }
 
