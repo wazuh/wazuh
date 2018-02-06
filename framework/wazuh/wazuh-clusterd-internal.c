@@ -144,9 +144,17 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
         }
 
         char *create4 = "CREATE TABLE IF NOT EXISTS node_name_ip (" \
-                        "name      TEXT," \
+                        "name       TEXT," \
                         "id_manager TEXT PRIMARY KEY)";
         rc = sqlite3_exec(db, create4, NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            sqlite3_close(db);
+            mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
+        }
+
+        char *create5 = "CREATE TABLE IF NOT EXISTS is_restarted (" \
+                        "restarted  INTEGER PRIMARY KEY CHECK (restarted IN (0,1)))";
+        rc = sqlite3_exec(db, create5, NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             sqlite3_close(db);
             mterror_exit(DB_TAG, "Failed to create db table: %s", sqlite3_errmsg(db));
@@ -233,6 +241,9 @@ void* daemon_socket() {
     char *sql_sel_ip_by_name = "SELECT id_manager FROM node_name_ip WHERE name = ?";
     char *sql_upd_ip_name = "UPDATE node_name_ip SET name = ? WHERE id_manager = ?";
     char *sql_ins_ip_name = "INSERT OR REPLACE INTO node_name_ip VALUES (?,?)";
+    // sql sentences to manage restarting table
+    char *sql_sel_restart = "SELECT restarted FROM is_restarted";
+    char *sql_ins_restart = "INSERT OR REPLACE INTO is_restarted VALUES (?)";
 
     char *sql;
     bool has1, has2, has3, select, count, select_last_sync, select_files, response_str;
@@ -341,6 +352,13 @@ void* daemon_socket() {
                 sql = sql_ins_ip_name;
                 has1 = true; // name
                 has2 = true; // ip
+            } else if (cmd != NULL && strcmp(cmd, "selres") == 0) {
+                sql = sql_sel_restart;
+                count = true;
+            } else if (cmd != NULL && strcmp(cmd, "insertres") == 0) {
+                sql = sql_ins_restart;
+                has1 = true;
+                select_last_sync=true;
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
                 goto transaction_done;
@@ -354,7 +372,7 @@ void* daemon_socket() {
                     cmd = strtok(NULL, " ");
                     if (cmd == NULL) break;
 
-                    if (strcmp(sql, sql_last_sync) == 0) {
+                    if (select_last_sync) {
                         long int value = strtol(cmd, &endptr, 10);
                         if (endptr == cmd) mterror_exit(DB_TAG, "No integer found in database request. Found: %s", cmd);
                         rc = sqlite3_bind_int(res,1,value);

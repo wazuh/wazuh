@@ -193,14 +193,7 @@ class WazuhClusterServer(asyncore.dispatcher):
 
 
 def restart_manager():
-    try:
-        # check synchronized rules are correct before restarting the manager
-        check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
-        logging.debug("Synchronized rules are correct.")
-    except CalledProcessError as e:
-        logging.warning("Synchronized rules are not correct. Manager not restarted: {0}.".format(str(e)))
-        return
-
+    run_logtest(True)
     try:
         logging.info("Restarting manager...")
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
@@ -244,16 +237,34 @@ def crontab_sync_client(config_cluster, restart_after_sync):
         logging.debug("Starting to send files to the master node")
         master = get_remote_nodes()[0]
         sync_one_node(debug=False, node=master, config_cluster=config_cluster, cluster_items=cluster_items)
-        error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
+        if restart_after_sync.value == 'T':
+            restart_after_sync.value = 'F'
+            cluster_socket = connect_to_db_socket()
+            send_to_socket(cluster_socket, "insertres 1")
+            cluster_socket.close()
+            restart_manager()
+        else:
+            error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'], 
                             data="finished {}".format('-'*(common.cluster_protocol_plain_size - len("finished "))))
 
-        if restart_after_sync.value == 'T':
-            restart_manager()
+
+    cluster_socket = connect_to_db_socket()
+    send_to_socket(cluster_socket, "selres")
+    restart = bool(receive_data_from_db_socket(cluster_socket))
+    if restart:
+        logging.info("Client restarted")
+        send_to_socket(cluster_socket, "insertres 0")
+        cluster_socket.close()
+        master = get_remote_nodes()[0]
+        error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
+                            data="finished {}".format('-'*(common.cluster_protocol_plain_size - len("finished "))))
+    else:
+        cluster_socket.close()
+
 
     signal(SIGUSR1, sync_handler)
     cluster_items = get_cluster_items()
-    while True:
-        pause()
+    pause()
 
 
 def signal_handler(n_signal, frame):

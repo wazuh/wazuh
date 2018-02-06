@@ -15,7 +15,7 @@ from datetime import datetime
 from hashlib import sha512
 from time import time, mktime, sleep
 from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror, remove
-from subprocess import check_output
+from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree
 from io import BytesIO
 from itertools import compress, chain
@@ -955,10 +955,36 @@ def get_remote_nodes(connected=True, updateDBname=False):
     return list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
 
 
-def push_updates_single_node(all_files, node_dest, config_cluster, removed, result_queue):
+def run_logtest(synchronized=False):
+    log_msg_start = "Synchronized r" if synchronized else "R"
+    try:
+        # check synchronized rules are correct before restarting the manager
+        check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
+        logging.debug("{}ules are correct.".format(log_msg_start))
+        return True
+    except CalledProcessError as e:
+        logging.warning("{}ules are not correct. Manager not restarted: {}.".format(log_msg_start, str(e)))
+        return False
+
+
+def check_files_to_restart(pending_files, cluster_items):
+    restart_items = filter(lambda x: x[0] != 'excluded_files' and x[1]['restart'],
+                            cluster_items.items())
+    restart_files = {path.dirname(x[0])+'/' for x in pending_files} & {x[0] for x in restart_items}
+    logging.debug("restart_files = {}".format(restart_files))
+    if restart_files and not run_logtest():
+        return {x for x in pending_files if path.dirname(x[0]) in restart_files}
+    else:
+        return set()
+
+
+def push_updates_single_node(all_files, node_dest, config_cluster, removed, cluster_items, result_queue):
     # filter to send only pending files
-    pending_files = filter(lambda x: x[1] != 'synchronized' and x[1] != 'tobedeleted' and x[1] != 'deleted', all_files.items())
+    pending_files = set(filter(lambda x: x[1] != 'synchronized' and x[1] != 'tobedeleted' and x[1] != 'deleted', all_files.items()))
     tobedeleted_files = filter(lambda x: x[1] == 'tobedeleted', all_files.items())
+    restart_files = check_files_to_restart(pending_files, cluster_items)
+    pending_files -= restart_files
+
     if len(pending_files) > 0 or removed or len(tobedeleted_files) > 0:
         logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
         zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
@@ -1074,7 +1100,7 @@ def sync_one_node(debug, node, force=False, config_cluster=None, cluster_items=N
 
     before = time()
     result_queue = queue()
-    push_updates_single_node(all_files, node, config_cluster, removed, result_queue)
+    push_updates_single_node(all_files, node, config_cluster, removed, cluster_items, result_queue)
 
     after = time()
     synchronization_duration += after-before
@@ -1155,7 +1181,7 @@ def sync(debug, force=False, config_cluster=None, cluster_items=None):
     for node in remote_nodes:
         t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node],node,
                                                                     config_cluster, removed,
-                                                                    result_queue))
+                                                                    cluster_items, result_queue))
         threads.append(t)
         t.start()
         result = result_queue.get()
