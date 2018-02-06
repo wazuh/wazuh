@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+#ifndef SOLARIS
+
 #include "../wmodules.h"
 #include "shared.h"
 
@@ -116,4 +118,5 @@ void sys_network_windows(const char* LOCATION);
 void sys_proc_linux(int queue_fd, const char* LOCATION);
 void sys_proc_windows(const char* LOCATION);
 
+#endif
 #endif

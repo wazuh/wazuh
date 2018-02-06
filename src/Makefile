@@ -23,6 +23,7 @@ OSSEC_USER?=ossec
 OSSEC_USER_MAIL?=ossecm
 OSSEC_USER_REM?=ossecr
 
+USE_SOLARIS?=no
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
@@ -63,10 +64,12 @@ ifeq (${uname_S},AIX)
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
+		USE_SOLARIS=yes
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-std=gnu99
 		CFLAGS+=-Wl,--start-group
+		OSSEC_LDFLAGS+=-Wl,--end-group
 		OSSEC_LDFLAGS+=-z relax=secadj
 		OSSEC_LDFLAGS+=-lsocket -lnsl -lresolv
 		LUA_PLAT=solaris
@@ -681,7 +684,12 @@ wazuh-db: ${wdb_o} ${ossec_libs}
 
 #### Wazuh modules ##
 
-wmodules_c := $(wildcard wazuh_modules/wm*.c wazuh_modules/syscollector/*.c)
+wmodules_c := $(wildcard wazuh_modules/wm*.c)
+
+ifeq (${USE_SOLARIS},no)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/syscollector/*.c)
+endif
+
 wmodules_o := $(wmodules_c:.c=.o)
 
 wazuh_modules/%.o: wazuh_modules/%.c
@@ -692,8 +700,10 @@ wazuh_modules/syscollector/syscollector_win_ext.dll: wazuh_modules/syscollector/
 	${OSSEC_CC} -pipe -O2 -shared -o $@ $^ -liphlpapi -lws2_32
 endif # DLL for Windows
 
+ifeq (${USE_SOLARIS},no)
 wazuh_modules/syscollector/%.o: wazuh_modules/syscollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
+endif
 
 wmodules.a: ${wmodules_o} ${wdblib_o}
 	${OSSEC_LINK} $@ $^
