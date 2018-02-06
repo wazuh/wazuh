@@ -24,16 +24,16 @@ static const char * SQL_STMT[] = {
     "SELECT 1 FROM fim_entry WHERE file = ?",
     "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = changes + 1, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ? WHERE file = ?;",
-    "INSERT INTO osinfo (scan_id, scan_time, os_name, os_version, hostname, architecture, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "DELETE FROM osinfo;",
-    "INSERT INTO programs (scan_id, scan_time, format, name, vendor, version, architecture, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
-    "DELETE FROM programs WHERE scan_id != ?;",
-    "INSERT INTO hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
-    "DELETE FROM hwinfo;",
-    "INSERT INTO ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "DELETE FROM ports WHERE scan_id != ?;",
-    "INSERT INTO processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    "DELETE FROM processes WHERE scan_id != ?;"
+    "INSERT INTO sys_osinfo (scan_id, scan_time, os_name, os_version, hostname, architecture, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM sys_osinfo;",
+    "INSERT INTO sys_programs (scan_id, scan_time, format, name, vendor, version, architecture, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM sys_programs WHERE scan_id != ?;",
+    "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM sys_hwinfo;",
+    "INSERT INTO sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM sys_ports WHERE scan_id != ?;",
+    "INSERT INTO sys_processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "DELETE FROM sys_processes WHERE scan_id != ?;"
 };
 
 sqlite3 *wdb_global = NULL;

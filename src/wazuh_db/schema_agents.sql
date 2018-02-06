@@ -68,7 +68,7 @@ CREATE INDEX IF NOT EXISTS pm_event_date ON pm_event (date_last);
 
 PRAGMA journal_mode=WAL;
 
-CREATE TABLE IF NOT EXISTS netaddr (
+CREATE TABLE IF NOT EXISTS sys_netaddr (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     address TEXT NOT NULL,
     netmask TEXT NOT NULL,
@@ -77,9 +77,7 @@ CREATE TABLE IF NOT EXISTS netaddr (
     dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown'
 );
 
-CREATE INDEX IF NOT EXISTS netaddr_address ON netaddr (address);
-
-CREATE TABLE IF NOT EXISTS netiface (
+CREATE TABLE IF NOT EXISTS sys_netiface (
     scan_id INTEGER,
     scan_time TEXT,
     name TEXT,
@@ -97,9 +95,9 @@ CREATE TABLE IF NOT EXISTS netiface (
     PRIMARY KEY (scan_id, name)
 );
 
-CREATE INDEX IF NOT EXISTS netiface_id ON netiface (scan_id);
+CREATE INDEX IF NOT EXISTS netiface_id ON sys_netiface (scan_id);
 
-CREATE TABLE IF NOT EXISTS osinfo (
+CREATE TABLE IF NOT EXISTS sys_osinfo (
     scan_id INTEGER,
     scan_time TEXT,
     hostname TEXT,
@@ -117,7 +115,7 @@ CREATE TABLE IF NOT EXISTS osinfo (
     PRIMARY KEY (scan_id, os_name)
 );
 
-CREATE TABLE IF NOT EXISTS hwinfo (
+CREATE TABLE IF NOT EXISTS sys_hwinfo (
     scan_id INTEGER,
     scan_time TEXT,
     board_serial TEXT,
@@ -129,7 +127,7 @@ CREATE TABLE IF NOT EXISTS hwinfo (
     PRIMARY KEY (scan_id, board_serial)
 );
 
-CREATE TABLE IF NOT EXISTS ports (
+CREATE TABLE IF NOT EXISTS sys_ports (
     scan_id INTEGER,
     scan_time TEXT,
     protocol TEXT,
@@ -145,9 +143,9 @@ CREATE TABLE IF NOT EXISTS ports (
     process TEXT
 );
 
-CREATE INDEX IF NOT EXISTS ports_id ON ports (scan_id);
+CREATE INDEX IF NOT EXISTS ports_id ON sys_ports (scan_id);
 
-CREATE TABLE IF NOT EXISTS programs (
+CREATE TABLE IF NOT EXISTS sys_programs (
     scan_id INTEGER,
     scan_time TEXT,
     format TEXT NOT NULL CHECK (format IN ('deb', 'rpm', 'win', 'pkg')),
@@ -159,9 +157,9 @@ CREATE TABLE IF NOT EXISTS programs (
     PRIMARY KEY (scan_id, name, version, architecture)
 );
 
-CREATE INDEX IF NOT EXISTS programs_id ON programs (scan_id);
+CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
 
-CREATE TABLE IF NOT EXISTS processes (
+CREATE TABLE IF NOT EXISTS sys_processes (
     scan_id INTEGER,
     scan_time TEXT,
     pid TEXT,
@@ -195,7 +193,7 @@ CREATE TABLE IF NOT EXISTS processes (
     PRIMARY KEY (scan_id, pid)
 );
 
-CREATE INDEX IF NOT EXISTS processes_id ON processes (scan_id);
+CREATE INDEX IF NOT EXISTS processes_id ON sys_processes (scan_id);
 
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,
