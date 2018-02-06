@@ -1318,10 +1318,6 @@ int wm_vulnerability_detector_socketconnect(char *url) {
         return OS_INVALID;
 	}
 
-    int one = 1;
-    if (setsockopt(sock, SOL_TCP, TCP_NODELAY, &one, sizeof(one)) < 0) {
-        return OS_INVALID;
-    }
 	return sock;
 }
 
