@@ -42,7 +42,7 @@ def create_exception_dic(id, e):
     exception_dic['error'] = {'message': e.message, 'code': e.code}
     return exception_dic
 
-    
+
 def get_timeframe_int(timeframe):
 
     if not isinstance(timeframe, int):
@@ -210,9 +210,9 @@ class Agent:
                     self.lastKeepAlive = value
                 else:
                     self.lastKeepAlive = 0
-            if field == 'configSum' and value != None:
+            if field == 'config_sum' and value != None:
                 self.configSum = value
-            if field == 'mergedSum' and value != None:
+            if field == 'merged_sum' and value != None:
                 self.mergedSum = value
             if field == '`group`' and value != None:
                 self.group = value
@@ -309,7 +309,7 @@ class Agent:
     def compute_key(self):
         str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
         return b64encode(str_key.encode()).decode()
-        
+
 
     def get_key(self):
         """
@@ -352,12 +352,15 @@ class Agent:
         """
         Function to know the value of the option "use_only_authd" in API configuration
         """
-        with open(common.api_config_path) as f:
-            data = f.readlines()
+        try:
+            with open(common.api_config_path) as f:
+                data = f.readlines()
 
-        use_only_authd = filter(lambda x: x.strip().startswith('config.use_only_authd'), data)
+            use_only_authd = filter(lambda x: x.strip().startswith('config.use_only_authd'), data)
 
-        return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
+            return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
+        except IOError:
+            return False
 
     def remove(self, backup=False, purge=False):
         """
@@ -370,11 +373,11 @@ class Agent:
 
         manager_status = manager.status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
-        
+
         if self.use_only_authd():
             if not is_authd_running:
                 raise WazuhException(1726)
-                
+
         if not is_authd_running:
             data = self._remove_manual(backup, purge)
         else:
@@ -515,7 +518,7 @@ class Agent:
         if self.use_only_authd():
             if not is_authd_running:
                 raise WazuhException(1726)
-                
+
         if not is_authd_running:
             data = self._add_manual(name, ip, id, key, force)
         else:
@@ -737,7 +740,7 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None, version="all"):
         """
         Gets a list of available agents with basic attributes.
 
@@ -763,11 +766,16 @@ class Agent:
         query = "SELECT {0} FROM agent"
         fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive',
                   'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
-                  'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add'}
+                  'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add',
+                   'group': 'group', 'merged_sum': 'merged_sum', 'config_sum': 'config_sum',
+                   'os.codename': 'os_codename','os.major': 'os_major','os.uname': 'os_uname',
+                  'last_keepalive': 'last_keepalive','os.arch': 'os_arch'}
         valid_select_fields = {"id", "name", "ip", "last_keepalive", "os_name", "os_version", "node_name",
-                               "os_platform", "version", "manager_host", "date_add", 'status'}
+                               "os_platform", "version", "manager_host", "date_add", 'status',
+                               'group', 'merged_sum', 'config_sum','os_codename', 'os_major', 'os_uname',
+                               'last_keepalive', 'os_arch'}
         select_fields = {'id', 'version', 'last_keepalive'}
-        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host"}
+        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version"}
         request = {}
         if select:
             if not set(select['fields']).issubset(valid_select_fields):
@@ -802,9 +810,13 @@ class Agent:
         if manager_host != "all":
             request['manager_host'] = manager_host
             query += ' AND manager_host = :manager_host'
+        if version != "all":
+            request['version'] = re.sub( r'([a-zA-Z])([v])', r'\1 \2', version )
+            query += ' AND version = :version'
 
         # Search
         if search:
+            search['value'] = re.sub( r'([Wazuh])([v])', r'\1 \2', search['value'] )
             query += " AND NOT" if bool(search['negation']) else ' AND'
             query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
             request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
@@ -851,6 +863,18 @@ class Agent:
             request['offset'] = offset
             request['limit'] = limit
 
+        if 'group' in select_fields:
+            select_fields.remove('group')
+            select_fields.add('`group`')
+
+        select_os_arch = 'os_arch' in select_fields
+        select_os_uname = 'os_uname' in select_fields
+        if select_os_arch:
+            select_fields.remove('os_arch')
+            if not select_os_uname:
+                select_fields.add('os_uname')
+                set_select_fields.add('os_uname')
+
         conn.execute(query.format(','.join(select_fields)), request)
 
         data['items'] = []
@@ -861,7 +885,6 @@ class Agent:
             pending = True
             os = {}
             for field, value in zip(select_fields, tuple):
-
                 if value != None and field == 'id':
                     data_tuple['id'] = str(value).zfill(3)
                 if value != None and field == 'name' and field in set_select_fields:
@@ -878,6 +901,34 @@ class Agent:
                     os['version'] = value
                 if value != None and field == 'os_platform' and field in set_select_fields:
                     os['platform'] = value
+                if value != None and field == 'os_codename' and field in set_select_fields:
+                    os['codename'] = value
+                if value != None and field == 'os_build' and field in set_select_fields:
+                    os['arch'] = value
+                if value != None and field == 'os_uname' and field in set_select_fields:
+                    if select_os_uname:
+                        os['uname'] = value
+                    if select_os_arch:
+                        if "x86_64" in value:
+                            os['arch'] = "x86_64"
+                        elif "i386" in value:
+                            os['arch'] = "i386"
+                        elif "i686" in value:
+                            os['arch'] = "i686"
+                        elif "sparc" in value:
+                            os['arch'] = "sparc"
+                        elif "amd64" in value:
+                            os['arch'] = "amd64"
+                        elif "ia64" in value:
+                            os['arch'] = "ia64"
+                        elif "AIX" in value:
+                            os['arch'] = "AIX"
+                        elif "armv6" in value:
+                            os['arch'] = "armv6"
+                        elif "armv7" in value:
+                            os['arch'] = "armv7"
+                if value != None and field == 'os_major' and field in set_select_fields:
+                    os['major'] = value
 
                 if value != None and field == 'version':
                     pending = False if value != "" else True
@@ -892,6 +943,18 @@ class Agent:
 
                 if value != None and field == 'node_name' and field in set_select_fields:
                     data_tuple['node_name'] = value
+
+                if value != None and field == '`group`' and 'group' in set_select_fields:
+                    data_tuple['group'] = value
+
+                if value != None and field == 'merged_sum' and field in set_select_fields:
+                    data_tuple['mergedSum'] = value
+
+                if value != None and field == 'config_sum' and field in set_select_fields:
+                    data_tuple['configSum'] = value
+
+                if value != None and field == 'last_keepalive' and field in set_select_fields:
+                    data_tuple['lastKeepAlive'] = value
 
             if os:
                 os_no_empty = dict((k, v) for k, v in os.items() if v)
@@ -1076,7 +1139,7 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM agent WHERE name = :name", {'name': agent_name})
         agent_id = str(conn.fetch()[0]).zfill(3)
-        
+
         return Agent(agent_id).get_basic_information(select)
 
     @staticmethod
@@ -1330,7 +1393,7 @@ class Agent:
 
 
         if search:
-            data = search_array(data, search['value'], search['negation'])
+            data = search_array(data, search['value'], search['negation'], fields=['name'])
 
         if sort:
             data = sort_array(data, sort['fields'], sort['order'])
@@ -1405,9 +1468,11 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
-        valid_select_fiels = ["id", "name", "ip", "last_keepalive", "os_name",
+        valid_select_fiels = {"id", "name", "ip", "last_keepalive", "os_name",
                              "os_version", "os_platform", "os_uname", "version",
-                             "config_sum", "merged_sum", "manager_host"]
+                             "config_sum", "merged_sum", "manager_host", "status"}
+        # fields like status need to retrieve others to be properly computed.
+        dependent_select_fields = {'status': {'last_keepalive','version'}}
         search_fields = {"id", "name", "os_name"}
 
         # Init query
@@ -1417,13 +1482,23 @@ class Agent:
 
         # Select
         if select:
-            if not set(select['fields']).issubset(valid_select_fiels):
-                uncorrect_fields = map(lambda x: str(x), set(select['fields']) - set(valid_select_fiels))
+            select_fields_param = set(select['fields'])
+
+            if not select_fields_param.issubset(valid_select_fiels):
+                uncorrect_fields = select_fields_param - valid_select_fiels
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
-                        format(valid_select_fiels, uncorrect_fields))
-            select_fields = select['fields']
+                        format(', '.join(list(valid_select_fiels)), ', '.join(uncorrect_fields)))
+
+            select_fields = select_fields_param
         else:
             select_fields = valid_select_fiels
+
+        # add dependent select fields to the database select query
+        db_select_fields = set()
+        for dependent, fields in dependent_select_fields.items():
+            if dependent in select_fields:
+                db_select_fields |= fields
+        db_select_fields |= (select_fields - set(dependent_select_fields.keys()))
 
         # Search
         if search:
@@ -1439,7 +1514,7 @@ class Agent:
         # Sorting
         if sort:
             if sort['fields']:
-                allowed_sort_fields = select_fields
+                allowed_sort_fields = db_select_fields
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
                 if not set(sort['fields']).issubset(allowed_sort_fields):
                     raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.\
@@ -1459,11 +1534,22 @@ class Agent:
             request['limit'] = limit
 
         # Data query
-        conn.execute(query.format(','.join(select_fields)), request)
+        conn.execute(query.format(','.join(db_select_fields)), request)
 
         non_nested = [{field:tuple_elem for field,tuple_elem \
-                in zip(select_fields, tuple) if tuple_elem} for tuple in conn]
-        map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+                in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
+
+        if 'id' in select_fields:
+            map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+
+        if 'status' in select_fields:
+            try:
+                map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+            except KeyError:
+                pass
+
+        # return only the fields requested by the user (saved in select_fields) and not the dependent ones
+        non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
 
         data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
 

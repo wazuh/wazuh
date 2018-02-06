@@ -12,6 +12,7 @@
 #include "stats.h"
 #include "rules.h"
 #include "error_messages/error_messages.h"
+#include "error_messages/debug_messages.h"
 #include "headers/file_op.h"
 #include "alerts/alerts.h"
 #include "headers/debug_op.h"

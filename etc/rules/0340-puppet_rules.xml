@@ -105,7 +105,7 @@
     - *failed*
     - *has failure*
     -->
-    <rule id="80006" level="15">
+    <rule id="80006" level="7">
         <if_sid>80000</if_sid>
         <match>^Could not run: Address already in use</match>
         <description>Puppet Master: not run - address in use</description>

@@ -18,8 +18,31 @@ static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
+static const char *SQL_INSERT_METADATA = "INSERT INTO metadata (key, value) VALUES ('version_major', ?), ('version_minor', ?);";
+static const char * SQL_STMT[] = {
+    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode FROM fim_entry WHERE file = ?;",
+    "SELECT 1 FROM fim_entry WHERE file = ?",
+    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = changes + 1, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ? WHERE file = ?;",
+    "INSERT INTO sys_osinfo (scan_id, scan_time, os_name, os_version, hostname, architecture, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM sys_osinfo;",
+    "INSERT INTO sys_programs (scan_id, scan_time, format, name, vendor, version, architecture, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM sys_programs WHERE scan_id != ?;",
+    "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM sys_hwinfo;",
+    "INSERT INTO sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM sys_ports WHERE scan_id != ?;",
+    "INSERT INTO sys_processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "DELETE FROM sys_processes WHERE scan_id != ?;"
+};
 
 sqlite3 *wdb_global = NULL;
+wdb_config config;
+pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
+wdb_t * db_pool_begin;
+wdb_t * db_pool_last;
+int db_pool_size;
+OSHash * open_dbs;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global() {
@@ -76,7 +99,6 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
 
         if (wdb_create_agent_db(id_agent, name) < 0) {
             merror("Couldn't create SQLite database '%s'", dir);
-            sqlite3_close_v2(db);
             return NULL;
         }
 
@@ -88,11 +110,169 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
             return NULL;
         }
 
-    } else
-        sqlite3_busy_timeout(db, BUSY_SLEEP);
+    }
 
-
+    sqlite3_busy_timeout(db, BUSY_SLEEP);
     return db;
+}
+
+// Open database for agent and store in DB pool. It returns a locked database or NULL
+wdb_t * wdb_open_agent2(int agent_id) {
+    char sagent_id[64];
+    char path[PATH_MAX + 1];
+    sqlite3 * db;
+    wdb_t * wdb = NULL;
+
+    snprintf(sagent_id, sizeof(sagent_id), "%03d", agent_id);
+
+    // Find BD in pool
+
+    w_mutex_lock(&pool_mutex);
+
+    if (wdb = (wdb_t *)OSHash_Get(open_dbs, sagent_id), wdb) {
+        goto success;
+    }
+
+    // Try to open DB
+
+    snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, sagent_id);
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        mdebug1("No SQLite database found for agent '%s', creating.", sagent_id);
+        sqlite3_close_v2(db);
+
+        if (wdb_create_agent_db2(sagent_id) < 0) {
+            merror("Couldn't create SQLite database '%s'", path);
+            goto end;
+        }
+
+        // Retry to open
+
+        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+            merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
+            sqlite3_close_v2(db);
+            goto end;
+        }
+
+        if (wdb_fill_metadata(db) < 0) {
+            merror("Couldn't fill metadata into database '%s'", path);
+            goto end;
+        }
+    }
+
+    wdb = wdb_init(db, sagent_id);
+    wdb_pool_append(wdb);
+
+success:
+    w_mutex_lock(&wdb->mutex);
+    wdb->refcount++;
+
+end:
+    w_mutex_unlock(&pool_mutex);
+    return wdb;
+}
+
+/* Create database for agent from profile. Returns 0 on success or -1 on error. */
+int wdb_create_agent_db2(const char * agent_id) {
+    char path[OS_FLSIZE + 1];
+    char buffer[4096];
+    FILE *source;
+    FILE *dest;
+    size_t nbytes;
+    int result = 0;
+
+    snprintf(path, OS_FLSIZE, "%s/%s", WDB2_DIR, WDB_PROF_NAME);
+
+    if (!(source = fopen(path, "r"))) {
+        mdebug1("Profile database not found, creating.");
+
+        if (wdb_create_profile(path) < 0)
+            return -1;
+
+        // Retry to open
+
+        if (!(source = fopen(path, "r"))) {
+            merror("Couldn't open profile '%s'.", path);
+            return -1;
+        }
+    }
+
+    snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
+
+    if (!(dest = fopen(path, "w"))) {
+        fclose(source);
+        merror("Couldn't create database '%s'.", path);
+        return -1;
+    }
+
+    while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
+        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
+            result = -1;
+            break;
+        }
+    }
+
+    fclose(source);
+    fclose(dest);
+
+    if (result < 0)
+        return -1;
+
+    if (chmod(path, 0640) < 0) {
+        merror(CHMOD_ERROR, path, errno, strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+int wdb_fill_metadata(sqlite3 * db) {
+    sqlite3_stmt *stmt = NULL;
+    char version[] = __ossec_version;
+    char * strmajor;
+    char * strminor;
+    char * end;
+    int vmajor;
+    int vminor;
+    int result = 0;
+
+    // Extract version
+
+    strmajor = version + (*version == 'v');
+
+    if (end = strchr(strmajor, '.'), !end) {
+        merror("Couldn't parse internal version '%s'", strmajor);
+        return -1;
+    }
+
+    *end = '\0';
+    strminor = end + 1;
+
+    if (vmajor = (int)strtol(strmajor, &end, 10), end == strmajor) {
+        merror("Couldn't parse internal major version '%s'", strmajor);
+        return -1;
+    }
+
+    if (vminor = (int)strtol(strminor, &end, 10), end == strminor) {
+        merror("Couldn't parse internal minor version '%s'", strminor);
+        return -1;
+    }
+
+    if (sqlite3_prepare_v2(db, SQL_INSERT_METADATA, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("at wdb_fill_metadata(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    sqlite3_bind_int(stmt, 1, vmajor);
+    sqlite3_bind_int(stmt, 2, vminor);
+
+    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
+        mdebug1("at wdb_fill_metadata(): wdb_step(): %s", sqlite3_errmsg(db));
+        result = -1;
+    }
+
+    sqlite3_finalize(stmt);
+    return result;
 }
 
 /* Get agent name from location string */
@@ -158,31 +338,57 @@ int wdb_step(sqlite3_stmt *stmt) {
 /* Begin transaction */
 int wdb_begin(sqlite3 *db) {
     sqlite3_stmt *stmt = NULL;
-    int result;
+    int result = 0;
 
-    if (wdb_prepare(db, SQL_BEGIN, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(db));
+    if (sqlite3_prepare_v2(db, SQL_BEGIN, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("at wdb_begin(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
         return -1;
     }
 
-    result = wdb_step(stmt) != SQLITE_DONE;
+    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
+        mdebug1("at wdb_begin(): wdb_step(): %s", sqlite3_errmsg(db));
+        result = -1;
+    }
+
     sqlite3_finalize(stmt);
     return result;
 }
 
+int wdb_begin2(wdb_t * wdb) {
+    if (!wdb_begin(wdb->db)) {
+        wdb->transaction = 1;
+        return 0;
+    } else {
+        return -1;
+    }
+}
+
 /* Commit transaction */
 int wdb_commit(sqlite3 *db) {
-    sqlite3_stmt *stmt = NULL;
-    int result;
+    sqlite3_stmt * stmt = NULL;
+    int result = 0;
 
-    if (wdb_prepare(db, SQL_COMMIT, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(db));
+    if (sqlite3_prepare_v2(db, SQL_COMMIT, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("at wdb_commit(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
         return -1;
     }
 
-    result = wdb_step(stmt) != SQLITE_DONE;
+    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
+        mdebug1("at wdb_commit(): wdb_step(): %s", sqlite3_errmsg(db));
+        result = -1;
+    }
+
     sqlite3_finalize(stmt);
     return result;
+}
+
+int wdb_commit2(wdb_t * wdb) {
+if (!wdb_commit(wdb->db)) {
+    wdb->transaction = 0;
+    return 0;
+} else {
+    return -1;
+}
 }
 
 /* Create global database */
@@ -249,17 +455,30 @@ int wdb_create_file(const char *path, const char *source) {
 
     sqlite3_close_v2(db);
 
-    uid = Privsep_GetUser(ROOT);
-    gid = Privsep_GetGroup(GROUPGLOBAL);
-
-    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, ROOT, GROUPGLOBAL);
+    switch (getuid()) {
+    case -1:
+        merror("at getuid(): %s (%d)", strerror(errno), errno);
         return -1;
-    }
 
-    if (chown(path, uid, gid) < 0) {
-        merror(CHOWN_ERROR, path, errno, strerror(errno));
-        return -1;
+    case 0:
+        uid = Privsep_GetUser(ROOT);
+        gid = Privsep_GetGroup(GROUPGLOBAL);
+
+        if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+            merror(USER_ERROR, ROOT, GROUPGLOBAL);
+            return -1;
+        }
+
+        if (chown(path, uid, gid) < 0) {
+            merror(CHOWN_ERROR, path, errno, strerror(errno));
+            return -1;
+        }
+
+        break;
+
+    default:
+        mdebug1("Ignoring chown when creating file from SQL.");
+        break;
     }
 
     if (chmod(path, 0660) < 0) {
@@ -307,4 +526,245 @@ int wdb_insert_info(const char *key, const char *value) {
     sqlite3_finalize(stmt);
     wdb_close_global();
     return result;
+}
+
+wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
+    wdb_t * wdb;
+    os_calloc(1, sizeof(wdb_t), wdb);
+    wdb->db = db;
+    pthread_mutex_init(&wdb->mutex, NULL);
+    os_strdup(agent_id, wdb->agent_id);
+    return wdb;
+}
+
+void wdb_destroy(wdb_t * wdb) {
+    free(wdb->agent_id);
+    pthread_mutex_destroy(&wdb->mutex);
+    free(wdb);
+}
+
+void wdb_pool_append(wdb_t * wdb) {
+    int r;
+
+    if (db_pool_begin) {
+        db_pool_last->next = wdb;
+        db_pool_last = wdb;
+    } else {
+        db_pool_begin = db_pool_last = wdb;
+    }
+
+    db_pool_size++;
+
+    if (r = OSHash_Add(open_dbs, wdb->agent_id, wdb), r != 2) {
+        merror_exit("at wdb_pool_append(): OSHash_Add(%s) returned %d.", wdb->agent_id, r);
+    }
+}
+
+void wdb_pool_remove(wdb_t * wdb) {
+    wdb_t * prev;
+
+    if (!OSHash_Delete(open_dbs, wdb->agent_id)) {
+        merror("Database for agent '%s' was not in hash table.", wdb->agent_id);
+    }
+
+    if (wdb == db_pool_begin) {
+        db_pool_begin = wdb->next;
+
+        if (wdb == db_pool_last) {
+            db_pool_last = NULL;
+        }
+
+        db_pool_size--;
+    } else if (prev = wdb_pool_find_prev(wdb), prev) {
+        prev->next = wdb->next;
+
+        if (wdb == db_pool_last) {
+            db_pool_last = prev;
+        }
+
+        db_pool_size--;
+    } else {
+        merror("Database for agent '%s' not found in the pool.", wdb->agent_id);
+    }
+}
+
+void wdb_close_all() {
+    wdb_t * node;
+
+    mdebug1("Closing all databases...");
+    w_mutex_lock(&pool_mutex);
+
+    while (node = db_pool_begin, node) {
+        mdebug2("Closing database for agent %s", node->agent_id);
+
+        if (wdb_close(node) < 0) {
+            merror("Couldn't close DB for agent %s", node->agent_id);
+        }
+    }
+
+    w_mutex_unlock(&pool_mutex);
+}
+
+void wdb_commit_old() {
+    wdb_t * node;
+
+    w_mutex_lock(&pool_mutex);
+
+    for (node = db_pool_begin; node; node = node->next) {
+        w_mutex_lock(&node->mutex);
+
+        if (node->transaction && time(NULL) - node->last > config.commit_time) {
+            mdebug2("Committing database for agent %s", node->agent_id);
+            wdb_commit2(node);
+        }
+
+        w_mutex_unlock(&node->mutex);
+    }
+
+    w_mutex_unlock(&pool_mutex);
+}
+
+void wdb_close_old() {
+    wdb_t * node;
+
+    w_mutex_lock(&pool_mutex);
+
+    while (db_pool_size > config.open_db_limit) {
+        node = db_pool_begin;
+        mdebug2("Closing database for agent %s", node->agent_id);
+
+        if (node->refcount == 0 && !node->transaction) {
+            wdb_close(node);
+        }
+    }
+
+    w_mutex_unlock(&pool_mutex);
+}
+
+cJSON * wdb_exec(sqlite3 * db, const char * sql) {
+    int r;
+    int count;
+    int i;
+    sqlite3_stmt * stmt;
+    cJSON * result;
+    cJSON * row;
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("at wdb_exec(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+        mdebug2("SQL: %s", sql);
+        return NULL;
+    }
+
+    result = cJSON_CreateArray();
+
+    while (r = sqlite3_step(stmt), r == SQLITE_ROW) {
+        if (count = sqlite3_column_count(stmt), count > 0) {
+            row = cJSON_CreateObject();
+
+            for (i = 0; i < count; i++) {
+                switch (sqlite3_column_type(stmt, i)) {
+                case SQLITE_INTEGER:
+                case SQLITE_FLOAT:
+                    cJSON_AddNumberToObject(row, sqlite3_column_name(stmt, i), sqlite3_column_double(stmt, i));
+                    break;
+
+                case SQLITE_TEXT:
+                case SQLITE_BLOB:
+                    cJSON_AddStringToObject(row, sqlite3_column_name(stmt, i), (const char *)sqlite3_column_text(stmt, i));
+                    break;
+
+                case SQLITE_NULL:
+                default:
+                    ;
+                }
+            }
+
+            cJSON_AddItemToArray(result, row);
+        }
+    }
+
+    if (r != SQLITE_DONE) {
+        mdebug1("at wdb_exec(): sqlite3_step(): %s", sqlite3_errmsg(db));
+        cJSON_Delete(result);
+        result = NULL;
+    }
+
+    sqlite3_finalize(stmt);
+    return result;
+}
+
+int wdb_close(wdb_t * wdb) {
+    int result;
+    int i;
+
+    if (wdb->refcount == 0) {
+        if (wdb->transaction) {
+            wdb_commit2(wdb);
+        }
+
+        for (i = 0; i < WDB_STMT_SIZE; i++) {
+            if (wdb->stmt[i]) {
+                sqlite3_finalize(wdb->stmt[i]);
+            }
+        }
+
+        result = sqlite3_close_v2(wdb->db);
+
+        if (result == SQLITE_OK) {
+            wdb_pool_remove(wdb);
+            wdb_destroy(wdb);
+            return 0;
+        } else {
+            mdebug1("at wdb_close(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
+        }
+    } else {
+        mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->agent_id, wdb->refcount);
+        return -1;
+    }
+}
+
+void wdb_leave(wdb_t * wdb) {
+    wdb->refcount--;
+    wdb->last = time(NULL);
+    w_mutex_unlock(&wdb->mutex);
+}
+
+wdb_t * wdb_pool_find_prev(wdb_t * wdb) {
+    wdb_t * node;
+
+    for (node = db_pool_begin; node && node->next; node = node->next) {
+        if (node->next == wdb) {
+            return node;
+        }
+    }
+
+    return NULL;
+}
+
+int wdb_stmt_cache(wdb_t * wdb, int index) {
+    if (index >= WDB_STMT_SIZE) {
+        merror("SQL statement index (%d) out of bounds", index);
+        return -1;
+    }
+
+    if (!wdb->stmt[index]) {
+        if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
+            merror("at wdb_stmt_cache(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
+        }
+    } else if (sqlite3_reset(wdb->stmt[index]) != SQLITE_OK) {
+        merror("at wdb_stmt_cache(): at sqlite3_reset(): %s", sqlite3_errmsg(wdb->db));
+
+        // Retry to prepare
+
+        sqlite3_finalize(wdb->stmt[index]);
+
+        if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
+            merror("at wdb_stmt_cache(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
+        }
+    }
+
+    return 0;
 }

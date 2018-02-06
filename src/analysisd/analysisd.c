@@ -52,6 +52,7 @@ void DecodeEvent(Eventinfo *lf);
 int DecodeSyscheck(Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
+int DecodeSyscollector(Eventinfo *lf);
 
 /* For stats */
 static void DumpLogstats(void);
@@ -242,8 +243,6 @@ int main_analysisd(int argc, char **argv)
         }
     }
 #endif
-
-
 
     /* Fix Config.ar */
     Config.ar = ar_flag;
@@ -774,7 +773,14 @@ void OS_ReadMSG_analysisd(int m_queue)
                 }
                 lf->size = strlen(lf->log);
             }
-
+            /* Syscollector decoding */
+            else if (msg[0] == SYSCOLLECTOR_MQ) {
+                if (!DecodeSyscollector(lf)) {
+                    /* We don't process hostinfo events further */
+                    goto CLMEM;
+                }
+                lf->size = strlen(lf->log);
+            }
             /* Host information special decoder */
             else if (msg[0] == HOSTINFO_MQ) {
                 if (!DecodeHostinfo(lf)) {

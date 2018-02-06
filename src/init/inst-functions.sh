@@ -19,7 +19,7 @@
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
 GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
-
+SYSCOLLECTOR_TEMPLATE="./etc/templates/config/generic/wodle-syscollector.template"
 RULES_TEMPLATE="./etc/templates/config/generic/rules.template"
 AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
 AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
@@ -34,6 +34,7 @@ AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
+VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 ##########
 # WriteSyscheck()
@@ -105,6 +106,21 @@ WriteOpenSCAP()
       cat ${OPENSCAP_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
     fi
+}
+
+##########
+# WriteCISCAT()
+##########
+WriteCISCAT()
+{
+    # Adding to the config file
+    CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]
+    then
+        CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 }
 
 ##########
@@ -290,10 +306,12 @@ WriteAgent()
     # OpenSCAP
     WriteOpenSCAP "agent"
 
+    # Syscollector configuration
+    cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # CIS-CAT configuration
-    cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    WriteCISCAT "agent"
 
     # Syscheck
     WriteSyscheck "agent"
@@ -389,8 +407,15 @@ WriteManager()
     # Write OpenSCAP
     WriteOpenSCAP "manager"
 
+    # Syscollector
+    cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # CIS-CAT configuration
-    cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
+    WriteCISCAT "manager"
+
+    # Vulnerability Detector
+    cat ${VULN_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Write syscheck
@@ -495,6 +520,13 @@ WriteLocal()
 
     # Write OpenSCAP
     WriteOpenSCAP "manager"
+
+    # CIS-CAT configuration
+    WriteCISCAT "agent"
+
+    # Vulnerability Detector
+    cat ${VULN_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # Write syscheck
     WriteSyscheck "manager"
@@ -635,8 +667,6 @@ InstallCommon(){
 	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/vuls/go
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/vuls.py ${PREFIX}/wodles/vuls
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/deploy_vuls.sh ${PREFIX}/wodles/vuls
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/ciscat
-	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/ciscat/template_*.xsl ${PREFIX}/wodles/ciscat
 	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
 	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws.py ${PREFIX}/wodles/aws
 
@@ -732,7 +762,8 @@ InstallLocal(){
     ${INSTALL} -m 0750 -o root -g 0 syscheck_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 rootcheck_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 -b update/ruleset/update_ruleset.py ${PREFIX}/bin/update_ruleset
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 -b update/ruleset/update_ruleset ${PREFIX}/bin/update_ruleset
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
@@ -753,11 +784,11 @@ InstallLocal(){
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
     fi
     if [ ! -f ${PREFIX}/etc/lists ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
     fi
     if [ ! -f ${PREFIX}/etc/lists/amazon ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
+        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
     fi
     if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
@@ -765,10 +796,10 @@ InstallLocal(){
     fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
-
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/db
 
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
     ${INSTALL} -m 750 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations

@@ -1,0 +1,24 @@
+# for --version-script
+# WTF is the syntax for this file?
+# Give me a BNF, man!
+_3_2_5 {
+global:
+  __cyg_profile_func_enter; __cyg_profile_func_exit; main;
+
+  readproc; readtask; readproctab; readproctab2; look_up_our_self; escape_command;
+  escape_str; escape_strlist;
+  openproc; closeproc;
+  tty_to_dev; dev_to_tty; open_psdb_message; open_psdb; lookup_wchan;
+  display_version; procps_version; linux_version_code;
+  Hertz; smp_num_cpus; have_privs;
+  sprint_uptime; uptime; user_from_uid; print_uptime; loadavg;
+  pretty_print_signals; print_given_signals; unix_print_signals; signal_name_to_number; signal_number_to_name;
+  meminfo; vminfo; getstat; getdiskstat; getpartitions_num; getslabinfo; get_pid_digits;
+  kb_active; kb_inactive; kb_main_buffers; kb_main_cached;
+  kb_main_free; kb_main_total; kb_main_used; kb_swap_free;
+  kb_swap_total; kb_swap_used; kb_main_shared;
+  kb_low_total; kb_low_free; kb_high_total; kb_high_free;
+  vm_pgpgin; vm_pgpgout; vm_pswpin; vm_pswpout;
+  free_slabinfo; put_slabinfo; get_slabinfo; get_proc_stats;
+local: *;
+};

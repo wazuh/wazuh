@@ -159,7 +159,7 @@
     -->
   <rule id="31516" level="6">
     <if_sid>31100</if_sid>
-    <url>.swp$|.bak$|/.htaccess|/server-status|/.ssh|/.history</url>
+    <url>.swp$|.bak$|/.htaccess|/server-status|/.ssh|/.history|/wallet.dat</url>
     <description>Suspicious URL access.</description>
    <group>pci_dss_6.5,pci_dss_11.4,</group>
    </rule>

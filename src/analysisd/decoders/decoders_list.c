@@ -14,6 +14,7 @@
 #include "headers/debug_op.h"
 #include "decoder.h"
 #include "error_messages/error_messages.h"
+#include "error_messages/debug_messages.h"
 
 /* We have two internal lists. One with the program_name
  * and one without. This is going to improve greatly the
