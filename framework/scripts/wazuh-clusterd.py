@@ -206,7 +206,7 @@ def restart_manager():
         logging.warning("Could not restart manager: {0}.".format(str(e)))
 
 
-def crontab_sync_master(interval, config_cluster, requests_queue, connected_clients):
+def crontab_sync_master(interval, config_cluster, requests_queue, connected_clients, finished_clients):
     def sleep_handler(n_signal, frame):
         logging.debug("Sleeping for {}{}...".format(interval_number, interval_measure))
         sleep(interval_number if interval_measure == 's' else interval_number*60)
@@ -227,6 +227,7 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
 
             remote_nodes = get_remote_nodes()
             connected_clients.value = len(remote_nodes)
+            finished_clients.value = 0
             for node in remote_nodes:
                 # ask clients to send updates
                 error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
@@ -273,7 +274,8 @@ def crontab_sync_client(config_cluster, restart_after_sync):
 
     signal(SIGUSR1, sync_handler)
     cluster_items = get_cluster_items()
-    pause()
+    while True:
+        pause()
 
 
 def signal_handler(n_signal, frame):
@@ -383,7 +385,7 @@ if __name__ == '__main__':
 
     if cluster_config['node_type'] == 'master':
         # execute an independent process to "crontab" the sync interval
-        p = Process(target=crontab_sync_master, args=(cluster_config['interval'],cluster_config,requests_queue,connected_clients,))
+        p = Process(target=crontab_sync_master, args=(cluster_config['interval'],cluster_config,requests_queue,connected_clients,finished_clients,))
         if not args.f:
             p.daemon=True
         p.start()

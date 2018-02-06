@@ -886,7 +886,7 @@ def receive_zip(zip_file):
     logging.info("Receiving package with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'deleted': []}
-    restart = []
+    restart = [False]
 
     if 'remote_groups.txt' in zip_file.keys():
         check_groups(set(zip_file['remote_groups.txt']['data'].split('\n')))
