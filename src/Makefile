@@ -505,7 +505,11 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 ####################
 
 .PHONY: external lua
+ifeq (${uname_S},Linux)
 external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a
+else
+external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+endif
 
 lua:
 	cd ${EXTERNAL_LUA} && ${MAKE} ${LUA_PLAT}
@@ -585,6 +589,7 @@ libcJSON.a: ${cjson_o}
 
 #### procps #########
 ifneq (${TARGET},winagent)
+ifeq (${uname_S},Linux)
 PROCPS_LIB=libproc.a
 PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
 
@@ -597,6 +602,7 @@ ${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
 libproc.a: ${procps_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
+endif
 endif
 
 ####################

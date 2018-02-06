@@ -19,6 +19,10 @@
 #include <openssl/ssl.h>
 #include <os_net/os_net.h>
 
+#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#define SOL_TCP     6
+#endif
+
 static void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerability_detector);
 static void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerability_detector);
 int wm_vulnerability_detector_socketconnect(char *host);
@@ -710,7 +714,7 @@ int wm_vulnerability_detector_check_db() {
 }
 
 char * wm_vulnerability_detector_preparser(cve_db dist) {
-    FILE *input, *output;
+    FILE *input, *output = NULL;
     char *buffer = NULL;
     size_t size;
     size_t max_size = OS_MAXSTR;
@@ -1330,7 +1334,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
     unsigned int oval_size;
     char buffer[VU_SSL_BUFFER];
     char *repo;
-    FILE *fp;
+    FILE *fp = NULL;
     char *OS = NULL;
     char timestamp_found = 0;
     int attemps = 0;
