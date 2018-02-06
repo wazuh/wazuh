@@ -62,12 +62,16 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    } else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)){
+    }
+#ifndef SOLARIS
+    else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)){
         if (wm_sys_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    } else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)){
+    }
+#endif
+    else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)){
         if (wm_command_read(children, cur_wmodule, agent_cfg) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;

@@ -1318,10 +1318,6 @@ int wm_vulnerability_detector_socketconnect(char *url) {
         return OS_INVALID;
 	}
 
-    int one = 1;
-    if (setsockopt(sock, SOL_TCP, TCP_NODELAY, &one, sizeof(one)) < 0) {
-        return OS_INVALID;
-    }
 	return sock;
 }
 
@@ -1419,7 +1415,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
         success = 0;
         goto free_mem;
     }
-    bzero(buffer, VU_SSL_BUFFER);
+    memset(buffer,0,sizeof(buffer));
 
     if (size = SSL_read(ssl, buffer, WM_HEADER_SIZE), size < 1) {
         success = 0;
@@ -1438,7 +1434,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
             }
             readed = strlen(found);
             fwrite(buffer, 1, size, fp);
-            bzero(buffer, VU_SSL_BUFFER);
+            memset(buffer,0,sizeof(buffer));
             continue;
         }
 
@@ -1514,7 +1510,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
             }
         }
         fwrite(buffer, 1, size, fp);
-        bzero(buffer, VU_SSL_BUFFER);
+        memset(buffer,0,sizeof(buffer));
     }
 
 free_mem:

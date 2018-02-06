@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#ifndef SOLARIS
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_INTERVAL = "interval";
@@ -166,3 +167,4 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
 
     return 0;
 }
+#endif
