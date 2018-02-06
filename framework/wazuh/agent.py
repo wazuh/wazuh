@@ -818,8 +818,10 @@ class Agent:
         if search:
             search['value'] = re.sub( r'([Wazuh])([v])', r'\1 \2', search['value'] )
             query += " AND NOT" if bool(search['negation']) else ' AND'
-            query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
-            request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
+            query += " (" + " id LIKE :search_id"
+            query += " OR " + " OR ".join(x + ' LIKE :search' for x in (search_fields - {"id"})) + " )"
+            request['search'] = '%{0}%'.format(search['value'])
+            request['search_id'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
                                                                     else search['value'])
 
         if "FROM agent AND" in query:
