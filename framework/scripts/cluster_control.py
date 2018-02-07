@@ -10,7 +10,7 @@ from itertools import chain
 import logging
 import socket
 from signal import signal, SIGINT
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
 class WazuhHelpFormatter(argparse.ArgumentParser):
     def format_help(self):
