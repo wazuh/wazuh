@@ -966,7 +966,7 @@ def run_logtest(synchronized=False):
         logging.debug("{}ules are correct.".format(log_msg_start))
         return True
     except CalledProcessError as e:
-        logging.warning("{}ules are not correct. Manager not restarted: {}.".format(log_msg_start, str(e)))
+        logging.warning("{}ules are not correct.".format(log_msg_start, str(e)))
         return False
 
 
@@ -974,9 +974,8 @@ def check_files_to_restart(pending_files, cluster_items):
     restart_items = filter(lambda x: x[0] != 'excluded_files' and x[1]['restart'],
                             cluster_items.items())
     restart_files = {path.dirname(x[0])+'/' for x in pending_files} & {x[0] for x in restart_items}
-    logging.debug("restart_files = {}".format(restart_files))
-    if restart_files and not run_logtest():
-        return {x for x in pending_files if path.dirname(x[0]) in restart_files}
+    if restart_files != set() and not run_logtest():
+        return {x for x in pending_files if path.dirname(x[0])+'/' in restart_files}
     else:
         return set()
 

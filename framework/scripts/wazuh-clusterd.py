@@ -196,14 +196,14 @@ class WazuhClusterServer(asyncore.dispatcher):
 
 
 def restart_manager():
-    run_logtest(True)
-    try:
-        logging.info("Restarting manager...")
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        sock.connect("{0}/queue/alerts/execq".format(common.ossec_path))
-        sock.send("restart-ossec0 cluster restart")
-    except CalledProcessError as e:
-        logging.warning("Could not restart manager: {0}.".format(str(e)))
+    if run_logtest(True):
+        try:
+            logging.info("Restarting manager...")
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            sock.connect("{0}/queue/alerts/execq".format(common.ossec_path))
+            sock.send("restart-ossec0 cluster restart")
+        except CalledProcessError as e:
+            logging.warning("Could not restart manager: {0}.".format(str(e)))
 
 
 def crontab_sync_master(interval, config_cluster, requests_queue, connected_clients, finished_clients):
