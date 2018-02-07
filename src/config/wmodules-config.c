@@ -63,7 +63,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             return OS_INVALID;
         }
     }
-#ifndef SOLARIS
+#ifdef ENABLE_SYSC
     else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)){
         if (wm_sys_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);

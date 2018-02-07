@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#ifndef SOLARIS
+#ifdef ENABLE_SYSC
 
 #include "../wmodules.h"
 #include "shared.h"

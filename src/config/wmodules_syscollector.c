@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#ifndef SOLARIS
+#ifdef ENABLE_SYSC
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_INTERVAL = "interval";

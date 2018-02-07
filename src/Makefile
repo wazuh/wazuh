@@ -23,7 +23,6 @@ OSSEC_USER?=ossec
 OSSEC_USER_MAIL?=ossecm
 OSSEC_USER_REM?=ossecr
 
-USE_SOLARIS?=no
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
@@ -64,7 +63,6 @@ ifeq (${uname_S},AIX)
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
-		USE_SOLARIS=yes
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-std=gnu99
@@ -129,6 +127,10 @@ endif # AIX
 endif # Linux
 endif # winagent
 
+ifndef DISABLE_SYSC
+	DEFINES+=-DENABLE_SYSC
+endif
+
 ifdef DEBUGAD
 	DEFINES+=-DDEBUGAD
 endif
@@ -154,6 +156,7 @@ endif
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra
 OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include
+
 
 
 CCCOLOR="\033[34m"
@@ -686,7 +689,7 @@ wazuh-db: ${wdb_o} ${ossec_libs}
 
 wmodules_c := $(wildcard wazuh_modules/wm*.c)
 
-ifeq (${USE_SOLARIS},no)
+ifndef DISABLE_SYSC
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/syscollector/*.c)
 endif
 
@@ -700,7 +703,7 @@ wazuh_modules/syscollector/syscollector_win_ext.dll: wazuh_modules/syscollector/
 	${OSSEC_CC} -pipe -O2 -shared -o $@ $^ -liphlpapi -lws2_32
 endif # DLL for Windows
 
-ifeq (${USE_SOLARIS},no)
+ifndef DISABLE_SYSC
 wazuh_modules/syscollector/%.o: wazuh_modules/syscollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
 endif
