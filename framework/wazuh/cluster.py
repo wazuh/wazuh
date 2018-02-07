@@ -15,11 +15,11 @@ from datetime import datetime
 from hashlib import sha512
 from time import time, mktime, sleep
 from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror, remove
-from subprocess import check_output
+from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree
 from io import BytesIO
 from itertools import compress, chain
-from operator import itemgetter, eq
+from operator import itemgetter, eq, or_
 from ast import literal_eval
 import socket
 import json
@@ -31,6 +31,7 @@ import re
 import socket
 import asyncore
 import asynchat
+import errno
 
 # import the C accelerated API of ElementTree
 try:
@@ -560,7 +561,10 @@ def get_file_status_all_managers(file_list, manager):
         if file_list == []:
             file_list = all_files.keys()
 
-        files.extend([[node, file, all_files[file]] for file in file_list])
+        try:
+            files.extend([[node, file, all_files[file]] for file in file_list])
+        except KeyError as e:
+            logging.debug("File {} not found for node {}".format(file, node))
 
     cluster_socket.close()
     return files
@@ -812,11 +816,14 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
 
     try:
         dest_file = open(f_temp, "w")
-    except IOError:
-        dirpath = path.dirname(fullpath)
-        mkdir(dirpath)
-        chmod(dirpath, S_IRWXU | S_IRWXG)
-        dest_file = open(f_temp, "a+")
+    except IOError as e:
+        if e.errno == errno.ENOENT:
+            dirpath = path.dirname(fullpath)
+            mkdir(dirpath)
+            chmod(dirpath, S_IRWXU | S_IRWXG)
+            dest_file = open(f_temp, "a+")
+        else:
+            raise e
 
     dest_file.write(new_content)
 
@@ -882,6 +889,7 @@ def receive_zip(zip_file):
     logging.info("Receiving package with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'deleted': []}
+    restart = [False]
 
     if 'remote_groups.txt' in zip_file.keys():
         check_groups(set(zip_file['remote_groups.txt']['data'].split('\n')))
@@ -900,9 +908,15 @@ def receive_zip(zip_file):
             try:
                 remote_umask = int(cluster_items[dir_name]['umask'], base=0)
                 remote_write_mode = cluster_items[dir_name]['write_mode']
+                restart.append(cluster_items[dir_name]['restart'])
             except KeyError:
-                remote_umask = int(cluster_items['/etc/']['umask'], base=0)
-                remote_write_mode = cluster_items['/etc/']['write_mode']
+                # cluster_items entries with the flag recursive = true will make
+                # some paths to not match directly in this loop.
+                key = path.split(dir_name[:-1])[0] + '/'
+
+                remote_umask = int(cluster_items[key]['umask'], base=0)
+                remote_write_mode = cluster_items[key]['write_mode']
+                restart.append(cluster_items[key]['restart'])
 
             _update_file(file_path, new_content=content['data'],
                             umask_int=remote_umask,
@@ -916,6 +930,8 @@ def receive_zip(zip_file):
             continue
 
         final_dict['updated'].append(name)
+
+    final_dict['restart'] = reduce(or_, restart)
 
     return final_dict
 
@@ -942,10 +958,35 @@ def get_remote_nodes(connected=True, updateDBname=False):
     return list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
 
 
-def push_updates_single_node(all_files, node_dest, config_cluster, removed, result_queue):
+def run_logtest(synchronized=False):
+    log_msg_start = "Synchronized r" if synchronized else "R"
+    try:
+        # check synchronized rules are correct before restarting the manager
+        check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
+        logging.debug("{}ules are correct.".format(log_msg_start))
+        return True
+    except CalledProcessError as e:
+        logging.warning("{}ules are not correct.".format(log_msg_start, str(e)))
+        return False
+
+
+def check_files_to_restart(pending_files, cluster_items):
+    restart_items = filter(lambda x: x[0] != 'excluded_files' and x[1]['restart'],
+                            cluster_items.items())
+    restart_files = {path.dirname(x[0])+'/' for x in pending_files} & {x[0] for x in restart_items}
+    if restart_files != set() and not run_logtest():
+        return {x for x in pending_files if path.dirname(x[0])+'/' in restart_files}
+    else:
+        return set()
+
+
+def push_updates_single_node(all_files, node_dest, config_cluster, removed, cluster_items, result_queue):
     # filter to send only pending files
-    pending_files = filter(lambda x: x[1] != 'synchronized' and x[1] != 'tobedeleted' and x[1] != 'deleted', all_files.items())
+    pending_files = set(filter(lambda x: x[1] != 'synchronized' and x[1] != 'tobedeleted' and x[1] != 'deleted', all_files.items()))
     tobedeleted_files = filter(lambda x: x[1] == 'tobedeleted', all_files.items())
+    restart_files = check_files_to_restart(pending_files, cluster_items)
+    pending_files -= restart_files
+
     if len(pending_files) > 0 or removed or len(tobedeleted_files) > 0:
         logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
         zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
@@ -964,7 +1005,7 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, resu
 
     else:
         logging.info("No pending files to send to {0} ".format(node_dest))
-        res = {'error': 0, 'data':{'updated':[], 'error':[], 'deleted':[]}}
+        res = {'error': 0, 'data':{'updated':[], 'error':[], 'deleted':[], 'restart': False}}
         error = 0
 
 
@@ -978,7 +1019,7 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, resu
         logging.debug(res)
         result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
                           'error': 1, 'files':{'updated':[], 'deleted':[],
-                                        'error':list(map(itemgetter(0), pending_files))}})
+                                        'error':list(map(itemgetter(0), pending_files)), 'restart': False}})
     else:
         logging.debug({'updated': len(res['data']['updated']),
                       'error': res['data']['error'],
@@ -997,13 +1038,14 @@ def update_node_db_after_sync(data, node, cluster_socket):
         received = receive_data_from_db_socket(cluster_socket)
 
     for failed in divide_list(data['files']['error']):
-        delete_sql = "delete1"
+        # delete_sql = "delete1"
         update_sql = "update2"
         for f in failed:
             if isinstance(f, dict):
                 if f['reason'].startswith('Error 3012'):
                     if 'agent-info' in f['item']:
-                        delete_sql += " /{0}".format(f['item'])
+                        pass
+                        #delete_sql += " /{0}".format(f['item'])
                     else:
                         # set old files as synchronized so the node doesn't send them anymore
                         update_sql += " synchronized {} /{}".format(node, f['item'])
@@ -1014,9 +1056,9 @@ def update_node_db_after_sync(data, node, cluster_socket):
 
         send_to_socket(cluster_socket, update_sql)
         received = receive_data_from_db_socket(cluster_socket)
-        if len(delete_sql) > len("delete1"):
-            send_to_socket(cluster_socket, delete_sql)
-            received = receive_data_from_db_socket(cluster_socket)
+        # if len(delete_sql) > len("delete1"):
+        #     send_to_socket(cluster_socket, delete_sql)
+        #     received = receive_data_from_db_socket(cluster_socket)
 
     for deleted in divide_list(data['files']['deleted']):
         update_sql = "update2"
@@ -1061,7 +1103,7 @@ def sync_one_node(debug, node, force=False, config_cluster=None, cluster_items=N
 
     before = time()
     result_queue = queue()
-    push_updates_single_node(all_files, node, config_cluster, removed, result_queue)
+    push_updates_single_node(all_files, node, config_cluster, removed, cluster_items, result_queue)
 
     after = time()
     synchronization_duration += after-before
@@ -1142,7 +1184,7 @@ def sync(debug, force=False, config_cluster=None, cluster_items=None):
     for node in remote_nodes:
         t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node],node,
                                                                     config_cluster, removed,
-                                                                    result_queue))
+                                                                    cluster_items, result_queue))
         threads.append(t)
         t.start()
         result = result_queue.get()
