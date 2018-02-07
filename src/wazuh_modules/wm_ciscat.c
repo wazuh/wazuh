@@ -8,7 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
+#ifdef ENABLE_CISCAT
 #include "wmodules.h"
 
 static wm_ciscat *ciscat;                             // Pointer to configuration
@@ -1336,3 +1336,4 @@ void delay(unsigned int ms) {
 #endif
 
 }
+#endif

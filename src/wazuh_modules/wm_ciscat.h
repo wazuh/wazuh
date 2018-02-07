@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#ifdef  ENABLE_CISCAT
 #ifndef WM_CISCAT
 #define WM_CISCAT
 
@@ -103,3 +104,4 @@ extern const wm_context WM_CISCAT_CONTEXT;   // Context
 int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 #endif // WM_OSCAP
+#endif
