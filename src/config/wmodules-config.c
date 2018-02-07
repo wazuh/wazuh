@@ -76,13 +76,17 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    } else if (!strcmp(node->values[0], WM_CISCAT_CONTEXT.name)){
+    }
+#ifdef ENABLE_CISCAT 
+    else if (!strcmp(node->values[0], WM_CISCAT_CONTEXT.name)){
         if (wm_ciscat_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
+    }
+#endif
 #ifndef WIN32
-    } else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name)){
+    else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name)){
         if (wm_aws_read(children, cur_wmodule, agent_cfg) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
@@ -92,8 +96,9 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             OS_ClearNode(children);
             return OS_INVALID;
         }
+    }
 #endif
-    } else {
+    else {
         merror("Unknown module '%s'", node->values[0]);
     }
 
