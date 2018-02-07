@@ -1755,10 +1755,8 @@ class Agent:
 
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
         if path.exists(agent_group_path):
-            # remove(agent_group_path)
-            fo = open(agent_group_path, "rw+")
-            fo.truncate()
-            fo.close()
+            with open(agent_group_path, "w+") as fo:
+                fo.write("default")
 
         return "Group unset for agent '{0}'.".format(agent_id)
 
