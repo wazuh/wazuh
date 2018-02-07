@@ -250,7 +250,10 @@ def crontab_sync_client(config_cluster, restart_after_sync):
         if restart_after_sync.value == 'T':
             restart_after_sync.value = 'F'
             cluster_socket = connect_to_db_socket()
+            send_to_socket(cluster_socket, "delres")
+            receive_data_from_db_socket(cluster_socket)
             send_to_socket(cluster_socket, "insertres 1")
+            receive_data_from_db_socket(cluster_socket)
             cluster_socket.close()
             restart_manager()
         else:
@@ -260,10 +263,14 @@ def crontab_sync_client(config_cluster, restart_after_sync):
 
     cluster_socket = connect_to_db_socket()
     send_to_socket(cluster_socket, "selres")
-    restart = bool(receive_data_from_db_socket(cluster_socket))
+    restart_str = receive_data_from_db_socket(cluster_socket)
+    restart = True if restart_str == '1' else False
     if restart:
         logging.info("Client restarted")
+        send_to_socket(cluster_socket, "delres")
+        receive_data_from_db_socket(cluster_socket)
         send_to_socket(cluster_socket, "insertres 0")
+        receive_data_from_db_socket(cluster_socket)
         cluster_socket.close()
         master = get_remote_nodes()[0]
         error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],

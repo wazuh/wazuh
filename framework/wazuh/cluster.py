@@ -561,7 +561,10 @@ def get_file_status_all_managers(file_list, manager):
         if file_list == []:
             file_list = all_files.keys()
 
-        files.extend([[node, file, all_files[file]] for file in file_list])
+        try:
+            files.extend([[node, file, all_files[file]] for file in file_list])
+        except KeyError as e:
+            logging.debug("File {} not found for node {}".format(file, node))
 
     cluster_socket.close()
     return files
@@ -1036,13 +1039,14 @@ def update_node_db_after_sync(data, node, cluster_socket):
         received = receive_data_from_db_socket(cluster_socket)
 
     for failed in divide_list(data['files']['error']):
-        delete_sql = "delete1"
+        # delete_sql = "delete1"
         update_sql = "update2"
         for f in failed:
             if isinstance(f, dict):
                 if f['reason'].startswith('Error 3012'):
                     if 'agent-info' in f['item']:
-                        delete_sql += " /{0}".format(f['item'])
+                        pass
+                        #delete_sql += " /{0}".format(f['item'])
                     else:
                         # set old files as synchronized so the node doesn't send them anymore
                         update_sql += " synchronized {} /{}".format(node, f['item'])
@@ -1053,9 +1057,9 @@ def update_node_db_after_sync(data, node, cluster_socket):
 
         send_to_socket(cluster_socket, update_sql)
         received = receive_data_from_db_socket(cluster_socket)
-        if len(delete_sql) > len("delete1"):
-            send_to_socket(cluster_socket, delete_sql)
-            received = receive_data_from_db_socket(cluster_socket)
+        # if len(delete_sql) > len("delete1"):
+        #     send_to_socket(cluster_socket, delete_sql)
+        #     received = receive_data_from_db_socket(cluster_socket)
 
     for deleted in divide_list(data['files']['deleted']):
         update_sql = "update2"

@@ -243,7 +243,8 @@ void* daemon_socket() {
     char *sql_ins_ip_name = "INSERT OR REPLACE INTO node_name_ip VALUES (?,?)";
     // sql sentences to manage restarting table
     char *sql_sel_restart = "SELECT restarted FROM is_restarted";
-    char *sql_ins_restart = "INSERT OR REPLACE INTO is_restarted VALUES (?)";
+    char *sql_del_restart = "DELETE FROM is_restarted"; 
+    char *sql_ins_restart = "INSERT INTO is_restarted VALUES (?)";
 
     char *sql;
     bool has1, has2, has3, select, count, select_last_sync, select_files, response_str;
@@ -355,6 +356,8 @@ void* daemon_socket() {
             } else if (cmd != NULL && strcmp(cmd, "selres") == 0) {
                 sql = sql_sel_restart;
                 count = true;
+            } else if (cmd != NULL && strcmp(cmd, "delres") == 0) {
+                sql = sql_del_restart;
             } else if (cmd != NULL && strcmp(cmd, "insertres") == 0) {
                 sql = sql_ins_restart;
                 has1 = true;
@@ -750,7 +753,11 @@ void* inotify_reader(void * args) {
                     mtdebug2(INOTIFY_TAG, "Not ignoring");
 
                     if (event->mask & IN_DELETE) {
-                        strcpy(cmd, "update3 ");
+                        if (strstr(files[j].name, "/queue/agent-") == NULL) {
+                            strcpy(cmd, "update3 ");
+                        } else {
+                            strcpy(cmd, "delete1 ");
+                        }
                         strcat(cmd, files[j].name);
                         strcat(cmd, event->name);
                     } else if (event->mask & IN_ISDIR) {
