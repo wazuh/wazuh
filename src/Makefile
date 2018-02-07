@@ -1123,7 +1123,7 @@ ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} aler
 wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
-wazuh-modulesd: ${wmodulesd_o} ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB} ${PROCPS_LIB}
+wazuh-modulesd: ${wmodulesd_o} ${EXTERNAL_SQLITE}sqlite3.o ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB} ${PROCPS_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 ### wazuh-framework ##
