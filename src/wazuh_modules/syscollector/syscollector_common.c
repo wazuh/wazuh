@@ -170,7 +170,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         }
 
         if (wm_state_io(WM_SYS_CONTEXT.name, WM_IO_WRITE, &sys->state, sizeof(sys->state)) < 0)
-            mterror(WM_SYS_LOGTAG, "Couldn't save running state.");
+            mterror(WM_SYS_LOGTAG, "Couldn't save running state: %s (%d)", strerror(errno), errno);
 
         // If time_sleep=0, yield CPU
         delay(1000 * time_sleep);
