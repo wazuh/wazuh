@@ -279,7 +279,18 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     CallFunc1 _wm_inet_ntop;
     HINSTANCE sys_library = LoadLibrary("syscollector_win_ext.dll");
     if (sys_library == NULL){
-        mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll.");
+        DWORD error = GetLastError();
+        LPSTR messageBuffer = NULL;
+        LPSTR end;
+
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
+
+        if (end = strchr(messageBuffer, '\r'), end) {
+            *end = '\0';
+        }
+
+        mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll: %s (%lu)", messageBuffer, error);
+        LocalFree(messageBuffer);
         return;
     }else{
         _wm_inet_ntop = (CallFunc1)GetProcAddress(sys_library, "wm_inet_ntop");
@@ -923,7 +934,18 @@ void sys_network_windows(const char* LOCATION){
             free(timestamp);
         }
     }else{
-        mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll.");
+        DWORD error = GetLastError();
+        LPSTR messageBuffer = NULL;
+        LPSTR end;
+
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
+
+        if (end = strchr(messageBuffer, '\r'), end) {
+            *end = '\0';
+        }
+
+        mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll: %s (%lu)", messageBuffer, error);
+        LocalFree(messageBuffer);
     }
 
 }
