@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - [Fixed bug in cluster when receive an error response from client.](https://github.com/wazuh/wazuh/pull/346)
 - [Improved cluster logs](https://github.com/wazuh/wazuh/pull/353)
 - [Fixed bug in framework when the manager is installed in different path than /var/ossec.](https://github.com/wazuh/wazuh/pull/335)
+- Fixed predecoder hostname field in JSON event output.
 
 ## [v3.1.0]
 
