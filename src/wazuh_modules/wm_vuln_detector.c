@@ -1707,7 +1707,7 @@ int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 
         sqlite3_exec(db, END_T, NULL, NULL, NULL);
         agent->info = 1;
     } else {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
+        mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_NO_SOFTWARE, agent->agent_id);
     }
 
     if (obj) {
