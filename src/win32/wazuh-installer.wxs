@@ -72,6 +72,11 @@
                     <Component Id="AGENT_AUTH.EXE" DiskId="1" Guid="F99FEE7C-A021-4D43-9119-98A8D72EAB65">
                         <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" />
                     </Component>
+		            <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB" NeverOverwrite="no">
+                        <File Id="SYSCOLLECTOR_DLL" Name="syscollector_win_ext.dll" Source="C:\Users\Wazuh\Desktop\wazuh\src\wazuh_modules\syscollector\syscollector_win_ext.dll">
+                            <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
+                        </File>
+                    </Component>
                     <Component Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9">
                         <File Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" Name="default-local_internal_options.conf" Source="default-local_internal_options.conf">
                             <CopyFile Id="LOCAL_INTERNAL_OPTIONS.CONF" DestinationName="default-local_internal_options.conf" />
@@ -150,9 +155,6 @@
                     <Component Id="REVISION" DiskId="1" Guid="89440258-B50F-4926-8068-D1444E31F8E0">
                         <File Id="REVISION" Name="REVISION" Source="REVISION" />
                     </Component>
-                    <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB">
-                        <File Id="SYSCOLLECTOR_DLL" Name="syscollector_win_ext.dll" Source="..\wazuh_modules\syscollector\syscollector_win_ext.dll" />
-                    </Component>
                     <Component Id="WPK_ROOT.PEM" DiskId="1" Guid="EABF8773-57B9-4CD8-A862-87B0E060DBF8">
                         <File Id="WPK_ROOT.PEM" Name="wpk_root.pem" Source="..\..\etc\wpk_root.pem" />
                     </Component>
@@ -192,11 +194,11 @@
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
                     <Directory Id="LOGS" Name="logs" />
+		            <Directory Id="WODLES" Name="wodles" />
                     <Directory Id="RIDS" Name="rids" />
                     <Directory Id="SYSCHECK" Name="syscheck" />
                     <Directory Id="INCOMING" Name="incoming" />
                     <Directory Id="UPGRADE" Name="upgrade" />
-                    <Directory Id="WODLES" Name="wodles" />
                 </Directory>
             </Directory>
             <Directory Id="ProgramMenuFolder">
@@ -247,6 +249,9 @@
                 <RemoveFolder Id="purgue_bookmarks_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
+
+	
+
         <DirectoryRef Id="LOGS">
             <Component Id="CMP_LOGS" Guid="17C9F68D-D1E6-4452-8C3E-992F6D7F0CF1" KeyPath="yes">
                 <CreateFolder />
@@ -254,6 +259,15 @@
                 <RemoveFolder Id="purgue_logs_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
+
+        <DirectoryRef Id="WODLES">
+            <Component Id="CMP_WODLES" Guid="A6811CB8-C2E2-4A1A-A2E5-DCE8221828C6" KeyPath="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_wodles" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_wodles_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+
         <DirectoryRef Id="RIDS">
             <Component Id="CMP_RIDS" Guid="2052A162-F044-4432-BF50-F89BCD0BC5D1" KeyPath="yes">
                 <CreateFolder />
@@ -282,13 +296,6 @@
                 <RemoveFolder Id="purgue_upgrade_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
-        <DirectoryRef Id="WODLES">
-            <Component Id="CMP_WODLES" Guid="F3508A44-0C60-11E8-BA89-0ED5F89F718B" KeyPath="yes">
-                <CreateFolder />
-                <RemoveFile Id="purgue_wodles" Name="*.*" On="uninstall" />
-                <RemoveFolder Id="purgue_wodles_dir" On="uninstall" />
-            </Component>
-        </DirectoryRef>
         <DirectoryRef Id="SHARED">
             <Component Id="CMP_SHARED" Guid="9FB42D24-222F-4E13-9598-01B62040F768" KeyPath="yes">
                 <CreateFolder />
@@ -298,6 +305,7 @@
         </DirectoryRef>
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="AGENT_AUTH.EXE" />
+	    <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="DEFAULT_OSSEC.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
@@ -324,18 +332,17 @@
             <ComponentRef Id="CMP_DIFF" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
+	        <ComponentRef Id="CMP_WODLES" />		
             <ComponentRef Id="CMP_RIDS" />
             <ComponentRef Id="CMP_SYSCHECK" />
             <ComponentRef Id="CMP_INCOMING" />
             <ComponentRef Id="CMP_UPGRADE" />
-            <ComponentRef Id="CMP_WODLES" />
             <ComponentRef Id="CMP_SHARED" />
             <ComponentRef Id="REMOVE_OLD_NSIS" />
             <ComponentRef Id="HELP_WIN.TXT" />
             <ComponentRef Id="VERSION" />
             <ComponentRef Id="REVISION" />
             <ComponentRef Id="WPK_ROOT.PEM" />
-            <ComponentRef Id="SYSCOLLECTOR_DLL" />
         </Feature>
         <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
     </Product>
