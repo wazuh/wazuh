@@ -1140,7 +1140,10 @@ class Agent:
 
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM agent WHERE name = :name", {'name': agent_name})
-        agent_id = str(conn.fetch()[0]).zfill(3)
+        try:
+            agent_id = str(conn.fetch()[0]).zfill(3)
+        except TypeError as e:
+            raise WazuhException(1701, agent_name)
 
         return Agent(agent_id).get_basic_information(select)
 
