@@ -30,11 +30,19 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     os_calloc(1, sizeof(wm_sys_t), syscollector);
     syscollector->flags.enabled = 1;
     syscollector->flags.scan_on_start = 1;
+#ifdef WIN32
+    syscollector->flags.netinfo = 0;
+#else
     syscollector->flags.netinfo = 1;
+#endif
     syscollector->flags.osinfo = 1;
     syscollector->flags.hwinfo = 1;
     syscollector->flags.programinfo = 1;
+#ifdef WIN32
+    syscollector->flags.portsinfo = 0;
+#else
     syscollector->flags.portsinfo = 1;
+#endif
     syscollector->flags.allports = 0;
     syscollector->flags.procinfo = 1;
     module->context = &WM_SYS_CONTEXT;

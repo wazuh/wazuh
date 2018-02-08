@@ -83,7 +83,9 @@ void* wm_sys_main(wm_sys_t *sys) {
         /* Network inventory */
         if (sys->flags.netinfo){
             #ifdef WIN32
-                sys_network_windows(WM_SYS_LOCATION);
+                sys->flags.netinfo = 0;
+                mtwarn(WM_SYS_LOGTAG, "Network inventory is not available for this operating system.");
+                // sys_network_windows(WM_SYS_LOCATION);
             #elif defined(__linux__)
                 sys_network_linux(queue_fd, WM_SYS_LOCATION);
             #elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
@@ -130,15 +132,12 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         /* Opened ports inventory */
         if (sys->flags.portsinfo){
-
-            int check_all = 0;
-            if (sys->flags.allports)
-                check_all = 1;
-
             #if defined(WIN32)
-                sys_ports_windows(WM_SYS_LOCATION, check_all);
+                sys->flags.portsinfo = 0;
+                mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this operating system.");
+                // sys_ports_windows(WM_SYS_LOCATION, sys->flags.allports);
             #elif defined(__linux__)
-                sys_ports_linux(queue_fd, WM_SYS_LOCATION, check_all);
+                sys_ports_linux(queue_fd, WM_SYS_LOCATION, sys->flags.allports);
             #else
                 sys->flags.portsinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this OS version.");
@@ -230,27 +229,27 @@ void wm_sys_check() {
     // Check if evals
 
     if (!sys->flags.netinfo) {
-        mtwarn(WM_SYS_LOGTAG, "Network scan disabled.");
+        mtdebug1(WM_SYS_LOGTAG, "Network scan disabled.");
     }
 
     if (!sys->flags.osinfo) {
-        mtwarn(WM_SYS_LOGTAG, "OS scan disabled.");
+        mtdebug1(WM_SYS_LOGTAG, "OS scan disabled.");
     }
 
     if (!sys->flags.hwinfo) {
-        mtwarn(WM_SYS_LOGTAG, "Hardware scan disabled.");
+        mtdebug1(WM_SYS_LOGTAG, "Hardware scan disabled.");
     }
 
     if (!sys->flags.procinfo) {
-        mtwarn(WM_SYS_LOGTAG, "Running processes inventory disabled.");
+        mtdebug1(WM_SYS_LOGTAG, "Running processes inventory disabled.");
     }
 
     if (!sys->flags.programinfo) {
-        mtwarn(WM_SYS_LOGTAG, "Installed programs scan disabled.");
+        mtdebug1(WM_SYS_LOGTAG, "Installed programs scan disabled.");
     }
 
     if (!sys->flags.portsinfo) {
-        mtwarn(WM_SYS_LOGTAG, "Opened ports scan disabled.");
+        mtdebug1(WM_SYS_LOGTAG, "Opened ports scan disabled.");
     }
 
     // Check if interval
