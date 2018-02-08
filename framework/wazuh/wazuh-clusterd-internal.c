@@ -736,7 +736,7 @@ void* inotify_reader(void * args) {
         buffer[count - 1] = '\0';
 
         for (i = 0; i < count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
-            char cmd[100];
+            char cmd[PATH_MAX+100];
 
             event = (struct inotify_event*)&buffer[i];
             if (strstr(event->name, "merged.mg") == NULL)
@@ -797,7 +797,7 @@ void* inotify_reader(void * args) {
                             continue;
                         }
 
-                        if (sprintf(cmd, "updatefile %s %ld %s", md5_file, mod_time(files[j].path), files[j].path) >= 100) {
+                        if (sprintf(cmd, "updatefile %s %ld %s", md5_file, mod_time(files[j].path), files[j].path) >= PATH_MAX + 100) {
                             mterror(INOTIFY_TAG, "String overflow sending file updates to database in file %s", files[j].path);
                             ignore = true;
                             continue;
