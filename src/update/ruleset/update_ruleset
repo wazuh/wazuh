@@ -458,18 +458,26 @@ def main():
         # version temporary backup
 
         copy(ossec_ruleset_version_path, ossec_ruleset_version_path+'-old', 0o750)
-        copy(ossec_update_script, ossec_update_script+'-old', 0o750)
+        try:
+            copy(ossec_update_script, ossec_update_script+'-old', 0o750)
+        except:
+            copy(ossec_update_script + ".py", ossec_update_script+'-old', 0o750)
         # Get ruleset
         status['old_version'] = get_ruleset_version()
         status['new_version'] = get_new_ruleset(arguments['source'], arguments['url'], arguments['branch-name'])
         #Compare major
-        if same_major(ossec_version.replace('"',''),status['new_version']) == False:
+        old_version = ossec_version.replace('"','')
+        if not same_major_minor(old_version, status['new_version']):
             copy(ossec_ruleset_version_path+'-old', ossec_ruleset_version_path, 0o750)
             copy(ossec_update_script+'-old', ossec_update_script, 0o750)
-            exit(2,"Upgrade is only available between same major.")
+            os.remove(ossec_update_script+'-old')
+            os.remove(ossec_ruleset_version_path+'-old')
+            exit(2,"Upgrade aborted: Unexpected version in the new ruleset. " + \
+                "Expected version {0}. Found version {1}".format(old_version[:-1]+'x',
+                status['new_version']))
         # remove temporary files
-        os.system('rm -f '+ossec_update_script+'-old')
-        os.system('rm -f '+ossec_ruleset_version_path+'-old')
+        os.remove(ossec_update_script+'-old')
+        os.remove(ossec_ruleset_version_path+'-old')
 
 
         ruleset_to_update, status['restart_required'] = get_ruleset_to_update(arguments['force'])
@@ -512,9 +520,17 @@ def main():
 
     if arguments['json']:
         print(dumps({'error': 0, 'data': status}))
-  
-def same_major(old_version, new_version):
-    return old_version.split(".")[0] == new_version.split(".")[0]
+
+def same_major_minor(old_version, new_version):
+    old_major, old_minor, old_patch = old_version.split(".")
+    new_major, new_minor, new_patch = new_version.split(".")
+
+    old_patch, new_patch = old_patch.split("-")[0], new_patch.split("-")[0]
+
+    if old_major == new_major and old_minor == new_minor and old_patch <= new_patch:
+        return True
+    else:
+        return False
 
 def usage():
     branch = get_branch()  # 'stable' 'master' 'development'
@@ -597,6 +613,7 @@ if __name__ == "__main__":
         elif o in ("-j", "--json"):
             arguments['json'] = True
         elif o in ("-n", "--branch-name"):
+            print("entro aqui")
             arguments['branch-name'] = a
             branch_found = True
         elif o in ("-u", "--url"):
@@ -610,8 +627,13 @@ if __name__ == "__main__":
             sys.exit(1)
 
     if url_found and not branch_found:
-        print("Bad arguments combination.\nURL parameter should be specified with a Branch name.")
-        sys.exit(1)
+        zip_file = arguments['url'].split('/')[-1]
+        arguments['branch-name'] = zip_file[:-4]
+        print("Warning: Branch argument is missing. Using the branch from the url.")
+        print("Branch name: {0}".format(arguments['branch-name']))
+
+        # print("Bad arguments combination.\nURL parameter should be specified with a Branch name.")
+        # sys.exit(1)
 
     if restart_args > 1:
         print("Bad arguments combination.\nTry './update_ruleset --help' for more information.")
