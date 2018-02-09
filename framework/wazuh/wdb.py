@@ -74,13 +74,13 @@ class WazuhDBConnection():
         # if the query has already a parameter limit / offset, divide using it
         offset = 0
         if 'offset' in query_lower:
-            offset = int(re.compile(r".* offset (\d)+").match(query_lower).group(1))
+            offset = int(re.compile(r".* offset (\d+)").match(query_lower).group(1))
             query_lower = query_lower.replace(" offset {}".format(offset), "")
 
         if 'count' not in query_lower:
             lim = 0
-            if'limit' in query_lower:
-                lim  = int(re.compile(r".* limit (\d)+").match(query_lower).group(1))
+            if 'limit' in query_lower:
+                lim  = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
                 query_lower = query_lower.replace(" limit {}".format(lim), "")
 
             regex  = re.compile(r"\w+ \d+? sql select ([a-z0-9,*_ ]+) from")
