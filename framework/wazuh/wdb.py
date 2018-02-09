@@ -83,7 +83,7 @@ class WazuhDBConnection():
                 lim  = int(re.compile(r".* limit (\d)+").match(query_lower).group(1))
                 query_lower = query_lower.replace(" limit {}".format(lim), "")
 
-            regex  = re.compile(r"\w+ \d+? sql select ([a-z0-9,* ]+) from")
+            regex  = re.compile(r"\w+ \d+? sql select ([a-z0-9,*_ ]+) from")
             select = regex.match(query_lower).group(1)
             countq = query_lower.replace(select, "count(*)")
             total  = self.__send(countq)[0].values()[0]
