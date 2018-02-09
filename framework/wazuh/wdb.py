@@ -50,6 +50,7 @@ class WazuhDBConnection():
             if not check:
                 raise WazuhException(2004, error_text)
 
+
     def __send(self, msg):
         """
         Sends a message to the wdb socket
@@ -63,11 +64,36 @@ class WazuhDBConnection():
         else:
             return json.loads(data[1])
 
+
+    def __query_lower(self, query):
+        """
+        Convert a query to lower except the words between ""
+        """
+
+        to_lower = True
+        new_query = ""
+
+        for i in query:
+            if to_lower and i != "'":
+                new_query += i.lower()
+            elif to_lower and i == "'":
+                new_query += i
+                to_lower = False
+            elif not to_lower and i != "'":
+                new_query += i
+            elif not to_lower and i == "'":
+                new_query += i
+                to_lower = True
+
+        return new_query
+
+
+
     def execute(self, query, count=False):
         """
         Sends a sql query to wdb socket
         """
-        query_lower = query.lower()
+        query_lower = self.__query_lower(query)
 
         self.__query_input_validation(query_lower)
 
