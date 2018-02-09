@@ -34,6 +34,7 @@ char* get_process_name(DWORD pid){
     char *command;
     char *end;
     char read_buff[OS_MAXSTR];
+    int status;
 
     memset(read_buff, 0, OS_MAXSTR);
     os_calloc(OS_MAXSTR, sizeof(char), command);
@@ -58,8 +59,12 @@ char* get_process_name(DWORD pid){
             }else
                 string = strdup("unknown");
         }
+
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting process ID.", status);
+        }
     }
-    pclose(output);
+
     return string;
 }
 
@@ -546,6 +551,7 @@ void sys_programs_windows(const char* LOCATION){
     FILE *output;
     char read_buff[OS_MAXSTR];
     int i;
+    int status;
 
     // Set timestamp
 
@@ -621,8 +627,12 @@ void sys_programs_windows(const char* LOCATION){
             cJSON_Delete(object);
             free(string);
         }
+
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting software inventory.", status);
+        }
     }
-    pclose(output);
+
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
@@ -646,6 +656,7 @@ void sys_hw_windows(const char* LOCATION){
     FILE *output;
     size_t buf_length = 1024;
     char read_buff[buf_length];
+    int status;
 
     // Set timestamp
 
@@ -707,8 +718,11 @@ void sys_hw_windows(const char* LOCATION){
             }else
                 serial = strdup("unknown");
         }
+
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting board serial.", status);
+        }
     }
-    pclose(output);
 
     cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
     free(serial);
@@ -958,6 +972,7 @@ hw_info *get_system_windows(){
     FILE *output;
     size_t buf_length = 1024;
     char read_buff[buf_length];
+    int status;
 
     os_calloc(1,sizeof(hw_info),info);
 
@@ -986,8 +1001,11 @@ hw_info *get_system_windows(){
             }else
                 info->cpu_name = strdup("unknown");
         }
+
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting CPU name.", status);
+        }
     }
-    pclose(output);
 
     memset(read_buff, 0, buf_length);
     char *cores;
@@ -1012,8 +1030,11 @@ hw_info *get_system_windows(){
                 info->cpu_cores = atoi(cores);
             }
         }
+
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting number of cores.", status);
+        }
     }
-    pclose(output);
 
     memset(read_buff, 0, buf_length);
     char *frec;
@@ -1038,8 +1059,11 @@ hw_info *get_system_windows(){
                 info->cpu_MHz = atof(frec);
             }
         }
+
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting clock speed.", status);
+        }
     }
-    pclose(output);
 
     memset(read_buff, 0, buf_length);
     char *total;
@@ -1065,7 +1089,10 @@ hw_info *get_system_windows(){
             }
         }
     }
-    pclose(output);
+
+    if (status = pclose(output), status) {
+        mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting physical memory.", status);
+    }
 
     memset(read_buff, 0, buf_length);
     char *mem_free;
@@ -1090,8 +1117,11 @@ hw_info *get_system_windows(){
                 info->ram_free = atoi(mem_free);
             }
         }
+
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting free memory.", status);
+        }
     }
-    pclose(output);
 
     return info;
 }
@@ -1101,6 +1131,7 @@ void sys_proc_windows(const char* LOCATION) {
     char *command;
     FILE *output;
     char read_buff[OS_MAXSTR];
+    int status;
 
     // Set timestamp
 
@@ -1194,8 +1225,11 @@ void sys_proc_windows(const char* LOCATION) {
         free(string);
         cJSON_Delete(id_msg);
         cJSON_Delete(proc_array);
+
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting process inventory.", status);
+        }
     }
-    pclose(output);
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");

@@ -42,6 +42,7 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
+    int status;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -104,10 +105,12 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
 
             free(string);
         }
-        pclose(output);
 
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'pkg' returned %d getting software inventory.", status);
+        }
     }else{
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s' to get software inventory.", command);
     }
     free(command);
 
@@ -136,6 +139,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
+    int status;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -185,31 +189,37 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
     memset(read_buff, 0, buf_length);
     command = "system_profiler SPHardwareDataType | grep Serial";
-    output = popen(command, "r");
-    if(!fgets(read_buff, buf_length, output)){
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-        serial = strdup("unknown");
-    }else{
-        char ** parts = NULL;
-        parts = OS_StrBreak('\n', read_buff, 2);
-        if (parts[0]){
-            serial_str = strdup(parts[0]);
-            parts = OS_StrBreak(':', serial_str, 2);
-            if (parts[1]){
-                serial = strdup(parts[1]);
+    if (output = popen(command, "r"), output) {
+        if(!fgets(read_buff, buf_length, output)){
+            mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
+            serial = strdup("unknown");
+        }else{
+            char ** parts = NULL;
+            parts = OS_StrBreak('\n', read_buff, 2);
+            if (parts[0]){
+                serial_str = strdup(parts[0]);
+                parts = OS_StrBreak(':', serial_str, 2);
+                if (parts[1]){
+                    serial = strdup(parts[1]);
+                }else{
+                    serial = strdup("unknown");
+                }
             }else{
                 serial = strdup("unknown");
             }
-        }else{
-            serial = strdup("unknown");
+            for (i=0; parts[i]; i++){
+                free(parts[i]);
+            }
+            free(parts);
         }
-        for (i=0; parts[i]; i++){
-            free(parts[i]);
+        cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'system_profiler' returned %d getting board serial.", status);
         }
-        free(parts);
+    } else {
+        mtwarn(WM_SYS_LOGTAG, "Couldn't get board serial for hardware inventory.");
     }
-    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
-    pclose(output);
 
 #else
     cJSON_AddStringToObject(hw_inventory, "board_serial", "unknown");

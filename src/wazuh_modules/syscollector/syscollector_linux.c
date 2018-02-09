@@ -95,6 +95,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     int listening;
     char *command;
     FILE *output;
+    int status;
 
     snprintf(file, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, protocol);
 
@@ -175,6 +176,10 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                     free(proc_name);
                     free(aux_string);
                 }
+
+                if (status = pclose(output), status) {
+                    mtwarn(WM_SYS_LOGTAG, "Command 'lsof' returned %d getting IPv4 ports.", status);
+                }
             }else{
                 mtdebug1(WM_SYS_LOGTAG, "No process found for inode %lu", inode);
             }
@@ -219,6 +224,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     int listening;
     char command[OS_MAXSTR];
     FILE *output;
+    int status;
 
     snprintf(file, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, protocol);
     memset(read_buff, 0, OS_MAXSTR);
@@ -299,6 +305,10 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                     free(parts);
                     free(proc_name);
                     free(aux_string);
+                }
+
+                if (status = pclose(output), status) {
+                    mtwarn(WM_SYS_LOGTAG, "Command 'lsof' returned %d getting IPv6 ports.", status);
                 }
             }else{
                 mtdebug1(WM_SYS_LOGTAG, "No process found for inode %lu", inode);
@@ -399,6 +409,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
+    int status;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -492,8 +503,10 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
 
             free(string);
         }
-        pclose(output);
 
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'dpkg-query' returned %d to get software inventory", status);
+        }
     }else{
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
     }
