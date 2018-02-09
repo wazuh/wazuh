@@ -9,7 +9,7 @@ from wazuh.agent import Agent
 from wazuh import Wazuh
 from wazuh.utils import plain_dict_to_nested_dict
 
-def get_os(agent_id, select={}, search={}):
+def get_os(agent_id, select={}):
     """
     Get info about an agent's OS
     """
@@ -36,17 +36,14 @@ def get_os(agent_id, select={}, search={}):
     else:
         select_fields = valid_select_fields
 
-    if search:
-    	search['fields'] = select_fields
-
     try:
-    	return plain_dict_to_nested_dict(agent_obj._load_info_from_agent_db(table='sys_osinfo', select=select_fields, search=search)[0])
+    	return plain_dict_to_nested_dict(agent_obj._load_info_from_agent_db(table='sys_osinfo', select=select_fields)[0])
     except IndexError as e:
     	# there's no data to return
     	return {}
 
 
-def get_hardware(agent_id, select={}, search={}):
+def get_hardware(agent_id, select={}):
     """
     Get info about an agent's OS
     """
@@ -62,11 +59,8 @@ def get_hardware(agent_id, select={}, search={}):
     else:
         select_fields = valid_select_fields
 
-    if search:
-    	search['fields'] = select_fields
-
     try:
-    	return plain_dict_to_nested_dict(Agent(agent_id)._load_info_from_agent_db(table='sys_hwinfo', select=select_fields, search=search)[0])
+    	return plain_dict_to_nested_dict(Agent(agent_id)._load_info_from_agent_db(table='sys_hwinfo', select=select_fields)[0])
     except IndexError as e:
     	return {}
 
