@@ -91,7 +91,7 @@ class WazuhDBConnection():
             limit = total if lim == 0  else lim
 
             response = []
-            step = limit if limit < self.request_slice  else self.request_slice
+            step = limit if limit < self.request_slice and limit > 0  else self.request_slice
             for off in range(offset, limit+offset, step):
                 request = "{} limit {} offset {}".format(query_lower, step, off)
                 response.extend(self.__send(request))
