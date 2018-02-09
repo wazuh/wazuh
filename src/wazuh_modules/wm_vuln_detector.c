@@ -23,6 +23,9 @@
 #define SOL_TCP     6
 #endif
 
+
+char *cve_db_os_version[VU_NUM_DISTROS];
+unsigned char cve_db_os_distros[VU_NUM_DISTROS];
 static void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerability_detector);
 static void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerability_detector);
 int wm_vulnerability_detector_socketconnect(char *host);
@@ -44,6 +47,8 @@ int wm_checks_package_vulnerability(const char *package, char *version, const ch
 void wm_vulnerability_update_intervals(time_intervals *remaining, time_t time_sleep);
 int wm_vulnerability_detector_step(sqlite3_stmt *stmt);
 int wm_vulnerability_create_file(const char *path, const char *source);
+void wm_vulnerability_detector_init_os_table(char **table);
+void wm_vulnerability_detector_init_os_distros();
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
@@ -1176,36 +1181,13 @@ int wm_vulnerability_update_oval(cve_db version) {
     cve_db dist;
     char success = 0;
 
-    switch (version) {
-        case PRECISE:
-            os_strdup(VU_PRECISE, OS_VERSION);
-            dist = UBUNTU;
-        break;
-        case TRUSTY:
-            os_strdup(VU_TRUSTY, OS_VERSION);
-            dist = UBUNTU;
-        break;
-        case XENIAL:
-            os_strdup(VU_XENIAL, OS_VERSION);
-            dist = UBUNTU;
-        break;
-        case RHEL5:
-            os_strdup(VU_RHEL5, OS_VERSION);
-            dist = REDHAT;
-        break;
-        case RHEL6:
-            os_strdup(VU_RHEL6, OS_VERSION);
-            dist = REDHAT;
-        break;
-        case RHEL7:
-            os_strdup(VU_RHEL7, OS_VERSION);
-            dist = REDHAT;
-        break;
-        default:
-            mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
-            goto free_mem;
-        break;
+    if(!version || version >= VU_NUM_DISTROS){
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
+        goto free_mem;
     }
+
+    os_strdup(cve_db_os_version[version], OS_VERSION);
+    dist = cve_db_os_distros[version];
 
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_PRE);
     if (tmp_file = wm_vulnerability_detector_preparser(dist), !tmp_file) {
@@ -1756,6 +1738,8 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
         pthread_exit(NULL);
     }
 
+    wm_vulnerability_detector_init_os_table(cve_db_os_version);
+
     for (i = 0; vulnerability_detector->queue_fd = StartMQ(DEFAULTQPATH, WRITE), vulnerability_detector->queue_fd < 0 && i < WM_MAX_ATTEMPTS; i++) {
         sleep(WM_MAX_WAIT);
     }
@@ -2054,6 +2038,32 @@ void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerabili
         }
     }
     free(vulnerability_detector);
+}
+
+void wm_vulnerability_detector_init_os_table(char **table){
+
+    table[0] = VU_UBUNTU;
+    table[1] = VU_PRECISE;
+    table[2] = VU_TRUSTY;
+    table[3] = VU_XENIAL;
+    table[4] = VU_RHEL;
+    table[5] = VU_CENTOS;
+    table[6] = VU_RHEL5;
+    table[7] = VU_RHEL6;
+    table[8] = VU_RHEL7; 
+}
+
+void wm_vulnerability_detector_init_os_distros(){
+
+    int i;
+
+    for(i = 0; i <= 3; i++){
+        cve_db_os_distros[i] = UBUNTU;
+    }
+    
+    for(i = 4; i < VU_NUM_DISTROS; i++){
+        cve_db_os_distros[i] = REDHAT;
+    }  
 }
 
 #endif

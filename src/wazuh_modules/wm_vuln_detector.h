@@ -45,6 +45,7 @@
 #define VU_MEDIUM     "Medium"
 #define VU_HIGH       "High"
 #define VU_IMPORTANT  "Important"
+#define VU_NUM_DISTROS 9
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
