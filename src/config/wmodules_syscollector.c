@@ -15,12 +15,12 @@
 static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START = "scan_on_start";
 static const char *XML_DISABLED = "disabled";
-static const char *XML_NETWORK = "network";
+//static const char *XML_NETWORK = "network";
 static const char *XML_OS_SCAN = "os";
 static const char *XML_HARDWARE = "hardware";
 static const char *XML_PROGRAMS = "programs";
-static const char *XML_PORTS = "ports";
-static const char *XML_PROCS = "processes";
+//static const char *XML_PORTS = "ports";
+//static const char *XML_PROCS = "processes";
 
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module) {
@@ -30,21 +30,13 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     os_calloc(1, sizeof(wm_sys_t), syscollector);
     syscollector->flags.enabled = 1;
     syscollector->flags.scan_on_start = 1;
-#ifdef WIN32
     syscollector->flags.netinfo = 0;
-#else
-    syscollector->flags.netinfo = 1;
-#endif
     syscollector->flags.osinfo = 1;
     syscollector->flags.hwinfo = 1;
     syscollector->flags.programinfo = 1;
-#ifdef WIN32
     syscollector->flags.portsinfo = 0;
-#else
-    syscollector->flags.portsinfo = 1;
-#endif
     syscollector->flags.allports = 0;
-    syscollector->flags.procinfo = 1;
+    syscollector->flags.procinfo = 0;
     module->context = &WM_SYS_CONTEXT;
     module->data = syscollector;
 
@@ -98,6 +90,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+/*
         } else if (!strcmp(node[i]->element, XML_NETWORK)) {
             if (!strcmp(node[i]->content, "yes"))
                 syscollector->flags.netinfo = 1;
@@ -107,6 +100,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_NETWORK, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+*/
         } else if (!strcmp(node[i]->element, XML_OS_SCAN)) {
             if (!strcmp(node[i]->content, "yes"))
                 syscollector->flags.osinfo = 1;
@@ -134,6 +128,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_PROGRAMS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+/*
         } else if (!strcmp(node[i]->element, XML_PROCS)) {
             if (!strcmp(node[i]->content, "yes"))
                 syscollector->flags.procinfo = 1;
@@ -167,6 +162,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+*/
         } else {
             merror("No such tag '%s' at module '%s'.", node[i]->element, WM_SYS_CONTEXT.name);
             return OS_INVALID;

@@ -83,9 +83,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         /* Network inventory */
         if (sys->flags.netinfo){
             #ifdef WIN32
-                sys->flags.netinfo = 0;
-                mtwarn(WM_SYS_LOGTAG, "Network inventory is not available for this operating system.");
-                // sys_network_windows(WM_SYS_LOCATION);
+                sys_network_windows(WM_SYS_LOCATION);
             #elif defined(__linux__)
                 sys_network_linux(queue_fd, WM_SYS_LOCATION);
             #elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
@@ -133,9 +131,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         /* Opened ports inventory */
         if (sys->flags.portsinfo){
             #if defined(WIN32)
-                sys->flags.portsinfo = 0;
-                mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this operating system.");
-                // sys_ports_windows(WM_SYS_LOCATION, sys->flags.allports);
+                sys_ports_windows(WM_SYS_LOCATION, sys->flags.allports);
             #elif defined(__linux__)
                 sys_ports_linux(queue_fd, WM_SYS_LOCATION, sys->flags.allports);
             #else

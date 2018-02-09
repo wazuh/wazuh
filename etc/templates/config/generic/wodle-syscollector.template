@@ -5,8 +5,5 @@
     <scan_on_start>yes</scan_on_start>
     <hardware>yes</hardware>
     <os>yes</os>
-    <network>yes</network>
     <programs>yes</programs>
-    <ports>yes</ports>
-    <processes>yes</processes>
   </wodle>
