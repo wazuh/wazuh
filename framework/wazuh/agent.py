@@ -759,6 +759,23 @@ class Agent:
         return {'msg': msg, 'affected_agents': ids}
 
 
+    def get_agent_attr(self, attr):
+        """
+        Returns a string with an agent's os name
+        """
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+        query = "SELECT :attr FROM agent WHERE id = :id"
+        request = {'attr':attr, 'id': self.id}
+        conn.execute(query, request)
+        query_value = str(conn.fetch()[0])
+
+        return query_value
+
+
     @staticmethod
     def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None, version="all"):
         """

@@ -68,7 +68,7 @@ class WazuhException(Exception):
         1701: 'Agent does not exist',
         1702: 'Unable to restart agent(s)',
         1703: 'Action not available for Manager (Agent 000)',
-        1704: '',
+        1704: 'Unable to load requested info from agent db',
         1705: 'There is an agent with the same name',
         1706: 'There is an agent with the same IP',
         1707: 'Impossible to restart agent due to it is not active',
