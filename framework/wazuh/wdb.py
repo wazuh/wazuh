@@ -114,9 +114,7 @@ class WazuhDBConnection():
             countq = query_lower.replace(select, "count(*)")
             total  = self.__send(countq)[0].values()[0]
 
-            if lim != 0:
-                total = lim
-            limit = total
+            limit = lim if lim != 0 else total
 
             response = []
             step = limit if limit < self.request_slice and limit > 0  else self.request_slice
