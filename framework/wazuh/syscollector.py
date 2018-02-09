@@ -9,7 +9,7 @@ from wazuh.agent import Agent
 from wazuh import Wazuh
 from wazuh.utils import plain_dict_to_nested_dict
 
-def get_os(agent_id, offset=0, limit=common.database_limit, select=None):
+def get_os(agent_id, select=None):
     """
     Get info about an agent's OS
     """
@@ -39,7 +39,7 @@ def get_os(agent_id, offset=0, limit=common.database_limit, select=None):
     return plain_dict_to_nested_dict(agent_obj._load_info_from_agent_db(table='sys_osinfo', select=select_fields)[0])
 
 
-def get_hardware(agent_id, offset=0, limit=common.database_limit, select=None):
+def get_hardware(agent_id, select=None):
     """
     Get info about an agent's OS
     """
@@ -74,5 +74,5 @@ def get_programs(agent_id, offset=0, limit=common.database_limit, select=None):
     else:
         select_fields = valid_select_fields
 
-    response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_programs', select=select_fields, count=True)
+    response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_programs', offset=offset, limit=limit, select=select_fields, count=True)
     return {'totalItems':total, 'items':response}

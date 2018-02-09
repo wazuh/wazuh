@@ -264,7 +264,7 @@ class Agent:
             raise WazuhException(1701, self.id)
 
 
-    def _load_info_from_agent_db(self, table, select, filters=[], count=False):
+    def _load_info_from_agent_db(self, table, select, filters=[], count=False, offset=0, limit=common.database_limit):
         """
         Make a request to agent's database using Wazuh DB
         """
@@ -277,6 +277,9 @@ class Agent:
             for key, value in filters:
                 query += " {} = {} AND".format(key, value)
             query = query[:-3] # remove last AND
+
+        if limit:
+            query += ' limit {} offset {}'.format(limit, offset)
 
         return wdb_conn.execute(query, count)
 
