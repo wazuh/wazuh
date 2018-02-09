@@ -264,7 +264,7 @@ class Agent:
             raise WazuhException(1701, self.id)
 
 
-    def _load_info_from_agent_db(self, table, select, filters=[], count=False, offset=0, limit=common.database_limit):
+    def _load_info_from_agent_db(self, table, select, filters=[], count=False, offset=0, limit=common.database_limit, sort=None):
         """
         Make a request to agent's database using Wazuh DB
         """
@@ -280,6 +280,14 @@ class Agent:
 
         if limit:
             query += ' limit {} offset {}'.format(limit, offset)
+
+        if sort and sort['fields']:
+            str_order = "desc" if sort['order'] == 'asc' else "asc"
+            order_str_fields = []
+            for field in sort['fields']:
+                order_str_field = '{0} {1}'.format(field, str_order)
+                order_str_fields.append(order_str_field)
+            query += ' order by ' + ','.join(order_str_fields)
 
         return wdb_conn.execute(query, count)
 
