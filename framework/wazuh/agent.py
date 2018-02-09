@@ -8,6 +8,7 @@ from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
 from wazuh.database import Connection
+from wazuh.wdb import WazuhDBConnection
 from wazuh.InputValidator import InputValidator
 from wazuh import manager
 from wazuh import common
@@ -261,6 +262,25 @@ class Agent:
 
         if no_result:
             raise WazuhException(1701, self.id)
+
+
+    def _load_info_from_agent_db(self, table, select, filters=[]):
+        """
+        Make a request to agent's database using Wazuh DB
+        """
+        wdb_conn = WazuhDBConnection()
+        
+        query = "agent {} sql select {} from {}".format(self.id, ','.join(select), table)
+        
+        if filters:
+            query += " where"
+            for key, value in filters:
+                query += " {} = {} AND".format(key, value)
+            query = query[:-3] # remove last AND
+
+        response = wdb_conn.execute(query)
+
+        return response
 
 
     def get_basic_information(self, select=None):
