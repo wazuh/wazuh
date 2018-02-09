@@ -63,7 +63,7 @@ class WazuhDBConnection():
         else:
             return json.loads(data[1])
 
-    def execute(self, query):
+    def execute(self, query, count=False):
         """
         Sends a sql query to wdb socket
         """
@@ -95,6 +95,10 @@ class WazuhDBConnection():
             for off in range(offset, limit+offset, step):
                 request = "{} limit {} offset {}".format(query_lower, step, off)
                 response.extend(self.__send(request))
-            return response
+
+            if count:
+                return response, total
+            else:
+                return response
         else:
             return self.__send(query_lower)[0].values()[0]

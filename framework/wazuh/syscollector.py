@@ -74,4 +74,5 @@ def get_programs(agent_id, offset=0, limit=common.database_limit, select=None):
     else:
         select_fields = valid_select_fields
 
-    return Agent(agent_id)._load_info_from_agent_db(table='sys_programs', select=select_fields)
+    response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_programs', select=select_fields, count=True)
+    return {'totalItems':total, 'items':response}
