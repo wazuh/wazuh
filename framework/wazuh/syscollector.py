@@ -9,7 +9,7 @@ from wazuh.agent import Agent
 from wazuh import Wazuh
 from wazuh.utils import plain_dict_to_nested_dict
 
-def get_os(agent_id, select=None):
+def get_os_agent(agent_id, select=None):
     """
     Get info about an agent's OS
     """
@@ -39,7 +39,7 @@ def get_os(agent_id, select=None):
     return plain_dict_to_nested_dict(agent_obj._load_info_from_agent_db(table='sys_osinfo', select=select_fields)[0])
 
 
-def get_hardware(agent_id, select=None):
+def get_hardware_agent(agent_id, select=None):
     """
     Get info about an agent's OS
     """
@@ -58,7 +58,7 @@ def get_hardware(agent_id, select=None):
     return plain_dict_to_nested_dict(Agent(agent_id)._load_info_from_agent_db(table='sys_hwinfo', select=select_fields)[0])
 
 
-def get_programs(agent_id, offset=0, limit=common.database_limit, select=None, sort=None):
+def get_programs_agent(agent_id, offset=0, limit=common.database_limit, select=None, sort=None):
     """
     Get info about an agent's programs
     """
@@ -84,3 +84,25 @@ def get_programs(agent_id, offset=0, limit=common.database_limit, select=None, s
 
     response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_programs', offset=offset, limit=limit, select=select_fields, count=True, sort=sort)
     return {'totalItems':total, 'items':response}
+
+
+def get_programs(agent_id, offset=0, limit=common.database_limit, select=None, sort=None, filters=[]):
+    valid_select_fields = {'scan_id', 'scan_time', 'format', 'name',
+                           'vendor', 'version', 'architecture', 'description'}
+    allowed_sort_fields = {'scan_id', 'scan_time', 'format', 'name',
+                           'vendor', 'version', 'architecture', 'description'}
+
+    agents = get_agents_overview(select={'fields':'id'})
+    result = []
+    for agent_id in agents:
+        agent_programs = get_programs_agent(agent_id=agent_id, select={'fields':'id'}, filters)
+        if agent_programs and len(agent_programs) > 0:
+            result.append(agent_id)
+
+    if search:
+        result = search_array(result, search['value'], search['negation'])
+
+    if sort:
+        result = sort_array(result, sort['fields'], sort['order'])
+
+    return {'items': cut_array(result, offset, limit), 'totalItems': len(result)}
