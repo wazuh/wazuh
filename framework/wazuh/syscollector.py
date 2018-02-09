@@ -71,12 +71,14 @@ def get_hardware(agent_id, select={}, search={}):
     	return {}
 
 
-def get_programs(agent_id, offset=0, limit=common.database_limit, select={}, search={}):
+def get_programs(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}):
     """
     Get info about an agent's programs
     """
-    valid_select_fields = ['scan_id', 'scan_time', 'format', 'name',
-                           'vendor', 'version', 'architecture', 'description']
+    valid_select_fields = {'scan_id', 'scan_time', 'format', 'name',
+                           'vendor', 'version', 'architecture', 'description'}
+    allowed_sort_fields = {'scan_id', 'scan_time', 'format', 'name',
+                           'vendor', 'version', 'architecture', 'description'}
 
     if select:
         if not set(select['fields']).issubset(valid_select_fields):
@@ -90,5 +92,11 @@ def get_programs(agent_id, offset=0, limit=common.database_limit, select={}, sea
     if search:
     	search['fields'] = select_fields
 
-    response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_programs', select=select_fields, count=True, search=search)
+    # Sorting
+    if sort and sort['fields']:
+        # Check if every element in sort['fields'] is in allowed_sort_fields.
+        if not set(sort['fields']).issubset(allowed_sort_fields):
+            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
+
+    response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_programs', offset=offset, limit=limit, select=select_fields, count=True, sort=sort, search=search)
     return {'totalItems':total, 'items':response}
