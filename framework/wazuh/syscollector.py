@@ -36,7 +36,11 @@ def get_os_agent(agent_id, select=None):
     else:
         select_fields = valid_select_fields
 
-    return plain_dict_to_nested_dict(agent_obj._load_info_from_agent_db(table='sys_osinfo', select=select_fields)[0])
+    try:
+    	return plain_dict_to_nested_dict(agent_obj._load_info_from_agent_db(table='sys_osinfo', select=select_fields)[0])
+    except IndexError as e:
+    	# there's no data to return
+    	return {}
 
 
 def get_hardware_agent(agent_id, select=None):
@@ -55,10 +59,13 @@ def get_hardware_agent(agent_id, select=None):
     else:
         select_fields = valid_select_fields
 
-    return plain_dict_to_nested_dict(Agent(agent_id)._load_info_from_agent_db(table='sys_hwinfo', select=select_fields)[0])
+    try:
+    	return plain_dict_to_nested_dict(Agent(agent_id)._load_info_from_agent_db(table='sys_hwinfo', select=select_fields)[0])
+    except IndexError as e:
+    	return {}
 
 
-def get_programs_agent(agent_id, offset=0, limit=common.database_limit, select=None, sort=None):
+def get_programs_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}):
     """
     Get info about an agent's programs
     """
@@ -76,13 +83,19 @@ def get_programs_agent(agent_id, offset=0, limit=common.database_limit, select=N
     else:
         select_fields = valid_select_fields
 
+    if search:
+    	search['fields'] = select_fields
+
     # Sorting
     if sort and sort['fields']:
         # Check if every element in sort['fields'] is in allowed_sort_fields.
         if not set(sort['fields']).issubset(allowed_sort_fields):
             raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
 
-    response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_programs', offset=offset, limit=limit, select=select_fields, count=True, sort=sort)
+    response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_programs',
+                                offset=offset, limit=limit, select=select_fields,
+                                count=True, sort=sort, search=search, filters=filters)
+
     return {'totalItems':total, 'items':response}
 
 
