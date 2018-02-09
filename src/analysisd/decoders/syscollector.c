@@ -420,7 +420,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
         }
 
         if (cpu_name) {
-            wm_strcat(&msg, w_strtrim(cpu_name->valuestring), '|');
+            wm_strcat(&msg, cpu_name->valuestring, '|');
 
         } else {
             wm_strcat(&msg, "NULL", '|');

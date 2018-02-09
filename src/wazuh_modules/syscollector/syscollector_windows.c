@@ -731,7 +731,7 @@ void sys_hw_windows(const char* LOCATION){
     hw_info *sys_info;
     if (sys_info = get_system_windows(), sys_info){
         if (sys_info->cpu_name)
-            cJSON_AddStringToObject(hw_inventory, "cpu_name", sys_info->cpu_name);
+            cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
         if (sys_info->cpu_cores)
             cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
         if (sys_info->cpu_MHz)
