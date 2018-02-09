@@ -65,7 +65,7 @@ def get_hardware(agent_id, select={}):
     	return {}
 
 
-def get_programs(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}):
+def get_programs(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}):
     """
     Get info about an agent's programs
     """
@@ -92,5 +92,8 @@ def get_programs(agent_id, offset=0, limit=common.database_limit, select={}, sea
         if not set(sort['fields']).issubset(allowed_sort_fields):
             raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
 
-    response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_programs', offset=offset, limit=limit, select=select_fields, count=True, sort=sort, search=search)
+    response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_programs', 
+                                offset=offset, limit=limit, select=select_fields, 
+                                count=True, sort=sort, search=search, filters=filters)
+
     return {'totalItems':total, 'items':response}

@@ -264,7 +264,7 @@ class Agent:
             raise WazuhException(1701, self.id)
 
 
-    def _load_info_from_agent_db(self, table, select, filters=[], count=False, offset=0, limit=common.database_limit, sort={}, search={}):
+    def _load_info_from_agent_db(self, table, select, filters={}, count=False, offset=0, limit=common.database_limit, sort={}, search={}):
         """
         Make a request to agent's database using Wazuh DB
 
@@ -279,8 +279,8 @@ class Agent:
         query = "agent {} sql select {} from {}".format(self.id, ','.join(select), table)
 
         if filters:
-            for key, value in filters:
-                query += " and {} = {}".format(key, value)
+            for key, value in filters.items():
+                query += " and {} = '{}'".format(key, value)
 
         if search:
             query += " and not" if bool(search['negation']) else " and"
