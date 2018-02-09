@@ -53,7 +53,7 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
-    mtinfo(WM_SYS_LOGTAG, "Starting installed programs inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting installed programs inventory.");
 
     /* Set positive random ID for each event */
 
@@ -153,7 +153,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting Hardware inventory");
+    mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory");
 
     cJSON *object = cJSON_CreateObject();
     cJSON *hw_inventory = cJSON_CreateObject();
@@ -377,7 +377,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting network inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     if (getifaddrs(&ifaddrs_ptr) == -1){
         mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");

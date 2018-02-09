@@ -168,7 +168,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     TCP_TABLE_CLASS TableClass = TCP_TABLE_OWNER_PID_ALL;
     UDP_TABLE_CLASS TableClassUdp = UDP_TABLE_OWNER_PID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting opened ports inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting opened ports inventory.");
 
     /* TCP opened ports inventory */
 
@@ -580,7 +580,7 @@ void sys_programs_windows(const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting installed programs inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting installed programs inventory.");
 
     memset(read_buff, 0, OS_MAXSTR);
     command = "wmic product get Name,Version,Vendor / format:csv";
@@ -685,7 +685,7 @@ void sys_hw_windows(const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting hardware inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting hardware inventory.");
 
     cJSON *object = cJSON_CreateObject();
     cJSON *hw_inventory = cJSON_CreateObject();
@@ -786,7 +786,7 @@ void sys_os_windows(const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting Operating System inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "OS");
@@ -810,7 +810,7 @@ void sys_os_windows(const char* LOCATION){
 /* Network inventory for Windows systems (Vista or later) */
 void sys_network_windows(const char* LOCATION){
 
-    mtinfo(WM_SYS_LOGTAG, "Starting network inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     CallFunc _get_network_win;
 
@@ -1165,7 +1165,7 @@ void sys_proc_windows(const char* LOCATION) {
     cJSON *id_array = cJSON_CreateArray();
     cJSON *proc_array = cJSON_CreateArray();
 
-    mtinfo(WM_SYS_LOGTAG, "Starting running processes inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
     memset(read_buff, 0, OS_MAXSTR);
     command = "wmic process get ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize /format:csv";
