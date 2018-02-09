@@ -7,7 +7,7 @@ from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh import Wazuh
-from wazuh.utils import plain_dict_to_nested_dict
+from wazuh.utils import plain_dict_to_nested_dict, cut_array, sort_array, search_array
 
 def get_os_agent(agent_id, select=None):
     """
@@ -99,18 +99,62 @@ def get_programs_agent(agent_id, offset=0, limit=common.database_limit, select={
     return {'totalItems':total, 'items':response}
 
 
-def get_programs(agent_id, offset=0, limit=common.database_limit, select=None, sort=None, filters=[]):
+def get_programs(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
     valid_select_fields = {'scan_id', 'scan_time', 'format', 'name',
                            'vendor', 'version', 'architecture', 'description'}
     allowed_sort_fields = {'scan_id', 'scan_time', 'format', 'name',
                            'vendor', 'version', 'architecture', 'description'}
 
-    agents = get_agents_overview(select={'fields':'id'})
+    agents = Agent.get_agents_overview(select={'fields':['id']})['items']
     result = []
-    for agent_id in agents:
-        agent_programs = get_programs_agent(agent_id=agent_id, select={'fields':'id'}, filters)
+    for agent in agents:
+        agent_programs = get_programs_agent(agent_id=agent['id'], select=select, filters=filters)
         if agent_programs and len(agent_programs) > 0:
-            result.append(agent_id)
+            result.append(agent['id'])
+
+    if search:
+        result = search_array(result, search['value'], search['negation'])
+
+    if sort:
+        result = sort_array(result, sort['fields'], sort['order'])
+
+    return {'items': cut_array(result, offset, limit), 'totalItems': len(result)}
+
+
+def get_os(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+    valid_select_fields = {'scan_id', 'scan_time', 'format', 'name',
+                           'vendor', 'version', 'architecture', 'description'}
+    allowed_sort_fields = {'scan_id', 'scan_time', 'format', 'name',
+                           'vendor', 'version', 'architecture', 'description'}
+
+    agents = Agent.get_agents_overview(select={'fields':['id']})['items']
+    result = []
+    for agent in agents:
+        agent_programs = get_os_agent(agent_id=agent['id'], select=select)
+        if agent_programs and len(agent_programs) > 0:
+            result.append(agent['id'])
+
+    if search:
+        result = search_array(result, search['value'], search['negation'])
+
+    if sort:
+        result = sort_array(result, sort['fields'], sort['order'])
+
+    return {'items': cut_array(result, offset, limit), 'totalItems': len(result)}
+
+
+def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+    valid_select_fields = {'scan_id', 'scan_time', 'format', 'name',
+                           'vendor', 'version', 'architecture', 'description'}
+    allowed_sort_fields = {'scan_id', 'scan_time', 'format', 'name',
+                           'vendor', 'version', 'architecture', 'description'}
+
+    agents = Agent.get_agents_overview(select={'fields':['id']})['items']
+    result = []
+    for agent in agents:
+        agent_programs = get_os_agent(agent_id=agent['id'], select=select)
+        if agent_programs and len(agent_programs) > 0:
+            result.append(agent['id'])
 
     if search:
         result = search_array(result, search['value'], search['negation'])
