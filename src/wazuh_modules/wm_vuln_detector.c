@@ -1859,7 +1859,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
     size_t size;
     char agent_info[OS_MAXSTR];
     char m_uname[OS_MAXSTR] = "";
-    FILE *fp;
+    FILE *fp = NULL;
     char manager_found = 0;
     char *buffer;
     char *uname;

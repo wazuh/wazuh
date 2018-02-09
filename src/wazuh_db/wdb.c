@@ -11,6 +11,11 @@
 
 #include "wdb.h"
 
+#ifdef WIN32
+#define getuid() 0
+#define chown(x, y, z) 0
+#endif
+
 #define BUSY_SLEEP 1
 #define MAX_ATTEMPTS 1000
 
