@@ -41,6 +41,7 @@ typedef struct _logreader {
     char *alias;
     char future;
     char *query;
+    char **target;
     wlabel_t *labels;
 
     void *(*read)(int i, int *rc, int drop_it);
@@ -48,10 +49,18 @@ typedef struct _logreader {
     FILE *fp;
 } logreader;
 
+typedef struct _logsocket {
+    char *name;
+    char *location;
+    char *mode;
+    char *prefix;
+} logsocket;
+
 typedef struct _logreader_config {
     int agent_cfg;
     int accept_remote;
     logreader *config;
+    logsocket *socket_list;
 } logreader_config;
 
 /* Frees the Localfile struct  */

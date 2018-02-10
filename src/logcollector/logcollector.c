@@ -18,6 +18,7 @@ int loop_timeout;
 int logr_queue;
 int open_file_attempts;
 logreader *logff;
+logsocket *logsk;
 int vcheck_files;
 int maximum_lines;
 static int _cday = 0;
@@ -70,6 +71,11 @@ void LogCollectorStart()
 #endif
 
     mdebug1("Entering LogCollectorStart().");
+
+    unsigned int sk;
+    for (sk=0; logsk[sk].name; sk++) {
+        mdebug1("Socket '%s' added. Location: %s", logsk[sk].name, logsk[sk].location);
+    }
 
     /* Initialize each file and structure */
     for (i = 0;; i++) {
@@ -131,6 +137,10 @@ void LogCollectorStart()
                 logff[i].read = read_command;
 
                 minfo("Monitoring output of command(%d): %s", logff[i].ign, logff[i].command);
+                unsigned int tg;
+                for (tg=0; logff[i].target[tg]; tg++) {
+                    mdebug1("Socket target for '%s' -> %s", logff[i].command, logff[i].target[tg]);
+                }
 
                 if (!logff[i].alias) {
                     os_strdup(logff[i].command, logff[i].alias);
@@ -146,6 +156,10 @@ void LogCollectorStart()
                 logff[i].read = read_fullcommand;
 
                 minfo("Monitoring full output of command(%d): %s", logff[i].ign, logff[i].command);
+                unsigned int tg;
+                for (tg=0; logff[i].target[tg]; tg++) {
+                    mdebug1("Socket target for '%s' -> %s", logff[i].command, logff[i].target[tg]);
+                }
 
                 if (!logff[i].alias) {
                     os_strdup(logff[i].command, logff[i].alias);
@@ -173,6 +187,10 @@ void LogCollectorStart()
             }
 
             minfo(READING_FILE, logff[i].file);
+            unsigned int tg;
+            for (tg=0; logff[i].target[tg]; tg++) {
+                mdebug1("Socket target for '%s' -> %s", logff[i].file, logff[i].target[tg]);
+            }
 
             /* Get the log type */
             if (strcmp("snort-full", logff[i].logformat) == 0) {

@@ -49,6 +49,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osauthd = "auth";                       /* Authd Config */
     const char *oslogging = "logging";                  /* Logging Config */
     const char *oscluster = "cluster";                  /* Cluster Config */
+    const char *ossocket = "socket";                    /* Socket Config */
 
     while (node[i]) {
         XML_NODE chld_node = NULL;
@@ -146,6 +147,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
         } else if (strcmp(node[i]->element, oslogging) == 0) {
         } else if (strcmp(node[i]->element, oscluster) == 0) {
             if ((modules & CCLUSTER) && (Read_Cluster(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (strcmp(node[i]->element, ossocket) == 0) {
+            if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else {
