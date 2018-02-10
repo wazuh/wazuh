@@ -44,7 +44,7 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 	DEFINES+=-DREUSE_ID
 endif
 
-OSSEC_LDFLAGS=${LDFLAGS} -L${EXTERNAL_OPENSSL} -lm -lssl -lcrypto
+OSSEC_LDFLAGS=-L${EXTERNAL_OPENSSL} -lm -lssl -lcrypto ${LDFLAGS}
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -489,8 +489,8 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_ZLIB}libz.a win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
-	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32 -liphlpapi -lws2_32"
+winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a ${EXTERNAL_ZLIB}libz.a win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
+	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd ${EXTERNAL_LUA}src/ && ${MAKE} CC=${MING_BASE}${CC} -f Makefile.mingw mingw
 	cp ${EXTERNAL_LUA}src/ossec-lua.exe win32/
 	cp ${EXTERNAL_LUA}src/ossec-luac.exe win32/
@@ -534,23 +534,23 @@ endif
 
 ${OPENSSL_LIB}:
 ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} ./Configure mingw && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} ./Configure no-shared mingw && ${MAKE} build_libs
 	${OSSEC_RANLIB} ${OPENSSL_LIB}
 else
 ifeq (${uname_S},Darwin)
-	cd ${EXTERNAL_OPENSSL} && ./Configure darwin64-x86_64-cc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./Configure no-shared darwin64-x86_64-cc && ${MAKE} build_libs
 else
 ifeq (${uname_S},HP-UX)
-	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure hpux-ia64-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure no-shared hpux-ia64-gcc && ${MAKE} build_libs
 else
 ifeq (${uname_S},SunOS)
 ifeq ($(uname_M),i86pc)
-	cd ${EXTERNAL_OPENSSL} && ./Configure solaris-x86-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./Configure no-shared solaris-x86-gcc && ${MAKE} build_libs
 else
-	cd ${EXTERNAL_OPENSSL} && ./Configure solaris-sparcv9-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./Configure no-shared solaris-sparcv9-gcc && ${MAKE} build_libs
 endif
 else
-	cd ${EXTERNAL_OPENSSL} && ./config && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./config no-shared && ${MAKE} build_libs
 endif
 endif
 endif
@@ -617,7 +617,7 @@ endif
 #### OSSEC Libs ####
 ####################
 
-ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a ${JSON_LIB} ${OPENSSL_LIB} ${CRYPTO_LIB} ${PROCPS_LIB}
+ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a ${JSON_LIB} ${PROCPS_LIB}
 
 #### os_xml ########
 
