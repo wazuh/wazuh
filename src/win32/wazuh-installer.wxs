@@ -72,10 +72,8 @@
                     <Component Id="AGENT_AUTH.EXE" DiskId="1" Guid="F99FEE7C-A021-4D43-9119-98A8D72EAB65">
                         <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" />
                     </Component>
-		            <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB" NeverOverwrite="no">
-                        <File Id="SYSCOLLECTOR_DLL" Name="syscollector_win_ext.dll" Source="C:\Users\Wazuh\Desktop\wazuh\src\wazuh_modules\syscollector\syscollector_win_ext.dll">
-                            <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
-                        </File>
+		            <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB">
+                        <File Id="SYSCOLLECTOR_DLL" Name="syscollector_win_ext.dll" Source="..\wazuh_modules\syscollector\syscollector_win_ext.dll" />
                     </Component>
                     <Component Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9">
                         <File Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" Name="default-local_internal_options.conf" Source="default-local_internal_options.conf">
@@ -249,9 +247,6 @@
                 <RemoveFolder Id="purgue_bookmarks_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
-
-	
-
         <DirectoryRef Id="LOGS">
             <Component Id="CMP_LOGS" Guid="17C9F68D-D1E6-4452-8C3E-992F6D7F0CF1" KeyPath="yes">
                 <CreateFolder />
@@ -305,7 +300,7 @@
         </DirectoryRef>
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="AGENT_AUTH.EXE" />
-	    <ComponentRef Id="SYSCOLLECTOR_DLL" />
+            <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="DEFAULT_OSSEC.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
@@ -332,7 +327,7 @@
             <ComponentRef Id="CMP_DIFF" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
-	        <ComponentRef Id="CMP_WODLES" />		
+	        <ComponentRef Id="CMP_WODLES" />
             <ComponentRef Id="CMP_RIDS" />
             <ComponentRef Id="CMP_SYSCHECK" />
             <ComponentRef Id="CMP_INCOMING" />
