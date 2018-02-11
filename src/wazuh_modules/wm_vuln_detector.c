@@ -431,8 +431,8 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     int i;
 
     if (!agents) {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_AG_TARGET_ERROR);
-        return OS_INVALID;
+        mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AG_NO_TARGET);
+        return 0;
     } else if (wm_vulnerability_detector_check_db()) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_CHECK_DB_ERROR);
         return OS_INVALID;
@@ -1908,6 +1908,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
         OS_FreeKeys(&keys);
         return OS_INVALID;
     }
+
     for (i = 0; buffer[i] != '\0'; i++) {
         if (buffer[i] == ' ') {
             buffer[i] = '\0';

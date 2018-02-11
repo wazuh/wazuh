@@ -286,7 +286,6 @@
 #define VU_GET_SOFTWARE_ERROR       "(5410): Agent software could not be obtained."
 #define VU_AG_CHECK_ERR             "(5411): Agent vulnerabilities could not be checked."
 #define VU_TABLE_ERROR              "(5412): Table %s is not available."
-#define VU_AG_TARGET_ERROR          "(5413): The analysis can not be launched because there are no target agents."
 #define VU_PACKAGE_TABLE_ERROR      "(5414): The packages table for agent %s could not be created."
 #define VU_COMPARE_VERSION_ERROR    "(5415): It has not been possible to compare version '%s' of '%s' package with version '%s'."
 #define VU_TIMESTAMP_LABEL_ERROR    "(5416): Timestamp label has not been found in the first %i fetches"
