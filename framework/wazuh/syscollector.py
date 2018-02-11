@@ -65,7 +65,7 @@ def get_hardware_agent(agent_id, select=None):
     	return {}
 
 
-def get_programs_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}):
+def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}):
     """
     Get info about an agent's programs
     """
@@ -99,26 +99,20 @@ def get_programs_agent(agent_id, offset=0, limit=common.database_limit, select={
     return {'totalItems':total, 'items':response}
 
 
-def get_programs(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
-    valid_select_fields = {'scan_id', 'scan_time', 'format', 'name',
-                           'vendor', 'version', 'architecture', 'description'}
-    allowed_sort_fields = {'scan_id', 'scan_time', 'format', 'name',
-                           'vendor', 'version', 'architecture', 'description'}
+def get_packages(offset=0, limit=common.database_limit, select=None, filters={}):
 
-    agents = Agent.get_agents_overview(select={'fields':['id']})['items']
-    result = []
+    agents, result = Agent.get_agents_overview(select={'fields':['id']})['items'], []
+
     for agent in agents:
-        agent_programs = get_programs_agent(agent_id=agent['id'], select=select, filters=filters)
-        if agent_programs and len(agent_programs) > 0:
-            result.append(agent['id'])
+        agent_packages = get_packages_agent(agent_id = agent['id'], select = select,
+                                filters = filters, limit = limit, offset = offset)
 
-    if search:
-        result = search_array(result, search['value'], search['negation'])
+        items = agent_packages['items']
+        for item in items:
+            item['agent_id'] = agent['id']
+            result.append(item)
 
-    if sort:
-        result = sort_array(result, sort['fields'], sort['order'])
-
-    return {'items': cut_array(result, offset, limit), 'totalItems': len(result)}
+    return {'items': result, 'totalItems': len(result)}
 
 
 def get_os(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
