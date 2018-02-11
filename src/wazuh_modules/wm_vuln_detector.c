@@ -1864,6 +1864,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
     char *buffer;
     char *uname;
     char *uname_p = NULL;
+    char *sep;
 
     os_strdup(getuname(), uname);
 
@@ -1909,12 +1910,10 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
         return OS_INVALID;
     }
 
-    for (i = 0; buffer[i] != '\0'; i++) {
-        if (buffer[i] == ' ') {
-            buffer[i] = '\0';
-            break;
-        }
+    if (sep = strchr(buffer, ' '), sep) {
+        *sep = '\0';
     }
+
     os_strdup("000", agents->agent_id);
     os_strdup("", agents->agent_ip);
     os_strdup(buffer, agents->agent_name);
@@ -2003,6 +2002,8 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                         mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS, agents->agent_name);
                         if (agents = skip_agent(agents, agents_software), !agents) {
                             break;
+                        } else {
+                            continue;
                         }
                     }
                 } else { // Operating system not supported in any of its versions
