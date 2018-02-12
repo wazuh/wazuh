@@ -122,6 +122,9 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
         if found_limit:
             break
 
+    if sort and sort['fields']:
+        result = sorted(result, key=itemgetter(sort['fields'][0]), reverse=True if sort['order'] == "desc" else False)
+
     return {'items': result, 'totalItems': len(result)}
 
 
