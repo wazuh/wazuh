@@ -439,7 +439,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
         os_calloc(FORMAT_LENGTH, sizeof(char), format);
         snprintf(format, FORMAT_LENGTH -1, "%s", "deb");
         os_calloc(OS_MAXSTR + 1, sizeof(char), command);
-        snprintf(command, OS_MAXSTR, "%s", "dpkg-query --showformat='${Package}|${Maintainer}|${Version}|${Architecture}|${binary:Summary}\n' --show");
+        snprintf(command, OS_MAXSTR, "%s", "dpkg-query --showformat='${db:Status-Abbrev}|${Package}|${Maintainer}|${Version}|${Architecture}|${binary:Summary}\n' --show | grep ^ii | sed 's/^ii |//'");
         closedir(dir);
     }else{
         mtwarn(WM_SYS_LOGTAG, "Unable to get installed programs inventory.");
