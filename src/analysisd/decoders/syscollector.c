@@ -23,6 +23,7 @@
 #define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
 static int sc_send_db(char * msg);
+static int decode_netinfo(char *agent_id, cJSON * logJSON);
 static int decode_osinfo(char *agent_id, cJSON * logJSON);
 static int decode_hardware(char *agent_id, cJSON * logJSON);
 static int decode_program(char *agent_id, cJSON * logJSON);
@@ -94,7 +95,10 @@ int DecodeSyscollector(Eventinfo *lf)
         }
     }
     else if (strcmp(msg_type, "network") == 0 || strcmp(msg_type, "network_end") == 0) {
-        return (1);
+        if (decode_netinfo(lf->agent_id, logJSON) < 0) {
+            merror("Unable to send netinfo message to Wazuh DB.");
+            return (0);
+        }
     }
     else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_list") == 0  || strcmp(msg_type, "process_end") == 0) {
         if (decode_process(lf->agent_id, logJSON) < 0) {
@@ -109,6 +113,263 @@ int DecodeSyscollector(Eventinfo *lf)
 
     cJSON_Delete (logJSON);
     return (1);
+}
+
+int decode_netinfo(char *agent_id, cJSON * logJSON) {
+
+    char *msg = NULL;
+    cJSON * iface;
+    char id[OS_MAXSTR];
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+
+    if (iface = cJSON_GetObjectItem(logJSON, "iface"), iface) {
+        cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+        cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
+        cJSON * name = cJSON_GetObjectItem(iface, "name");
+        cJSON * adapter = cJSON_GetObjectItem(iface, "adapter");
+        cJSON * type = cJSON_GetObjectItem(iface, "type");
+        cJSON * state = cJSON_GetObjectItem(iface, "state");
+        cJSON * mac = cJSON_GetObjectItem(iface, "MAC");
+        cJSON * tx_packets = cJSON_GetObjectItem(iface, "tx_packets");
+        cJSON * rx_packets = cJSON_GetObjectItem(iface, "rx_packets");
+        cJSON * tx_bytes = cJSON_GetObjectItem(iface, "tx_bytes");
+        cJSON * rx_bytes = cJSON_GetObjectItem(iface, "rx_bytes");
+        cJSON * mtu = cJSON_GetObjectItem(iface, "MTU");
+
+        snprintf(msg, OS_MAXSTR - 1, "agent %s netinfo save", agent_id);
+
+        if (scan_id) {
+            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+            wm_strcat(&msg, id, ' ');
+        } else {
+            wm_strcat(&msg, "NULL", ' ');
+        }
+
+        if (scan_time) {
+            wm_strcat(&msg, scan_time->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (name) {
+            wm_strcat(&msg, name->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (adapter) {
+            wm_strcat(&msg, adapter->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (type) {
+            wm_strcat(&msg, type->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (state) {
+            wm_strcat(&msg, state->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (mtu) {
+            char _mtu[OS_MAXSTR];
+            snprintf(_mtu, OS_MAXSTR - 1, "%d", mtu->valueint);
+            wm_strcat(&msg, _mtu, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (mac) {
+            wm_strcat(&msg, mac->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (tx_packets) {
+            char txpack[OS_MAXSTR];
+            snprintf(txpack, OS_MAXSTR - 1, "%d", tx_packets->valueint);
+            wm_strcat(&msg, txpack, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (rx_packets) {
+            char rxpack[OS_MAXSTR];
+            snprintf(rxpack, OS_MAXSTR - 1, "%d", rx_packets->valueint);
+            wm_strcat(&msg, rxpack, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (tx_bytes) {
+            char txbytes[OS_MAXSTR];
+            snprintf(txbytes, OS_MAXSTR - 1, "%d", tx_bytes->valueint);
+            wm_strcat(&msg, txbytes, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (rx_bytes) {
+            char rxbytes[OS_MAXSTR];
+            snprintf(rxbytes, OS_MAXSTR - 1, "%d", rx_bytes->valueint);
+            wm_strcat(&msg, rxbytes, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (sc_send_db(msg) < 0) {
+            return -1;
+        } else {
+            cJSON * ip;
+
+            if (ip = cJSON_GetObjectItem(iface, "IPv4"), ip) {
+
+                cJSON * address = cJSON_GetObjectItem(ip, "address");
+                cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
+                cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
+                cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
+                cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
+
+                os_calloc(OS_MAXSTR, sizeof(char), msg);
+                snprintf(msg, OS_MAXSTR - 1, "agent %s netaddr save", agent_id);
+
+                if (scan_id) {
+                    wm_strcat(&msg, id, ' ');
+                } else {
+                    wm_strcat(&msg, "NULL", ' ');
+                }
+
+                // Information about an IPv4 interface
+                wm_strcat(&msg, "0", '|');
+
+                if (name) {
+                    wm_strcat(&msg, name->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (address) {
+                    wm_strcat(&msg, address->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (netmask) {
+                    wm_strcat(&msg, netmask->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (broadcast) {
+                    wm_strcat(&msg, broadcast->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (gateway) {
+                    wm_strcat(&msg, gateway->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (dhcp) {
+                    wm_strcat(&msg, dhcp->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (sc_send_db(msg) < 0) {
+                    return -1;
+                }
+            }
+
+            if (ip = cJSON_GetObjectItem(iface, "IPv6"), ip) {
+                cJSON * address = cJSON_GetObjectItem(ip, "address");
+                cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
+                cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
+                cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
+                cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
+
+                os_calloc(OS_MAXSTR, sizeof(char), msg);
+                snprintf(msg, OS_MAXSTR - 1, "agent %s netaddr save", agent_id);
+
+                if (scan_id) {
+                    wm_strcat(&msg, id, ' ');
+                } else {
+                    wm_strcat(&msg, "NULL", ' ');
+                }
+
+                // Information about an IPv6 interface
+                wm_strcat(&msg, "1", '|');
+
+                if (name) {
+                    wm_strcat(&msg, name->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (address) {
+                    wm_strcat(&msg, address->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (netmask) {
+                    wm_strcat(&msg, netmask->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (broadcast) {
+                    wm_strcat(&msg, broadcast->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (gateway) {
+                    wm_strcat(&msg, gateway->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (dhcp) {
+                    wm_strcat(&msg, dhcp->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (sc_send_db(msg) < 0) {
+                    return -1;
+                }
+            }
+        }
+    } else {
+        // Looking for 'end' message.
+        char * msg_type = NULL;
+
+        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+
+        if (!msg_type) {
+            merror("Invalid message. Type not found.");
+            free(msg);
+            return -1;
+        } else if (strcmp(msg_type, "network_end") == 0) {
+
+            cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+            snprintf(msg, OS_MAXSTR - 1, "agent %s netinfo del %d", agent_id, scan_id->valueint);
+
+            if (sc_send_db(msg) < 0) {
+                return -1;
+            }
+        }
+    }
+
+    return 0;
 }
 
 int decode_osinfo(char *agent_id, cJSON * logJSON) {

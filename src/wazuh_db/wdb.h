@@ -38,6 +38,8 @@
 #define WDB_GROUPS 4
 #define WDB_SYSCOLLECTOR 5
 
+#define WDB_NETADDR_IPV4 0
+
 #define WDB_STMT_FIM_LOAD 0
 #define WDB_STMT_FIM_FIND_ENTRY 1
 #define WDB_STMT_FIM_INSERT_ENTRY 2
@@ -52,7 +54,14 @@
 #define WDB_STMT_PORT_DEL 11
 #define WDB_STMT_PROC_INSERT 12
 #define WDB_STMT_PROC_DEL 13
-#define WDB_STMT_SIZE 14
+#define WDB_STMT_NETINFO_INSERT 14
+#define WDB_STMT_ADDR_INSERT 15
+#define WDB_STMT_ADDR_IPV4_UPDATE 16
+#define WDB_STMT_ADDR_IPV6_UPDATE 17
+#define WDB_STMT_NETINFO_DEL 18
+#define WDB_STMT_ADDR_DEL 19
+#define WDB_STMT_RESET_COUNT 20
+#define WDB_STMT_SIZE 21
 
 typedef struct wdb_t {
     sqlite3 * db;
@@ -218,6 +227,21 @@ int wdb_vacuum(sqlite3 *db);
 /* Insert key-value pair into info table */
 int wdb_insert_info(const char *key, const char *value);
 
+// Insert network info tuple. Return 0 on success or -1 on error.
+int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes);
+
+// Save Network info into DB.
+int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes);
+
+// Delete Network info from DB.
+int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id);
+
+// Insert IPv4/IPv6 interface info tuple. Return 0 on success or -1 on error.
+int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int type, const char * name, const char * address, const char * netmask, const char * broadcast, const char * gateway, const char * dhcp);
+
+// Save IPv4/IPv6 interface info into DB.
+int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int type, const char * name, const char * address, const char * netmask, const char * broadcast, const char * gateway, const char * dhcp);
+
 // Insert OS info tuple. Return 0 on success or -1 on error.
 int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
 
@@ -284,6 +308,10 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 int wdb_parse(char * input, char * output);
 
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output);
 

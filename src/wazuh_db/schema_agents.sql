@@ -70,8 +70,10 @@ PRAGMA journal_mode=WAL;
 
 CREATE TABLE IF NOT EXISTS sys_netaddr (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    address TEXT NOT NULL,
-    netmask TEXT NOT NULL,
+    scan_id INTEGER,
+    type TEXT,
+    address TEXT,
+    netmask TEXT,
     broadcast TEXT,
     gateway TEXT,
     dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown'
