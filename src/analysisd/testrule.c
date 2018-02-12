@@ -232,7 +232,7 @@ int main(int argc, char **argv)
                 while ( decodersfiles && *decodersfiles) {
 
                     if(!quiet) {
-                        minfo("Reading decoder file %s.", *decodersfiles);
+                        mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
                     if (!ReadDecodeXML(*decodersfiles)) {
                         merror_exit(CONFIG_ERROR, *decodersfiles);
@@ -255,7 +255,7 @@ int main(int argc, char **argv)
                 char **listfiles;
                 listfiles = Config.lists;
                 while (listfiles && *listfiles) {
-                    minfo("Reading the lists file: '%s'", *listfiles);
+                    mdebug1("Reading the lists file: '%s'", *listfiles);
                     if (Lists_OP_LoadList(*listfiles) < 0) {
                         merror_exit(LISTS_ERROR, *listfiles);
                     }
