@@ -663,17 +663,17 @@ void sys_programs_windows(const char* LOCATION){
             if(fgets(read_buff,OS_MAXSTR,output) == NULL){
                 break;
             }           
-            sscanf(read_buff,"%s %s %[^\n]",empty,empty,DisplayName);  
+            sscanf(read_buff,"%s %s %[^\n]",trash,trash,DisplayName);  
 
             if(fgets(read_buff,OS_MAXSTR,output) == NULL){
                 break;
             }
-            sscanf(read_buff,"%s %s %[^\n]",empty,empty,DisplayVersion);  
+            sscanf(read_buff,"%s %s %[^\n]",trash,trash,DisplayVersion);  
 
             if(fgets(read_buff,OS_MAXSTR,output) == NULL){
                 break;
             }
-            sscanf(read_buff,"%s %s %[^\n]",empty,empty,Publisher);
+            sscanf(read_buff,"%s %s %[^\n]",trash,trash,Publisher);
 
             cJSON *object = cJSON_CreateObject();
             cJSON *program = cJSON_CreateObject();
