@@ -2488,7 +2488,7 @@ class Agent:
 
         list_ids = [{"id": str(item[0]).zfill(3), "name": item[1]} for item in purgeable_agents ]
 
-        return {'timeframe': timeframe, 'items': list_ids}
+        return {'timeframe': timeframe, 'items': list_ids, 'totalItems':len(list_ids)}
 
 
     @staticmethod
