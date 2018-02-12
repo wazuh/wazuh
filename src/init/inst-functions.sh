@@ -319,9 +319,6 @@ WriteAgent()
     # OpenSCAP
     WriteOpenSCAP "agent"
 
-    # Syscollector configuration
-    WriteSyscollector "agent"
-
     # CIS-CAT configuration
     WriteCISCAT "agent"
 
@@ -418,9 +415,6 @@ WriteManager()
 
     # Write OpenSCAP
     WriteOpenSCAP "manager"
-
-    # Syscollector
-    WriteSyscollector "manager"
 
     # CIS-CAT configuration
     WriteCISCAT "manager"
@@ -831,7 +825,7 @@ InstallServer(){
 
     ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared 
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
 
     TransferShared
 
