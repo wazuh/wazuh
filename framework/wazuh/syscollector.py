@@ -42,14 +42,16 @@ def get_os_agent(agent_id, select=None, nested=True):
         # there's no data to return
         return {}
 
-
-def get_hardware_agent(agent_id, select=None):
+def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}):
     """
     Get info about an agent's OS
     """
     valid_select_fields = ['board_serial', 'cpu_name', 'cpu_cores', 'cpu_mhz',
                            'ram_total', 'ram_free', 'scan_id', 'scan_time']
 
+    allowed_sort_fields = {'board_serial', 'cpu_name', 'cpu_cores',
+                           'cpu_mhz', 'ram_total','scan_id', 'scan_time'}
+                           
     if select:
         if not set(select['fields']).issubset(valid_select_fields):
             uncorrect_fields = map(lambda x: str(x), set(select['fields']) - set(valid_select_fields))
@@ -59,11 +61,20 @@ def get_hardware_agent(agent_id, select=None):
     else:
         select_fields = valid_select_fields
 
-    try:
-        return plain_dict_to_nested_dict(Agent(agent_id)._load_info_from_agent_db(table='sys_hwinfo', select=select_fields)[0])
-    except IndexError as e:
-        return {}
+    if search:
+        search['fields'] = select_fields
+        
+    # Sorting
+    if sort and sort['fields']:
+        # Check if every element in sort['fields'] is in allowed_sort_fields.
+        if not set(sort['fields']).issubset(allowed_sort_fields):
+            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
 
+    response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_hwinfo',
+                                offset=offset, limit=limit, select=select_fields,
+                                count=True, sort=sort, search=search, filters=filters)
+
+    return {'totalItems':total, 'items':response}
 
 def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}):
     """
@@ -122,17 +133,30 @@ def get_os(filters={}, offset=0, limit=common.database_limit):
     for agent in agents:
         agent_os = get_os_agent(agent_id=agent['id'], select={'fields':['os_name','os_version']}, nested=False)
         passed_filerts = [True for f in filters.keys() if agent_os[f] == filters[f]]
+
         if not filters or len(passed_filerts) > 0:
             nested_agent_os = plain_dict_to_nested_dict(agent_os)
-            current_os = map(itemgetter('os'),result)
-            if nested_agent_os['os'] in current_os:
-                result[current_os.index(nested_agent_os['os'])]['agent_id'].append(agent['id'])
-            else:
-                nested_agent_os['agent_id'] = [agent['id']]
-                result.append(nested_agent_os)
+            if nested_agent_os and 'os' in nested_agent_os:
+                current_os = map(itemgetter('os'),result)
+                if 'os' in nested_agent_os and nested_agent_os['os'] in current_os:
+                    result[current_os.index(nested_agent_os['os'])]['agent_id'].append(agent['id'])
+                else:
+                    nested_agent_os['agent_id'] = [agent['id']]
+                    result.append(nested_agent_os)
 
     return {'items': cut_array(result, offset, limit), 'totalItems': len(result)}
 
 
 def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
-    return {} # TO DO
+    agents, result = Agent.get_agents_overview(select={'fields':['id']})['items'], []
+
+    for agent in agents:
+        agent_hardware = get_hardware_agent(agent_id = agent['id'], select = select,
+                                filters = filters, limit = limit, offset = offset)
+
+        items = agent_hardware['items']
+        for item in items:
+            item['agent_id'] = agent['id']
+            result.append(item)
+
+    return {'items': result, 'totalItems': len(result)}
