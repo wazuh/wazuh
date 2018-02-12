@@ -634,8 +634,7 @@ void wdb_close_old() {
 
     w_mutex_lock(&pool_mutex);
 
-    while (db_pool_size > config.open_db_limit) {
-        node = db_pool_begin;
+    for (node = db_pool_begin; node && db_pool_size > config.open_db_limit; node = node->next) {
         mdebug2("Closing database for agent %s", node->agent_id);
 
         if (node->refcount == 0 && !node->transaction) {
