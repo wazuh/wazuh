@@ -10,7 +10,7 @@ from wazuh import Wazuh
 from wazuh.utils import plain_dict_to_nested_dict, cut_array, sort_array, search_array
 from operator import itemgetter
 
-def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, aggregation=False):
+def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}):
     """
     Get info about an agent's OS
     """
@@ -48,21 +48,14 @@ def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, sea
         # Check if every element in sort['fields'] is in allowed_sort_fields.
         if not set(sort['fields']).issubset(allowed_sort_fields):
             raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
-    
-    if aggregation:            
-        response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_osinfo',
-                                offset=offset, limit=limit, select=select_fields,
-                                count=True, sort=sort, search=search, filters=filters)
-        return {'totalItems':total, 'items':response}
-    else:                            
-        try:
-            info = agent_obj._load_info_from_agent_db(table='sys_osinfo', select=select_fields)[0]
-            return info
-        except IndexError as e:
-            # there's no data to return
-            return {}
+               
+    response, total = Agent(agent_id)._load_info_from_agent_db(table='sys_osinfo',
+                            offset=offset, limit=limit, select=select_fields,
+                            count=True, sort=sort, search=search, filters=filters)
+    return {'totalItems':total, 'items':response}
 
-def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, aggregation=False):
+
+def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}):
     """
     Get info about an agent's OS
     """
@@ -94,19 +87,12 @@ def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={
         # Check if every element in sort['fields'] is in allowed_sort_fields.
         if not set(sort['fields']).issubset(allowed_sort_fields):
             raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
-    
-    if aggregation:            
-        response, total = agent_obj._load_info_from_agent_db(table='sys_hwinfo',
-                                offset=offset, limit=limit, select=select_fields,
-                                count=True, sort=sort, search=search, filters=filters)
-        return {'totalItems':total, 'items':response}
-    else:                            
-        try:
-            info = agent_obj._load_info_from_agent_db(table='sys_hwinfo', select=select_fields)[0]
-            return info
-        except IndexError as e:
-            # there's no data to return
-            return {}
+              
+    response, total = agent_obj._load_info_from_agent_db(table='sys_hwinfo',
+                            offset=offset, limit=limit, select=select_fields,
+                            count=True, sort=sort, search=search, filters=filters)
+    return {'totalItems':total, 'items':response}
+
 
 def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}):
     """
@@ -144,62 +130,38 @@ def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={
     return {'totalItems':total, 'items':response}
 
 
-def get_packages(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}):
-
+def _get_agent_items(func, offset, limit, select, filters, search, sort):
     agents, result = Agent.get_agents_overview(select={'fields':['id']})['items'], []
+
     limit = int(limit)
     offset = int(offset)
+    found_limit = False
 
     for agent in agents:
-        if limit <= len(result):
-            break;
+        items = func(agent_id = agent['id'], select = select, filters = filters, limit = limit, offset = offset, search = search)['items']
 
-        agent_packages = get_packages_agent(agent_id = agent['id'], select = select,
-                                filters = filters, limit = limit, offset = offset, search = search)
-
-        items = agent_packages['items']
         for item in items:
             item['agent_id'] = agent['id']
             result.append(item)
             if limit <= len(result):
+                found_limit = True
                 break;
+        if found_limit:
+            break
 
     return {'items': result, 'totalItems': len(result)}
+
+
+def get_packages(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}):
+    return _get_agent_items(func=get_packages_agent, offset=offset, limit=limit, select=select, 
+                            filters=filters, search=search, sort=sort)
 
 
 def get_os(filters={}, offset=0, limit=common.database_limit, select={}, search={}, sort={}):
-    agents, result = Agent.get_agents_overview(select={'fields':['id']})['items'], []
-    offset = int(offset)
-    limit = int(limit)
-
-    for agent in agents:
-        agent_os = get_os_agent(agent_id = agent['id'], select = select,
-                                filters = filters, limit = limit, offset = offset, search = search, aggregation = True)
-                                                       
-        items = agent_os['items']
-        for item in items:
-            item['agent_id'] = agent['id']
-            result.append(item)
-            if limit <= len(result) + 1:
-                break;
-
-    return {'items': result, 'totalItems': len(result)}
+    return _get_agent_items(func=get_os_agent, offset=offset, limit=limit, select=select, 
+                            filters=filters, search=search, sort=sort)
 
 
 def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
-    agents, result = Agent.get_agents_overview(select={'fields':['id']})['items'], []
-    offset = int(offset)
-    limit = int(limit)
-
-    for agent in agents:
-        agent_hardware = get_hardware_agent(agent_id = agent['id'], select = select,
-                                filters = filters, limit = limit, offset = offset, search = search, aggregation = True)
-
-        items = agent_hardware['items']
-        for item in items:
-            item['agent_id'] = agent['id']
-            result.append(item)
-            if limit <= len(result) + 1:
-                break;            
-
-    return {'items': result, 'totalItems': len(result)}
+    return _get_agent_items(func=get_hardware_agent, offset=offset, limit=limit, select=select, 
+                            filters=filters, search=search, sort=sort)
