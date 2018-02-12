@@ -16,6 +16,8 @@ def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, sea
     """
     # The osinfo fields in database are different in Windows and Linux
     agent_obj = Agent(agent_id)
+    offset = int(offset)
+    limit = int(limit)
 
     os_name = agent_obj.get_agent_attr('os_name')
     windows_fields = {'hostname', 'os_version', 'os_name', 'architecture',
@@ -64,6 +66,9 @@ def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's OS
     """
+    offset = int(offset)
+    limit = int(limit)
+
     agent_obj = Agent(agent_id)
     
     valid_select_fields = ['board_serial', 'cpu_name', 'cpu_cores', 'cpu_mhz',
@@ -107,6 +112,8 @@ def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's programs
     """
+    offset = int(offset)
+    limit = int(limit)
     valid_select_fields = {'scan_id', 'scan_time', 'format', 'name',
                            'vendor', 'version', 'architecture', 'description'}
     allowed_sort_fields = {'scan_id', 'scan_time', 'format', 'name',
@@ -140,8 +147,13 @@ def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={
 def get_packages(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}):
 
     agents, result = Agent.get_agents_overview(select={'fields':['id']})['items'], []
+    limit = int(limit)
+    offset = int(offset)
 
     for agent in agents:
+        if limit <= len(result):
+            break;
+
         agent_packages = get_packages_agent(agent_id = agent['id'], select = select,
                                 filters = filters, limit = limit, offset = offset, search = search)
 
@@ -149,13 +161,16 @@ def get_packages(offset=0, limit=common.database_limit, select=None, filters={},
         for item in items:
             item['agent_id'] = agent['id']
             result.append(item)
-            if limit <= len(result) + 1:
+            if limit <= len(result):
                 break;
+
     return {'items': result, 'totalItems': len(result)}
 
 
 def get_os(filters={}, offset=0, limit=common.database_limit, select={}, search={}, sort={}):
     agents, result = Agent.get_agents_overview(select={'fields':['id']})['items'], []
+    offset = int(offset)
+    limit = int(limit)
 
     for agent in agents:
         agent_os = get_os_agent(agent_id = agent['id'], select = select,
@@ -173,6 +188,8 @@ def get_os(filters={}, offset=0, limit=common.database_limit, select={}, search=
 
 def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
     agents, result = Agent.get_agents_overview(select={'fields':['id']})['items'], []
+    offset = int(offset)
+    limit = int(limit)
 
     for agent in agents:
         agent_hardware = get_hardware_agent(agent_id = agent['id'], select = select,
