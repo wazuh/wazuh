@@ -66,6 +66,7 @@ void wm_check() {
     wmodule *i = wmodules;
     wmodule *j;
     wmodule *next;
+    wmodule *prev;
 
     // Discard empty configurations
 
@@ -94,17 +95,23 @@ void wm_check() {
     // Get the last module of the same type
 
     for (i = wmodules->next; i; i = i->next) {
-        for (j = wmodules; j != i; j = next) {
+        for (j = prev = wmodules; j != i; prev = j, j = next) {
             next = j->next;
 
             if (i->context->name == j->context->name) {
+                mdebug1("Deleting repeated module '%s'.", j->context->name);
+
                 if (j->context->destroy)
                     j->context->destroy(j->data);
 
                 free(j);
 
-                if (j == wmodules)
+                if (j == wmodules) {
                     wmodules = next;
+                } else {
+                    prev->next = next;
+                }
+
             }
         }
     }
