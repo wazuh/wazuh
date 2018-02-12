@@ -31,7 +31,7 @@
 #define WM_IO_WRITE     0
 #define WM_IO_READ      1
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
-#define WM_POOL_SIZE    1                           // Child process pool size.
+#define WM_POOL_SIZE    8                           // Child process pool size.
 #define WM_HEADER_SIZE  OS_SIZE_1024
 
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
