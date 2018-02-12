@@ -646,6 +646,62 @@ void sys_programs_windows(const char* LOCATION){
     }
 
 
+    char DisplayName[256];
+    char DisplayVersion[256];
+    char Publisher[256];
+    char trash[256];
+
+    memset(read_buff, 0, OS_MAXSTR);
+    command = "reg query \"HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall \" /s | findstr /r \".*DisplayName .*DisplayVersion .*Publisher\" ";
+    output = popen(command, "r");
+
+    if (!output){
+        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
+    }else{
+        while(1){
+
+            if(fgets(read_buff,OS_MAXSTR,output) == NULL){
+                break;
+            }           
+            sscanf(read_buff,"%s %s %[^\n]",trash,trash,DisplayName);  
+
+            if(fgets(read_buff,OS_MAXSTR,output) == NULL){
+                break;
+            }
+            sscanf(read_buff,"%s %s %[^\n]",trash,trash,DisplayVersion);  
+
+            if(fgets(read_buff,OS_MAXSTR,output) == NULL){
+                break;
+            }
+            sscanf(read_buff,"%s %s %[^\n]",trash,trash,Publisher);
+
+            cJSON *object = cJSON_CreateObject();
+            cJSON *program = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "program");
+            cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
+            cJSON_AddItemToObject(object, "program", program);
+            cJSON_AddStringToObject(program, "format", "win");
+
+            char *string;
+            cJSON_AddStringToObject(program, "name", DisplayName);
+            cJSON_AddStringToObject(program, "vendor", Publisher);
+            cJSON_AddStringToObject(program, "version", DisplayVersion);
+            
+
+            string = cJSON_PrintUnformatted(object);
+            mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
+            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(object);
+            free(string);
+        }
+
+        if (status = pclose(output), status) {
+            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting software inventory.", status);
+        }
+    }
+
+
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", ID);
