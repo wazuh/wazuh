@@ -1739,6 +1739,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
     }
 
     wm_vulnerability_detector_init_os_table(cve_db_os_version);
+    wm_vulnerability_detector_init_os_distros();
 
     for (i = 0; vulnerability_detector->queue_fd = StartMQ(DEFAULTQPATH, WRITE), vulnerability_detector->queue_fd < 0 && i < WM_MAX_ATTEMPTS; i++) {
         sleep(WM_MAX_WAIT);
