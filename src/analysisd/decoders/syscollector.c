@@ -18,6 +18,7 @@
 #include "plugin_decoders.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
+#include "string_op.h"
 #include <time.h>
 
 #define SYSCOLLECTOR_DIR    "/queue/syscollector"
@@ -420,6 +421,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
 
         if (cpu_name) {
             wm_strcat(&msg, cpu_name->valuestring, '|');
+
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
