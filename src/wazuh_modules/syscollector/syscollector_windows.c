@@ -610,7 +610,19 @@ void sys_programs_windows(const char* LOCATION){
             cJSON_AddStringToObject(program, "vendor", parts[2]);
 
             char ** version = NULL;
-            version = OS_StrBreak('\r', parts[3], 2);
+
+            if (strrchr(parts[3], ',') != 0) {
+                char ** aux_version = NULL;
+                aux_version = OS_StrBreak(',', parts[3], 2);
+                version = OS_StrBreak('\r', aux_version[1], 2);
+                for (i=0; aux_version[i]; i++){
+                    free(aux_version[i]);
+                }
+                free(aux_version);
+            } else {
+                version = OS_StrBreak('\r', parts[3], 2);
+            }
+
             cJSON_AddStringToObject(program, "version", version[0]);
             for (i=0; version[i]; i++){
                 free(version[i]);
