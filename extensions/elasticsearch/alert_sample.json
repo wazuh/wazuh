@@ -57,7 +57,10 @@
       }
     },
     "vulnerability": {
-      "affected_package": "sample",
+      "package": {
+          "name": "sample",
+          "version": "sample"
+          },
       "cve":"sample",
       "published":"2015-03-18T15:55:55.000Z",
       "rationale":"sample",
@@ -66,7 +69,6 @@
       "state":"sample",
       "title":"sample",
       "updated":"2015-03-18T15:55:55.000Z",
-      "version":"sample"
     },
     "aws": {
       "eventName": "sample",

@@ -383,6 +383,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             state[size] = '\0';
 
             if (alert_cve = cJSON_CreateObject(), alert_cve) {
+                cJSON * jPackage = cJSON_CreateObject();
                 cJSON_AddStringToObject(alert_cve, "cve", cve);
                 cJSON_AddStringToObject(alert_cve, "title", title);
                 cJSON_AddStringToObject(alert_cve, "severity", severity);
@@ -391,9 +392,10 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 cJSON_AddStringToObject(alert_cve, "reference", reference);
                 cJSON_AddStringToObject(alert_cve, "rationale", rationale);
                 cJSON_AddStringToObject(alert_cve, "state", state);
-                cJSON_AddStringToObject(alert_cve, "affected_package", package);
-                cJSON_AddStringToObject(alert_cve, "version", version);
+                cJSON_AddItemToObject(alert_cve, "package", jPackage);
                 cJSON_AddItemToObject(alert, "vulnerability", alert_cve);
+                cJSON_AddStringToObject(jPackage, "name", package);
+                cJSON_AddStringToObject(jPackage, "version", version);
             } else {
                 cJSON_Delete(alert);
                 return OS_INVALID;
