@@ -390,7 +390,12 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 cJSON_AddStringToObject(alert_cve, "published", published);
                 cJSON_AddStringToObject(alert_cve, "updated", updated);
                 cJSON_AddStringToObject(alert_cve, "reference", reference);
-                cJSON_AddStringToObject(alert_cve, "rationale", rationale);
+
+                // Skip rationale if reference is provided
+                if (!(reference && *reference)) {
+                    cJSON_AddStringToObject(alert_cve, "rationale", rationale);
+                }
+
                 cJSON_AddStringToObject(alert_cve, "state", state);
                 cJSON_AddItemToObject(alert_cve, "package", jPackage);
                 cJSON_AddItemToObject(alert, "vulnerability", alert_cve);
