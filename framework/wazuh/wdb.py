@@ -62,7 +62,7 @@ class WazuhDBConnection():
         if data[0] == "err":
             raise WazuhException(2003, data[1])
         else:
-            return json.loads(data[1])
+            return json.loads(unicode(data[1], errors='replace'))
 
 
     def __query_lower(self, query):

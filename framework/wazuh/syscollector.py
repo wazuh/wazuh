@@ -149,7 +149,8 @@ def get_packages(offset=0, limit=common.database_limit, select=None, filters={},
         for item in items:
             item['agent_id'] = agent['id']
             result.append(item)
-
+            if limit <= len(result) + 1:
+                break;
     return {'items': result, 'totalItems': len(result)}
 
 
@@ -164,6 +165,8 @@ def get_os(filters={}, offset=0, limit=common.database_limit, select={}, search=
         for item in items:
             item['agent_id'] = agent['id']
             result.append(item)
+            if limit <= len(result) + 1:
+                break;
 
     return {'items': result, 'totalItems': len(result)}
 
@@ -179,5 +182,7 @@ def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, 
         for item in items:
             item['agent_id'] = agent['id']
             result.append(item)
+            if limit <= len(result) + 1:
+                break;            
 
     return {'items': result, 'totalItems': len(result)}
