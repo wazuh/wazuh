@@ -802,9 +802,7 @@ char * wm_vulnerability_detector_preparser(cve_db dist) {
                     goto free_buffer;
                 break;
                 case V_DEFINITIONS:
-                    if ((found = strstr(buffer, "Red Hat Enterprise Linux")) && strstr(++found, "is installed")) {
-                        goto free_buffer;
-                    } else if (strstr(buffer, "is signed with")) {
+                    if (strstr(buffer, "is signed with")) {
                         goto free_buffer;
                     } else if (strstr(buffer, "</definitions>")) {
                         state = V_STATES;
@@ -907,6 +905,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     static const char *XML_UPDATED = "updated";
     static const char *XML_DESCRIPTION = "description";
     static const char *XML_DATE = "date";
+    static const char *XML_RHEL_CHECK = "Red Hat Enterprise Linux ";
 
     for (i = 0; node[i]; i++) {
         XML_NODE chld_node = NULL;
@@ -1040,13 +1039,24 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             } else {
                 for (j = 0; node[i]->attributes[j]; j++) {
                     if (!strcmp(node[i]->attributes[j], XML_OPERATOR)) {
-                        if (!strcmp(node[i]->values[j], XML_OR) || !strcmp(node[i]->values[j], XML_AND)) {
+                        int result;
+                        if (!strcmp(node[i]->values[j], XML_OR)) {
+                            if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
+                                continue;
+                            } else if (result = wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist), result == OS_INVALID) {
+                                return OS_INVALID;
+                            } else if (result == VU_INV_OS) {
+                                return VU_INV_OS;
+                            }
+                        } else if (!strcmp(node[i]->values[j], XML_AND)) {
                             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                                 continue;
                             }
-                            if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist)) {
+                            if (result = wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist), result == OS_INVALID) {
                               return OS_INVALID;
-                            }
+                          } else if (result == VU_INV_OS) {
+                              break;
+                          }
                         } else {
                             mterror(WM_VULNDETECTOR_LOGTAG, VU_INVALID_OPERATOR, node[i]->values[j]);
                             return OS_INVALID;
@@ -1081,6 +1091,20 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->state_id);
                     }
                 } else if (!strcmp(node[i]->attributes[j], XML_COMMENT)) {
+                    if (dist == REDHAT && (strstr(node[i]->values[j], "is installed")) &&
+                        (found = strstr(node[i]->values[j], XML_RHEL_CHECK))) {
+                        int ver;
+                        found += strlen(XML_RHEL_CHECK);
+                        ver = strtol(found, NULL, 10);
+                        if ((!strcmp(parsed_oval->OS, VU_RHEL5) && ver != 5) ||
+                            (!strcmp(parsed_oval->OS, VU_RHEL6) && ver != 6) ||
+                            (!strcmp(parsed_oval->OS, VU_RHEL7) && ver != 7)) {
+                            return VU_INV_OS;
+                        } else {
+                            break;
+                        }
+                    }
+
                     if (parsed_oval->vulnerabilities->package_name) {
                         vulnerability *vuln;
                         os_calloc(1, sizeof(vulnerability), vuln);
@@ -1160,8 +1184,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                    !strcmp(node[i]->element, XML_GENERATOR)) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
-            }
-            if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist)) {
+            } else if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist)) {
               return OS_INVALID;
             }
         }
