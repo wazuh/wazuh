@@ -55,6 +55,11 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     char *cis_path = NULL;
     char *jre_path = NULL;
 
+    // Check configuration and show debug information
+
+    wm_ciscat_setup(ciscat);
+    mtinfo(WM_CISCAT_LOGTAG, "Module started.");
+
     os_calloc(OS_MAXSTR, sizeof(char), cis_path);
 
     // Check if Java path is defined and include it in "PATH" variable
@@ -98,11 +103,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR);
     #endif
     }
-
-    // Check configuration and show debug information
-
-    wm_ciscat_setup(ciscat);
-    mtinfo(WM_CISCAT_LOGTAG, "Module started.");
 
     // First sleeping
 
@@ -287,7 +287,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     switch (wm_exec(command, &output, &status, eval->timeout)) {
         case 0:
             if (status > 0) {
-                mtwarn(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+                mtwarn(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d): %s.", eval->path, status, strerror(errno));
                 mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
                 eval->flags.error = 1;
             }
