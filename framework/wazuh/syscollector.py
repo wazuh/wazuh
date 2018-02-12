@@ -66,7 +66,7 @@ def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, sea
                            'version', 'architecture','release', 'os_version'}
                            
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, 
-                         search=search, sort=sort, filters=filters, allowed_sort_fields=None,
+                         search=search, sort=sort, filters=filters, allowed_sort_fields=allowed_sort_fields,
                          valid_select_fields=valid_select_fields, table='sys_osinfo', nested=nested)
 
 
@@ -77,11 +77,11 @@ def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={
     offset = int(offset)
     limit = int(limit)
     
-    valid_select_fields = ['board_serial', 'cpu_name', 'cpu_cores', 'cpu_mhz',
-                           'ram_total', 'ram_free', 'scan_id', 'scan_time']
+    valid_select_fields = {'board_serial', 'cpu_name', 'cpu_cores', 'cpu_mhz',
+                           'ram_total', 'ram_free', 'scan_id', 'scan_time'}
               
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, 
-                         search=search, sort=sort, filters=filters, allowed_sort_fields=None,
+                         search=search, sort=sort, filters=filters, allowed_sort_fields=valid_select_fields,
                          valid_select_fields=valid_select_fields, table='sys_hwinfo', nested=nested)
 
 
@@ -107,7 +107,7 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
     found_limit = False
 
     for agent in agents:
-        items = func(agent_id = agent['id'], select = select, filters = filters, limit = limit, offset = offset, search = search, nested=False)
+        items = func(agent_id = agent['id'], select = select, filters = filters, limit = limit, offset = offset, search = search, sort=sort, nested=False)
         if items == {}:
             continue
 
