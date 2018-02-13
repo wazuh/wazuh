@@ -549,6 +549,7 @@ void sys_programs_windows(const char* LOCATION){
 
     char *command;
     FILE *output;
+    FILE *file;
     char read_buff[OS_MAXSTR];
     int i;
     int status;
@@ -647,9 +648,12 @@ void sys_programs_windows(const char* LOCATION){
 
 
     char DisplayName[256];
-    char DisplayVersion[256];
-    char Publisher[256];
-    char trash[256];
+    char Field[50];
+    char Fields[2][50];
+    char FieldsValue[2][256];   
+    char trash[256]; 
+    strcpy(Fields[0],"DisplayVersion");
+    strcpy(Fields[1],"Publisher");
 
     memset(read_buff, 0, OS_MAXSTR);
     command = "reg query \"HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall \" /s | findstr /r \".*DisplayName .*DisplayVersion .*Publisher\" ";
@@ -658,46 +662,105 @@ void sys_programs_windows(const char* LOCATION){
     if (!output){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
     }else{
-        while(1){
+        file = fopen("sysc_output_reg.txt","w");
 
-            if(fgets(read_buff,OS_MAXSTR,output) == NULL){
-                break;
-            }           
-            sscanf(read_buff,"%s %s %[^\n]",trash,trash,DisplayName);  
-
-            if(fgets(read_buff,OS_MAXSTR,output) == NULL){
-                break;
-            }
-            sscanf(read_buff,"%s %s %[^\n]",trash,trash,DisplayVersion);  
-
-            if(fgets(read_buff,OS_MAXSTR,output) == NULL){
-                break;
-            }
-            sscanf(read_buff,"%s %s %[^\n]",trash,trash,Publisher);
-
-            cJSON *object = cJSON_CreateObject();
-            cJSON *program = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "program");
-            cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "program", program);
-            cJSON_AddStringToObject(program, "format", "win");
-
-            char *string;
-            cJSON_AddStringToObject(program, "name", DisplayName);
-            cJSON_AddStringToObject(program, "vendor", Publisher);
-            cJSON_AddStringToObject(program, "version", DisplayVersion);
-            
-
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
-            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
-            free(string);
+        if(!file)
+        {
+            mtwarn(WM_SYS_LOGTAG, "Unable to open file '%s'", "sysc_output_reg.txt");
+            return;
         }
+        else{
 
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting software inventory.", status);
+            while(fgets(read_buff,OS_MAXSTR,output) != NULL)
+            {
+                fputs(read_buff,file);
+            }
+            fclose(file);
+            fclose(output);
+
+            long int pos = 0;    
+            output = fopen("sysc_output_reg.txt","r");
+
+            if(!output)
+            {
+                mtwarn(WM_SYS_LOGTAG, "Unable to open file '%s'", "sysc_output_reg.txt");
+            }
+            else{
+                while(1){
+
+                    if(fgets(read_buff,OS_MAXSTR,output) == NULL){
+                        break;
+                    }
+                
+                    pos = ftell(output);            
+                    sscanf(read_buff,"%s",Field);                      
+                    
+                    if(strcmp(Field,"DisplayName") == 0)
+                    {
+                        sscanf(read_buff,"%s %s %[^\n]",trash,trash,DisplayName);                
+                        
+                        int i = 0;
+                        for(i = 0; i < 2;i++)
+                        {
+                            if(fgets(read_buff,OS_MAXSTR,output) != NULL)
+                            {
+                                sscanf(read_buff,"%s",Field);                        
+                                if(strcmp(Field,Fields[i]) == 0)
+                                {
+                                    sscanf(read_buff,"%s %s %[^\n]",trash,trash,FieldsValue[i]);
+                                }
+                                else
+                                {
+                                    if(fgets(read_buff,OS_MAXSTR,output) != NULL)
+                                    {
+                                        sscanf(read_buff,"%s",Field);                                
+                                        if(strcmp(Field,Fields[i]) == 0)
+                                        {
+                                            sscanf(read_buff,"%s %s %[^\n]",trash,trash,FieldsValue[i]);
+                                        }
+                                        else
+                                        {
+                                            strcpy(FieldsValue[i],"Unknown");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        strcpy(FieldsValue[i],"Unknown");
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                strcpy(FieldsValue[i],"Unknown");
+                            }
+                            fseek(output,pos,SEEK_SET);
+                        }                
+
+                        cJSON *object = cJSON_CreateObject();
+                        cJSON *program = cJSON_CreateObject();
+                        cJSON_AddStringToObject(object, "type", "program");
+                        cJSON_AddNumberToObject(object, "ID", ID);
+                        cJSON_AddStringToObject(object, "timestamp", timestamp);
+                        cJSON_AddItemToObject(object, "program", program);
+                        cJSON_AddStringToObject(program, "format", "win");
+
+                        char *string;
+                        cJSON_AddStringToObject(program, "name", DisplayName);
+                        cJSON_AddStringToObject(program, "vendor", FieldsValue[1]);
+                        cJSON_AddStringToObject(program, "version", FieldsValue[0]);
+                        
+
+                        string = cJSON_PrintUnformatted(object);
+                        mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
+                        SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+                        cJSON_Delete(object);
+                        free(string);
+                    }
+                    fseek(output,pos,SEEK_SET);
+                }
+                fclose(output);
+
+            }
         }
     }
 
