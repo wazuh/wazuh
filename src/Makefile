@@ -689,6 +689,10 @@ wazuh-db: ${wdb_o} ${ossec_libs}
 
 wmodules_c := $(wildcard wazuh_modules/wm*.c)
 
+ifeq (${TARGET},agent)
+	wmodules_c := $(filter-out wazuh_modules/wm_vuln_detector.c,$(wmodules_c))
+endif
+
 ifndef DISABLE_SYSC
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/syscollector/*.c)
 endif
