@@ -250,3 +250,22 @@ void wm_free(wmodule * config) {
         free(cur_module);
     }
 }
+
+// Send message to a queue waiting for a specific delay
+int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
+
+#ifdef WIN32
+    int msec = usec / 1000;
+    Sleep(msec);
+#else
+    struct timeval timeout = {0, usec};
+    select(0, NULL, NULL, NULL, &timeout);
+#endif
+
+    if (SendMSG(queue, message, locmsg, loc) < 0) {
+        merror("At wm_sendmsg(): Unable to send message to queue: (%s)", strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}

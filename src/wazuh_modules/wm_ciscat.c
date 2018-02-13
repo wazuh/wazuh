@@ -1164,6 +1164,9 @@ void wm_ciscat_send_scan(wm_scan_data *info){
     cJSON *object = NULL;
     cJSON *data = NULL;
 
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
     // Set pointer to the head of the linked list
 
     rule = head;
@@ -1210,9 +1213,9 @@ void wm_ciscat_send_scan(wm_scan_data *info){
     msg = cJSON_PrintUnformatted(object);
     mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
 #ifdef WIN32
-    SendMSG(0, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+    wm_sendmsg(usec, 0, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
 #else
-    SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+    wm_sendmsg(usec, queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
 #endif
     cJSON_Delete(object);
 
@@ -1246,9 +1249,9 @@ void wm_ciscat_send_scan(wm_scan_data *info){
         msg = cJSON_PrintUnformatted(object);
         mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
     #ifdef WIN32
-        SendMSG(0, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+        wm_sendmsg(usec, 0, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
     #else
-        SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+        wm_sendmsg(usec, queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
     #endif
         cJSON_Delete(object);
 

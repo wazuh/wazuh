@@ -325,6 +325,9 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     char *rationale;
     int i;
 
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
     if (alert = cJSON_CreateObject(), !alert) {
         return OS_INVALID;
     }
@@ -411,7 +414,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             snprintf(alert_msg, OS_MAXSTR, VU_ALERT_JSON, str_json);
             free(str_json);
 
-            if (SendMSG(*vu_queue, alert_msg, header, SECURE_MQ) < 0) {
+            if (wm_sendmsg(usec, *vu_queue, alert_msg, header, SECURE_MQ) < 0) {
                 mterror(WM_VULNDETECTOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                 if ((*vu_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
                     mterror_exit(WM_VULNDETECTOR_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
