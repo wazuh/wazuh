@@ -20,6 +20,7 @@ os_info *get_win_version()
     char *command;
     size_t buf_tam = 100;
     char read_buff[buf_tam];
+    int status;
 
     os_calloc(1,sizeof(os_info),info);
 
@@ -49,24 +50,32 @@ os_info *get_win_version()
         cmd_output = popen(command, "r");
         if (!cmd_output) {
             merror("Unable to execute command: '%s'.", command);
-        }
-        if (strncmp(fgets(read_buff, buf_tam, cmd_output),"Caption",7) == 0) {
-            if (!fgets(read_buff, buf_tam, cmd_output)){
-                merror("Can't get Version.");
+        } else {
+            if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff, "Caption", 7) == 0) {
+                if (!fgets(read_buff, buf_tam, cmd_output)){
+                    merror("Can't get OS name.");
+                    info->os_name = strdup("unknown");
+                }
+                else if (end = strpbrk(read_buff,"\r\n"), end) {
+                    *end = '\0';
+                    int i = strlen(read_buff) - 1;
+                    while(read_buff[i] == 32){
+                        read_buff[i] = '\0';
+                        i--;
+                    }
+                    info->os_name = strdup(read_buff);
+                }else
+                    info->os_name = strdup("unknown");
+            } else {
+                mwarn("Can't get OS name (bad header).");
                 info->os_name = strdup("unknown");
             }
-            else if (end = strpbrk(read_buff,"\r\n"), end) {
-                *end = '\0';
-                int i = strlen(read_buff) - 1;
-                while(read_buff[i] == 32){
-                    read_buff[i] = '\0';
-                    i--;
-                }
-                info->os_name = strdup(read_buff);
-            }else
-                info->os_name = strdup("unknown");
+
+            if (status = pclose(cmd_output), status) {
+                mwarn("Command 'wmic' returned %d getting OS name.", status);
+            }
         }
-        pclose(cmd_output);
+
         // Read version number
         memset(read_buff, 0, buf_tam);
         command = "wmic os get Version";
@@ -74,23 +83,31 @@ os_info *get_win_version()
         if (!cmd_output) {
             merror("Unable to execute command: '%s'.", command);
             info->os_version = strdup("unknown");
-        }
-        if (strncmp(fgets(read_buff, buf_tam, cmd_output),"Version",7) == 0) {
-            if (!fgets(read_buff, buf_tam, cmd_output)){
-                merror("Can't get Version.");
+        } else {
+            if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff, "Version", 7) == 0) {
+                if (!fgets(read_buff, buf_tam, cmd_output)){
+                    merror("Can't get version.");
+                    info->os_version = strdup("unknown");
+                }
+                else {
+                    info->os_version = strdup(strtok(read_buff," "));
+                    char ** parts = NULL;
+                    parts = OS_StrBreak('.', info->os_version, 3);
+                    info->os_major = strdup(parts[0]);
+                    info->os_minor = strdup(parts[1]);
+                    info->os_build = strdup(parts[2]);
+                    free(parts);
+                }
+            } else {
+                mwarn("Can't get OS version (bad header).");
                 info->os_version = strdup("unknown");
             }
-            else {
-                info->os_version = strdup(strtok(read_buff," "));
-                char ** parts = NULL;
-                parts = OS_StrBreak('.', info->os_version, 3);
-                info->os_major = strdup(parts[0]);
-                info->os_minor = strdup(parts[1]);
-                info->os_build = strdup(parts[2]);
-                free(parts);
+
+            if (status = pclose(cmd_output), status) {
+                mwarn("Command 'wmic' returned %d getting OS version.", status);
             }
         }
-        pclose(cmd_output);
+
         // Read version CSName
         memset(read_buff, 0, buf_tam);
         command = "wmic os get CSName";
@@ -98,17 +115,25 @@ os_info *get_win_version()
         if (!cmd_output) {
             merror("Unable to execute command: '%s'.", command);
             info->nodename = strdup("unknown");
-        }
-        if (strncmp(fgets(read_buff, buf_tam, cmd_output),"CSName",6) == 0) {
-            if (!fgets(read_buff, buf_tam, cmd_output)){
-                merror("Can't get CSName.");
+        } else {
+            if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff, "CSName", 6) == 0) {
+                if (!fgets(read_buff, buf_tam, cmd_output)){
+                    merror("Can't get CSName.");
+                    info->nodename = strdup("unknown");
+                }
+                else {
+                    info->nodename = strdup(strtok(read_buff," "));
+                }
+            } else {
+                mwarn("Unable to execute command: '%s' (bad header).", command);
                 info->nodename = strdup("unknown");
             }
-            else {
-                info->nodename = strdup(strtok(read_buff," "));
+
+            if (status = pclose(cmd_output), status) {
+                mwarn("Command 'wmic' returned %d getting host name.", status);
             }
         }
-        pclose(cmd_output);
+
         // Read OSArchitecture
         memset(read_buff, 0, buf_tam);
         command = "wmic os get OSArchitecture";
@@ -116,22 +141,29 @@ os_info *get_win_version()
         if (!cmd_output) {
             merror("Unable to execute command: '%s'.", command);
             info->machine = strdup("unknown");
-        }
-        if (strncmp(fgets(read_buff, buf_tam, cmd_output),"OSArchitecture",14) == 0) {
-            if (!fgets(read_buff, buf_tam, cmd_output)){
-                merror("Can't get OSArchitecture.");
-                info->machine = strdup("unknown");
-            }
-            else {
-                if (strcmp(strtok(read_buff," "), "64-bit") == 0) {
-                    info->machine = strdup("x86_64");
+        } else {
+            if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff, "OSArchitecture", 14) == 0) {
+                if (!fgets(read_buff, buf_tam, cmd_output)){
+                    merror("Can't get OSArchitecture.");
+                    info->machine = strdup("unknown");
                 }
                 else {
-                    info->machine = strdup("i686");
+                    if (strcmp(strtok(read_buff," "), "64-bit") == 0) {
+                        info->machine = strdup("x86_64");
+                    }
+                    else {
+                        info->machine = strdup("i686");
+                    }
                 }
+            } else {
+                mwarn("Can't get OSArchitecture (bad header).");
+                info->machine = strdup("unknown");
+            }
+
+            if (status = pclose(cmd_output), status) {
+                mwarn("Command 'wmic' returned %d getting OS architecture.", status);
             }
         }
-        pclose(cmd_output);
     }
     else {
         if (osvi.dwMajorVersion == 5) {

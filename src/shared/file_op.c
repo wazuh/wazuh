@@ -1183,6 +1183,7 @@ const char *getuname()
     size_t buf_tam = 100;
     char read_buff[buf_tam];
     int add_infoEx = 1;
+    int status;
 
     typedef void (WINAPI * PGNSI)(LPSYSTEM_INFO);
     typedef BOOL (WINAPI * PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
@@ -1367,30 +1368,36 @@ const char *getuname()
                 cmd_output = popen(command, "r");
                 if (!cmd_output) {
                     merror("Unable to execute command: '%s'.", command);
-                }
-                if (strncmp(fgets(read_buff, buf_tam, cmd_output),"Caption",7) == 0) {
-                    if (!fgets(read_buff, buf_tam, cmd_output)){
-                        merror("Can't get Version.");
+                } else {
+                    if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff,"Caption",7) == 0) {
+                        if (!fgets(read_buff, buf_tam, cmd_output)){
+                            merror("Can't get OS name.");
+                            strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
+                        }
+                        else if (end = strpbrk(read_buff,"\r\n"), end) {
+                            *end = '\0';
+                            int i = strlen(read_buff) - 1;
+                            while(read_buff[i] == 32){
+                                read_buff[i] = '\0';
+                                i--;
+                            }
+                            char * pch = strstr(read_buff, "Windows");
+                            strncat(ret, "Microsoft ", ret_size - 1);
+                            strncat(ret, pch, ret_size - 1);
+                        } else
+                            strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
+                    } else {
+                        mwarn("Can't get OS name (bad header)");
                         strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
                     }
-                    else if (end = strpbrk(read_buff,"\r\n"), end) {
-                        *end = '\0';
-                        int i = strlen(read_buff) - 1;
-                        while(read_buff[i] == 32){
-                            read_buff[i] = '\0';
-                            i--;
-                        }
-                        char * pch = strstr(read_buff, "Windows");
-                        strncat(ret, "Microsoft ", ret_size - 1);
-                        strncat(ret, pch, ret_size - 1);
-                    }else
-                        strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
+
+                    if (status = pclose(cmd_output), status) {
+                        mwarn("Command 'wmic' returned %d getting OS name.", status);
+                    }
+
+                    add_infoEx = 0;
+                    ret_size -= strlen(ret) + 1;
                 }
-
-                pclose(cmd_output);
-                add_infoEx = 0;
-                ret_size -= strlen(ret) + 1;
-
             } else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2) {
                 pGNSI = (PGNSI) GetProcAddress(
                             GetModuleHandle("kernel32.dll"),
@@ -1589,22 +1596,25 @@ const char *getuname()
                 if (!cmd_output) {
                     merror("Unable to execute command: '%s'.", command);
                     snprintf(__wp, 63, " [Ver: %s]", "desc");
-                }
-                if (strncmp(fgets(read_buff, buf_tam, cmd_output),"Version",7) == 0) {
-                    if (!fgets(read_buff, buf_tam, cmd_output)){
-                        merror("Can't get Version.");
+                } else {
+                    if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff,"Version",7) == 0) {
+                        if (!fgets(read_buff, buf_tam, cmd_output)){
+                            merror("Can't get OS version.");
+                            snprintf(__wp, 63, " [Ver: %s]", "desc");
+                        }
+                        else {
+                            snprintf(__wp, 63, " [Ver: %s]", strtok(read_buff," "));
+                        }
+                    } else {
+                        mwarn("Can't get OS version (bad header)");
                         snprintf(__wp, 63, " [Ver: %s]", "desc");
                     }
-                    else {
-                        snprintf(__wp, 63, " [Ver: %s]", strtok(read_buff," "));
-                    }
+
+                    pclose(cmd_output);
+
+                    strncat(ret, __wp, ret_size - 1);
+                    ret_size -= strlen(__wp) + 1;
                 }
-
-                pclose(cmd_output);
-
-                strncat(ret, __wp, ret_size - 1);
-                ret_size -= strlen(__wp) + 1;
-
             } else {
                 char __wp[64];
 
