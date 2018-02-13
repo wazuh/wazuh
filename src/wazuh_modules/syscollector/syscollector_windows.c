@@ -134,6 +134,9 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     int listening;
     int i = 0;
 
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
     // Set random ID for each scan
 
     unsigned int ID1 = os_random();
@@ -239,7 +242,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
                 char *string;
                 string = cJSON_PrintUnformatted(object);
                 mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-                SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+                wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
                 cJSON_Delete(object);
                 free(string);
 
@@ -351,7 +354,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
                 char *string;
                 string = cJSON_PrintUnformatted(object);
                 mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-                SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+                wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
                 cJSON_Delete(object);
                 free(string);
 
@@ -383,7 +386,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         char *string;
         string = cJSON_PrintUnformatted(object);
         mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-        SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+        wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
         cJSON_Delete(object);
         free(string);
         free(timestamp);
@@ -442,7 +445,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
             string = cJSON_PrintUnformatted(object);
             mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
 
             free(string);
@@ -510,7 +513,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
             string = cJSON_PrintUnformatted(object);
             mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
 
             free(laddress);
@@ -536,7 +539,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     char *string;
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
     free(timestamp);
@@ -552,6 +555,9 @@ void sys_programs_windows(const char* LOCATION){
     char read_buff[OS_MAXSTR];
     int i;
     int status;
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
 
     // Set timestamp
 
@@ -635,7 +641,7 @@ void sys_programs_windows(const char* LOCATION){
 
             string = cJSON_PrintUnformatted(object);
             mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
-            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
             free(string);
         }
@@ -653,7 +659,7 @@ void sys_programs_windows(const char* LOCATION){
     char *string;
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
-    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
     free(timestamp);
@@ -837,6 +843,9 @@ void sys_network_windows(const char* LOCATION){
             return;
         }else{
 
+            // Define time to sleep between messages sent
+            int usec = 1000000 / wm_max_eps;
+
             // Set random ID and timestamp
 
             unsigned int ID1 = os_random();
@@ -915,7 +924,7 @@ void sys_network_windows(const char* LOCATION){
                     string = _get_network_win(pCurrAddresses, ID, timestamp);
 
                     mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
-                    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+                    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
 
                     free(string);
 
@@ -954,7 +963,7 @@ void sys_network_windows(const char* LOCATION){
             char *string;
             string = cJSON_PrintUnformatted(object);
             mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
-            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
             free(string);
             free(timestamp);
@@ -1145,6 +1154,9 @@ void sys_proc_windows(const char* LOCATION) {
     char read_buff[OS_MAXSTR];
     int status;
 
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
     // Set timestamp
 
     char *timestamp;
@@ -1226,12 +1238,12 @@ void sys_proc_windows(const char* LOCATION) {
 
         string = cJSON_PrintUnformatted(id_msg);
         mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
-        SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+        wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
 
         cJSON_ArrayForEach(item, proc_array) {
             string = cJSON_PrintUnformatted(item);
             mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
-            SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
         }
 
         free(string);
@@ -1251,7 +1263,7 @@ void sys_proc_windows(const char* LOCATION) {
     char *string;
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
-    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
     free(timestamp);

@@ -97,6 +97,9 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     FILE *output;
     int status;
 
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
     snprintf(file, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, protocol);
 
     os_calloc(NI_MAXHOST, sizeof(char), laddress);
@@ -189,7 +192,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                 char *string;
                 string = cJSON_PrintUnformatted(object);
                 mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
-                SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                 cJSON_Delete(object);
                 free(string);
 
@@ -225,6 +228,9 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     char command[OS_MAXSTR];
     FILE *output;
     int status;
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
 
     snprintf(file, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, protocol);
     memset(read_buff, 0, OS_MAXSTR);
@@ -319,7 +325,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                 char *string;
                 string = cJSON_PrintUnformatted(object);
                 mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
-                SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                 cJSON_Delete(object);
                 free(string);
 
@@ -411,6 +417,9 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     struct tm localtm;
     int status;
 
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
     now = time(NULL);
     localtime_r(&now, &localtm);
 
@@ -498,7 +507,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
 
             string = cJSON_PrintUnformatted(object);
             mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", string);
-            SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
 
             free(string);
@@ -521,7 +530,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     char *end_msg;
     end_msg = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", end_msg);
-    SendMSG(queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
+    wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(end_msg);
     free(timestamp);
@@ -648,6 +657,9 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -880,7 +892,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         /* Send interface data in JSON format */
         string = cJSON_PrintUnformatted(object);
         mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
-        SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
         cJSON_Delete(object);
 
         free(string);
@@ -900,7 +912,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     char *string;
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
     free(timestamp);
@@ -1350,6 +1362,9 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     time_t now;
     struct tm localtm;
 
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
     now = time(NULL);
     localtime_r(&now, &localtm);
 
@@ -1434,13 +1449,13 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     string = cJSON_PrintUnformatted(id_msg);
     mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     free(string);
 
     cJSON_ArrayForEach(item, proc_array) {
         string = cJSON_PrintUnformatted(item);
         mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
-        SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
         free(string);
     }
 
@@ -1456,7 +1471,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     char *end_msg;
     end_msg = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", end_msg);
-    SendMSG(queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
+    wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(end_msg);
     free(timestamp);
