@@ -63,8 +63,7 @@ def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, sea
 
     valid_select_fields = windows_fields if 'Windows' in os_name else linux_fields
 
-    allowed_sort_fields = {'sysname', 'os_name', 'hostname',
-                           'version', 'architecture','release', 'os_version'}
+    allowed_sort_fields = {'os_name', 'hostname', 'architecture'}
                            
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, 
                          search=search, sort=sort, filters=filters, allowed_sort_fields=allowed_sort_fields,
