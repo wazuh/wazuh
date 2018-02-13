@@ -130,7 +130,10 @@ void wm_setup()
     if (chdir(DEFAULTDIR) < 0)
         merror_exit("chdir(): %s", strerror(errno));
 
-    wm_check();
+    if (wm_check() < 0) {
+        minfo("No configuration defined. Exiting...");
+        exit(EXIT_SUCCESS);
+    }
 
     // Create PID file
 

@@ -43,21 +43,26 @@ char* get_process_name(DWORD pid){
     if (!output) {
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
     } else {
-        if (strncmp(fgets(read_buff, OS_MAXSTR, output),"Name", 4) == 0) {
-            if (!fgets(read_buff, OS_MAXSTR, output)){
-                mtwarn(WM_SYS_LOGTAG, "Unable to get process name.");
-                string = strdup("unknown");
-            }
-            else if (end = strpbrk(read_buff,"\r\n"), end) {
-                *end = '\0';
-                int i = strlen(read_buff) - 1;
-                while(read_buff[i] == 32){
-                    read_buff[i] = '\0';
-                    i--;
+        if (fgets(read_buff, OS_MAXSTR, output)) {
+            if (strncmp(read_buff,"Name", 4) == 0) {
+                if (!fgets(read_buff, OS_MAXSTR, output)){
+                    mtwarn(WM_SYS_LOGTAG, "Unable to get process name.");
+                    string = strdup("unknown");
                 }
-                string = strdup(read_buff);
-            }else
-                string = strdup("unknown");
+                else if (end = strpbrk(read_buff,"\r\n"), end) {
+                    *end = '\0';
+                    int i = strlen(read_buff) - 1;
+                    while(read_buff[i] == 32){
+                        read_buff[i] = '\0';
+                        i--;
+                    }
+                    string = strdup(read_buff);
+                }else
+                    string = strdup("unknown");
+            }
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "Unable to get process name (bad header).");
+            string = strdup("unknown");
         }
 
         if (status = pclose(output), status) {
@@ -168,7 +173,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     TCP_TABLE_CLASS TableClass = TCP_TABLE_OWNER_PID_ALL;
     UDP_TABLE_CLASS TableClassUdp = UDP_TABLE_OWNER_PID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting opened ports inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting opened ports inventory.");
 
     /* TCP opened ports inventory */
 
@@ -580,7 +585,7 @@ void sys_programs_windows(const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting installed programs inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
     memset(read_buff, 0, OS_MAXSTR);
     command = "wmic product get Name,Version,Vendor / format:csv";
@@ -589,9 +594,8 @@ void sys_programs_windows(const char* LOCATION){
     if (!output){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
     }else{
-        while(strncmp(fgets(read_buff, OS_MAXSTR, output),"Node,Name,Vendor,Version", 24) != 0){
-            continue;
-        }
+        while (fgets(read_buff, OS_MAXSTR, output) && strncmp(read_buff,"Node,Name,Vendor,Version", 24) != 0);
+
         while(fgets(read_buff, OS_MAXSTR, output)){
 
             cJSON *object = cJSON_CreateObject();
@@ -610,7 +614,19 @@ void sys_programs_windows(const char* LOCATION){
             cJSON_AddStringToObject(program, "vendor", parts[2]);
 
             char ** version = NULL;
-            version = OS_StrBreak('\r', parts[3], 2);
+
+            if (strrchr(parts[3], ',') != 0) {
+                char ** aux_version = NULL;
+                aux_version = OS_StrBreak(',', parts[3], 2);
+                version = OS_StrBreak('\r', aux_version[1], 2);
+                for (i=0; aux_version[i]; i++){
+                    free(aux_version[i]);
+                }
+                free(aux_version);
+            } else {
+                version = OS_StrBreak('\r', parts[3], 2);
+            }
+
             cJSON_AddStringToObject(program, "version", version[0]);
             for (i=0; version[i]; i++){
                 free(version[i]);
@@ -685,7 +701,7 @@ void sys_hw_windows(const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting hardware inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting hardware inventory.");
 
     cJSON *object = cJSON_CreateObject();
     cJSON *hw_inventory = cJSON_CreateObject();
@@ -702,21 +718,26 @@ void sys_hw_windows(const char* LOCATION){
     if (!output){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
     }else{
-        if (strncmp(fgets(read_buff, buf_length, output),"SerialNumber", 12) == 0) {
-            if (!fgets(read_buff, buf_length, output)){
-                mtwarn(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
-                serial = strdup("unknown");
-            }
-            else if (end = strpbrk(read_buff,"\r\n"), end) {
-                *end = '\0';
-                int i = strlen(read_buff) - 1;
-                while(read_buff[i] == 32){
-                    read_buff[i] = '\0';
-                    i--;
+        if (fgets(read_buff, buf_length, output)) {
+            if (strncmp(read_buff ,"SerialNumber", 12) == 0) {
+                if (!fgets(read_buff, buf_length, output)){
+                    mtwarn(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
+                    serial = strdup("unknown");
                 }
-                serial = strdup(read_buff);
-            }else
-                serial = strdup("unknown");
+                else if (end = strpbrk(read_buff,"\r\n"), end) {
+                    *end = '\0';
+                    int i = strlen(read_buff) - 1;
+                    while(read_buff[i] == 32){
+                        read_buff[i] = '\0';
+                        i--;
+                    }
+                    serial = strdup(read_buff);
+                }else
+                    serial = strdup("unknown");
+            }
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number (bad header).");
+            serial = strdup("unknown");
         }
 
         if (status = pclose(output), status) {
@@ -731,7 +752,7 @@ void sys_hw_windows(const char* LOCATION){
     hw_info *sys_info;
     if (sys_info = get_system_windows(), sys_info){
         if (sys_info->cpu_name)
-            cJSON_AddStringToObject(hw_inventory, "cpu_name", sys_info->cpu_name);
+            cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
         if (sys_info->cpu_cores)
             cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
         if (sys_info->cpu_MHz)
@@ -786,7 +807,7 @@ void sys_os_windows(const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting Operating System inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "OS");
@@ -810,7 +831,7 @@ void sys_os_windows(const char* LOCATION){
 /* Network inventory for Windows systems (Vista or later) */
 void sys_network_windows(const char* LOCATION){
 
-    mtinfo(WM_SYS_LOGTAG, "Starting network inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     CallFunc _get_network_win;
 
@@ -983,23 +1004,28 @@ hw_info *get_system_windows(){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
         info->cpu_name = strdup("unknown");
     }else{
-        if (strncmp(fgets(read_buff, buf_length, output),"Name",4) == 0) {
-            if (!fgets(read_buff, buf_length, output)){
-                mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU Name.");
-                info->cpu_name = strdup("unknown");
-            }else if(strstr(read_buff, "Error")){
-                mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU Name. Incompatible command.");
-                info->cpu_name = strdup("unknown");
-            }else if (end = strpbrk(read_buff,"\r\n"), end) {
-                *end = '\0';
-                int i = strlen(read_buff) - 1;
-                while(read_buff[i] == 32){
-                    read_buff[i] = '\0';
-                    i--;
-                }
-                info->cpu_name = strdup(read_buff);
-            }else
-                info->cpu_name = strdup("unknown");
+        if (fgets(read_buff, buf_length, output)) {
+            if (strncmp(read_buff ,"Name",4) == 0) {
+                if (!fgets(read_buff, buf_length, output)){
+                    mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU Name.");
+                    info->cpu_name = strdup("unknown");
+                }else if(strstr(read_buff, "Error")){
+                    mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU Name. Incompatible command.");
+                    info->cpu_name = strdup("unknown");
+                }else if (end = strpbrk(read_buff,"\r\n"), end) {
+                    *end = '\0';
+                    int i = strlen(read_buff) - 1;
+                    while(read_buff[i] == 32){
+                        read_buff[i] = '\0';
+                        i--;
+                    }
+                    info->cpu_name = strdup(read_buff);
+                }else
+                    info->cpu_name = strdup("unknown");
+            }
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU Name (bad header).");
+            info->cpu_name = strdup("unknown");
         }
 
         if (status = pclose(output), status) {
@@ -1014,21 +1040,25 @@ hw_info *get_system_windows(){
     if (!output){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
     }else{
-        if (strncmp(fgets(read_buff, buf_length, output),"NumberOfCores",13) == 0) {
-            if (!fgets(read_buff, buf_length, output)){
-                mtdebug1(WM_SYS_LOGTAG, "Unable to get number of cores.");
-            }else if(strstr(read_buff, "Error")){
-                mtdebug1(WM_SYS_LOGTAG, "Unable to get number of cores. Incompatible command.");
-            }else if (end = strpbrk(read_buff,"\r\n"), end) {
-                *end = '\0';
-                int i = strlen(read_buff) - 1;
-                while(read_buff[i] == 32){
-                    read_buff[i] = '\0';
-                    i--;
+        if (fgets(read_buff, buf_length, output)) {
+            if (strncmp(read_buff, "NumberOfCores",13) == 0) {
+                if (!fgets(read_buff, buf_length, output)){
+                    mtdebug1(WM_SYS_LOGTAG, "Unable to get number of cores.");
+                }else if(strstr(read_buff, "Error")){
+                    mtdebug1(WM_SYS_LOGTAG, "Unable to get number of cores. Incompatible command.");
+                }else if (end = strpbrk(read_buff,"\r\n"), end) {
+                    *end = '\0';
+                    int i = strlen(read_buff) - 1;
+                    while(read_buff[i] == 32){
+                        read_buff[i] = '\0';
+                        i--;
+                    }
+                    cores = strdup(read_buff);
+                    info->cpu_cores = atoi(cores);
                 }
-                cores = strdup(read_buff);
-                info->cpu_cores = atoi(cores);
             }
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "Unable to get number of cores (bad header).");
         }
 
         if (status = pclose(output), status) {
@@ -1043,21 +1073,25 @@ hw_info *get_system_windows(){
     if (!output){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
     }else{
-        if (strncmp(fgets(read_buff, buf_length, output),"CurrentClockSpeed",17) == 0) {
-            if (!fgets(read_buff, buf_length, output)){
-                mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU clock speed.");
-            }else if(strstr(read_buff, "Error")){
-                mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU clock speed. Incompatible command.");
-            }else if (end = strpbrk(read_buff,"\r\n"), end) {
-                *end = '\0';
-                int i = strlen(read_buff) - 1;
-                while(read_buff[i] == 32){
-                    read_buff[i] = '\0';
-                    i--;
+        if (fgets(read_buff, buf_length, output)) {
+            if (strncmp(read_buff, "CurrentClockSpeed",17) == 0) {
+                if (!fgets(read_buff, buf_length, output)){
+                    mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU clock speed.");
+                }else if(strstr(read_buff, "Error")){
+                    mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU clock speed. Incompatible command.");
+                }else if (end = strpbrk(read_buff,"\r\n"), end) {
+                    *end = '\0';
+                    int i = strlen(read_buff) - 1;
+                    while(read_buff[i] == 32){
+                        read_buff[i] = '\0';
+                        i--;
+                    }
+                    frec = strdup(read_buff);
+                    info->cpu_MHz = atof(frec);
                 }
-                frec = strdup(read_buff);
-                info->cpu_MHz = atof(frec);
             }
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU clock speed (bad header).");
         }
 
         if (status = pclose(output), status) {
@@ -1072,21 +1106,25 @@ hw_info *get_system_windows(){
     if (!output){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
     }else{
-        if (strncmp(fgets(read_buff, buf_length, output),"TotalPhysicalMemory",19) == 0) {
-            if (!fgets(read_buff, buf_length, output)){
-                mtdebug1(WM_SYS_LOGTAG, "Unable to get physical memory information.");
-            }else if(strstr(read_buff, "Error")){
-                mtdebug1(WM_SYS_LOGTAG, "Unable to get physical memory information. Incompatible command.");
-            }else if (end = strpbrk(read_buff,"\r\n"), end) {
-                *end = '\0';
-                int i = strlen(read_buff) - 1;
-                while(read_buff[i] == 32){
-                    read_buff[i] = '\0';
-                    i--;
+        if (fgets(read_buff, buf_length, output)) {
+            if (strncmp(read_buff, "TotalPhysicalMemory", 19) == 0) {
+                if (!fgets(read_buff, buf_length, output)){
+                    mtdebug1(WM_SYS_LOGTAG, "Unable to get physical memory information.");
+                }else if(strstr(read_buff, "Error")){
+                    mtdebug1(WM_SYS_LOGTAG, "Unable to get physical memory information. Incompatible command.");
+                }else if (end = strpbrk(read_buff,"\r\n"), end) {
+                    *end = '\0';
+                    int i = strlen(read_buff) - 1;
+                    while(read_buff[i] == 32){
+                        read_buff[i] = '\0';
+                        i--;
+                    }
+                    total = strdup(read_buff);
+                    info->ram_total = (atof(total)) / 1024;
                 }
-                total = strdup(read_buff);
-                info->ram_total = (atof(total)) / 1024;
             }
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "Unable to get physical memory information (bad header).");
         }
     }
 
@@ -1101,21 +1139,25 @@ hw_info *get_system_windows(){
     if (!output){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
     }else{
-        if (strncmp(fgets(read_buff, buf_length, output),"FreePhysicalMemory",18) == 0) {
-            if (!fgets(read_buff, buf_length, output)){
-                mtdebug1(WM_SYS_LOGTAG, "Unable to get free memory of the system.");
-            }else if(strstr(read_buff, "Error")){
-                mtdebug1(WM_SYS_LOGTAG, "Unable to get free memory of the system. Incompatible command.");
-            }else if (end = strpbrk(read_buff,"\r\n"), end) {
-                *end = '\0';
-                int i = strlen(read_buff) - 1;
-                while(read_buff[i] == 32){
-                    read_buff[i] = '\0';
-                    i--;
+        if (fgets(read_buff, buf_length, output)) {
+            if (strncmp(read_buff, "FreePhysicalMemory", 18) == 0) {
+                if (!fgets(read_buff, buf_length, output)){
+                    mtdebug1(WM_SYS_LOGTAG, "Unable to get free memory of the system.");
+                }else if(strstr(read_buff, "Error")){
+                    mtdebug1(WM_SYS_LOGTAG, "Unable to get free memory of the system. Incompatible command.");
+                }else if (end = strpbrk(read_buff,"\r\n"), end) {
+                    *end = '\0';
+                    int i = strlen(read_buff) - 1;
+                    while(read_buff[i] == 32){
+                        read_buff[i] = '\0';
+                        i--;
+                    }
+                    mem_free = strdup(read_buff);
+                    info->ram_free = atoi(mem_free);
                 }
-                mem_free = strdup(read_buff);
-                info->ram_free = atoi(mem_free);
             }
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "Unable to get free memory of the system (bad header).");
         }
 
         if (status = pclose(output), status) {
@@ -1165,7 +1207,7 @@ void sys_proc_windows(const char* LOCATION) {
     cJSON *id_array = cJSON_CreateArray();
     cJSON *proc_array = cJSON_CreateArray();
 
-    mtinfo(WM_SYS_LOGTAG, "Starting running processes inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
     memset(read_buff, 0, OS_MAXSTR);
     command = "wmic process get ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize /format:csv";
@@ -1175,9 +1217,8 @@ void sys_proc_windows(const char* LOCATION) {
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
     }else{
         char *string;
-        while(strncmp(fgets(read_buff, OS_MAXSTR, output),"Node,ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize", 132) != 0){
-            continue;
-        }
+        while(fgets(read_buff, OS_MAXSTR, output) && strncmp(read_buff, "Node,ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize", 132) != 0);
+
         while(fgets(read_buff, OS_MAXSTR, output)){
 
             cJSON *object = cJSON_CreateObject();

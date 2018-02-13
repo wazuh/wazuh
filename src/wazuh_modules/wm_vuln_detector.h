@@ -32,6 +32,7 @@
 #define VU_AGENT_REQUEST_LIMIT   0
 #define VU_ALERT_HEADER "[%s] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
+#define VU_INV_OS     2
 #define VU_UBUNTU     "UBUNTU"
 #define VU_PRECISE    "PRECISE"
 #define VU_TRUSTY     "TRUSTY"

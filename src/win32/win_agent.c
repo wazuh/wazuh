@@ -297,7 +297,7 @@ int local_start()
 
     // Read wodle configuration and start modules
 
-    if (!wm_config()) {
+    if (!wm_config() && !wm_check()) {
         wmodule * cur_module;
 
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {

@@ -6,5 +6,5 @@
     <hardware>yes</hardware>
     <os>yes</os>
     <network>yes</network>
-    <programs>yes</programs>
+    <packages>yes</packages>
   </wodle>

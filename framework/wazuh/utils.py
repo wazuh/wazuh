@@ -336,7 +336,7 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def plain_dict_to_nested_dict(data, force_fields):
+def plain_dict_to_nested_dict(data, force_fields=[]):
     """
     Turns an input dictionary with "nested" fields in form
                 field_subfield

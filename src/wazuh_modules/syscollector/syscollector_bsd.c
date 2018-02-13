@@ -53,7 +53,7 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
-    mtinfo(WM_SYS_LOGTAG, "Starting installed programs inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
     /* Set positive random ID for each event */
 
@@ -153,7 +153,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting Hardware inventory");
+    mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory");
 
     cJSON *object = cJSON_CreateObject();
     cJSON *hw_inventory = cJSON_CreateObject();
@@ -228,7 +228,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     /* Get CPU and memory information */
     hw_info *sys_info;
     if (sys_info = get_system_bsd(), sys_info){
-        cJSON_AddStringToObject(hw_inventory, "cpu_name", sys_info->cpu_name);
+        cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
         cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
         cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
         cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
@@ -377,7 +377,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtinfo(WM_SYS_LOGTAG, "Starting network inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     if (getifaddrs(&ifaddrs_ptr) == -1){
         mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");

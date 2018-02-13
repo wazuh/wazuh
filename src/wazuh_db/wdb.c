@@ -29,7 +29,7 @@ static const char * SQL_STMT[] = {
     "SELECT 1 FROM fim_entry WHERE file = ?",
     "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = changes + 1, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ? WHERE file = ?;",
-    "INSERT INTO sys_osinfo (scan_id, scan_time, os_name, os_version, hostname, architecture, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_osinfo;",
     "INSERT INTO sys_programs (scan_id, scan_time, format, name, vendor, version, architecture, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_programs WHERE scan_id != ?;",
@@ -641,8 +641,7 @@ void wdb_close_old() {
 
     w_mutex_lock(&pool_mutex);
 
-    while (db_pool_size > config.open_db_limit) {
-        node = db_pool_begin;
+    for (node = db_pool_begin; node && db_pool_size > config.open_db_limit; node = node->next) {
         mdebug2("Closing database for agent %s", node->agent_id);
 
         if (node->refcount == 0 && !node->transaction) {
