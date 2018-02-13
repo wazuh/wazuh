@@ -420,7 +420,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
-    mtdebug1(WM_SYS_LOGTAG, "Starting installed programs inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
     /* Set positive random ID for each event */
 
@@ -442,7 +442,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
         snprintf(command, OS_MAXSTR, "%s", "dpkg-query --showformat='${db:Status-Abbrev}|${Package}|${Maintainer}|${Version}|${Architecture}|${binary:Summary}\n' --show | grep ^ii | sed 's/^ii |//'");
         closedir(dir);
     }else{
-        mtwarn(WM_SYS_LOGTAG, "Unable to get installed programs inventory.");
+        mtwarn(WM_SYS_LOGTAG, "Unable to get installed packages inventory.");
         return;
     }
 

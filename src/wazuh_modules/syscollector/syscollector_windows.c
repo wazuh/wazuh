@@ -585,7 +585,7 @@ void sys_programs_windows(const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtdebug1(WM_SYS_LOGTAG, "Starting installed programs inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
     memset(read_buff, 0, OS_MAXSTR);
     command = "wmic product get Name,Version,Vendor / format:csv";

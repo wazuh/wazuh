@@ -5,5 +5,5 @@
     <scan_on_start>yes</scan_on_start>
     <hardware>yes</hardware>
     <os>yes</os>
-    <programs>yes</programs>
+    <packages>yes</packages>
   </wodle>

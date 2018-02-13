@@ -124,7 +124,7 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys_programs_bsd(queue_fd, WM_SYS_LOCATION);
             #else
                 sys->flags.programinfo = 0;
-                mtwarn(WM_SYS_LOGTAG, "Programs inventory is not available for this OS version.");
+                mtwarn(WM_SYS_LOGTAG, "Packages inventory is not available for this OS version.");
             #endif
         }
 

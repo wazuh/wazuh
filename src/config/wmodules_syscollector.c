@@ -18,7 +18,7 @@ static const char *XML_DISABLED = "disabled";
 //static const char *XML_NETWORK = "network";
 static const char *XML_OS_SCAN = "os";
 static const char *XML_HARDWARE = "hardware";
-static const char *XML_PROGRAMS = "programs";
+static const char *XML_PACKAGES = "packages";
 //static const char *XML_PORTS = "ports";
 //static const char *XML_PROCS = "processes";
 
@@ -119,13 +119,13 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_HARDWARE, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(node[i]->element, XML_PROGRAMS)) {
+        } else if (!strcmp(node[i]->element, XML_PACKAGES)) {
             if (!strcmp(node[i]->content, "yes"))
                 syscollector->flags.programinfo = 1;
             else if (!strcmp(node[i]->content, "no"))
                 syscollector->flags.programinfo = 0;
             else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_PROGRAMS, WM_SYS_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_PACKAGES, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
 /*
