@@ -832,7 +832,7 @@ class Agent:
                                'group', 'merged_sum', 'config_sum','os_codename', 'os_major', 'os_uname',
                                'last_keepalive', 'os_arch'}
         select_fields = {'id', 'version', 'last_keepalive'}
-        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version"}
+        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
         request = {}
         if select:
             if not set(select['fields']).issubset(valid_select_fields):
@@ -933,7 +933,6 @@ class Agent:
             if not select_os_uname:
                 select_fields.add('os_uname')
                 set_select_fields.add('os_uname')
-
         conn.execute(query.format(','.join(select_fields)), request)
 
         data['items'] = []
@@ -1003,7 +1002,7 @@ class Agent:
                 if value != None and field == 'node_name' and field in set_select_fields:
                     data_tuple['node_name'] = value
 
-                if value != None and field == '`group`' and 'group' in set_select_fields:
+                if value != None and field == '`group`' and field in set_select_fields:
                     data_tuple['group'] = value
 
                 if value != None and field == 'merged_sum' and field in set_select_fields:
