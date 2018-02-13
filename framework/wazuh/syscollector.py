@@ -11,19 +11,18 @@ from wazuh.utils import plain_dict_to_nested_dict, cut_array, sort_array, search
 from operator import itemgetter
 
 def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields, allowed_sort_fields, table, nested=True, array=False):
+    Agent(agent_id).get_basic_information()
     if select:
-        select_fields = list(set(select['fields']) & set(windows_fields)) \
-                        if 'Windows' in os_name else \
-                        list(set(select['fields']) & set(linux_fields))
+        select_fields = list(set(select['fields']) & set(valid_select_fields))
         if select_fields == []:
-            uncorrect_fields = map(lambda x: str(x), set(select['fields']) - set(valid_select_fields))
+            incorrect_fields = map(lambda x: str(x), set(select['fields']) - set(valid_select_fields))
             raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
-                format(', '.join(valid_select_fields), ','.join(uncorrect_fields)))
+                format(', '.join(valid_select_fields), ','.join(incorrect_fields)))
     else:
         select_fields = valid_select_fields
         
     if search:
-        search['fields'] = select_fields
+        search['fields'] = valid_select_fields
         
     # Sorting
     if sort and sort['fields']:
@@ -51,6 +50,8 @@ def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, sea
     Get info about an agent's OS
     """
     agent_obj = Agent(agent_id)
+    agent_obj.get_basic_information()
+    
     offset = int(offset)
     limit = int(limit)
 
@@ -105,27 +106,28 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
     limit = int(limit)
     offset = int(offset)
     found_limit = False
-
+    total = 0
+    
     for agent in agents:
         items = func(agent_id = agent['id'], select = select, filters = filters, limit = limit, offset = offset, search = search, sort=sort, nested=False)
         if items == {}:
             continue
-
+            
+        total += 1 if not array else items['totalItems']
         items = [items] if not array else items['items']
-
+        
+        
         for item in items:
-            item['agent_id'] = agent['id']
-            result.append(item)
-            if limit <= len(result):
+            if limit + 1 <= len(result):
                 found_limit = True
                 break;
-        if found_limit:
-            break
+            item['agent_id'] = agent['id']
+            result.append(item)
 
     if sort and sort['fields']:
         result = sorted(result, key=itemgetter(sort['fields'][0]), reverse=True if sort['order'] == "desc" else False)
 
-    return {'items': result, 'totalItems': len(result)}
+    return {'items': result, 'totalItems': total}
 
 
 def get_packages(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}):

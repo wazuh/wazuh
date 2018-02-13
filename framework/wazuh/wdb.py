@@ -55,6 +55,7 @@ class WazuhDBConnection():
         """
         Sends a message to the wdb socket
         """
+
         self.__conn.send(msg)
         # Wazuh db can't send more than 6KB of data
         data = self.__conn.recv(self.max_size).split(" ", 1)
@@ -111,7 +112,7 @@ class WazuhDBConnection():
 
             regex  = re.compile(r"\w+ \d+? sql select ([a-z0-9,*_ ]+) from")
             select = regex.match(query_lower).group(1)
-            countq = query_lower.replace(select, "count(*)")
+            countq = query_lower.replace(select, "count(*)", 1)
             total  = self.__send(countq)[0].values()[0]
 
             limit = lim if lim != 0 else total
