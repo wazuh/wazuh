@@ -75,7 +75,7 @@ int wm_config();
 void wm_add(wmodule *module);
 
 // Check general configuration
-void wm_check();
+int wm_check();
 
 // Destroy configuration data
 void wm_destroy();

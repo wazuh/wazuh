@@ -62,7 +62,7 @@ void wm_add(wmodule *module) {
 
 // Check general configuration
 
-void wm_check() {
+int wm_check() {
     wmodule *i = wmodules;
     wmodule *j;
     wmodule *next;
@@ -88,8 +88,7 @@ void wm_check() {
     // Check that a configuration exists
 
     if (!wmodules) {
-        minfo("No configuration defined. Exiting...");
-        exit(EXIT_SUCCESS);
+        return -1;
     }
 
     // Get the last module of the same type
@@ -115,6 +114,8 @@ void wm_check() {
             }
         }
     }
+
+    return 0;
 }
 
 // Destroy configuration data
