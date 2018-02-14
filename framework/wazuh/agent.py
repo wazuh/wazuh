@@ -2486,7 +2486,7 @@ class Agent:
         timeframe = get_timeframe_int(timeframe)
         purgeable_agents, total = Agent._get_purgeable_agents(timeframe, offset, limit,count=True )
 
-        list_ids = [{"id": str(item[0]).zfill(3), "name": item[1]} for item in purgeable_agents ]
+        list_ids = [{"id": str(agent_id).zfill(3), "name": name} for agent_id,name in purgeable_agents]
 
         return {'timeframe': timeframe, 'items': list_ids, 'totalItems': total}
 
@@ -2501,7 +2501,7 @@ class Agent:
         :param limit: Maximum number of items to return.
         :return: List of agents ids.
         """
-        select_fields = {"id", "name"}
+        select_fields = ["id", "name"]
         request = {'timeframe': timeframe}
 
         # Connect DB
@@ -2517,13 +2517,13 @@ class Agent:
             total = conn.fetch()[0]
 
         if limit:
-              query = query + " LIMIT :offset,:limit"
-              request['limit'] = limit
-              request['offset'] = offset
+            query = query + " LIMIT :offset,:limit"
+            request['limit'] = limit
+            request['offset'] = offset
 
         conn.execute(query.format(','.join(select_fields)), request)
 
-        if total:
+        if count:
             return conn, total
         else:
             return conn
