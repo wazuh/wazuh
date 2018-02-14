@@ -832,7 +832,7 @@ class Agent:
                                'group', 'merged_sum', 'config_sum','os_codename', 'os_major', 'os_uname',
                                'last_keepalive', 'os_arch'}
         select_fields = {'id', 'version', 'last_keepalive'}
-        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version"}
+        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
         request = {}
         if select:
             if not set(select['fields']).issubset(valid_select_fields):
@@ -844,7 +844,7 @@ class Agent:
             valid_select_fields.remove('node_name') # only return node_type if asked
             select_fields = valid_select_fields
 
-        set_select_fields = set(select['fields']) if select else select_fields
+        set_select_fields = set(select['fields']) if select else select_fields.copy()
 
         if status != "all":
             limit_seconds = 600*3 + 30
@@ -933,7 +933,6 @@ class Agent:
             if not select_os_uname:
                 select_fields.add('os_uname')
                 set_select_fields.add('os_uname')
-
         conn.execute(query.format(','.join(select_fields)), request)
 
         data['items'] = []
