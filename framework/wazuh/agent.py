@@ -2483,15 +2483,15 @@ class Agent:
         :return: List of agents ids.
         """
         timeframe = get_timeframe_int(timeframe)
-        purgeable_agents = Agent._get_purgeable_agents(timeframe, offset, limit)
+        purgeable_agents, total = Agent._get_purgeable_agents(timeframe, offset, limit,count=True )
 
-        list_ids = [{"id": str(item[0]).zfill(3), "name": item[1]} for item in purgeable_agents ]
+        list_ids = [{"id": str(agent_id).zfill(3), "name": name} for agent_id,name in purgeable_agents]
 
-        return {'timeframe': timeframe, 'items': list_ids}
+        return {'timeframe': timeframe, 'items': list_ids, 'totalItems': total}
 
 
     @staticmethod
-    def _get_purgeable_agents(timeframe, offset=0, limit=common.database_limit):
+    def _get_purgeable_agents(timeframe, offset=0, limit=common.database_limit, count=False):
         """
         Get a list of agents that can be purged.
 
@@ -2500,6 +2500,8 @@ class Agent:
         :param limit: Maximum number of items to return.
         :return: List of agents ids.
         """
+        select_fields = ["id", "name"]
+        request = {'timeframe': timeframe}
 
         # Connect DB
         db_global = glob(common.database_path_global)
@@ -2507,7 +2509,20 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
-        query = "SELECT id, name FROM agent WHERE last_keepalive IS NULL OR CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :timeframe  LIMIT :offset,:limit"
+        query = "SELECT {0} FROM agent WHERE last_keepalive IS NULL OR CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :timeframe"
 
-        conn.execute(query, {'timeframe': timeframe, 'offset': offset, 'limit': limit})
-        return conn
+        if count:
+            conn.execute(query.format('COUNT(*)'), request)
+            total = conn.fetch()[0]
+
+        if limit:
+            query = query + " LIMIT :offset,:limit"
+            request['limit'] = limit
+            request['offset'] = offset
+
+        conn.execute(query.format(','.join(select_fields)), request)
+
+        if count:
+            return conn, total
+        else:
+            return conn
