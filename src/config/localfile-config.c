@@ -49,6 +49,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         logf[0].future = 0;
         logf[0].query = NULL;
         logf[0].target = NULL;
+        logf[0].target_socket = NULL;
         logf[1].file = NULL;
         logf[1].command = NULL;
         logf[1].alias = NULL;
@@ -56,6 +57,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         logf[1].future = 0;
         logf[1].query = NULL;
         logf[1].target = NULL;
+        logf[1].target_socket = NULL;
     } else {
         logf = log_config->config;
         while (logf[pl].file != NULL) {
@@ -72,6 +74,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         logf[pl + 1].future = 0;
         logf[pl + 1].query = NULL;
         logf[pl + 1].target = NULL;
+        logf[pl + 1].target_socket = NULL;
     }
 
     logf[pl].file = NULL;
@@ -81,12 +84,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].future = 0;
     logf[pl].query = NULL;
     logf[pl].target = NULL;
+    logf[pl].target_socket = NULL;
     os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
     logf[pl].fp = NULL;
     logf[pl].ffile = NULL;
     logf[pl].djb_program_name = NULL;
     logf[pl].ign = 360;
-
+    os_calloc(1, sizeof(logsocket), logf[pl].target_socket);
 
     /* Search for entries related to files */
     i = 0;
@@ -106,13 +110,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         } else if (strcmp(node[i]->element, xml_localfile_target) == 0) {
             // Count number of targets
             int count, n;
-            count = 0;
+            count = 1;
             for(n=0; node[i]->content[n]; n++) {
                 if(node[i]->content[n] == ',') {
                     count ++;
                 }
             }
-            logf[pl].target = OS_StrBreak(',', node[i]->content, count + 1);
+            logf[pl].target = OS_StrBreak(',', node[i]->content, count);
+            os_realloc(logf[pl].target_socket, count * sizeof(logsocket), logf[pl].target_socket);
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             char *key_value = 0;
             int j;
@@ -456,7 +461,7 @@ int Test_Localfile(const char * path){
 void Free_Localfile(logreader_config * config){
     if (config) {
         if (config->config) {
-            int i;
+            int i, j;
 
             for (i = 0; config->config[i].file; i++) {
                 free(config->config[i].ffile);
@@ -465,27 +470,19 @@ void Free_Localfile(logreader_config * config){
                 free(config->config[i].djb_program_name);
                 free(config->config[i].alias);
                 free(config->config[i].query);
-                free(config->config[i].target);
+                for (j = 0; config->config[i].target[j]; j++) {
+                    free(config->config[i].target[j]);
+                }
                 labels_free(config->config[i].labels);
                 if (config->config[i].fp) {
                     fclose(config->config[i].fp);
                 }
+                free(config->config[i].target_socket);
             }
 
             free(config->config);
         }
 
-        if (config->socket_list) {
-            int j;
 
-            for (j = 0; config->socket_list[j].name; j++) {
-                free(config->socket_list[j].name);
-                free(config->socket_list[j].location);
-                free(config->socket_list[j].mode);
-                free(config->socket_list[j].prefix);
-            }
-
-            free(config->socket_list);
-        }
     }
 }

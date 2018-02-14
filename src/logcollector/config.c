@@ -54,20 +54,22 @@ int LogCollectorConfig(const char *cfgfile)
     if (logff) {
         int i, j, k;
         for (i=0;logff[i].file;i++) {
-            char **ltarget = logff[i].target;
-            for (j=0;ltarget[j];j++) {
-                if (strcmp(ltarget[j], "agent") == 0) {
+            for (j=0;logff[i].target[j];j++) {
+                if (strcmp(logff[i].target[j], "agent") == 0) {
+                    logff[i].target_socket[j] = &default_agent;
                     continue;
                 }
                 int found = -1;
                 for (k=0;logsk[k].name;k++) {
-                    found = strcmp(logsk[k].name, ltarget[j]);
+                    found = strcmp(logsk[k].name, logff[i].target[j]);
                     if (found == 0) {
                         break;
                     }
                 }
                 if (found != 0) {
-                    merror_exit("Socket '%s' for '%s' is not defined.", ltarget[j], logff[i].file);
+                    merror_exit("Socket '%s' for '%s' is not defined.", logff[i].target[j], logff[i].file);
+                } else {
+                    logff[i].target_socket[j] = &logsk[k];
                 }
             }
         }

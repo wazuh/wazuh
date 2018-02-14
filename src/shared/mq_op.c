@@ -10,7 +10,6 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 
-
 #ifndef WIN32
 
 /* Start the Message Queue. type: WRITE||READ */
@@ -138,6 +137,100 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
         }
     }
 
+    return (0);
+}
+
+/* Send a message to socket */
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logsocket **sockets)
+{
+    int __mq_rcode, i;
+    char tmpstr[OS_MAXSTR + 1];
+    i = 0;
+
+    while (sockets[i]->name) {
+        if (strcmp(sockets[i]->name, "agent") == 0) {
+            SendMSG(queue, message, locmsg, loc);
+        }
+        else {
+            tmpstr[OS_MAXSTR] = '\0';
+
+            int sock_type;
+            if (strcmp("udp",sockets[i]->mode) == 0) {
+                sock_type = SOCK_DGRAM;
+            } else if (strcmp("tcp",sockets[i]->mode) == 0) {
+                sock_type = SOCK_STREAM;
+            } else {
+                merror("Socket type '%s' not valid.", sockets[i]->mode);
+                return (-1);
+            }
+
+            // Check if the socket is connected
+            if (sockets[i]->socket == 0) {
+                // Try to connect to the socket
+                if ((sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256)) < 0) {
+                    sleep(1);
+                    if ((sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256)) < 0) {
+                        sleep(2);
+                        if ((sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256)) < 0) {
+                            SendMSG(queue, "Socket not available.", locmsg, loc);
+                            merror(QUEUE_ERROR, sockets[i]->location, strerror(errno));
+                            return (-1);
+                        }
+                    }
+                }
+            }
+
+            /* Queue not available */
+            if (sockets[i]->socket == 0) {
+                SendMSG(queue, "Socket not available.", locmsg, loc);
+                merror(QUEUE_ERROR, sockets[i]->location, strerror(errno));
+                return (-1);
+            }
+
+            // create message and add prefix
+            if (sockets[i]->prefix) {
+                snprintf(tmpstr, OS_MAXSTR, "%s:%s", sockets[i]->prefix, message);
+            } else {
+                snprintf(tmpstr, OS_MAXSTR, "%s", message);
+            }
+
+            if ((__mq_rcode = OS_SendUnix(sockets[i]->socket, tmpstr, 0)) < 0) {
+                /* Error on the socket */
+                if (__mq_rcode == OS_SOCKTERR) {
+                    merror("socketerr (not available).");
+                    close(sockets[i]->socket);
+                    return (-1);
+                }
+
+                /* Unable to send. Socket busy */
+                mwarn("Socket busy, waiting for 1 second.");
+                sleep(1);
+                if (OS_SendUnix(sockets[i]->socket, tmpstr, 0) < 0) {
+                    /* When the socket is to busy, we may get some
+                     * error here. Just sleep 2 second and try
+                     * again.
+                     */
+                     mwarn("Socket busy, waiting for 3 seconds.");
+                     sleep(3);
+                    /* merror("socket busy"); */
+                    if (OS_SendUnix(sockets[i]->socket, tmpstr, 0) < 0) {
+                      merror("Socket busy, waiting for 5 seconds.");
+                      sleep(5);
+                      if (OS_SendUnix(sockets[i]->socket, tmpstr, 0) < 0) {
+                            merror("socket busy, waiting for 10 seconds.");
+                            sleep(10);
+                            if (OS_SendUnix(sockets[i]->socket, tmpstr, 0) < 0) {
+                                SendMSG(queue, "Cannot send message to socket.", locmsg, loc);
+                                close(sockets[i]->socket);
+                                return (-1);
+                            }
+                        }
+                    }
+                }
+            }
+            i++;
+        }
+    }
     return (0);
 }
 

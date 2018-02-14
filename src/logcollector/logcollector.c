@@ -22,6 +22,7 @@ logsocket *logsk;
 int vcheck_files;
 int maximum_lines;
 static int _cday = 0;
+logsocket default_agent = { .name = "agent" };
 
 
 static char *rand_keepalive_str(char *dst, int size)
@@ -47,7 +48,7 @@ static char *rand_keepalive_str(char *dst, int size)
 /* Handle file management */
 void LogCollectorStart()
 {
-    int i = 0, r = 0;
+    int i = 0, r = 0, tg;
     int max_file = 0;
     int f_check = 0;
     time_t curr_time = 0;
@@ -90,6 +91,12 @@ void LogCollectorStart()
                 logff[i].file = NULL;
                 logff[i].command = NULL;
                 logff[i].fp = NULL;
+                int x = 0;
+                while(logff[i].target[x]) {
+                    free(logff[i].target[x]);
+                }
+                logff[i].target = NULL;
+                logff[i].target_socket = NULL;
 
                 break;
             }
@@ -137,9 +144,12 @@ void LogCollectorStart()
                 logff[i].read = read_command;
 
                 minfo("Monitoring output of command(%d): %s", logff[i].ign, logff[i].command);
-                unsigned int tg;
-                for (tg=0; logff[i].target[tg]; tg++) {
-                    mdebug1("Socket target for '%s' -> %s", logff[i].command, logff[i].target[tg]);
+                tg = 0;
+                if (logff[i].target){
+                    while (logff[i].target[tg]) {
+                        mdebug1("Socket target for '%s' -> %s", logff[i].command, logff[i].target[tg]);
+                        tg++;
+                    }
                 }
 
                 if (!logff[i].alias) {
@@ -156,9 +166,12 @@ void LogCollectorStart()
                 logff[i].read = read_fullcommand;
 
                 minfo("Monitoring full output of command(%d): %s", logff[i].ign, logff[i].command);
-                unsigned int tg;
-                for (tg=0; logff[i].target[tg]; tg++) {
-                    mdebug1("Socket target for '%s' -> %s", logff[i].command, logff[i].target[tg]);
+                tg = 0;
+                if (logff[i].target){
+                    while (logff[i].target[tg]) {
+                        mdebug1("Socket target for '%s' -> %s", logff[i].command, logff[i].target[tg]);
+                        tg++;
+                    }
                 }
 
                 if (!logff[i].alias) {
@@ -187,9 +200,12 @@ void LogCollectorStart()
             }
 
             minfo(READING_FILE, logff[i].file);
-            unsigned int tg;
-            for (tg=0; logff[i].target[tg]; tg++) {
-                mdebug1("Socket target for '%s' -> %s", logff[i].file, logff[i].target[tg]);
+            tg = 0;
+            if (logff[i].target){
+                while (logff[i].target[tg]) {
+                    mdebug1("Socket target for '%s' -> %s", logff[i].file, logff[i].target[tg]);
+                    tg++;
+                }
             }
 
             /* Get the log type */
