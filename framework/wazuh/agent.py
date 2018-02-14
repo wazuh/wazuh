@@ -844,7 +844,7 @@ class Agent:
             valid_select_fields.remove('node_name') # only return node_type if asked
             select_fields = valid_select_fields
 
-        set_select_fields = set(select['fields']) if select else select_fields
+        set_select_fields = set(select['fields']) if select else select_fields.copy()
 
         if status != "all":
             limit_seconds = 600*3 + 30
@@ -1002,7 +1002,7 @@ class Agent:
                 if value != None and field == 'node_name' and field in set_select_fields:
                     data_tuple['node_name'] = value
 
-                if value != None and field == '`group`' and field in set_select_fields:
+                if value != None and field == '`group`' and 'group' in set_select_fields:
                     data_tuple['group'] = value
 
                 if value != None and field == 'merged_sum' and field in set_select_fields:
