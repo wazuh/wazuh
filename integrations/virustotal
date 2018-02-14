@@ -44,30 +44,30 @@ socket_addr = '{0}/queue/ossec/queue'.format(pwd)
 
 
 def main(args):
-	debug("# Starting")
+    debug("# Starting")
 
-	# Read args
-	alert_file_location = args[1]
-	apikey = args[2]
+    # Read args
+    alert_file_location = args[1]
+    apikey = args[2]
 
-	debug("# API Key")
-	debug(apikey)
+    debug("# API Key")
+    debug(apikey)
 
-	debug("# File location")
-	debug(alert_file_location)
+    debug("# File location")
+    debug(alert_file_location)
 
-	# Load alert. Parse JSON object.
-	with open(alert_file_location) as alert_file:
-		json_alert = json.load(alert_file)
-	debug("# Processing alert")
-	debug(json_alert)
+    # Load alert. Parse JSON object.
+    with open(alert_file_location) as alert_file:
+        json_alert = json.load(alert_file)
+    debug("# Processing alert")
+    debug(json_alert)
 
-	# Request VirusTotal info
-	msg = request_virustotal_info(json_alert,apikey)
+    # Request VirusTotal info
+    msg = request_virustotal_info(json_alert,apikey)
 
-	# If positive match, send event to Wazuh Manager
-	if msg:
-		send_event(msg, json_alert["agent"])
+    # If positive match, send event to Wazuh Manager
+    if msg:
+        send_event(msg, json_alert["agent"])
 
 def debug(msg):
     if debug_enabled:
@@ -102,77 +102,77 @@ def query_api(hash, apikey):
   }
   response = requests.get('https://www.virustotal.com/vtapi/v2/file/report',params=params, headers=headers)
   if response.status_code == 200:
-	  json_response = response.json()
-	  data = json_response
-	  return data
+      json_response = response.json()
+      data = json_response
+      return data
   else:
-	  alert_output = {}
-	  alert_output["virustotal"] = {}
-	  alert_output["integration"] = "virustotal"
+      alert_output = {}
+      alert_output["virustotal"] = {}
+      alert_output["integration"] = "virustotal"
 
-	  if response.status_code == 204:
-	    debug("# Error: VirusTotal Public API request rate limit reached")
-	    alert_output["virustotal"]["error"] = response.status_code
-	    alert_output["virustotal"]["description"] = "Error: Public API request rate limit reached"
-	    send_event(alert_output)
-	    exit(0)
-	  elif response.status_code == 403:
-	    debug("# Error: VirusTotal credentials, required privileges error")
-	    alert_output["virustotal"]["error"] = response.status_code
-	    alert_output["virustotal"]["description"] = "Error: Check credentials"
-	    send_event(alert_output)
-	    exit(0)
-	  else:
-	    debug("# Error when conecting VirusTotal API")
-	    alert_output["virustotal"]["error"] = response.status_code
-	    alert_output["virustotal"]["description"] = "Error: API request fail"
-	    send_event(alert_output)
-	    response.raise_for_status()
-	    exit(0)
+      if response.status_code == 204:
+        debug("# Error: VirusTotal Public API request rate limit reached")
+        alert_output["virustotal"]["error"] = response.status_code
+        alert_output["virustotal"]["description"] = "Error: Public API request rate limit reached"
+        send_event(alert_output)
+        exit(0)
+      elif response.status_code == 403:
+        debug("# Error: VirusTotal credentials, required privileges error")
+        alert_output["virustotal"]["error"] = response.status_code
+        alert_output["virustotal"]["description"] = "Error: Check credentials"
+        send_event(alert_output)
+        exit(0)
+      else:
+        debug("# Error when conecting VirusTotal API")
+        alert_output["virustotal"]["error"] = response.status_code
+        alert_output["virustotal"]["description"] = "Error: API request fail"
+        send_event(alert_output)
+        response.raise_for_status()
+        exit(0)
 
 def request_virustotal_info(alert, apikey):
-	alert_output = {}
+    alert_output = {}
 
-	# If there is no a md5 checksum present in the alert. Exit.
-	if not "md5_after" in alert["syscheck"]:
-	  return(0)
+    # If there is no a md5 checksum present in the alert. Exit.
+    if not "md5_after" in alert["syscheck"]:
+      return(0)
 
-	# Request info using VirusTotal API
-	data = query_api(alert["syscheck"]["md5_after"], apikey)
+    # Request info using VirusTotal API
+    data = query_api(alert["syscheck"]["md5_after"], apikey)
 
-	# Create alert
-	alert_output["virustotal"] = {}
-	alert_output["integration"] = "virustotal"
-	alert_output["virustotal"]["found"] = 0
-	alert_output["virustotal"]["malicious"] = 0
-	alert_output["virustotal"]["source"] = {}
-	alert_output["virustotal"]["source"]["alert_id"] = alert["id"]
-	alert_output["virustotal"]["source"]["file"] = alert["syscheck"]["path"]
-	alert_output["virustotal"]["source"]["md5"] = alert["syscheck"]["md5_after"]
-	alert_output["virustotal"]["source"]["sha1"] = alert["syscheck"]["sha1_after"]
+    # Create alert
+    alert_output["virustotal"] = {}
+    alert_output["integration"] = "virustotal"
+    alert_output["virustotal"]["found"] = 0
+    alert_output["virustotal"]["malicious"] = 0
+    alert_output["virustotal"]["source"] = {}
+    alert_output["virustotal"]["source"]["alert_id"] = alert["id"]
+    alert_output["virustotal"]["source"]["file"] = alert["syscheck"]["path"]
+    alert_output["virustotal"]["source"]["md5"] = alert["syscheck"]["md5_after"]
+    alert_output["virustotal"]["source"]["sha1"] = alert["syscheck"]["sha1_after"]
 
-	# Check if VirusTotal has any info about the hash
-	if in_database(data, hash):
-	  alert_output["virustotal"]["found"] = 1
+    # Check if VirusTotal has any info about the hash
+    if in_database(data, hash):
+      alert_output["virustotal"]["found"] = 1
 
-	# Info about the file found in VirusTotal
-	if alert_output["virustotal"]["found"] == 1:
-		sha1, scan_date, permalink, positives, total = collect(data)
+    # Info about the file found in VirusTotal
+    if alert_output["virustotal"]["found"] == 1:
+        sha1, scan_date, permalink, positives, total = collect(data)
 
-		if positives > 0:
-			alert_output["virustotal"]["malicious"] = 1
+        if positives > 0:
+            alert_output["virustotal"]["malicious"] = 1
 
-		# Populate JSON Output object with VirusTotal request
-		alert_output["virustotal"]["sha1"] = sha1
-		alert_output["virustotal"]["scan_date"] = scan_date
-		alert_output["virustotal"]["positives"] = positives
-		alert_output["virustotal"]["total"] = total
-		alert_output["virustotal"]["permalink"] = permalink
+        # Populate JSON Output object with VirusTotal request
+        alert_output["virustotal"]["sha1"] = sha1
+        alert_output["virustotal"]["scan_date"] = scan_date
+        alert_output["virustotal"]["positives"] = positives
+        alert_output["virustotal"]["total"] = total
+        alert_output["virustotal"]["permalink"] = permalink
 
 
-	debug(alert_output)
+    debug(alert_output)
 
-	return(alert_output)
+    return(alert_output)
 
 def send_event(msg, agent = None):
     if not agent or agent["id"] == "000":
@@ -180,11 +180,11 @@ def send_event(msg, agent = None):
     else:
         string = '1:[{0}] ({1}) {2}->virustotal:{3}'.format(agent["id"], agent["name"], agent["ip"] if "ip" in agent else "any", json.dumps(msg))
 
-	debug(string)
-	sock = socket(AF_UNIX, SOCK_DGRAM)
-	sock.connect(socket_addr)
-	sock.send(string.encode())
-	sock.close()
+    debug(string)
+    sock = socket(AF_UNIX, SOCK_DGRAM)
+    sock.connect(socket_addr)
+    sock.send(string.encode())
+    sock.close()
 
 if __name__ == "__main__":
     try:
