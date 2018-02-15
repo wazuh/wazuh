@@ -401,6 +401,11 @@ def plain_dict_to_nested_dict(data, force_fields=[]):
 
     return nested_dict
 
+
+def divide_list(l, size=1000):
+    return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
+
+
 class WazuhVersion:
 
     def __init__(self, version):
