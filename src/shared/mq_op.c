@@ -145,9 +145,11 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
-    int i = 0;
+    int i;
+    static time_t last_attempt = 0;
+    time_t mtime;
 
-    while (sockets[i] && sockets[i]->name) {
+    for (i = 0; sockets[i] && sockets[i]->name; i++) {
         if (strcmp(sockets[i]->name, "agent") == 0) {
             SendMSG(queue, message, locmsg, loc);
         }
@@ -161,29 +163,6 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                 sock_type = SOCK_STREAM;
             }
 
-            // Check if the socket is connected
-            if (sockets[i]->socket == 0) {
-                // Try to connect to the socket
-                if ((sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256)) < 0) {
-                    sleep(1);
-                    if ((sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256)) < 0) {
-                        sleep(2);
-                        if ((sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256)) < 0) {
-                            SendMSG(queue, "Socket not available.", locmsg, loc);
-                            merror(QUEUE_ERROR, sockets[i]->location, strerror(errno));
-                            continue;
-                        }
-                    }
-                }
-            }
-
-            /* Queue not available */
-            if (sockets[i]->socket == 0) {
-                SendMSG(queue, "Socket not available.", locmsg, loc);
-                merror(QUEUE_ERROR, sockets[i]->location, strerror(errno));
-                continue;
-            }
-
             // create message and add prefix
             if (sockets[i]->prefix && *sockets[i]->prefix) {
                 snprintf(tmpstr, OS_MAXSTR, "%s%s", sockets[i]->prefix, message);
@@ -191,42 +170,50 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                 snprintf(tmpstr, OS_MAXSTR, "%s", message);
             }
 
-            mdebug2("Sending (%s) to socket '%s'",tmpstr,sockets[i]->name);
-            if ((__mq_rcode = OS_SendUnix(sockets[i]->socket, tmpstr, 0)) < 0) {
-                /* Error on the socket */
-                if (__mq_rcode == OS_SOCKTERR) {
-                    merror("Socket '%s' not available.", sockets[i]->name);
-                    close(sockets[i]->socket);
-                    // continue;
-                }
-                /* Unable to send. Socket busy */
-                mwarn("Socket busy, waiting for 1 second.");
-                sleep(1);
-                if (OS_SendUnix(sockets[i]->socket, tmpstr, 0) < 0) {
-                    /* When the socket is to busy, we may get some
-                     * error here. Just sleep 2 second and try
-                     * again.
-                     */
-                     mwarn("Socket busy, waiting for 3 seconds.");
-                     sleep(3);
-                    /* merror("socket busy"); */
-                    if (OS_SendUnix(sockets[i]->socket, tmpstr, 0) < 0) {
-                      merror("Socket busy, waiting for 5 seconds.");
-                      sleep(5);
-                      if (OS_SendUnix(sockets[i]->socket, tmpstr, 0) < 0) {
-                            merror("socket busy, waiting for 10 seconds.");
-                            sleep(10);
-                            if (OS_SendUnix(sockets[i]->socket, tmpstr, 0) < 0) {
-                                SendMSG(queue, "Cannot send message to socket.", locmsg, loc);
-                                close(sockets[i]->socket);
-                                continue;
-                            }
-                        }
+            // Connect to socket if disconnected
+            if (sockets[i]->socket < 0) {
+                if (mtime = time(NULL), mtime > last_attempt + 300) {
+                    last_attempt = mtime;
+
+                    if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
+                        merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, sockets[i]->mode);
+                        continue;
                     }
+                } else {
+                    // Return silently
+                    continue;
+                }
+            }
+
+            // Send msg to socket
+
+            if (__mq_rcode = OS_SendUnix(sockets[i]->socket, tmpstr, 0), __mq_rcode < 0) {
+                if (__mq_rcode == OS_SOCKTERR) {
+                    if (mtime = time(NULL), mtime > last_attempt + 300) {
+                        last_attempt = mtime;
+
+                        if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
+                            merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, sockets[i]->mode);
+                            continue;
+                        }
+
+                        if (OS_SendUnix(sockets[i]->socket, tmpstr, 0), __mq_rcode < 0) {
+                            merror("Cannot send message to socket '%s'. (Retry)", sockets[i]->name);
+                            SendMSG(queue, "Cannot send message to socket.", locmsg, loc);
+                            continue;
+                        }
+                    } else {
+                        // Return silently
+                        continue;
+                    }
+
+                } else {
+                    merror("Cannot send message to socket '%s'. (Retry)", sockets[i]->name);
+                    SendMSG(queue, "Cannot send message to socket.", locmsg, loc);
+                    continue;
                 }
             }
         }
-        i++;
     }
     return (0);
 }
