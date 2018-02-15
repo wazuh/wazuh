@@ -102,13 +102,13 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     }
 
     /* Missing name */
-    if (!logf[pl].name) {
+    if (!(logf[pl].name && *logf[pl].name)) {
         merror(MISS_SOCK_NAME);
         return (OS_INVALID);
     }
 
     /* Missing location */
-    if (!logf[pl].location) {
+    if (!(logf[pl].location && *logf[pl].location)) {
         merror(MISS_SOCK_LOC);
         return (OS_INVALID);
     }

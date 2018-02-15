@@ -459,10 +459,10 @@ int Test_Localfile(const char * path){
 }
 
 void Free_Localfile(logreader_config * config){
+    int i, j;
+
     if (config) {
         if (config->config) {
-            int i, j;
-
             for (i = 0; config->config[i].file; i++) {
                 free(config->config[i].ffile);
                 free(config->config[i].file);
@@ -473,6 +473,7 @@ void Free_Localfile(logreader_config * config){
                 for (j = 0; config->config[i].target[j]; j++) {
                     free(config->config[i].target[j]);
                 }
+                free(config->config[i].target);
                 labels_free(config->config[i].labels);
                 if (config->config[i].fp) {
                     fclose(config->config[i].fp);
@@ -482,7 +483,15 @@ void Free_Localfile(logreader_config * config){
 
             free(config->config);
         }
+    }
 
+    if (config->socket_list) {
+        for (i = 0; config->socket_list[i].name; i++) {
+            free(config->socket_list[i].name);
+            free(config->socket_list[i].location);
+            free(config->socket_list[i].prefix);
+        }
 
+        free(config->socket_list);
     }
 }

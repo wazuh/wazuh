@@ -56,7 +56,7 @@
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
-#define CONFIG_ERROR    "(1202): Configuration error at '%s'. Exiting."
+#define CONFIG_ERROR    "(1202): Configuration error at '%s'."
 #define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR  "(1204): Invalid connection type: '%s'."
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
