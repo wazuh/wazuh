@@ -10,6 +10,7 @@ from wazuh.ossec_socket import OssecSocket
 from wazuh.database import Connection
 from wazuh.wdb import WazuhDBConnection
 from wazuh.InputValidator import InputValidator
+from wazuh.configuration import get_agent_conf_from_path
 from wazuh import manager
 from wazuh import common
 from glob import glob
@@ -1509,6 +1510,24 @@ class Agent:
             return True
         else:
             return False
+
+
+    @staticmethod
+    def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None):
+        """
+        Returns agent.conf as dictionary.
+
+        :return: agent.conf as dictionary.
+        """
+        agent_conf = ""
+        if group_id:
+            if not Agent.group_exists(group_id):
+                raise WazuhException(1710, group_id)
+
+            agent_conf = "{0}/{1}".format(common.shared_path, group_id)
+
+        return get_agent_conf_from_path(agent_conf, offset, limit, filename)
+
 
     @staticmethod
     def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
