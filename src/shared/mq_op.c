@@ -188,7 +188,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
             }
 
             // create message and add prefix
-            if (sockets[i]->prefix) {
+            if (sockets[i]->prefix && *sockets[i]->prefix) {
                 snprintf(tmpstr, OS_MAXSTR, "%s:%s", sockets[i]->prefix, message);
             } else {
                 snprintf(tmpstr, OS_MAXSTR, "%s", message);
