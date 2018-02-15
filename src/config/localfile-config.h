@@ -21,7 +21,7 @@
 typedef struct _logsocket {
     char *name;
     char *location;
-    char *mode;
+    int mode;
     char *prefix;
     int socket;
 } logsocket;

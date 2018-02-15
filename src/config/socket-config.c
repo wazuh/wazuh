@@ -35,12 +35,12 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         logf = log_config->socket_list;
         logf[0].name = NULL;
         logf[0].location = NULL;
-        logf[0].mode = NULL;
+        logf[0].mode = 0;
         logf[0].prefix = NULL;
         logf[0].socket = 0;
         logf[1].name = NULL;
         logf[1].location = NULL;
-        logf[1].mode = NULL;
+        logf[1].mode = 0;
         logf[1].prefix = NULL;
         logf[1].socket = 0;
     } else {
@@ -54,15 +54,15 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         logf = log_config->socket_list;
         logf[pl + 1].name = NULL;
         logf[pl + 1].location = NULL;
-        logf[pl + 1].mode = NULL;
+        logf[pl + 1].mode = 0;
         logf[pl + 1].prefix = NULL;
         logf[pl + 1].socket = 0;
     }
     logf[pl].name = NULL;
     logf[pl].location = NULL;
-    logf[pl].mode = NULL;
+    logf[pl].mode = UDP_PROTO;
     logf[pl].prefix = NULL;
-    logf[pl].socket = 0;
+    logf[pl].socket = -1;
 
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
@@ -84,11 +84,12 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             free(logf[pl].location);
             os_strdup(node[i]->content, logf[pl].location);
         } else if (!strcmp(node[i]->element, socket_mode)) {
-            if (!strcmp(node[i]->content, "tcp") || !strcmp(node[i]->content, "udp")){
-                free(logf[pl].mode);
-                os_strdup(node[i]->content, logf[pl].mode);
+            if (strcmp(node[i]->content, "tcp") == 0) {
+                logf[pl].mode = TCP_PROTO;
+            } else if (strcmp(node[i]->content, "udp") == 0) {
+                logf[pl].mode = UDP_PROTO;
             } else {
-                merror("Socket type '%s' is not valid. Should be 'udp' or 'tcp'.", node[i]->content);
+                merror("Socket type '%s' is not valid at <%s>. Should be 'udp' or 'tcp'.", node[i]->content, node[i]->element);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, socket_prefix)) {
@@ -110,10 +111,6 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     if (!logf[pl].location) {
         merror(MISS_SOCK_LOC);
         return (OS_INVALID);
-    }
-
-    if (logf[pl].mode == NULL) {
-        os_strdup("udp", logf[pl].mode);
     }
 
     return 0;

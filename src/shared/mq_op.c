@@ -8,6 +8,7 @@
  */
 
 #include "shared.h"
+#include "config/config.h"
 #include "os_net/os_net.h"
 
 #ifndef WIN32
@@ -157,10 +158,20 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
             tmpstr[OS_MAXSTR] = '\0';
 
             int sock_type;
-            if (strcmp("udp",sockets[i]->mode) == 0) {
+            const char * strmode;
+
+            switch (sockets[i]->mode) {
+            case UDP_PROTO:
                 sock_type = SOCK_DGRAM;
-            } else if (strcmp("tcp",sockets[i]->mode) == 0) {
+                strmode = "udp";
+                break;
+            case TCP_PROTO:
                 sock_type = SOCK_STREAM;
+                strmode = "tcp";
+                break;
+            default:
+                merror("At %s(): undefined protocol. This shouldn't happen.", __FUNCTION__);
+                return -1;
             }
 
             // create message and add prefix
@@ -176,7 +187,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                     last_attempt = mtime;
 
                     if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
-                        merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, sockets[i]->mode);
+                        merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, strmode);
                         continue;
                     }
                 } else {
@@ -193,7 +204,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                         last_attempt = mtime;
 
                         if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
-                            merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, sockets[i]->mode);
+                            merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, strmode);
                             continue;
                         }
 

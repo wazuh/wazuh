@@ -75,7 +75,7 @@ void LogCollectorStart()
 
     unsigned int sk;
     for (sk=0; logsk[sk].name; sk++) {
-        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode, logsk[sk].location);
+        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == UDP_PROTO ? "udp" : "tcp", logsk[sk].location);
     }
 
     /* Initialize each file and structure */

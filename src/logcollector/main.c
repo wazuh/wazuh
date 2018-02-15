@@ -129,11 +129,11 @@ int main(int argc, char **argv)
         os_calloc(2, sizeof(logsocket), logsk);
         logsk[0].name = NULL;
         logsk[0].location = NULL;
-        logsk[0].mode = NULL;
+        logsk[0].mode = 0;
         logsk[0].prefix = NULL;
         logsk[1].name = NULL;
         logsk[1].location = NULL;
-        logsk[1].mode = NULL;
+        logsk[1].mode = 0;
         logsk[1].prefix = NULL;
     }
 
