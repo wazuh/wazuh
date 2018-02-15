@@ -192,3 +192,19 @@ int w_str_in_array(const char * needle, const char ** haystack) {
 
     return 0;
 }
+
+/* Filter escape characters */
+
+char* filter_special_chars(const char *string) {
+    int i, j = 0;
+    int n = strlen(string);
+    char *filtered = malloc(n + 1);
+
+    if (!filtered)
+        return NULL;
+
+    for (i = 0; i <= n; i++)
+        filtered[j++] = (string[i] == '\\') ? string[++i] : string[i];
+
+    return filtered;
+}

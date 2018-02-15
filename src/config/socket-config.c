@@ -78,18 +78,22 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 merror("Invalid socket name 'agent'.");
                 return OS_INVALID;
             }
+            free(logf[pl].name);
             os_strdup(node[i]->content, logf[pl].name);
         } else if (!strcmp(node[i]->element, socket_location)) {
+            free(logf[pl].location);
             os_strdup(node[i]->content, logf[pl].location);
         } else if (!strcmp(node[i]->element, socket_mode)) {
             if (!strcmp(node[i]->content, "tcp") || !strcmp(node[i]->content, "udp")){
+                free(logf[pl].mode);
                 os_strdup(node[i]->content, logf[pl].mode);
             } else {
                 merror("Socket type '%s' is not valid. Should be 'udp' or 'tcp'.", node[i]->content);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, socket_prefix)) {
-            os_strdup(node[i]->content, logf[pl].prefix);
+            free(logf[pl].prefix);
+            logf[pl].prefix = filter_special_chars(node[i]->content);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;
