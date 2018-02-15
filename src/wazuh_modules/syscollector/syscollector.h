@@ -21,7 +21,7 @@
 #define MAX_TRIES 3
 
 #define PROTO_LENGTH 6
-#define FORMAT_LENGTH 18
+#define FORMAT_LENGTH 3
 #define MAC_LENGTH 18
 #define TYPE_LENGTH 64
 #define STATE_LENGTH 20
@@ -52,7 +52,7 @@ typedef struct wm_sys_flags_t {
     unsigned int hwinfo:1;                  // Hardware inventory
     unsigned int netinfo:1;                 // Network inventory
     unsigned int osinfo:1;                  // OS inventory
-    unsigned int programinfo:1;             // Installed programs inventory
+    unsigned int programinfo:1;             // Installed packages inventory
     unsigned int portsinfo:1;               // Opened ports inventory
     unsigned int allports:1;                // Scan only listening ports or all
     unsigned int procinfo:1;                // Running processes inventory
@@ -80,14 +80,15 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all);
 void sys_ports_windows(const char* LOCATION, int check_all);
 
 // Installed programs inventory for Linux
-void sys_programs_linux(int queue_fd, const char* WM_SYS_LOCATION);
+void sys_packages_linux(int queue_fd, const char* WM_SYS_LOCATION);
+int sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION);
 
 // Installed programs inventory for Windows
 void sys_programs_windows(const char* LOCATION);
 
 #if defined(__FreeBSD__)
 // Installed programs inventory for BSD based systems
-void sys_programs_bsd(int queue_fd, const char* LOCATION);
+void sys_packages_bsd(int queue_fd, const char* LOCATION);
 #endif
 
 // Hardware inventory for Linux

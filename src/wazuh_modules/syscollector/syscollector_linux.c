@@ -14,6 +14,7 @@
 #if defined(__linux__)
 
 #include <stdio.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <net/if_arp.h>
 #include <net/if.h>
@@ -397,19 +398,37 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
 // Get installed programs inventory
 
-void sys_programs_linux(int queue_fd, const char* LOCATION){
+void sys_packages_linux(int queue_fd, const char* LOCATION) {
 
-    char read_buff[OS_MAXSTR];
-    char *command;
-    char *format;
-    FILE *output;
     DIR *dir;
-    int i;
+
+    mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
+
+    if ((dir = opendir("/var/lib/dpkg/"))){
+        closedir(dir);
+        if (sys_deb_packages(queue_fd, LOCATION) < 0) {
+            mterror(WM_SYS_LOGTAG, "Unable to get debian packages due to: %s", strerror(errno));
+        }
+    }
+    // else if RPM
+}
+
+int sys_deb_packages(int queue_fd, const char* LOCATION){
+
+    char format[FORMAT_LENGTH] = "deb";
+    char file[OS_MAXSTR] = "/var/lib/dpkg/status";
+    char read_buff[OS_MAXSTR];
+    FILE *fp;
+    size_t length;
+    int i, installed = 1;
     int ID = os_random();
     char *timestamp;
     time_t now;
     struct tm localtm;
-    int status;
+    cJSON *object = NULL;
+    cJSON *package = NULL;
+
+    // Set timestamp
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -420,111 +439,190 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
-    mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
-
     /* Set positive random ID for each event */
 
     if (ID < 0)
         ID = -ID;
 
-    /* Check if the distribution has rpm or deb packages */
-
-    if ((dir = opendir("/var/lib/rpm/"))){
-        os_calloc(FORMAT_LENGTH, sizeof(char), format);
-        snprintf(format, FORMAT_LENGTH -1, "%s", "rpm");
-        os_calloc(OS_MAXSTR + 1, sizeof(char), command);
-        snprintf(command, OS_MAXSTR, "%s", "rpm -qa --queryformat '%{NAME}|%{VENDOR}|%{EPOCH}:%{VERSION}-%{RELEASE}|%{ARCH}|%{SUMMARY}\n'");
-        closedir(dir);
-    } else if ((dir = opendir("/var/lib/dpkg/"))){
-        os_calloc(FORMAT_LENGTH, sizeof(char), format);
-        snprintf(format, FORMAT_LENGTH -1, "%s", "deb");
-        os_calloc(OS_MAXSTR + 1, sizeof(char), command);
-        snprintf(command, OS_MAXSTR, "%s", "dpkg-query --showformat='${db:Status-Abbrev}|${Package}|${Maintainer}|${Version}|${Architecture}|${binary:Summary}\n' --show | grep ^ii | sed 's/^ii |//'");
-        closedir(dir);
-    }else{
-        mtwarn(WM_SYS_LOGTAG, "Unable to get installed packages inventory.");
-        return;
-    }
-
     memset(read_buff, 0, OS_MAXSTR);
 
-    if ((output = popen(command, "r"))){
+    if ((fp = fopen(file, "r"))) {
 
-        while(fgets(read_buff, OS_MAXSTR, output)){
+        while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
 
-            if (!strcmp(read_buff, "gpg-pubkey"))
-                continue;
+            // Remove '\n' from the read line
+            length = strlen(read_buff);
+            read_buff[length - 1] = '\0';
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *program = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "program");
-            cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "program", program);
-            cJSON_AddStringToObject(program, "format", format);
+            if (!strncmp(read_buff, "Package: ", 9)) {
 
-            char *string;
-            char ** parts = NULL;
+                object = cJSON_CreateObject();
+                package = cJSON_CreateObject();
+                cJSON_AddStringToObject(object, "type", "package");
+                cJSON_AddNumberToObject(object, "ID", ID);
+                cJSON_AddStringToObject(object, "timestamp", timestamp);
+                cJSON_AddItemToObject(object, "package", package);
+                cJSON_AddStringToObject(package, "format", format);
 
-            parts = OS_StrBreak('|', read_buff, 5);
+                char ** parts = NULL;
+                parts = OS_StrBreak(' ', read_buff, 2);
+                cJSON_AddStringToObject(package, "name", parts[1]);
 
-            cJSON_AddStringToObject(program, "name", parts[0]);
-            cJSON_AddStringToObject(program, "vendor", parts[1]);
-            if (!strncmp(parts[2], "(none):", 7)) {
-                char ** epoch = NULL;
-                epoch = OS_StrBreak(':', parts[2], 2);
-                cJSON_AddStringToObject(program, "version", epoch[1]);
-                for (i=0; epoch[i]; i++) {
-                    free(epoch[i]);
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
                 }
-                free(epoch);
-            } else {
-                cJSON_AddStringToObject(program, "version", parts[2]);
-            }
-            cJSON_AddStringToObject(program, "version", parts[2]);
-            cJSON_AddStringToObject(program, "architecture", parts[3]);
+                free(parts);
 
-            char ** description = NULL;
-            description = OS_StrBreak('\n', parts[4], 2);
-            cJSON_AddStringToObject(program, "description", description[0]);
-            for (i=0; description[i]; i++){
-                free(description[i]);
-            }
-            for (i=0; parts[i]; i++){
-                free(parts[i]);
-            }
-            free(description);
-            free(parts);
+            } else if (!strncmp(read_buff, "Status: ", 8)) {
 
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", string);
-            SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
+                if (strstr(read_buff, "install ok installed"))
+                    installed = 1;
+                else
+                    installed = 0;
 
-            free(string);
+            } else if (!strncmp(read_buff, "Priority: ", 10)) {
+
+                char ** parts = NULL;
+                parts = OS_StrBreak(' ', read_buff, 2);
+                cJSON_AddStringToObject(package, "priority", parts[1]);
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (!strncmp(read_buff, "Section: ", 9)) {
+
+                char ** parts = NULL;
+                parts = OS_StrBreak(' ', read_buff, 2);
+                cJSON_AddStringToObject(package, "section", parts[1]);
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (!strncmp(read_buff, "Installed-Size: ", 16)) {
+
+                char ** parts = NULL;
+                parts = OS_StrBreak(' ', read_buff, 2);
+                cJSON_AddNumberToObject(package, "size(kB)", atoi(parts[1]));
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (!strncmp(read_buff, "Maintainer: ", 12)) {
+
+                char ** parts = NULL;
+                parts = OS_StrBreak(' ', read_buff, 2);
+                cJSON_AddStringToObject(package, "vendor", parts[1]);
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (!strncmp(read_buff, "Architecture: ", 14)) {
+
+                char ** parts = NULL;
+                parts = OS_StrBreak(' ', read_buff, 2);
+                cJSON_AddStringToObject(package, "architecture", parts[1]);
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (!strncmp(read_buff, "Multi-Arch: ", 12)) {
+
+                char ** parts = NULL;
+                parts = OS_StrBreak(' ', read_buff, 2);
+                cJSON_AddStringToObject(package, "multi-arch", parts[1]);
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (!strncmp(read_buff, "Source: ", 8)) {
+
+                char ** parts = NULL;
+                parts = OS_StrBreak(' ', read_buff, 2);
+                cJSON_AddStringToObject(package, "source", parts[1]);
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (!strncmp(read_buff, "Version: ", 9)) {
+
+                char ** parts = NULL;
+                parts = OS_StrBreak(' ', read_buff, 2);
+                cJSON_AddStringToObject(package, "version", parts[1]);
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+            } else if (!strncmp(read_buff, "Description: ", 13)) {
+
+                char ** parts = NULL;
+                parts = OS_StrBreak(' ', read_buff, 2);
+                cJSON_AddStringToObject(package, "description", parts[1]);
+
+                for (i=0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
+
+                // Send message to the queue
+
+                if (installed) {
+
+                    installed = 0;
+
+                    char *string;
+                    string = cJSON_PrintUnformatted(object);
+                    mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", string);
+                    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                    cJSON_Delete(object);
+                    free(string);
+
+                } else {
+                    cJSON_Delete(object);
+                    continue;
+                }
+
+            }
         }
 
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'dpkg-query' returned %d to get software inventory", status);
-        }
-    }else{
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
+        fclose(fp);
+
+    } else {
+
+        mterror(WM_SYS_LOGTAG, "Unable to open the file '%s'", file);
+        return -1;
+
     }
-    free(format);
-    free(command);
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program_end");
+    object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "package_end");
     cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *end_msg;
     end_msg = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_programs_linux() sending '%s'", end_msg);
+    mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", end_msg);
     SendMSG(queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(end_msg);
     free(timestamp);
+
+    return 0;
 
 }
 

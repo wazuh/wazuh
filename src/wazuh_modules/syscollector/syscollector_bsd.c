@@ -32,7 +32,7 @@ hw_info *get_system_bsd();    // Get system information
 
 // Get installed programs inventory
 
-void sys_programs_bsd(int queue_fd, const char* LOCATION){
+void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     char read_buff[OS_MAXSTR];
     char *command;
@@ -70,25 +70,25 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
         while(fgets(read_buff, OS_MAXSTR, output)){
 
             cJSON *object = cJSON_CreateObject();
-            cJSON *program = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "program");
+            cJSON *package = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "package");
             cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "program", program);
-            cJSON_AddStringToObject(program, "format", "pkg");
+            cJSON_AddItemToObject(object, "package", package);
+            cJSON_AddStringToObject(package, "format", "pkg");
 
             char *string;
             char ** parts = NULL;
 
             parts = OS_StrBreak('|', read_buff, 5);
-            cJSON_AddStringToObject(program, "name", parts[0]);
-            cJSON_AddStringToObject(program, "vendor", parts[1]);
-            cJSON_AddStringToObject(program, "version", parts[2]);
-            cJSON_AddStringToObject(program, "architecture", parts[3]);
+            cJSON_AddStringToObject(package, "name", parts[0]);
+            cJSON_AddStringToObject(package, "vendor", parts[1]);
+            cJSON_AddStringToObject(package, "version", parts[2]);
+            cJSON_AddStringToObject(package, "architecture", parts[3]);
 
             char ** description = NULL;
             description = OS_StrBreak('\n', parts[4], 2);
-            cJSON_AddStringToObject(program, "description", description[0]);
+            cJSON_AddStringToObject(package, "description", description[0]);
             for (i=0; description[i]; i++){
                 free(description[i]);
             }
@@ -99,7 +99,7 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
             free(parts);
 
             string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_programs_bsd() sending '%s'", string);
+            mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
             SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
 
@@ -115,13 +115,13 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
     free(command);
 
     cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program_end");
+    cJSON_AddStringToObject(object, "type", "package_end");
     cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
     string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_programs_bsd() sending '%s'", string);
+    mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
     SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);

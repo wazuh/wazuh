@@ -599,19 +599,19 @@ void sys_programs_windows(const char* LOCATION){
         while(fgets(read_buff, OS_MAXSTR, output)){
 
             cJSON *object = cJSON_CreateObject();
-            cJSON *program = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "program");
+            cJSON *package = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "package");
             cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "program", program);
-            cJSON_AddStringToObject(program, "format", "win");
+            cJSON_AddItemToObject(object, "package", package);
+            cJSON_AddStringToObject(package, "format", "win");
 
             char *string;
             char ** parts = NULL;
 
             parts = OS_StrBreak(',', read_buff, 4);
-            cJSON_AddStringToObject(program, "name", parts[1]);
-            cJSON_AddStringToObject(program, "vendor", parts[2]);
+            cJSON_AddStringToObject(package, "name", parts[1]);
+            cJSON_AddStringToObject(package, "vendor", parts[2]);
 
             char ** version = NULL;
 
@@ -627,7 +627,7 @@ void sys_programs_windows(const char* LOCATION){
                 version = OS_StrBreak('\r', parts[3], 2);
             }
 
-            cJSON_AddStringToObject(program, "version", version[0]);
+            cJSON_AddStringToObject(package, "version", version[0]);
             for (i=0; version[i]; i++){
                 free(version[i]);
             }
@@ -651,7 +651,7 @@ void sys_programs_windows(const char* LOCATION){
 
 
     cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program_end");
+    cJSON_AddStringToObject(object, "type", "package_end");
     cJSON_AddNumberToObject(object, "ID", ID);
 
     char *string;

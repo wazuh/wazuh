@@ -119,9 +119,9 @@ void* wm_sys_main(wm_sys_t *sys) {
             #if defined(WIN32)
                 sys_programs_windows(WM_SYS_LOCATION);
             #elif defined(__linux__)
-                sys_programs_linux(queue_fd, WM_SYS_LOCATION);
+                sys_packages_linux(queue_fd, WM_SYS_LOCATION);
             #elif defined(__FreeBSD__)
-                sys_programs_bsd(queue_fd, WM_SYS_LOCATION);
+                sys_packages_bsd(queue_fd, WM_SYS_LOCATION);
             #else
                 sys->flags.programinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Packages inventory is not available for this OS version.");
