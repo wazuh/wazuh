@@ -72,6 +72,12 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             merror(XML_VALUENULL, node[i]->element);
             return OS_INVALID;
         } else if (!strcmp(node[i]->element, socket_name)) {
+            // Socket 'agent' is reserved for internal purpose.
+            // Defining a new socket with this name is not allowed.
+            if (!strcmp(node[i]->content, "agent")) {
+                merror("Invalid socket name 'agent'.");
+                return OS_INVALID;
+            }
             os_strdup(node[i]->content, logf[pl].name);
         } else if (!strcmp(node[i]->element, socket_location)) {
             os_strdup(node[i]->content, logf[pl].location);
