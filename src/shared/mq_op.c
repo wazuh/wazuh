@@ -152,7 +152,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
     for (i = 0; sockets[i] && sockets[i]->name; i++) {
         if (strcmp(sockets[i]->name, "agent") == 0) {
-            SendMSG(queue, message, locmsg, loc);
+            return SendMSG(queue, message, locmsg, loc);
         }
         else {
             tmpstr[OS_MAXSTR] = '\0';
@@ -226,6 +226,12 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
         }
     }
     return (0);
+}
+
+#else
+
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, __attribute__((unused)) logsocket **sockets) {
+    return SendMSG(queue, message, locmsg, loc);
 }
 
 #endif /* !WIN32 */
