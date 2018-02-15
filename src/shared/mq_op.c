@@ -208,7 +208,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
                         if (OS_SendUnix(sockets[i]->socket, tmpstr, 0), __mq_rcode < 0) {
                             merror("Cannot send message to socket '%s'. (Retry)", sockets[i]->name);
-                            SendMSG(queue, "Cannot send message to socket.", locmsg, loc);
+                            SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
                             last_attempt = mtime;
                             continue;
                         }
@@ -219,7 +219,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
                 } else {
                     merror("Cannot send message to socket '%s'. (Retry)", sockets[i]->name);
-                    SendMSG(queue, "Cannot send message to socket.", locmsg, loc);
+                    SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
                     continue;
                 }
             }
