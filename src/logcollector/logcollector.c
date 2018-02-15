@@ -91,12 +91,6 @@ void LogCollectorStart()
                 logff[i].file = NULL;
                 logff[i].command = NULL;
                 logff[i].fp = NULL;
-                int x = 0;
-                while(logff[i].target[x]) {
-                    free(logff[i].target[x]);
-                }
-                logff[i].target = NULL;
-                logff[i].target_socket = NULL;
 
                 break;
             }
