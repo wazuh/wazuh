@@ -82,7 +82,12 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!strcmp(node[i]->element, socket_location)) {
             os_strdup(node[i]->content, logf[pl].location);
         } else if (!strcmp(node[i]->element, socket_mode)) {
-            os_strdup(node[i]->content, logf[pl].mode);
+            if (!strcmp(node[i]->content, "tcp") || !strcmp(node[i]->content, "udp")){
+                os_strdup(node[i]->content, logf[pl].mode);
+            } else {
+                merror("Socket type '%s' is not valid. Should be 'udp' or 'tcp'.", node[i]->content);
+                return OS_INVALID;
+            }
         } else if (!strcmp(node[i]->element, socket_prefix)) {
             os_strdup(node[i]->content, logf[pl].prefix);
         } else {

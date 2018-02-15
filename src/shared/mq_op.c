@@ -159,9 +159,6 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                 sock_type = SOCK_DGRAM;
             } else if (strcmp("tcp",sockets[i]->mode) == 0) {
                 sock_type = SOCK_STREAM;
-            } else {
-                merror("Socket type '%s' not valid.", sockets[i]->mode);
-                continue;
             }
 
             // Check if the socket is connected
