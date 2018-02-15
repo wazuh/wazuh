@@ -40,7 +40,8 @@ try:
         myWazuh = Wazuh(get_init=True)
 
         from wazuh.common import *
-        from wazuh.cluster import *
+        from wazuh.cluster.handler import *
+        from wazuh.cluster.management import *
         from wazuh.exception import WazuhException
         from wazuh.utils import check_output
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
