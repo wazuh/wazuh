@@ -538,14 +538,27 @@ os_info *get_unix_version()
 
     }
 
-    if (uname(&uts_buf) == 0) {
-
+    if (uname(&uts_buf) >= 0) {
         os_strdup(uts_buf.sysname, info->sysname);
         os_strdup(uts_buf.nodename, info->nodename);
         os_strdup(uts_buf.release, info->release);
         os_strdup(uts_buf.version, info->version);
         os_strdup(uts_buf.machine, info->machine);
-
+    } else {
+        free(info->os_name);
+        free(info->os_major);
+        free(info->os_minor);
+        free(info->os_build);
+        free(info->os_version);
+        free(info->os_codename);
+        free(info->os_platform);
+        free(info->sysname);
+        free(info->nodename);
+        free(info->release);
+        free(info->version);
+        free(info->machine);
+        free(info);
+        return NULL;
     }
 
     return info;
