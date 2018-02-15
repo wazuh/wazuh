@@ -139,15 +139,15 @@ int wdb_parse(char * input, char * output) {
                     mdebug2("Stored Port information in DB for agent '%d'", agent_id);
                 }
             }
-        } else if (strcmp(query, "program") == 0) {
+        } else if (strcmp(query, "package") == 0) {
             if (!next) {
                 mdebug1("Invalid DB query syntax.");
                 mdebug2("DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
-                if (wdb_parse_programs(wdb, next, output) == 0){
-                    mdebug2("Updated 'programs' table in DB for agent '%d'", agent_id);
+                if (wdb_parse_packages(wdb, next, output) == 0){
+                    mdebug2("Stored package information in DB for agent '%d'", agent_id);
                 }
             }
         } else if (strcmp(query, "process") == 0) {
@@ -1285,23 +1285,28 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
 }
 
 
-int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
+int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
     char * scan_id;
     char * scan_time;
     char * format;
     char * name;
+    char * priority;
+    char * section;
+    long size;
     char * vendor;
     char * version;
     char * architecture;
+    char * multiarch;
+    char * source;
     char * description;
     int result;
 
     if (next = strchr(input, ' '), !next) {
-        mdebug1("Invalid Program info query syntax.");
-        mdebug2("Program info query: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", input);
+        mdebug1("Invalid Package info query syntax.");
+        mdebug2("Package info query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", input);
         return -1;
     }
 
@@ -1312,9 +1317,9 @@ int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Program info query syntax.");
-            mdebug2("Program info query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", curr);
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1326,9 +1331,9 @@ int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
             scan_id = NULL;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Program info query syntax.");
-            mdebug2("Program info query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", curr);
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1340,9 +1345,9 @@ int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
             scan_time = NULL;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Program info query syntax.");
-            mdebug2("Program info query: %s", scan_time);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", scan_time);
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", scan_time);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", scan_time);
             return -1;
         }
 
@@ -1354,9 +1359,9 @@ int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
             format = NULL;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Program info query syntax.");
-            mdebug2("Program info query: %s", format);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", format);
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", format);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", format);
             return -1;
         }
 
@@ -1368,9 +1373,52 @@ int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
             name = NULL;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Program info query syntax.");
-            mdebug2("Program info query: %s", name);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", name);
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", name);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", name);
+            return -1;
+        }
+
+        priority = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(priority, "NULL"))
+            priority = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", priority);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", priority);
+            return -1;
+        }
+
+        section = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(section, "NULL"))
+            section = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", section);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", section);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            size = -1;
+        else
+            size = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Package query syntax.");
+            mdebug2("Package query: %ld", size);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1382,9 +1430,9 @@ int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
             vendor = NULL;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Program info query syntax.");
-            mdebug2("Program info query: %s", vendor);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", vendor);
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", vendor);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", vendor);
             return -1;
         }
 
@@ -1396,26 +1444,54 @@ int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
             version = NULL;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Program info query syntax.");
-            mdebug2("Program info query: %s", version);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", version);
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", version);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", version);
             return -1;
         }
 
         architecture = curr;
         *next++ = '\0';
+        curr = next;
 
         if (!strcmp(architecture, "NULL"))
             architecture = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", architecture);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", architecture);
+            return -1;
+        }
+
+        multiarch = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(multiarch, "NULL"))
+            multiarch = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", multiarch);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", multiarch);
+            return -1;
+        }
+
+        source = curr;
+        *next++ = '\0';
+
+        if (!strcmp(source, "NULL"))
+            source = NULL;
 
         if (!strcmp(next, "NULL"))
             description = NULL;
         else
             description = next;
 
-        if (result = wdb_program_save(wdb, scan_id, scan_time, format, name, vendor, version, architecture, description), result < 0) {
-            mdebug1("Cannot save Program information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save Program information.");
+        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, version, architecture, multiarch, source, description), result < 0) {
+            mdebug1("Cannot save Package information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
@@ -1431,9 +1507,9 @@ int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
         else
             scan_id = next;
 
-        if (result = wdb_program_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Program information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Program information.");
+        if (result = wdb_package_delete(wdb, scan_id), result < 0) {
+            mdebug1("Cannot delete old Package information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Package information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
@@ -1441,9 +1517,9 @@ int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
         return result;
 
     } else {
-        mdebug1("Invalid Program info query syntax.");
+        mdebug1("Invalid Package info query syntax.");
         mdebug2("DB query error near: %s", curr);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid Program info query syntax, near '%.32s'", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", curr);
         return -1;
     }
 }

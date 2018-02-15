@@ -27,7 +27,7 @@ static int sc_send_db(char * msg);
 static int decode_netinfo(char *agent_id, cJSON * logJSON);
 static int decode_osinfo(char *agent_id, cJSON * logJSON);
 static int decode_hardware(char *agent_id, cJSON * logJSON);
-static int decode_program(char *agent_id, cJSON * logJSON);
+static int decode_package(char *agent_id, cJSON * logJSON);
 static int decode_port(char *agent_id, cJSON * logJSON);
 static int decode_process(char *agent_id, cJSON * logJSON);
 
@@ -77,9 +77,9 @@ int DecodeSyscollector(Eventinfo *lf)
             return (0);
         }
     }
-    else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
-        if (decode_program(lf->agent_id, logJSON) < 0) {
-            mdebug1("Unable to send programs information to Wazuh DB.");
+    else if (strcmp(msg_type, "package") == 0 || strcmp(msg_type, "package_end") == 0) {
+        if (decode_package(lf->agent_id, logJSON) < 0) {
+            mdebug1("Unable to send packages information to Wazuh DB.");
             return (0);
         }
     }
@@ -727,25 +727,30 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
     return 0;
 }
 
-int decode_program(char *agent_id, cJSON * logJSON) {
+int decode_package(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
-    cJSON * program;
+    cJSON * package;
 
-    if (program = cJSON_GetObjectItem(logJSON, "program"), program) {
+    if (package = cJSON_GetObjectItem(logJSON, "package"), package) {
         cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
         cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
-        cJSON * format = cJSON_GetObjectItem(program, "format");
-        cJSON * name = cJSON_GetObjectItem(program, "name");
-        cJSON * vendor = cJSON_GetObjectItem(program, "vendor");
-        cJSON * version = cJSON_GetObjectItem(program, "version");
-        cJSON * architecture = cJSON_GetObjectItem(program, "architecture");
-        cJSON * description = cJSON_GetObjectItem(program, "description");
+        cJSON * format = cJSON_GetObjectItem(package, "format");
+        cJSON * name = cJSON_GetObjectItem(package, "name");
+        cJSON * priority = cJSON_GetObjectItem(package, "priority");
+        cJSON * section = cJSON_GetObjectItem(package, "section");
+        cJSON * size = cJSON_GetObjectItem(package, "size(kB)");
+        cJSON * vendor = cJSON_GetObjectItem(package, "vendor");
+        cJSON * version = cJSON_GetObjectItem(package, "version");
+        cJSON * architecture = cJSON_GetObjectItem(package, "architecture");
+        cJSON * multiarch = cJSON_GetObjectItem(package, "multi-arch");
+        cJSON * source = cJSON_GetObjectItem(package, "source");
+        cJSON * description = cJSON_GetObjectItem(package, "description");
 
-        snprintf(msg, OS_MAXSTR - 1, "agent %s program save", agent_id);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s package save", agent_id);
 
 
         if (scan_id) {
@@ -774,6 +779,26 @@ int decode_program(char *agent_id, cJSON * logJSON) {
             wm_strcat(&msg, "NULL", '|');
         }
 
+        if (priority) {
+            wm_strcat(&msg, priority->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (section) {
+            wm_strcat(&msg, section->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (size) {
+            char _size[OS_MAXSTR];
+            snprintf(_size, OS_MAXSTR - 1, "%d", size->valueint);
+            wm_strcat(&msg, _size, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
         if (vendor) {
             wm_strcat(&msg, vendor->valuestring, '|');
         } else {
@@ -788,6 +813,18 @@ int decode_program(char *agent_id, cJSON * logJSON) {
 
         if (architecture) {
             wm_strcat(&msg, architecture->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (multiarch) {
+            wm_strcat(&msg, multiarch->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (source) {
+            wm_strcat(&msg, source->valuestring, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
@@ -813,10 +850,10 @@ int decode_program(char *agent_id, cJSON * logJSON) {
             merror("Invalid message. Type not found.");
             free(msg);
             return -1;
-        } else if (strcmp(msg_type, "program_end") == 0) {
+        } else if (strcmp(msg_type, "package_end") == 0) {
 
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
-            snprintf(msg, OS_MAXSTR - 1, "agent %s program del %d", agent_id, scan_id->valueint);
+            snprintf(msg, OS_MAXSTR - 1, "agent %s package del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
                 return -1;

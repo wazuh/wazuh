@@ -254,22 +254,22 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
 // Save HW info into DB.
 int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free);
 
-// Insert program info tuple. Return 0 on success or -1 on error.
-int wdb_program_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description);
+// Insert package info tuple. Return 0 on success or -1 on error.
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description);
 
-// Save Program info into DB.
-int wdb_program_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description);
+// Save Packages info into DB.
+int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description);
 
-// Delete Program info about previous scan from DB.
-int wdb_program_delete(wdb_t * wdb, const char * scan_id);
+// Delete Packages info about previous scan from DB.
+int wdb_package_delete(wdb_t * wdb, const char * scan_id);
 
-// Insert program info tuple. Return 0 on success or -1 on error.
+// Insert process info tuple. Return 0 on success or -1 on error.
 int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor);
 
-// Save Program info into DB.
+// Save Process info into DB.
 int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor);
 
-// Delete Program info about previous scan from DB.
+// Delete Process info about previous scan from DB.
 int wdb_process_delete(wdb_t * wdb, const char * scan_id);
 
 // Insert port info tuple. Return 0 on success or -1 on error.
@@ -317,7 +317,7 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_hardware(wdb_t * wdb, char * input, char * output);
 
-int wdb_parse_programs(wdb_t * wdb, char * input, char * output);
+int wdb_parse_packages(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
 

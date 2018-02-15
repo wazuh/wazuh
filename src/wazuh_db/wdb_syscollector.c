@@ -317,37 +317,42 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 
 }
 
-// Function to save Program info into the DB. Return 0 on success or -1 on error.
-int wdb_program_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description) {
+// Function to save Package info into the DB. Return 0 on success or -1 on error.
+int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_program_save(): cannot begin transaction");
+        merror("at wdb_package_save(): cannot begin transaction");
         return -1;
     }
 
-    if (wdb_program_insert(wdb,
+    if (wdb_package_insert(wdb,
         scan_id,
         scan_time,
         format,
         name,
+        priority,
+        section,
+        size,
         vendor,
         version,
         architecture,
+        multiarch,
+        source,
         description) < 0) {
 
-        mdebug1("at wdb_program_save(): cannot insert program tuple.");
+        mdebug1("at wdb_package_save(): cannot insert package tuple.");
         return -1;
     }
 
     return 0;
 }
 
-// Insert Program info tuple. Return 0 on success or -1 on error.
-int wdb_program_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description) {
+// Insert Package info tuple. Return 0 on success or -1 on error.
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_INSERT) > 0) {
-        merror("at wdb_program_insert(): cannot cache statement");
+        merror("at wdb_package_insert(): cannot cache statement");
         return -1;
     }
 
@@ -357,33 +362,42 @@ int wdb_program_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
     sqlite3_bind_text(stmt, 3, format, -1, NULL);
     sqlite3_bind_text(stmt, 4, name, -1, NULL);
-    sqlite3_bind_text(stmt, 5, vendor, -1, NULL);
-    sqlite3_bind_text(stmt, 6, version, -1, NULL);
-    sqlite3_bind_text(stmt, 7, architecture, -1, NULL);
-    sqlite3_bind_text(stmt, 8, description, -1, NULL);
+    sqlite3_bind_text(stmt, 5, priority, -1, NULL);
+    sqlite3_bind_text(stmt, 6, section, -1, NULL);
+    if (size >= 0) {
+        sqlite3_bind_int64(stmt, 7, size);
+    } else {
+        sqlite3_bind_null(stmt, 7);
+    }
+    sqlite3_bind_text(stmt, 8, vendor, -1, NULL);
+    sqlite3_bind_text(stmt, 9, version, -1, NULL);
+    sqlite3_bind_text(stmt, 10, architecture, -1, NULL);
+    sqlite3_bind_text(stmt, 11, multiarch, -1, NULL);
+    sqlite3_bind_text(stmt, 12, source, -1, NULL);
+    sqlite3_bind_text(stmt, 13, description, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
     }
     else {
-        mdebug1("at wdb_program_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
 }
 
-// Function to delete old Program information from DB. Return 0 on success or -1 on error.
-int wdb_program_delete(wdb_t * wdb, const char * scan_id) {
+// Function to delete old Package information from DB. Return 0 on success or -1 on error.
+int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
 
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_program_delete(): cannot begin transaction");
+        merror("at wdb_package_delete(): cannot begin transaction");
         return -1;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL) > 0) {
-        merror("at wdb_program_delete(): cannot cache statement");
+        merror("at wdb_package_delete(): cannot cache statement");
         return -1;
     }
 

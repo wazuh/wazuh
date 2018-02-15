@@ -152,9 +152,14 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     scan_time TEXT,
     format TEXT NOT NULL CHECK (format IN ('deb', 'rpm', 'win', 'pkg')),
     name TEXT,
+    priority TEXT,
+    section TEXT,
+    size INTEGER CHECK (size >= 0),
     vendor TEXT,
     version TEXT,
     architecture TEXT,
+    multiarch TEXT,
+    source TEXT,
     description TEXT,
     PRIMARY KEY (scan_id, name, version, architecture)
 );
