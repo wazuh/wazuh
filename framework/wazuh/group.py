@@ -3,11 +3,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chown_r, chmod_r, create_exception_dic
+from wazuh.utils import execute, cut_array, sort_array, search_array, chown_r, chmod_r, create_exception_dic, plain_dict_to_nested_dict
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.InputValidator import InputValidator
 from wazuh.database import Connection
+from wazuh.agent import Agent
+from wazuh.configuration import get_file_conf_path
 from os import path, listdir, chmod
 from shutil import move, copytree
 from time import time
@@ -17,7 +19,8 @@ from operator import setitem
 from pwd import getpwnam
 from grp import getgrnam
 
-def _remove_single_group(self, group_id):
+
+def _remove_single_group(group_id):
     """
     Remove the group in every agent.
 
@@ -36,7 +39,7 @@ def _remove_single_group(self, group_id):
     # Remove agent group
     agents = get_agent_group(group_id=group_id, limit=None)
     for agent in agents['items']:
-        self.unset_group(agent['id'])
+        unset_group(agent['id'])
         ids.append(agent['id'])
 
     # Remove group directory
@@ -333,13 +336,11 @@ def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, 
     if 'id' in select_fields:
         map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
 
-    '''
     if 'status' in select_fields:
         try:
             map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
         except KeyError:
             pass
-    '''
 
     # return only the fields requested by the user (saved in select_fields) and not the dependent ones
     non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
@@ -460,21 +461,25 @@ def remove_group(group_id):
                 raise WazuhException(1712)
 
             try:
-                removed = self._remove_single_group(id)
+                removed = _remove_single_group(id)
                 ids.append(id)
                 affected_agents += removed['affected_agents']
-            except Exception as e:
+            except WazuhException as e:
                 failed_ids.append(create_exception_dic(id, e))
+            except Exception as e:
+                raise WazuhException(1728, str(e))
     else:
         if group_id.lower() == "default":
             raise WazuhException(1712)
 
         try:
-            removed = self._remove_single_group(group_id)
+            removed = _remove_single_group(group_id)
             ids.append(group_id)
             affected_agents += removed['affected_agents']
-        except Exception as e:
+        except WazuhException as e:
             failed_ids.append(create_exception_dic(group_id, e))
+        except Exception as e:
+            raise WazuhException(1728, str(e))
 
     final_dict = {}
     if not failed_ids:
@@ -485,3 +490,88 @@ def remove_group(group_id):
         final_dict = {'msg': message, 'failed_ids': failed_ids, 'ids': ids, 'affected_agents': affected_agents}
 
     return final_dict
+
+
+def set_group(agent_id, group_id, force=False):
+    """
+    Set a group to an agent.
+
+    :param agent_id: Agent ID.
+    :param group_id: Group ID.
+    :param force: No check if agent exists
+    :return: Confirmation message.
+    """
+    # Input Validation of group_id
+    if not InputValidator().group(group_id):
+        raise WazuhException(1722)
+
+    agent_id = agent_id.zfill(3)
+    if agent_id == "000":
+        raise WazuhException(1703)
+
+    # Check if agent exists
+    if not force:
+        Agent(agent_id).get_basic_information()
+
+    # Assign group in /queue/agent-groups
+    agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
+    try:
+        new_file = False if path.exists(agent_group_path) else True
+
+        f_group = open(agent_group_path, 'w')
+        f_group.write(group_id)
+        f_group.close()
+
+        if new_file:
+            ossec_uid = getpwnam("ossec").pw_uid
+            ossec_gid = getgrnam("ossec").gr_gid
+            chown(agent_group_path, ossec_uid, ossec_gid)
+            chmod(agent_group_path, 0o660)
+    except Exception as e:
+        raise WazuhException(1005, str(e))
+
+    # Create group in /etc/shared
+    if not group_exists(group_id):
+        create_group(group_id)
+
+    return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
+
+
+def unset_group(agent_id, force=False):
+    """
+    Unset the agent group. The group will be 'default'.
+
+    :param agent_id: Agent ID.
+    :param force: No check if agent exists
+    :return: Confirmation message.
+    """
+    # Check if agent exists
+    if not force:
+        Agent(agent_id).get_basic_information()
+
+    agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
+    if path.exists(agent_group_path):
+        with open(agent_group_path, "w+") as fo:
+            fo.write("default")
+
+    return "Group unset for agent '{0}'.".format(agent_id)
+
+
+def get_file_conf(filename, group_id=None, type_conf=None):
+    """
+    Returns the configuration file as dictionary.
+
+    :return: configuration file as dictionary.
+    """
+
+    if group_id:
+        if not group_exists(group_id):
+            raise WazuhException(1710, group_id)
+
+        file_path = "{0}/{1}".format(common.shared_path, filename) \
+                    if filename == 'ar.conf' else \
+                    "{0}/{1}/{2}".format(common.shared_path, group_id, filename)
+    else:
+        file_path = "{0}/{1}".format(common.shared_path, filename)
+
+    return get_file_conf_path(filename, file_path, type_conf)
