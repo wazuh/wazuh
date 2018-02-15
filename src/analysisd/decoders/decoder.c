@@ -341,7 +341,7 @@ void *Protocol_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char
 {
 #ifdef TESTRULE
     if (!alert_only) {
-        print_out("       proto: '%s'", field);
+        print_out("       protocol: '%s'", field);
     }
 #endif
 
