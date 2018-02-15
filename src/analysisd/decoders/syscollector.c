@@ -872,9 +872,8 @@ int sc_send_db(char * msg) {
 
     if (sock < 0) {
         if (mtime = time(NULL), mtime > last_attempt + 10) {
-            last_attempt = mtime;
-
             if (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+                last_attempt = mtime;
                 merror("Unable to connect to socket '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
                 goto end;
             }
@@ -891,17 +890,17 @@ int sc_send_db(char * msg) {
             merror("Syscollector decoder: database socket is full");
         } else if (errno == EPIPE) {
             if (mtime = time(NULL), mtime > last_attempt + 10) {
-                last_attempt = mtime;
-
                 // Retry to connect
                 mwarn("Connection with wazuh-db lost. Reconnecting.");
 
                 if (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+                    last_attempt = mtime;
                     merror("Unable to connect to socket '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
                     goto end;
                 }
 
                 if (send(sock, msg, size + 1, MSG_DONTWAIT) < size) {
+                    last_attempt = mtime;
                     merror("at sc_send_db(): at send() (retry): %s (%d)", strerror(errno), errno);
                     goto end;
                 }

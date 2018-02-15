@@ -56,7 +56,7 @@
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
-#define CONFIG_ERROR    "(1202): Configuration error at '%s'. Exiting."
+#define CONFIG_ERROR    "(1202): Configuration error at '%s'."
 #define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR  "(1204): Invalid connection type: '%s'."
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
@@ -181,6 +181,9 @@
 #define READING_EVTLOG  "(1951): Analyzing event log: '%s'."
 #define VAR_LOG_MON     "(1952): Monitoring variable log file: '%s'."
 #define INV_MULTILOG    "(1953): Invalid DJB multilog file: '%s'."
+#define MISS_SOCK_NAME  "(1954): Missing field 'name' for socket."
+#define MISS_SOCK_LOC   "(1955): Missing field 'location' for socket."
+
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."

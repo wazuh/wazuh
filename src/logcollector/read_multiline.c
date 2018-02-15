@@ -80,8 +80,8 @@ void *read_multiline(int pos, int *rc, int drop_it)
 
         /* Send message to queue */
         if (drop_it == 0) {
-            if (SendMSG(logr_queue, buffer, logff[pos].file,
-                        LOCALFILE_MQ) < 0) {
+            if (SendMSGtoSCK(logr_queue, buffer, logff[pos].file,
+                        LOCALFILE_MQ, logff[pos].target_socket) < 0) {
                 merror(QUEUE_SEND);
                 if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                     merror_exit(QUEUE_FATAL, DEFAULTQPATH);

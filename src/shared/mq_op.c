@@ -8,8 +8,8 @@
  */
 
 #include "shared.h"
+#include "config/config.h"
 #include "os_net/os_net.h"
-
 
 #ifndef WIN32
 
@@ -139,6 +139,99 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
     }
 
     return (0);
+}
+
+/* Send a message to socket */
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logsocket **sockets)
+{
+    int __mq_rcode;
+    char tmpstr[OS_MAXSTR + 1];
+    int i;
+    static time_t last_attempt = 0;
+    time_t mtime;
+
+    for (i = 0; sockets[i] && sockets[i]->name; i++) {
+        if (strcmp(sockets[i]->name, "agent") == 0) {
+            return SendMSG(queue, message, locmsg, loc);
+        }
+        else {
+            tmpstr[OS_MAXSTR] = '\0';
+
+            int sock_type;
+            const char * strmode;
+
+            switch (sockets[i]->mode) {
+            case UDP_PROTO:
+                sock_type = SOCK_DGRAM;
+                strmode = "udp";
+                break;
+            case TCP_PROTO:
+                sock_type = SOCK_STREAM;
+                strmode = "tcp";
+                break;
+            default:
+                merror("At %s(): undefined protocol. This shouldn't happen.", __FUNCTION__);
+                return -1;
+            }
+
+            // create message and add prefix
+            if (sockets[i]->prefix && *sockets[i]->prefix) {
+                snprintf(tmpstr, OS_MAXSTR, "%s%s", sockets[i]->prefix, message);
+            } else {
+                snprintf(tmpstr, OS_MAXSTR, "%s", message);
+            }
+
+            // Connect to socket if disconnected
+            if (sockets[i]->socket < 0) {
+                if (mtime = time(NULL), mtime > last_attempt + 300) {
+                    if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
+                        last_attempt = mtime;
+                        merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, strmode);
+                        continue;
+                    }
+                } else {
+                    // Return silently
+                    continue;
+                }
+            }
+
+            // Send msg to socket
+
+            if (__mq_rcode = OS_SendUnix(sockets[i]->socket, tmpstr, 0), __mq_rcode < 0) {
+                if (__mq_rcode == OS_SOCKTERR) {
+                    if (mtime = time(NULL), mtime > last_attempt + 300) {
+                        if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
+                            merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, strmode);
+                            last_attempt = mtime;
+                            continue;
+                        }
+
+                        if (OS_SendUnix(sockets[i]->socket, tmpstr, 0), __mq_rcode < 0) {
+                            merror("Cannot send message to socket '%s'. (Retry)", sockets[i]->name);
+                            SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
+                            last_attempt = mtime;
+                            continue;
+                        }
+                    } else {
+                        // Return silently
+                        continue;
+                    }
+
+                } else {
+                    merror("Cannot send message to socket '%s'. (Retry)", sockets[i]->name);
+                    SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
+                    continue;
+                }
+            }
+        }
+    }
+    return (0);
+}
+
+#else
+
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, __attribute__((unused)) logsocket **sockets) {
+    return SendMSG(queue, message, locmsg, loc);
 }
 
 #endif /* !WIN32 */
