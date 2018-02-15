@@ -184,9 +184,8 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
             // Connect to socket if disconnected
             if (sockets[i]->socket < 0) {
                 if (mtime = time(NULL), mtime > last_attempt + 300) {
-                    last_attempt = mtime;
-
                     if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
+                        last_attempt = mtime;
                         merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, strmode);
                         continue;
                     }
@@ -201,16 +200,16 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
             if (__mq_rcode = OS_SendUnix(sockets[i]->socket, tmpstr, 0), __mq_rcode < 0) {
                 if (__mq_rcode == OS_SOCKTERR) {
                     if (mtime = time(NULL), mtime > last_attempt + 300) {
-                        last_attempt = mtime;
-
                         if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
                             merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, strmode);
+                            last_attempt = mtime;
                             continue;
                         }
 
                         if (OS_SendUnix(sockets[i]->socket, tmpstr, 0), __mq_rcode < 0) {
                             merror("Cannot send message to socket '%s'. (Retry)", sockets[i]->name);
                             SendMSG(queue, "Cannot send message to socket.", locmsg, loc);
+                            last_attempt = mtime;
                             continue;
                         }
                     } else {
