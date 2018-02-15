@@ -11,6 +11,7 @@ from wazuh.database import Connection
 from wazuh.wdb import WazuhDBConnection
 from wazuh.InputValidator import InputValidator
 from wazuh.configuration import get_agent_conf_from_path
+from wazuh.group import group_exists, create_group
 from wazuh import manager
 from wazuh import common
 from glob import glob
@@ -1278,7 +1279,7 @@ class Agent:
 
         return remove_agent
 
-    
+
 
     @staticmethod
     def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None):
@@ -1289,7 +1290,7 @@ class Agent:
         """
         agent_conf = ""
         if group_id:
-            if not Agent.group_exists(group_id):
+            if not group_exists(group_id):
                 raise WazuhException(1710, group_id)
 
             agent_conf = "{0}/{1}".format(common.shared_path, group_id)
@@ -1337,7 +1338,7 @@ class Agent:
             raise WazuhException(1005, str(e))
 
         # Create group in /etc/shared
-        if not Agent.group_exists(group_id):
+        if not group_exists(group_id):
             Agent.create_group(group_id)
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)

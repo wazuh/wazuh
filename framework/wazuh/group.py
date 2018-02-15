@@ -6,6 +6,7 @@
 from wazuh.utils import execute, cut_array, sort_array, search_array, chown_r, chmod_r, create_exception_dic
 from wazuh.exception import WazuhException
 from wazuh import common
+from wazuh.InputValidator import InputValidator
 from wazuh.database import Connection
 from os import path, listdir, chmod
 from shutil import move, copytree
@@ -15,7 +16,6 @@ import hashlib
 from operator import setitem
 from pwd import getpwnam
 from grp import getgrnam
-from agent import Agent
 
 def _remove_single_group(self, group_id):
     """
@@ -333,11 +333,13 @@ def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, 
     if 'id' in select_fields:
         map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
 
+    '''
     if 'status' in select_fields:
         try:
             map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
         except KeyError:
             pass
+    '''
 
     # return only the fields requested by the user (saved in select_fields) and not the dependent ones
     non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
@@ -458,7 +460,7 @@ def remove_group(group_id):
                 raise WazuhException(1712)
 
             try:
-                removed = ._remove_single_group(id)
+                removed = self._remove_single_group(id)
                 ids.append(id)
                 affected_agents += removed['affected_agents']
             except Exception as e:
@@ -468,7 +470,7 @@ def remove_group(group_id):
             raise WazuhException(1712)
 
         try:
-            removed = ._remove_single_group(group_id)
+            removed = self._remove_single_group(group_id)
             ids.append(group_id)
             affected_agents += removed['affected_agents']
         except Exception as e:
