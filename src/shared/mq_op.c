@@ -161,7 +161,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                 sock_type = SOCK_STREAM;
             } else {
                 merror("Socket type '%s' not valid.", sockets[i]->mode);
-                return (-1);
+                continue;
             }
 
             // Check if the socket is connected
@@ -174,7 +174,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                         if ((sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256)) < 0) {
                             SendMSG(queue, "Socket not available.", locmsg, loc);
                             merror(QUEUE_ERROR, sockets[i]->location, strerror(errno));
-                            return (-1);
+                            continue;
                         }
                     }
                 }
@@ -184,7 +184,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
             if (sockets[i]->socket == 0) {
                 SendMSG(queue, "Socket not available.", locmsg, loc);
                 merror(QUEUE_ERROR, sockets[i]->location, strerror(errno));
-                return (-1);
+                continue;
             }
 
             // create message and add prefix
@@ -200,7 +200,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                 if (__mq_rcode == OS_SOCKTERR) {
                     merror("Socket '%s' not available.", sockets[i]->name);
                     close(sockets[i]->socket);
-                    return (-1);
+                    continue;
                 }
                 /* Unable to send. Socket busy */
                 mwarn("Socket busy, waiting for 1 second.");
@@ -222,7 +222,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                             if (OS_SendUnix(sockets[i]->socket, tmpstr, 0) < 0) {
                                 SendMSG(queue, "Cannot send message to socket.", locmsg, loc);
                                 close(sockets[i]->socket);
-                                return (-1);
+                                continue;
                             }
                         }
                     }
