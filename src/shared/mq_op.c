@@ -186,7 +186,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
             // create message and add prefix
             if (sockets[i]->prefix && *sockets[i]->prefix) {
-                snprintf(tmpstr, OS_MAXSTR, "%s:%s", sockets[i]->prefix, message);
+                snprintf(tmpstr, OS_MAXSTR, "%s%s", sockets[i]->prefix, message);
             } else {
                 snprintf(tmpstr, OS_MAXSTR, "%s", message);
             }
@@ -197,7 +197,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                 if (__mq_rcode == OS_SOCKTERR) {
                     merror("Socket '%s' not available.", sockets[i]->name);
                     close(sockets[i]->socket);
-                    continue;
+                    // continue;
                 }
                 /* Unable to send. Socket busy */
                 mwarn("Socket busy, waiting for 1 second.");
