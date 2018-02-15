@@ -480,15 +480,31 @@ os_info *get_unix_version()
             } else if (strcmp(strtok(buff, "\n"),"SunOS") == 0){ // Sun OS
                 info->os_name = strdup("SunOS");
                 info->os_platform = strdup("sunos");
-                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Can not read from command output (uname -r).");
-                    } else if (w_regexec("([0-9][0-9]*\\.[0-9][0-9]*)\\.*", buff, 2, match)){
-                        match_size = match[1].rm_eo - match[1].rm_so;
-                        version = malloc(match_size +1);
-                        snprintf (version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                    }
-                    pclose(cmd_output_ver);
+
+                if (os_release = fopen("/etc/release", "r"), os_release) {
+                  if(fgets(buff, sizeof(buff) - 1, os_release) == NULL){
+                      merror("Can not read from /etc/release.");
+                      fclose(os_release);
+                      goto free_os_info;
+                  } else {
+                      char *base;
+                      char *found;
+                      char tag[] = "Oracle Solaris";
+                      if (found = strstr(buff, tag), found) {
+                          for (found += strlen(tag); *found != '\0' && *found == ' '; found++);
+                          for (base = found; *found != '\0' && *found != ' '; found++);
+                          *found = '\0';
+                          os_strdup(base, version);
+                          os_strdup(base, info->os_version);
+                          fclose(os_release);
+                      } else {
+                          merror("Can not get the Solaris version.");
+                          fclose(os_release);
+                          goto free_os_info;
+                      }
+                  }
+                } else {
+                  goto free_os_info;
                 }
             } else if (strcmp(strtok(buff, "\n"),"OpenBSD") == 0 ||
                        strcmp(strtok(buff, "\n"),"NetBSD")  == 0 ||
@@ -512,6 +528,16 @@ os_info *get_unix_version()
             }
             pclose(cmd_output);
         }
+    }
+
+    if (uname(&uts_buf) >= 0) {
+        os_strdup(uts_buf.sysname, info->sysname);
+        os_strdup(uts_buf.nodename, info->nodename);
+        os_strdup(uts_buf.release, info->release);
+        os_strdup(uts_buf.version, info->version);
+        os_strdup(uts_buf.machine, info->machine);
+    } else {
+        goto free_os_info;
     }
 
     if (info->os_version) { // Parsing version
@@ -538,30 +564,10 @@ os_info *get_unix_version()
 
     }
 
-    if (uname(&uts_buf) >= 0) {
-        os_strdup(uts_buf.sysname, info->sysname);
-        os_strdup(uts_buf.nodename, info->nodename);
-        os_strdup(uts_buf.release, info->release);
-        os_strdup(uts_buf.version, info->version);
-        os_strdup(uts_buf.machine, info->machine);
-    } else {
-        free(info->os_name);
-        free(info->os_major);
-        free(info->os_minor);
-        free(info->os_build);
-        free(info->os_version);
-        free(info->os_codename);
-        free(info->os_platform);
-        free(info->sysname);
-        free(info->nodename);
-        free(info->release);
-        free(info->version);
-        free(info->machine);
-        free(info);
-        return NULL;
-    }
-
     return info;
+free_os_info:
+    free_osinfo(info);
+    return NULL;
 }
 
 #endif
