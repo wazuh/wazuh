@@ -465,8 +465,8 @@ void readel(os_el *el, int printit)
                          computer_name,
                          descriptive_msg != NULL ? descriptive_msg : el_string);
 
-                if (SendMSG(logr_queue, final_msg, "WinEvtLog",
-                            LOCALFILE_MQ) < 0) {
+                if (SendMSGtoSCK(logr_queue, final_msg, "WinEvtLog",
+                            LOCALFILE_MQ, logff[pos].target_socket) < 0) {
                     merror(QUEUE_SEND);
                 }
             }
@@ -497,7 +497,7 @@ void readel(os_el *el, int printit)
 
         /* Send message about cleared */
         snprintf(msg_alert, 512, "ossec: Event log cleared: '%s'", el->name);
-        SendMSG(logr_queue, msg_alert, "WinEvtLog", LOCALFILE_MQ);
+        SendMSGtoSCK(logr_queue, msg_alert, "WinEvtLog", LOCALFILE_MQ, logff[pos].target_socket);
 
         /* Close the event log and reopen */
         CloseEventLog(el->h);

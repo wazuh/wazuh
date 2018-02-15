@@ -143,11 +143,11 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 /* Send a message to socket */
 int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logsocket **sockets)
 {
-    int __mq_rcode, i;
+    int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
-    i = 0;
+    int i = 0;
 
-    while (sockets[i]->name) {
+    while (sockets[i] && sockets[i]->name) {
         if (strcmp(sockets[i]->name, "agent") == 0) {
             SendMSG(queue, message, locmsg, loc);
         }
@@ -194,14 +194,14 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                 snprintf(tmpstr, OS_MAXSTR, "%s", message);
             }
 
+            mdebug2("Sending (%s) to socket '%s'",tmpstr,sockets[i]->name);
             if ((__mq_rcode = OS_SendUnix(sockets[i]->socket, tmpstr, 0)) < 0) {
                 /* Error on the socket */
                 if (__mq_rcode == OS_SOCKTERR) {
-                    merror("socketerr (not available).");
+                    merror("Socket '%s' not available.", sockets[i]->name);
                     close(sockets[i]->socket);
                     return (-1);
                 }
-
                 /* Unable to send. Socket busy */
                 mwarn("Socket busy, waiting for 1 second.");
                 sleep(1);
@@ -228,8 +228,8 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                     }
                 }
             }
-            i++;
         }
+        i++;
     }
     return (0);
 }

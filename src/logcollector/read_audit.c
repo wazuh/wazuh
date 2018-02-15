@@ -14,7 +14,7 @@
 #define MAX_HEADER 64
 
 /* Compile message from cache and send through queue */
-static void audit_send_msg(char **cache, int top, const char *file, int drop_it) {
+static void audit_send_msg(char **cache, int top, const char *file, int drop_it, logsocket **tsockets) {
     int i;
     size_t n = 0;
     size_t z;
@@ -37,7 +37,7 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it)
     if (!drop_it) {
         message[n] = '\0';
 
-        if (SendMSG(logr_queue, message, file, LOCALFILE_MQ) < 0) {
+        if (SendMSGtoSCK(logr_queue, message, file, LOCALFILE_MQ, tsockets) < 0) {
             merror(QUEUE_SEND);
 
             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
@@ -98,7 +98,7 @@ void *read_audit(int pos, int *rc, int drop_it) {
         if (strncmp(id, header, z)) {
             // Current message belongs to another event: send cached messages
             if (icache > 0)
-                audit_send_msg(cache, icache, logff[pos].file, drop_it);
+                audit_send_msg(cache, icache, logff[pos].file, drop_it, logff[pos].target_socket);
 
             // Store current event
             *cache = strdup(buffer);
@@ -114,7 +114,7 @@ void *read_audit(int pos, int *rc, int drop_it) {
     }
 
     if (icache > 0)
-        audit_send_msg(cache, icache, logff[pos].file, drop_it);
+        audit_send_msg(cache, icache, logff[pos].file, drop_it, logff[pos].target_socket);
 
     mdebug2("Read %d lines from %s", lines, logff[pos].file);
     return NULL;

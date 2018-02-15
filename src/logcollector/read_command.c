@@ -62,9 +62,9 @@ void *read_command(int pos, int *rc, int drop_it)
 
         /* Send message to queue */
         if (drop_it == 0) {
-            if (SendMSG(logr_queue, str,
+            if (SendMSGtoSCK(logr_queue, str,
                         (NULL != logff[pos].alias) ? logff[pos].alias : logff[pos].command,
-                        LOCALFILE_MQ) < 0) {
+                        LOCALFILE_MQ, logff[pos].target_socket) < 0) {
                 merror(QUEUE_SEND);
                 if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                     merror_exit(QUEUE_FATAL, DEFAULTQPATH);
