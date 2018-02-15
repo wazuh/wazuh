@@ -152,7 +152,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
     for (i = 0; sockets[i] && sockets[i]->name; i++) {
         if (strcmp(sockets[i]->name, "agent") == 0) {
-            return SendMSG(queue, message, locmsg, loc);
+            SendMSG(queue, message, locmsg, loc);
         }
         else {
             tmpstr[OS_MAXSTR] = '\0';
