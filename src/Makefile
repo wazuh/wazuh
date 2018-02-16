@@ -113,8 +113,6 @@ ifeq (${uname_S},HP-UX)
 		PATH:=${PATH}:/usr/local/bin
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
-		USE_LEGACY_SSL=yes
-		CFLAGS+=-Wl,--start-group
 else
 	    # Unknow platform
 endif # HPUX
@@ -685,6 +683,18 @@ ${EXTERNAL_SQLITE}sqlite3.o: ${EXTERNAL_SQLITE}sqlite3.c
 wazuh-db: ${wdb_o} ${ossec_libs}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
+#### Config ##########
+
+config_c := $(wildcard config/*.c)
+config_o := $(config_c:.c=.o)
+
+config/%.o: config/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+config.a: ${config_o}
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
+
 #### Wazuh modules ##
 
 wmodules_c := $(wildcard wazuh_modules/wm*.c)
@@ -712,19 +722,13 @@ wazuh_modules/syscollector/%.o: wazuh_modules/syscollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
 endif
 
-wmodules.a: ${wmodules_o} ${wdblib_o}
-	${OSSEC_LINK} $@ $^
-	${OSSEC_RANLIB} $@
+wmodules_dep := ${wmodules_o} ${wdblib_o}
 
-#### Config ##########
+ifeq (${uname_S},HP-UX)
+	wmodules_dep := ${wmodules_dep} ${config_o}
+endif
 
-config_c := $(wildcard config/*.c)
-config_o := $(config_c:.c=.o)
-
-config/%.o: config/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-config.a: ${config_o}
+wmodules.a: ${wmodules_dep}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
