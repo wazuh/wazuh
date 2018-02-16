@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from xml.etree.ElementTree import fromstring
+import xml.etree.ElementTree as ET
 from os import listdir, path as os_path
 import re
 from wazuh.exception import WazuhException
@@ -58,6 +58,33 @@ conf_sections = {
         'list_options': []
     }
 }
+
+
+def _parse_xml(txt_data):
+    xml_symbols = {
+        '&': '&amp;',
+        '>': '&gt;',
+        '<': '&lt;',
+        "'": '&apos;',
+        '"': '&quot;'
+    }
+    
+    for i in range(len(xml_symbols)):
+        try:
+            # Read XML
+            xml_data = ET.fromstring(txt_data)
+            break
+        except ET.ParseError as e:
+            line, column = e.position
+            invalid_char = txt_data.split('\n')[line-1][column]
+            txt_data = txt_data.replace(invalid_char, xml_symbols[invalid_char])
+            parse_exception = e
+
+    if i == len(xml_symbols):
+        # could not parse XML:
+        raise parse_exception
+
+    return xml_data
 
 
 def _insert(json_dst, section_name, option, value):
@@ -389,7 +416,7 @@ def get_ossec_conf(section=None, field=None):
         txt_data = '<root_tag>' + txt_data + '</root_tag>'
 
         # Read XML
-        xml_data = fromstring(txt_data)
+        xml_data = _parse_xml(txt_data)
 
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
@@ -435,8 +462,7 @@ def get_agent_conf_from_path(agent_conf, offset=0, limit=common.database_limit, 
         f.close()
         txt_data = '<root_tag>' + txt_data + '</root_tag>'
 
-        # Read XML
-        xml_data = fromstring(txt_data)
+        xml_data = _parse_xml(txt_data)
 
         # Parse XML to JSON
         data = _agentconf2json(xml_data)
