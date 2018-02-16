@@ -3,7 +3,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh.exception import WazuhException
-from wazuh.agent import Agent
 from wazuh.manager import status
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
@@ -408,54 +407,5 @@ def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
         except KeyError:
             cluster_dict[manager] = {}
             cluster_dict[manager][status] = [file]
-
-    return cluster_dict
-
-
-def get_agents_status():
-    """
-    Return a nested list where each element has the following structure
-    [agent_id, agent_name, agent_status, manager_hostname]
-    """
-    agent_list = []
-    for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']}, limit=None)['items']:
-        if int(agent['id']) == 0:
-            continue
-        try:
-            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
-        except KeyError:
-            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "None"])
-
-    return agent_list
-
-
-def get_agent_status_json():
-    """
-    Return a nested list where each element has the following structure
-    {
-        manager: {
-            status: [
-                id: name
-            ]
-        }
-    }
-    """
-    agents = get_agents_status()
-    cluster_dict = {}
-    for agent_id, agent_ip, name, status, manager in agents:
-        try:
-            cluster_dict[manager].append({
-                'id': agent_id,
-                'ip': agent_ip,
-                'name': name,
-                'status': status
-            })
-        except KeyError:
-            cluster_dict[manager] = [{
-                'id': agent_id,
-                'ip': agent_ip,
-                'name': name,
-                'status': status
-            }]
 
     return cluster_dict
