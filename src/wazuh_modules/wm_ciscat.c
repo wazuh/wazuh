@@ -73,23 +73,18 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             snprintf(jre_path, OS_MAXSTR - 1, "%s", ciscat->java_path);
         } else {
     #ifdef WIN32
-            size_t size = strlen(env_var);
-            if (env_var[size - 1] == ';') {
-                snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s%s", env_var, ciscat->java_path);
-            } else {
-                snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", env_var, ciscat->java_path);
-            }
+            snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", ciscat->java_path, env_var);
         }
         if (_putenv(jre_path) < 0)      // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
             mtwarn(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
     #else
-            snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", env_var, ciscat->java_path);
+            snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", ciscat->java_path, env_var);
         }
         if(setenv("PATH", jre_path, 1) < 0)
             mtwarn(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
     #endif
         char *new_env = getenv("PATH");
-        mtdebug2(WM_CISCAT_LOGTAG, "Changing 'PATH' environment variable: '%s'", new_env);
+        mtdebug1(WM_CISCAT_LOGTAG, "Changing 'PATH' environment variable: '%s'", new_env);
     }
 
     // Define path where CIS-CAT is installed
