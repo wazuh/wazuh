@@ -6,6 +6,7 @@
 from wazuh.utils import md5, divide_list
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
+import wazuh.group as group
 from wazuh.cluster.management import *
 from wazuh import common
 from datetime import datetime
@@ -22,6 +23,7 @@ from sys import version
 from difflib import unified_diff
 import re
 import logging
+import xml.etree.ElementTree as ET
 
 is_py2 = version[0] == '2'
 if is_py2:
@@ -294,7 +296,7 @@ def clear_file_status():
     cluster_socket.close()
 
 
-def _check_removed_agents(new_client_keys):
+def _check_removed_agents(new_client_keys, fullpath):
     """
     Function to delete agents that have been deleted in a synchronized
     client.keys.
@@ -305,6 +307,8 @@ def _check_removed_agents(new_client_keys):
     If a line starting with - matches the regex structure of a client.keys line
     that agent is deleted.
     """
+    new_client_keys = new_client_keys.split('\n')
+
     with open("{0}/etc/client.keys".format(common.ossec_path)) as ck:
         # can't use readlines function since it leaves a \n at the end of each item of the list
         client_keys = ck.read().split('\n')
@@ -321,25 +325,71 @@ def _check_removed_agents(new_client_keys):
                 logging.error("Error deleting agent {0}: {1}".format(agent_id, str(e)))
 
 
-def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master'):
-    if path.basename(fullpath) == 'client.keys':
-        if node_type=='client':
-            _check_removed_agents(new_content.split('\n'))
-        else:
-            logging.warning("Client.keys file received in a master node.")
-            raise WazuhException(3007)
+def _check_ossec_conf(new_content, fullpath):
+    # read local ossec.conf
+    with open(fullpath) as f:
+        local_ossec_conf = ET.fromstring('<root_tag>' + f.read() + '</root_tag>')
 
-    is_agent_info   = 'agent-info' in fullpath
-    is_agent_groups = 'agent-groups' in fullpath
-    if is_agent_info or is_agent_groups:
-        if node_type=='master':
-            # check if the date is older than the manager's date
-            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) >= mtime:
-                logging.warning("Receiving an old file ({})".format(fullpath))
-                raise WazuhException(3012)
-        elif is_agent_info:
-            logging.warning("Agent-info received in a client node.")
-            raise WazuhException(3011)
+    xml_conf = ET.fromstring('<root_tag>' + new_content + '</root_tag>')
+    config = xml_conf.find('ossec_config')
+    config.remove(config.find('cluster'))
+
+    local_cluster_conf = local_ossec_conf.find('ossec_config').find('cluster')
+    config.insert(-1, local_cluster_conf)
+
+    new_content = ET.tostring(xml_conf)
+
+
+def _check_agent_infos(new_content, fullpath):
+    # check if the date is older than the manager's date
+    if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) >= mtime:
+        logging.warning("Receiving an old file ({})".format(fullpath))
+        raise WazuhException(3012, fullpath)
+    
+
+def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master'):
+    # before synchronizing, check if received file is special
+    special_files = {
+        'client.keys': {
+            'node_type': 'client',
+            'function': _check_removed_agents,
+            'raise_exception': True,
+            'exception_code': 3007,
+            'directory': False
+        },
+        'ossec.conf': {
+            'node_type': 'client',
+            'function': _check_ossec_conf,
+            'raise_exception': True,
+            'exception_code': 3007,
+            'directory': False
+        },
+        '/queue/agent-info': {
+            'node_type': 'master',
+            'function': _check_agent_infos,
+            'raise_exception': True,
+            'exception_code': 3007,
+            'directory': True
+        },
+        '/queue/agent-groups': {
+            'node_type': 'master',
+            'function': _check_agent_infos,
+            'raise_exception': False,
+            'exception_code': 0,
+            'directory': True
+        }
+    }
+
+    for name, options in special_files.items():
+        filename = path.dirname(fullpath) if options['directory'] else path.basename(fullpath)
+        if filename == name:
+            if options['node_type'] == 'all' or node_type == options['node_type']:
+                options['function'](new_content, fullpath)
+            else:
+                if options['raise_exception']:
+                    raise WazuhException(options['exception_code'], fullpath)
+            break
+
 
     # Write
     if w_mode == "atomic":

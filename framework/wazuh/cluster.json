@@ -5,7 +5,7 @@
         "source": "master",
         "write_mode": "atomic",
         "flags": ["IN_MOVED_TO"],
-        "files": ["client.keys"],
+        "files": ["client.keys", "ossec.conf"],
         "recursive": false,
         "restart": false,
         "description": "client keys file database"
@@ -85,7 +85,6 @@
 
     "excluded_files": [
         "ar.conf",
-        "merged.mg",
-        "ossec.conf"
+        "merged.mg"
     ]
 }
