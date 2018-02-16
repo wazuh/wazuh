@@ -75,13 +75,17 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     #ifdef WIN32
             snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", ciscat->java_path, env_var);
         }
-        if (_putenv(jre_path) < 0)      // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
-            mtwarn(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
+        if (_putenv(jre_path) < 0) {
+            mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
+            ciscat->flags.error = 1;
+        }      // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
     #else
             snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", ciscat->java_path, env_var);
         }
-        if(setenv("PATH", jre_path, 1) < 0)
-            mtwarn(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
+        if(setenv("PATH", jre_path, 1) < 0) {
+            mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
+            ciscat->flags.error = 1;
+        }
     #endif
         char *new_env = getenv("PATH");
         mtdebug1(WM_CISCAT_LOGTAG, "Changing 'PATH' environment variable: '%s'", new_env);
@@ -89,7 +93,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     // Define path where CIS-CAT is installed
 
-    if (ciscat->ciscat_path){
+    if (ciscat->ciscat_path) {
         snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
     } else {
     #ifdef WIN32
@@ -97,6 +101,11 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     #else
         snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR);
     #endif
+    }
+
+    if (IsDir(cis_path) < 0) {
+        mterror(WM_CISCAT_LOGTAG, "CIS-CAT tool not found at '%s'.", cis_path);
+        ciscat->flags.error = 1;
     }
 
     // First sleeping
@@ -114,21 +123,23 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     while (1) {
 
-        mtinfo(WM_CISCAT_LOGTAG, "Starting evaluation.");
-
         // Get time and execute
         time_start = time(NULL);
 
-        for (eval = ciscat->evals; eval; eval = eval->next) {
-            if (!eval->flags.error) {
-                if (IsFile(eval->path) < 0) {
-                    mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
-                } else {
-                    wm_ciscat_run(eval, cis_path);
+        if (!ciscat->flags.error) {
+            mtinfo(WM_CISCAT_LOGTAG, "Starting evaluation.");
+
+            for (eval = ciscat->evals; eval; eval = eval->next) {
+                if (!eval->flags.error) {
+                    if (IsFile(eval->path) < 0) {
+                        mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
+                    } else {
+                        wm_ciscat_run(eval, cis_path);
+                        ciscat->flags.error = 0;
+                    }
                 }
             }
         }
-
 
         time_sleep = time(NULL) - time_start;
 
@@ -197,6 +208,9 @@ void wm_ciscat_setup(wm_ciscat *_ciscat) {
 void wm_ciscat_cleanup() {
     close(queue_fd);
     mtinfo(WM_CISCAT_LOGTAG, "Module finished.");
+
+    if (DeletePID("wazuh-modulesd:ciscat") < 0)
+        mterror(WM_CISCAT_LOGTAG, "Couldn't delete PID file: (%s)", strerror(errno));
 }
 #endif
 
@@ -237,10 +251,12 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
         break;
     case WM_CISCAT_OVAL:
         mterror(WM_CISCAT_LOGTAG, "OVAL is an invalid content type. Exiting...");
+        ciscat->flags.error = 1;
         pthread_exit(NULL);
         break;
     default:
         mterror(WM_CISCAT_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
+        ciscat->flags.error = 1;
         pthread_exit(NULL);
     }
 
@@ -281,38 +297,38 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     switch (wm_exec(command, &output, &status, eval->timeout)) {
         case 0:
-            if (status > 0) {
-                mtwarn(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d): %s.", eval->path, status, strerror(errno));
-                mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
-                eval->flags.error = 1;
-            }
 
-            mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
+            mtdebug1(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+            mtinfo(WM_CISCAT_LOGTAG, "Scan finished. File: %s", eval->path);
 
             break;
 
         case WM_ERROR_TIMEOUT:
             free(output);
             output = NULL;
+            ciscat->flags.error = 1;
             wm_strcat(&output, "ciscat: ERROR: Timeout expired.", '\0');
             mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
-            pthread_exit(NULL);
             break;
 
         default:
             mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
+            ciscat->flags.error = 1;
             pthread_exit(NULL);
     }
 
     // Get assessment results
 
-    scan_info = wm_ciscat_txt_parser(scan_info, rule_info);
-
-    wm_ciscat_preparser();
-
-    wm_ciscat_xml_parser();
-
-    wm_ciscat_send_scan(scan_info);
+    if (!ciscat->flags.error) {
+        scan_info = wm_ciscat_txt_parser(scan_info, rule_info);
+        if (!ciscat->flags.error) {
+            wm_ciscat_preparser();
+            if (!ciscat->flags.error) {
+                wm_ciscat_xml_parser();
+                wm_ciscat_send_scan(scan_info);
+            }
+        }
+    }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
     SendMSG(0, msg, "rootcheck", ROOTCHECK_MQ);
@@ -399,16 +415,15 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     switch(pid = fork(), pid) {
         case -1:
-            mterror(WM_CISCAT_LOGTAG, FORK_ERROR, errno, strerror(errno));
-            exit(1);
+            mterror_exit(WM_CISCAT_LOGTAG, FORK_ERROR, errno, strerror(errno));
         case 0:
             // Child process
             if (CreatePID("wazuh-modulesd:ciscat", getpid()) < 0)
                 mterror_exit(WM_CISCAT_LOGTAG, "Couldn't create PID file for child process: (%s)", strerror(errno));
 
             if (chdir(path) < 0) {
-                mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
-                pthread_exit(NULL);
+                ciscat->flags.error = 1;
+                mterror_exit(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
             } else
                 mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
 
@@ -417,9 +432,9 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
             switch (wm_exec(command, &output, &status, eval->timeout)) {
                 case 0:
                     if (status > 0) {
-                        mtwarn(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
-                        mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
-                        exit(1);
+                        ciscat->flags.error = 1;
+                        mterror(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+                        mterror_exit(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
                     }
 
                     mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
@@ -429,13 +444,14 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
                 case WM_ERROR_TIMEOUT:
                     free(output);
                     output = NULL;
+                    ciscat->flags.error = 1;
                     wm_strcat(&output, "ciscat: ERROR: Timeout expired.", '\0');
                     mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
                     break;
 
                 default:
-                    mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
-                    exit(1);
+                    ciscat->flags.error = 1;
+                    mterror_exit(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
                     pthread_exit(NULL);
             }
 
@@ -462,13 +478,16 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     // Get assessment results
 
-    scan_info = wm_ciscat_txt_parser(scan_info, rule_info);
-
-    wm_ciscat_preparser();
-
-    wm_ciscat_xml_parser();
-
-    wm_ciscat_send_scan(scan_info);
+    if (!ciscat->flags.error) {
+        scan_info = wm_ciscat_txt_parser(scan_info, rule_info);
+        if (!ciscat->flags.error) {
+            wm_ciscat_preparser();
+            if (!ciscat->flags.error) {
+                wm_ciscat_xml_parser();
+                wm_ciscat_send_scan(scan_info);
+            }
+        }
+    }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
     SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
@@ -660,14 +679,15 @@ wm_scan_data* wm_ciscat_txt_parser(wm_scan_data *info, wm_rule_data *rule){
             }
         }
 
+        mtdebug1(WM_CISCAT_LOGTAG, "Finished parse of the TXT report.");
+
         fclose(fp);
-        unlink(file);
     } else {
         mterror(WM_CISCAT_LOGTAG, "Unable to read file %s: %s", file, strerror(errno));
+        ciscat->flags.error = 1;
     }
 
     unlink(file);
-    mtdebug1(WM_CISCAT_LOGTAG, "Finished parse of the TXT report.");
 
     return info;
 }
@@ -808,12 +828,14 @@ void wm_ciscat_preparser(){
         fclose(in_fp);
         fclose(out_fp);
 
+        mtdebug1(WM_CISCAT_LOGTAG, "Finished preparse of the XML report.");
+
     } else {
         mterror(WM_CISCAT_LOGTAG, "Unable to open '%s': %s", in_file, strerror(errno));
+        ciscat->flags.error = 1;
     }
 
     unlink(in_file);
-    mtdebug1(WM_CISCAT_LOGTAG, "Finished preparse of the XML report.");
 
 }
 
