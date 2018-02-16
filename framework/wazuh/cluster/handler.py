@@ -6,6 +6,7 @@
 from wazuh.utils import md5, divide_list
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
+import wazuh.group as group
 from wazuh.cluster.management import *
 from wazuh import common
 from datetime import datetime
@@ -22,6 +23,7 @@ from sys import version
 from difflib import unified_diff
 import re
 import logging
+import errno
 
 is_py2 = version[0] == '2'
 if is_py2:
@@ -84,7 +86,7 @@ def compress_files(list_path, node_type, tobedeleted_files):
         # write a file with the name of all the groups only if the node type is master
         if node_type == 'master':
             try:
-                local_groups = [x['name'] for x in Agent.get_all_groups(limit=None)['items']]
+                local_groups = [x['name'] for x in group.get_all_groups(limit=None)['items']]
                 zf.writestr("remote_groups.txt", '\n'.join(local_groups), compression)
 
                 if len(tobedeleted_files) > 0:
@@ -390,10 +392,10 @@ def check_groups(remote_group_set):
     """
     Function to remove the groups that are on the local node and not in the remote node
     """
-    local_groups = {x['name'] for x in Agent.get_all_groups(limit=None)['items']}
+    local_groups = {x['name'] for x in group.get_all_groups(limit=None)['items']}
     for removed_group in local_groups - remote_group_set:
         try:
-            Agent.remove_group(removed_group)
+            group.remove_group(removed_group)
             logging.info("Group {0} removed successfully".format(removed_group))
         except Exception as e:
             logging.error("Error deleting group {0}: {1}".format(removed_group, str(e)))

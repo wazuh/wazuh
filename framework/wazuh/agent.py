@@ -1985,3 +1985,55 @@ class Agent:
             return conn, total
         else:
             return conn
+
+
+    @staticmethod
+    def get_agents_status_cluster():
+        """
+        Return a nested list where each element has the following structure
+        [agent_id, agent_name, agent_status, manager_hostname]
+        """
+        agent_list = []
+        for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']}, limit=None)['items']:
+            if int(agent['id']) == 0:
+                continue
+            try:
+                agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
+            except KeyError:
+                agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "None"])
+
+        return agent_list
+
+
+    @staticmethod
+    def get_agent_status_json_cluster():
+        """
+        Return a nested list where each element has the following structure
+        {
+            manager: {
+                status: [
+                    id: name
+                ]
+            }
+        }
+        """
+        agents = Agent.get_agents_status_cluster()
+        cluster_dict = {}
+        for agent_id, agent_ip, name, status, manager in agents:
+            try:
+                cluster_dict[manager].append({
+                    'id': agent_id,
+                    'ip': agent_ip,
+                    'name': name,
+                    'status': status
+                })
+            except KeyError:
+                cluster_dict[manager] = [{
+                    'id': agent_id,
+                    'ip': agent_ip,
+                    'name': name,
+                    'status': status
+                }]
+
+        return cluster_dict
+
