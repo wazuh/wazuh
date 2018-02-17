@@ -117,7 +117,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
             }
             logf[pl].target = OS_StrBreak(',', node[i]->content, count);
-            os_realloc(logf[pl].target_socket, count * sizeof(logsocket), logf[pl].target_socket);
+            os_realloc(logf[pl].target_socket, count * sizeof(logsocket *), logf[pl].target_socket);
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             char *key_value = 0;
             int j;
