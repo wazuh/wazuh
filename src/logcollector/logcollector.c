@@ -78,26 +78,29 @@ void LogCollectorStart()
         mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == UDP_PROTO ? "udp" : "tcp", logsk[sk].location);
     }
 
-    /* Initialize each file and structure */
+    /* Remove duplicate entries */
     for (i = 0;; i++) {
         if (logff[i].file == NULL) {
             break;
         }
-
-        /* Remove duplicate entries */
         for (r = 0; r < i; r++) {
             if (logff[r].file && strcmp(logff[i].file, logff[r].file) == 0) {
                 mwarn("Duplicated log file given: '%s'.", logff[i].file);
+                logff[r] = logff[i];
                 logff[i].file = NULL;
                 logff[i].command = NULL;
                 logff[i].fp = NULL;
+                logff[i].target = NULL;
 
                 break;
             }
         }
+    }
 
+    /* Initialize each file and structure */
+    for (i = 0;; i++) {
         if (logff[i].file == NULL) {
-            /* Do nothing, duplicated entry */
+            break;
         }
 
         else if (strcmp(logff[i].logformat, "eventlog") == 0) {
