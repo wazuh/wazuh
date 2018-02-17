@@ -7,4 +7,5 @@
     <os>yes</os>
     <network>yes</network>
     <packages>yes</packages>
+    <processes>yes</processes>
   </wodle>

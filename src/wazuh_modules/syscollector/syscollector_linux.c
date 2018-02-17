@@ -1466,8 +1466,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     int i = 0;
     cJSON *item;
-    cJSON *id_msg = cJSON_CreateObject();
-    cJSON *id_array = cJSON_CreateArray();
     cJSON *proc_array = cJSON_CreateArray();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
@@ -1480,7 +1478,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "process", process);
         cJSON_AddNumberToObject(process,"pid",proc_info->tid);
-        cJSON_AddItemToArray(id_array, cJSON_CreateNumber(proc_info->tid));
         cJSON_AddStringToObject(process,"name",proc_info->cmd);
         cJSON_AddStringToObject(process,"state",&proc_info->state);
         cJSON_AddNumberToObject(process,"ppid",proc_info->ppid);
@@ -1525,16 +1522,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         freeproc(proc_info);
     }
 
-    cJSON_AddStringToObject(id_msg, "type", "process_list");
-    cJSON_AddNumberToObject(id_msg, "ID", random);
-    cJSON_AddStringToObject(id_msg, "timestamp", timestamp);
-    cJSON_AddItemToObject(id_msg, "list", id_array);
-
-    string = cJSON_PrintUnformatted(id_msg);
-    mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    free(string);
-
     cJSON_ArrayForEach(item, proc_array) {
         string = cJSON_PrintUnformatted(item);
         mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
@@ -1542,7 +1529,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         free(string);
     }
 
-    cJSON_Delete(id_msg);
     cJSON_Delete(proc_array);
     closeproc(proc);
 

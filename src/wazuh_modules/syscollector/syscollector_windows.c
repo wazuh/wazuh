@@ -1203,8 +1203,6 @@ void sys_proc_windows(const char* LOCATION) {
         ID = -ID;
 
     cJSON *item;
-    cJSON *id_msg = cJSON_CreateObject();
-    cJSON *id_array = cJSON_CreateArray();
     cJSON *proc_array = cJSON_CreateArray();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
@@ -1238,7 +1236,6 @@ void sys_proc_windows(const char* LOCATION) {
             cJSON_AddNumberToObject(process,"ppid",atoi(parts[5])); // ParentProcessId
             cJSON_AddNumberToObject(process,"priority",atoi(parts[6])); // Priority
             cJSON_AddNumberToObject(process,"pid",atoi(parts[7])); // ProcessId
-            cJSON_AddItemToArray(id_array, cJSON_CreateNumber(atoi(parts[7]))); // ProcessId
             cJSON_AddNumberToObject(process,"session",atoi(parts[8])); // SessionId
             cJSON_AddNumberToObject(process,"nlwp",atoi(parts[9])); // ThreadCount
             cJSON_AddNumberToObject(process,"stime",atol(parts[10])); // UserModeTime
@@ -1248,15 +1245,6 @@ void sys_proc_windows(const char* LOCATION) {
             free(parts);
         }
 
-        cJSON_AddStringToObject(id_msg, "type", "process_list");
-        cJSON_AddNumberToObject(id_msg, "ID", ID);
-        cJSON_AddStringToObject(id_msg, "timestamp", timestamp);
-        cJSON_AddItemToObject(id_msg, "list", id_array);
-
-        string = cJSON_PrintUnformatted(id_msg);
-        mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
-        SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
-
         cJSON_ArrayForEach(item, proc_array) {
             string = cJSON_PrintUnformatted(item);
             mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
@@ -1264,7 +1252,6 @@ void sys_proc_windows(const char* LOCATION) {
         }
 
         free(string);
-        cJSON_Delete(id_msg);
         cJSON_Delete(proc_array);
 
         if (status = pclose(output), status) {
