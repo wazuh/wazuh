@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.2.1]
+
+### Changed
+
+- Give preference to use the selected Java over the default one in CIS-CAT wodle.
+
 ## [v3.2.0]
 
 ### Added
