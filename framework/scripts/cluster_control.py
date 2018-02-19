@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(mes
 class WazuhHelpFormatter(argparse.ArgumentParser):
     def format_help(self):
         msg = """
-    {0} [-h] | [-d] | [-s] | [-p] | [-f  [-m MANAGER [MANAGER ...]]] | [-l [FILE [FILE ...]]] [-m MANAGER [MANAGER ...]]] | [-a [AGENT [AGENT ...]]] | [ -n [NODE [NODE ...]]] 
+    {0} [-h] | [-d] | [-s] | [-p] | [-f  [-m MANAGER [MANAGER ...]]] | [-l [FILE [FILE ...]]] [-m MANAGER [MANAGER ...]]] | [-a [AGENT [AGENT ...]]] | [ -n [NODE [NODE ...]]] | [ --debug ]
     Usage:
 \t-h                                  # Show this help message
 \t-d                                  # Get last synchronization date and duration
@@ -44,6 +44,7 @@ class WazuhHelpFormatter(argparse.ArgumentParser):
 \t-l, --files
 \t-a, --agents
 \t-n, --nodes
+\t --debug
 """.format(basename(argv[0]))
         return msg
     def error(self, message):
@@ -55,6 +56,7 @@ parser=WazuhHelpFormatter(usage='custom usage')
 parser._positionals.title = 'Wazuh Cluster control interface'
 
 parser.add_argument('-m', '--manager', dest='manager', nargs='*', type=str, help="List the status of the files of that manager")
+parser.add_argument('--debug', action='store_const', const='debug', help="Enable debug mode")
 
 exclusive = parser.add_mutually_exclusive_group()
 exclusive.add_argument('-d', '--date', action='store_const', const='date', help="Get last synchronization date and duration")
@@ -141,21 +143,22 @@ def _get_last_sync():
     print pprint_table(data=[[date, str(duration)]], headers=["Date", "Duration (s)"], show_header=True)
 
 if __name__ == '__main__':
+    # get arguments
+    args = parser.parse_args()
     try:
+        if args.debug:
+            logging.getLogger('').setLevel(logging.DEBUG)
+
         # Initialize framework
         myWazuh = Wazuh(get_init=True)
-
-        # get arguments
-        args = parser.parse_args()
 
         if args.push:
             try:
                 check_cluster_config(read_config())
             except WazuhException as e:
-                print("Error doing synchronization: {0}".format(str(e)))
-                exit(1)
+                raise e
 
-            sync(debug=False)
+            sync(debug=args.debug)
 
         elif args.manager is not None and args.files is None and args.force is None:
             logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
@@ -164,15 +167,13 @@ if __name__ == '__main__':
             try:
                 _get_file_status(args.files, args.manager)
             except WazuhException as e:
-                print("{0}".format(str(e)))
-                exit(1)
+                raise e
 
         elif args.agents is not None:
             try:
                 _get_agents_status()
             except WazuhException as e:
-                print("{0}".format(str(e)))
-                exit(1)
+                raise e
 
         elif args.nodes is not None:
             _get_nodes_status(args.nodes)
@@ -181,31 +182,31 @@ if __name__ == '__main__':
             try:
                 check_cluster_config(read_config())
             except WazuhException as e:
-                print("Error doing synchronization: {0}".format(str(e)))
-                exit(1)
+                raise e
 
             if args.manager is None:
-                sync(debug=False, force=True)
+                sync(debug=args.debug, force=True)
             else:
                 for node in args.manager:
-                    sync_one_node(debug=False, node=node, force=True)
+                    sync_one_node(debug=args.debug, node=node, force=True)
 
         elif args.scan is not None:
             try:
                 scan_for_new_files()
             except socket.error as e:
-                print("Error connecting to wazuh cluster service: {0}".format(str(e)))
-                exit(1)
+                raise e
 
         elif args.date is not None:
             try:
                 _get_last_sync()
             except socket.error as e:
-                print("Error connecting to wazuh cluster service: {0}".format(str(e)))
-                exit(1)
+                raise e
 
         else:
             parser.print_help()
             exit()
     except Exception as e:
         print "ERROR: {0}".format(str(e))
+        if args.debug:
+            raise e
+        exit(1)
