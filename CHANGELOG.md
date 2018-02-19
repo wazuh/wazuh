@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 - Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
 - Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
 
+### Fixed
+
+- Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
+
 ## [v3.2.1]
 
 ### Changed
