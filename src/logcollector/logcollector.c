@@ -79,6 +79,7 @@ void LogCollectorStart()
     }
 
     /* Remove duplicate entries */
+    int count_localfiles = 0;
     for (i = 0;; i++) {
         if (logff[i].file == NULL) {
             break;
@@ -86,19 +87,27 @@ void LogCollectorStart()
         for (r = 0; r < i; r++) {
             if (logff[r].file && strcmp(logff[i].file, logff[r].file) == 0) {
                 mwarn("Duplicated log file given: '%s'.", logff[i].file);
-                logff[r] = logff[i];
-                logff[i].file = NULL;
-                logff[i].command = NULL;
-                logff[i].fp = NULL;
-                logff[i].target = NULL;
+                logff[r].duplicated = 1;
+                count_localfiles--;
+                // logff[r] = logff[i];
+                // logff[r].file = NULL;
+                // logff[r].command = NULL;
+                // logff[r].fp = NULL;
+                // logff[r].target = NULL;
 
                 break;
             }
         }
+        count_localfiles++;
     }
+    mdebug1("Added %i valid 'localfile' entries.", count_localfiles);
 
     /* Initialize each file and structure */
     for (i = 0;; i++) {
+        if (logff[i].duplicated) {
+            continue;
+        }
+
         if (logff[i].file == NULL) {
             break;
         }

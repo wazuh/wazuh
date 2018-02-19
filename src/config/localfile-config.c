@@ -58,6 +58,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         logf[1].query = NULL;
         logf[1].target = NULL;
         logf[1].target_socket = NULL;
+        logf[1].duplicated = 0;
     } else {
         logf = log_config->config;
         while (logf[pl].file != NULL) {
@@ -75,6 +76,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         logf[pl + 1].query = NULL;
         logf[pl + 1].target = NULL;
         logf[pl + 1].target_socket = NULL;
+        logf[pl + 1].duplicated = 0;
     }
 
     logf[pl].file = NULL;
@@ -85,6 +87,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].query = NULL;
     logf[pl].target = NULL;
     logf[pl].target_socket = NULL;
+    logf[pl].duplicated = 0;
     os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
     logf[pl].fp = NULL;
     logf[pl].ffile = NULL;
