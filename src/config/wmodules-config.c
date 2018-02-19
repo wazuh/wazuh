@@ -62,14 +62,33 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    } else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)){
+    }
+#ifdef ENABLE_SYSC
+    else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)){
+        if (wm_sys_read(children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
+#endif
+    else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)){
         if (wm_command_read(children, cur_wmodule, agent_cfg) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
-#ifndef WIN32
     } else if (!strcmp(node->values[0], WM_CISCAT_CONTEXT.name)){
         if (wm_ciscat_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+#ifndef WIN32
+    } else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name)){
+        if (wm_aws_read(children, cur_wmodule, agent_cfg) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    } else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name)){
+        if (wm_vulnerability_detector_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

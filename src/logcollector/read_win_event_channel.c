@@ -186,22 +186,6 @@ wchar_t *convert_unix_string(char *string)
     return (dest);
 }
 
-/* Filter escape characters */
-
-char* filter_special_chars(const char *string) {
-    int i, j = 0;
-    int n = strlen(string);
-    char *filtered = malloc(n + 1);
-
-    if (!filtered)
-        return NULL;
-
-    for (i = 0; i <= n; i++)
-        filtered[j++] = (string[i] == '\\') ? string[++i] : string[i];
-
-    return filtered;
-}
-
 char *get_property_value(PEVT_VARIANT value)
 {
     if (value->Type == EvtVarTypeNull) {
@@ -735,6 +719,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
                 event.category = "AUDIT_SUCCESS";
                 break;
             }
+            // fall through
         default:
             event.category = "Unknown";
             break;

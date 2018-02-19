@@ -336,7 +336,7 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def plain_dict_to_nested_dict(data, force_fields):
+def plain_dict_to_nested_dict(data, force_fields=[]):
     """
     Turns an input dictionary with "nested" fields in form
                 field_subfield
@@ -400,6 +400,21 @@ def plain_dict_to_nested_dict(data, force_fields):
     nested_dict.update(non_nested_dict)
 
     return nested_dict
+
+
+def divide_list(l, size=1000):
+    return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
+
+
+def create_exception_dic(id, e):
+    """
+    Creates a dictionary with a list of agent ids and it's error codes.
+    """
+    exception_dic = {}
+    exception_dic['id'] = id
+    exception_dic['error'] = {'message': e.message, 'code': e.code}
+    return exception_dic
+
 
 class WazuhVersion:
 

@@ -19,7 +19,6 @@
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
 GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
-
 RULES_TEMPLATE="./etc/templates/config/generic/rules.template"
 AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
 AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
@@ -34,6 +33,7 @@ AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
+VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 ##########
 # WriteSyscheck()
@@ -105,6 +105,35 @@ WriteOpenSCAP()
       cat ${OPENSCAP_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
     fi
+}
+
+##########
+# Syscollector()
+##########
+WriteSyscollector()
+{
+    # Adding to the config file
+    SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$SYSCOLLECTOR_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+        SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+}
+
+##########
+# WriteCISCAT()
+##########
+WriteCISCAT()
+{
+    # Adding to the config file
+    CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]
+    then
+        CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 }
 
 ##########
@@ -290,10 +319,8 @@ WriteAgent()
     # OpenSCAP
     WriteOpenSCAP "agent"
 
-
     # CIS-CAT configuration
-    cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    WriteCISCAT "agent"
 
     # Syscheck
     WriteSyscheck "agent"
@@ -390,7 +417,10 @@ WriteManager()
     WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
-    cat ${CISCAT_TEMPLATE} >> $NEWCONFIG
+    WriteCISCAT "manager"
+
+    # Vulnerability Detector
+    cat ${VULN_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Write syscheck
@@ -496,6 +526,13 @@ WriteLocal()
     # Write OpenSCAP
     WriteOpenSCAP "manager"
 
+    # CIS-CAT configuration
+    WriteCISCAT "agent"
+
+    # Vulnerability Detector
+    cat ${VULN_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Write syscheck
     WriteSyscheck "manager"
 
@@ -589,12 +626,12 @@ InstallCommon(){
 
     ./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX} ${INSTYPE}
 
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/
-	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
-	${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/ossec
-	${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
-	${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.json
-	${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/
+  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/ossec
+  ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
+  ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.json
+  ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 
     if [ ${INSTYPE} = 'agent' ]; then
         ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/bin
@@ -602,59 +639,59 @@ InstallCommon(){
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
     fi
 
-	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua
-	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/native
-	${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/compiled
-	${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
-	${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
-	${INSTALL} -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin
-	${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
-	${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-lua ${PREFIX}/bin/
-	${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-luac ${PREFIX}/bin/
-	${INSTALL} -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
-	${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
-	${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
+  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua
+  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/native
+  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/compiled
+  ${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
+  ${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
+  ${INSTALL} -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin
+  ${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
+  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-lua ${PREFIX}/bin/
+  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-luac ${PREFIX}/bin/
+  ${INSTALL} -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
+  ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
+  ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
 
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
-	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
-	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
-	${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
-	${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
-	${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agents
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
+  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
+  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agents
 
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
-	${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
+  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
 
-	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
-	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
 
-	${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/vuls
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/vuls
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/vuls/go
-	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/vuls.py ${PREFIX}/wodles/vuls
-	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/deploy_vuls.sh ${PREFIX}/wodles/vuls
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/ciscat
-	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/ciscat/template_*.xsl ${PREFIX}/wodles/ciscat
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/vuls
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/vuls
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/vuls/go
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/vuls.py ${PREFIX}/wodles/vuls
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/deploy_vuls.sh ${PREFIX}/wodles/vuls
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws.py ${PREFIX}/wodles/aws
 
-	InstallOpenSCAPFiles
+  InstallOpenSCAPFiles
 
-	${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
+  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
 
     if [ -f /etc/localtime ]
     then
-	       ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
+         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
     fi
 
-	${INSTALL} -d -m 1750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
+  ${INSTALL} -d -m 1750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
     if [ -f /etc/TIMEZONE ]; then
-	       ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
+         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
     fi
     # Solaris Needs some extra files
     if [ ${DIST_NAME} = "SunOS" ]; then
-	    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
+      ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
         cp -rf /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
         chown root:${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/*
         find ${PREFIX}/usr/share/lib/zoneinfo/ -type d -exec chmod 0750 {} +
@@ -679,23 +716,23 @@ InstallCommon(){
         fi
     fi
 
-	${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
-	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
+  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
 
-	${INSTALL} -d -m 0700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
+  ${INSTALL} -d -m 0700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
 
-	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
-	${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
 
-	${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
-	${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
+  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
 
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
+      ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 
-	./init/fw-check.sh execute
+  ./init/fw-check.sh execute
 }
 
 InstallLocal(){
@@ -730,6 +767,7 @@ InstallLocal(){
     ${INSTALL} -m 0750 -o root -g 0 syscheck_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 rootcheck_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 -b update/ruleset/update_ruleset ${PREFIX}/bin/update_ruleset
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
@@ -751,11 +789,11 @@ InstallLocal(){
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
     fi
     if [ ! -f ${PREFIX}/etc/lists ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
     fi
     if [ ! -f ${PREFIX}/etc/lists/amazon ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
+        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
     fi
     if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
@@ -763,10 +801,10 @@ InstallLocal(){
     fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
-
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/db
 
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/integrations
     ${INSTALL} -m 750 -o root -g ${OSSEC_GROUP} ../integrations/* ${PREFIX}/integrations

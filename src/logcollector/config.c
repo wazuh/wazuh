@@ -18,8 +18,10 @@ int LogCollectorConfig(const char *cfgfile)
     logreader_config log_config;
 
     modules |= CLOCALFILE;
+    modules |= CSOCKET;
 
     log_config.config = NULL;
+    log_config.socket_list = NULL;
     log_config.agent_cfg = 0;
     log_config.accept_remote = getDefine_Int("logcollector", "remote_commands", 0, 1);
 
@@ -46,6 +48,32 @@ int LogCollectorConfig(const char *cfgfile)
 #endif
 
     logff = log_config.config;
+    logsk = log_config.socket_list;
+
+    // Check sockets
+    if (logff) {
+        int i, j, k;
+        for (i=0;logff[i].file;i++) {
+            for (j=0;logff[i].target[j];j++) {
+                if (strcmp(logff[i].target[j], "agent") == 0) {
+                    logff[i].target_socket[j] = &default_agent;
+                    continue;
+                }
+                int found = -1;
+                for (k=0;logsk[k].name;k++) {
+                    found = strcmp(logsk[k].name, logff[i].target[j]);
+                    if (found == 0) {
+                        break;
+                    }
+                }
+                if (found != 0) {
+                    merror_exit("Socket '%s' for '%s' is not defined.", logff[i].target[j], logff[i].file);
+                } else {
+                    logff[i].target_socket[j] = &logsk[k];
+                }
+            }
+        }
+    }
 
     return (1);
 }

@@ -12,8 +12,8 @@
 #ifndef WM_OSCAP
 #define WM_OSCAP
 
-#define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
-#define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
+#define WM_OSCAP_DEF_TIMEOUT    1800    // Default runtime limit (30 minutes)
+#define WM_OSCAP_DEF_INTERVAL   86400   // Default cycle interval (1 day)
 
 #define WM_OSCAP_LOGTAG ARGV0 ":oscap"
 #define WM_OSCAP_DEFAULT_DIR WM_DEFAULT_DIR "/oscap"

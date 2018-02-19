@@ -1,0 +1,9 @@
+  <!-- System inventory -->
+  <wodle name="syscollector">
+    <disabled>no</disabled>
+    <interval>1h</interval>
+    <scan_on_start>yes</scan_on_start>
+    <hardware>yes</hardware>
+    <os>yes</os>
+    <packages>yes</packages>
+  </wodle>

@@ -261,7 +261,7 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
         }
 
         // Get agent hostname
-        static const char *pattern = " [0-9][0-9]:[0-9][0-9]:[0-9][0-9] (.+) .+\\[";
+        static const char *pattern = "^[A-Z][a-z][a-z] [ 0123][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] ([^ ]+)";
         if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
             merror_exit("Can not compile regular expression.");
         }

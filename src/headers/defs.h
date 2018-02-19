@@ -22,6 +22,7 @@
 #define OS_TEXT    1
 
 /* Size limit control */
+#define OS_SIZE_61440   61440
 #define OS_SIZE_8192    8192
 #define OS_SIZE_6144    6144
 #define OS_SIZE_4096    4096
@@ -54,7 +55,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.2.0-alpha1"
+#define __ossec_version "v3.3.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -119,6 +120,12 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Local requests socket
 #define COM_LOCAL_SOCK  "/queue/ossec/com"
 
+// Database socket
+#define WDB_LOCAL_SOCK "/queue/db/wdb"
+#ifndef WIN32
+#define WDB_LOCAL_SOCK_PATH DEFAULTDIR WDB_LOCAL_SOCK
+#endif
+
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
 
@@ -159,13 +166,17 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
+/* Syscollector directory */
+#define SYSCOLLECTOR_DIR    "/queue/syscollector"
+
 /* Backup directory for agents */
 #define AGNBACKUP_DIR    "/backup/agents"
 
 /* Wazuh Database */
 #define WDB_DIR         "var/db"
+#define WDB2_DIR        "queue/db"
 #define WDB_GLOB_NAME   "global.db"
-#define WDB_PROF_NAME   ".profile.db"
+#define WDB_PROF_NAME   ".template.db"
 
 /* Diff queue */
 #ifndef WIN32
@@ -196,6 +207,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define AGENT_INFO_FILE "/queue/ossec/.agent_info"
 #define AGENT_INFO_FILEP DEFAULTDIR AGENT_INFO_FILE
+#define AGENT_INFO_FILEF DEFAULTDIR AGENTINFO_DIR "/%s-%s"
 #else
 #define AGENT_INFO_FILE ".agent_info"
 #define AGENT_INFO_FILEP AGENT_INFO_FILE
@@ -327,6 +339,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MAX_QUEUED_EVENTS_PATH "/proc/sys/fs/inotify/max_queued_events"
 
 #define TMP_DIR "tmp"
+#define TMP_PATH DEFAULTDIR "/" TMP_DIR
 
 /* Windows COMSPEC */
 #define COMSPEC "C:\\Windows\\System32\\cmd.exe"

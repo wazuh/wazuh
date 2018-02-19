@@ -591,7 +591,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                             loadmemory(config_ruleinfo->action,
                                        rule_opt[k]->content);
                     } else if (strcasecmp(rule_opt[k]->element, xml_field) == 0) {
-                        if (rule_opt[k]->attributes[0]) {
+                        if (rule_opt[k]->attributes && rule_opt[k]->attributes[0]) {
                             os_calloc(1, sizeof(FieldInfo), config_ruleinfo->fields[ifield]);
 
                             if (strcasecmp(rule_opt[k]->attributes[0], xml_name) == 0) {

@@ -52,6 +52,7 @@ src/syscheck_update
 src/verify-agent-conf
 src/wazuh-modulesd
 src/wazuh-auth
+src/wazuh-db
 
 # Windows agent
 src/external/lua-5.2.3/src/lua52.dll

@@ -68,7 +68,7 @@ class WazuhException(Exception):
         1701: 'Agent does not exist',
         1702: 'Unable to restart agent(s)',
         1703: 'Action not available for Manager (Agent 000)',
-        1704: '',
+        1704: 'Unable to load requested info from agent db',
         1705: 'There is an agent with the same name',
         1706: 'There is an agent with the same IP',
         1707: 'Impossible to restart agent due to it is not active',
@@ -92,6 +92,7 @@ class WazuhException(Exception):
         1725: 'Error registering a new agent',
         1726: 'Ossec authd is not running',
         1727: 'Error listing group files',
+        1728: 'Error removing group',
 
         # Manager:
 
@@ -100,6 +101,8 @@ class WazuhException(Exception):
         2001: 'Incompatible version of SQLite',
         2002: 'Maximum attempts exceeded for sqlite3 execute',
         2003: 'Error in database request',
+        2004: 'Database query not valid',
+        2005: 'Could not connect to wdb socket',
 
         # Cluster
         3000: 'Cluster',
@@ -114,7 +117,7 @@ class WazuhException(Exception):
         3009: 'Error connecting to cluster database',
         3010: 'Error in cluster client',
         3011: 'Agent info file received in a client node',
-        3012: 'Received an old agent-info file',
+        3012: 'Received an old file',
         3013: 'Cluster is disabled',
         3014: 'Manager name or IP incorrect'
 

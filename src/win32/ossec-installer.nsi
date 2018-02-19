@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "3.2.0-alpha1"
-!define REVISION "3201"
+!define VERSION "3.3.0"
+!define REVISION "3301"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -175,6 +175,7 @@ Section "Wazuh Agent (required)" MainSec
 	CreateDirectory "$INSTDIR\queue\diff"
     CreateDirectory "$INSTDIR\incoming"
     CreateDirectory "$INSTDIR\upgrade"
+    CreateDirectory "$INSTDIR\wodles"
 
     ; install files
     File ossec-lua.exe
@@ -206,6 +207,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
 	File agent-auth.exe
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
+    File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File VERSION
     File REVISION
 
@@ -480,6 +482,8 @@ Section "Uninstall"
     Delete "$INSTDIR\active-response\*"
     Delete "$INSTDIR\tmp\*"
     Delete "$INSTDIR\incoming\*"
+    Delete "$INSTDIR\wodles\*"
+    Delete "$INSTDIR\syscollector_win_ext.dll"
 
     ; remove shortcuts
     SetShellVarContext all
@@ -500,6 +504,7 @@ Section "Uninstall"
     RMDir "$INSTDIR\incoming"
     RMDir /r "$INSTDIR\upgrade"
 	RMDir "$INSTDIR\queue"
+    RMDir "$INSTDIR\wodles"
     RMDir "$INSTDIR"
 SectionEnd
 

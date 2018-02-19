@@ -7,7 +7,7 @@
     lightArgs: "<projectname>.wixobj" -out "wazuh-agent-3.0.0-1.msi" <extensions>
 -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Id="*" Name="Wazuh Agent 3.2.0-alpha1" Language="1033" Version="3.2.0-alpha1" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
+    <Product Id="*" Name="Wazuh Agent 3.3.0" Language="1033" Version="3.3.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
         <Package Description="Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="wazuh-agent" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="simple.cab" EmbedCab="yes" CompressionLevel="high" />
         <!-- Default configuration values -->
@@ -72,9 +72,13 @@
                     <Component Id="AGENT_AUTH.EXE" DiskId="1" Guid="F99FEE7C-A021-4D43-9119-98A8D72EAB65">
                         <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" />
                     </Component>
+		            <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB">
+                        <File Id="SYSCOLLECTOR_DLL" Name="syscollector_win_ext.dll" Source="..\wazuh_modules\syscollector\syscollector_win_ext.dll" />
+                    </Component>
                     <Component Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9">
                         <File Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" Name="default-local_internal_options.conf" Source="default-local_internal_options.conf">
                             <CopyFile Id="LOCAL_INTERNAL_OPTIONS.CONF" DestinationName="default-local_internal_options.conf" />
+                            <CopyFile Id="EMPTY_LOCAL_INTERNAL_OPTIONS.CONF" DestinationName="local_internal_options.conf" />
                         </File>
                     </Component>
                     <Component Id="DEFAULT_OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="no">
@@ -188,6 +192,7 @@
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
                     <Directory Id="LOGS" Name="logs" />
+		            <Directory Id="WODLES" Name="wodles" />
                     <Directory Id="RIDS" Name="rids" />
                     <Directory Id="SYSCHECK" Name="syscheck" />
                     <Directory Id="INCOMING" Name="incoming" />
@@ -249,6 +254,15 @@
                 <RemoveFolder Id="purgue_logs_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
+
+        <DirectoryRef Id="WODLES">
+            <Component Id="CMP_WODLES" Guid="A6811CB8-C2E2-4A1A-A2E5-DCE8221828C6" KeyPath="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_wodles" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_wodles_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+
         <DirectoryRef Id="RIDS">
             <Component Id="CMP_RIDS" Guid="2052A162-F044-4432-BF50-F89BCD0BC5D1" KeyPath="yes">
                 <CreateFolder />
@@ -286,6 +300,7 @@
         </DirectoryRef>
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="AGENT_AUTH.EXE" />
+            <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="DEFAULT_OSSEC.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
@@ -312,6 +327,7 @@
             <ComponentRef Id="CMP_DIFF" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
+	        <ComponentRef Id="CMP_WODLES" />
             <ComponentRef Id="CMP_RIDS" />
             <ComponentRef Id="CMP_SYSCHECK" />
             <ComponentRef Id="CMP_INCOMING" />

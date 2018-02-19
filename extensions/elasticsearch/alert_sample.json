@@ -25,7 +25,7 @@
     "data": "sample",
     "system_name": "sample",
     "url": "sample",
-	"audit": {
+	  "audit": {
       "command": "sample",
       "type": "sample",
       "egid": "sample",
@@ -40,8 +40,8 @@
         "mode": "sample",
         "name": "sample"
       }
-	},
-	"oscap": {
+	  },
+	  "oscap": {
       "check": {
         "result": "sample",
         "severity": "sample",
@@ -55,6 +55,39 @@
           "title": "sample"
         }
       }
+    },
+    "vulnerability": {
+      "package": {
+        "name": "sample",
+        "version": "sample"
+      },
+      "cve":"sample",
+      "published":"2015-03-18T15:55:55.000Z",
+      "rationale":"sample",
+      "reference":"sample",
+      "severity":"sample",
+      "state":"sample",
+      "title":"sample",
+      "updated":"2015-03-18T15:55:55.000Z"
+    },
+    "aws": {
+      "eventName": "sample",
+      "userIdentity": {
+        "userName": "sample"
+      },
+      "eventSource": "sample"
+    },
+    "virustotal": {
+      "source": {
+        "file":"sample",
+        "md5":"sample",
+        "agent": {
+          "name":"sample"
+        }
+      },
+      "permalink": "sample",
+      "malicious": 1,
+      "positives": 20
     }
   },
   "rule": {

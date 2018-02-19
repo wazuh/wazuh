@@ -22,6 +22,8 @@
 
         wodle-openscap.template
 
+        wodle-syscollector.template
+
         syscheck.template
 
         global-ar.template
@@ -60,6 +62,8 @@
         rootcheck.template
 
         wodle-openscap.template
+
+        wodle-syscollector.template
 
         syscheck.template
 

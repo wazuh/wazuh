@@ -13,6 +13,7 @@
 #include "sec.h"
 #include "wazuh_db/wdb.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
+#include "external/cJSON/cJSON.h"
 
 #ifndef WIN32
 
@@ -186,7 +187,7 @@ void* wm_database_main(wm_database *data) {
 // Update manager information
 void wm_sync_manager() {
     char hostname[1024];
-    const char *os_uname;
+    char *os_uname;
     const char *path;
     char *os_name = NULL;
     char *os_major = NULL;
@@ -219,7 +220,7 @@ void wm_sync_manager() {
 
     OS_ClearXML(&xml);
 
-    if ((os_uname = getuname())) {
+    if ((os_uname = strdup(getuname()))) {
         char *ptr;
 
         if ((ptr = strstr(os_uname, " - ")))
@@ -269,6 +270,7 @@ void wm_sync_manager() {
         free(node_name);
         free(os_major);
         free(os_minor);
+        free(os_uname);
     }
 
     // Set starting offset if full_sync disabled
@@ -667,8 +669,18 @@ int wm_sync_file(const char *dirname, const char *fname) {
         return -1;
     }
 
-    if (type != WDB_GROUPS) {
+    switch (type) {
+    case WDB_GROUPS:
+        id_agent = atoi(fname);
 
+        if (!id_agent) {
+            mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
+            return -1;
+        }
+
+        break;
+
+    default:
         // If id_agent != 0, then the file corresponds to an agent
 
         if (id_agent) {
@@ -696,13 +708,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
 
         if (stat(path, &buffer) < 0) {
             mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
-            return -1;
-        }
-    } else {
-        id_agent = atoi(fname);
-
-        if (!id_agent) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
             return -1;
         }
     }
@@ -800,8 +805,10 @@ int wm_sync_file(const char *dirname, const char *fname) {
     case WDB_AGENTINFO:
         result = wm_sync_agentinfo(id_agent, path) < 0 || wdb_update_agent_keepalive(id_agent, buffer.st_mtime) < 0 ? -1 : 0;
         break;
+
     case WDB_GROUPS:
         result = wm_sync_agent_group(id_agent, fname);
+        break;
     }
 
     return result;
@@ -1230,6 +1237,11 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                     if (event->len > IN_BUFFER_SIZE) {
                         mterror(WM_DATABASE_LOGTAG, "Inotify event too large (%u)", event->len);
                         break;
+                    }
+
+                    if (event->name[0] == '.') {
+                        mtdebug2(WM_DATABASE_LOGTAG, "Discarding hidden file.");
+                        continue;
                     }
 #ifndef LOCAL
                     if (event->wd == wd_agents) {

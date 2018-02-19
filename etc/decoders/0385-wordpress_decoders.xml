@@ -14,7 +14,7 @@
   - WPsyslog[14382]: [127.0.0.1 na] Info: User logged in. User name: admin (admin).
   -->
 <decoder name="wordpress">
-  <program_name>^WPsyslog</program_name>
+  <program_name>^WPsyslog|^wpcore</program_name>
   <prematch>^[</prematch>
   <regex offset="after_prematch">^(\S+) </regex>
   <order>srcip</order>

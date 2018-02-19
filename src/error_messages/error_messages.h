@@ -56,7 +56,7 @@
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
-#define CONFIG_ERROR    "(1202): Configuration error at '%s'. Exiting."
+#define CONFIG_ERROR    "(1202): Configuration error at '%s'."
 #define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR  "(1204): Invalid connection type: '%s'."
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
@@ -181,6 +181,9 @@
 #define READING_EVTLOG  "(1951): Analyzing event log: '%s'."
 #define VAR_LOG_MON     "(1952): Monitoring variable log file: '%s'."
 #define INV_MULTILOG    "(1953): Invalid DJB multilog file: '%s'."
+#define MISS_SOCK_NAME  "(1954): Missing field 'name' for socket."
+#define MISS_SOCK_LOC   "(1955): Missing field 'location' for socket."
+
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
@@ -271,6 +274,37 @@
 #define DB_MAINERROR    "(5208): Multiple database errors. Exiting."
 #define DB_CLOSING      "(5209): Closing connection to database."
 #define DB_ATTEMPT      "(5210): Attempting to reconnect to database."
+
+/* vulnerability-detector messages*/
+#define VU_FETCH_ERROR              "(5400): %s database could not be fetched."
+#define VU_OPEN_FILE_ERROR          "(5401): Could not open %s."
+#define VU_LOAD_CVE_ERROR           "(5402): Could not load the CVE OVAL for %s."
+#define VU_INVALID_AT_VALUE         "(5403): Invalid '%s' value for '%s' attribute in node '%s'."
+#define VU_PACKAGE_NAME_ERROR       "(5404): The package name could not be obtained."
+#define VU_SQL_ERROR                "(5405): SQL error: %s"
+#define VU_CHECK_DB_ERROR           "(5406): Database check failed."
+#define VU_QUERY_ERROR              "(5407): The query could not be formed."
+#define VU_OS_VERSION_ERROR         "(5408): Invalid SO version."
+#define VU_REFRESH_DB_ERROR         "(5409): Could not refresh the %s DB."
+#define VU_GET_SOFTWARE_ERROR       "(5410): Agent software could not be obtained."
+#define VU_AG_CHECK_ERR             "(5411): Agent vulnerabilities could not be checked."
+#define VU_TABLE_ERROR              "(5412): Table %s is not available."
+#define VU_PACKAGE_TABLE_ERROR      "(5414): The packages table for agent %s could not be created."
+#define VU_COMPARE_VERSION_ERROR    "(5415): It has not been possible to compare version '%s' of '%s' package with version '%s'."
+#define VU_TIMESTAMP_LABEL_ERROR    "(5416): Timestamp label has not been found in the first %i fetches"
+#define VU_DB_TIMESTAMP_OVAL_ERROR  "(5417): Stored timestamp could not be compared. %s OVAL will continue to be downloaded."
+#define VU_SSL_LIBRARY_ERROR        "(5418): Could not initialize the OpenSSL library."
+#define VU_SSL_CREATE_ERROR         "(5419): The SSL structure could not be created."
+#define VU_SSL_CONTEXT_ERROR        "(5420): Unable to create a new SSL context."
+#define VU_SSL_CONNECT_ERROR        "(5421): Could not build a SSL session to %s OVAL."
+#define VU_SSL_LINK_ERROR           "(5422): SSL configuration could not be linked to the socket."
+#define VU_CVE_ID_FETCH_ERROR       "(5423): It is not possible to obtain the identifier of the CVE whose title is: '%s'."
+#define VU_INVALID_OPERATOR         "(5424): Invalid operator %s."
+#define VU_MAX_ACC_EXC              "(5425): Exceeded the maximum number of attempts to access the DB."
+#define VU_OVAL_UPDATE_ERROR        "(5426): CVE database could not be updated."
+#define VU_CREATE_DB_ERROR          "(5427): The database could not be checked or created."
+#define VU_SOFTWARE_REQUEST_ERROR   "(5428): Agent %s software could not be requested."
+#define VU_NO_AGENT_ERROR           "(5429): The agents information could not be processed."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

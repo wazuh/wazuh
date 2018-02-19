@@ -34,11 +34,11 @@ is_rhel_le_5() {
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
-DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd wazuh-db ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
 
 if ! is_rhel_le_5
 then
-    DAEMONS="$DAEMONS wazuh-clusterd"
+    DAEMONS="wazuh-clusterd $DAEMONS"
 fi
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
@@ -51,6 +51,8 @@ LOCK_PID="${LOCK}/pid"
 # started multiple times together). It will try for up
 # to 10 attempts (or 10 seconds) to execute.
 MAX_ITERATION="10"
+
+MAX_KILL_TRIES=600
 
 checkpid()
 {
@@ -378,6 +380,23 @@ pstatus()
     return 0;
 }
 
+wait_pid() {
+    local i=1
+
+    while kill -0 $1 2> /dev/null
+    do
+        if [ "$i" = "$MAX_KILL_TRIES" ]
+        then
+            return 1
+        else
+            sleep 0.1
+            i=`expr $i + 1`
+        fi
+    done
+
+    return 0
+}
+
 stopa()
 {
     checkpid;
@@ -391,14 +410,30 @@ stopa()
         else
             first=false
         fi
+
         pstatus ${i};
+
         if [ $? = 1 ]; then
-            if [ $USE_JSON = true ]; then
-                echo -n '{"daemon":"'${i}'","status":"killed"}'
-            else
-                echo "Killing ${i}... ";
+            if [ $USE_JSON != true ]
+            then
+                echo "Killing ${i}...";
             fi
-            kill `cat ${DIR}/var/run/${i}*.pid`;
+
+            pid=`cat ${DIR}/var/run/${i}*.pid`
+            kill $pid
+
+            if wait_pid $pid
+            then
+                if [ $USE_JSON = true ]; then
+                    echo -n '{"daemon":"'${i}'","status":"killed"}'
+                fi
+            else
+                if [ $USE_JSON = true ]; then
+                    echo -n '{"daemon":"'${i}'","status":"failed to kill"}'
+                else
+                    echo "Process ${i} couldn't be killed.";
+                fi
+            fi
         else
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
@@ -447,7 +482,6 @@ restart)
     else
         stopa
     fi
-    sleep 1
     start
     unlock
     ;;
@@ -455,7 +489,6 @@ reload)
     DAEMONS=$(echo $DAEMONS | sed 's/ossec-execd//')
     lock
     stopa
-    sleep 1
     start
     unlock
     ;;

@@ -7,7 +7,6 @@ from xml.etree.ElementTree import fromstring
 from os import listdir, path as os_path
 import re
 from wazuh.exception import WazuhException
-from wazuh.agent import Agent
 from wazuh import common
 from wazuh.utils import cut_array
 
@@ -52,6 +51,10 @@ conf_sections = {
     },
     'auth': {
         'type': 'simple',
+        'list_options': []
+    },
+    'integration': {
+        'type': 'duplicate',
         'list_options': []
     }
 }
@@ -408,19 +411,12 @@ def get_ossec_conf(section=None, field=None):
     return data
 
 
-def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None):
+def get_agent_conf_from_path(agent_conf, offset=0, limit=common.database_limit, filename=None):
     """
     Returns agent.conf as dictionary.
 
     :return: agent.conf as dictionary.
     """
-
-    if group_id:
-        if not Agent.group_exists(group_id):
-            raise WazuhException(1710, group_id)
-
-        agent_conf = "{0}/{1}".format(common.shared_path, group_id)
-
     if filename:
         agent_conf_name = filename
     else:
@@ -444,35 +440,25 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
 
         # Parse XML to JSON
         data = _agentconf2json(xml_data)
-    except:
-        raise WazuhException(1101)
+    except Exception as e:
+        raise WazuhException(1101, str(e))
 
 
     return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
 
 
-def get_file_conf(filename, group_id=None, type_conf=None):
+def get_file_conf_path(filename, file_path, type_conf=None):
     """
     Returns the configuration file as dictionary.
 
     :return: configuration file as dictionary.
     """
 
-    if group_id:
-        if not Agent.group_exists(group_id):
-            raise WazuhException(1710, group_id)
-
-        file_path = "{0}/{1}".format(common.shared_path, filename) \
-                    if filename == 'ar.conf' else \
-                    "{0}/{1}/{2}".format(common.shared_path, group_id, filename)
-    else:
-        file_path = "{0}/{1}".format(common.shared_path, filename)
-
     if not os_path.exists(file_path):
         raise WazuhException(1006, file_path)
 
     types = {
-        'conf': get_agent_conf,
+        'conf': get_agent_conf_from_path,
         'rootkit_files': _rootkit_files2json,
         'rootkit_trojans': _rootkit_trojans2json,
         'rcl': _rcl2json
@@ -489,7 +475,7 @@ def get_file_conf(filename, group_id=None, type_conf=None):
             raise WazuhException(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
     else:
         if filename == "agent.conf":
-            data = get_agent_conf(group_id, limit=0, filename=filename)
+            data = get_agent_conf_from_path(agent_conf=os_path.dirname(file_path), limit=0, filename=filename)
         elif filename == "rootkit_files.txt":
             data = _rootkit_files2json(file_path)
         elif filename == "rootkit_trojans.txt":

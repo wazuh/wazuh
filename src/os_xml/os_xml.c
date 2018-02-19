@@ -293,7 +293,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
 
         else if ((location == 2) && (c == _R_CONFE)) {
             closedelim[count] = '\0';
-            if (strcmp(closedelim, elem) != 0) {
+                if (strcmp(closedelim, elem) != 0) {
                 xml_error(_lxml, "XMLERR: Element '%s' not closed.", elem);
                 return (-1);
             }
@@ -526,7 +526,6 @@ static int _getattributes(FILE *fp, unsigned int parent, OS_XML *_lxml)
             }
         } else if ((location == 1) && (c == c_to_match)) {
             value[count] = '\0';
-
             if (_writememory(attr, XML_ATTR, strlen(attr) + 1,
                              parent, _lxml) < 0) {
                 return (-1);

@@ -80,7 +80,7 @@ int main(int argc, char **argv)
         int error = pthread_create(&cur_module->thread, NULL, cur_module->context->start, cur_module->data);
 
         if (error)
-            merror_exit("fork(): %s", strerror(error));
+            merror_exit("pthread_create(): %s", strerror(error));
     }
 
     // Wait for threads
@@ -113,28 +113,12 @@ void wm_help()
 void wm_setup()
 {
     struct sigaction action = { .sa_handler = wm_handler };
-    wmodule *database;
-    int agent_cfg = 0;
 
-    // Get defined values from internal_options
+    // Read XML settings and internal options
 
-    wm_task_nice = getDefine_Int("wazuh_modules", "task_nice", -20, 19);
-    wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 100, 1000);
-    wm_kill_timeout = getDefine_Int("wazuh_modules", "kill_timeout", 0, 3600);
-
-    // Read configuration: ossec.conf
-
-    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg) < 0)
+    if (wm_config() < 0) {
         exit(EXIT_FAILURE);
-
-#ifdef CLIENT
-    // Read configuration: agent.conf
-    agent_cfg = 1;
-    ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
-#endif
-
-    if ((database = wm_database_read()))
-        wm_add(database);
+    }
 
     // Go daemon
 
@@ -146,7 +130,10 @@ void wm_setup()
     if (chdir(DEFAULTDIR) < 0)
         merror_exit("chdir(): %s", strerror(errno));
 
-    wm_check();
+    if (wm_check() < 0) {
+        minfo("No configuration defined. Exiting...");
+        exit(EXIT_SUCCESS);
+    }
 
     // Create PID file
 

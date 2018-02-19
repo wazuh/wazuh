@@ -48,14 +48,14 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     If InStr(strText,"<address>0.0.0.0</address>") > 0 Then
         Set re = new regexp
         re.Pattern = "<disabled>yes</disabled>"
-        re.Global = True
-        strNewText = re.Replace(strNewText, "<disabled>no</disabled>") 
+        re.Global = False
+        strNewText = re.Replace(strNewText, "<disabled>no</disabled>")
         Set re = new regexp
         re.Pattern = "<!-- By default it is disabled. In the Install you must choose to enable it. -->"
         re.Global = True
-        strNewText = re.Replace(strNewText, "") 
+        strNewText = re.Replace(strNewText, "")
     End If
-    
+
     If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or time_reconnect <> "" Then
         If address <> "" and InStr(address,";") > 0 Then 'list of address
             list=Split(address,";")
@@ -66,7 +66,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
             strNewText = Replace(strNewText, "      <address>0.0.0.0</address>", formatted_list)
 
         ElseIf address <> "" and InStr(strText,"<address>") > 0 Then
-            strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")            
+            strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
 
         ElseIf address <> "" Then 'single address
             ' Fix for the legacy server-ip and server-hostname keynames

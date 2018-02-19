@@ -7,6 +7,7 @@ from wazuh import common
 from wazuh.utils import execute
 from wazuh.database import Connection
 from time import strftime
+from wazuh.exception import WazuhException
 import re
 
 
@@ -17,7 +18,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '3.2.0-alpha1'
+__version__ = '3.3.0'
 
 
 msg = "\n\nPython 2.7 or newer not found."
@@ -66,7 +67,7 @@ class Wazuh:
         return str(self.to_dict())
 
     def to_dict(self):
-        return {'path': self.path, 'version': self.version, 'installation_date': self.installation_date, 'type': self.type, 'max_agents': self.max_agents, 'openssl_support': self.openssl_support, 'ruleset_version': self.ruleset_version, 'tz_offset': self.tz_offset, 'tz_name': self.tz_name}
+        return {'path': self.path, 'version': self.version, 'compilation_date': self.installation_date, 'type': self.type, 'max_agents': self.max_agents, 'openssl_support': self.openssl_support, 'ruleset_version': self.ruleset_version, 'tz_offset': self.tz_offset, 'tz_name': self.tz_name}
 
     def get_ossec_init(self):
         """
@@ -93,7 +94,10 @@ class Wazuh:
                         elif key == "date":
                             self.installation_date = match.group(2)
                         elif key == "type":
-                            self.type = match.group(2)
+                            if (str(match.group(2)) == "server"):
+                                self.type = "manager"
+                            else:
+                                self.type = match.group(2)
         except:
             raise WazuhException(1005, self.OSSEC_INIT)
 
