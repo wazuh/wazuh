@@ -152,6 +152,12 @@ if __name__ == '__main__':
         # Initialize framework
         myWazuh = Wazuh(get_init=True)
 
+        status = get_status_json()
+        if status['enabled'] == 'no':
+            raise WazuhException(3000, "The cluster is not enabled")
+        elif status['running'] == 'no':
+            raise WazuhException(3000, "The cluster is not running")
+
         if args.push:
             try:
                 check_cluster_config(read_config())
@@ -206,7 +212,7 @@ if __name__ == '__main__':
             parser.print_help()
             exit()
     except Exception as e:
-        print "ERROR: {0}".format(str(e))
+        logging.error(str(e))
         if args.debug:
             raise e
         exit(1)
