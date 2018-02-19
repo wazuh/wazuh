@@ -119,7 +119,8 @@ class WazuhException(Exception):
         3011: 'Agent info file received in a client node',
         3012: 'Received an old file',
         3013: 'Cluster is disabled',
-        3014: 'Manager name or IP incorrect'
+        3014: 'Manager name or IP incorrect',
+        3015: 'Cannot access directory'
 
         # > 9000: Authd
     }

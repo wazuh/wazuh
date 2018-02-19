@@ -181,7 +181,13 @@ def scan_for_new_files():
 def list_files_from_filesystem(node_type, cluster_items):
     def get_files_from_dir(dirname, recursive, files, cluster_items):
         items = []
-        for entry in listdir(dirname):
+
+        try:
+            entries = listdir(dirname)
+        except OSError as e:
+            raise WazuhException(3015, str(e))
+
+        for entry in entries:
             if entry in cluster_items['excluded_files'] or entry[-1] == '~':
                 continue
 
@@ -203,7 +209,10 @@ def list_files_from_filesystem(node_type, cluster_items):
         if item['source'] == node_type or \
            item['source'] == 'all':
             fullpath = common.ossec_path + file_path
-            expanded_items.extend(get_files_from_dir(fullpath, item['recursive'],item['files'], cluster_items))
+            try:
+                expanded_items.extend(get_files_from_dir(fullpath, item['recursive'],item['files'], cluster_items))
+            except WazuhException as e:
+                logging.warning(e)
 
     final_items = {}
     for new_item in expanded_items:

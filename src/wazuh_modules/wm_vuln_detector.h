@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+#ifndef CLIENT
+
 #ifndef WM_VULNDETECTOR
 #define WM_VULNDETECTOR
 
@@ -174,4 +176,5 @@ int get_interval(char *source, unsigned long *interval);
 int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software);
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list);
 
+#endif
 #endif

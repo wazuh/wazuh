@@ -93,8 +93,10 @@
   <rule id="515" level="0">
     <if_sid>510</if_sid>
     <match>^Starting rootcheck scan|^Ending rootcheck scan.|</match>
-    <match>^Starting syscheck scan|^Ending syscheck scan.</match>
-    <description>Ignoring rootcheck/syscheck scan messages.</description>
+    <match>^Starting syscheck scan|^Ending syscheck scan.|</match>
+    <match>^Starting OpenSCAP scan|^Ending OpenSCAP scan.|</match>
+    <match>^Starting CIS-CAT scan|^Ending CIS-CAT scan.</match>
+    <description>Ignoring scan messages.</description>
     <group>rootcheck,syscheck,pci_dss_10.6.1,</group>
   </rule>
 
@@ -125,8 +127,8 @@
     <description>Trying to add an agent with duplicated IP.</description>
     <group>pci_dss_10.6.1,gpg13_10.1,</group>
   </rule>
- 
-  
+
+
   <!-- Process monitoring rules -->
   <rule id="530" level="0">
     <if_sid>500</if_sid>

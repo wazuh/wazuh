@@ -8,7 +8,13 @@ All notable changes to this project will be documented in this file.
 - Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
 - Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
 
-## [v3.2.0] 2018-02-13
+## [v3.2.1]
+
+### Changed
+
+- Give preference to use the selected Java over the default one in CIS-CAT wodle.
+
+## [v3.2.0]
 
 ### Added
 - Added support to synchronize custom rules and decoders in the cluster.([#344](https://github.com/wazuh/wazuh/pull/344))
