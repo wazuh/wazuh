@@ -59,7 +59,6 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DHIGHFIRST
 		PATH:=${PATH}:/usr/vac/bin
 		OSSEC_LDFLAGS+=-pthread
-		CFLAGS+=-Wl,--start-group
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
