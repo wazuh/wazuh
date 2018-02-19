@@ -14,7 +14,8 @@
 
 #define VU_WM_NAME "vulnerability-detector"
 #define WM_VULNDETECTOR_LOGTAG ARGV0 ":" VU_WM_NAME
-#define WM_VULNDETECTOR_DEFAULT_INTERVAL 86400 // 24H
+#define WM_VULNDETECTOR_DEFAULT_INTERVAL 60 // 1M
+#define VU_MAX_ANTIQ_REPORT 86400 // 24H
 #define CVE_TEMP_FILE TMP_PATH "/cve"
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
 #define CANONICAL_REPO "https://people.canonical.com"
@@ -94,6 +95,7 @@ typedef struct wm_vulnerability_detector_t {
     time_intervals intervals;
     time_intervals remaining_intervals;
     agent_software *agents_software;
+    OSHash *agents_trig;
     int queue_fd;
     wm_vulnerability_detector_state state;
     wm_vulnerability_detector_flags flags;
@@ -168,6 +170,11 @@ typedef struct wm_vulnerability_detector_db {
     oval_metadata metadata;
     char *OS;
 } wm_vulnerability_detector_db;
+
+typedef struct last_scan {
+    char *last_scan_id;
+    time_t last_scan_time;
+} last_scan;
 
 int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module);
 int get_interval(char *source, unsigned long *interval);

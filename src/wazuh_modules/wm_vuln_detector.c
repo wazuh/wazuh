@@ -36,9 +36,9 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval);
 int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS);
 int wm_vulnerability_detector_sql_error(sqlite3 *db);
 int wm_vulnerability_detector_sql_exec(sqlite3 *db, char *sql, size_t size, int allows_constr);
-int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db);
+int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agents_trig);
 int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, int max);
-int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents);
+int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents, OSHash *agents_trig);
 int wm_vulnerability_detector_sql_prepare(sqlite3 *db, char *sql, size_t size, sqlite3_stmt **stmt);
 int wm_checks_package_vulnerability(const char *package, char *version, const char *operation, char *operation_value);
 void wm_vulnerability_update_intervals(time_intervals *remaining, time_t time_sleep);
@@ -431,7 +431,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
 }
 
 
-int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents) {
+int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents, OSHash *agents_trig) {
     agent_software *agents_it;
     sqlite3 *db;
     sqlite3_stmt *stmt = NULL;
@@ -457,7 +457,7 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     sqlite3_finalize(stmt);
 
     for (i = 1, agents_it = agents;; i++) {
-        if (wm_vulnerability_detector_get_software_info(agents_it, db)) {
+        if (wm_vulnerability_detector_get_software_info(agents_it, db, agents_trig)) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR);
             return OS_INVALID;
         }
@@ -1639,16 +1639,17 @@ int wm_vulnerability_detector_updatedb(update_flags *flags, time_intervals *max,
     return 0;
 };
 
-int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 *db) {
+int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 *db, OSHash *agents_trig) {
     int sock;
     unsigned int i;
     int size;
     char buffer[OS_MAXSTR];
     char json_str[OS_MAXSTR];
+    char scan_id[OS_SIZE_1024];
     sqlite3_stmt *stmt;
     cJSON *obj = NULL;
     cJSON *package_list = NULL;
-
+    last_scan *scan;
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
 
     for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR)) < 1; i++) {
@@ -1661,60 +1662,114 @@ int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 
         return OS_INVALID;
     }
 
+    // Request the ID of the last scan
+    size = snprintf(buffer, OS_MAXSTR, VU_SYSC_SCAN_REQUEST, agent->agent_id);
+    if (send(sock, buffer, size + 1, 0) < size || (size = recv(sock, buffer, OS_MAXSTR, 0)) < 1) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_SYSC_SCAN_REQUEST_ERROR, agent->agent_id);
+        return OS_INVALID;
+    }
+
+    buffer[size] = '\0';
+    if (!strncmp(buffer, "ok", 2)) {
+        buffer[0] = buffer[1] = ' ';
+        size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
+        json_str[size] = '\0';
+    } else {
+        goto error;
+    }
+
+    if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
+        cJSON_GetObjectItem(obj, "data");
+    } else {
+        goto error;
+    }
+
+    size = snprintf(scan_id, OS_SIZE_1024, "%i", (int) cJSON_GetObjectItem(obj, "data")->child->child->valuedouble);
+    scan_id[size] = '\0';
+
+    cJSON_Delete(obj);
+    obj = NULL;
+
+    // Check to see if the scan has already been reported
+    if (scan = OSHash_Get(agents_trig, agent->agent_id), scan) {
+            if (!strcmp(scan_id, scan->last_scan_id) && (scan->last_scan_time + VU_MAX_ANTIQ_REPORT) >= time(NULL)) {
+            // Nothing to do
+            close(sock);
+            mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_SYS_CHECKED, agent->agent_id, scan_id);
+            return 0;
+        } else {
+            free(scan->last_scan_id);
+            os_strdup(scan_id, scan->last_scan_id);
+            scan->last_scan_time = time(NULL);
+        }
+    } else {
+        os_calloc(1, sizeof(last_scan), scan);
+        os_strdup(scan_id, scan->last_scan_id);
+        scan->last_scan_time = time(NULL);
+        OSHash_Add(agents_trig, strdup(agent->agent_id), scan);
+    }
+
+    // Request and store packages
     i = 0;
-    size = snprintf(buffer, OS_MAXSTR, VU_SOFTWARE_REQUEST, agent->agent_id, VU_MAX_PACK_REQ, i);
+    size = snprintf(buffer, OS_MAXSTR, VU_SOFTWARE_REQUEST, agent->agent_id, scan_id, VU_MAX_PACK_REQ, i);
     if (send(sock, buffer, size + 1, 0) < size) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
         return OS_INVALID;
     }
 
     while (size = recv(sock, buffer, OS_MAXSTR, 0), size) {
-        if (size < 10) {
+        if (size < 0) {
+            goto error;
+        } else if (size < 10) {
             break;
         }
         buffer[size] = '\0';
-        if (size != -1) {
-            if (!strncmp(buffer, "ok", 2)) {
-                buffer[0] = buffer[1] = ' ';
-                size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
-                json_str[size] = '\0';
-            } else {
+        if (!strncmp(buffer, "ok", 2)) {
+            buffer[0] = buffer[1] = ' ';
+            size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
+            json_str[size] = '\0';
+        } else {
+            goto error;
+        }
+        if (obj) {
+            cJSON *new_obj;
+            cJSON *data;
+            if (new_obj = cJSON_Parse(json_str), !new_obj || !cJSON_IsObject(new_obj)) {
                 goto error;
             }
-            if (obj) {
-                cJSON *new_obj;
-                cJSON *data;
-                if (new_obj = cJSON_Parse(json_str), !new_obj || !cJSON_IsObject(new_obj)) {
-                    goto error;
-                }
-                data = cJSON_GetObjectItem(new_obj, "data");
-                if (data) {
-                    cJSON_AddItemToArray(package_list, data->child);
-                }
-                free(new_obj);
-                free(data->string);
-                free(data);
-            } else if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
-                package_list = cJSON_GetObjectItem(obj, "data");
-                if (!package_list) {
-                    goto error;
-                }
-            } else {
-                goto error;
+            data = cJSON_GetObjectItem(new_obj, "data");
+            if (data) {
+                cJSON_AddItemToArray(package_list, data->child);
             }
-
-
-            i += VU_MAX_PACK_REQ;
-            size = snprintf(buffer, OS_MAXSTR, VU_SOFTWARE_REQUEST, agent->agent_id, VU_MAX_PACK_REQ, i);
-            if (send(sock, buffer, size + 1, 0) < size) {
-                mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
+            free(new_obj);
+            free(data->string);
+            free(data);
+        } else if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
+            package_list = cJSON_GetObjectItem(obj, "data");
+            if (!package_list) {
                 goto error;
             }
         } else {
             goto error;
         }
+
+
+        i += VU_MAX_PACK_REQ;
+        size = snprintf(buffer, OS_MAXSTR, VU_SOFTWARE_REQUEST, agent->agent_id, scan_id, VU_MAX_PACK_REQ, i);
+        if (send(sock, buffer, size + 1, 0) < size) {
+            mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
+            goto error;
+        }
     }
 
+    // Avoid checking the same packages again
+    size = snprintf(buffer, OS_MAXSTR, VU_SYSC_UPDATE_SCAN, agent->agent_id, scan_id);
+    if (send(sock, buffer, size + 1, 0) < size) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
+        goto error;
+    }
+
+    close(sock);
 
     if (package_list) {
         sqlite3_exec(db, BEGIN_T, NULL, NULL, NULL);
@@ -1743,7 +1798,6 @@ int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 
     if (obj) {
         cJSON_Delete(obj);
     }
-    close(sock);
     return 0;
 error:
     if (obj) {
@@ -1821,6 +1875,11 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
         remaining->redhat = intervals->redhat;
     }
 
+    if (vulnerability_detector->agents_trig = OSHash_Create(), !vulnerability_detector->agents_trig) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_CREATE_HASH_ERRO);
+        pthread_exit(NULL);
+    }
+
     while (1) {
         // Update CVE databases
         if (flags->u_flags.update &&
@@ -1835,7 +1894,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
             if (wm_vunlnerability_detector_set_agents_info(&vulnerability_detector->agents_software)) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_ERROR);
             } else {
-                if (wm_vulnerability_detector_check_agent_vulnerabilities(vulnerability_detector->agents_software)) {
+                if (wm_vulnerability_detector_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_trig)) {
                     mterror(WM_VULNDETECTOR_LOGTAG, VU_AG_CHECK_ERR);
                 } else {
                     mtinfo(WM_VULNDETECTOR_LOGTAG, VU_END_SCAN);
@@ -1855,6 +1914,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
                         break;
                     }
                 }
+                vulnerability_detector->agents_software = NULL;
             }
 
             wm_vulnerability_update_intervals(&vulnerability_detector->remaining_intervals, time(NULL) - time_start);
@@ -2071,6 +2131,11 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
 
 void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerability_detector) {
     agent_software *agent;
+
+    if (vulnerability_detector->agents_trig) {
+        OSHash_Free(vulnerability_detector->agents_trig);
+    }
+
     for (agent = vulnerability_detector->agents_software; agent;) {
         agent_software *agent_aux = agent->next;
         free(agent->agent_id);

@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     version TEXT,
     architecture TEXT,
     description TEXT,
+    triggered INTEGER(1),
     PRIMARY KEY (scan_id, name, version, architecture)
 );
 
