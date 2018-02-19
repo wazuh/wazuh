@@ -16,6 +16,7 @@
 #define WM_VULNDETECTOR_LOGTAG ARGV0 ":" VU_WM_NAME
 #define WM_VULNDETECTOR_DEFAULT_INTERVAL 60 // 1M
 #define VU_MAX_ANTIQ_REPORT 86400 // 24H
+#define VU_DEF_IGNORE_TIME 21600 // 6H
 #define CVE_TEMP_FILE TMP_PATH "/cve"
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
 #define CANONICAL_REPO "https://people.canonical.com"
@@ -87,6 +88,7 @@ typedef struct agent_software {
 
 typedef struct time_intervals {
     unsigned long detect;
+    unsigned long ignore;
     unsigned long ubuntu;
     unsigned long redhat;
 } time_intervals;

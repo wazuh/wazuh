@@ -19,13 +19,7 @@ static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
 static const char *XML_VERSION = "version";
-// Upcoming parameters
-//static const char *XML_TARGET_GROUPS = "target_groups";
-//static const char *XML_MIN_CVSS = "min_cvss";
-//static const char *XML_ANTIQUITY_LIMIT = "antiquity_limit";
-//static const char *XML_UPDATE_NVD = "update_nvd";
-//static const char *XML_IGNORED_AGENTS = "ignored_agents";
-
+static const char *XML_IGNORE_TIME = "ignore_time";
 
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list) {
     agent_software *next = NULL;
@@ -95,6 +89,7 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
     vulnerability_detector->flags.u_flags.rh5 = 0;
     vulnerability_detector->flags.u_flags.rh6 = 0;
     vulnerability_detector->flags.u_flags.rh7 = 0;
+    vulnerability_detector->intervals.ignore = VU_DEF_IGNORE_TIME;
     vulnerability_detector->intervals.detect = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vulnerability_detector->intervals.ubuntu = 0;
     vulnerability_detector->intervals.redhat = 0;
@@ -130,20 +125,12 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
-        } /*else if (!strcmp(nodes[i]->element, XML_MIN_CVSS)) {
-
-        } else if (!strcmp(nodes[i]->element, XML_ANTIQUITY_LIMIT)) {
-
-        } else if (!strcmp(nodes[i]->element, XML_UPDATE_NVD)) {
-            if (!strcmp(nodes[i]->content, "yes")) {
-                vulnerability_detector->flags.u_flags.update_nvd = 1;
-            } else if (!strcmp(nodes[i]->content, "no")) {
-                vulnerability_detector->flags.u_flags.update_nvd = 0;
-            } else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_VULNDETECTOR_CONTEXT.name);
+        } else if (!strcmp(nodes[i]->element, XML_IGNORE_TIME)) {
+            if (get_interval(nodes[i]->content, &vulnerability_detector->intervals.ignore)) {
+                merror("Invalid ignore_time at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
-        }*/ else if (!strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL)) {
+        } else if (!strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL)) {
             if (!strcmp(nodes[i]->content, "yes")) {
                 vulnerability_detector->flags.u_flags.update_ubuntu = 1;
                 if (nodes[i]->attributes) {
