@@ -52,6 +52,7 @@ typedef struct _logreader {
     char *query;
     char **target;
     logsocket **target_socket;
+    int duplicated;
     wlabel_t *labels;
 
     void *(*read)(int i, int *rc, int drop_it);
