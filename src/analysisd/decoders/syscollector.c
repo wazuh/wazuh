@@ -42,12 +42,12 @@ int DecodeSyscollector(Eventinfo *lf)
     // Check location
     if (lf->location[0] == '(') {
         char* search;
-        search = strchr(lf->location, '>') + 1;
+        search = strchr(lf->location, '>');
         if (!search) {
             mdebug1("Invalid received event.");
             return (0);
         }
-        else if (strcmp(search, "syscollector") != 0) {
+        else if (strcmp(search + 1, "syscollector") != 0) {
             mdebug1("Invalid received event. Not syscollector.");
             return (0);
         }
@@ -226,6 +226,7 @@ int decode_osinfo(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
+            free(msg);
             return -1;
         }
 
@@ -352,6 +353,7 @@ int decode_port(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
+            free(msg);
             return -1;
         }
 
@@ -371,6 +373,7 @@ int decode_port(char *agent_id, cJSON * logJSON) {
             snprintf(msg, OS_MAXSTR - 1, "agent %s port del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
+                free(msg);
                 return -1;
             }
         }
@@ -459,6 +462,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
+            free(msg);
             return -1;
         }
     }
@@ -558,6 +562,7 @@ int decode_program(char *agent_id, cJSON * logJSON) {
             snprintf(msg, OS_MAXSTR - 1, "agent %s program del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
+                free(msg);
                 return -1;
             }
         }
@@ -830,6 +835,7 @@ int decode_process(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
+            free(msg);
             return -1;
         }
 
@@ -849,6 +855,7 @@ int decode_process(char *agent_id, cJSON * logJSON) {
             snprintf(msg, OS_MAXSTR - 1, "agent %s process del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
+                free(msg);
                 return -1;
             }
         }
