@@ -23,7 +23,7 @@ static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
 static void wm_ciscat_check();                       // Check configuration, disable flag
 static void wm_ciscat_run(wm_ciscat_eval *eval, char *path);      // Run a CIS-CAT policy
 static void wm_ciscat_preparser();                   // Prepare report for the xml parser
-static wm_scan_data* wm_ciscat_txt_parser(wm_scan_data *info, wm_rule_data *rule);     // Parse CIS-CAT csv reports
+static wm_scan_data* wm_ciscat_txt_parser();        // Parse CIS-CAT csv reports
 static void wm_ciscat_xml_parser();                 // Parse CIS-CAT xml reports
 static void wm_ciscat_send_scan(wm_scan_data *info);      // Write scan result into JSON events and send them
 static char* wm_ciscat_remove_tags(char* string);    // Remove xml and html tags from a string
@@ -222,7 +222,6 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     char msg[OS_MAXSTR];
     char *ciscat_script;
     wm_scan_data *scan_info = NULL;
-    wm_rule_data *rule_info = NULL;
     char eval_path[OS_MAXSTR];
 
     os_calloc(OS_MAXSTR, sizeof(char), ciscat_script);
@@ -321,7 +320,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     // Get assessment results
 
     if (!ciscat->flags.error) {
-        scan_info = wm_ciscat_txt_parser(scan_info, rule_info);
+        scan_info = wm_ciscat_txt_parser();
         if (!ciscat->flags.error) {
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
@@ -350,7 +349,6 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     char msg[OS_MAXSTR];
     char *ciscat_script = "./CIS-CAT.sh";
     wm_scan_data *scan_info = NULL;
-    wm_rule_data *rule_info = NULL;
 
     // Create arguments
 
@@ -482,7 +480,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     // Get assessment results
 
     if (!ciscat->flags.error) {
-        scan_info = wm_ciscat_txt_parser(scan_info, rule_info);
+        scan_info = wm_ciscat_txt_parser();
         if (!ciscat->flags.error) {
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
@@ -501,7 +499,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
 #endif
 
-wm_scan_data* wm_ciscat_txt_parser(wm_scan_data *info, wm_rule_data *rule){
+wm_scan_data* wm_ciscat_txt_parser(){
 
     char file[OS_MAXSTR];
     FILE *fp;
@@ -510,6 +508,9 @@ wm_scan_data* wm_ciscat_txt_parser(wm_scan_data *info, wm_rule_data *rule){
     int last_line = 0;
     int final = 0;
     int i;
+    size_t size;
+    wm_scan_data *info = NULL;
+    wm_rule_data *rule = NULL;
 
     os_calloc(1, sizeof(wm_scan_data), info);
     os_calloc(1, sizeof(wm_rule_data), rule);
@@ -667,7 +668,14 @@ wm_scan_data* wm_ciscat_txt_parser(wm_scan_data *info, wm_rule_data *rule){
                 os_strdup(parts[1], rule->id);
                 os_strdup(parts[2], rule->title);
 
-                char *result = os_strip_char(parts[0], ':');
+                char result[MAX_RESULT];
+                snprintf(result, MAX_RESULT - 1, "%s", parts[0]);
+
+                size = strlen(result);
+                if (result[size - 1] == ':') {
+                    result[size - 1] = '\0';
+                }
+
                 os_strdup(result, rule->result);
 
                 for (i=0; parts[i]; i++){
@@ -710,9 +718,6 @@ void wm_ciscat_preparser(){
     int inside_rule = 0;
     int print_result = 0;
 
-    os_calloc(OS_MAXSTR, sizeof(char), readbuff);
-    os_calloc(OS_MAXSTR, sizeof(char), result);
-
 #ifdef WIN32
     snprintf(in_file, OS_MAXSTR - 1, "%s%s", TMP_DIR, "\\ciscat-report.xml");
     snprintf(out_file, OS_MAXSTR - 1, "%s%s", TMP_DIR, "\\ciscat-tmp.xml");
@@ -727,11 +732,24 @@ void wm_ciscat_preparser(){
     if ((in_fp = fopen(in_file, "r"))) {
 #endif
 
+        os_calloc(OS_MAXSTR, sizeof(char), readbuff);
+        os_calloc(OS_MAXSTR, sizeof(char), result);
+
         do{
-            fgets(readbuff, OS_MAXSTR, in_fp);
+            if (fgets(readbuff, OS_MAXSTR, in_fp)){}     // We want to ignore this part
         } while (!strstr(readbuff, WM_CISCAT_GROUP_START) && !strstr(readbuff, WM_CISCAT_GROUP_START2));
 
-        out_fp = fopen(out_file, "w");
+        if ((out_fp = fopen(out_file, "w")) == NULL) {
+
+            mterror(WM_CISCAT_LOGTAG, "Unable to open '%s' for writing: %s", in_file, strerror(errno));
+            ciscat->flags.error = 1;
+            free(readbuff);
+            free(result);
+            fclose(in_fp);
+            unlink(in_file);
+            return;
+        }
+
         fprintf(out_fp, "%s", readbuff);
 
         while (fgets(readbuff, OS_MAXSTR, in_fp) && (strstr(readbuff, WM_CISCAT_RESULT_START) == NULL)) {
@@ -753,6 +771,7 @@ void wm_ciscat_preparser(){
                             string[size - 1] = '\0';
                         }
                         snprintf(result, OS_MAXSTR - 1, "<description>%s</description>", string);
+                        free(string);
                     } else {
                         size = strlen(readbuff);
                         if (readbuff[size - 1] == '\n') {
@@ -771,6 +790,7 @@ void wm_ciscat_preparser(){
                             string[size - 1] = '\0';
                         }
                         snprintf(result, OS_MAXSTR - 1, "<rationale>%s</rationale>", string);
+                        free(string);
                     } else {
                         size = strlen(readbuff);
                         if (readbuff[size - 1] == '\n') {
@@ -789,6 +809,7 @@ void wm_ciscat_preparser(){
                             string[size - 1] = '\0';
                         }
                         snprintf(result, OS_MAXSTR - 1, "<fixtext>%s</fixtext>", string);
+                        free(string);
                     } else {
                         size = strlen(readbuff);
                         if (readbuff[size - 1] == '\n') {
@@ -804,17 +825,20 @@ void wm_ciscat_preparser(){
 
             if (inside) {
                 aux_str = strchr(readbuff, '<');
-                if (strstr(aux_str, WM_CISCAT_DESC_END) || strstr(aux_str, WM_CISCAT_RATIO_END) || strstr(aux_str, WM_CISCAT_FIXTEXT_END) || strstr(aux_str, WM_CISCAT_DESC_END2) || strstr(aux_str, WM_CISCAT_RATIO_END2) || strstr(aux_str, WM_CISCAT_FIXTEXT_END2)) {
-                    wm_strcat(&result, aux_str, '\0');
-                    inside = 0;
-                } else {
-                    string = wm_ciscat_remove_tags(aux_str);
-                    size = strlen(string);
-                    if (string[size - 1] == '\n') {
-                        string[size - 1] = ' ';
+                if (aux_str != NULL) {
+                    if (strstr(aux_str, WM_CISCAT_DESC_END) || strstr(aux_str, WM_CISCAT_RATIO_END) || strstr(aux_str, WM_CISCAT_FIXTEXT_END) || strstr(aux_str, WM_CISCAT_DESC_END2) || strstr(aux_str, WM_CISCAT_RATIO_END2) || strstr(aux_str, WM_CISCAT_FIXTEXT_END2)) {
+                        wm_strcat(&result, aux_str, '\0');
+                        inside = 0;
+                    } else {
+                        string = wm_ciscat_remove_tags(aux_str);
+                        size = strlen(string);
+                        if (string[size - 1] == '\n') {
+                            string[size - 1] = ' ';
+                        }
+                        wm_strcat(&result, string, '\0');
+                        free(string);
+                        continue;
                     }
-                    wm_strcat(&result, string, '\0');
-                    continue;
                 }
             }
 
@@ -965,11 +989,19 @@ void wm_ciscat_xml_parser(){
             child = OS_GetElementsbyNode(&xml, node[i]);
             if (child == NULL) {
                 mterror(WM_CISCAT_LOGTAG, "Invalid element in XML report: %s", node[i]->element);
+                OS_ClearNode(child);
+                child = NULL;
+                OS_ClearNode(node);
+                OS_ClearXML(&xml);
                 return;
             }
 
             if ((rule_info = read_rule_info(child, rule_info, group)) == NULL) {
                 mterror(WM_CISCAT_LOGTAG, "Unable to read %s node.", node[i]->element);
+                OS_ClearNode(child);
+                child = NULL;
+                OS_ClearNode(node);
+                OS_ClearXML(&xml);
                 return;
             }
 
@@ -1138,22 +1170,20 @@ void wm_ciscat_send_scan(wm_scan_data *info){
 
     // Set unique ID for each scan
 
+#ifndef WIN32
     int ID = os_random();
     if (ID < 0)
         ID = -ID;
+#else
+    unsigned int ID1 = os_random();
+    unsigned int ID2 = os_random();
 
-#ifdef WIN32
+    char random_id[OS_MAXSTR];
+    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
 
-    char *random_id;
-    os_calloc(OS_MAXSTR, sizeof(char), random_id);
-
-    int ID2 = os_random();
-    if (ID2 < 0)
-        ID2 = -ID2;
-
-    snprintf(random_id, OS_MAXSTR - 1, "%d%d", ID, ID2);
-
-    int final_id = atoi(random_id);
+    int ID = atoi(random_id);
+    if (ID < 0)
+        ID = -ID;
 #endif
 
     // Send global scan information
@@ -1161,11 +1191,7 @@ void wm_ciscat_send_scan(wm_scan_data *info){
     object = cJSON_CreateObject();
     data = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "scan_info");
-#ifdef WIN32
-    cJSON_AddNumberToObject(object, "scan_id", final_id);
-#else
     cJSON_AddNumberToObject(object, "scan_id", ID);
-#endif
     cJSON_AddItemToObject(object, "cis", data);
     cJSON_AddStringToObject(data, "benchmark", info->benchmark);
     cJSON_AddStringToObject(data, "hostname", info->hostname);
@@ -1191,6 +1217,7 @@ void wm_ciscat_send_scan(wm_scan_data *info){
     cJSON_Delete(object);
 
     free(msg);
+    free(info);
 
     // Send scan results
 
@@ -1199,11 +1226,7 @@ void wm_ciscat_send_scan(wm_scan_data *info){
         object = cJSON_CreateObject();
         data = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "scan_result");
-    #ifdef WIN32
-        cJSON_AddNumberToObject(object, "scan_id", final_id);
-    #else
         cJSON_AddNumberToObject(object, "scan_id", ID);
-    #endif
         cJSON_AddItemToObject(object, "cis", data);
 
         cJSON_AddStringToObject(data, "rule_id", rule->id);
