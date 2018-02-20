@@ -354,13 +354,11 @@ def _check_ossec_conf(new_content, fullpath, mtime):
         local_ossec_conf = ET.fromstring('<root_tag>' + f.read() + '</root_tag>')
 
     xml_conf = ET.fromstring('<root_tag>' + new_content + '</root_tag>')
-    config = xml_conf.find('ossec_config')
-    config.remove(config.find('cluster'))
+    config = xml_conf.find('ossec_config').find('cluster')
 
     local_cluster_conf = local_ossec_conf.find('ossec_config').find('cluster')
-    config.insert(-1, local_cluster_conf)
 
-    return ET.tostring(xml_conf.find('ossec_config'))
+    return new_content.replace(ET.tostring(config), ET.tostring(local_cluster_conf))
 
 
 def _check_agent_infos(new_content, fullpath, mtime):
