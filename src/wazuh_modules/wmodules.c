@@ -103,14 +103,13 @@ int wm_check() {
                 if (j->context->destroy)
                     j->context->destroy(j->data);
 
-                free(j);
-
                 if (j == wmodules) {
                     wmodules = next;
                 } else {
                     prev->next = next;
                 }
 
+                free(j);
             }
         }
     }
