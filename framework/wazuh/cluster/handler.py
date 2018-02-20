@@ -193,7 +193,7 @@ def scan_for_new_files():
     cluster_config = read_config()
     own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
 
-    for node in get_remote_nodes():
+    for node in get_remote_nodes(cluster_config):
         scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket, own_items)
 
     cluster_socket.close()
@@ -263,15 +263,12 @@ def update_file_info_bd(cluster_socket, files):
         received = receive_data_from_db_socket(cluster_socket)
 
 
-def clear_file_status():
+def clear_file_status(config_cluster, cluster_items):
     """
     Function to set all database files' status to pending
     """
     # Get information of files from filesystem
-    config_cluster = read_config()
-    if not config_cluster:
-        raise WazuhException(3000, "No config found")
-    own_items = list_files_from_filesystem(config_cluster['node_type'], get_cluster_items())
+    own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
 
     cluster_socket = connect_to_db_socket(retry=True)
 
@@ -442,14 +439,14 @@ def _update_file(fullpath, name, new_content, umask_int=None, mtime=None, w_mode
         rename(f_temp, fullpath)
 
 
-def extract_zip(zip_bytes):
+def extract_zip(zip_bytes, cluster_config, cluster_items):
     zip_json = {}
     with zipfile.ZipFile(BytesIO(zip_bytes)) as zipf:
         zip_json = {name:{'data':zipf.open(name).read(),
                           'time':datetime(*zipf.getinfo(name).date_time)}
                     for name in zipf.namelist()}
 
-    return receive_zip(zip_json)
+    return receive_zip(zip_json, cluster_config, cluster_items)
 
 
 def check_groups(remote_group_set):
@@ -486,9 +483,7 @@ def check_removed_files(removed_files):
     return deleted_files, failed_files
 
 
-def receive_zip(zip_file):
-    cluster_items = get_cluster_items()
-    config = read_config()
+def receive_zip(zip_file, config, cluster_items):
     logging.info("Receiving package with {0} files".format(len(zip_file)))
 
     final_dict = {'error':[], 'updated': [], 'deleted': []}
@@ -533,8 +528,8 @@ def receive_zip(zip_file):
     return final_dict
 
 
-def get_remote_nodes(connected=True, updateDBname=False):
-    all_nodes = get_nodes(updateDBname)['items']
+def get_remote_nodes(config_cluster, connected=True, updateDBname=False):
+    all_nodes = get_nodes(updateDBname, config_cluster)['items']
 
     # Get connected nodes in the cluster
     if connected:
@@ -552,15 +547,14 @@ def get_remote_nodes(connected=True, updateDBname=False):
     return list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
 
 
-def run_logtest(synchronized=False):
-    log_msg_start = "Synchronized r" if synchronized else "R"
+def run_logtest():
     try:
         # check synchronized rules are correct before restarting the manager
         check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
-        logging.debug("{}ules are correct.".format(log_msg_start))
+        logging.debug("Ossec logtest check passed correctly")
         return True
     except CalledProcessError as e:
-        logging.warning("{}ules are not correct.".format(log_msg_start, str(e)))
+        logging.warning("Ossec logtest check don't passed correctly: {}".format(str(e)))
         return False
 
 
@@ -750,8 +744,8 @@ def sync(debug, force=False, config_cluster=None, cluster_items=None):
     own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     own_items_names = own_items.keys()
 
-    remote_nodes = get_remote_nodes(True, True)
-    local_node = get_node()['node']
+    remote_nodes = get_remote_nodes(config_cluster, True, True)
+    local_node = get_node(config_cluster)['node']
     logging.info("Starting to sync {0}'s files".format(local_node))
 
     cluster_socket = connect_to_db_socket()

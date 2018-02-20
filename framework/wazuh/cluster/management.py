@@ -217,7 +217,7 @@ def read_config():
 
 
 def connect_to_db_socket(retry=False):
-    if not  check_cluster_status():
+    if retry and not check_cluster_status():
         raise WazuhException(3013)
 
     cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -250,10 +250,9 @@ def send_to_socket(cluster_socket, query):
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
 
 
-def get_nodes(updateDBname=False):
-    config_cluster = read_config()
+def get_nodes(updateDBname=False, config_cluster=None):
     if not config_cluster:
-        raise WazuhException(3000, "No config found")
+        config_cluster = read_config()
 
     cluster_socket = connect_to_db_socket()
     # list with all the ips the localhost has
@@ -274,7 +273,7 @@ def get_nodes(updateDBname=False):
         else:
             error = 0
             url = "localhost"
-            response = get_node()
+            response = get_node(config_cluster)
 
         if error == 1:
             logging.warning("Error connecting with {0}: {1}".format(url, response))
@@ -299,17 +298,14 @@ def get_nodes(updateDBname=False):
     return {'items': data, 'totalItems': len(data)}
 
 
-def get_node(name=None):
+def get_node(config_cluster):
     data = {}
-    if not name:
+    if not config_cluster:
         config_cluster = read_config()
 
-        if not config_cluster:
-            raise WazuhException(3000, "No config found")
-
-        data["node"]    = config_cluster["node_name"]
-        data["cluster"] = config_cluster["name"]
-        data["type"]    = config_cluster["node_type"]
+    data["node"]    = config_cluster["node_name"]
+    data["cluster"] = config_cluster["name"]
+    data["type"]    = config_cluster["node_type"]
 
     return data
 
