@@ -167,10 +167,18 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
         files_in_db = set_all_files - set_own_items
         for missing in divide_list(filter(lambda x: all_files[x] != "tobedeleted"
                                     and all_files[x] != 'deleted', files_in_db)):
+
+
             delete_sql = "update2"
-            removed = True
             for m in missing:
-                delete_sql += " tobedeleted {} {}".format(node, m)
+                missing_options = get_file_options(cluster_items, m)
+                if not 'IN_DELETE' in missing_options['flags']:
+                    logging.warning("File {} is removed from filesystem but it won't be propagated to the rest of nodes".format(m))
+                    status = 'synchronized'
+                else:
+                    status = 'tobedeleted'
+                    removed = True
+                delete_sql += " {} {} {}".format(status, node, m)
 
             send_to_socket(cluster_socket, delete_sql)
             data = receive_data_from_db_socket(cluster_socket)
