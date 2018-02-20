@@ -452,6 +452,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
         closedir(dir);
     }else{
         mtwarn(WM_SYS_LOGTAG, "Unable to get installed packages inventory.");
+        free(timestamp);
         return;
     }
 
@@ -710,6 +711,8 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
     if(!ifaces_list[0]){
         mterror(WM_SYS_LOGTAG, "No interfaces found. Network inventory suspended.");
+        free(ifaces_list);
+        free(timestamp);
         return;
     }
 
