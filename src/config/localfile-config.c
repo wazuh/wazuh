@@ -93,7 +93,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].ffile = NULL;
     logf[pl].djb_program_name = NULL;
     logf[pl].ign = 360;
-    os_calloc(1, sizeof(logsocket), logf[pl].target_socket);
+    os_calloc(1, sizeof(logsocket *), logf[pl].target_socket);
 
     /* Search for entries related to files */
     i = 0;
@@ -486,15 +486,15 @@ void Free_Localfile(logreader_config * config){
 
             free(config->config);
         }
-    }
 
-    if (config->socket_list) {
-        for (i = 0; config->socket_list[i].name; i++) {
-            free(config->socket_list[i].name);
-            free(config->socket_list[i].location);
-            free(config->socket_list[i].prefix);
+        if (config->socket_list) {
+            for (i = 0; config->socket_list[i].name; i++) {
+                free(config->socket_list[i].name);
+                free(config->socket_list[i].location);
+                free(config->socket_list[i].prefix);
+            }
+
+            free(config->socket_list);
         }
-
-        free(config->socket_list);
     }
 }
