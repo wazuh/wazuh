@@ -1333,7 +1333,7 @@ char* get_default_gateway(char *ifa_name){
     char * def_gateway;
     os_calloc(NI_MAXHOST, sizeof(char) + 1, def_gateway);
 
-    strncpy(interface, ifa_name, sizeof(interface));
+    strncpy(interface, ifa_name, sizeof(interface) - 1);
     snprintf(file_location, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, "route");
     snprintf(def_gateway, NI_MAXHOST, "%s", "unknown");
 
