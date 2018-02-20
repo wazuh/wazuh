@@ -245,7 +245,7 @@ void wm_free(wmodule * config) {
 
     for (cur_module = config; cur_module; cur_module = next_module) {
         next_module = cur_module->next;
-        if (cur_module->context)
+        if (cur_module->context && cur_module->context->destroy)
             cur_module->context->destroy(cur_module->data);
         free(cur_module);
     }
