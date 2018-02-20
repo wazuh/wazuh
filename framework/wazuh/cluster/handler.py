@@ -14,7 +14,7 @@ from time import time, mktime
 from os import path, listdir, rename, utime, umask, stat, mkdir, chmod, remove
 from subprocess import check_call, CalledProcessError
 from io import BytesIO
-from itertools import compress
+from itertools import compress, chain
 from operator import itemgetter, or_
 from ast import literal_eval
 import threading
@@ -23,6 +23,7 @@ from sys import version
 from difflib import unified_diff
 import re
 import logging
+import xml.etree.ElementTree as ET
 import errno
 
 is_py2 = version[0] == '2'
@@ -40,6 +41,27 @@ except:
     compression = zipfile.ZIP_STORED
 
 
+def get_file_options(cluster_items, filename):
+    directory = path.dirname(filename) + '/'
+    name = path.basename(filename)
+
+    try:
+        item = cluster_items[directory]
+    except KeyError:
+        key = path.split(directory[:-1])[0] + '/'
+        item = cluster_items[key]
+
+    for i in range(len(item)):
+        if item[i]['files'][0] == 'all' or name in item[i]['files']:
+            index = i
+            break
+
+    return item[i]
+
+def flattened_cluster_items(cluster_items):
+    return zip(chain.from_iterable(map(lambda x: [x[0]]*len(x[1]), 
+           cluster_items.items())), chain.from_iterable(cluster_items.values()))
+
 def get_file_info(filename, cluster_items, node_type):
     def is_synced_file(mtime, node_type):
         if node_type == 'master':
@@ -56,8 +78,7 @@ def get_file_info(filename, cluster_items, node_type):
     st_mtime = stat_obj.st_mtime
     st_size = stat_obj.st_size
 
-    directory = path.dirname(filename)+'/'
-    new_item = cluster_items[directory] if directory in cluster_items.keys() else cluster_items['/etc/']
+    new_item = get_file_options(cluster_items, filename)
 
     file_item = {
         "umask" : new_item['umask'],
@@ -203,7 +224,7 @@ def list_files_from_filesystem(node_type, cluster_items):
 
     # Expand directory
     expanded_items = []
-    for file_path, item in cluster_items.items():
+    for file_path, item in flattened_cluster_items(cluster_items):
         if file_path == "excluded_files":
             continue
         if item['source'] == node_type or \
@@ -305,7 +326,7 @@ def clear_file_status():
     cluster_socket.close()
 
 
-def _check_removed_agents(new_client_keys):
+def _check_removed_agents(new_content, fullpath, mtime):
     """
     Function to delete agents that have been deleted in a synchronized
     client.keys.
@@ -316,6 +337,8 @@ def _check_removed_agents(new_client_keys):
     If a line starting with - matches the regex structure of a client.keys line
     that agent is deleted.
     """
+    new_client_keys = new_content.split('\n')
+
     with open("{0}/etc/client.keys".format(common.ossec_path)) as ck:
         # can't use readlines function since it leaves a \n at the end of each item of the list
         client_keys = ck.read().split('\n')
@@ -331,26 +354,67 @@ def _check_removed_agents(new_client_keys):
             except WazuhException as e:
                 logging.error("Error deleting agent {0}: {1}".format(agent_id, str(e)))
 
+    return new_content
 
-def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master'):
-    if path.basename(fullpath) == 'client.keys':
-        if node_type=='client':
-            _check_removed_agents(new_content.split('\n'))
+
+def _check_ossec_conf(new_content, fullpath, mtime):
+    # read local ossec.conf
+    with open(fullpath) as f:
+        local_ossec_conf = ET.fromstring('<root_tag>' + f.read() + '</root_tag>')
+
+    xml_conf = ET.fromstring('<root_tag>' + new_content + '</root_tag>')
+    config = xml_conf.find('ossec_config').find('cluster')
+
+    local_cluster_conf = local_ossec_conf.find('ossec_config').find('cluster')
+
+    return new_content.replace(ET.tostring(config), ET.tostring(local_cluster_conf))
+
+
+def _check_agent_infos(new_content, fullpath, mtime):
+    # check if the date is older than the manager's date
+    if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) >= mtime:
+        logging.warning("Receiving an old file ({})".format(fullpath))
+        raise WazuhException(3012, fullpath)
+
+    return new_content
+    
+
+def _update_file(fullpath, name, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master'):
+    # before synchronizing, check if received file is special
+    special_files = {
+        '/etc/client.keys': {
+            'node_type': 'client',
+            'function': _check_removed_agents,
+            'raise_exception': True,
+            'exception_code': 3007
+        },
+        '/etc/ossec.conf': {
+            'node_type': 'client',
+            'function': _check_ossec_conf,
+            'raise_exception': True,
+            'exception_code': 3007
+        },
+        '/queue/agent-info': {
+            'node_type': 'master',
+            'function': _check_agent_infos,
+            'raise_exception': True,
+            'exception_code': 3007
+        },
+        '/queue/agent-groups': {
+            'node_type': 'master',
+            'function': _check_agent_infos,
+            'raise_exception': False,
+            'exception_code': 0
+        }
+    }
+
+    key_name = name if name in special_files.keys() else path.dirname(name)
+    if key_name in special_files.keys():
+        if special_files[key_name]['node_type'] == 'all' or node_type == special_files[key_name]['node_type']:
+            new_content = special_files[key_name]['function'](new_content, fullpath, mtime)
         else:
-            logging.warning("Client.keys file received in a master node.")
-            raise WazuhException(3007)
-
-    is_agent_info   = 'agent-info' in fullpath
-    is_agent_groups = 'agent-groups' in fullpath
-    if is_agent_info or is_agent_groups:
-        if node_type=='master':
-            # check if the date is older than the manager's date
-            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) >= mtime:
-                logging.warning("Receiving an old file ({})".format(fullpath))
-                raise WazuhException(3012)
-        elif is_agent_info:
-            logging.warning("Agent-info received in a client node.")
-            raise WazuhException(3011)
+            if special_files[key_name]['raise_exception']:
+                raise WazuhException(special_files[key_name]['exception_code'], key_name)
 
     # Write
     if w_mode == "atomic":
@@ -453,20 +517,14 @@ def receive_zip(zip_file):
             fixed_name = '/' + name
             dir_name = path.dirname(fixed_name) + '/'
             file_path = common.ossec_path + fixed_name
-            try:
-                remote_umask = int(cluster_items[dir_name]['umask'], base=0)
-                remote_write_mode = cluster_items[dir_name]['write_mode']
-                restart.append(cluster_items[dir_name]['restart'])
-            except KeyError:
-                # cluster_items entries with the flag recursive = true will make
-                # some paths to not match directly in this loop.
-                key = path.split(dir_name[:-1])[0] + '/'
 
-                remote_umask = int(cluster_items[key]['umask'], base=0)
-                remote_write_mode = cluster_items[key]['write_mode']
-                restart.append(cluster_items[key]['restart'])
+            item = get_file_options(cluster_items, fixed_name)
 
-            _update_file(file_path, new_content=content['data'],
+            remote_umask = int(item['umask'], base=0)
+            remote_write_mode = item['write_mode']
+            restart.append(item['restart'])
+
+            _update_file(file_path, fixed_name, new_content=content['data'],
                             umask_int=remote_umask,
                             mtime=content['time'],
                             w_mode=remote_write_mode,
@@ -516,8 +574,10 @@ def run_logtest(synchronized=False):
 
 
 def check_files_to_restart(pending_files, cluster_items):
+    flattened = flattened_cluster_items(cluster_items)
+
     restart_items = filter(lambda x: x[0] != 'excluded_files' and x[1]['restart'],
-                            cluster_items.items())
+                            flattened)
     restart_files = {path.dirname(x[0])+'/' for x in pending_files} & {x[0] for x in restart_items}
     if restart_files != set() and not run_logtest():
         return {x for x in pending_files if path.dirname(x[0])+'/' in restart_files}
