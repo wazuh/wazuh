@@ -214,7 +214,7 @@ def restart_manager():
 
 def crontab_sync_master(interval, config_cluster, requests_queue, connected_clients, finished_clients):
     def sleep_handler(n_signal, frame):
-        logging.debug("Sleeping for {}{}...".format(interval_number, interval_measure))
+        logging.info("Sleeping for {}{}...".format(interval_number, interval_measure))
         sleep(interval_number if interval_measure == 's' else interval_number*60)
 
     interval_number  = int(search('\d+', interval).group(0))
