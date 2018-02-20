@@ -1680,45 +1680,47 @@ int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 
     }
 
     while (size = recv(sock, buffer, OS_MAXSTR, 0), size) {
-        if (size < 10) {
-            break;
-        }
-        buffer[size] = '\0';
-
-        if (!strncmp(buffer, "ok", 2)) {
-            buffer[0] = buffer[1] = ' ';
-            size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
-            json_str[size] = '\0';
-        } else {
-            goto error;
-        }
-        if (obj) {
-            cJSON *new_obj;
-            cJSON *data;
-            if (new_obj = cJSON_Parse(json_str), !new_obj || !cJSON_IsObject(new_obj)) {
+        if (size > 0) {
+            if (size < 10) {
+                break;
+            }
+            buffer[size] = '\0';
+            if (!strncmp(buffer, "ok", 2)) {
+                buffer[0] = buffer[1] = ' ';
+                size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
+                json_str[size] = '\0';
+            } else {
                 goto error;
             }
-            data = cJSON_GetObjectItem(new_obj, "data");
-            if (data) {
-                cJSON_AddItemToArray(package_list, data->child);
+            if (obj) {
+                cJSON *new_obj;
+                cJSON *data;
+                if (new_obj = cJSON_Parse(json_str), !new_obj || !cJSON_IsObject(new_obj)) {
+                    goto error;
+                }
+                data = cJSON_GetObjectItem(new_obj, "data");
+                if (data) {
+                    cJSON_AddItemToArray(package_list, data->child);
+                }
+                free(new_obj);
+                free(data->string);
+                free(data);
+            } else if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
+                package_list = cJSON_GetObjectItem(obj, "data");
+                if (!package_list) {
+                    goto error;
+                }
+            } else {
+                goto error;
             }
-            free(new_obj);
-            free(data->string);
-            free(data);
-        } else if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
-            package_list = cJSON_GetObjectItem(obj, "data");
-            if (!package_list) {
+
+            i += VU_MAX_PACK_REQ;
+            size = snprintf(buffer, OS_MAXSTR, VU_SOFTWARE_REQUEST, agent->agent_id, VU_MAX_PACK_REQ, i);
+            if (send(sock, buffer, size + 1, 0) < size) {
+                mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
                 goto error;
             }
         } else {
-            goto error;
-        }
-
-
-        i += VU_MAX_PACK_REQ;
-        size = snprintf(buffer, OS_MAXSTR, VU_SOFTWARE_REQUEST, agent->agent_id, VU_MAX_PACK_REQ, i);
-        if (send(sock, buffer, size + 1, 0) < size) {
-            mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
             goto error;
         }
     }
