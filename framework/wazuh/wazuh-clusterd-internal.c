@@ -243,7 +243,7 @@ void* daemon_socket() {
     char *sql_ins_ip_name = "INSERT OR REPLACE INTO node_name_ip VALUES (?,?)";
     // sql sentences to manage restarting table
     char *sql_sel_restart = "SELECT restarted FROM is_restarted";
-    char *sql_del_restart = "DELETE FROM is_restarted"; 
+    char *sql_del_restart = "DELETE FROM is_restarted";
     char *sql_ins_restart = "INSERT INTO is_restarted VALUES (?)";
 
     char *sql;
@@ -479,8 +479,8 @@ void* daemon_socket() {
 
 /* structure to save all info required for inotify daemon */
 typedef struct {
-    char name[PATH_MAX];
-    char path[PATH_MAX];
+    char name[PATH_MAX + 1];
+    char path[PATH_MAX + 1];
     uint32_t flags;
     int watcher;
     cJSON * files;
@@ -602,8 +602,8 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
         if (strcmp(source_item->valuestring, node_type) == 0 ||
             strcmp(source_item->valuestring, "all") == 0) {
 
-            char aux_path[PATH_MAX];
-            if (snprintf(aux_path, PATH_MAX, "%s%s", DEFAULTDIR, subitem->string) >= PATH_MAX)
+            char aux_path[PATH_MAX + 1];
+            if (snprintf(aux_path, sizeof(aux_path), "%s%s", DEFAULTDIR, subitem->string) >= (int)sizeof(aux_path))
                 mterror(INOTIFY_TAG, "Overflow error copying %s's name in memory", subitem->string);
 
             uint32_t flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
@@ -614,8 +614,8 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
                 unsigned int j;
                 for (j = 0; j < found_subdirs; j++) {
                     strncpy(files[n_files_to_watch].path, subdirs[j], PATH_MAX);
-
                     strncpy(files[n_files_to_watch].name, strstr(subdirs[j], files[n_files_to_watch].path), PATH_MAX);
+                    files[n_files_to_watch].path[PATH_MAX] = files[n_files_to_watch].name[PATH_MAX] = '\0';
 
                     files[n_files_to_watch].flags = flags;
                     n_files_to_watch++;
@@ -635,10 +635,10 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
                 }
             }
 
-            if (snprintf(files[n_files_to_watch].path, PATH_MAX, "%s", aux_path) >= PATH_MAX)
+            if (snprintf(files[n_files_to_watch].path, PATH_MAX + 1, "%s", aux_path) > PATH_MAX)
                 mterror(INOTIFY_TAG, "String overflow in filepath %s", files[n_files_to_watch].path);
 
-            if (snprintf(files[n_files_to_watch].name, PATH_MAX, "%s", subitem->string) >= PATH_MAX)
+            if (snprintf(files[n_files_to_watch].name, PATH_MAX + 1, "%s", subitem->string) > PATH_MAX)
                 mterror(INOTIFY_TAG, "String overflow in file name %s", subitem->string);
 
             files[n_files_to_watch].flags = flags;
@@ -754,25 +754,19 @@ void* inotify_reader(void * args) {
                     mtdebug2(INOTIFY_TAG, "Not ignoring");
 
                     if (event->mask & IN_DELETE) {
-                        if (strstr(files[j].name, "/queue/agent-") == NULL) {
-                            strcpy(cmd, "update3 ");
-                        } else {
-                            strcpy(cmd, "delete1 ");
-                        }
-                        strncat(cmd, files[j].name, PATH_MAX);
-                        strncat(cmd, event->name, PATH_MAX);
+                        snprintf(cmd, sizeof(cmd), "%s %s%s", strstr(files[j].name, "/queue/agent-") ? "delete1" : "update3", files[j].name, event->name);
                     } else if (event->mask & IN_ISDIR) {
                         mtinfo(INOTIFY_TAG, "Adding directory %s to inotify watch", event->name);
                         files = realloc(files, (n_files_to_watch+1)*sizeof(inotify_watch_file));
 
-                        if (snprintf(files[n_files_to_watch].name, PATH_MAX, "%s%s/", files[j].name, event->name) >= PATH_MAX)
+                        if (snprintf(files[n_files_to_watch].name, PATH_MAX + 1, "%s%s/", files[j].name, event->name) > PATH_MAX)
                             mterror(INOTIFY_TAG, "Overflow error copying %s's name in memory", files[n_files_to_watch].name);
 
                         files[n_files_to_watch].flags = files[j].flags;
 
                         files[n_files_to_watch].files = files[j].files;
 
-                        if (snprintf(files[n_files_to_watch].path, PATH_MAX, "%s%s%s/", DEFAULTDIR, files[j].name, event->name) >= PATH_MAX)
+                        if (snprintf(files[n_files_to_watch].path, PATH_MAX + 1, "%s%s%s/", DEFAULTDIR, files[j].name, event->name) > PATH_MAX)
                             mterror(INOTIFY_TAG, "Overflow error copying %s's path in memory", files[n_files_to_watch].path);
 
                         files[n_files_to_watch].watcher = inotify_add_watch(fd, files[n_files_to_watch].path, files[j].flags);
@@ -784,9 +778,7 @@ void* inotify_reader(void * args) {
                         n_files_to_watch++;
 
                     } else if (event->mask & files[j].flags) {
-                        strcpy(cmd, "update1 ");
-                        strncat(cmd, files[j].name, PATH_MAX);
-                        strncat(cmd, event->name, PATH_MAX);
+                        snprintf(cmd, sizeof(cmd), "update1 %s%s", files[j].name, event->name);
 
                         inotify_push_request(cmd);
                         memset(cmd,0,sizeof(cmd));
@@ -798,7 +790,7 @@ void* inotify_reader(void * args) {
                             continue;
                         }
 
-                        if (sprintf(cmd, "updatefile %s %ld %s", md5_file, mod_time(files[j].path), files[j].path) >= PATH_MAX + 100) {
+                        if (snprintf(cmd, sizeof(cmd), "updatefile %s %ld %s", md5_file, mod_time(files[j].path), files[j].path) >= (int)sizeof(cmd)) {
                             mterror(INOTIFY_TAG, "String overflow sending file updates to database in file %s", files[j].path);
                             ignore = true;
                             continue;
