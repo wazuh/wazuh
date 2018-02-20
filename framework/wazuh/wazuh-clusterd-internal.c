@@ -613,9 +613,9 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
                 unsigned int found_subdirs = get_subdirs(aux_path, &subdirs, max_files_to_watch);
                 unsigned int j;
                 for (j = 0; j < found_subdirs; j++) {
-                    strcpy(files[n_files_to_watch].path, subdirs[j]);
+                    strncpy(files[n_files_to_watch].path, subdirs[j], PATH_MAX);
 
-                    strcpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string));
+                    strncpy(files[n_files_to_watch].name, strstr(subdirs[j], files[n_files_to_watch].path), PATH_MAX);
 
                     files[n_files_to_watch].flags = flags;
                     n_files_to_watch++;
@@ -629,7 +629,7 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
                             free(files);
                             mterror_exit(INOTIFY_TAG, "Error reallocating memory for cluster.json files struct");
                         }
-                        memset(files + n_files_to_watch, 0, 10 * sizeof(char *));
+                        // memset(files + n_files_to_watch, 0, 10 * sizeof(char *));
                     }
 
                 }
@@ -715,7 +715,8 @@ end:
 void* inotify_reader(void * args) {
     inotify_reader_arguments* reader_args = (inotify_reader_arguments*) args;
 
-    int i, fd = reader_args->fd;
+    int fd = reader_args->fd;
+    unsigned int i = 0;
     unsigned int n_files_to_watch = reader_args->n_files_to_watch;
     inotify_watch_file * files = reader_args->files;
     cJSON * root = reader_args->root;
@@ -758,8 +759,8 @@ void* inotify_reader(void * args) {
                         } else {
                             strcpy(cmd, "delete1 ");
                         }
-                        strcat(cmd, files[j].name);
-                        strcat(cmd, event->name);
+                        strncat(cmd, files[j].name, PATH_MAX);
+                        strncat(cmd, event->name, PATH_MAX);
                     } else if (event->mask & IN_ISDIR) {
                         mtinfo(INOTIFY_TAG, "Adding directory %s to inotify watch", event->name);
                         files = realloc(files, (n_files_to_watch+1)*sizeof(inotify_watch_file));
@@ -784,8 +785,8 @@ void* inotify_reader(void * args) {
 
                     } else if (event->mask & files[j].flags) {
                         strcpy(cmd, "update1 ");
-                        strcat(cmd, files[j].name);
-                        strcat(cmd, event->name);
+                        strncat(cmd, files[j].name, PATH_MAX);
+                        strncat(cmd, event->name, PATH_MAX);
 
                         inotify_push_request(cmd);
                         memset(cmd,0,sizeof(cmd));
@@ -825,6 +826,7 @@ void* inotify_reader(void * args) {
             memset(cmd,0,sizeof(cmd));
         }
     }
+    free(files);
     return 0;
 }
 
@@ -837,7 +839,7 @@ char * inotify_pop() {
 
     while (queue_empty(queue)) {
         error = pthread_cond_wait(&cond_pending, &mutex_queue);
-        if (errno) mterror_exit(INOTIFY_TAG, "Error waiting for condition at inotify_pop: %s", strerror(errno));
+        if (error) mterror_exit(INOTIFY_TAG, "Error waiting for condition at inotify_pop: %s", strerror(errno));
     }
 
     cmd = queue_pop(queue);
