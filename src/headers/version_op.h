@@ -26,6 +26,7 @@ typedef struct os_info {
     char *machine;
 } os_info;
 
+char *OSX_ReleaseName(const int version);
 
 os_info *get_win_version();
 
