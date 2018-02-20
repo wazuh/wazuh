@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Give preference to use the selected Java over the default one in CIS-CAT wodle.
+- Giving preference to use the selected Java over the default one in CIS-CAT wodle.
+- Verify all modules for the shared configuration. ([#408](https://github.com/wazuh/wazuh/pull/408))
+
+### Fixed
+
+- Fixed crash in Agentd when testing Syscollector configuration from agent.conf file.
+- Fixed duplicate alerts in Vulnerability Detector.
+- Fixed compiling issues in Solaris and HP-UX.
+- Fixed bug in Framework when listing directories due to permissions issues.
 
 ## [v3.2.0]
 
