@@ -223,6 +223,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     char *ciscat_script;
     wm_scan_data *scan_info = NULL;
     wm_rule_data *rule_info = NULL;
+    char eval_path[OS_MAXSTR];
 
     os_calloc(OS_MAXSTR, sizeof(char), ciscat_script);
 
@@ -238,8 +239,11 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     switch (eval->type) {
     case WM_CISCAT_XCCDF:
+
+        snprintf(eval_path, OS_MAXSTR - 1, "\"%s\"", eval->path);
+
         wm_strcat(&command, "-b", ' ');
-        wm_strcat(&command, eval->path, ' ');
+        wm_strcat(&command, eval_path, ' ');
 
         if (eval->profile) {
             wm_strcat(&command, "-p", ' ');
