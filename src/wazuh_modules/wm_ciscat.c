@@ -208,9 +208,6 @@ void wm_ciscat_setup(wm_ciscat *_ciscat) {
 void wm_ciscat_cleanup() {
     close(queue_fd);
     mtinfo(WM_CISCAT_LOGTAG, "Module finished.");
-
-    if (DeletePID("wazuh-modulesd:ciscat") < 0)
-        mterror(WM_CISCAT_LOGTAG, "Couldn't delete PID file: (%s)", strerror(errno));
 }
 #endif
 
@@ -418,8 +415,8 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
             mterror_exit(WM_CISCAT_LOGTAG, FORK_ERROR, errno, strerror(errno));
         case 0:
             // Child process
-            if (CreatePID("wazuh-modulesd:ciscat", getpid()) < 0)
-                mterror_exit(WM_CISCAT_LOGTAG, "Couldn't create PID file for child process: (%s)", strerror(errno));
+
+            setsid();
 
             if (chdir(path) < 0) {
                 ciscat->flags.error = 1;
@@ -455,13 +452,13 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
                     pthread_exit(NULL);
             }
 
-            if (DeletePID("wazuh-modulesd:ciscat") < 0)
-                mterror_exit(WM_CISCAT_LOGTAG, "Couldn't delete PID file for child process: (%s)", strerror(errno));
-
             _exit(0);
 
         default:
             // Parent process
+
+            wm_append_sid(pid);
+
             switch(waitpid(pid, &child_status, 0)) {
                 case -1:
                     mterror(WM_CISCAT_LOGTAG, WAITPID_ERROR, errno, strerror(errno));
@@ -474,6 +471,8 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
                         return;
                     }
             }
+
+            wm_remove_sid(pid);
     }
 
     // Get assessment results
