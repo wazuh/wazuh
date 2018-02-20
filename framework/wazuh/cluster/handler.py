@@ -14,7 +14,7 @@ from time import time, mktime
 from os import path, listdir, rename, utime, umask, stat, mkdir, chmod, remove
 from subprocess import check_call, CalledProcessError
 from io import BytesIO
-from itertools import compress
+from itertools import compress, chain
 from operator import itemgetter, or_
 from ast import literal_eval
 import threading
@@ -41,6 +41,27 @@ except:
     compression = zipfile.ZIP_STORED
 
 
+def get_file_options(cluster_items, filename):
+    directory = path.dirname(filename) + '/'
+    name = path.basename(filename)
+
+    try:
+        item = cluster_items[directory]
+    except KeyError:
+        key = path.split(directory[:-1])[0] + '/'
+        item = cluster_items[key]
+
+    for i in range(len(item)):
+        if item[i]['files'][0] == 'all' or name in item[i]['files']:
+            index = i
+            break
+
+    return item[i]
+
+def flattened_cluster_items(cluster_items):
+    return zip(chain.from_iterable(map(lambda x: [x[0]]*len(x[1]), 
+           cluster_items.items())), chain.from_iterable(cluster_items.values()))
+
 def get_file_info(filename, cluster_items, node_type):
     def is_synced_file(mtime, node_type):
         if node_type == 'master':
@@ -57,8 +78,7 @@ def get_file_info(filename, cluster_items, node_type):
     st_mtime = stat_obj.st_mtime
     st_size = stat_obj.st_size
 
-    directory = path.dirname(filename)+'/'
-    new_item = cluster_items[directory] if directory in cluster_items.keys() else cluster_items['/etc/']
+    new_item = get_file_options(cluster_items, filename)
 
     file_item = {
         "umask" : new_item['umask'],
@@ -198,7 +218,7 @@ def list_files_from_filesystem(node_type, cluster_items):
 
     # Expand directory
     expanded_items = []
-    for file_path, item in cluster_items.items():
+    for file_path, item in flattened_cluster_items(cluster_items):
         if file_path == "excluded_files":
             continue
         if item['source'] == node_type or \
@@ -490,18 +510,12 @@ def receive_zip(zip_file):
             fixed_name = '/' + name
             dir_name = path.dirname(fixed_name) + '/'
             file_path = common.ossec_path + fixed_name
-            try:
-                remote_umask = int(cluster_items[dir_name]['umask'], base=0)
-                remote_write_mode = cluster_items[dir_name]['write_mode']
-                restart.append(cluster_items[dir_name]['restart'])
-            except KeyError:
-                # cluster_items entries with the flag recursive = true will make
-                # some paths to not match directly in this loop.
-                key = path.split(dir_name[:-1])[0] + '/'
 
-                remote_umask = int(cluster_items[key]['umask'], base=0)
-                remote_write_mode = cluster_items[key]['write_mode']
-                restart.append(cluster_items[key]['restart'])
+            item = get_file_options(cluster_items, fixed_name)
+
+            remote_umask = int(item['umask'], base=0)
+            remote_write_mode = item['write_mode']
+            restart.append(item['restart'])
 
             _update_file(file_path, fixed_name, new_content=content['data'],
                             umask_int=remote_umask,
@@ -553,8 +567,10 @@ def run_logtest(synchronized=False):
 
 
 def check_files_to_restart(pending_files, cluster_items):
+    flattened = flattened_cluster_items(cluster_items)
+
     restart_items = filter(lambda x: x[0] != 'excluded_files' and x[1]['restart'],
-                            cluster_items.items())
+                            flattened)
     restart_files = {path.dirname(x[0])+'/' for x in pending_files} & {x[0] for x in restart_items}
     if restart_files != set() and not run_logtest():
         return {x for x in pending_files if path.dirname(x[0])+'/' in restart_files}

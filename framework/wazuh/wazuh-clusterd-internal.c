@@ -562,6 +562,7 @@ unsigned int get_subdirs(char * path, char ***_subdirs, unsigned int max_files_t
 bool check_if_ignore(cJSON * exclude_files, char * event_filename) {
     int i;
     bool exclude = false;
+
     for (i = 0; i < cJSON_GetArraySize(exclude_files); i++) {
         char * filename = cJSON_GetArrayItem(exclude_files, i)->valuestring;
         if (strcmp(filename, "all") == 0) {
@@ -591,33 +592,68 @@ cJSON * read_cluster_json_file() {
 /* get directories and subdirectories to watch with inotify */
 unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, cJSON * root) {
     unsigned int n_files_to_watch = 0, max_files_to_watch = 30;
-    int i = 0;
+    int i = 0, k = 0;
     inotify_watch_file * more_files = NULL, * files = *_files;
+    cJSON *filename = NULL;
+    cJSON *filenames = NULL;
 
     for (i = 0; i < cJSON_GetArraySize(root); i++) {
-        cJSON *subitem = cJSON_GetArrayItem(root, i);
-        if (strcmp(subitem->string, "excluded_files") == 0) continue;
-        cJSON *source_item = cJSON_GetObjectItemCaseSensitive(subitem, "source");
+        cJSON *item = cJSON_GetArrayItem(root, i);
+        if (strcmp(item->string, "excluded_files") == 0) continue;
+        for (k = 0; k < cJSON_GetArraySize(item); k++) {
+            cJSON *subitem = cJSON_GetArrayItem(item, k);
+            cJSON *source_item = cJSON_GetObjectItemCaseSensitive(subitem, "source");
+            if (strcmp(source_item->valuestring, node_type) == 0 ||
+                strcmp(source_item->valuestring, "all") == 0) {
 
-        if (strcmp(source_item->valuestring, node_type) == 0 ||
-            strcmp(source_item->valuestring, "all") == 0) {
+                char aux_path[PATH_MAX];
+                if (snprintf(aux_path, PATH_MAX, "%s%s", DEFAULTDIR, item->string) >= PATH_MAX)
+                    mterror(INOTIFY_TAG, "Overflow error copying %s's name in memory", item->string);
 
-            char aux_path[PATH_MAX];
-            if (snprintf(aux_path, PATH_MAX, "%s%s", DEFAULTDIR, subitem->string) >= PATH_MAX)
-                mterror(INOTIFY_TAG, "Overflow error copying %s's name in memory", subitem->string);
+                uint32_t flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
+                if (cJSON_GetObjectItemCaseSensitive(subitem, "recursive")->type == cJSON_True) {
+                    char ** subdirs = (char **) calloc(30, sizeof(char*));
+                    if (subdirs == NULL) mterror_exit(INOTIFY_TAG, "Error allocating memory for subdirectories watchers");
+                    unsigned int found_subdirs = get_subdirs(aux_path, &subdirs, max_files_to_watch);
+                    unsigned int j;
+                    for (j = 0; j < found_subdirs; j++) {
+                        strcpy(files[n_files_to_watch].path, subdirs[j]);
 
-            uint32_t flags = get_flag_mask(cJSON_GetObjectItemCaseSensitive(subitem, "flags"));
-            if (cJSON_GetObjectItemCaseSensitive(subitem, "recursive")->type == cJSON_True) {
-                char ** subdirs = (char **) calloc(30, sizeof(char*));
-                if (subdirs == NULL) mterror_exit(INOTIFY_TAG, "Error allocating memory for subdirectories watchers");
-                unsigned int found_subdirs = get_subdirs(aux_path, &subdirs, max_files_to_watch);
-                unsigned int j;
-                for (j = 0; j < found_subdirs; j++) {
-                    strcpy(files[n_files_to_watch].path, subdirs[j]);
+                        strcpy(files[n_files_to_watch].name, strstr(subdirs[j], item->string));
 
-                    strcpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string));
+                        files[n_files_to_watch].flags = flags;
+                        n_files_to_watch++;
+                        if (n_files_to_watch >= max_files_to_watch) {
+                            mtdebug2(INOTIFY_TAG, "Reallocating memory for file structure");
+                            max_files_to_watch += 10;
+                            more_files = realloc(files, max_files_to_watch*sizeof(inotify_watch_file));
+
+                            if (more_files != NULL) *_files = files = more_files;
+                            else {
+                                free(files);
+                                mterror_exit(INOTIFY_TAG, "Error reallocating memory for cluster.json files struct");
+                            }
+                            memset(files + n_files_to_watch, 0, 10 * sizeof(char *));
+                        }
+
+                    }
+                }
+
+                filenames = cJSON_GetObjectItemCaseSensitive(subitem, "files");
+                cJSON_ArrayForEach(filename, filenames) {
+                    char * local_filename = strcmp(filename->valuestring, "all") == 0 ? "" : filename->valuestring;
+
+                    if (snprintf(files[n_files_to_watch].path, PATH_MAX, "%s%s", aux_path, local_filename) >= PATH_MAX)
+                        mterror(INOTIFY_TAG, "String overflow in filepath %s", files[n_files_to_watch].path);
+
+                    if (snprintf(files[n_files_to_watch].name, PATH_MAX, "%s%s", item->string, local_filename) >= PATH_MAX)
+                        mterror(INOTIFY_TAG, "String overflow in file name %s", item->string);
 
                     files[n_files_to_watch].flags = flags;
+
+                    files[n_files_to_watch].files = cJSON_GetObjectItemCaseSensitive(subitem, "files");
+
+                    mtinfo(INOTIFY_TAG, "Monitoring %s", cJSON_GetObjectItemCaseSensitive(subitem, "description")->valuestring);
                     n_files_to_watch++;
                     if (n_files_to_watch >= max_files_to_watch) {
                         mtdebug2(INOTIFY_TAG, "Reallocating memory for file structure");
@@ -631,33 +667,7 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
                         }
                         memset(files + n_files_to_watch, 0, 10 * sizeof(char *));
                     }
-
                 }
-            }
-
-            if (snprintf(files[n_files_to_watch].path, PATH_MAX, "%s", aux_path) >= PATH_MAX)
-                mterror(INOTIFY_TAG, "String overflow in filepath %s", files[n_files_to_watch].path);
-
-            if (snprintf(files[n_files_to_watch].name, PATH_MAX, "%s", subitem->string) >= PATH_MAX)
-                mterror(INOTIFY_TAG, "String overflow in file name %s", subitem->string);
-
-            files[n_files_to_watch].flags = flags;
-
-            files[n_files_to_watch].files = cJSON_GetObjectItemCaseSensitive(subitem, "files");
-
-            mtinfo(INOTIFY_TAG, "Monitoring %s", cJSON_GetObjectItemCaseSensitive(subitem, "description")->valuestring);
-            n_files_to_watch++;
-            if (n_files_to_watch >= max_files_to_watch) {
-                mtdebug2(INOTIFY_TAG, "Reallocating memory for file structure");
-                max_files_to_watch += 10;
-                more_files = realloc(files, max_files_to_watch*sizeof(inotify_watch_file));
-
-                if (more_files != NULL) *_files = files = more_files;
-                else {
-                    free(files);
-                    mterror_exit(INOTIFY_TAG, "Error reallocating memory for cluster.json files struct");
-                }
-                memset(files + n_files_to_watch, 0, 10 * sizeof(char *));
             }
         }
     }
@@ -739,18 +749,16 @@ void* inotify_reader(void * args) {
             char cmd[PATH_MAX+100];
 
             event = (struct inotify_event*)&buffer[i];
-            if (strstr(event->name, "merged.mg") == NULL)
-                mtdebug2(INOTIFY_TAG,"inotify: i='%d', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
+            // if (strstr(event->name, "merged.mg") == NULL)
+            mtdebug2(INOTIFY_TAG,"inotify: i='%d', name='%s', mask='%u', wd='%d', len='%u'", i, event->name, event->mask, event->wd, event->len);
             unsigned int j;
             for (j = 0; j < n_files_to_watch; j++) {
                 if (event->wd == files[j].watcher) {
-                    if (check_if_ignore(cJSON_GetObjectItemCaseSensitive(root, "excluded_files"), event->name) ||
-                        !check_if_ignore(files[j].files, event->name)) {
+                    if ((check_if_ignore(cJSON_GetObjectItemCaseSensitive(root, "excluded_files"), event->name) ||
+                        !check_if_ignore(files[j].files, event->name)) && event->len > 0) {
                         ignore = true;
                         continue;
                     }
-
-                    mtdebug2(INOTIFY_TAG, "Not ignoring");
 
                     if (event->mask & IN_DELETE) {
                         if (strstr(files[j].name, "/queue/agent-") == NULL) {
@@ -759,7 +767,7 @@ void* inotify_reader(void * args) {
                             strcpy(cmd, "delete1 ");
                         }
                         strcat(cmd, files[j].name);
-                        strcat(cmd, event->name);
+                        if (event->len > 0) strcat(cmd, event->name);
                     } else if (event->mask & IN_ISDIR) {
                         mtinfo(INOTIFY_TAG, "Adding directory %s to inotify watch", event->name);
                         files = realloc(files, (n_files_to_watch+1)*sizeof(inotify_watch_file));
@@ -782,10 +790,20 @@ void* inotify_reader(void * args) {
 
                         n_files_to_watch++;
 
-                    } else if (event->mask & files[j].flags) {
+                    } else if (event->mask & files[j].flags || event->mask & IN_IGNORED) {
+                        if (event->mask & IN_IGNORED) {
+                            mtdebug2(INOTIFY_TAG,"Ignored file %s. Readding watch %u.", files[j].name, files[j].watcher);
+                            inotify_rm_watch(fd, files[j].watcher);
+                            files[j].watcher = inotify_add_watch(fd, files[j].path, files[j].flags);
+                            if (files[j].watcher < 0)
+                                mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s",
+                                    files[j].path, strerror(errno));
+                            mtdebug2(INOTIFY_TAG, "Watch %u added for file %s.", files[j].watcher, files[j].name);
+                        }
+
                         strcpy(cmd, "update1 ");
                         strcat(cmd, files[j].name);
-                        strcat(cmd, event->name);
+                        if (event->len > 0) strcat(cmd, event->name);
 
                         inotify_push_request(cmd);
                         memset(cmd,0,sizeof(cmd));
@@ -803,7 +821,6 @@ void* inotify_reader(void * args) {
                             continue;
                         }
 
-
                     } else if (event->mask & IN_Q_OVERFLOW) {
                         mtinfo(INOTIFY_TAG, "Inotify event queue overflowed");
                         ignore = true;
@@ -820,9 +837,10 @@ void* inotify_reader(void * args) {
                 ignore = false;
                 continue;
             }
-
+            mtdebug2(INOTIFY_TAG,"Sending command %s to cluster database socket", cmd);
             inotify_push_request(cmd);
             memset(cmd,0,sizeof(cmd));
+            // memset(event->name,0,event->len);
         }
     }
     return 0;
@@ -882,6 +900,7 @@ void* daemon_inotify(void * args) {
         files[i].files = files[i].files == NULL ? cJSON_Parse("[\"all\"]") : files[i].files;
         mtdebug1(INOTIFY_TAG, "Monitoring %s files from directory %s", cJSON_Print(files[i].files), files[i].name);
         files[i].watcher = inotify_add_watch(fd, files[i].path, files[i].flags);
+
         if (files[i].watcher < 0)
             mterror(INOTIFY_TAG, "Error setting watcher for file %s: %s",
                 files[i].path, strerror(errno));
