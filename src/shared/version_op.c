@@ -556,12 +556,15 @@ os_info *get_unix_version()
 
     if (info->os_version) { // Parsing version
         // os_major.os_minor (os_codename)
-        if (codename = strstr(info->os_version, " ("), codename){
+        char *cp_version;
+        os_strdup(info->os_version, cp_version);
+        if (codename = strstr(cp_version, " ("), codename){
             *codename = '\0';
             codename += 2;
             *(codename + strlen(codename) - 1) = '\0';
             info->os_codename = strdup(codename);
         }
+        free(cp_version);
         // Get os_major
         if (w_regexec("^([0-9]+)\\.*", info->os_version, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
@@ -576,7 +579,10 @@ os_info *get_unix_version()
         }
         // Get OSX codename
         if (strcmp(info->os_name,"macOS") == 0) {
-            info->os_codename = OSX_ReleaseName(atoi(info->os_major));
+            info->os_codename = strdup(OSX_ReleaseName(atoi(info->os_major)));
+            if (info->os_codename) {
+                snprintf(info->os_version, sizeof(info->os_version) + sizeof(info->os_codename) + 4, "%s (%s)", info->os_version, info->os_codename);
+            }
         }
     }
 
