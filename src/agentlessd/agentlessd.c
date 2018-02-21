@@ -10,6 +10,7 @@
 #include "shared.h"
 #include "os_crypto/md5/md5_op.h"
 #include "agentlessd.h"
+#define BUFFER_SIZE OS_MAXSTR - (OS_LOG_HEADER * 2)
 
 /* Prototypes */
 static int  save_agentless_entry(const char *host, const char *script, const char *agttype);
@@ -94,11 +95,11 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
 {
     size_t n;
     FILE *fp;
-    char buf[2048 + 1];
-    char diff_alert[4096 + 1];
+    char buf[BUFFER_SIZE + 1];
+    char diff_alert[OS_MAXSTR - OS_LOG_HEADER + 1];
 
-    buf[2048] = '\0';
-    diff_alert[4096] = '\0';
+    buf[BUFFER_SIZE] = '\0';
+    diff_alert[OS_MAXSTR - OS_LOG_HEADER] = '\0';
 
     snprintf(buf, 2048, "%s/%s->%s/diff.%d",
              DIFF_DIR_PATH, host, script, (int)alert_diff_time);
@@ -116,7 +117,7 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
         merror("Unable to generate diff alert (fread).");
         fclose(fp);
         return (0);
-    case 2047:
+    case BUFFER_SIZE:
         n -= strlen(STR_MORE_CHANGES);
 
         while (n > 0 && buf[n - 1] != '\n')
@@ -129,7 +130,7 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
     }
 
     /* Create alert */
-    snprintf(diff_alert, 4096 - 1, "ossec: agentless: Change detected:\n%s", buf);
+    snprintf(diff_alert, OS_MAXSTR - OS_LOG_HEADER - 1, "ossec: agentless: Change detected:\n%s", buf);
     snprintf(buf, 1024, "(%s) %s->agentless", script, host);
 
     if (SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ) < 0) {

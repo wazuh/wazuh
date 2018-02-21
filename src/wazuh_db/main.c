@@ -318,7 +318,19 @@ void * run_worker(__attribute__((unused)) void * args) {
                 continue;
             }
 
-            switch (length = recv(*peer, buffer, OS_MAXSTR, 0), length) {
+            char buffer2[OS_MAXSTR + 1] = {0};
+            ssize_t count;
+            length = 0;
+
+            memset(buffer,0,OS_MAXSTR+1);
+
+            while((count = recv(*peer, buffer, OS_MAXSTR, 0))>0)
+            {
+             	length += count;
+                strcat(buffer2,buffer);
+            }
+
+            switch (length) {
             case -1:
                 merror("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
                 status = 1;
@@ -332,15 +344,15 @@ void * run_worker(__attribute__((unused)) void * args) {
             default:
 
                 if (length > 0 && buffer[length - 1] == '\n') {
-                    buffer[length - 1] = '\0';
+                    buffer2[length - 1] = '\0';
                     terminal = 1;
                 } else {
-                    buffer[length] = '\0';
+                    buffer2[length] = '\0';
                     terminal = 0;
                 }
 
                 *response = '\0';
-                wdb_parse(buffer, response);
+                wdb_parse(buffer2, response);
                 if (length = strlen(response), length > 0) {
                     if (terminal && length < OS_MAXSTR - 1) {
                         response[length++] = '\n';

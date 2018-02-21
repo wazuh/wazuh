@@ -20,7 +20,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
 {
     char *tstamp;
     char *hostname;
-    char syslog_msg[OS_SIZE_2048];
+    char syslog_msg[OS_MAXSTR];
 
     /* Invalid socket */
     if (syslog_config->socket < 0) {
@@ -28,7 +28,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
     }
 
     /* Clear the memory before insert */
-    memset(syslog_msg, '\0', OS_SIZE_2048);
+    memset(syslog_msg, '\0', OS_MAXSTR);
 
     /* Look if location is set */
     if (syslog_config->location) {
@@ -125,7 +125,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " Group ownership: was %s;", al_data->group_chg );
         field_add_string(syslog_msg, OS_SIZE_2048, " Permissions changed: from %s;", al_data->perm_chg );
      /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-        field_add_truncated(syslog_msg, OS_SIZE_2048, " %s", al_data->log[0], 2 );
+        field_add_truncated(syslog_msg, OS_SIZE_61440, " %s", al_data->log[0], 2 );
     } else if (syslog_config->format == CEF_CSYSLOG) {
         snprintf(syslog_msg, OS_SIZE_2048,
                  "<%u>%s CEF:0|%s|%s|%s|%u|%s|%u|dvc=%s cs1=%s cs1Label=Location",
@@ -153,7 +153,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
 #endif
         field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
         field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
-        field_add_truncated(syslog_msg, OS_SIZE_2048, " msg=%s", al_data->log[0], 2 );
+        field_add_truncated(syslog_msg, OS_SIZE_61440, " msg=%s", al_data->log[0], 2 );
         if (al_data->new_md5 && al_data->new_sha1) {
             field_add_string(syslog_msg, OS_SIZE_2048, " cs2Label=OldMD5 cs2=%s", al_data->old_md5);
             field_add_string(syslog_msg, OS_SIZE_2048, " cs3Label=NewMD5 cs3=%s", al_data->new_md5);
@@ -288,7 +288,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
             field_add_string(syslog_msg, OS_SIZE_2048, " sha256_new=\"%s\",", al_data->new_sha256 );
         }   
         /* Message */
-        field_add_truncated(syslog_msg, OS_SIZE_2048, " message=\"%s\"", al_data->log[0], 2 );
+        field_add_truncated(syslog_msg, OS_SIZE_61440, " message=\"%s\"", al_data->log[0], 2 );
     }
 
     OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg);
@@ -397,7 +397,7 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
     }
 
     /* Create the syslog message */
-    snprintf(msg, OS_SIZE_2048,
+    snprintf(msg, OS_MAXSTR,
              "<%u>%s %s ossec: %s",
 
              /* syslog header */
