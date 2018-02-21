@@ -25,6 +25,7 @@
 #define CHECK_SEECHANGES    0000200
 #define CHECK_MTIME         0000400
 #define CHECK_INODE         0001000
+#define CHECK_SHA256SUM     0002000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1

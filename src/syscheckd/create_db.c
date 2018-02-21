@@ -11,7 +11,9 @@
 #include "syscheck.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
+#include "os_crypto/sha256/sha256_op.h"
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
+#include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 
 /* Prototypes */
 static int read_file(const char *dir_name, int opts, OSMatch *restriction)  __attribute__((nonnull(1)));
@@ -25,6 +27,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
 {
     char *buf;
     char sha1s = '+';
+    char sha256s = '+';
     struct stat statbuf;
 
     /* Check if the file should be ignored */
@@ -105,12 +108,14 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
         os_sha1 sf_sum;
         os_sha1 sf_sum2;
         os_sha1 sf_sum3;
+        os_sha256 sf256_sum;
 
         /* Clean sums */
         strncpy(mf_sum,  "xxx", 4);
         strncpy(sf_sum,  "xxx", 4);
         strncpy(sf_sum2, "xxx", 4);
         strncpy(sf_sum3, "xxx", 4);
+        strncpy(sf256_sum, "xxx", 4);
 
         /* Generate checksums */
         if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM)) {
@@ -120,49 +125,55 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 struct stat statbuf_lnk;
                 if (stat(file_name, &statbuf_lnk) == 0) {
                     if (S_ISREG(statbuf_lnk.st_mode)) {
-                        if (OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, OS_BINARY) < 0) {
+                        if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
                             strncpy(mf_sum, "xxx", 4);
                             strncpy(sf_sum, "xxx", 4);
+                            strncpy(sf256_sum, "xxx", 4);
                         }
                     }
                 }
-            } else if (OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, OS_BINARY) < 0)
+            } else if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
 #else
             if (OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, OS_BINARY) < 0)
 #endif
             {
                 strncpy(mf_sum, "xxx", 4);
                 strncpy(sf_sum, "xxx", 4);
+                strncpy(sf256_sum, "xxx", 4);
             }
 
             if (opts & CHECK_SEECHANGES) {
                 sha1s = 's';
+                sha256s = 's';
             }
         } else {
             if (opts & CHECK_SEECHANGES) {
                 sha1s = 'n';
+                sha256s = 'n';
             } else {
                 sha1s = '-';
+                sha256s = '-';
             }
         }
 
         buf = (char *) OSHash_Get(syscheck.fp, file_name);
         if (!buf) {
-            char alert_msg[916 + 1];    /* to accommodate a long */
-            alert_msg[916] = '\0';
+            char alert_msg[1172 + 1];    /* to accommodate a long */
+            alert_msg[1172] = '\0';
             char * alertdump = NULL;
 
             if (opts & CHECK_SEECHANGES) {
                 alertdump = seechanges_addfile(file_name);
             }
 
-            snprintf(alert_msg, 916, "%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld",
+            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%s:%ld:%ld",
                      opts & CHECK_SIZE ? '+' : '-',
                      opts & CHECK_PERM ? '+' : '-',
                      opts & CHECK_OWNER ? '+' : '-',
                      opts & CHECK_GROUP ? '+' : '-',
                      opts & CHECK_MD5SUM ? '+' : '-',
                      sha1s,
+                     sha256s,
                      opts & CHECK_MTIME ? '+' : '-',
                      opts & CHECK_INODE ? '+' : '-',
                      opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
@@ -171,6 +182,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
                      opts & CHECK_MD5SUM ? mf_sum : "xxx",
                      opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                     opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
                      opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
                      opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                      opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
@@ -181,15 +193,16 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             }
 
             /* Send the new checksum to the analysis server */
-            alert_msg[916] = '\0';
+            alert_msg[1172] = '\0';
 
-            snprintf(alert_msg, 916, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld %s%s%s",
+            snprintf(alert_msg, 1172, "%ld:%d:%d:%d:%s:%s:%s:%s:%s:%ld:%ld %s%s%s",
                      opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                      opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                      opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
                      opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
                      opts & CHECK_MD5SUM ? mf_sum : "xxx",
                      opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                     opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
                      opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
                      opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                      opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
@@ -201,10 +214,10 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             free(alertdump);
         } else {
             char alert_msg[OS_MAXSTR + 1];
-            char c_sum[256 + 2];
+            char c_sum[512 + 2];
 
             c_sum[0] = '\0';
-            c_sum[256] = '\0';
+            c_sum[512] = '\0';
             alert_msg[0] = '\0';
             alert_msg[OS_MAXSTR] = '\0';
 
@@ -224,10 +237,10 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                         free(fullalert);
                         fullalert = NULL;
                     } else {
-                        snprintf(alert_msg, 916, "%s %s", c_sum, file_name);
+                        snprintf(alert_msg, 1172, "%s %s", c_sum, file_name);
                     }
                 } else {
-                    snprintf(alert_msg, 916, "%s %s", c_sum, file_name);
+                    snprintf(alert_msg, 1172, "%s %s", c_sum, file_name);
                 }
                 send_syscheck_msg(alert_msg);
             }
