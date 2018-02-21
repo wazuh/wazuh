@@ -480,16 +480,43 @@ os_info *get_unix_version()
         } else if (cmd_output = popen("uname", "r"), cmd_output) {
             if(fgets(buff,sizeof(buff) - 1, cmd_output) == NULL){
                 mdebug1("Cannot read from command output (uname).");
-            } else if(strcmp(strtok(buff, "\n"),"Darwin") == 0){ // MacOS
-                info->os_name = strdup("macOS");
+            // MacOSX
+            } else if(strcmp(strtok(buff, "\n"),"Darwin") == 0){
                 info->os_platform = strdup("darwin");
+                if (cmd_output_ver = popen("sw_vers -productName", "r"), cmd_output_ver) {
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        mdebug1("Cannot read from command output (sw_vers -productName).");
+                    } else {
+                        info->os_name = strdup(strtok(buff, "\n"));
+                    }
+                    pclose(cmd_output_ver);
+                }
+                if (cmd_output_ver = popen("sw_vers -productVersion", "r"), cmd_output_ver) {
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        mdebug1("Cannot read from command output (sw_vers -productVersion).");
+                    } else {
+                        info->os_version = strdup(strtok(buff, "\n"));
+                    }
+                    pclose(cmd_output_ver);
+                }
+                if (cmd_output_ver = popen("sw_vers -buildVersion", "r"), cmd_output_ver) {
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        mdebug1("Cannot read from command output (sw_vers -buildVersion).");
+                    } else {
+                        info->os_build = strdup(strtok(buff, "\n"));
+                    }
+                    pclose(cmd_output_ver);
+                }
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                         mdebug1("Cannot read from command output (uname -r).");
-                    } else if (w_regexec("([0-9][0-9]*\\.[0-9][0-9]*)\\.*", buff, 2, match)){
+                    } else if (w_regexec("([0-9][0-9])*\\.[0-9][0-9]*\\.*", buff, 2, match)){
                         match_size = match[1].rm_eo - match[1].rm_so;
-                        info->os_version = malloc(match_size +1);
-                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                        char *kern = NULL;
+                        kern = malloc(match_size +1);
+                        snprintf(kern, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                        info->os_codename = strdup(OSX_ReleaseName(atoi(kern)));
+                        free(kern);
                     }
                     pclose(cmd_output_ver);
                 }
@@ -556,15 +583,14 @@ os_info *get_unix_version()
 
     if (info->os_version) { // Parsing version
         // os_major.os_minor (os_codename)
-        char *cp_version;
-        os_strdup(info->os_version, cp_version);
-        if (codename = strstr(cp_version, " ("), codename){
+        os_strdup(info->os_version, version);
+        if (codename = strstr(version, " ("), codename){
             *codename = '\0';
             codename += 2;
             *(codename + strlen(codename) - 1) = '\0';
             info->os_codename = strdup(codename);
         }
-        free(cp_version);
+        free(version);
         // Get os_major
         if (w_regexec("^([0-9]+)\\.*", info->os_version, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
@@ -578,10 +604,13 @@ os_info *get_unix_version()
             snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
         }
         // Get OSX codename
-        if (strcmp(info->os_name,"macOS") == 0) {
-            info->os_codename = strdup(OSX_ReleaseName(atoi(info->os_major)));
+        if (strcmp(info->os_platform,"darwin") == 0) {
             if (info->os_codename) {
-                snprintf(info->os_version, sizeof(info->os_version) + sizeof(info->os_codename) + 4, "%s (%s)", info->os_version, info->os_codename);
+                size_t len = 4;
+                len += strlen(info->os_version);
+                len += strlen(info->os_codename);
+                os_realloc(info->os_version, len, info->os_version);
+                snprintf(info->os_version, len, "%s (%s)", info->os_version, info->os_codename);
             }
         }
     }
