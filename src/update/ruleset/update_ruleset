@@ -535,7 +535,7 @@ def same_major_minor(old_version, new_version):
 def usage():
     branch = get_branch()  # 'stable' 'master' 'development'
     msg = """
-    Update ruleset v3.0.0
+    Update ruleset v3.2.0
     Github repository: https://github.com/wazuh/wazuh-ruleset
     Full documentation: http://documentation.wazuh.com/en/latest/wazuh_ruleset.html
 
@@ -613,7 +613,6 @@ if __name__ == "__main__":
         elif o in ("-j", "--json"):
             arguments['json'] = True
         elif o in ("-n", "--branch-name"):
-            print("entro aqui")
             arguments['branch-name'] = a
             branch_found = True
         elif o in ("-u", "--url"):
