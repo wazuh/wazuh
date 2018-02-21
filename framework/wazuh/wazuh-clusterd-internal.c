@@ -47,6 +47,8 @@
 #define INOTIFY_TAG MAIN_TAG ":inotify"
 #define DB_TAG MAIN_TAG ":db_socket"
 
+#define BUFFER_SIZE 1000000
+#define RESPONSE_SIZE 10000
 #define PATH_MAX 4096
 
 static w_queue_t * queue;                 // Queue for pending files
@@ -173,8 +175,8 @@ void* daemon_socket() {
     mtdebug1(DB_TAG,"Preparing server socket");
     /* Prepare socket */
     struct sockaddr_un addr;
-    char buf[1000000];
-    char response[10000];
+    char buf[BUFFER_SIZE];
+    char response[RESPONSE_SIZE];
     int fd,cl,rc;
 
     if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
@@ -267,7 +269,6 @@ void* daemon_socket() {
         memset(response, 0, sizeof(response));
         while ( (rc=recv(cl,buf,sizeof(buf),0)) > 0) {
             has1=false; has2=false; has3=false; select=false; count=false; select_last_sync=false; select_files=false; response_str=false;
-
             cmd = strtok(buf, " ");
             mtdebug2(DB_TAG,"Received %s command", cmd);
             if (cmd != NULL && strcmp(cmd, "update1") == 0) {
@@ -418,15 +419,14 @@ void* daemon_socket() {
                             strcat(response, (char *)sqlite3_column_text(res, 2));
                             strcat(response, " ");
                         } else if (count) {
-                            char str[10];
-                            sprintf(str, "%d", sqlite3_column_int(res, 0));
-                            strcpy(response, str);
+                            if (snprintf(response, RESPONSE_SIZE, "%d", sqlite3_column_int(res, 0)) >= RESPONSE_SIZE)
+                                mterror(INOTIFY_TAG, "Overflow error copying response in memory");
                         } else if (select_files) {
-                            char str[100];
-                            sprintf(str, "%s*%s*%d ", (char *)sqlite3_column_text(res, 0), (char *)sqlite3_column_text(res, 1), sqlite3_column_int(res, 2));
-                            strcat(response, str);
+                            if (snprintf(response, RESPONSE_SIZE, "%s*%s*%d ", (char *)sqlite3_column_text(res, 0), (char *)sqlite3_column_text(res, 1), sqlite3_column_int(res, 2)) >= RESPONSE_SIZE)
+                                mterror(INOTIFY_TAG, "Overflow error copying response in memory");
                         } else if (response_str) {
-                            strcpy(response, (char *)sqlite3_column_text(res,0));
+                            if (snprintf(response, RESPONSE_SIZE, "%s", (char *)sqlite3_column_text(res,0)) >= RESPONSE_SIZE)
+                                mterror(INOTIFY_TAG, "Overflow error copying response in memory");
                         } else
                             strcpy(response, "Command OK");
                     } while (step == SQLITE_ROW || step == SQLITE_OK);
