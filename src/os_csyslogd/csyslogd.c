@@ -134,7 +134,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 /* Format Field for output */
 int field_add_string(char *dest, size_t size, const char *format, const char *value )
 {
-    char buffer[OS_SIZE_2048];
+    char buffer[OS_MAXSTR];
     int len = 0;
     int dest_sz = size - strlen(dest);
 
@@ -160,7 +160,7 @@ int field_add_string(char *dest, size_t size, const char *format, const char *va
 /* Add a field, but truncate if too long */
 int field_add_truncated(char *dest, size_t size, const char *format, const char *value, int fmt_size )
 {
-    char buffer[OS_SIZE_2048];
+    char buffer[OS_MAXSTR];
 
     int available_sz = size - strlen(dest);
     int total_sz = strlen(value) + strlen(format) - fmt_size;
