@@ -3,9 +3,14 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.2.1]
 
+### Added
+
+- Added option in Makefile to disable CIS-CAT module. ([#381](https://github.com/wazuh/wazuh/pull/381))
+
 ### Changed
 
 - Giving preference to use the selected Java over the default one in CIS-CAT wodle.
+- Added delay between message delivery for every module. ([#389](https://github.com/wazuh/wazuh/pull/389))
 - Verify all modules for the shared configuration. ([#408](https://github.com/wazuh/wazuh/pull/408))
 
 ### Fixed
@@ -14,6 +19,8 @@ All notable changes to this project will be documented in this file.
 - Fixed duplicate alerts in Vulnerability Detector.
 - Fixed compiling issues in Solaris and HP-UX.
 - Fixed bug in Framework when listing directories due to permissions issues.
+- Fixed error handling in CIS-CAT module. ([#401](https://github.com/wazuh/wazuh/pull/401))
+- Fixed some defects reported by Coverity. ([#406](https://github.com/wazuh/wazuh/pull/406))
 
 ## [v3.2.0]
 
