@@ -42,6 +42,7 @@ void SyscheckInit()
     memset(sdb.gowner, '\0', OS_FLSIZE + 1);
     memset(sdb.md5, '\0', OS_FLSIZE + 1);
     memset(sdb.sha1, '\0', OS_FLSIZE + 1);
+    memset(sdb.sha256, '\0', OS_FLSIZE + 1);
     memset(sdb.mtime, '\0', OS_FLSIZE + 1);
     memset(sdb.inode, '\0', OS_FLSIZE + 1);
 
@@ -60,6 +61,7 @@ void SyscheckInit()
     sdb.syscheck_dec->fields[SK_GID] = "gid";
     sdb.syscheck_dec->fields[SK_MD5] = "md5";
     sdb.syscheck_dec->fields[SK_SHA1] = "sha1";
+    sdb.syscheck_dec->fields[SK_SHA256] = "sha256";
     sdb.syscheck_dec->fields[SK_UNAME] = "uname";
     sdb.syscheck_dec->fields[SK_GNAME] = "gname";
     sdb.syscheck_dec->fields[SK_INODE] = "inode";
@@ -433,6 +435,16 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                              "New sha1sum is : '%s'\n",
                              oldsum.sha1, newsum.sha1);
                     os_strdup(oldsum.sha1, lf->sha1_before);
+                }
+
+                /* SHA-256 message */
+                if (strcmp(newsum.sha256, oldsum.sha256) == 0) {
+                    sdb.sha256[0] = '\0';
+                } else {
+                    snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: '%s'\n"
+                             "New sha256sum is : '%s'\n",
+                             oldsum.sha256, newsum.sha256);
+                    os_strdup(oldsum.sha256, lf->sha256_before);
                 }
 
                 /* Modification time message */
