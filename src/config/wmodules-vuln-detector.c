@@ -20,6 +20,8 @@ static const char *XML_NAME = "name";
 static const char *XML_UPDATE_INTERVAL = "update_interval";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_IGNORE_TIME = "ignore_time";
+static const char *XML_URL = "url";
+static const char *XML_PATH = "path";
 
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list) {
     agent_software *next = NULL;
@@ -134,14 +136,19 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                 return OS_INVALID;
             }
 
+            os_calloc(1, sizeof(update_node), upd);
+
             // Check OS
             if (!strcmp(feed, vu_dist[DIS_UBUNTU])) {
-                if (!strcmp(version, "12")) {
+                if (!strcmp(version, "12") || strcasestr(version, vu_dist[DIS_PRECISE])) {
                     os_index = CVE_PRECISE;
-                } else if (!strcmp(version, "14")) {
+                    os_strdup(vu_dist[DIS_PRECISE], upd->version);
+                } else if (!strcmp(version, "14") || strcasestr(version, vu_dist[DIS_TRUSTY])) {
                     os_index = CVE_TRUSTY;
-                } else if (!strcmp(version, "16")) {
+                    os_strdup(vu_dist[DIS_TRUSTY], upd->version);
+                } else if (!strcmp(version, "16") || strcasestr(version, vu_dist[DIS_XENIAL])) {
                     os_index = CVE_XENIAL;
+                    os_strdup(vu_dist[DIS_XENIAL], upd->version);
                 } else {
                     merror("Invalid Ubuntu version '%s'.", version);
                     return OS_INVALID;
@@ -167,10 +174,11 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                 return OS_INVALID;
             }
 
-            os_calloc(1, sizeof(update_node), upd);
             vulnerability_detector->updates[os_index] = upd;
             os_strdup(feed, upd->dist);
-            os_strdup(version, upd->version);
+            if (!upd->version) {
+                os_strdup(version, upd->version);
+            }
             upd->url = NULL;
             upd->path = NULL;
 
@@ -203,6 +211,10 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
                         return OS_INVALID;
                     }
+                } else if (!strcmp(chld_node[j]->element, XML_URL)) {
+                    os_strdup(chld_node[j]->content, upd->url);
+                } else if (!strcmp(chld_node[j]->element, XML_PATH)) {
+                    os_strdup(chld_node[j]->content, upd->path);
                 } else {
                     merror("Invalid option '%s' for tag '%s' at module '%s'.", chld_node[j]->element, XML_FEED , WM_VULNDETECTOR_CONTEXT.name);
                     return OS_INVALID;

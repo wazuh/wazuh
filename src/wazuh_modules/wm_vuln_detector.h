@@ -22,7 +22,7 @@
 #define REDHAT_REPO "https://www.redhat.com"
 #define GET_COMMAND "GET "
 #define UBUNTU_OVAL GET_COMMAND "/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml\r\n\r\n"
-#define REDHAT_OVAL GET_COMMAND REDHAT_REPO "/security/data/oval/Red_Hat_Enterprise_Linux_%i.xml HTTP/1.1\r\n\r\n"
+#define REDHAT_OVAL GET_COMMAND REDHAT_REPO "/security/data/oval/Red_Hat_Enterprise_Linux_%s.xml HTTP/1.1\r\n\r\n"
 #define JSON_FILE_TEST "/tmp/package_test.json"
 #define DEFAULT_OVAL_PORT 443
 #define KEY_SIZE OS_SIZE_6144
@@ -34,13 +34,6 @@
 #define VU_ALERT_HEADER "[%s] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
 #define VU_INV_OS     2
-#define VU_PRECISE    "PRECISE"
-#define VU_TRUSTY     "TRUSTY"
-#define VU_XENIAL     "XENIAL"
-#define VU_CENTOS     "CENTOS"
-#define VU_RHEL5      "RHEL5"
-#define VU_RHEL6      "RHEL6"
-#define VU_RHEL7      "RHEL7"
 #define VU_MODERATE   "Moderate"
 #define VU_MEDIUM     "Medium"
 #define VU_HIGH       "High"
@@ -50,12 +43,28 @@ extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
 static const char *vu_dist[] = {
     "UBUNTU",
-    "REDHAT"
+    "REDHAT",
+    "CENTOS",
+    "PRECISE",
+    "TRUSTY",
+    "XENIAL",
+    "RHEL5",
+    "RHEL6",
+    "RHEL7",
+    "UNKNOW"
 };
 
 typedef enum distribution{
     DIS_UBUNTU,
-    DIS_REDHAT
+    DIS_REDHAT,
+    DIS_CENTOS,
+    DIS_PRECISE,
+    DIS_TRUSTY,
+    DIS_XENIAL,
+    DIS_RHEL5,
+    DIS_RHEL6,
+    DIS_RHEL7,
+    DIS_UNKNOW
 } distribution;
 
 typedef struct update_flags {
@@ -78,7 +87,7 @@ typedef struct agent_software {
     char *agent_id;
     char *agent_name;
     char *agent_ip;
-    char *OS;
+    const char *OS;
     char info;
     struct agent_software *next;
     struct agent_software *prev;
