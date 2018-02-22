@@ -1,6 +1,6 @@
 {
   "order": 0,
-  "template": "wazuh-monitoring*",
+  "index_patterns": "wazuh-monitoring*",
   "settings": {
     "index.refresh_interval": "5s"
   },
