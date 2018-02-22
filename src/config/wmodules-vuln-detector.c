@@ -15,10 +15,10 @@
 //Options
 static const char *XML_DISABLED = "disabled";
 static const char *XML_INTERVAL = "interval";
+static const char *XML_FEED = "feed";
+static const char *XML_NAME = "name";
+static const char *XML_UPDATE_INTERVAL = "update_interval";
 static const char *XML_RUN_ON_START = "run_on_start";
-static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
-static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
-static const char *XML_VERSION = "version";
 static const char *XML_IGNORE_TIME = "ignore_time";
 
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list) {
@@ -71,32 +71,26 @@ int get_interval(char *source, unsigned long *interval) {
     return 0;
 }
 
-int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
+int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     unsigned int i, j;
-    //agent_software *agents;
     wm_vulnerability_detector_t * vulnerability_detector;
+    XML_NODE chld_node = NULL;
 
     os_calloc(1, sizeof(wm_vulnerability_detector_t), vulnerability_detector);
     vulnerability_detector->flags.run_on_start = 1;
     vulnerability_detector->flags.enabled = 1;
     vulnerability_detector->flags.u_flags.update = 0;
-    vulnerability_detector->flags.u_flags.update_nvd = 0;
     vulnerability_detector->flags.u_flags.update_ubuntu = 0;
     vulnerability_detector->flags.u_flags.update_redhat = 0;
-    vulnerability_detector->flags.u_flags.precise = 0;
-    vulnerability_detector->flags.u_flags.trusty = 0;
-    vulnerability_detector->flags.u_flags.xenial = 0;
-    vulnerability_detector->flags.u_flags.rh5 = 0;
-    vulnerability_detector->flags.u_flags.rh6 = 0;
-    vulnerability_detector->flags.u_flags.rh7 = 0;
-    vulnerability_detector->intervals.ignore = VU_DEF_IGNORE_TIME;
-    vulnerability_detector->intervals.detect = WM_VULNDETECTOR_DEFAULT_INTERVAL;
-    vulnerability_detector->intervals.ubuntu = 0;
-    vulnerability_detector->intervals.redhat = 0;
+    vulnerability_detector->ignore_time = VU_DEF_IGNORE_TIME;
+    vulnerability_detector->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vulnerability_detector->agents_software = NULL;
     module->context = &WM_VULNDETECTOR_CONTEXT;
     module->data = vulnerability_detector;
 
+    for (i = 0; i < OS_SUPP_SIZE; i++) {
+        vulnerability_detector->updates[i] = NULL;
+    }
 
     for (i = 0; nodes[i]; i++) {
         if (!nodes[i]->element) {
@@ -112,9 +106,107 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            if (get_interval(nodes[i]->content, &vulnerability_detector->intervals.detect)) {
+            if (get_interval(nodes[i]->content, &vulnerability_detector->detection_interval)) {
                 merror("Invalid interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_FEED)) {
+            char *feed;
+            char *version;
+            cve_db os_index;
+            update_node *upd;
+
+            if (!nodes[i]->attributes || strcmp(*nodes[i]->attributes, XML_NAME)) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
+                return OS_INVALID;
+            }
+            for (j = 0; *(feed = &nodes[i]->values[0][j]) != '\0'; j++) {
+                if (isalpha(*feed)) {
+                    *feed = toupper(*feed);
+                }
+            }
+            feed = nodes[i]->values[0];
+            if (version = strchr(feed, '-'), version) {
+                *version = '\0';
+                version++;
+            } else {
+                merror("Invalid OS for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            // Check OS
+            if (!strcmp(feed, vu_dist[DIS_UBUNTU])) {
+                if (!strcmp(version, "12")) {
+                    os_index = CVE_PRECISE;
+                } else if (!strcmp(version, "14")) {
+                    os_index = CVE_TRUSTY;
+                } else if (!strcmp(version, "16")) {
+                    os_index = CVE_XENIAL;
+                } else {
+                    merror("Invalid Ubuntu version '%s'.", version);
+                    return OS_INVALID;
+                }
+            } else if (!strcmp(feed, vu_dist[DIS_REDHAT])) {
+                if (!strcmp(version, "5")) {
+                    os_index = CVE_RHEL5;
+                } else if (!strcmp(version, "6")) {
+                    os_index = CVE_RHEL6;
+                } else if (!strcmp(version, "7")) {
+                    os_index = CVE_RHEL7;
+                } else {
+                    merror("Invalid Redhat version '%s'.", version);
+                    return OS_INVALID;
+                }
+            } else {
+                merror("Invalid OS for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            if (chld_node = OS_GetElementsbyNode(xml, nodes[i]), !chld_node) {
+                merror(XML_INVELEM, nodes[i]->element);
+                return OS_INVALID;
+            }
+
+            os_calloc(1, sizeof(update_node), upd);
+            vulnerability_detector->updates[os_index] = upd;
+            os_strdup(feed, upd->dist);
+            os_strdup(version, upd->version);
+            upd->url = NULL;
+            upd->path = NULL;
+
+            for (j = 0; chld_node[j]; j++) {
+                if (!strcmp(chld_node[j]->element, XML_DISABLED)) {
+                    if (!strcmp(chld_node[j]->content, "yes")) {
+                        free(upd->dist);
+                        free(upd->version);
+                        if (upd->url) {
+                            free(upd->url);
+                        }
+                        if (upd->path) {
+                            free(upd->path);
+                        }
+                        free(upd);
+                        vulnerability_detector->updates[os_index] = NULL;
+                        break;
+                    } else if (!strcmp(chld_node[j]->content, "no")) {
+                        if (!strcmp(upd->dist, vu_dist[DIS_REDHAT])) {
+                            vulnerability_detector->flags.u_flags.update_redhat = 1;
+                        } else if (!strcmp(upd->dist, vu_dist[DIS_UBUNTU])) {
+                            vulnerability_detector->flags.u_flags.update_ubuntu = 1;
+                        }
+                    } else {
+                        merror("Invalid content for '%s' option at module '%s'", XML_DISABLED, WM_VULNDETECTOR_CONTEXT.name);
+                        return OS_INVALID;
+                    }
+                } else if (!strcmp(chld_node[j]->element, XML_UPDATE_INTERVAL)) {
+                    if (get_interval(chld_node[j]->content, &upd->interval)) {
+                        merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
+                        return OS_INVALID;
+                    }
+                } else {
+                    merror("Invalid option '%s' for tag '%s' at module '%s'.", chld_node[j]->element, XML_FEED , WM_VULNDETECTOR_CONTEXT.name);
+                    return OS_INVALID;
+                }
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
             if (!strcmp(nodes[i]->content, "yes")) {
@@ -126,107 +218,17 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_IGNORE_TIME)) {
-            if (get_interval(nodes[i]->content, &vulnerability_detector->intervals.ignore)) {
+            if (get_interval(nodes[i]->content, &vulnerability_detector->ignore_time)) {
                 merror("Invalid ignore_time at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL)) {
-            if (!strcmp(nodes[i]->content, "yes")) {
-                vulnerability_detector->flags.u_flags.update_ubuntu = 1;
-                if (nodes[i]->attributes) {
-                    for (j = 0; nodes[i]->attributes[j]; j++) {
-                        if (!strcmp(nodes[i]->attributes[j], XML_VERSION)) {
-                            int k;
-                            char * version = nodes[i]->values[j];
-                            for (k = 0;; k++) {
-                                int out = (version[k] == '\0');
-                                if (version[k] == ',' || out) {
-                                    version[k] = '\0';
-                                    if (!strcmp(version, "12")) {
-                                        vulnerability_detector->flags.u_flags.precise = 1;
-                                    } else if (!strcmp(version, "14")) {
-                                        vulnerability_detector->flags.u_flags.trusty = 1;
-                                    } else if (!strcmp(version, "16")) {
-                                        vulnerability_detector->flags.u_flags.xenial = 1;
-                                    } else {
-                                        merror("Invalid Ubuntu version '%s'.", version);
-                                    }
-                                    version = &version[k] + 1;
-                                    k = 0;
-                                }
-                                if (out)
-                                    break;
-                            }
-                        } else if (!strcmp(nodes[i]->attributes[j], XML_INTERVAL)) {
-                            if (get_interval(nodes[i]->values[j], &vulnerability_detector->intervals.ubuntu)) {
-                                merror("Invalid interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
-                                return OS_INVALID;
-                            }
-                        } else {
-                            merror("Invalid attribute '%s' for '%s'", nodes[i]->attributes[j], XML_UPDATE_UBUNTU_OVAL);
-                        }
-                    }
-                }
-            } else if (!strcmp(nodes[i]->content, "no")) {
-                vulnerability_detector->flags.u_flags.update_ubuntu = 0;
-            } else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_VULNDETECTOR_CONTEXT.name);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_UPDATE_REDHAT_OVAL)) {
-            if (!strcmp(nodes[i]->content, "yes")) {
-                vulnerability_detector->flags.u_flags.update_redhat = 1;
-                if (nodes[i]->attributes) {
-                    for (j = 0; nodes[i]->attributes[j]; j++) {
-                        if (!strcmp(nodes[i]->attributes[j], XML_VERSION)) {
-                            int k;
-                            char * version = nodes[i]->values[j];
-                            for (k = 0;; k++) {
-                                int out = (version[k] == '\0');
-                                if (version[k] == ',' || out) {
-                                    version[k] = '\0';
-                                    if (!strcmp(version, "5")) {
-                                        vulnerability_detector->flags.u_flags.rh5 = 1;
-                                    } else if (!strcmp(version, "6")) {
-                                        vulnerability_detector->flags.u_flags.rh6 = 1;
-                                    } else if (!strcmp(version, "7")) {
-                                        vulnerability_detector->flags.u_flags.rh7 = 1;
-                                    } else {
-                                        merror("Invalid Redhat version '%s'.", version);
-                                    }
-                                    version = &version[k] + 1;
-                                    k = 0;
-                                }
-                                if (out)
-                                    break;
-                            }
-                        } else if (!strcmp(nodes[i]->attributes[j], XML_INTERVAL)) {
-                            if (get_interval(nodes[i]->values[j], &vulnerability_detector->intervals.redhat)) {
-                                merror("Invalid interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
-                                return OS_INVALID;
-                            }
-                        } else {
-                            merror("Invalid attribute '%s' for '%s'", nodes[i]->attributes[j], XML_UPDATE_REDHAT_OVAL);
-                        }
-                    }
-                }
-            } else if (!strcmp(nodes[i]->content, "no")) {
-                vulnerability_detector->flags.u_flags.update_redhat = 0;
-            } else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_VULNDETECTOR_CONTEXT.name);
-                return OS_INVALID;
-            }
-        } /*else if (!strcmp(nodes[i]->element, XML_TARGET_GROUPS)) {
-
-        } else if (!strcmp(nodes[i]->element, XML_IGNORED_AGENTS)) {
-
-        }*/ else {
+        } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_VULNDETECTOR_CONTEXT.name);
             return OS_INVALID;
         }
     }
 
-    if (vulnerability_detector->flags.u_flags.update_nvd || vulnerability_detector->flags.u_flags.update_ubuntu || vulnerability_detector->flags.u_flags.update_redhat) {
+    if (vulnerability_detector->flags.u_flags.update_ubuntu || vulnerability_detector->flags.u_flags.update_redhat) {
         vulnerability_detector->flags.u_flags.update = 1;
     }
 

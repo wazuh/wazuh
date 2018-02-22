@@ -34,11 +34,9 @@
 #define VU_ALERT_HEADER "[%s] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
 #define VU_INV_OS     2
-#define VU_UBUNTU     "UBUNTU"
 #define VU_PRECISE    "PRECISE"
 #define VU_TRUSTY     "TRUSTY"
 #define VU_XENIAL     "XENIAL"
-#define VU_RHEL       "REDHAT"
 #define VU_CENTOS     "CENTOS"
 #define VU_RHEL5      "RHEL5"
 #define VU_RHEL6      "RHEL6"
@@ -50,19 +48,20 @@
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
+static const char *vu_dist[] = {
+    "UBUNTU",
+    "REDHAT"
+};
+
+typedef enum distribution{
+    DIS_UBUNTU,
+    DIS_REDHAT
+} distribution;
+
 typedef struct update_flags {
     unsigned int update:1;
-    unsigned int update_nvd:1;
     unsigned int update_ubuntu:1;
     unsigned int update_redhat:1;
-    // Ubuntu versions
-    unsigned int precise:1; // 12.04
-    unsigned int trusty:1;  // 14.04
-    unsigned int xenial:1;  // 16.04
-    // RedHat versions
-    unsigned int rh5:1;
-    unsigned int rh6:1;
-    unsigned int rh7:1;
 } update_flags;
 
 typedef struct wm_vulnerability_detector_flags {
@@ -85,33 +84,36 @@ typedef struct agent_software {
     struct agent_software *prev;
 } agent_software;
 
-typedef struct time_intervals {
-    unsigned long detect;
-    unsigned long ignore;
-    unsigned long ubuntu;
-    unsigned long redhat;
-} time_intervals;
+typedef enum {
+    CVE_PRECISE,
+    CVE_TRUSTY,
+    CVE_XENIAL,
+    CVE_RHEL5,
+    CVE_RHEL6,
+    CVE_RHEL7,
+    OS_SUPP_SIZE
+} cve_db;
+
+typedef struct update_node {
+    char *dist;
+    char *version;
+    time_t last_update;
+    unsigned long interval;
+    char *url;
+    char *path;
+} update_node;
 
 typedef struct wm_vulnerability_detector_t {
-    time_intervals intervals;
-    time_intervals remaining_intervals;
+    update_node *updates[OS_SUPP_SIZE];
+    unsigned long detection_interval;
+    unsigned long ignore_time;
+    time_t last_detection;
     agent_software *agents_software;
     OSHash *agents_trig;
     int queue_fd;
     wm_vulnerability_detector_state state;
     wm_vulnerability_detector_flags flags;
 } wm_vulnerability_detector_t;
-
-typedef enum {
-    UBUNTU,
-    PRECISE,
-    TRUSTY,
-    XENIAL,
-    REDHAT,
-    RHEL5,
-    RHEL6,
-    RHEL7
-} cve_db;
 
 typedef enum {
     V_OVALDEFINITIONS,
@@ -177,7 +179,7 @@ typedef struct last_scan {
     time_t last_scan_time;
 } last_scan;
 
-int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module);
+int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 int get_interval(char *source, unsigned long *interval);
 int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software);
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list);

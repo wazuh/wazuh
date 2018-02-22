@@ -26,11 +26,11 @@
 static void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerability_detector);
 static void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerability_detector);
 int wm_vulnerability_detector_socketconnect(char *host);
-int wm_vulnerability_detector_updatedb(update_flags *flags, time_intervals *max, time_intervals *remaining);
-char * wm_vulnerability_detector_preparser(cve_db dist);
+int wm_vulnerability_detector_updatedb(update_node **updates);
+char * wm_vulnerability_detector_preparser(distribution dist);
 int wm_vulnerability_update_oval(cve_db version);
 int wm_vulnerability_fetch_oval(cve_db version, int *need_update);
-int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerability_detector_db *parsed_oval, parser_state version, cve_db dist);
+int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerability_detector_db *parsed_oval, parser_state version, distribution dist);
 int wm_vulnerability_detector_check_db();
 int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval);
 int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS);
@@ -41,7 +41,6 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
 int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents, OSHash *agents_trig, unsigned long ignore_time);
 int wm_vulnerability_detector_sql_prepare(sqlite3 *db, char *sql, size_t size, sqlite3_stmt **stmt);
 int wm_checks_package_vulnerability(const char *package, char *version, const char *operation, char *operation_value);
-void wm_vulnerability_update_intervals(time_intervals *remaining, time_t time_sleep);
 int wm_vulnerability_detector_step(sqlite3_stmt *stmt);
 int wm_vulnerability_create_file(const char *path, const char *source);
 
@@ -720,7 +719,7 @@ int wm_vulnerability_detector_check_db() {
     return 0;
 }
 
-char * wm_vulnerability_detector_preparser(cve_db dist) {
+char * wm_vulnerability_detector_preparser(distribution dist) {
     FILE *input, *output = NULL;
     char *buffer = NULL;
     size_t size;
@@ -752,7 +751,7 @@ char * wm_vulnerability_detector_preparser(cve_db dist) {
     }
 
     while (size = getline(&buffer, &max_size, input), (int) size > 0) {
-        if (dist == UBUNTU) { //5.11.1
+        if (dist == DIS_UBUNTU) { //5.11.1
             switch (state) {
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
@@ -781,7 +780,7 @@ char * wm_vulnerability_detector_preparser(cve_db dist) {
                       //goto free_buffer;
                   }
             }
-        } else if (dist == REDHAT) { //5.10
+        } else if (dist == DIS_REDHAT) { //5.10
             switch (state) {
                 case V_OVALDEFINITIONS:
                     if (found = strstr(buffer, "200 OK"), found) {
@@ -858,7 +857,7 @@ free_mem:
     return tmp_file;
 }
 
-int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerability_detector_db *parsed_oval, parser_state version, cve_db dist) {
+int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerability_detector_db *parsed_oval, parser_state version, distribution dist) {
     int i, j;
     char *found;
     static const char *XML_OVAL_DEFINITIONS = "oval_definitions";
@@ -914,8 +913,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             return OS_INVALID;
         }
 
-        if ((dist == UBUNTU && !strcmp(node[i]->element, XML_DPKG_INFO_STATE)) ||
-            (dist == REDHAT && !strcmp(node[i]->element, XML_RPM_INFO_STATE))) {
+        if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_DPKG_INFO_STATE)) ||
+            (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_INFO_STATE))) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
@@ -932,8 +931,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     }
                 }
             }
-        } else if ((dist == UBUNTU && !strcmp(node[i]->element, XML_DPKG_INFO_TEST)) ||
-                   (dist == REDHAT && !strcmp(node[i]->element, XML_RPM_INFO_TEST))) {
+        } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_DPKG_INFO_TEST)) ||
+                   (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_INFO_TEST))) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
@@ -951,8 +950,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist)) {
               return OS_INVALID;
           }
-        } else if ((dist == UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
-                   (dist == REDHAT && (!strcmp(node[i]->element, XML_RPM_DEF_EVR)   ||
+        } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
+                   (dist == DIS_REDHAT && (!strcmp(node[i]->element, XML_RPM_DEF_EVR)   ||
                    !strcmp(node[i]->element, XML_RPM_DEF_VERSION)                   ||
                    !strcmp(node[i]->element, XML_RPM_DEF_SIGN)))) {
             for (j = 0; node[i]->attributes[j]; j++) {
@@ -961,8 +960,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     os_strdup(node[i]->content, parsed_oval->info_states->operation_value);
                 }
             }
-        } else if ((dist == UBUNTU && !strcmp(node[i]->element, XML_LINUX_STATE)) ||
-                   (dist == REDHAT && !strcmp(node[i]->element, XML_RPM_STATE))) {
+        } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_STATE)) ||
+                   (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_STATE))) {
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_STATE_REF)) {
                     os_strdup(node[i]->values[j], parsed_oval->info_tests->state);
@@ -1091,7 +1090,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->state_id);
                     }
                 } else if (!strcmp(node[i]->attributes[j], XML_COMMENT)) {
-                    if (dist == REDHAT && (strstr(node[i]->values[j], "is installed")) &&
+                    if (dist == DIS_REDHAT && (strstr(node[i]->values[j], "is installed")) &&
                         (found = strstr(node[i]->values[j], XML_RHEL_CHECK))) {
                         int ver;
                         found += strlen(XML_RHEL_CHECK);
@@ -1115,13 +1114,13 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         parsed_oval->vulnerabilities = vuln;
                     }
 
-                    if (dist == UBUNTU && (found = strstr(node[i]->values[j], "'"))) {
+                    if (dist == DIS_UBUNTU && (found = strstr(node[i]->values[j], "'"))) {
                         char *base = ++found;
                         if (found = strstr(found, "'"), found) {
                             *found = '\0';
                             os_strdup(base, parsed_oval->vulnerabilities->package_name);
                         }
-                    } else if (dist == REDHAT && (found = strstr(node[i]->values[j], " "))) {
+                    } else if (dist == DIS_REDHAT && (found = strstr(node[i]->values[j], " "))) {
                         *found = '\0';
                         os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->package_name);
                     } else {
@@ -1163,9 +1162,9 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     }
                 }
             }
-        } else if ((dist == UBUNTU && !strcmp(node[i]->element, XML_PUBLIC_DATE)) ||
-                   (dist == REDHAT && !strcmp(node[i]->element, XML_ISSUED))) {
-                       if (dist == REDHAT) {
+        } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_PUBLIC_DATE)) ||
+                   (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_ISSUED))) {
+                       if (dist == DIS_REDHAT) {
                            if (node[i]->attributes) {
                                for (j = 0; node[i]->attributes[j]; j++) {
                                    if (!strcmp(node[i]->attributes[j], XML_DATE)) {
@@ -1173,7 +1172,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                                    }
                                }
                            }
-                       } else if (dist == UBUNTU) {
+                       } else if (dist == DIS_UBUNTU) {
                            os_strdup(node[i]->content, parsed_oval->info_cves->published);
                        }
         } else if (!strcmp(node[i]->element, XML_OVAL_DEFINITIONS)  ||
@@ -1203,33 +1202,33 @@ int wm_vulnerability_update_oval(cve_db version) {
     char *tmp_file = NULL;
     wm_vulnerability_detector_db parsed_oval;
     char *OS_VERSION = NULL;
-    cve_db dist;
+    distribution dist;
     char success = 0;
 
     switch (version) {
-        case PRECISE:
+        case CVE_PRECISE:
             os_strdup(VU_PRECISE, OS_VERSION);
-            dist = UBUNTU;
+            dist = DIS_UBUNTU;
         break;
-        case TRUSTY:
+        case CVE_TRUSTY:
             os_strdup(VU_TRUSTY, OS_VERSION);
-            dist = UBUNTU;
+            dist = DIS_UBUNTU;
         break;
-        case XENIAL:
+        case CVE_XENIAL:
             os_strdup(VU_XENIAL, OS_VERSION);
-            dist = UBUNTU;
+            dist = DIS_UBUNTU;
         break;
-        case RHEL5:
+        case CVE_RHEL5:
             os_strdup(VU_RHEL5, OS_VERSION);
-            dist = REDHAT;
+            dist = DIS_REDHAT;
         break;
-        case RHEL6:
+        case CVE_RHEL6:
             os_strdup(VU_RHEL6, OS_VERSION);
-            dist = REDHAT;
+            dist = DIS_REDHAT;
         break;
-        case RHEL7:
+        case CVE_RHEL7:
             os_strdup(VU_RHEL7, OS_VERSION);
-            dist = REDHAT;
+            dist = DIS_REDHAT;
         break;
         default:
             mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
@@ -1368,32 +1367,32 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
     unsigned char success = 1;
 
     switch (version) {
-        case PRECISE:
+        case CVE_PRECISE:
             os_strdup(VU_PRECISE, OS);
             snprintf(buffer, VU_SSL_BUFFER, UBUNTU_OVAL, "precise");
             os_strdup(CANONICAL_REPO, repo);
         break;
-        case TRUSTY:
+        case CVE_TRUSTY:
             os_strdup(VU_TRUSTY, OS);
             snprintf(buffer, VU_SSL_BUFFER, UBUNTU_OVAL, "trusty");
             os_strdup(CANONICAL_REPO, repo);
         break;
-        case XENIAL:
+        case CVE_XENIAL:
             os_strdup(VU_XENIAL, OS);
             snprintf(buffer, VU_SSL_BUFFER, UBUNTU_OVAL, "xenial");
             os_strdup(CANONICAL_REPO, repo);
         break;
-        case RHEL5:
+        case CVE_RHEL5:
             os_strdup(VU_RHEL5, OS);
             snprintf(buffer, VU_SSL_BUFFER, REDHAT_OVAL, 5);
             os_strdup(REDHAT_REPO, repo);
         break;
-        case RHEL6:
+        case CVE_RHEL6:
             os_strdup(VU_RHEL6, OS);
             snprintf(buffer, VU_SSL_BUFFER, REDHAT_OVAL, 6);
             os_strdup(REDHAT_REPO, repo);
         break;
-        case RHEL7:
+        case CVE_RHEL7:
             os_strdup(VU_RHEL7, OS);
             snprintf(buffer, VU_SSL_BUFFER, REDHAT_OVAL, 7);
             os_strdup(REDHAT_REPO, repo);
@@ -1574,68 +1573,65 @@ free_mem:
     }
 }
 
-int wm_vulnerability_detector_updatedb(update_flags *flags, time_intervals *max, time_intervals *remaining) {
+int wm_vulnerability_detector_updatedb(update_node **updates) {
     int need_update = 1;
-    time_t time_start;
 
-    if (flags->update_ubuntu && !remaining->ubuntu) {
-        time_start = time(NULL);
-        if (flags->xenial) {
-            mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Ubuntu Xenial");
-            if (wm_vulnerability_fetch_oval(XENIAL, &need_update) || (need_update && wm_vulnerability_update_oval(XENIAL))) {
-                return OS_INVALID;
-            } else {
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Ubuntu Xenial");
-            }
+    if (updates[CVE_XENIAL] && (updates[CVE_XENIAL]->last_update + (time_t) updates[CVE_XENIAL]->interval) < time(NULL)) {
+        mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Ubuntu Xenial");
+        if (wm_vulnerability_fetch_oval(CVE_XENIAL, &need_update) || (need_update && wm_vulnerability_update_oval(CVE_XENIAL))) {
+            return OS_INVALID;
+        } else {
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Ubuntu Xenial");
+            updates[CVE_XENIAL]->last_update = time(NULL);
         }
-        if (flags->trusty) {
-            mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Ubuntu Trusty");
-            if (wm_vulnerability_fetch_oval(TRUSTY, &need_update) || (need_update && wm_vulnerability_update_oval(TRUSTY))) {
-                return OS_INVALID;
-            } else {
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Ubuntu Trusty");
-            }
-        }
-        if (flags->precise) {
-            mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Ubuntu Precise");
-            if (wm_vulnerability_fetch_oval(PRECISE, &need_update) || (need_update && wm_vulnerability_update_oval(PRECISE))) {
-                return OS_INVALID;
-            } else {
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Ubuntu Precise");
-            }
-        }
-        wm_vulnerability_update_intervals(remaining, time(NULL) - time_start);
-        remaining->ubuntu = max->ubuntu;
     }
-    if (flags->update_redhat && !remaining->redhat) {
-        time_start = time(NULL);
-        if (flags->rh5) {
-            mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Red Hat Enterprise Linux 5");
-            if (wm_vulnerability_fetch_oval(RHEL5, &need_update) || (need_update && wm_vulnerability_update_oval(RHEL5))) {
-                return OS_INVALID;
-            } else {
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Red Hat Enterprise Linux 5");
-            }
+    if (updates[CVE_TRUSTY] && (updates[CVE_TRUSTY]->last_update + (time_t) updates[CVE_TRUSTY]->interval) < time(NULL)) {
+        mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Ubuntu Trusty");
+        if (wm_vulnerability_fetch_oval(CVE_TRUSTY, &need_update) || (need_update && wm_vulnerability_update_oval(CVE_TRUSTY))) {
+            return OS_INVALID;
+        } else {
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Ubuntu Trusty");
+            updates[CVE_TRUSTY]->last_update = time(NULL);
         }
-        if (flags->rh6) {
-            mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Red Hat Enterprise Linux 6");
-            if (wm_vulnerability_fetch_oval(RHEL6, &need_update) || (need_update && wm_vulnerability_update_oval(RHEL6))) {
-                return OS_INVALID;
-            } else {
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Red Hat Enterprise Linux 6");
-            }
-        }
-        if (flags->rh7) {
-            mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Red Hat Enterprise Linux 7");
-            if (wm_vulnerability_fetch_oval(RHEL7, &need_update) || (need_update && wm_vulnerability_update_oval(RHEL7))) {
-                return OS_INVALID;
-            } else {
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Red Hat Enterprise Linux 7");
-            }
-        }
-        wm_vulnerability_update_intervals(remaining, time(NULL) - time_start);
-        remaining->redhat = max->redhat;
     }
+    if (updates[CVE_PRECISE] && (updates[CVE_PRECISE]->last_update + (time_t) updates[CVE_PRECISE]->interval) < time(NULL)) {
+        mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Ubuntu Precise");
+        if (wm_vulnerability_fetch_oval(CVE_PRECISE, &need_update) || (need_update && wm_vulnerability_update_oval(CVE_PRECISE))) {
+            return OS_INVALID;
+        } else {
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Ubuntu Precise");
+            updates[CVE_PRECISE]->last_update = time(NULL);
+        }
+    }
+
+    if (updates[CVE_RHEL5] && (updates[CVE_RHEL5]->last_update + (time_t) updates[CVE_RHEL5]->interval) < time(NULL)) {
+        mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Red Hat Enterprise Linux 5");
+        if (wm_vulnerability_fetch_oval(CVE_RHEL5, &need_update) || (need_update && wm_vulnerability_update_oval(CVE_RHEL5))) {
+            return OS_INVALID;
+        } else {
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Red Hat Enterprise Linux 5");
+            updates[CVE_RHEL5]->last_update = time(NULL);
+        }
+    }
+    if (updates[CVE_RHEL6] && (updates[CVE_RHEL6]->last_update + (time_t) updates[CVE_RHEL6]->interval) < time(NULL)) {
+        mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Red Hat Enterprise Linux 6");
+        if (wm_vulnerability_fetch_oval(CVE_RHEL6, &need_update) || (need_update && wm_vulnerability_update_oval(CVE_RHEL6))) {
+            return OS_INVALID;
+        } else {
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Red Hat Enterprise Linux 6");
+            updates[CVE_RHEL6]->last_update = time(NULL);
+        }
+    }
+    if (updates[CVE_RHEL7] && (updates[CVE_RHEL7]->last_update + (time_t) updates[CVE_RHEL7]->interval) < time(NULL)) {
+        mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Red Hat Enterprise Linux 7");
+        if (wm_vulnerability_fetch_oval(CVE_RHEL7, &need_update) || (need_update && wm_vulnerability_update_oval(CVE_RHEL7))) {
+            return OS_INVALID;
+        } else {
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Red Hat Enterprise Linux 7");
+            updates[CVE_RHEL7]->last_update = time(NULL);
+        }
+    }
+
     return 0;
 };
 
@@ -1810,32 +1806,10 @@ error:
     return OS_INVALID;
 }
 
-void wm_vulnerability_update_intervals(time_intervals *remaining, time_t time_sleep) {
-    if ((time_t)remaining->detect > time_sleep) {
-        remaining->detect -= time_sleep;
-    } else {
-        remaining->detect = 0;
-    }
-
-    if ((time_t)remaining->redhat > time_sleep) {
-        remaining->redhat -= time_sleep;
-    } else {
-        remaining->redhat = 0;
-    }
-
-    if ((time_t)remaining->ubuntu > time_sleep) {
-        remaining->ubuntu -= time_sleep;
-    } else {
-        remaining->ubuntu = 0;
-    }
-}
-
 void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerability_detector) {
-    time_t time_start;
-    time_t time_sleep = 0;
-    time_intervals *remaining = &vulnerability_detector->remaining_intervals;
-    time_intervals *intervals = &vulnerability_detector->intervals;
+    unsigned long time_sleep = 0;
     wm_vulnerability_detector_flags *flags = &vulnerability_detector->flags;
+    update_node **updates = vulnerability_detector->updates;
     int i;
 
     if (!flags->enabled) {
@@ -1869,13 +1843,19 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
     }
 
     if (flags->run_on_start) {
-        remaining->detect = 0;
-        remaining->ubuntu = 0;
-        remaining->redhat = 0;
+        vulnerability_detector->last_detection = 0;
+        for (i = 0; i < OS_SUPP_SIZE; i++) {
+            if (updates[i]) {
+                updates[i]->last_update = 0;
+            }
+        }
     } else {
-        remaining->detect = intervals->detect;
-        remaining->ubuntu = intervals->ubuntu;
-        remaining->redhat = intervals->redhat;
+        vulnerability_detector->last_detection = time(NULL);
+        for (i = 0; i < OS_SUPP_SIZE; i++) {
+            if (updates[i]) {
+                updates[i]->last_update = time(NULL);
+            }
+        }
     }
 
     if (vulnerability_detector->agents_trig = OSHash_Create(), !vulnerability_detector->agents_trig) {
@@ -1886,18 +1866,17 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
     while (1) {
         // Update CVE databases
         if (flags->u_flags.update &&
-            wm_vulnerability_detector_updatedb(&flags->u_flags, intervals, remaining)) {
+            wm_vulnerability_detector_updatedb(vulnerability_detector->updates)) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_OVAL_UPDATE_ERROR);
         }
 
-        if (!remaining->detect) {
-            time_start = time(NULL);
+        if ((vulnerability_detector->last_detection + (time_t) vulnerability_detector->detection_interval) < time(NULL)) {
             mtinfo(WM_VULNDETECTOR_LOGTAG, VU_START_SCAN);
 
             if (wm_vunlnerability_detector_set_agents_info(&vulnerability_detector->agents_software)) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_ERROR);
             } else {
-                if (wm_vulnerability_detector_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_trig, intervals->ignore)) {
+                if (wm_vulnerability_detector_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_trig, vulnerability_detector->ignore_time)) {
                     mterror(WM_VULNDETECTOR_LOGTAG, VU_AG_CHECK_ERR);
                 } else {
                     mtinfo(WM_VULNDETECTOR_LOGTAG, VU_END_SCAN);
@@ -1920,26 +1899,19 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
                 vulnerability_detector->agents_software = NULL;
             }
 
-            wm_vulnerability_update_intervals(&vulnerability_detector->remaining_intervals, time(NULL) - time_start);
-            remaining->detect = intervals->detect;
+            vulnerability_detector->last_detection = time(NULL);
         }
 
-        time_start = time(NULL);
-        if (wm_state_io(WM_VULNDETECTOR_CONTEXT.name, WM_IO_WRITE, &vulnerability_detector->state, sizeof(vulnerability_detector->state)) < 0)
-            mterror(WM_VULNDETECTOR_LOGTAG, "Couldn't save running state.");
-        wm_vulnerability_update_intervals(&vulnerability_detector->remaining_intervals, time(NULL) - time_start);
-
-        time_start = time(NULL);
-        time_sleep = remaining->detect;
-        if (flags->u_flags.update_ubuntu && time_sleep > (time_t)remaining->ubuntu) {
-            time_sleep = remaining->ubuntu;
-        }
-        if (flags->u_flags.update_redhat && time_sleep > (time_t)remaining->redhat) {
-            time_sleep = remaining->redhat;
+        time_t t_now = time(NULL);
+        time_sleep = (vulnerability_detector->last_detection + vulnerability_detector->detection_interval) - t_now;
+        for (i = 0; i < OS_SUPP_SIZE; i++) {
+            unsigned long t_diff = (updates[i]->last_update + updates[i]->interval) - t_now;
+            if (t_diff < time_sleep) {
+                time_sleep = t_diff;
+            }
         }
 
         sleep(time_sleep);
-        wm_vulnerability_update_intervals(&vulnerability_detector->remaining_intervals, time(NULL) - time_start);
     }
 
 }
@@ -2046,7 +2018,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                 if (buffer = strchr(buffer, '['), buffer) {
                     buffer++;
                     *strchr(agent_info, ']') = '\0';
-                    if (strcasestr(buffer, VU_UBUNTU)) {
+                    if (strcasestr(buffer, vu_dist[DIS_UBUNTU])) {
                         if (strstr(buffer, " 16")) {
                             os_strdup(VU_XENIAL, agents->OS);
                         } else if (strstr(buffer, " 14")) {
@@ -2054,14 +2026,14 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                         } else if (strstr(buffer, " 12")) {
                             os_strdup(VU_PRECISE, agents->OS);
                         } else {
-                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_UBUNTU, agents->agent_name);
+                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist[DIS_UBUNTU], agents->agent_name);
                             if (agents = skip_agent(agents, agents_software), !agents) {
                                 break;
                             } else {
                                 continue;
                             }
                         }
-                    } else if (strcasestr(buffer, VU_RHEL)) {
+                    } else if (strcasestr(buffer, vu_dist[DIS_REDHAT])) {
                         if (strstr(buffer, " 7")) {
                             os_strdup(VU_RHEL7, agents->OS);
                         } else if (strstr(buffer, " 6")) {
@@ -2069,7 +2041,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                         } else if (strstr(VU_RHEL5, " 5")) {
                             os_strdup(VU_RHEL5, agents->OS);
                         } else {
-                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_RHEL, agents->agent_name);
+                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist[DIS_REDHAT], agents->agent_name);
                             if (agents = skip_agent(agents, agents_software), !agents) {
                                 break;
                             } else {
