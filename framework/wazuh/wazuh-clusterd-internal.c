@@ -626,7 +626,7 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
                 unsigned int j;
                 for (j = 0; j < found_subdirs; j++) {
                     strncpy(files[n_files_to_watch].path, subdirs[j], PATH_MAX);
-                    strncpy(files[n_files_to_watch].name, strstr(subdirs[j], files[n_files_to_watch].path), PATH_MAX);
+                    strncpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string), PATH_MAX);
                     files[n_files_to_watch].path[PATH_MAX] = files[n_files_to_watch].name[PATH_MAX] = '\0';
 
                     files[n_files_to_watch].flags = flags;
@@ -802,8 +802,8 @@ void* inotify_reader(void * args) {
                             continue;
                         }
 
-                        if (snprintf(cmd, sizeof(cmd), "updatefile %s %ld %s", md5_file, mod_time(files[j].path), files[j].path) >= (int)sizeof(cmd)) {
-                            mterror(INOTIFY_TAG, "String overflow sending file updates to database in file %s", files[j].path);
+                        if (snprintf(cmd, sizeof(cmd), "updatefile %s %ld %s%s", md5_file, mod_time(files[j].path), files[j].name, event->name) >= (int)sizeof(cmd)) {
+                            mterror(INOTIFY_TAG, "String overflow sending file updates to database in file %s%s", files[j].name, event->name);
                             ignore = true;
                             continue;
                         }
