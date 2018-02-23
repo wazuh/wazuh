@@ -25,7 +25,7 @@
 
 static void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerability_detector);
 static void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerability_detector);
-int wm_vulnerability_detector_socketconnect(char *host);
+int wm_vulnerability_detector_socketconnect(char *host, in_port_t port);
 int wm_vulnerability_detector_updatedb(update_node **updates);
 char * wm_vulnerability_detector_preparser(char *path, distribution dist);
 int wm_vulnerability_update_oval(char *path, cve_db version);
@@ -783,12 +783,6 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
         } else if (dist == DIS_REDHAT) { //5.10
             switch (state) {
                 case V_OVALDEFINITIONS:
-                    if (found = strstr(buffer, "200 OK"), found) {
-                        state = V_HEADER;
-                        goto free_buffer;
-                    }
-                break;
-                case V_HEADER:
                     if (found = strstr(buffer, "?>"), found) {
                         state = V_STATES;
                     }
@@ -1291,24 +1285,13 @@ free_mem:
     }
 }
 
-int wm_vulnerability_detector_socketconnect(char *url) {
+int wm_vulnerability_detector_socketconnect(char *url, in_port_t port) {
 	struct sockaddr_in addr, *addr_it;
 	int on = 1, sock;
-    char host[OS_SIZE_256];
-    in_port_t port;
     struct addrinfo hints, *host_info, *hinfo_it;
     char ip_addr[30];
 
-    if (url = strstr(url, "https://"), !url) {
-        return OS_INVALID;
-    }
-
-    snprintf(host, OS_SIZE_256, "%s", url + 8);
-
-    if(url = strchr(host, ':'), url) {
-        port = strtol(++url, NULL, 10);
-        *(--url) = '\0';
-    } else {
+    if(!port) {
         port = DEFAULT_OVAL_PORT;
     }
 
@@ -1316,7 +1299,7 @@ int wm_vulnerability_detector_socketconnect(char *url) {
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
-	if (getaddrinfo(host, "http" , &hints , &host_info)) {
+	if (getaddrinfo(url, "http" , &hints , &host_info)) {
         return OS_INVALID;
 	}
 
@@ -1340,7 +1323,7 @@ int wm_vulnerability_detector_socketconnect(char *url) {
 	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&on, sizeof(int));
 
 	if(sock < 0 || connect(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
-        mterror(WM_VULNDETECTOR_LOGTAG, "Cannot connect to %s:%i.", host, (int)port);
+        mterror(WM_VULNDETECTOR_LOGTAG, "Cannot connect to %s:%i.", url, (int)port);
         return OS_INVALID;
 	}
 
@@ -1351,16 +1334,20 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
     int sock = 0;
     SSL_CTX *ctx = NULL;
     SSL *ssl = NULL;
+    char *found;
+    char *timst;
     int size;
     unsigned int readed;
     unsigned int oval_size;
     char buffer[VU_SSL_BUFFER];
-    char *repo;
+    char repo_file[OS_SIZE_2048];
+    char repo[OS_SIZE_2048];
     FILE *fp = NULL;
     char timestamp_found = 0;
     int attemps = 0;
     *need_update = 1;
     unsigned char success = 1;
+    in_port_t port = update->port;
 
     if (update->path) {
         mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_LOCAL_FETCH, update->path);
@@ -1375,23 +1362,38 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
             for(i = 0; low_repo[i] != '\0'; i++) {
                 low_repo[i] = tolower(low_repo[i]);
             }
-            snprintf(buffer, VU_SSL_BUFFER, UBUNTU_OVAL, low_repo);
-            os_strdup(CANONICAL_REPO, repo);
+            snprintf(repo_file, OS_SIZE_2048, UBUNTU_OVAL, low_repo);
+            snprintf(repo, OS_SIZE_2048, "%s", CANONICAL_REPO);
             free(low_repo);
         } else if (!strcmp(update->dist, vu_dist[DIS_REDHAT])) {
-            snprintf(buffer, VU_SSL_BUFFER, REDHAT_OVAL, update->version);
-            os_strdup(REDHAT_REPO, repo);
+            snprintf(repo_file, OS_SIZE_2048, REDHAT_OVAL, update->version);
+            snprintf(repo, OS_SIZE_2048, "%s", REDHAT_REPO);
         } else {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
             return OS_INVALID;
         }
     } else {
+        int offset = 0;
+        char *limit;
+        if (!strncasecmp(update->url, HTTPS_HEADER, strlen(HTTPS_HEADER))) {
+            offset = strlen(HTTPS_HEADER);
+        } else if (!strncasecmp(update->url, HTTP_HEADER, strlen(HTTP_HEADER))) {
+            offset = strlen(HTTP_HEADER);
+        }
 
+        snprintf(repo, OS_SIZE_2048, "%s", update->url + offset);
+        if (limit = strchr(repo, '/'), repo) {
+            snprintf(repo_file, OS_SIZE_2048, "%s", limit);
+            *limit = '\0';
+        } else {
+            snprintf(repo_file, OS_SIZE_2048, "/");
+        }
     }
 
+    snprintf(buffer, VU_SSL_BUFFER, OVAL_REQUEST, repo_file, repo);
     mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_DOWNLOAD, OS);
 
-    if (sock = wm_vulnerability_detector_socketconnect(repo), sock < 0) {
+    if (sock = wm_vulnerability_detector_socketconnect(repo, port), sock < 0) {
         sock = 0;
         success = 0;
         goto free_mem;
@@ -1438,31 +1440,26 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
 
     oval_size = wm_read_http_header(buffer);
 
-    while (!readed || (oval_size != readed && (size = SSL_read(ssl, buffer, ((oval_size - readed) > VU_SSL_BUFFER)? VU_SSL_BUFFER : (oval_size - readed)))) > 0) {
-        buffer[size] = '\0';
-        if (!readed) {
-            char *found;
-            if(!(found = strstr(buffer, "<?xml version=")) && !(found = strstr(buffer, "<oval_definitions"))) {
-                success = 0;
-                goto free_mem;
-            }
-            readed = strlen(found);
-            fwrite(buffer, 1, size, fp);
-            memset(buffer,0,sizeof(buffer));
-            continue;
-        }
+    if((found = strstr(buffer, "<?xml version=")) || (found = strstr(buffer, "<oval_definitions"))) {
+        // If the first request includes content in addition to headers
+        readed = strlen(found);
+        fwrite(found, 1, readed, fp);
+        timestamp_found = 1;
+        goto check_timestamp;
+    }
 
+    while (oval_size != readed && (size = SSL_read(ssl, buffer, ((oval_size - readed) > VU_SSL_BUFFER)? VU_SSL_BUFFER : (oval_size - readed))) > 0) {
+        buffer[size] = '\0';
         readed += size;
 
         if (!timestamp_found) {
-            char *timst;
+check_timestamp:
             if (timst = strstr(buffer, "timestamp>"), timst) {
                 int update = 1;
                 char stored_timestamp[KEY_SIZE];
                 int i;
                 sqlite3_stmt *stmt = NULL;
                 sqlite3 *db;
-                timestamp_found = 1;
 
                 if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
                     update = 0;
@@ -1521,6 +1518,11 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
                 close(sock);
                 success = 0;
                 goto free_mem;
+            }
+            if (!timestamp_found) {
+                timestamp_found = 1;
+            } else {
+                continue;
             }
         }
         fwrite(buffer, 1, size, fp);

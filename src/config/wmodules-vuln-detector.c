@@ -22,6 +22,7 @@ static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_IGNORE_TIME = "ignore_time";
 static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
+static const char *XML_PORT = "port";
 
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list) {
     agent_software *next = NULL;
@@ -181,6 +182,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
             }
             upd->url = NULL;
             upd->path = NULL;
+            upd->port = 0;
 
             for (j = 0; chld_node[j]; j++) {
                 if (!strcmp(chld_node[j]->element, XML_DISABLED)) {
@@ -213,6 +215,9 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     }
                 } else if (!strcmp(chld_node[j]->element, XML_URL)) {
                     os_strdup(chld_node[j]->content, upd->url);
+                    if (*chld_node[j]->attributes && !strcmp(*chld_node[j]->attributes, XML_PORT)) {
+                        upd->port = strtol(*chld_node[j]->values, NULL, 10);
+                    }
                 } else if (!strcmp(chld_node[j]->element, XML_PATH)) {
                     os_strdup(chld_node[j]->content, upd->path);
                 } else {

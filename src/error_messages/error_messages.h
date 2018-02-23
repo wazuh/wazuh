@@ -284,7 +284,7 @@
 #define VU_SQL_ERROR                "(5405): SQL error: %s"
 #define VU_CHECK_DB_ERROR           "(5406): Database check failed."
 #define VU_QUERY_ERROR              "(5407): The query could not be formed."
-#define VU_OS_VERSION_ERROR         "(5408): Invalid SO version."
+#define VU_OS_VERSION_ERROR         "(5408): Invalid OS version."
 #define VU_REFRESH_DB_ERROR         "(5409): Could not refresh the %s DB."
 #define VU_GET_SOFTWARE_ERROR       "(5410): Agent software could not be obtained."
 #define VU_AG_CHECK_ERR             "(5411): Agent vulnerabilities could not be checked."

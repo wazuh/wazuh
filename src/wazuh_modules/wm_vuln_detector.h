@@ -18,11 +18,18 @@
 #define VU_DEF_IGNORE_TIME 21600 // 6H
 #define CVE_TEMP_FILE TMP_PATH "/cve"
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
-#define CANONICAL_REPO "https://people.canonical.com"
-#define REDHAT_REPO "https://www.redhat.com"
-#define GET_COMMAND "GET "
-#define UBUNTU_OVAL GET_COMMAND "/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml\r\n\r\n"
-#define REDHAT_OVAL GET_COMMAND REDHAT_REPO "/security/data/oval/Red_Hat_Enterprise_Linux_%s.xml HTTP/1.1\r\n\r\n"
+#define HTTP_HEADER "http://"
+#define HTTPS_HEADER "https://"
+#define CANONICAL_REPO "people.canonical.com"
+#define REDHAT_REPO "www.redhat.com"
+#define UBUNTU_OVAL "/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml"
+#define REDHAT_OVAL "/security/data/oval/Red_Hat_Enterprise_Linux_%s.xml"
+#define OVAL_REQUEST "GET %s HTTP/1.1\r\n" \
+                     "User-Agent: Wazuh\r\n" \
+                     "Accept: */*\r\n" \
+                     "Accept-Encoding: identity\r\n" \
+                     "Host: %s\r\n" \
+                     "Connection: Keep-Alive\r\n\r\n"
 #define JSON_FILE_TEST "/tmp/package_test.json"
 #define DEFAULT_OVAL_PORT 443
 #define KEY_SIZE OS_SIZE_6144
@@ -109,6 +116,7 @@ typedef struct update_node {
     time_t last_update;
     unsigned long interval;
     char *url;
+    in_port_t port;
     char *path;
 } update_node;
 
