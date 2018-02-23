@@ -489,13 +489,13 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
         wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
     }
 
-    sqlite3_close(db);
+    sqlite3_close_v2(db);
     return 0;
 }
 
 int wm_vulnerability_detector_sql_error(sqlite3 *db) {
     mterror(WM_VULNDETECTOR_LOGTAG, VU_SQL_ERROR, sqlite3_errmsg(db));
-    sqlite3_close(db);
+    sqlite3_close_v2(db);
     return OS_INVALID;
 }
 
@@ -711,8 +711,10 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
     free(met_it->schema_version);
     free(met_it->timestamp);
 
-    sqlite3_exec(db, END_T, NULL, NULL, NULL);
+    free(parsed_oval->OS);
 
+    sqlite3_exec(db, END_T, NULL, NULL, NULL);
+    sqlite3_close_v2(db);
     return 0;
 }
 
@@ -865,7 +867,9 @@ free_mem:
 
 int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerability_detector_db *parsed_oval, parser_state version, cve_db dist) {
     int i, j;
+    int retval = OS_INVALID;
     char *found;
+    XML_NODE chld_node;
     static const char *XML_OVAL_DEFINITIONS = "oval_definitions";
     static const char *XML_GENERATOR = "generator";
     static const char *XML_DEFINITIONS = "definitions";
@@ -913,7 +917,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     static const char *XML_RHEL_CHECK = "Red Hat Enterprise Linux ";
 
     for (i = 0; node[i]; i++) {
-        XML_NODE chld_node = NULL;
+        chld_node = NULL;
         if (!node[i]->element) {
             mterror(WM_VULNDETECTOR_LOGTAG, XML_ELEMNULL);
             return OS_INVALID;
@@ -933,7 +937,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     infos->prev = parsed_oval->info_states;
                     parsed_oval->info_states = infos;
                     if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist)) {
-                      return OS_INVALID;
+                      goto end;
                     }
                 }
             }
@@ -954,7 +958,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                 }
             }
             if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist)) {
-              return OS_INVALID;
+              goto end;
           }
         } else if ((dist == UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
                    (dist == REDHAT && (!strcmp(node[i]->element, XML_RPM_DEF_EVR)   ||
@@ -1001,7 +1005,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         parsed_oval->vulnerabilities = vuln;
                         parsed_oval->info_cves = cves;
                         if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist)) {
-                          return OS_INVALID;
+                          goto end;
                         }
                     }
                 }
@@ -1011,7 +1015,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                 goto invalid_elem;
             }
             if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist)) {
-              return OS_INVALID;
+              goto end;
             }
         } else if (!strcmp(node[i]->element, XML_REFERENCE)) {
             for (j = 0; node[i]->attributes[j]; j++) {
@@ -1031,7 +1035,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     os_strdup(node[i]->content, parsed_oval->info_cves->cveid);
                 } else {
                     mterror(WM_VULNDETECTOR_LOGTAG, VU_CVE_ID_FETCH_ERROR, node[i]->content);
-                    return OS_INVALID;
+                    goto end;
                 }
         } else if (!strcmp(node[i]->element, XML_CRITERIA)) {
             if (!node[i]->attributes) {
@@ -1039,7 +1043,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     goto invalid_elem;
                 }
                 if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist)) {
-                  return OS_INVALID;
+                  goto end;
                 }
             } else {
                 for (j = 0; node[i]->attributes[j]; j++) {
@@ -1049,22 +1053,23 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                                 continue;
                             } else if (result = wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist), result == OS_INVALID) {
-                                return OS_INVALID;
+                                goto end;
                             } else if (result == VU_INV_OS) {
-                                return VU_INV_OS;
+                                retval = VU_INV_OS;
+                                goto end;
                             }
                         } else if (!strcmp(node[i]->values[j], XML_AND)) {
                             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                                 continue;
                             }
                             if (result = wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist), result == OS_INVALID) {
-                              return OS_INVALID;
+                              goto end;
                           } else if (result == VU_INV_OS) {
                               break;
                           }
                         } else {
                             mterror(WM_VULNDETECTOR_LOGTAG, VU_INVALID_OPERATOR, node[i]->values[j]);
-                            return OS_INVALID;
+                            goto end;
                         }
                     }
                 }
@@ -1104,7 +1109,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         if ((!strcmp(parsed_oval->OS, VU_RHEL5) && ver != 5) ||
                             (!strcmp(parsed_oval->OS, VU_RHEL6) && ver != 6) ||
                             (!strcmp(parsed_oval->OS, VU_RHEL7) && ver != 7)) {
-                            return VU_INV_OS;
+                            retval = VU_INV_OS;
+                            goto end;
                         } else {
                             break;
                         }
@@ -1131,7 +1137,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->package_name);
                     } else {
                         mterror(WM_VULNDETECTOR_LOGTAG, VU_PACKAGE_NAME_ERROR);
-                        return OS_INVALID;
+                        goto end;
                     }
                 }
             }
@@ -1190,13 +1196,19 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             } else if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, version, dist)) {
-              return OS_INVALID;
+              goto end;
             }
         }
-        free(chld_node);
+
+        OS_ClearNode(chld_node);
+        chld_node = NULL;
     }
 
-    return 0;
+    retval = 0;
+
+end:
+    OS_ClearNode(chld_node);
+    return retval;
 
 invalid_elem:
     mterror(WM_VULNDETECTOR_LOGTAG, XML_INVELEM, node[i]->element);
@@ -1205,12 +1217,15 @@ invalid_elem:
 
 int wm_vulnerability_update_oval(cve_db version) {
     OS_XML xml;
-    XML_NODE node, chld_node;
+    XML_NODE node = NULL;
+    XML_NODE chld_node = NULL;
     char *tmp_file = NULL;
     wm_vulnerability_detector_db parsed_oval;
     char *OS_VERSION = NULL;
     cve_db dist;
     char success = 0;
+
+    memset(&xml, 0, sizeof(xml));
 
     switch (version) {
         case PRECISE:
@@ -1288,12 +1303,12 @@ int wm_vulnerability_update_oval(cve_db version) {
 
 success = 1;
 free_mem:
-    if (OS_VERSION) {
-        free(OS_VERSION);
-    }
-    if (tmp_file) {
-        free(tmp_file);
-    }
+    free(OS_VERSION);
+    free(tmp_file);
+    OS_ClearNode(node);
+    OS_ClearNode(chld_node);
+    OS_ClearXML(&xml);
+
     if (success) {
         return 0;
     } else {
@@ -1452,6 +1467,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
         success = 0;
         goto free_mem;
     }
+
     memset(buffer,0,sizeof(buffer));
 
     if (size = SSL_read(ssl, buffer, WM_HEADER_SIZE), size < 1) {
@@ -1493,6 +1509,7 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
                     if (sqlite3_prepare_v2(db, TIMESTAMP_QUERY, -1, &stmt, NULL) != SQLITE_OK) {
                         success = 0;
                         sqlite3_finalize(stmt);
+                        sqlite3_close_v2(db);
                         goto free_mem;
                     }
                     sqlite3_bind_text(stmt, 1, OS, -1, NULL);
@@ -1528,8 +1545,9 @@ int wm_vulnerability_fetch_oval(cve_db version, int *need_update) {
                         mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_DB_TIMESTAMP_OVAL, OS);
                     }
                     sqlite3_finalize(stmt);
-                    sqlite3_close(db);
                 }
+
+                sqlite3_close_v2(db);
 
                 if (update) {
                     mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_DATE, OS, stored_timestamp);
@@ -1962,13 +1980,17 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
 
     // Extracts the operating system of the agents
     for (agents = *agents_software; agents;) {
+        if (fp) {
+            fclose(fp);
+            fp = NULL;
+        }
+
         if (strcmp(agents->agent_id, "000")) {
             manager_found = 0;
             size = snprintf(agent_info, OS_MAXSTR, AGENT_INFO_FILEF, agents->agent_name, agents->agent_ip);
             agent_info[size] = '\0';
         } else {
             manager_found = 1;
-            fp = NULL;
         }
         // The agent has never been connected
         if (!manager_found && !(fp = fopen(agent_info, "r" ))) {
@@ -2074,10 +2096,6 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
             }
             agents = agents->next;
         }
-        if (fp) {
-            fclose(fp);
-        }
-        fp = NULL;
     }
 
     if (fp) {
