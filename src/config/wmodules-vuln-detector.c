@@ -23,6 +23,9 @@ static const char *XML_IGNORE_TIME = "ignore_time";
 static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
+// Deprecated
+static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
+static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
 
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list) {
     agent_software *next = NULL;
@@ -239,6 +242,9 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                 merror("Invalid ignore_time at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
+        } else if (!strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL) || !strcmp(nodes[i]->element, XML_UPDATE_REDHAT_OVAL)) {
+            merror("'%s' option at module '%s' is deprecated. Use '%s' instead.", nodes[i]->element, WM_VULNDETECTOR_CONTEXT.name, XML_FEED);
+            return OS_INVALID;
         } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_VULNDETECTOR_CONTEXT.name);
             return OS_INVALID;
