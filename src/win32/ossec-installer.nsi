@@ -33,7 +33,7 @@
 Var is_upgrade
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2017 Wazuh Inc."
+BrandingText "Copyright (C) 2018 Wazuh Inc."
 OutFile "${OutFile}"
 
 VIProductVersion "3.2.0.0"
