@@ -102,7 +102,7 @@ SSL_CTX *get_ssl_context(const char *ciphers, int auto_method)
 
     /* Create our context */
 
-    if (!(ctx = auto_method ? SSL_CTX_new(SSLv23_method()) : SSL_CTX_new(TLSv1_2_method()))) {
+    if (!(ctx = auto_method ? SSL_CTX_new(SSLv23_method()) : SSL_CTX_new(TLS_method()))) {
         goto CONTEXT_ERR;
     }
 
