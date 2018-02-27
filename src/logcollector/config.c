@@ -70,10 +70,29 @@ int LogCollectorConfig(const char *cfgfile)
                     merror_exit("Socket '%s' for '%s' is not defined.", logff[i].target[j], logff[i].file);
                 } else {
                     logff[i].target_socket[j] = &logsk[k];
+                    mdebug1("Socket '%s' (%s) added. Location: %s", logsk[k].name, logsk[k].mode == UDP_PROTO ? "udp" : "tcp", logsk[k].location);
                 }
             }
         }
     }
+
+    /* Remove duplicate entries */
+    int i, r, count_localfiles = 0;
+    for (i = 0;; i++) {
+        if (logff[i].file == NULL) {
+            break;
+        }
+        for (r = 0; r < i; r++) {
+            if (logff[r].file && strcmp(logff[i].file, logff[r].file) == 0) {
+                mwarn("Duplicated log file given: '%s'.", logff[i].file);
+                logff[r].duplicated = 1;
+                count_localfiles--;
+                break;
+            }
+        }
+        count_localfiles++;
+    }
+    mdebug1("Added %i valid 'localfile' entries.", count_localfiles);
 
     return (1);
 }

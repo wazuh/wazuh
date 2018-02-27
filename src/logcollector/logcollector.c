@@ -73,35 +73,6 @@ void LogCollectorStart()
 
     mdebug1("Entering LogCollectorStart().");
 
-    unsigned int sk;
-    for (sk=0; logsk[sk].name; sk++) {
-        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == UDP_PROTO ? "udp" : "tcp", logsk[sk].location);
-    }
-
-    /* Remove duplicate entries */
-    int count_localfiles = 0;
-    for (i = 0;; i++) {
-        if (logff[i].file == NULL) {
-            break;
-        }
-        for (r = 0; r < i; r++) {
-            if (logff[r].file && strcmp(logff[i].file, logff[r].file) == 0) {
-                mwarn("Duplicated log file given: '%s'.", logff[i].file);
-                logff[r].duplicated = 1;
-                count_localfiles--;
-                // logff[r] = logff[i];
-                // logff[r].file = NULL;
-                // logff[r].command = NULL;
-                // logff[r].fp = NULL;
-                // logff[r].target = NULL;
-
-                break;
-            }
-        }
-        count_localfiles++;
-    }
-    mdebug1("Added %i valid 'localfile' entries.", count_localfiles);
-
     /* Initialize each file and structure */
     for (i = 0;; i++) {
         if (logff[i].duplicated) {
