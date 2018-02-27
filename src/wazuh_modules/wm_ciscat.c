@@ -54,6 +54,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     time_t time_sleep = 0;
     char *cis_path = NULL;
     char *jre_path = NULL;
+    char bench_fullpath[OS_MAXSTR];
 
     // Check configuration and show debug information
 
@@ -131,9 +132,24 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
             for (eval = ciscat->evals; eval; eval = eval->next) {
                 if (!eval->flags.error) {
-                    if (IsFile(eval->path) < 0) {
-                        mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
+                #ifdef WIN32
+                    if (((eval->path[0] >= 'a' && eval->path[0] <= 'z') || (eval->path[0] >= 'A' && eval->path[0] <= 'Z')) && eval->path[1] == ':') {
+                #else
+                    if (eval->path[0] == '/') {     // Full path
+                #endif
+                        snprintf(bench_fullpath, OS_MAXSTR - 1, "%s", eval->path);
+                    } else {    // Relative path
+                    #ifdef WIN32
+                        snprintf(bench_fullpath, OS_MAXSTR - 1, "%s\\%s", ciscat->ciscat_path, eval->path);
+                    #else
+                        snprintf(bench_fullpath, OS_MAXSTR - 1, "%s/%s", ciscat->ciscat_path, eval->path);
+                    #endif
+                    }
+
+                    if (IsFile(bench_fullpath) < 0) {
+                        mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", bench_fullpath);
                     } else {
+                        os_strdup(bench_fullpath, eval->path);
                         wm_ciscat_run(eval, cis_path);
                         ciscat->flags.error = 0;
                     }
