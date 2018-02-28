@@ -39,7 +39,7 @@
 #define VU_PRECISE    "PRECISE"
 #define VU_TRUSTY     "TRUSTY"
 #define VU_XENIAL     "XENIAL"
-#define VU_RHEL       "REDHAT"
+#define VU_RHEL       "RED HAT"
 #define VU_CENTOS     "CENTOS"
 #define VU_RHEL5      "RHEL5"
 #define VU_RHEL6      "RHEL6"
