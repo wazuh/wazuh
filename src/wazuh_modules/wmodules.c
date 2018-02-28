@@ -268,3 +268,33 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
 
     return 0;
 }
+
+// Check if a path is relative or absolute.
+// Returns 0 if absolute, 1 if relative or -1 on error.
+int wm_relative_path(const char * path) {
+
+    if (!path || path[0] == '\0') {
+        merror("At wm_relative_path(): Null path.");
+        return -1;
+    }
+
+#ifdef WIN32
+    if (((path[0] >= 'a' && path[0] <= 'z') || (path[0] >= 'A' && path[0] <= 'Z')) && path[1] == ':') {
+        // Is a full path
+        return 0;
+    } else if ((path[0] == '\\' && path[1] == '\\')) {
+        // Is a network resource
+        return 0;
+    } else {
+        // Relative path
+        return 1;
+    }
+#else
+    if (path[0] != '/') {
+        // Relative path
+        return 1;
+    }
+#endif
+
+    return 0;
+}
