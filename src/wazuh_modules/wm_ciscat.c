@@ -226,7 +226,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     os_calloc(OS_MAXSTR, sizeof(char), ciscat_script);
 
-    snprintf(ciscat_script, OS_MAXSTR - 1, "%s\\CIS-CAT.BAT", path);
+    snprintf(ciscat_script, OS_MAXSTR - 1, "\"%s\\CIS-CAT.BAT\"", path);
 
     // Create arguments
 
