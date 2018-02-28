@@ -34,6 +34,7 @@ class WazuhException(Exception):
         1103: 'Invalid field in section',
         1104: 'Invalid type',
         1105: 'Error reading API configuration',
+        1106: 'Requested section not present in configuration',
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',

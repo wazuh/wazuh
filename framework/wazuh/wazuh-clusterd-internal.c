@@ -406,6 +406,7 @@ void* daemon_socket() {
                     }
 
                     do {
+                        char local_response1[RESPONSE_SIZE], local_response2[RESPONSE_SIZE];
                         step = sqlite3_step(res);
                         if (step == SQLITE_DONE && !count && !select && !select_files && !response_str) {
                             strcpy(response, "Command OK");
@@ -414,19 +415,30 @@ void* daemon_socket() {
                         else if (step != SQLITE_ROW && step != SQLITE_OK) break;
 
                         if (select) {
-                            strcat(response, (char *)sqlite3_column_text(res, 1));
-                            strcat(response, "*");
-                            strcat(response, (char *)sqlite3_column_text(res, 2));
-                            strcat(response, " ");
+                            if (snprintf(local_response1, RESPONSE_SIZE, "%s*%s ", (char *)sqlite3_column_text(res, 1), (char *)sqlite3_column_text(res, 2)) >= RESPONSE_SIZE)
+                                mterror(DB_TAG, "Overflow error copying response in memory");
+
+                            if (snprintf(local_response2, RESPONSE_SIZE, "%s", response) >= RESPONSE_SIZE)
+                                mterror(DB_TAG, "Overflow error copying response in local memory");
+
+                            if (snprintf(response, RESPONSE_SIZE, "%s%s", local_response2, local_response1) >= RESPONSE_SIZE)
+                                mterror(DB_TAG, "Overflow error copying response in local memory");
                         } else if (count) {
                             if (snprintf(response, RESPONSE_SIZE, "%d", sqlite3_column_int(res, 0)) >= RESPONSE_SIZE)
-                                mterror(INOTIFY_TAG, "Overflow error copying response in memory");
+                                mterror(DB_TAG, "Overflow error copying response in memory");
                         } else if (select_files) {
-                            if (snprintf(response, RESPONSE_SIZE, "%s*%s*%d ", (char *)sqlite3_column_text(res, 0), (char *)sqlite3_column_text(res, 1), sqlite3_column_int(res, 2)) >= RESPONSE_SIZE)
-                                mterror(INOTIFY_TAG, "Overflow error copying response in memory");
+                            if (snprintf(local_response1, RESPONSE_SIZE, "%s*%s*%d ", (char *)sqlite3_column_text(res, 0), (char *)sqlite3_column_text(res, 1), sqlite3_column_int(res, 2)) >= RESPONSE_SIZE)
+                                mterror(DB_TAG, "Overflow error copying local response in memory");
+
+                            if (snprintf(local_response2, RESPONSE_SIZE, "%s", response) >= RESPONSE_SIZE)
+                                mterror(DB_TAG, "Overflow error copying response in local memory");
+
+                            if (snprintf(response, RESPONSE_SIZE, "%s%s", local_response2, local_response1) >= RESPONSE_SIZE)
+                                mterror(DB_TAG, "Overflow error copying response in local memory");
+                            
                         } else if (response_str) {
                             if (snprintf(response, RESPONSE_SIZE, "%s", (char *)sqlite3_column_text(res,0)) >= RESPONSE_SIZE)
-                                mterror(INOTIFY_TAG, "Overflow error copying response in memory");
+                                mterror(DB_TAG, "Overflow error copying response in memory");
                         } else
                             strcpy(response, "Command OK");
                     } while (step == SQLITE_ROW || step == SQLITE_OK);
@@ -614,7 +626,7 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
                 unsigned int j;
                 for (j = 0; j < found_subdirs; j++) {
                     strncpy(files[n_files_to_watch].path, subdirs[j], PATH_MAX);
-                    strncpy(files[n_files_to_watch].name, strstr(subdirs[j], files[n_files_to_watch].path), PATH_MAX);
+                    strncpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string), PATH_MAX);
                     files[n_files_to_watch].path[PATH_MAX] = files[n_files_to_watch].name[PATH_MAX] = '\0';
 
                     files[n_files_to_watch].flags = flags;
@@ -790,8 +802,8 @@ void* inotify_reader(void * args) {
                             continue;
                         }
 
-                        if (snprintf(cmd, sizeof(cmd), "updatefile %s %ld %s", md5_file, mod_time(files[j].path), files[j].path) >= (int)sizeof(cmd)) {
-                            mterror(INOTIFY_TAG, "String overflow sending file updates to database in file %s", files[j].path);
+                        if (snprintf(cmd, sizeof(cmd), "updatefile %s %ld %s%s", md5_file, mod_time(files[j].path), files[j].name, event->name) >= (int)sizeof(cmd)) {
+                            mterror(INOTIFY_TAG, "String overflow sending file updates to database in file %s%s", files[j].name, event->name);
                             ignore = true;
                             continue;
                         }

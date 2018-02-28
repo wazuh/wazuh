@@ -226,7 +226,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     os_calloc(OS_MAXSTR, sizeof(char), ciscat_script);
 
-    snprintf(ciscat_script, OS_MAXSTR - 1, "%s\\CIS-CAT.BAT", path);
+    snprintf(ciscat_script, OS_MAXSTR - 1, "\"%s\\CIS-CAT.BAT\"", path);
 
     // Create arguments
 
@@ -1161,6 +1161,7 @@ wm_rule_data* read_rule_info(XML_NODE node, wm_rule_data *rule, char *group) {
 void wm_ciscat_send_scan(wm_scan_data *info){
 
     wm_rule_data *rule;
+    wm_rule_data *next_rule;
     cJSON *object = NULL;
     cJSON *data = NULL;
 
@@ -1220,6 +1221,10 @@ void wm_ciscat_send_scan(wm_scan_data *info){
     cJSON_Delete(object);
 
     free(msg);
+    free(info->benchmark);
+    free(info->hostname);
+    free(info->timestamp);
+    free(info->score);
     free(info);
 
     // Send scan results
@@ -1256,6 +1261,20 @@ void wm_ciscat_send_scan(wm_scan_data *info){
         cJSON_Delete(object);
 
         free(msg);
+    }
+
+    for (rule = head; rule; rule = next_rule) {
+
+        next_rule = rule->next;
+        free(rule->id);
+        free(rule->title);
+        free(rule->group);
+        free(rule->description);
+        free(rule->rationale);
+        free(rule->remediation);
+        free(rule->result);
+        free(rule);
+
     }
 }
 

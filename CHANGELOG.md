@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Giving preference to use the selected Java over the default one in CIS-CAT wodle.
 - Added delay between message delivery for every module. ([#389](https://github.com/wazuh/wazuh/pull/389))
 - Verify all modules for the shared configuration. ([#408](https://github.com/wazuh/wazuh/pull/408))
+- Updated OpenSSL library to 1.1.0g.
 
 ### Fixed
 

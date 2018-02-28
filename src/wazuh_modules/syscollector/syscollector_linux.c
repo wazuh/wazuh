@@ -416,6 +416,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     time_t now;
     struct tm localtm;
     int status;
+    int rpm = 0;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -439,12 +440,14 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
     /* Check if the distribution has rpm or deb packages */
 
     if ((dir = opendir("/var/lib/rpm/"))){
+        rpm = 1;
         os_calloc(FORMAT_LENGTH, sizeof(char), format);
         snprintf(format, FORMAT_LENGTH -1, "%s", "rpm");
         os_calloc(OS_MAXSTR + 1, sizeof(char), command);
         snprintf(command, OS_MAXSTR, "%s", "rpm -qa --queryformat '%{NAME}|%{VENDOR}|%{EPOCH}:%{VERSION}-%{RELEASE}|%{ARCH}|%{SUMMARY}\n'");
         closedir(dir);
     } else if ((dir = opendir("/var/lib/dpkg/"))){
+        rpm = 0;
         os_calloc(FORMAT_LENGTH, sizeof(char), format);
         snprintf(format, FORMAT_LENGTH -1, "%s", "deb");
         os_calloc(OS_MAXSTR + 1, sizeof(char), command);
@@ -514,8 +517,11 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             free(string);
         }
 
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'dpkg-query' returned %d to get software inventory", status);
+        if ((status = pclose(output)) < 0) {
+            if (rpm)
+                mtwarn(WM_SYS_LOGTAG, "Command 'rpm' returned %d to get software inventory due to '%s'.", status, strerror(errno));
+            else
+                mtwarn(WM_SYS_LOGTAG, "Command 'dpkg-query' returned %d to get software inventory due to '%s'.", status, strerror(errno));
         }
     }else{
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
