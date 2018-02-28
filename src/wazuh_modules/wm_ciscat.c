@@ -54,6 +54,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     time_t time_sleep = 0;
     char *cis_path = NULL;
     char *jre_path = NULL;
+    char java_fullpath[OS_MAXSTR];
     char bench_fullpath[OS_MAXSTR];
 
     // Check configuration and show debug information
@@ -61,11 +62,40 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     wm_ciscat_setup(ciscat);
     mtinfo(WM_CISCAT_LOGTAG, "Module started.");
 
+#ifdef WIN32
+    char* current;
+    os_calloc(OS_MAXSTR, sizeof(char), current);
+    if (!GetCurrentDirectory(OS_MAXSTR - 1, current)) {
+        mterror(WM_CISCAT_LOGTAG, "Unable to find current directory. Please use full paths for CIS-CAT configuration.");
+        ciscat->flags.error = 1;
+    }
+#endif
+
     os_calloc(OS_MAXSTR, sizeof(char), cis_path);
 
     // Check if Java path is defined and include it in "PATH" variable
 
     if (ciscat->java_path){
+
+        // Check if the defined path is relative or not
+        switch (wm_relative_path(ciscat->java_path)) {
+            case 0:
+                // Full path
+                snprintf(java_fullpath, OS_MAXSTR - 1, "%s", ciscat->java_path);
+                break;
+            case 1:
+            #ifdef WIN32
+                if (current)
+                    snprintf(java_fullpath, OS_MAXSTR - 1, "%s\\%s", current, ciscat->java_path);
+            #else
+                snprintf(java_fullpath, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR, ciscat->java_path);
+            #endif
+                break;
+            default:
+                mterror(WM_CISCAT_LOGTAG, "Defined Java path is not valid.");
+                ciscat->flags.error = 1;
+        }
+        os_strdup(java_fullpath, ciscat->java_path);
         os_calloc(OS_MAXSTR, sizeof(char), jre_path);
 
         char *env_var = getenv("PATH");
@@ -95,10 +125,28 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     // Define path where CIS-CAT is installed
 
     if (ciscat->ciscat_path) {
-        snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
+        switch (wm_relative_path(ciscat->ciscat_path)) {
+            case 0:
+                // Full path
+                snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
+                break;
+            case 1:
+                // Relative path
+            #ifdef WIN32
+                if (current)
+                    snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, ciscat->ciscat_path);
+            #else
+                snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR, ciscat->ciscat_path);
+            #endif
+                break;
+            default:
+                mterror(WM_CISCAT_LOGTAG, "Defined CIS-CAT path is not valid.");
+                ciscat->flags.error = 1;
+        }
     } else {
     #ifdef WIN32
-        snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR_WIN);
+        if (current)
+            snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, WM_CISCAT_DEFAULT_DIR_WIN);
     #else
         snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR);
     #endif
@@ -132,24 +180,27 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
             for (eval = ciscat->evals; eval; eval = eval->next) {
                 if (!eval->flags.error) {
-                #ifdef WIN32
-                    if (((eval->path[0] >= 'a' && eval->path[0] <= 'z') || (eval->path[0] >= 'A' && eval->path[0] <= 'Z')) && eval->path[1] == ':') {
-                #else
-                    if (eval->path[0] == '/') {     // Full path
-                #endif
-                        snprintf(bench_fullpath, OS_MAXSTR - 1, "%s", eval->path);
-                    } else {    // Relative path
-                    #ifdef WIN32
-                        snprintf(bench_fullpath, OS_MAXSTR - 1, "%s\\%s", ciscat->ciscat_path, eval->path);
-                    #else
-                        snprintf(bench_fullpath, OS_MAXSTR - 1, "%s/%s", ciscat->ciscat_path, eval->path);
-                    #endif
+
+                    switch (wm_relative_path(eval->path)) {
+                        case 0:
+                            snprintf(bench_fullpath, OS_MAXSTR - 1, "%s", eval->path);
+                            break;
+                        case 1:
+                        #ifdef WIN32
+                            snprintf(bench_fullpath, OS_MAXSTR - 1, "%s\\%s", cis_path, eval->path);
+                        #else
+                            snprintf(bench_fullpath, OS_MAXSTR - 1, "%s/%s", cis_path, eval->path);
+                        #endif
+                            break;
+                        default:
+                            mterror(WM_CISCAT_LOGTAG, "Couldn't find benchmark path. Skipping...");
                     }
 
-                    if (IsFile(bench_fullpath) < 0) {
-                        mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", bench_fullpath);
+                    os_strdup(bench_fullpath, eval->path);
+
+                    if (IsFile(eval->path) < 0) {
+                        mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
                     } else {
-                        os_strdup(bench_fullpath, eval->path);
                         wm_ciscat_run(eval, cis_path);
                         ciscat->flags.error = 0;
                     }
@@ -178,6 +229,9 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     free(cis_path);
     free(jre_path);
+#ifdef WIN32
+    free(current);
+#endif
 
     return NULL;
 }
