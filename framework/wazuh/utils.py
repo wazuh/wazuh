@@ -14,6 +14,7 @@ import json
 import stat
 import re
 from itertools import groupby, chain
+from xml.etree.ElementTree import fromstring
 
 try:
     from subprocess import check_output
@@ -400,6 +401,26 @@ def plain_dict_to_nested_dict(data, force_fields=[]):
     nested_dict.update(non_nested_dict)
 
     return nested_dict
+
+
+def load_wazuh_xml(xml_path):
+    with open(xml_path) as f:
+        data = f.read()
+
+    # -- characters are not allowed in XML comments
+    xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
+    for comment in xml_comment.finditer(data):
+        good_comment = comment.group(2).replace('--','..')
+        data = data.replace(comment.group(2), good_comment)
+
+    # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
+    data = re.sub(r"<(?!/?[\w='$,#\"\. -]+>|!--)", "&lt;", data)
+
+    # & characters should be scaped if they don't represent an &entity;
+    data = re.sub(r"&(?!\w+;)", "&amp;", data)
+
+    return fromstring('<root_tag>' + data + '</root_tag>')
+
 
 class WazuhVersion:
 

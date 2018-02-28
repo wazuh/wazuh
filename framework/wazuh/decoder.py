@@ -9,7 +9,7 @@ from xml.etree.ElementTree import fromstring
 import wazuh.configuration as configuration
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.utils import cut_array, sort_array, search_array
+from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
 from sys import version_info
 
 class Decoder:
@@ -206,15 +206,8 @@ class Decoder:
             decoders = []
             position = 0
 
-            # wrap the data
-            with open("{0}/{1}".format(decoder_path, decoder_file)) as f:
-                data = f.read()
+            root = load_wazuh_xml("{}/{}".format(decoder_path, decoder_file))
 
-            data = re.sub("(<!--.*?-->)", "", data, flags=re.MULTILINE | re.DOTALL)
-            data = data.replace(" -- ", " -INVALID_CHAR ").replace("\<;", "\INVALID_CHAR;")
-            xmldata = '<root_tag>' + data + '</root_tag>'
-
-            root = fromstring(xmldata)
             for xml_decoder in root.getchildren():
                 # New decoder
                 if xml_decoder.tag.lower() == "decoder":

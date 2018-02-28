@@ -3,13 +3,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from xml.etree.ElementTree import fromstring
 from os import listdir, path as os_path
 import re
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh import common
-from wazuh.utils import cut_array
+from wazuh.utils import cut_array, load_wazuh_xml
 
 # Aux functions
 
@@ -389,16 +388,8 @@ def get_ossec_conf(section=None, field=None):
     """
 
     try:
-        # wrap the data
-        with open(common.ossec_conf) as f:
-            txt_data = f.read()
-
-        txt_data = re.sub("(<!--.*?-->)", "", txt_data, flags=re.MULTILINE | re.DOTALL)
-        txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
-        txt_data = '<root_tag>' + txt_data + '</root_tag>'
-
         # Read XML
-        xml_data = fromstring(txt_data)
+        xml_data = load_wazuh_xml(common.ossec_conf)
 
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
@@ -447,15 +438,8 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
         raise WazuhException(1006, agent_conf)
 
     try:
-        # wrap the data
-        f = open(agent_conf)
-        txt_data = f.read()
-        txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
-        f.close()
-        txt_data = '<root_tag>' + txt_data + '</root_tag>'
-
         # Read XML
-        xml_data = fromstring(txt_data)
+        xml_data = load_wazuh_xml(agent_conf)
 
         # Parse XML to JSON
         data = _agentconf2json(xml_data)
