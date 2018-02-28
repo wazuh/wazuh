@@ -432,14 +432,14 @@ WriteManager()
       # Nameservers in /etc/resolv.conf
       for ip in ${NAMESERVERS} ${NAMESERVERS2};
         do
-          if [ ! "X${ip}" = "X" ]; then
+          if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
               echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
           fi
       done
       # Read string
       for ip in ${IPS};
         do
-          if [ ! "X${ip}" = "X" ]; then
+          if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
             echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
             if [ $? = 0 ]; then
               echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
