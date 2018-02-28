@@ -411,27 +411,37 @@ def upgrade_ruleset(ruleset):
 
 
 def restore_backups():
-    for src in [update_backups_rules, update_backups_decoders, update_backups_rootchecks]:
-        type_item = src.split('/')[-1]
-        if type_item == 'rules':
-            dst = ossec_rules
-        elif type_item == 'decoders':
-            dst = ossec_decoders
-        elif type_item == 'rootchecks':
-            dst = ossec_rootchecks
+    error_msg = "ERROR: No backups availables. Exiting..."
+    try:
+        directories = os.listdir(update_backups)
+        if directories != []:
+            for src in [update_backups_rules, update_backups_decoders, update_backups_rootchecks]:
+                type_item = src.split('/')[-1]
+                if type_item == 'rules':
+                    dst = ossec_rules
+                elif type_item == 'decoders':
+                    dst = ossec_decoders
+                elif type_item == 'rootchecks':
+                    dst = ossec_rootchecks
 
-        backups_items = os.listdir(src)
+                # try:
+                backups_items = os.listdir(src)
 
-        if backups_items:
-            logger.log("\t{0}:".format(type_item))
+                if backups_items:
+                    logger.log("\t{0}:".format(type_item))
+                else:
+                    logger.log("\t{0}: Empty".format(type_item))
+
+                for backup_item in backups_items:
+                    logger.log("\t\t{0}".format(backup_item))
+                    src_file = "{0}/{1}".format(src, backup_item)
+                    dst_file = "{0}/{1}".format(dst, backup_item)
+                    copy(src_file, dst_file)
         else:
-            logger.log("\t{0}: Empty".format(type_item))
-
-        for backup_item in backups_items:
-            logger.log("\t\t{0}".format(backup_item))
-            src_file = "{0}/{1}".format(src, backup_item)
-            dst_file = "{0}/{1}".format(dst, backup_item)
-            copy(src_file, dst_file)
+            raise Exception(error_msg)
+    except Exception as e:
+        logger.log("{0}".format(error_msg))
+        sys.exit(1)
 
 
 def main():
