@@ -102,12 +102,17 @@ SSL_CTX *get_ssl_context(const char *ciphers, int auto_method)
 
     /* Create our context */
 
-    if (!(ctx = auto_method ? SSL_CTX_new(SSLv23_method()) : SSL_CTX_new(TLS_method()))) {
+    if (ctx = SSL_CTX_new(TLS_method()), !ctx) {
         goto CONTEXT_ERR;
     }
 
     /* Explicitly set options and cipher list */
-    SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
+
+    // If auto_method isn't set, allow TLSv1.2 only
+    if (!auto_method) {
+        SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1);
+    }
+
     if (!(SSL_CTX_set_cipher_list(ctx, ciphers))) {
         goto CONTEXT_ERR;
     }
