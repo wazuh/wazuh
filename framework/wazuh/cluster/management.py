@@ -281,13 +281,13 @@ def get_nodes(updateDBname=False):
             error_response = True
 
         if error_response:
-            data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
+            data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url})
             error_response = False
             continue
 
         if config_cluster['node_type'] == 'master' or \
            response['type'] == 'master' or url == "localhost":
-            data.append({'url':url, 'node':response['node'],
+            data.append({'url':url, 'node':response['node'], 'type': response['type'],
                          'status':'connected', 'cluster':response['cluster']})
 
             if updateDBname:
