@@ -331,26 +331,27 @@ def get_nodes(updateDBname=False):
             if error == 0:
                 if response['error'] == 0:
                     response = response['data']
+                    response['localhost'] = False
                 else:
                     logging.warning("Received an error response from {0}: {1}".format(url, response))
                     error_response = True
         else:
             error = 0
-            url = "localhost"
             response = get_node()
+            response['localhost'] = True
 
         if error == 1:
             logging.warning("Error connecting with {0}: {1}".format(url, response))
             error_response = True
 
         if error_response:
-            data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
+            data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
             error_response = False
             continue
 
         if config_cluster['node_type'] == 'master' or \
-           response['type'] == 'master' or url == "localhost":
-            data.append({'url':url, 'node':response['node'],
+           response['type'] == 'master' or response["localhost"]:
+            data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
                          'status':'connected', 'cluster':response['cluster']})
 
             if updateDBname:
@@ -968,18 +969,18 @@ def get_remote_nodes(connected=True, updateDBname=False):
 
     # Get connected nodes in the cluster
     if connected:
-        cluster = [n['url'] for n in filter(lambda x: x['status'] == 'connected',
+        cluster = [(n['url'], n['localhost']) for n in filter(lambda x: x['status'] == 'connected',
                     all_nodes)]
     else:
-        cluster = [n['url'] for n in all_nodes]
+        cluster = [(n['url'], n['localhost']) for n in all_nodes]
     # search the index of the localhost in the cluster
     try:
-        localhost_index = cluster.index('localhost')
-    except ValueError as e:
+        localhost_index = next (x[0] for x in enumerate(cluster) if x[1][1])
+    except StopIteration as e:
         logging.error("Cluster nodes are not correctly configured at ossec.conf.")
         exit(1)
 
-    return list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
+    return list(compress(map(itemgetter(0), cluster), map(lambda x: x != localhost_index, range(len(cluster)))))
 
 
 def run_logtest(synchronized=False):
