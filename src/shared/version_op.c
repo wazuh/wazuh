@@ -309,7 +309,7 @@ os_info *get_unix_version()
         if (version_release = fopen("/etc/centos-release","r"), version_release){
             info->os_name = strdup("CentOS Linux");
             info->os_platform = strdup("centos");
-            static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
                 merror_exit("Can not compile regular expression.");
             }
@@ -343,26 +343,24 @@ os_info *get_unix_version()
             fclose(version_release);
         // RedHat
         } else if (version_release = fopen("/etc/redhat-release","r"), version_release){
-            static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
                 merror_exit("Can not compile regular expression.");
             }
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
                 if (strstr(buff, "CentOS")){
-                    if (!(name || id)) {
-                        info->os_name = strdup("CentOS");
+                        info->os_name = strdup("CentOS Linux");
                         info->os_platform = strdup("centos");
-                    }
-                }else if (strstr(buff, "Fedora")){
-                    if (!(name || id)) {
+                } else if (strstr(buff, "Fedora")){
                         info->os_name = strdup("Fedora");
                         info->os_platform = strdup("fedora");
-                    }
-                }else{
-                    if (!(name || id)) {
+                } else {
+                    if (strstr(buff, "Server")){
+                        info->os_name = strdup("Red Hat Enterprise Linux Server");
+                    } else {
                         info->os_name = strdup("Red Hat Enterprise Linux");
-                        info->os_platform = strdup("rhel");
                     }
+                    info->os_platform = strdup("rhel");
                 }
 
                 if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
@@ -391,7 +389,7 @@ os_info *get_unix_version()
         } else if (version_release = fopen("/etc/gentoo-release","r"), version_release){
             info->os_name = strdup("Gentoo");
             info->os_platform = strdup("gentoo");
-            static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            static const char *pattern = " ([0-9][0-9]*\\.?[0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
                 merror_exit("Cannot compile regular expression.");
             }
@@ -427,7 +425,7 @@ os_info *get_unix_version()
         } else if (version_release = fopen("/etc/arch-release","r"), version_release){
             info->os_name = strdup("Arch Linux");
             info->os_platform = strdup("arch");
-            static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
                 merror_exit("Cannot compile regular expression.");
             }
@@ -445,7 +443,7 @@ os_info *get_unix_version()
         } else if (version_release = fopen("/etc/debian_version","r"), version_release){
             info->os_name = strdup("Debian GNU/Linux");
             info->os_platform = strdup("debian");
-            static const char *pattern = "([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
                 merror_exit("Cannot compile regular expression.");
             }
@@ -463,7 +461,7 @@ os_info *get_unix_version()
         } else if (version_release = fopen("/etc/slackware-version","r"), version_release){
             info->os_name = strdup("Slackware");
             info->os_platform = strdup("slackware");
-            static const char *pattern = " ([0-9][0-9]*\\.[0-9][0-9]*)\\.*";
+            static const char *pattern = " ([0-9][0-9]*\\.?[0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
                 merror_exit("Cannot compile regular expression.");
             }
@@ -510,7 +508,7 @@ os_info *get_unix_version()
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                         mdebug1("Cannot read from command output (uname -r).");
-                    } else if (w_regexec("([0-9][0-9])*\\.[0-9][0-9]*\\.*", buff, 2, match)){
+                    } else if (w_regexec("([0-9][0-9]*\\.?[0-9]*)\\.*", buff, 2, match)){
                         match_size = match[1].rm_eo - match[1].rm_so;
                         char *kern = NULL;
                         kern = malloc(match_size +1);
@@ -556,7 +554,7 @@ os_info *get_unix_version()
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                         mdebug1("Cannot read from command output (uname -r).");
-                    } else if (w_regexec("([0-9][0-9]*\\.[0-9][0-9]*)\\.*", buff, 2, match)){
+                    } else if (w_regexec("([0-9][0-9]*\\.?[0-9]*)\\.*", buff, 2, match)){
                         match_size = match[1].rm_eo - match[1].rm_so;
                         info->os_version = malloc(match_size +1);
                         snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
