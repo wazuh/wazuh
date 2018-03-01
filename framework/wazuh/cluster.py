@@ -87,8 +87,12 @@ if check_cluster_status():
 
 
 class WazuhClusterClient(asynchat.async_chat):
-    def __init__(self, host, port, key, data, file):
-        asynchat.async_chat.__init__(self)
+    def __init__(self, host, port, key, data, file, map=None):
+        asynchat.async_chat.__init__(self, map=map)
+        if not map:
+            self.map = asyncore.socket_map
+        else:
+            self.map = map
         self.can_read = False
         self.can_write = True
         self.received_data = []
@@ -154,8 +158,9 @@ def send_request(host, port, key, data, file=None):
     error = 0
     try:
         fernet_key = Fernet(key.encode('base64','strict'))
-        client = WazuhClusterClient(host, int(port), fernet_key, data, file)
-        asyncore.loop()
+        mymap = dict()
+        client = WazuhClusterClient(host, int(port), fernet_key, data, file, mymap)
+        asyncore.loop(map=mymap)
         data = client.response
 
     except NameError as e:
