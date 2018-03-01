@@ -171,11 +171,291 @@ int prepare_db(sqlite3 *db, sqlite3_stmt **res, char *sql) {
     return 0;
 }
 
+
+int execute_db_command(char *response, sqlite3 *db, sqlite3_stmt **res) {
+    // sql sentences to update file status
+    char *sql_upd2 = "UPDATE manager_file_status SET status = ? WHERE id_manager = ? AND id_file = ?";
+    char *sql_upd1 = "UPDATE manager_file_status SET status = 'pending' WHERE id_file = ?";
+    char *sql_upd3 = "UPDATE manager_file_status SET status = 'tobedeleted' WHERE id_file = ?";
+    char *sql_clr  = "UPDATE manager_file_status SET status = 'pending'";
+    // sql sentence to insert new row
+    char *sql_ins = "INSERT OR REPLACE INTO manager_file_status VALUES (?,?,'pending')";
+    // sql sentence to perform a select query
+    char *sql_sel = "SELECT * FROM manager_file_status WHERE id_manager = ? LIMIT ? OFFSET ?";
+    char *sql_count = "SELECT Count(*) FROM manager_file_status WHERE id_manager = ?";
+    char *sql_del1 = "DELETE FROM manager_file_status WHERE id_file = ?";
+    char *sql_del2 = "DELETE FROM manager_file_status WHERE id_manager = ? AND id_file = ?";
+    // sql sentences to insert a new row in the last_sync table
+    char *sql_del_lastsync = "DELETE FROM last_sync";
+    char *sql_last_sync = "INSERT INTO last_sync(date, duration) VALUES (?,?)";
+    char *sql_sel_sync = "SELECT * FROM last_sync";
+    // sql sentences to insert or update a new row in the file_integrity table
+    char *sql_ins_fi = "INSERT OR REPLACE INTO file_integrity VALUES (?,?,?)";
+    char *sql_sel_fi = "SELECT * FROM file_integrity LIMIT ? OFFSET ?";
+    char *sql_count_fi = "SELECT Count(*) FROM file_integrity";
+    char *sql_upd_fi = "UPDATE file_integrity SET md5 = ?, mod_date = ? WHERE filename = ?";
+    // sql sentence to manage IP from name
+    char *sql_sel_by_name = "SELECT manager_file_status.id_manager as id_manager, manager_file_status.id_file as id_file, manager_file_status.status as status FROM node_name_ip INNER JOIN manager_file_status ON manager_file_status.id_manager = node_name_ip.id_manager WHERE node_name_ip.name = ? LIMIT ? OFFSET ?";
+    char *sql_sel_ip_by_name = "SELECT id_manager FROM node_name_ip WHERE name = ?";
+    char *sql_upd_ip_name = "UPDATE node_name_ip SET name = ? WHERE id_manager = ?";
+    char *sql_ins_ip_name = "INSERT OR REPLACE INTO node_name_ip VALUES (?,?)";
+    // sql sentences to manage restarting table
+    char *sql_sel_restart = "SELECT restarted FROM is_restarted";
+    char *sql_del_restart = "DELETE FROM is_restarted";
+    char *sql_ins_restart = "INSERT INTO is_restarted VALUES (?)";
+
+    int rc, sqlite_rc;
+    bool has1, has2, has3, select, count, select_last_sync, select_files, response_str;
+    has1=false; has2=false; has3=false; select=false; count=false; select_last_sync=false; select_files=false; response_str=false;
+    char *cmd, *endptr, *sql;
+
+    cmd = strtok(NULL, " ");
+    mtdebug2(DB_TAG,"Received %s command", cmd);
+    if (cmd != NULL && strcmp(cmd, "update1") == 0) {
+        sql = sql_upd1;
+        has1 = true;
+    } else if (cmd != NULL && strcmp(cmd, "update3") == 0) {
+        sql = sql_upd3;
+        has1 = true;
+    } else if (cmd != NULL && strcmp(cmd, "delete1") == 0) {
+        sql = sql_del1;
+        has1 = true;
+    } else if (cmd != NULL && strcmp(cmd, "delete2") == 0) {
+        sql = sql_del2;
+        has1 = true;
+        has2 = true;
+    } else if (cmd != NULL && strcmp(cmd, "update2") == 0) {
+        sql = sql_upd2;
+        has1 = true;
+        has2 = true;
+        has3 = true;
+    } else if (cmd != NULL && strcmp(cmd, "insert") == 0) {
+        sql = sql_ins;
+        has1 = true;
+        has2 = true;
+    } else if (cmd != NULL && strcmp(cmd, "select") == 0) {
+        sql = sql_sel;
+        select = true;
+        has1 = true;
+        has2 = true;
+        has3 = true;
+        strcpy(response, " ");
+    } else if (cmd != NULL && strcmp(cmd, "sellast") == 0) {
+        sql = sql_sel_sync;
+        select_last_sync = true;
+        strcpy(response, " ");
+    } else if (cmd != NULL && strcmp(cmd, "count") == 0) {
+        sql = sql_count;
+        count = true;
+        has1 = true;
+    } else if (cmd != NULL && strcmp(cmd, "clear") == 0) {
+        sql = sql_clr;
+    } else if (cmd != NULL && strcmp(cmd, "clearlast") == 0) {
+        sql = sql_del_lastsync;
+    } else if (cmd != NULL && strcmp(cmd, "updatelast") == 0) {
+        sql = sql_last_sync;
+        has1 = true;
+        has2 = true;
+    } else if (cmd != NULL && strcmp(cmd, "insertfile") == 0) {
+        sql = sql_ins_fi;
+        has1 = true;
+        has2 = true;
+        has3 = true;
+    } else if (cmd != NULL && strcmp(cmd, "selfiles") == 0) {
+        sql = sql_sel_fi;
+        has1 = true;
+        has2 = true;
+        select_files = true;
+        strcpy(response, " ");
+    } else if (cmd != NULL && strcmp(cmd, "countfiles") == 0) {
+        sql = sql_count_fi;
+        count = true;
+    } else if (cmd != NULL && strcmp(cmd, "updatefile") == 0) {
+        sql = sql_upd_fi;
+        has1 = true;
+        has2 = true;
+        has3 = true;
+    } else if (cmd != NULL && strcmp(cmd, "selectbyname") == 0) {
+        sql = sql_sel_by_name;
+        select = true;
+        has1 = true; // name
+        has2 = true; // limit
+        has3 = true; // offset
+        strcpy(response, " ");
+    } else if (cmd != NULL && strcmp(cmd, "getip") == 0) {
+        sql = sql_sel_ip_by_name;
+        has1 = true; // name
+        response_str = true;
+    } else if (cmd != NULL && strcmp(cmd, "updatename") == 0) {
+        sql = sql_upd_ip_name;
+        has1 = true; // name
+        has2 = true; // ip
+    } else if (cmd != NULL && strcmp(cmd, "insertname") == 0) {
+        sql = sql_ins_ip_name;
+        has1 = true; // name
+        has2 = true; // ip
+    } else if (cmd != NULL && strcmp(cmd, "selres") == 0) {
+        sql = sql_sel_restart;
+        count = true;
+    } else if (cmd != NULL && strcmp(cmd, "delres") == 0) {
+        sql = sql_del_restart;
+    } else if (cmd != NULL && strcmp(cmd, "insertres") == 0) {
+        sql = sql_ins_restart;
+        has1 = true;
+        select_last_sync=true;
+    } else {
+        mtdebug1(DB_TAG,"Nothing to do");
+        strcpy(response, "Nothing to do.");
+        return 0;
+    }
+
+    int step;
+    prepare_db(db, res, sql);
+    if (has1) {
+        sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+        while (cmd != NULL) {
+            cmd = strtok(NULL, " ");
+            if (cmd == NULL) break;
+
+            if (select_last_sync) {
+                long int value = strtol(cmd, &endptr, 10);
+                if (endptr == cmd) mterror_exit(DB_TAG, "No integer found in database request. Found: %s", cmd);
+                rc = sqlite3_bind_int(*res,1,value);
+            }
+            else rc = sqlite3_bind_text(*res,1,cmd,-1,0);
+            if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 1st parameter of query: %s", sqlite3_errmsg(db));
+
+            if (has2) {
+                cmd = strtok(NULL, " ");
+                if (strcmp(sql, sql_last_sync) == 0) {
+                    double value = strtod(cmd, &endptr);
+                    if (endptr == cmd) mterror_exit(DB_TAG, "No floating number found in database request. Found: %s", cmd);
+                    rc = sqlite3_bind_double(*res,2,value);
+                }
+                else rc = sqlite3_bind_text(*res,2,cmd,-1,0);
+                if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 2nd parameter of query: %s", sqlite3_errmsg(db));
+            }
+            if (has3) {
+                cmd = strtok(NULL, " ");
+                if (strcmp(sql, sql_ins_fi) == 0) {
+                    long int value = strtol(cmd, &endptr, 10);
+                    if (endptr == cmd) mterror_exit(DB_TAG, "No integer found in database request. Found: %s", cmd);
+                    rc = sqlite3_bind_int(*res,3,value);
+                }
+                else rc = sqlite3_bind_text(*res,3,cmd,-1,0);
+                if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 3rd parameter of query: %s", sqlite3_errmsg(db));
+            }
+
+            do {
+                char local_response1[RESPONSE_SIZE], local_response2[RESPONSE_SIZE];
+                step = sqlite3_step(*res);
+                if (step == SQLITE_DONE && !count && !select && !select_files && !response_str) {
+                    strcpy(response, "Command OK");
+                    break;
+                }
+                else if (step != SQLITE_ROW && step != SQLITE_OK) break;
+
+                if (select) {
+                    if (snprintf(local_response1, RESPONSE_SIZE, "%s*%s ", (char *)sqlite3_column_text(*res, 1), (char *)sqlite3_column_text(*res, 2)) >= RESPONSE_SIZE)
+                        mterror(DB_TAG, "Overflow error copying response in memory");
+
+                    if (snprintf(local_response2, RESPONSE_SIZE, "%s", response) >= RESPONSE_SIZE)
+                        mterror(DB_TAG, "Overflow error copying response in local memory");
+
+                    if (snprintf(response, RESPONSE_SIZE, "%s%s", local_response2, local_response1) >= RESPONSE_SIZE)
+                        mterror(DB_TAG, "Overflow error copying response in local memory");
+                } else if (count) {
+                    if (snprintf(response, RESPONSE_SIZE, "%d", sqlite3_column_int(*res, 0)) >= RESPONSE_SIZE)
+                        mterror(DB_TAG, "Overflow error copying response in memory");
+                } else if (select_files) {
+                    if (snprintf(local_response1, RESPONSE_SIZE, "%s*%s*%d ", (char *)sqlite3_column_text(*res, 0), (char *)sqlite3_column_text(*res, 1), sqlite3_column_int(*res, 2)) >= RESPONSE_SIZE)
+                        mterror(DB_TAG, "Overflow error copying local response in memory");
+
+                    if (snprintf(local_response2, RESPONSE_SIZE, "%s", response) >= RESPONSE_SIZE)
+                        mterror(DB_TAG, "Overflow error copying response in local memory");
+
+                    if (snprintf(response, RESPONSE_SIZE, "%s%s", local_response2, local_response1) >= RESPONSE_SIZE)
+                        mterror(DB_TAG, "Overflow error copying response in local memory");
+                    
+                } else if (response_str) {
+                    if (snprintf(response, RESPONSE_SIZE, "%s", (char *)sqlite3_column_text(*res,0)) >= RESPONSE_SIZE)
+                        mterror(DB_TAG, "Overflow error copying response in memory");
+                } else
+                    strcpy(response, "Command OK");
+            } while (step == SQLITE_ROW || step == SQLITE_OK);
+            sqlite3_clear_bindings(*res);
+            sqlite3_reset(*res);
+
+        }
+        sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL);
+    } else {
+        sqlite3_exec(db, sql, NULL, NULL, NULL);
+        sqlite_rc = sqlite3_exec(db, sql, NULL, NULL, NULL);
+        if (sqlite_rc != SQLITE_OK) {
+            sqlite3_close(db);
+            mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
+        }
+        if (select_last_sync || count) {
+            do {
+                step = sqlite3_step(*res);
+                if (step != SQLITE_ROW && step != SQLITE_OK) break;
+                if (select_last_sync) sprintf(response, "%d %lf", sqlite3_column_int(*res, 0), sqlite3_column_double(*res, 1));
+                else if (count) sprintf(response, "%d", sqlite3_column_int(*res, 0));
+            } while (step == SQLITE_ROW || step == SQLITE_OK);
+        } else strcpy(response, "Command OK");
+    }
+    return 0;
+}
+
+int receive_db_cmd(char *buf, char* buf2, char *response, sqlite3 *db, sqlite3_stmt **res) {
+    char *cmd;
+    if (strlen(buf2) == 0) {
+        strcpy(buf2, buf);
+        size_t supposed_len, real_msg_len = strlen(buf);
+        cmd = strtok(buf, " ");
+        int number_of_fields;
+        if ((number_of_fields = sscanf(cmd, "%zu", &supposed_len)) != 1) 
+            mtdebug2(DB_TAG, "Failed extracting lenth of command: %d", number_of_fields);
+
+        mtdebug2(DB_TAG, "Length of received command: %zu/%zu", supposed_len, real_msg_len);
+
+        if (supposed_len > real_msg_len) {
+            // received command is not completed. We must wait for the following command
+            mtdebug2(DB_TAG, "Waiting for second part of the command");
+            return 1;
+        } else if (supposed_len < real_msg_len) {
+            // We have received two commands in a row
+            mtdebug2(DB_TAG, "Two commands received in a row");
+            char aux_buf[BUFFER_SIZE];
+            strncpy(aux_buf, buf2, supposed_len);
+            aux_buf[supposed_len+1] = '\0';
+            cmd = strtok(aux_buf, " ");
+            memset(buf2, 0, BUFFER_SIZE);
+            execute_db_command(response, db, res);
+            receive_db_cmd(buf+supposed_len, buf2, response, db, res);
+        } else memset(buf2, 0, BUFFER_SIZE);
+    } else {
+        mtdebug2(DB_TAG, "Secdond part of the command received");
+        char aux_buf[BUFFER_SIZE];
+        if (snprintf(aux_buf, BUFFER_SIZE, "%s%s", buf2, buf) >= BUFFER_SIZE)
+            mterror(DB_TAG, "Overflow error receiving database command");
+
+        memset(buf, 0, BUFFER_SIZE);
+        memset(buf2, 0, BUFFER_SIZE);
+        if (snprintf(buf, BUFFER_SIZE, "%s", aux_buf) >= BUFFER_SIZE)
+            mterror(DB_TAG, "Overflow error copying database command");
+
+        // check if the new part of the command received completes the full command
+        receive_db_cmd(buf, buf2, response, db, res);
+    }
+    return 0;
+}
+
 void* daemon_socket() {
     mtdebug1(DB_TAG,"Preparing server socket");
     /* Prepare socket */
     struct sockaddr_un addr;
-    char buf[BUFFER_SIZE];
+    char buf[BUFFER_SIZE], buf2[BUFFER_SIZE];
     char response[RESPONSE_SIZE];
     int fd,cl,rc;
 
@@ -217,45 +497,11 @@ void* daemon_socket() {
         sqlite3_close(db);
     }
 
-    // sql sentences to update file status
-    char *sql_upd2 = "UPDATE manager_file_status SET status = ? WHERE id_manager = ? AND id_file = ?";
-    char *sql_upd1 = "UPDATE manager_file_status SET status = 'pending' WHERE id_file = ?";
-    char *sql_upd3 = "UPDATE manager_file_status SET status = 'tobedeleted' WHERE id_file = ?";
-    char *sql_clr  = "UPDATE manager_file_status SET status = 'pending'";
-    // sql sentence to insert new row
-    char *sql_ins = "INSERT OR REPLACE INTO manager_file_status VALUES (?,?,'pending')";
-    // sql sentence to perform a select query
-    char *sql_sel = "SELECT * FROM manager_file_status WHERE id_manager = ? LIMIT ? OFFSET ?";
-    char *sql_count = "SELECT Count(*) FROM manager_file_status WHERE id_manager = ?";
-    char *sql_del1 = "DELETE FROM manager_file_status WHERE id_file = ?";
-    char *sql_del2 = "DELETE FROM manager_file_status WHERE id_manager = ? AND id_file = ?";
-    // sql sentences to insert a new row in the last_sync table
-    char *sql_del_lastsync = "DELETE FROM last_sync";
-    char *sql_last_sync = "INSERT INTO last_sync(date, duration) VALUES (?,?)";
-    char *sql_sel_sync = "SELECT * FROM last_sync";
-    // sql sentences to insert or update a new row in the file_integrity table
-    char *sql_ins_fi = "INSERT OR REPLACE INTO file_integrity VALUES (?,?,?)";
-    char *sql_sel_fi = "SELECT * FROM file_integrity LIMIT ? OFFSET ?";
-    char *sql_count_fi = "SELECT Count(*) FROM file_integrity";
-    char *sql_upd_fi = "UPDATE file_integrity SET md5 = ?, mod_date = ? WHERE filename = ?";
-    // sql sentence to manage IP from name
-    char *sql_sel_by_name = "SELECT manager_file_status.id_manager as id_manager, manager_file_status.id_file as id_file, manager_file_status.status as status FROM node_name_ip INNER JOIN manager_file_status ON manager_file_status.id_manager = node_name_ip.id_manager WHERE node_name_ip.name = ? LIMIT ? OFFSET ?";
-    char *sql_sel_ip_by_name = "SELECT id_manager FROM node_name_ip WHERE name = ?";
-    char *sql_upd_ip_name = "UPDATE node_name_ip SET name = ? WHERE id_manager = ?";
-    char *sql_ins_ip_name = "INSERT OR REPLACE INTO node_name_ip VALUES (?,?)";
-    // sql sentences to manage restarting table
-    char *sql_sel_restart = "SELECT restarted FROM is_restarted";
-    char *sql_del_restart = "DELETE FROM is_restarted";
-    char *sql_ins_restart = "INSERT INTO is_restarted VALUES (?)";
-
-    char *sql;
-    bool has1, has2, has3, select, count, select_last_sync, select_files, response_str;
 
     if (listen(fd, 5) == -1) {
         mterror_exit(DB_TAG, "Error listening in socket: %s", strerror(errno));
     }
 
-    char *cmd, *endptr;
     while (1) {
         if ( (cl = accept(fd, NULL, NULL)) == -1) {
             mterror(DB_TAG, "Error accepting connection: %s", strerror(errno));
@@ -265,212 +511,18 @@ void* daemon_socket() {
 
         mtdebug2(DB_TAG,"Accepted connection from %d", cl);
 
-        memset(buf, 0, sizeof(buf));
-        memset(response, 0, sizeof(response));
+        memset(buf, 0, BUFFER_SIZE);
+        memset(response, 0, RESPONSE_SIZE);
         while ( (rc=recv(cl,buf,sizeof(buf),0)) > 0) {
-            has1=false; has2=false; has3=false; select=false; count=false; select_last_sync=false; select_files=false; response_str=false;
-            cmd = strtok(buf, " ");
-            mtdebug2(DB_TAG,"Received %s command", cmd);
-            if (cmd != NULL && strcmp(cmd, "update1") == 0) {
-                sql = sql_upd1;
-                has1 = true;
-            } else if (cmd != NULL && strcmp(cmd, "update3") == 0) {
-                sql = sql_upd3;
-                has1 = true;
-            } else if (cmd != NULL && strcmp(cmd, "delete1") == 0) {
-                sql = sql_del1;
-                has1 = true;
-            } else if (cmd != NULL && strcmp(cmd, "delete2") == 0) {
-                sql = sql_del2;
-                has1 = true;
-                has2 = true;
-            } else if (cmd != NULL && strcmp(cmd, "update2") == 0) {
-                sql = sql_upd2;
-                has1 = true;
-                has2 = true;
-                has3 = true;
-            } else if (cmd != NULL && strcmp(cmd, "insert") == 0) {
-                sql = sql_ins;
-                has1 = true;
-                has2 = true;
-            } else if (cmd != NULL && strcmp(cmd, "select") == 0) {
-                sql = sql_sel;
-                select = true;
-                has1 = true;
-                has2 = true;
-                has3 = true;
-                strcpy(response, " ");
-            } else if (cmd != NULL && strcmp(cmd, "sellast") == 0) {
-                sql = sql_sel_sync;
-                select_last_sync = true;
-                strcpy(response, " ");
-            } else if (cmd != NULL && strcmp(cmd, "count") == 0) {
-                sql = sql_count;
-                count = true;
-                has1 = true;
-            } else if (cmd != NULL && strcmp(cmd, "clear") == 0) {
-                sql = sql_clr;
-            } else if (cmd != NULL && strcmp(cmd, "clearlast") == 0) {
-                sql = sql_del_lastsync;
-            } else if (cmd != NULL && strcmp(cmd, "updatelast") == 0) {
-                sql = sql_last_sync;
-                has1 = true;
-                has2 = true;
-            } else if (cmd != NULL && strcmp(cmd, "insertfile") == 0) {
-                sql = sql_ins_fi;
-                has1 = true;
-                has2 = true;
-                has3 = true;
-            } else if (cmd != NULL && strcmp(cmd, "selfiles") == 0) {
-                sql = sql_sel_fi;
-                has1 = true;
-                has2 = true;
-                select_files = true;
-                strcpy(response, " ");
-            } else if (cmd != NULL && strcmp(cmd, "countfiles") == 0) {
-                sql = sql_count_fi;
-                count = true;
-            } else if (cmd != NULL && strcmp(cmd, "updatefile") == 0) {
-                sql = sql_upd_fi;
-                has1 = true;
-                has2 = true;
-                has3 = true;
-            } else if (cmd != NULL && strcmp(cmd, "selectbyname") == 0) {
-                sql = sql_sel_by_name;
-                select = true;
-                has1 = true; // name
-                has2 = true; // limit
-                has3 = true; // offset
-                strcpy(response, " ");
-            } else if (cmd != NULL && strcmp(cmd, "getip") == 0) {
-                sql = sql_sel_ip_by_name;
-                has1 = true; // name
-                response_str = true;
-            } else if (cmd != NULL && strcmp(cmd, "updatename") == 0) {
-                sql = sql_upd_ip_name;
-                has1 = true; // name
-                has2 = true; // ip
-            } else if (cmd != NULL && strcmp(cmd, "insertname") == 0) {
-                sql = sql_ins_ip_name;
-                has1 = true; // name
-                has2 = true; // ip
-            } else if (cmd != NULL && strcmp(cmd, "selres") == 0) {
-                sql = sql_sel_restart;
-                count = true;
-            } else if (cmd != NULL && strcmp(cmd, "delres") == 0) {
-                sql = sql_del_restart;
-            } else if (cmd != NULL && strcmp(cmd, "insertres") == 0) {
-                sql = sql_ins_restart;
-                has1 = true;
-                select_last_sync=true;
-            } else {
-                mtdebug1(DB_TAG,"Nothing to do");
-                strcpy(response, "Nothing to do.");
-                goto transaction_done;
+            // mtdebug2(DB_TAG, "Received: %s", buf);
+            if (receive_db_cmd(buf, buf2, response, db, &res) == 0) {
+                execute_db_command(response, db, &res);
+                if (send(cl,response,sizeof(response),0) < 0)
+                    mterror(DB_TAG, "Error sending response: %s", strerror(errno));
+
+                memset(buf, 0, BUFFER_SIZE);
+                memset(response, 0, RESPONSE_SIZE);
             }
-
-            int step;
-            prepare_db(db, &res, sql);
-            if (has1) {
-                sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
-                while (cmd != NULL) {
-                    cmd = strtok(NULL, " ");
-                    if (cmd == NULL) break;
-
-                    if (select_last_sync) {
-                        long int value = strtol(cmd, &endptr, 10);
-                        if (endptr == cmd) mterror_exit(DB_TAG, "No integer found in database request. Found: %s", cmd);
-                        rc = sqlite3_bind_int(res,1,value);
-                    }
-                    else rc = sqlite3_bind_text(res,1,cmd,-1,0);
-                    if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 1st parameter of query: %s", sqlite3_errmsg(db));
-
-                    if (has2) {
-                        cmd = strtok(NULL, " ");
-                        if (strcmp(sql, sql_last_sync) == 0) {
-                            double value = strtod(cmd, &endptr);
-                            if (endptr == cmd) mterror_exit(DB_TAG, "No floating number found in database request. Found: %s", cmd);
-                            rc = sqlite3_bind_double(res,2,value);
-                        }
-                        else rc = sqlite3_bind_text(res,2,cmd,-1,0);
-                        if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 2nd parameter of query: %s", sqlite3_errmsg(db));
-                    }
-                    if (has3) {
-                        cmd = strtok(NULL, " ");
-                        if (strcmp(sql, sql_ins_fi) == 0) {
-                            long int value = strtol(cmd, &endptr, 10);
-                            if (endptr == cmd) mterror_exit(DB_TAG, "No integer found in database request. Found: %s", cmd);
-                            rc = sqlite3_bind_int(res,3,value);
-                        }
-                        else rc = sqlite3_bind_text(res,3,cmd,-1,0);
-                        if (rc != SQLITE_OK) mterror_exit(DB_TAG,"Could not bind 3rd parameter of query: %s", sqlite3_errmsg(db));
-                    }
-
-                    do {
-                        char local_response1[RESPONSE_SIZE], local_response2[RESPONSE_SIZE];
-                        step = sqlite3_step(res);
-                        if (step == SQLITE_DONE && !count && !select && !select_files && !response_str) {
-                            strcpy(response, "Command OK");
-                            break;
-                        }
-                        else if (step != SQLITE_ROW && step != SQLITE_OK) break;
-
-                        if (select) {
-                            if (snprintf(local_response1, RESPONSE_SIZE, "%s*%s ", (char *)sqlite3_column_text(res, 1), (char *)sqlite3_column_text(res, 2)) >= RESPONSE_SIZE)
-                                mterror(DB_TAG, "Overflow error copying response in memory");
-
-                            if (snprintf(local_response2, RESPONSE_SIZE, "%s", response) >= RESPONSE_SIZE)
-                                mterror(DB_TAG, "Overflow error copying response in local memory");
-
-                            if (snprintf(response, RESPONSE_SIZE, "%s%s", local_response2, local_response1) >= RESPONSE_SIZE)
-                                mterror(DB_TAG, "Overflow error copying response in local memory");
-                        } else if (count) {
-                            if (snprintf(response, RESPONSE_SIZE, "%d", sqlite3_column_int(res, 0)) >= RESPONSE_SIZE)
-                                mterror(DB_TAG, "Overflow error copying response in memory");
-                        } else if (select_files) {
-                            if (snprintf(local_response1, RESPONSE_SIZE, "%s*%s*%d ", (char *)sqlite3_column_text(res, 0), (char *)sqlite3_column_text(res, 1), sqlite3_column_int(res, 2)) >= RESPONSE_SIZE)
-                                mterror(DB_TAG, "Overflow error copying local response in memory");
-
-                            if (snprintf(local_response2, RESPONSE_SIZE, "%s", response) >= RESPONSE_SIZE)
-                                mterror(DB_TAG, "Overflow error copying response in local memory");
-
-                            if (snprintf(response, RESPONSE_SIZE, "%s%s", local_response2, local_response1) >= RESPONSE_SIZE)
-                                mterror(DB_TAG, "Overflow error copying response in local memory");
-                            
-                        } else if (response_str) {
-                            if (snprintf(response, RESPONSE_SIZE, "%s", (char *)sqlite3_column_text(res,0)) >= RESPONSE_SIZE)
-                                mterror(DB_TAG, "Overflow error copying response in memory");
-                        } else
-                            strcpy(response, "Command OK");
-                    } while (step == SQLITE_ROW || step == SQLITE_OK);
-                    sqlite3_clear_bindings(res);
-                    sqlite3_reset(res);
-
-                }
-                sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL);
-            } else {
-                sqlite3_exec(db, sql, NULL, NULL, NULL);
-                sqlite_rc = sqlite3_exec(db, sql, NULL, NULL, NULL);
-                if (sqlite_rc != SQLITE_OK) {
-                    sqlite3_close(db);
-                    mterror_exit(DB_TAG, "Failed to fetch data: %s", sqlite3_errmsg(db));
-                }
-                if (select_last_sync || count) {
-                    do {
-                        step = sqlite3_step(res);
-                        if (step != SQLITE_ROW && step != SQLITE_OK) break;
-                        if (select_last_sync) sprintf(response, "%d %lf", sqlite3_column_int(res, 0), sqlite3_column_double(res, 1));
-                        else if (count) sprintf(response, "%d", sqlite3_column_int(res, 0));
-                    } while (step == SQLITE_ROW || step == SQLITE_OK);
-                } else strcpy(response, "Command OK");
-            }
-
-            transaction_done:
-            if (send(cl,response,sizeof(response),0) < 0)
-                mterror(DB_TAG, "Error sending response: %s", strerror(errno));
-
-            memset(buf, 0, sizeof(buf));
-            memset(response, 0, sizeof(response));
         }
 
         if (rc == -1) {
@@ -858,6 +910,12 @@ char * inotify_pop() {
     return cmd;
 }
 
+unsigned int get_number_of_digits(int n) {
+    unsigned int digits;
+    for(digits = 1; n /= 10; digits++);
+    return digits;
+}
+
 void* daemon_inotify(void * args) {
     char * node_type = args;
     mtinfo(INOTIFY_TAG,"Preparing client socket");
@@ -905,7 +963,15 @@ void* daemon_inotify(void * args) {
 
     int db_socket, rc;
     while(1) {
-        char * cmd = inotify_pop();
+        // add cmd size before sending
+        char *cmd = inotify_pop();
+        char aux_buf[BUFFER_SIZE];
+        size_t cmd_size = strlen(cmd) + 1;
+        unsigned int number_of_digits = get_number_of_digits(cmd_size);
+        unsigned int total_size = number_of_digits + cmd_size;
+        int copied;
+        if ((copied = snprintf(aux_buf, total_size+1, "%d %s", total_size, cmd)) > (ssize_t)total_size)
+            mterror(INOTIFY_TAG, "Overflow copying command to cluster database socket: %d/%d", copied, total_size);
 
         if ((db_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
             mterror_exit(INOTIFY_TAG, "Error initializing client socket: %s", strerror(errno));
@@ -915,7 +981,8 @@ void* daemon_inotify(void * args) {
             mterror_exit(INOTIFY_TAG, "Error connecting to socket: %s", strerror(errno));
         }
 
-        if ((rc = write(db_socket, cmd, strlen(cmd))) < 0) {
+
+        if ((rc = write(db_socket, aux_buf, total_size)) < 0) {
             mterror_exit(INOTIFY_TAG, "Error writing update in DB socket: %s", strerror(errno));
         }
 

@@ -127,6 +127,7 @@ class WazuhClusterClient(asynchat.async_chat):
         self.received_data.append(data)
 
     def found_terminator(self):
+        logging.debug("Received {}".format(len(''.join(self.received_data))))
         self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
         self.close()
 
@@ -463,10 +464,16 @@ def send_recv_and_check(cluster_socket, query):
     send_to_socket(cluster_socket, query)
     received = receive_data_from_db_socket(cluster_socket)
     if received != "Command OK":
-        logging.debug("Query {} did not executed correctly: {}".format(query, received))
+        logging.debug("Query {} did not executed correctly: {}".format(query.split(' ')[0], received))
 
 def send_to_socket(cluster_socket, query):
-    cluster_socket.send(query.encode())
+    # add the query size to the message
+    query_size = len(query)+1
+    new_query = "{} {}".format(query_size+len(str(query_size)), query)
+    query = "{} {}".format(len(new_query), query)
+    sent = cluster_socket.send(query.encode())
+    if sent != len(query):
+        logging.debug("Error sending query: sent {}/{}".format(sent, len(query)))
 
 def scan_for_new_files():
     cluster_socket = connect_to_db_socket()
@@ -606,9 +613,10 @@ def clear_file_status_one_node(manager, cluster_socket):
     """
     files = get_file_status(manager, cluster_socket).keys()
 
-    update_sql = "update2"
-    for file in files:
-        update_sql += " pending {0} {1}".format(manager, file)
+    for file in divide_list(files):
+        update_sql = "update2"
+        for f in file:
+            update_sql += " pending {0} {1}".format(manager, f)
 
         send_recv_and_check(cluster_socket, update_sql)
 
@@ -647,8 +655,7 @@ def clear_file_status():
         query = "selfiles 100 "
         file_status = ""
         for offset in range(0, n_files_db, 100):
-            query += str(offset)
-            send_to_socket(cluster_socket, query)
+            send_to_socket(cluster_socket, query + str(offset))
             file_status += receive_data_from_db_socket(cluster_socket)
 
         db_items = {filename:{'md5': md5, 'timestamp': timestamp} for filename,
@@ -656,9 +663,9 @@ def clear_file_status():
                     filter(lambda x: x != '', file_status.split(' ')))}
 
         # Update status
-        query = "update1 "
         new_items = {}
         for files_slice in divide_list(own_items.items()):
+            query = "update1 "
             try:
                 local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5']
                                 or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
@@ -1036,7 +1043,7 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, clus
     else:
         logging.debug({'updated': len(res['data']['updated']),
                       'error': res['data']['error'],
-                      'deleted': res['data']['deleted']})
+                      'deleted': len(res['data']['deleted'])})
         result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
 
 
