@@ -211,6 +211,7 @@ def check_cluster_cmd(cmd, node_type):
 
 def check_cluster_config(config):
     iv = InputValidator()
+    reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
 
     if not 'key' in config.keys():
         raise WazuhException(3004, 'Unspecified key')
@@ -221,9 +222,14 @@ def check_cluster_config(config):
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
     if not re.compile("\d+[m|s]").match(config['interval']):
         raise WazuhException(3004, 'Invalid interval specification. Please, specify it with format <number>s or <number>m')
-    if config['nodes'][0] == 'localhost' and len(config['nodes']) == 1:
-        raise WazuhException(3004, 'Please specify IPs of all cluster nodes')
 
+    if len(config['nodes']) == 0:
+        raise WazuhException(3004, 'No nodes defined in cluster configuration.')
+
+    invalid_elements = list(reservated_ips & set(config['nodes']))
+
+    if len(invalid_elements) != 0:
+        raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
 def get_cluster_items():
     try:
