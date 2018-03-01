@@ -339,7 +339,7 @@ def get_nodes(updateDBname=False):
             error_response = True
 
         if error_response:
-            data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
+            data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
             error_response = False
             continue
 
