@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added option in Makefile to disable CIS-CAT module. ([#381](https://github.com/wazuh/wazuh/pull/381))
+- Added field `totalItems` to `GET/agents/purgeable/:timeframe` API call. ([#385](https://github.com/wazuh/wazuh/pull/385))
 
 ### Changed
 
@@ -15,6 +16,11 @@ All notable changes to this project will be documented in this file.
 - Updated OpenSSL library to 1.1.0g.
 - Insert agent labels in JSON archives no matter the event matched a rule.
 - Support for relative/full/network paths in the CIS-CAT configuration. ([#419](https://github.com/wazuh/wazuh/pull/419))
+- Improved cluster control to give more information. ([#421](https://github.com/wazuh/wazuh/pull/421))
+- Updated rules for CIS-CAT.
+- Removed unnecessary compilation of vulnerability-detector in agents.
+- Increased wazuh-modulesd's subprocess pool.
+- Improved the agent software recollection by Syscollector.
 
 ### Fixed
 
@@ -25,6 +31,16 @@ All notable changes to this project will be documented in this file.
 - Fixed error handling in CIS-CAT module. ([#401](https://github.com/wazuh/wazuh/pull/401))
 - Fixed some defects reported by Coverity. ([#406](https://github.com/wazuh/wazuh/pull/406))
 - Fixed OS name detection in macOS and old Linux distros. ([#409](https://github.com/wazuh/wazuh/pull/409))
+- Fixed linked in HP-UX.
+- Fixed Red Hat detection in vulnerability-detector.
+- Fixed segmentation fault in wazuh-cluster when files path is too long.
+- Fixed a bug getting groups and searching by them in `GET/agents` API call. ([#390](https://github.com/wazuh/wazuh/pull/390))
+- Several fixes and improvements in cluster.
+- Fixed bug in wazuh-db when closing exceeded databases in transaction.
+- Fixed bug in vulnerability-detector that discarded valid agents.
+- Fixed segmentation fault in Windows agents when getting OS info.
+- Fixed memory leaks in vulnerability-detector and CIS-CAT wodle.
+- Fixed behavior when working directory is not found in CIS-CAT wodle.
 
 ## [v3.2.0]
 
