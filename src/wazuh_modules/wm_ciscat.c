@@ -52,6 +52,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     wm_ciscat_eval *eval;
     time_t time_start = 0;
     time_t time_sleep = 0;
+    int skip_java = 0;
     char *cis_path = NULL;
     char *jre_path = NULL;
     char java_fullpath[OS_MAXSTR];
@@ -85,41 +86,47 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                 break;
             case 1:
             #ifdef WIN32
-                if (current)
+                if (*current) {
                     snprintf(java_fullpath, OS_MAXSTR - 1, "%s\\%s", current, ciscat->java_path);
+                } else {
+                    skip_java = 1;
+                }
             #else
                 snprintf(java_fullpath, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR, ciscat->java_path);
             #endif
                 break;
             default:
-                mterror(WM_CISCAT_LOGTAG, "Defined Java path is not valid.");
+                mterror(WM_CISCAT_LOGTAG, "Defined Java path is not valid. Using the default one.");
+                skip_java = 1;
+        }
+
+        if (!skip_java) {
+            os_strdup(java_fullpath, ciscat->java_path);
+            os_calloc(OS_MAXSTR, sizeof(char), jre_path);
+
+            char *env_var = getenv("PATH");
+
+            if (!env_var){
+                snprintf(jre_path, OS_MAXSTR - 1, "%s", ciscat->java_path);
+            } else {
+        #ifdef WIN32
+                snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", ciscat->java_path, env_var);
+            }
+            if (_putenv(jre_path) < 0) {
+                mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
                 ciscat->flags.error = 1;
+            }      // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
+        #else
+                snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", ciscat->java_path, env_var);
+            }
+            if(setenv("PATH", jre_path, 1) < 0) {
+                mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
+                ciscat->flags.error = 1;
+            }
+        #endif
+            char *new_env = getenv("PATH");
+            mtdebug1(WM_CISCAT_LOGTAG, "Changing 'PATH' environment variable: '%s'", new_env);
         }
-        os_strdup(java_fullpath, ciscat->java_path);
-        os_calloc(OS_MAXSTR, sizeof(char), jre_path);
-
-        char *env_var = getenv("PATH");
-
-        if (!env_var){
-            snprintf(jre_path, OS_MAXSTR - 1, "%s", ciscat->java_path);
-        } else {
-    #ifdef WIN32
-            snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", ciscat->java_path, env_var);
-        }
-        if (_putenv(jre_path) < 0) {
-            mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
-            ciscat->flags.error = 1;
-        }      // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
-    #else
-            snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", ciscat->java_path, env_var);
-        }
-        if(setenv("PATH", jre_path, 1) < 0) {
-            mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
-            ciscat->flags.error = 1;
-        }
-    #endif
-        char *new_env = getenv("PATH");
-        mtdebug1(WM_CISCAT_LOGTAG, "Changing 'PATH' environment variable: '%s'", new_env);
     }
 
     // Define path where CIS-CAT is installed
@@ -133,8 +140,9 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             case 1:
                 // Relative path
             #ifdef WIN32
-                if (current)
+                if (*current) {
                     snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, ciscat->ciscat_path);
+                }
             #else
                 snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR, ciscat->ciscat_path);
             #endif
@@ -145,7 +153,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         }
     } else {
     #ifdef WIN32
-        if (current)
+        if (*current)
             snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, WM_CISCAT_DEFAULT_DIR_WIN);
     #else
         snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR);
@@ -183,7 +191,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
                     switch (wm_relative_path(eval->path)) {
                         case 0:
-                            snprintf(bench_fullpath, OS_MAXSTR - 1, "%s", eval->path);
                             break;
                         case 1:
                         #ifdef WIN32
@@ -191,12 +198,11 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                         #else
                             snprintf(bench_fullpath, OS_MAXSTR - 1, "%s/%s", cis_path, eval->path);
                         #endif
+                            os_strdup(bench_fullpath, eval->path);
                             break;
                         default:
                             mterror(WM_CISCAT_LOGTAG, "Couldn't find benchmark path. Skipping...");
                     }
-
-                    os_strdup(bench_fullpath, eval->path);
 
                     if (IsFile(eval->path) < 0) {
                         mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
