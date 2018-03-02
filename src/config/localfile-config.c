@@ -31,6 +31,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_query = "query";
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
+    const char *xml_localfile_outformat = "out_format";
 
     logreader *logf;
     logreader_config *log_config;
@@ -42,23 +43,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     if (!log_config->config) {
         os_calloc(2, sizeof(logreader), log_config->config);
         logf = log_config->config;
-        logf[0].file = NULL;
-        logf[0].command = NULL;
-        logf[0].alias = NULL;
-        logf[0].logformat = NULL;
-        logf[0].future = 0;
-        logf[0].query = NULL;
-        logf[0].target = NULL;
-        logf[0].target_socket = NULL;
-        logf[1].file = NULL;
-        logf[1].command = NULL;
-        logf[1].alias = NULL;
-        logf[1].logformat = NULL;
-        logf[1].future = 0;
-        logf[1].query = NULL;
-        logf[1].target = NULL;
-        logf[1].target_socket = NULL;
-        logf[1].duplicated = 0;
+        memset(logf, 0, 2 * sizeof(logreader));
     } else {
         logf = log_config->config;
         while (logf[pl].file != NULL) {
@@ -68,30 +53,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         /* Allocate more memory */
         os_realloc(logf, (pl + 2)*sizeof(logreader), log_config->config);
         logf = log_config->config;
-        logf[pl + 1].file = NULL;
-        logf[pl + 1].command = NULL;
-        logf[pl + 1].alias = NULL;
-        logf[pl + 1].logformat = NULL;
-        logf[pl + 1].future = 0;
-        logf[pl + 1].query = NULL;
-        logf[pl + 1].target = NULL;
-        logf[pl + 1].target_socket = NULL;
-        logf[pl + 1].duplicated = 0;
+        memset(logf + pl + 1, 0, sizeof(logreader));
     }
 
-    logf[pl].file = NULL;
-    logf[pl].command = NULL;
-    logf[pl].alias = NULL;
-    logf[pl].logformat = NULL;
-    logf[pl].future = 0;
-    logf[pl].query = NULL;
-    logf[pl].target = NULL;
-    logf[pl].target_socket = NULL;
-    logf[pl].duplicated = 0;
+    memset(logf + pl, 0, sizeof(logreader));
     os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
-    logf[pl].fp = NULL;
-    logf[pl].ffile = NULL;
-    logf[pl].djb_program_name = NULL;
     logf[pl].ign = 360;
     os_calloc(2, sizeof(logsocket *), logf[pl].target_socket);
 
@@ -125,6 +91,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
             os_realloc(logf[pl].target_socket, (count + 1) * sizeof(logsocket *), logf[pl].target_socket);
             memset(logf[pl].target_socket + count, 0, sizeof(logsocket *));
+        } else if (strcmp(node[i]->element, xml_localfile_outformat) == 0) {
+            os_strdup(node[i]->content, logf[pl].outformat);
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             char *key_value = 0;
             int j;
