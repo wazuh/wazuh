@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Fixed bug in Framework when listing directories due to permissions issues.
 - Fixed error handling in CIS-CAT module. ([#401](https://github.com/wazuh/wazuh/pull/401))
 - Fixed some defects reported by Coverity. ([#406](https://github.com/wazuh/wazuh/pull/406))
+- Fixed OS name detection in macOS and old Linux distros. ([#409](https://github.com/wazuh/wazuh/pull/409))
 
 ## [v3.2.0]
 
