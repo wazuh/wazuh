@@ -301,14 +301,30 @@ char * msgsubst(const char * pattern, const char * logmsg, const char * location
             field = location;
         } else if (strncmp(param, "timestamp", 9) == 0) {
             struct tm tm;
-            char * format = strchr(param, ' ');
+            char * format;
 
-            // If format is speficied, use it, else use RFC3164
-            format = format ? format + 1 : "%b %e %T";
             localtime_r(&timestamp, &tm);
 
-            if (strftime(_timestamp, sizeof(_timestamp), format, &tm)) {
-                field = _timestamp;
+            if (format = strchr(param, ' '), format) {
+                if (strftime(_timestamp, sizeof(_timestamp), format + 1, &tm)) {
+                    field = _timestamp;
+                } else {
+                    mdebug1("Cannot format time '%s': %s (%d)", format, strerror(errno), errno);
+                }
+            } else {
+                // If format is not speficied, use RFC3164
+#ifdef WIN32
+                // strfrime() does not allow %e in Windows
+                const char * MONTHS[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+                if (snprintf(_timestamp, sizeof(_timestamp), "%s %s%d %02d:%02d:%02d", MONTHS[tm.tm_mon], tm.tm_mday < 10 ? " " : "", tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec) < (int)sizeof(_timestamp)) {
+                    field = _timestamp;
+                }
+#else
+                if (strftime(_timestamp, sizeof(_timestamp), "%b %e %T", &tm)) {
+                    field = _timestamp;
+                }
+#endif // WIN32
             }
         } else if (strcmp(param, "hostname") == 0) {
             if (gethostname(hostname, sizeof(hostname)) != 0) {
@@ -318,6 +334,7 @@ char * msgsubst(const char * pattern, const char * logmsg, const char * location
             hostname[sizeof(hostname) - 1] = '\0';
             field = hostname;
         } else {
+            mdebug1("Invalid parameter '%s' for log format.", param);
             continue;
         }
 
@@ -348,6 +365,7 @@ char * msgsubst(const char * pattern, const char * logmsg, const char * location
     return final;
 
 fail:
+    mdebug1("Too long message format");
     strncpy(final, logmsg, OS_MAXSTR - 1);
     final[OS_MAXSTR - 1] = '\0';
     free(_pattern);
