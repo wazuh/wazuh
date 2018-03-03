@@ -50,6 +50,12 @@ int LogCollectorConfig(const char *cfgfile)
     logff = log_config.config;
     logsk = log_config.socket_list;
 
+    // List readed sockets
+    unsigned int sk;
+    for (sk=0; logsk && logsk[sk].name; sk++) {
+        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == UDP_PROTO ? "udp" : "tcp", logsk[sk].location);
+    }
+
     // Check sockets
     if (logff) {
         int i, j, k;
@@ -60,7 +66,7 @@ int LogCollectorConfig(const char *cfgfile)
                     continue;
                 }
                 int found = -1;
-                for (k=0;logsk[k].name;k++) {
+                for (k=0;logsk && logsk[k].name;k++) {
                     found = strcmp(logsk[k].name, logff[i].target[j]);
                     if (found == 0) {
                         break;
@@ -70,7 +76,6 @@ int LogCollectorConfig(const char *cfgfile)
                     merror_exit("Socket '%s' for '%s' is not defined.", logff[i].target[j], logff[i].file);
                 } else {
                     logff[i].target_socket[j] = &logsk[k];
-                    mdebug1("Socket '%s' (%s) added. Location: %s", logsk[k].name, logsk[k].mode == UDP_PROTO ? "udp" : "tcp", logsk[k].location);
                 }
             }
         }

@@ -93,7 +93,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].ffile = NULL;
     logf[pl].djb_program_name = NULL;
     logf[pl].ign = 360;
-    os_calloc(1, sizeof(logsocket *), logf[pl].target_socket);
+    os_calloc(2, sizeof(logsocket *), logf[pl].target_socket);
 
     /* Search for entries related to files */
     i = 0;
@@ -114,13 +114,17 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             // Count number of targets
             int count, n;
             count = 1;
-            for(n=0; node[i]->content[n]; n++) {
+            for (n=0; node[i]->content[n]; n++) {
                 if(node[i]->content[n] == ',') {
                     count ++;
                 }
             }
             logf[pl].target = OS_StrBreak(',', node[i]->content, count);
-            os_realloc(logf[pl].target_socket, count * sizeof(logsocket *), logf[pl].target_socket);
+            for (n=0; n<count; n++) {
+                os_strdup(w_strtrim(logf[pl].target[n]), logf[pl].target[n]);
+            }
+            os_realloc(logf[pl].target_socket, (count + 1) * sizeof(logsocket *), logf[pl].target_socket);
+            memset(logf[pl].target_socket + count, 0, sizeof(logsocket *));
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             char *key_value = 0;
             int j;
