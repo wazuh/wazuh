@@ -84,9 +84,9 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             free(logf[pl].location);
             os_strdup(node[i]->content, logf[pl].location);
         } else if (!strcmp(node[i]->element, socket_mode)) {
-            if (strcmp(node[i]->content, "tcp") == 0) {
+            if (strcasecmp(node[i]->content, "tcp") == 0) {
                 logf[pl].mode = TCP_PROTO;
-            } else if (strcmp(node[i]->content, "udp") == 0) {
+            } else if (strcasecmp(node[i]->content, "udp") == 0) {
                 logf[pl].mode = UDP_PROTO;
             } else {
                 merror("Socket type '%s' is not valid at <%s>. Should be 'udp' or 'tcp'.", node[i]->content, node[i]->element);
