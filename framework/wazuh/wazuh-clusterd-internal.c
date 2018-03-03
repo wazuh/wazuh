@@ -365,6 +365,7 @@ void* daemon_socket() {
                 select_last_sync=true;
             } else {
                 mtdebug1(DB_TAG,"Nothing to do");
+                strcpy(response, "Nothing to do.");
                 goto transaction_done;
             }
 

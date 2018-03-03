@@ -7,7 +7,7 @@
     <port>1516</port>
     <bind_addr>0.0.0.0</bind_addr>
     <nodes>
-        <node>localhost</node>
+        <node>NODE_IP</node>
     </nodes>
     <hidden>no</hidden>
     <disabled>yes</disabled>

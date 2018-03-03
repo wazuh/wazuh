@@ -234,8 +234,7 @@ def clear_file_status_one_node(manager, cluster_socket):
     for file in files:
         update_sql += " pending {0} {1}".format(manager, file)
 
-        send_to_socket(cluster_socket, update_sql)
-        received = receive_data_from_db_socket(cluster_socket)
+        send_recv_and_check(cluster_socket, update_sql)
 
 
 def update_file_info_bd(cluster_socket, files):
@@ -247,8 +246,7 @@ def update_file_info_bd(cluster_socket, files):
         for fname, finfo in file:
             query += "{} {} {} ".format(fname, finfo['md5'], finfo['timestamp'])
 
-        send_to_socket(cluster_socket, query)
-        received = receive_data_from_db_socket(cluster_socket)
+        send_recv_and_check(cluster_socket, query)
 
 
 def clear_file_status():
@@ -293,10 +291,10 @@ def clear_file_status():
                                         'timestamp': own_items[e.args[0]]['timestamp']}
                 logging.debug("File not found in database: {0}".format(e.args[0]))
                 continue
-            query += ' '.join(local_items.keys())
-            send_to_socket(cluster_socket, query)
-            received = receive_data_from_db_socket(cluster_socket)
-            new_items.update(local_items)
+            if len(local_items.keys()) > 0:
+                query += ' '.join(local_items.keys())
+                send_recv_and_check(cluster_socket, query)
+                new_items.update(local_items)
     else:
         new_items = own_items
 
@@ -489,18 +487,18 @@ def get_remote_nodes(connected=True, updateDBname=False):
 
     # Get connected nodes in the cluster
     if connected:
-        cluster = [n['url'] for n in filter(lambda x: x['status'] == 'connected',
+        cluster = [(n['url'], n['localhost']) for n in filter(lambda x: x['status'] == 'connected',
                     all_nodes)]
     else:
-        cluster = [n['url'] for n in all_nodes]
+        cluster = [(n['url'], n['localhost']) for n in all_nodes]
     # search the index of the localhost in the cluster
     try:
-        localhost_index = cluster.index('localhost')
-    except ValueError as e:
+        localhost_index = next (x[0] for x in enumerate(cluster) if x[1][1])
+    except StopIteration as e:
         logging.error("Cluster nodes are not correctly configured at ossec.conf.")
         exit(1)
 
-    return list(compress(cluster, map(lambda x: x != localhost_index, range(len(cluster)))))
+    return list(compress(map(itemgetter(0), cluster), map(lambda x: x != localhost_index, range(len(cluster)))))
 
 
 def run_logtest(synchronized=False):
@@ -579,8 +577,7 @@ def update_node_db_after_sync(data, node, cluster_socket):
         for u in updated:
             update_sql += " synchronized {0} /{1}".format(node, u)
 
-        send_to_socket(cluster_socket, update_sql)
-        received = receive_data_from_db_socket(cluster_socket)
+        send_recv_and_check(cluster_socket, update_sql)
 
     for failed in divide_list(data['files']['error']):
         # delete_sql = "delete1"
@@ -599,8 +596,7 @@ def update_node_db_after_sync(data, node, cluster_socket):
             else:
                 update_sql += " failed {0} {1}".format(node, f)
 
-        send_to_socket(cluster_socket, update_sql)
-        received = receive_data_from_db_socket(cluster_socket)
+        send_recv_and_check(cluster_socket, update_sql)
         # if len(delete_sql) > len("delete1"):
         #     send_to_socket(cluster_socket, delete_sql)
         #     received = receive_data_from_db_socket(cluster_socket)
@@ -610,8 +606,7 @@ def update_node_db_after_sync(data, node, cluster_socket):
         for d in deleted:
             update_sql += " deleted {0} {1}".format(node, d)
 
-        send_to_socket(cluster_socket, update_sql)
-        received = receive_data_from_db_socket(cluster_socket)
+        send_recv_and_check(cluster_socket, update_sql)
 
 
 def sync_one_node(debug, node, force=False, config_cluster=None, cluster_items=None):
@@ -660,10 +655,8 @@ def sync_one_node(debug, node, force=False, config_cluster=None, cluster_items=N
     after = time()
     synchronization_duration += after-before
 
-    send_to_socket(cluster_socket, "clearlast")
-    received = receive_data_from_db_socket(cluster_socket)
-    send_to_socket(cluster_socket, "updatelast {0} {1}".format(synchronization_date, int(synchronization_duration)))
-    received = receive_data_from_db_socket(cluster_socket)
+    send_recv_and_check(cluster_socket, "clearlast")
+    send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
 
     cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))
@@ -749,10 +742,8 @@ def sync(debug, force=False, config_cluster=None, cluster_items=None):
     after = time()
     synchronization_duration += after-before
 
-    send_to_socket(cluster_socket, "clearlast")
-    received = receive_data_from_db_socket(cluster_socket)
-    send_to_socket(cluster_socket, "updatelast {0} {1}".format(int(synchronization_date), synchronization_duration))
-    received = receive_data_from_db_socket(cluster_socket)
+    send_recv_and_check(cluster_socket, "clearlast")
+    send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
 
     cluster_socket.close()
     logging.debug("Time updating DB: {0}".format(after-before))

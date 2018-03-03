@@ -494,7 +494,6 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             } else {
                 cJSON_AddStringToObject(program, "version", parts[2]);
             }
-            cJSON_AddStringToObject(program, "version", parts[2]);
             cJSON_AddStringToObject(program, "architecture", parts[3]);
 
             char ** description = NULL;
