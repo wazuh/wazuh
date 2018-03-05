@@ -755,6 +755,21 @@ class Agent:
 
 
     @staticmethod
+    def get_agents_dict(conn, select_fields, set_select_fields):
+
+        items = [{field:value for field,value in zip(select_fields, tuple) if value and field in set_select_fields} for tuple in conn]
+        items = [plain_dict_to_nested_dict(d, ['os']) for d in items]
+
+        if 'id' in set_select_fields:
+            map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), items)
+
+        if 'status' in set_select_fields:
+            map(lambda agent: setitem(agent, 'status', Agent.calculate_status(agent.get('last_keepalive'), agent.get('version') == None)), items)
+
+        return items
+
+
+    @staticmethod
     def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None, version="all"):
         """
         Gets a list of available agents with basic attributes.
@@ -893,100 +908,7 @@ class Agent:
                 set_select_fields.add('os_uname')
         conn.execute(query.format(','.join(select_fields)), request)
 
-        data['items'] = []
-
-        for tuple in conn:
-            data_tuple = {}
-            lastKeepAlive = 0
-            pending = True
-            os = {}
-            for field, value in zip(select_fields, tuple):
-                if value != None and field == 'id':
-                    data_tuple['id'] = str(value).zfill(3)
-                if value != None and field == 'name' and field in set_select_fields:
-                    data_tuple['name'] = value
-                if value != None and field == 'ip' and field in set_select_fields:
-                    data_tuple['ip'] = value
-
-                if value != None and field == 'last_keepalive':
-                    lastKeepAlive = value
-
-                if value != None and field == 'os_name' and field in set_select_fields:
-                    os['name'] = value
-                if value != None and field == 'os_version' and field in set_select_fields:
-                    os['version'] = value
-                if value != None and field == 'os_platform' and field in set_select_fields:
-                    os['platform'] = value
-                if value != None and field == 'os_codename' and field in set_select_fields:
-                    os['codename'] = value
-                if value != None and field == 'os_build' and field in set_select_fields:
-                    os['arch'] = value
-                if value != None and field == 'os_uname' and field in set_select_fields:
-                    if select_os_uname:
-                        os['uname'] = value
-                    if select_os_arch:
-                        if "x86_64" in value:
-                            os['arch'] = "x86_64"
-                        elif "i386" in value:
-                            os['arch'] = "i386"
-                        elif "i686" in value:
-                            os['arch'] = "i686"
-                        elif "sparc" in value:
-                            os['arch'] = "sparc"
-                        elif "amd64" in value:
-                            os['arch'] = "amd64"
-                        elif "ia64" in value:
-                            os['arch'] = "ia64"
-                        elif "AIX" in value:
-                            os['arch'] = "AIX"
-                        elif "armv6" in value:
-                            os['arch'] = "armv6"
-                        elif "armv7" in value:
-                            os['arch'] = "armv7"
-                if value != None and field == 'os_major' and field in set_select_fields:
-                    os['major'] = value
-
-                if value != None and field == 'version':
-                    pending = False if value != "" else True
-                    if field in set_select_fields:
-                        data_tuple['version'] = value
-
-                if value != None and field == 'manager_host' and field in set_select_fields:
-                    data_tuple['manager_host'] = value
-
-                if value != None and field == 'date_add' and field in set_select_fields:
-                    data_tuple['dateAdd'] = value
-
-                if value != None and field == 'node_name' and field in set_select_fields:
-                    data_tuple['node_name'] = value
-
-                if value != None and field == '`group`' and 'group' in set_select_fields:
-                    data_tuple['group'] = value
-
-                if value != None and field == 'merged_sum' and field in set_select_fields:
-                    data_tuple['mergedSum'] = value
-
-                if value != None and field == 'config_sum' and field in set_select_fields:
-                    data_tuple['configSum'] = value
-
-                if value != None and field == 'last_keepalive' and field in set_select_fields:
-                    data_tuple['lastKeepAlive'] = value
-
-            if os:
-                os_no_empty = dict((k, v) for k, v in os.items() if v)
-                if os_no_empty:
-                    data_tuple['os'] = os_no_empty
-
-            if 'status' in set_select_fields:
-                if data_tuple['id'] == "000":
-                    data_tuple['status'] = "Active"
-                else:
-                    data_tuple['status'] = Agent.calculate_status(lastKeepAlive, pending)
-
-            if 'ip' in set_select_fields and data_tuple['id'] == "000":
-                data_tuple['ip'] = '127.0.0.1'
-
-            data['items'].append(data_tuple)
+        data['items'] = get_agents_dict(conn, select_fields, set_select_fields)
 
         return data
 
@@ -2036,4 +1958,3 @@ class Agent:
                 }]
 
         return cluster_dict
-
