@@ -27,6 +27,7 @@ import hashlib
 import re
 import fcntl
 from json import loads
+from operator import setitem
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -908,7 +909,7 @@ class Agent:
                 set_select_fields.add('os_uname')
         conn.execute(query.format(','.join(select_fields)), request)
 
-        data['items'] = get_agents_dict(conn, select_fields, set_select_fields)
+        data['items'] = Agent.get_agents_dict(conn, select_fields, set_select_fields)
 
         return data
 
