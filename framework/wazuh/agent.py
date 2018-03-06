@@ -756,16 +756,22 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_dict(conn, select_fields, set_select_fields):
+    def get_agents_dict(conn, min_select_fields, user_select_fields):
+        db_api_name = {name:name for name in min_select_fields}
+        db_api_name.update({"`group`":"group","date_add":"dateAdd", "last_keepalive":"lastKeepAlive"})
 
-        items = [{field:value for field,value in zip(select_fields, tuple) if value and field in set_select_fields} for tuple in conn]
+
+        items = [{db_api_name[field]:value for field,value in zip(min_select_fields, tuple) if value is not None and field in user_select_fields} for tuple in conn]
         items = [plain_dict_to_nested_dict(d, ['os']) for d in items]
 
-        if 'id' in set_select_fields:
+        if 'id' in user_select_fields:
             map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), items)
 
-        if 'status' in set_select_fields:
-            map(lambda agent: setitem(agent, 'status', Agent.calculate_status(agent.get('last_keepalive'), agent.get('version') == None)), items)
+        if items[0]['id'] == '000':
+            items[0]['ip'] = '127.0.0.1'
+
+        if 'status' in user_select_fields:
+            map(lambda agent: setitem(agent, 'status', Agent.calculate_status(agent.get('lastKeepAlive'), agent.get('version') == None)), items)
 
         return items
 
@@ -800,12 +806,10 @@ class Agent:
                   'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add',
                    'group': 'group', 'merged_sum': 'merged_sum', 'config_sum': 'config_sum',
                    'os.codename': 'os_codename','os.major': 'os_major','os.uname': 'os_uname',
-                  'last_keepalive': 'last_keepalive','os.arch': 'os_arch'}
-        valid_select_fields = {"id", "name", "ip", "last_keepalive", "os_name", "os_version", "node_name",
-                               "os_platform", "version", "manager_host", "date_add", 'status',
-                               'group', 'merged_sum', 'config_sum','os_codename', 'os_major', 'os_uname',
-                               'last_keepalive', 'os_arch'}
-        select_fields = {'id', 'version', 'last_keepalive'}
+                  'last_keepalive': 'last_keepalive','os.arch': 'os_arch', 'node_name': 'node_name'}
+        valid_select_fields = set(fields.values()) | {'status'}
+        # at least, we should retrieve those fields since other fields dependend on those
+        min_select_fields = {'id', 'version', 'last_keepalive'}
         search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
         request = {}
         if select:
@@ -813,12 +817,13 @@ class Agent:
                 incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                                     format(valid_select_fields, incorrect_fields))
-            select_fields |= set(select['fields'])
+            min_select_fields |= set(select['fields'])
         else:
             valid_select_fields.remove('node_name') # only return node_type if asked
-            select_fields = valid_select_fields
+            min_select_fields = valid_select_fields
 
-        set_select_fields = set(select['fields']) if select else select_fields.copy()
+        # save the fields that the user has selected
+        user_select_fields = set(select['fields']) if select else min_select_fields.copy()
 
         if status != "all":
             limit_seconds = 600*3 + 30
@@ -896,20 +901,20 @@ class Agent:
             request['offset'] = offset
             request['limit'] = limit
 
-        if 'group' in select_fields:
-            select_fields.remove('group')
-            select_fields.add('`group`')
+        if 'group' in min_select_fields:
+            min_select_fields.remove('group')
+            min_select_fields.add('`group`')
 
-        select_os_arch = 'os_arch' in select_fields
-        select_os_uname = 'os_uname' in select_fields
+        select_os_arch = 'os_arch' in min_select_fields
+        select_os_uname = 'os_uname' in min_select_fields
         if select_os_arch:
-            select_fields.remove('os_arch')
+            min_select_fields.remove('os_arch')
             if not select_os_uname:
-                select_fields.add('os_uname')
-                set_select_fields.add('os_uname')
-        conn.execute(query.format(','.join(select_fields)), request)
+                min_select_fields.add('os_uname')
+                user_select_fields.add('os_uname')
+        conn.execute(query.format(','.join(min_select_fields)), request)
 
-        data['items'] = Agent.get_agents_dict(conn, select_fields, set_select_fields)
+        data['items'] = Agent.get_agents_dict(conn, min_select_fields, user_select_fields)
 
         return data
 
