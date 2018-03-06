@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, WazuhVersion, plain_dict_to_nested_dict, create_exception_dic
+from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, WazuhVersion, plain_dict_to_nested_dict, create_exception_dic, get_fields_to_nest
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -759,10 +759,10 @@ class Agent:
     def get_agents_dict(conn, min_select_fields, user_select_fields):
         db_api_name = {name:name for name in min_select_fields}
         db_api_name.update({"`group`":"group","date_add":"dateAdd", "last_keepalive":"lastKeepAlive"})
-
+        fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])
 
         items = [{db_api_name[field]:value for field,value in zip(min_select_fields, tuple) if value is not None and field in user_select_fields} for tuple in conn]
-        items = [plain_dict_to_nested_dict(d, ['os']) for d in items]
+        items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested) for d in items]
 
         if 'id' in user_select_fields:
             map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), items)
@@ -806,7 +806,7 @@ class Agent:
                   'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add',
                    'group': 'group', 'merged_sum': 'merged_sum', 'config_sum': 'config_sum',
                    'os.codename': 'os_codename','os.major': 'os_major','os.uname': 'os_uname',
-                  'last_keepalive': 'last_keepalive','os.arch': 'os_arch', 'node_name': 'node_name'}
+                   'os.arch': 'os_arch', 'node_name': 'node_name'}
         valid_select_fields = set(fields.values()) | {'status'}
         # at least, we should retrieve those fields since other fields dependend on those
         min_select_fields = {'id', 'version', 'last_keepalive'}
