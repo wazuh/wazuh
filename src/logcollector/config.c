@@ -57,3 +57,74 @@ int LogCollectorConfig(const char *cfgfile)
 
     return (1);
 }
+
+cJSON *LogCollectorGetConfig(void) {
+
+    if (!logff) {
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+
+    // Read localfiles
+    cJSON *localfiles = cJSON_CreateArray();
+    int i, j;
+    for (i=0;logff[i].file;i++) {
+        cJSON *file = cJSON_CreateObject();
+
+        if (logff[i].file) cJSON_AddStringToObject(file,"file",logff[i].file);
+        if (logff[i].logformat) cJSON_AddStringToObject(file,"logformat",logff[i].logformat);
+        if (logff[i].command) cJSON_AddStringToObject(file,"command",logff[i].command);
+        if (logff[i].djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",logff[i].djb_program_name);
+        if (logff[i].alias) cJSON_AddStringToObject(file,"alias",logff[i].alias);
+        if (logff[i].query) cJSON_AddStringToObject(file,"query",logff[i].query);
+        if (logff[i].outformat) cJSON_AddStringToObject(file,"outformat",logff[i].outformat);
+        if (*logff[i].target) {
+            cJSON *target = cJSON_CreateArray();
+            for (j=0;logff[i].target[j];j++) {
+                cJSON_AddItemToArray(target, cJSON_CreateString(logff[i].target[j]));
+            }
+            cJSON_AddItemToObject(file,"target",target);
+        }
+        if (logff[i].duplicated) cJSON_AddNumberToObject(file,"duplicate",logff[i].duplicated);
+        if (logff[i].labels[0].key) {
+            cJSON *label = cJSON_CreateObject();
+            for (j=0;logff[i].labels[j].key;j++) {
+                cJSON_AddStringToObject(label,logff[i].labels[j].key,logff[i].labels[j].value);
+            }
+            cJSON_AddItemToObject(file,"labels",label);
+        }
+        if (logff[i].ign) cJSON_AddNumberToObject(file,"frequency",logff[i].ign);
+        if (logff[i].future) cJSON_AddStringToObject(file,"only-future-events","yes");
+
+        cJSON_AddItemToArray(localfiles, file);
+    }
+
+    if (cJSON_GetArraySize(localfiles) > 0) {
+        cJSON_AddItemToObject(root,"localfiles",localfiles);
+    }
+
+    // Read targets
+    cJSON *targets = cJSON_CreateArray();
+    for (i=0;logsk[i].name;i++) {
+        cJSON *target = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(target,"name",logsk[i].name);
+        cJSON_AddStringToObject(target,"location",logsk[i].location);
+        if (logsk[i].mode == UDP_PROTO) {
+            cJSON_AddStringToObject(target,"mode","udp");
+        } else {
+            cJSON_AddStringToObject(target,"mode","tcp");
+        }
+        if (logsk[i].prefix) cJSON_AddStringToObject(target,"prefix",logsk[i].prefix);
+
+        cJSON_AddItemToArray(targets, target);
+    }
+
+    if (cJSON_GetArraySize(targets) > 0) {
+        cJSON_AddItemToObject(root,"targets",targets);
+    }
+
+    return root;
+
+}
