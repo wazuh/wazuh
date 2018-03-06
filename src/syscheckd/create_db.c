@@ -195,21 +195,21 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             /* Send the new checksum to the analysis server */
             alert_msg[1172] = '\0';
 
-            snprintf(alert_msg, 1172, "%ld:%d:%d:%d:%s:%s:%s:%s:%s:%ld:%ld %s%s%s",
-                     opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                     opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
-                     opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
-                     opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
-                     opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                     opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                     opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
-                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
-                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                     file_name,
-                     alertdump ? "\n" : "",
-                     alertdump ? alertdump : "");
+            snprintf(alert_msg, 1172, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s %s%s%s",
+                opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
+                opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
+                opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
+                opts & CHECK_MD5SUM ? mf_sum : "xxx",
+                opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
+                opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
+                opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
+                file_name,
+                alertdump ? "\n" : "",
+                alertdump ? alertdump : "");
             send_syscheck_msg(alert_msg);
             free(alertdump);
         } else {

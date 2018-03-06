@@ -438,13 +438,16 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 }
 
                 /* SHA-256 message */
-                if (strcmp(newsum.sha256, oldsum.sha256) == 0) {
-                    sdb.sha256[0] = '\0';
-                } else {
-                    snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: '%s'\n"
-                             "New sha256sum is : '%s'\n",
-                             oldsum.sha256, newsum.sha256);
-                    os_strdup(oldsum.sha256, lf->sha256_before);
+                if(newsum.sha256 && oldsum.sha256)
+                {
+                    if (strcmp(newsum.sha256, oldsum.sha256) == 0) {
+                        sdb.sha256[0] = '\0';
+                    } else {
+                        snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: '%s'\n"
+                                "New sha256sum is : '%s'\n",
+                                oldsum.sha256, newsum.sha256);
+                        os_strdup(oldsum.sha256, lf->sha256_before);
+                    }
                 }
 
                 /* Modification time message */

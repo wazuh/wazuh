@@ -386,22 +386,23 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
         sha1sum = 0;
     }
 
-    /* sha256 sum */
-    if (oldsum[6] == '+') {
-        sha256sum = 1;
-    } else if (oldsum[6] == 's') {
-        sha256sum = 1;
-    } else if (oldsum[6] == 'n') {
-        sha256sum = 0;
-    }
 
     /* Modification time */
-    if (oldsum[7] == '+')
+    if (oldsum[6] == '+')
         mtime = 1;
 
     /* Inode */
-    if (oldsum[8] == '+')
+    if (oldsum[7] == '+')
         inode = 1;
+
+    /* sha256 sum */
+    if (oldsum[8] == '+') {
+        sha256sum = 1;
+    } else if (oldsum[8] == 's') {
+        sha256sum = 1;
+    } else if (oldsum[8] == 'n') {
+        sha256sum = 0;
+    }
 
     /* Generate new checksum */
     if (S_ISREG(statbuf.st_mode))
@@ -436,18 +437,18 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
 
     newsum[0] = '\0';
     newsum[511] = '\0';
-    snprintf(newsum, 511, "%ld:%d:%d:%d:%s:%s:%s:%s:%s:%ld:%ld",
-             size == 0 ? 0 : (long)statbuf.st_size,
-             perm == 0 ? 0 : (int)statbuf.st_mode,
-             owner == 0 ? 0 : (int)statbuf.st_uid,
-             group == 0 ? 0 : (int)statbuf.st_gid,
-             md5sum   == 0 ? "xxx" : mf_sum,
-             sha1sum  == 0 ? "xxx" : sf_sum,
-             sha256sum  == 0 ? "xxx" : sf256_sum,
-             owner == 0 ? "" : get_user(file_name, statbuf.st_uid),
-             group == 0 ? "" : get_group(statbuf.st_gid),
-             mtime ? (long)statbuf.st_mtime : 0,
-             inode ? (long)statbuf.st_ino : 0);
+    snprintf(newsum, 511, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
+        size == 0 ? 0 : (long)statbuf.st_size,
+        perm == 0 ? 0 : (int)statbuf.st_mode,
+        owner == 0 ? 0 : (int)statbuf.st_uid,
+        group == 0 ? 0 : (int)statbuf.st_gid,
+        md5sum   == 0 ? "xxx" : mf_sum,
+        sha1sum  == 0 ? "xxx" : sf_sum,
+        owner == 0 ? "" : get_user(file_name, statbuf.st_uid),
+        group == 0 ? "" : get_group(statbuf.st_gid),
+        mtime ? (long)statbuf.st_mtime : 0,
+        inode ? (long)statbuf.st_ino : 0,
+        sha256sum  == 0 ? "xxx" : sf256_sum);
 
     return (0);
 }

@@ -53,14 +53,9 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum) {
 
     *(sum->sha1++) = '\0';
 
-    if (!(sum->sha256 = strchr(sum->sha1, ':')))
-        return -1;
-
-    *(sum->sha256++) = '\0';
-
     // New fields: user name, group name, modification time and inode
 
-    if (!(sum->uname = strchr(sum->sha256, ':')))
+    if (!(sum->uname = strchr(sum->sha1, ':')))
         return 0;
 
     *(sum->uname++) = '\0';
@@ -79,6 +74,12 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum) {
         return -1;
 
     *(c_inode++) = '\0';
+
+    sum->sha256 = NULL;
+    
+    if ((sum->sha256 = strchr(c_inode, ':')))
+        *(sum->sha256++) = '\0'; 
+
     sum->mtime = atol(c_mtime);
     sum->inode = atol(c_inode);
     return 0;
@@ -94,7 +95,6 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     os_strdup(sum->gid, lf->gowner_after);
     os_strdup(sum->md5, lf->md5_after);
     os_strdup(sum->sha1, lf->sha1_after);
-    os_strdup(sum->sha256, lf->sha256_after);
 
     if (sum->uname)
         os_strdup(sum->uname, lf->uname_after);
@@ -104,6 +104,9 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
 
     lf->mtime_after = sum->mtime;
     lf->inode_after = sum->inode;
+
+    if(sum->sha256)
+        os_strdup(sum->sha256, lf->sha256_after);
 
     /* Fields */
 
@@ -120,7 +123,6 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     os_strdup(sum->gid, lf->fields[SK_GID].value);
     os_strdup(sum->md5, lf->fields[SK_MD5].value);
     os_strdup(sum->sha1, lf->fields[SK_SHA1].value);
-    os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
 
     if (sum->uname)
         os_strdup(sum->uname, lf->fields[SK_UNAME].value);
@@ -132,6 +134,9 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_calloc(20, sizeof(char), lf->fields[SK_INODE].value);
         snprintf(lf->fields[SK_INODE].value, 20, "%ld", sum->inode);
     }
+
+    if(sum->sha256)
+        os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
 }
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
