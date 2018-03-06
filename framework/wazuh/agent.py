@@ -124,8 +124,8 @@ class Agent:
             return "Never connected"
         else:
             limit_seconds = 600*3 + 30
-            last_date = datetime.strptime(last_keep_alive, '%Y-%m-%d %H:%M:%S')
-            difference = (datetime.now() - last_date).total_seconds()
+            last_date = date(int(last_keep_alive[:4]), int(last_keep_alive[5:7]), int(last_keep_alive[8:10]))
+            difference = (date.today() - last_date).total_seconds()
 
             if difference < limit_seconds:
                 if pending:
@@ -760,7 +760,6 @@ class Agent:
         db_api_name = {name:name for name in min_select_fields}
         db_api_name.update({"`group`":"group","date_add":"dateAdd", "last_keepalive":"lastKeepAlive"})
 
-
         items = [{db_api_name[field]:value for field,value in zip(min_select_fields, tuple) if value is not None and field in user_select_fields} for tuple in conn]
         items = [plain_dict_to_nested_dict(d, ['os']) for d in items]
 
@@ -978,7 +977,7 @@ class Agent:
         conn = Connection(db_global[0])
 
         # Init query
-        query = "SELECT DISTINCT {0} FROM agent WHERE os_platform IS NOT null AND os_platform != ''"
+        query = "SELECT DISTINCT {0} FROM agent WHERE os_platform IS NOTf null AND os_platform != ''"
         fields = {'os.platform': 'os_platform'}  # field: db_column
         select = ["os_platform"]
         request = {}
