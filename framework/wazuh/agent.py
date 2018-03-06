@@ -115,25 +115,21 @@ class Agent:
 
         return dictionary
 
+
     @staticmethod
-    def calculate_status(last_keep_alive, pending):
+    def calculate_status(last_keep_alive, pending, today=date.today()):
         """
         Calculates state based on last keep alive
         """
-        if last_keep_alive == 0 or not last_keep_alive:
+        if not last_keep_alive:
             return "Never connected"
         else:
-            limit_seconds = 600*3 + 30
+            limit_seconds = 1830 # 600*3 + 30
             last_date = date(int(last_keep_alive[:4]), int(last_keep_alive[5:7]), int(last_keep_alive[8:10]))
-            difference = (date.today() - last_date).total_seconds()
+            difference = (today - last_date).total_seconds()
 
-            if difference < limit_seconds:
-                if pending:
-                    return "Pending"
-                else:
-                    return "Active"
-            else:
-                return "Disconnected"
+            return "Disconnected" if difference > limit_seconds else ("Pending" if pending else "Active")
+
 
     def _load_info_from_DB(self, select=None):
         """
@@ -771,7 +767,8 @@ class Agent:
             items[0]['ip'] = '127.0.0.1'
 
         if 'status' in user_select_fields:
-            map(lambda agent: setitem(agent, 'status', Agent.calculate_status(agent.get('lastKeepAlive'), agent.get('version') == None)), items)
+            today = date.today()
+            map(lambda agent: setitem(agent, 'status', Agent.calculate_status(agent.get('lastKeepAlive'), agent.get('version') == None, today)), items)
 
         return items
 
@@ -826,7 +823,7 @@ class Agent:
         user_select_fields = set(select['fields']) if select else min_select_fields.copy()
 
         if status != "all":
-            limit_seconds = 600*3 + 30
+            limit_seconds = 1830 # 600*3 + 30
             result = datetime.now() - timedelta(seconds=limit_seconds)
             request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -941,7 +938,7 @@ class Agent:
         query_disconnected = query.format('last_keepalive < :time_active')
         query_never = query.format('last_keepalive IS NULL AND id != 0')
 
-        limit_seconds = 600*3 + 30
+        limit_seconds = 1830 # 600*3 + 30
         result = datetime.now() - timedelta(seconds=limit_seconds)
         request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
 
