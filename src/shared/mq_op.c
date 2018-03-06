@@ -11,6 +11,8 @@
 #include "config/config.h"
 #include "os_net/os_net.h"
 
+static char * msgsubst(const char * pattern, const char * logmsg, const char * location, time_t timestamp);
+
 #ifndef WIN32
 
 /* Start the Message Queue. type: WRITE||READ */
@@ -142,17 +144,18 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 }
 
 /* Send a message to socket */
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logsocket **sockets)
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logsocket **sockets, const char * pattern)
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
     int i;
     static time_t last_attempt = 0;
-    time_t mtime;
+    time_t mtime = time(NULL);
+    char * _message = msgsubst(pattern, message, locmsg, mtime);
 
     for (i = 0; sockets[i] && sockets[i]->name; i++) {
         if (strcmp(sockets[i]->name, "agent") == 0) {
-            SendMSG(queue, message, locmsg, loc);
+            SendMSG(queue, _message, locmsg, loc);
         }
         else {
             tmpstr[OS_MAXSTR] = '\0';
@@ -171,14 +174,15 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                 break;
             default:
                 merror("At %s(): undefined protocol. This shouldn't happen.", __FUNCTION__);
+                free(_message);
                 return -1;
             }
 
             // create message and add prefix
             if (sockets[i]->prefix && *sockets[i]->prefix) {
-                snprintf(tmpstr, OS_MAXSTR, "%s%s", sockets[i]->prefix, message);
+                snprintf(tmpstr, OS_MAXSTR, "%s%s", sockets[i]->prefix, _message);
             } else {
-                snprintf(tmpstr, OS_MAXSTR, "%s", message);
+                snprintf(tmpstr, OS_MAXSTR, "%s", _message);
             }
 
             // Connect to socket if disconnected
@@ -227,13 +231,143 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
             }
         }
     }
+
+    free(_message);
     return (0);
 }
 
 #else
 
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, __attribute__((unused)) logsocket **sockets) {
-    return SendMSG(queue, message, locmsg, loc);
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, __attribute__((unused)) logsocket **sockets, const char * pattern) {
+    char * _message = msgsubst(pattern, message, locmsg, time(NULL));
+    int retval = SendMSG(queue, _message, locmsg, loc);
+    free(_message);
+    return retval;
 }
 
 #endif /* !WIN32 */
+
+char * msgsubst(const char * pattern, const char * logmsg, const char * location, time_t timestamp) {
+    char * final;
+    char * _pattern;
+    char * cur;
+    char * tok;
+    char * end;
+    char * param;
+    const char * field;
+    char _timestamp[64];
+    char hostname[512];
+    size_t n = 0;
+    size_t z;
+
+    if (!pattern) {
+        return strdup(logmsg);
+    }
+
+    os_malloc(OS_MAXSTR, final);
+    os_strdup(pattern, _pattern);
+
+    for (cur = _pattern; tok = strstr(cur, "$("), tok; cur = end) {
+        field = NULL;
+        *tok = '\0';
+
+        // Skip $(
+        param = tok + 2;
+
+        // Copy anything before the token
+        z = strlen(cur);
+
+        if (n + z >= OS_MAXSTR) {
+            goto fail;
+        }
+
+        strncpy(final + n, cur, OS_MAXSTR - n);
+        n += z;
+
+        if (end = strchr(param, ')'), !end) {
+            // Token not closed: break
+            *tok = '$';
+            cur = tok;
+            break;
+        }
+
+        *end++ = '\0';
+
+        // Find parameter
+
+        if (strcmp(param, "log") == 0 || strcmp(param, "output") == 0) {
+            field = logmsg;
+        } else if (strcmp(param, "location") == 0 || strcmp(param, "command") == 0) {
+            field = location;
+        } else if (strncmp(param, "timestamp", 9) == 0) {
+            struct tm tm;
+            char * format;
+
+            localtime_r(&timestamp, &tm);
+
+            if (format = strchr(param, ' '), format) {
+                if (strftime(_timestamp, sizeof(_timestamp), format + 1, &tm)) {
+                    field = _timestamp;
+                } else {
+                    mdebug1("Cannot format time '%s': %s (%d)", format, strerror(errno), errno);
+                }
+            } else {
+                // If format is not speficied, use RFC3164
+#ifdef WIN32
+                // strfrime() does not allow %e in Windows
+                const char * MONTHS[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+                if (snprintf(_timestamp, sizeof(_timestamp), "%s %s%d %02d:%02d:%02d", MONTHS[tm.tm_mon], tm.tm_mday < 10 ? " " : "", tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec) < (int)sizeof(_timestamp)) {
+                    field = _timestamp;
+                }
+#else
+                if (strftime(_timestamp, sizeof(_timestamp), "%b %e %T", &tm)) {
+                    field = _timestamp;
+                }
+#endif // WIN32
+            }
+        } else if (strcmp(param, "hostname") == 0) {
+            if (gethostname(hostname, sizeof(hostname)) != 0) {
+                strncpy(hostname, "localhost", sizeof(hostname));
+            }
+
+            hostname[sizeof(hostname) - 1] = '\0';
+            field = hostname;
+        } else {
+            mdebug1("Invalid parameter '%s' for log format.", param);
+            continue;
+        }
+
+        if (field) {
+            z = strlen(field);
+
+            if (n + z >= OS_MAXSTR) {
+                goto fail;
+            }
+
+            strncpy(final + n, field, OS_MAXSTR - n);
+            n += z;
+        }
+    }
+
+    // Copy rest of the pattern
+
+    z = strlen(cur);
+
+    if (n + z >= OS_MAXSTR) {
+        goto fail;
+    }
+
+    strncpy(final + n, cur, OS_MAXSTR - n);
+    final[n + z] = '\0';
+
+    free(_pattern);
+    return final;
+
+fail:
+    mdebug1("Too long message format");
+    strncpy(final, logmsg, OS_MAXSTR - 1);
+    final[OS_MAXSTR - 1] = '\0';
+    free(_pattern);
+    return final;
+}

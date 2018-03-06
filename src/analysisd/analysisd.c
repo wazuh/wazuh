@@ -853,6 +853,9 @@ void OS_ReadMSG_analysisd(int m_queue)
                 }
             }
 
+            // Insert labels
+            lf->labels = labels_find(lf);
+
             /* Check the rules */
             DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
                       ARGV0, lf->decoder_info->type);
@@ -925,7 +928,6 @@ void OS_ReadMSG_analysisd(int m_queue)
                 /* Log the alert if configured to */
                 if (currently_rule->alert_opts & DO_LOGALERT) {
                     lf->comment = ParseRuleComment(lf);
-                    lf->labels = labels_find(lf);
 
                     if (Config.custom_alert_output) {
                         __crt_ftell = ftell(_aflog);

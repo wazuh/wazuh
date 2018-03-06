@@ -8,7 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
+#ifdef ENABLE_CISCAT
 #include "wmodules.h"
 
 static wm_ciscat *ciscat;                             // Pointer to configuration
@@ -23,7 +23,7 @@ static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
 static void wm_ciscat_check();                       // Check configuration, disable flag
 static void wm_ciscat_run(wm_ciscat_eval *eval, char *path);      // Run a CIS-CAT policy
 static void wm_ciscat_preparser();                   // Prepare report for the xml parser
-static wm_scan_data* wm_ciscat_txt_parser(wm_scan_data *info, wm_rule_data *rule);     // Parse CIS-CAT csv reports
+static wm_scan_data* wm_ciscat_txt_parser();        // Parse CIS-CAT csv reports
 static void wm_ciscat_xml_parser();                 // Parse CIS-CAT xml reports
 static void wm_ciscat_send_scan(wm_scan_data *info);      // Write scan result into JSON events and send them
 static char* wm_ciscat_remove_tags(char* string);    // Remove xml and html tags from a string
@@ -52,56 +52,117 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     wm_ciscat_eval *eval;
     time_t time_start = 0;
     time_t time_sleep = 0;
+    int skip_java = 0;
     char *cis_path = NULL;
     char *jre_path = NULL;
+    char java_fullpath[OS_MAXSTR];
+    char bench_fullpath[OS_MAXSTR];
 
     // Check configuration and show debug information
 
     wm_ciscat_setup(ciscat);
     mtinfo(WM_CISCAT_LOGTAG, "Module started.");
 
+#ifdef WIN32
+    char* current;
+    os_calloc(OS_MAXSTR, sizeof(char), current);
+    if (!GetCurrentDirectory(OS_MAXSTR - 1, current)) {
+        mterror(WM_CISCAT_LOGTAG, "Unable to find current directory. Please use full paths for CIS-CAT configuration.");
+        ciscat->flags.error = 1;
+    }
+#endif
+
     os_calloc(OS_MAXSTR, sizeof(char), cis_path);
 
     // Check if Java path is defined and include it in "PATH" variable
 
     if (ciscat->java_path){
-        os_calloc(OS_MAXSTR, sizeof(char), jre_path);
 
-        char *env_var = getenv("PATH");
+        // Check if the defined path is relative or not
+        switch (wm_relative_path(ciscat->java_path)) {
+            case 0:
+                // Full path
+                snprintf(java_fullpath, OS_MAXSTR - 1, "%s", ciscat->java_path);
+                break;
+            case 1:
+            #ifdef WIN32
+                if (*current) {
+                    snprintf(java_fullpath, OS_MAXSTR - 1, "%s\\%s", current, ciscat->java_path);
+                } else {
+                    skip_java = 1;
+                }
+            #else
+                snprintf(java_fullpath, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR, ciscat->java_path);
+            #endif
+                break;
+            default:
+                mterror(WM_CISCAT_LOGTAG, "Defined Java path is not valid. Using the default one.");
+                skip_java = 1;
+        }
 
-        if (!env_var){
-            snprintf(jre_path, OS_MAXSTR - 1, "%s", ciscat->java_path);
-        } else {
-    #ifdef WIN32
-            size_t size = strlen(env_var);
-            if (env_var[size - 1] == ';') {
-                snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s%s", env_var, ciscat->java_path);
+        if (!skip_java) {
+            os_strdup(java_fullpath, ciscat->java_path);
+            os_calloc(OS_MAXSTR, sizeof(char), jre_path);
+
+            char *env_var = getenv("PATH");
+
+            if (!env_var){
+                snprintf(jre_path, OS_MAXSTR - 1, "%s", ciscat->java_path);
             } else {
-                snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", env_var, ciscat->java_path);
+        #ifdef WIN32
+                snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", ciscat->java_path, env_var);
             }
+            if (_putenv(jre_path) < 0) {
+                mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
+                ciscat->flags.error = 1;
+            }      // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
+        #else
+                snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", ciscat->java_path, env_var);
+            }
+            if(setenv("PATH", jre_path, 1) < 0) {
+                mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
+                ciscat->flags.error = 1;
+            }
+        #endif
+            char *new_env = getenv("PATH");
+            mtdebug1(WM_CISCAT_LOGTAG, "Changing 'PATH' environment variable: '%s'", new_env);
         }
-        if (_putenv(jre_path) < 0)      // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
-            mtwarn(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
-    #else
-            snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", env_var, ciscat->java_path);
-        }
-        if(setenv("PATH", jre_path, 1) < 0)
-            mtwarn(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
-    #endif
-        char *new_env = getenv("PATH");
-        mtdebug2(WM_CISCAT_LOGTAG, "Changing 'PATH' environment variable: '%s'", new_env);
     }
 
     // Define path where CIS-CAT is installed
 
-    if (ciscat->ciscat_path){
-        snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
+    if (ciscat->ciscat_path) {
+        switch (wm_relative_path(ciscat->ciscat_path)) {
+            case 0:
+                // Full path
+                snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
+                break;
+            case 1:
+                // Relative path
+            #ifdef WIN32
+                if (*current) {
+                    snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, ciscat->ciscat_path);
+                }
+            #else
+                snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR, ciscat->ciscat_path);
+            #endif
+                break;
+            default:
+                mterror(WM_CISCAT_LOGTAG, "Defined CIS-CAT path is not valid.");
+                ciscat->flags.error = 1;
+        }
     } else {
     #ifdef WIN32
-        snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR_WIN);
+        if (*current)
+            snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, WM_CISCAT_DEFAULT_DIR_WIN);
     #else
         snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR);
     #endif
+    }
+
+    if (IsDir(cis_path) < 0) {
+        mterror(WM_CISCAT_LOGTAG, "CIS-CAT tool not found at '%s'.", cis_path);
+        ciscat->flags.error = 1;
     }
 
     // First sleeping
@@ -119,21 +180,39 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     while (1) {
 
-        mtinfo(WM_CISCAT_LOGTAG, "Starting evaluation.");
-
         // Get time and execute
         time_start = time(NULL);
 
-        for (eval = ciscat->evals; eval; eval = eval->next) {
-            if (!eval->flags.error) {
-                if (IsFile(eval->path) < 0) {
-                    mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
-                } else {
-                    wm_ciscat_run(eval, cis_path);
+        if (!ciscat->flags.error) {
+            mtinfo(WM_CISCAT_LOGTAG, "Starting evaluation.");
+
+            for (eval = ciscat->evals; eval; eval = eval->next) {
+                if (!eval->flags.error) {
+
+                    switch (wm_relative_path(eval->path)) {
+                        case 0:
+                            break;
+                        case 1:
+                        #ifdef WIN32
+                            snprintf(bench_fullpath, OS_MAXSTR - 1, "%s\\%s", cis_path, eval->path);
+                        #else
+                            snprintf(bench_fullpath, OS_MAXSTR - 1, "%s/%s", cis_path, eval->path);
+                        #endif
+                            os_strdup(bench_fullpath, eval->path);
+                            break;
+                        default:
+                            mterror(WM_CISCAT_LOGTAG, "Couldn't find benchmark path. Skipping...");
+                    }
+
+                    if (IsFile(eval->path) < 0) {
+                        mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
+                    } else {
+                        wm_ciscat_run(eval, cis_path);
+                        ciscat->flags.error = 0;
+                    }
                 }
             }
         }
-
 
         time_sleep = time(NULL) - time_start;
 
@@ -156,6 +235,9 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     free(cis_path);
     free(jre_path);
+#ifdef WIN32
+    free(current);
+#endif
 
     return NULL;
 }
@@ -216,11 +298,11 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     char msg[OS_MAXSTR];
     char *ciscat_script;
     wm_scan_data *scan_info = NULL;
-    wm_rule_data *rule_info = NULL;
+    char eval_path[OS_MAXSTR];
 
     os_calloc(OS_MAXSTR, sizeof(char), ciscat_script);
 
-    snprintf(ciscat_script, OS_MAXSTR - 1, "%s\\CIS-CAT.BAT", path);
+    snprintf(ciscat_script, OS_MAXSTR - 1, "\"%s\\CIS-CAT.BAT\"", path);
 
     // Create arguments
 
@@ -232,8 +314,11 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     switch (eval->type) {
     case WM_CISCAT_XCCDF:
+
+        snprintf(eval_path, OS_MAXSTR - 1, "\"%s\"", eval->path);
+
         wm_strcat(&command, "-b", ' ');
-        wm_strcat(&command, eval->path, ' ');
+        wm_strcat(&command, eval_path, ' ');
 
         if (eval->profile) {
             wm_strcat(&command, "-p", ' ');
@@ -242,10 +327,12 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
         break;
     case WM_CISCAT_OVAL:
         mterror(WM_CISCAT_LOGTAG, "OVAL is an invalid content type. Exiting...");
+        ciscat->flags.error = 1;
         pthread_exit(NULL);
         break;
     default:
         mterror(WM_CISCAT_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
+        ciscat->flags.error = 1;
         pthread_exit(NULL);
     }
 
@@ -286,38 +373,38 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     switch (wm_exec(command, &output, &status, eval->timeout)) {
         case 0:
-            if (status > 0) {
-                mtwarn(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d): %s.", eval->path, status, strerror(errno));
-                mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
-                eval->flags.error = 1;
-            }
 
-            mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
+            mtdebug1(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+            mtinfo(WM_CISCAT_LOGTAG, "Scan finished. File: %s", eval->path);
 
             break;
 
         case WM_ERROR_TIMEOUT:
             free(output);
             output = NULL;
+            ciscat->flags.error = 1;
             wm_strcat(&output, "ciscat: ERROR: Timeout expired.", '\0');
             mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
-            pthread_exit(NULL);
             break;
 
         default:
             mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
+            ciscat->flags.error = 1;
             pthread_exit(NULL);
     }
 
     // Get assessment results
 
-    scan_info = wm_ciscat_txt_parser(scan_info, rule_info);
-
-    wm_ciscat_preparser();
-
-    wm_ciscat_xml_parser();
-
-    wm_ciscat_send_scan(scan_info);
+    if (!ciscat->flags.error) {
+        scan_info = wm_ciscat_txt_parser();
+        if (!ciscat->flags.error) {
+            wm_ciscat_preparser();
+            if (!ciscat->flags.error) {
+                wm_ciscat_xml_parser();
+                wm_ciscat_send_scan(scan_info);
+            }
+        }
+    }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
     SendMSG(0, msg, "rootcheck", ROOTCHECK_MQ);
@@ -338,7 +425,6 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
     char msg[OS_MAXSTR];
     char *ciscat_script = "./CIS-CAT.sh";
     wm_scan_data *scan_info = NULL;
-    wm_rule_data *rule_info = NULL;
 
     // Create arguments
 
@@ -404,16 +490,15 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     switch(pid = fork(), pid) {
         case -1:
-            mterror(WM_CISCAT_LOGTAG, FORK_ERROR, errno, strerror(errno));
-            exit(1);
+            mterror_exit(WM_CISCAT_LOGTAG, FORK_ERROR, errno, strerror(errno));
         case 0:
             // Child process
-            if (CreatePID("wazuh-modulesd:ciscat", getpid()) < 0)
-                mterror_exit(WM_CISCAT_LOGTAG, "Couldn't create PID file for child process: (%s)", strerror(errno));
+
+            setsid();
 
             if (chdir(path) < 0) {
-                mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
-                pthread_exit(NULL);
+                ciscat->flags.error = 1;
+                mterror_exit(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
             } else
                 mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
 
@@ -422,9 +507,9 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
             switch (wm_exec(command, &output, &status, eval->timeout)) {
                 case 0:
                     if (status > 0) {
-                        mtwarn(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
-                        mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
-                        exit(1);
+                        ciscat->flags.error = 1;
+                        mterror(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+                        mterror_exit(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
                     }
 
                     mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
@@ -434,23 +519,24 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
                 case WM_ERROR_TIMEOUT:
                     free(output);
                     output = NULL;
+                    ciscat->flags.error = 1;
                     wm_strcat(&output, "ciscat: ERROR: Timeout expired.", '\0');
                     mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
                     break;
 
                 default:
-                    mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
-                    exit(1);
+                    ciscat->flags.error = 1;
+                    mterror_exit(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
                     pthread_exit(NULL);
             }
-
-            if (DeletePID("wazuh-modulesd:ciscat") < 0)
-                mterror_exit(WM_CISCAT_LOGTAG, "Couldn't delete PID file for child process: (%s)", strerror(errno));
 
             _exit(0);
 
         default:
             // Parent process
+
+            wm_append_sid(pid);
+
             switch(waitpid(pid, &child_status, 0)) {
                 case -1:
                     mterror(WM_CISCAT_LOGTAG, WAITPID_ERROR, errno, strerror(errno));
@@ -463,17 +549,22 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
                         return;
                     }
             }
+
+            wm_remove_sid(pid);
     }
 
     // Get assessment results
 
-    scan_info = wm_ciscat_txt_parser(scan_info, rule_info);
-
-    wm_ciscat_preparser();
-
-    wm_ciscat_xml_parser();
-
-    wm_ciscat_send_scan(scan_info);
+    if (!ciscat->flags.error) {
+        scan_info = wm_ciscat_txt_parser();
+        if (!ciscat->flags.error) {
+            wm_ciscat_preparser();
+            if (!ciscat->flags.error) {
+                wm_ciscat_xml_parser();
+                wm_ciscat_send_scan(scan_info);
+            }
+        }
+    }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
     SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
@@ -484,7 +575,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
 #endif
 
-wm_scan_data* wm_ciscat_txt_parser(wm_scan_data *info, wm_rule_data *rule){
+wm_scan_data* wm_ciscat_txt_parser(){
 
     char file[OS_MAXSTR];
     FILE *fp;
@@ -493,6 +584,9 @@ wm_scan_data* wm_ciscat_txt_parser(wm_scan_data *info, wm_rule_data *rule){
     int last_line = 0;
     int final = 0;
     int i;
+    size_t size;
+    wm_scan_data *info = NULL;
+    wm_rule_data *rule = NULL;
 
     os_calloc(1, sizeof(wm_scan_data), info);
     os_calloc(1, sizeof(wm_rule_data), rule);
@@ -650,7 +744,14 @@ wm_scan_data* wm_ciscat_txt_parser(wm_scan_data *info, wm_rule_data *rule){
                 os_strdup(parts[1], rule->id);
                 os_strdup(parts[2], rule->title);
 
-                char *result = os_strip_char(parts[0], ':');
+                char result[MAX_RESULT];
+                snprintf(result, MAX_RESULT - 1, "%s", parts[0]);
+
+                size = strlen(result);
+                if (result[size - 1] == ':') {
+                    result[size - 1] = '\0';
+                }
+
                 os_strdup(result, rule->result);
 
                 for (i=0; parts[i]; i++){
@@ -665,14 +766,15 @@ wm_scan_data* wm_ciscat_txt_parser(wm_scan_data *info, wm_rule_data *rule){
             }
         }
 
+        mtdebug1(WM_CISCAT_LOGTAG, "Finished parse of the TXT report.");
+
         fclose(fp);
-        unlink(file);
     } else {
         mterror(WM_CISCAT_LOGTAG, "Unable to read file %s: %s", file, strerror(errno));
+        ciscat->flags.error = 1;
     }
 
     unlink(file);
-    mtdebug1(WM_CISCAT_LOGTAG, "Finished parse of the TXT report.");
 
     return info;
 }
@@ -692,9 +794,6 @@ void wm_ciscat_preparser(){
     int inside_rule = 0;
     int print_result = 0;
 
-    os_calloc(OS_MAXSTR, sizeof(char), readbuff);
-    os_calloc(OS_MAXSTR, sizeof(char), result);
-
 #ifdef WIN32
     snprintf(in_file, OS_MAXSTR - 1, "%s%s", TMP_DIR, "\\ciscat-report.xml");
     snprintf(out_file, OS_MAXSTR - 1, "%s%s", TMP_DIR, "\\ciscat-tmp.xml");
@@ -709,11 +808,24 @@ void wm_ciscat_preparser(){
     if ((in_fp = fopen(in_file, "r"))) {
 #endif
 
+        os_calloc(OS_MAXSTR, sizeof(char), readbuff);
+        os_calloc(OS_MAXSTR, sizeof(char), result);
+
         do{
-            fgets(readbuff, OS_MAXSTR, in_fp);
+            if (fgets(readbuff, OS_MAXSTR, in_fp)){}     // We want to ignore this part
         } while (!strstr(readbuff, WM_CISCAT_GROUP_START) && !strstr(readbuff, WM_CISCAT_GROUP_START2));
 
-        out_fp = fopen(out_file, "w");
+        if ((out_fp = fopen(out_file, "w")) == NULL) {
+
+            mterror(WM_CISCAT_LOGTAG, "Unable to open '%s' for writing: %s", in_file, strerror(errno));
+            ciscat->flags.error = 1;
+            free(readbuff);
+            free(result);
+            fclose(in_fp);
+            unlink(in_file);
+            return;
+        }
+
         fprintf(out_fp, "%s", readbuff);
 
         while (fgets(readbuff, OS_MAXSTR, in_fp) && (strstr(readbuff, WM_CISCAT_RESULT_START) == NULL)) {
@@ -735,6 +847,7 @@ void wm_ciscat_preparser(){
                             string[size - 1] = '\0';
                         }
                         snprintf(result, OS_MAXSTR - 1, "<description>%s</description>", string);
+                        free(string);
                     } else {
                         size = strlen(readbuff);
                         if (readbuff[size - 1] == '\n') {
@@ -753,6 +866,7 @@ void wm_ciscat_preparser(){
                             string[size - 1] = '\0';
                         }
                         snprintf(result, OS_MAXSTR - 1, "<rationale>%s</rationale>", string);
+                        free(string);
                     } else {
                         size = strlen(readbuff);
                         if (readbuff[size - 1] == '\n') {
@@ -771,6 +885,7 @@ void wm_ciscat_preparser(){
                             string[size - 1] = '\0';
                         }
                         snprintf(result, OS_MAXSTR - 1, "<fixtext>%s</fixtext>", string);
+                        free(string);
                     } else {
                         size = strlen(readbuff);
                         if (readbuff[size - 1] == '\n') {
@@ -786,17 +901,20 @@ void wm_ciscat_preparser(){
 
             if (inside) {
                 aux_str = strchr(readbuff, '<');
-                if (strstr(aux_str, WM_CISCAT_DESC_END) || strstr(aux_str, WM_CISCAT_RATIO_END) || strstr(aux_str, WM_CISCAT_FIXTEXT_END) || strstr(aux_str, WM_CISCAT_DESC_END2) || strstr(aux_str, WM_CISCAT_RATIO_END2) || strstr(aux_str, WM_CISCAT_FIXTEXT_END2)) {
-                    wm_strcat(&result, aux_str, '\0');
-                    inside = 0;
-                } else {
-                    string = wm_ciscat_remove_tags(aux_str);
-                    size = strlen(string);
-                    if (string[size - 1] == '\n') {
-                        string[size - 1] = ' ';
+                if (aux_str != NULL) {
+                    if (strstr(aux_str, WM_CISCAT_DESC_END) || strstr(aux_str, WM_CISCAT_RATIO_END) || strstr(aux_str, WM_CISCAT_FIXTEXT_END) || strstr(aux_str, WM_CISCAT_DESC_END2) || strstr(aux_str, WM_CISCAT_RATIO_END2) || strstr(aux_str, WM_CISCAT_FIXTEXT_END2)) {
+                        wm_strcat(&result, aux_str, '\0');
+                        inside = 0;
+                    } else {
+                        string = wm_ciscat_remove_tags(aux_str);
+                        size = strlen(string);
+                        if (string[size - 1] == '\n') {
+                            string[size - 1] = ' ';
+                        }
+                        wm_strcat(&result, string, '\0');
+                        free(string);
+                        continue;
                     }
-                    wm_strcat(&result, string, '\0');
-                    continue;
                 }
             }
 
@@ -813,12 +931,14 @@ void wm_ciscat_preparser(){
         fclose(in_fp);
         fclose(out_fp);
 
+        mtdebug1(WM_CISCAT_LOGTAG, "Finished preparse of the XML report.");
+
     } else {
         mterror(WM_CISCAT_LOGTAG, "Unable to open '%s': %s", in_file, strerror(errno));
+        ciscat->flags.error = 1;
     }
 
     unlink(in_file);
-    mtdebug1(WM_CISCAT_LOGTAG, "Finished preparse of the XML report.");
 
 }
 
@@ -945,11 +1065,19 @@ void wm_ciscat_xml_parser(){
             child = OS_GetElementsbyNode(&xml, node[i]);
             if (child == NULL) {
                 mterror(WM_CISCAT_LOGTAG, "Invalid element in XML report: %s", node[i]->element);
+                OS_ClearNode(child);
+                child = NULL;
+                OS_ClearNode(node);
+                OS_ClearXML(&xml);
                 return;
             }
 
             if ((rule_info = read_rule_info(child, rule_info, group)) == NULL) {
                 mterror(WM_CISCAT_LOGTAG, "Unable to read %s node.", node[i]->element);
+                OS_ClearNode(child);
+                child = NULL;
+                OS_ClearNode(node);
+                OS_ClearXML(&xml);
                 return;
             }
 
@@ -1109,8 +1237,12 @@ wm_rule_data* read_rule_info(XML_NODE node, wm_rule_data *rule, char *group) {
 void wm_ciscat_send_scan(wm_scan_data *info){
 
     wm_rule_data *rule;
+    wm_rule_data *next_rule;
     cJSON *object = NULL;
     cJSON *data = NULL;
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
 
     // Set pointer to the head of the linked list
 
@@ -1118,22 +1250,20 @@ void wm_ciscat_send_scan(wm_scan_data *info){
 
     // Set unique ID for each scan
 
+#ifndef WIN32
     int ID = os_random();
     if (ID < 0)
         ID = -ID;
+#else
+    unsigned int ID1 = os_random();
+    unsigned int ID2 = os_random();
 
-#ifdef WIN32
+    char random_id[OS_MAXSTR];
+    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
 
-    char *random_id;
-    os_calloc(OS_MAXSTR, sizeof(char), random_id);
-
-    int ID2 = os_random();
-    if (ID2 < 0)
-        ID2 = -ID2;
-
-    snprintf(random_id, OS_MAXSTR - 1, "%d%d", ID, ID2);
-
-    int final_id = atoi(random_id);
+    int ID = atoi(random_id);
+    if (ID < 0)
+        ID = -ID;
 #endif
 
     // Send global scan information
@@ -1141,11 +1271,7 @@ void wm_ciscat_send_scan(wm_scan_data *info){
     object = cJSON_CreateObject();
     data = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "scan_info");
-#ifdef WIN32
-    cJSON_AddNumberToObject(object, "scan_id", final_id);
-#else
     cJSON_AddNumberToObject(object, "scan_id", ID);
-#endif
     cJSON_AddItemToObject(object, "cis", data);
     cJSON_AddStringToObject(data, "benchmark", info->benchmark);
     cJSON_AddStringToObject(data, "hostname", info->hostname);
@@ -1164,13 +1290,18 @@ void wm_ciscat_send_scan(wm_scan_data *info){
     msg = cJSON_PrintUnformatted(object);
     mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
 #ifdef WIN32
-    SendMSG(0, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+    wm_sendmsg(usec, 0, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
 #else
-    SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+    wm_sendmsg(usec, queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
 #endif
     cJSON_Delete(object);
 
     free(msg);
+    free(info->benchmark);
+    free(info->hostname);
+    free(info->timestamp);
+    free(info->score);
+    free(info);
 
     // Send scan results
 
@@ -1179,11 +1310,7 @@ void wm_ciscat_send_scan(wm_scan_data *info){
         object = cJSON_CreateObject();
         data = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "scan_result");
-    #ifdef WIN32
-        cJSON_AddNumberToObject(object, "scan_id", final_id);
-    #else
         cJSON_AddNumberToObject(object, "scan_id", ID);
-    #endif
         cJSON_AddItemToObject(object, "cis", data);
 
         cJSON_AddStringToObject(data, "rule_id", rule->id);
@@ -1203,13 +1330,27 @@ void wm_ciscat_send_scan(wm_scan_data *info){
         msg = cJSON_PrintUnformatted(object);
         mtdebug2(WM_CISCAT_LOGTAG, "Sending CIS-CAT event: '%s'", msg);
     #ifdef WIN32
-        SendMSG(0, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+        wm_sendmsg(usec, 0, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
     #else
-        SendMSG(queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
+        wm_sendmsg(usec, queue_fd, msg, WM_CISCAT_LOCATION, LOCALFILE_MQ);
     #endif
         cJSON_Delete(object);
 
         free(msg);
+    }
+
+    for (rule = head; rule; rule = next_rule) {
+
+        next_rule = rule->next;
+        free(rule->id);
+        free(rule->title);
+        free(rule->group);
+        free(rule->description);
+        free(rule->rationale);
+        free(rule->remediation);
+        free(rule->result);
+        free(rule);
+
     }
 }
 
@@ -1293,3 +1434,4 @@ void delay(unsigned int ms) {
 #endif
 
 }
+#endif

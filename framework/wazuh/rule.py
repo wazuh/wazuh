@@ -9,7 +9,7 @@ from xml.etree.ElementTree import fromstring
 import wazuh.configuration as configuration
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.utils import cut_array, sort_array, search_array
+from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
 from sys import version_info
 
 class Rule:
@@ -334,15 +334,9 @@ class Rule:
     def __load_rules_from_file(rule_file, rule_path, rule_status):
         try:
             rules = []
-            # wrap the data
-            with open("{0}/{1}".format(rule_path, rule_file)) as f:
-                data = f.read()
+            
+            root = load_wazuh_xml("{}/{}".format(rule_path, rule_file))
 
-            data = re.sub("(<!--.*?-->)", "", data, flags=re.MULTILINE | re.DOTALL)
-            data = data.replace(" -- ", " -INVALID_CHAR ")
-            xmldata = '<root_tag>' + data + '</root_tag>'
-
-            root = fromstring(xmldata)
             for xml_group in root.getchildren():
                 if xml_group.tag.lower() == "group":
                     general_groups = xml_group.attrib['name'].split(',')

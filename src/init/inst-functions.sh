@@ -432,14 +432,14 @@ WriteManager()
       # Nameservers in /etc/resolv.conf
       for ip in ${NAMESERVERS} ${NAMESERVERS2};
         do
-          if [ ! "X${ip}" = "X" ]; then
+          if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
               echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
           fi
       done
       # Read string
       for ip in ${IPS};
         do
-          if [ ! "X${ip}" = "X" ]; then
+          if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
             echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
             if [ $? = 0 ]; then
               echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
@@ -621,7 +621,7 @@ InstallCommon(){
     elif [ ${DIST_NAME} = "HP-UX" ]; then
         INSTALL="/usr/local/coreutils/bin/install"
    elif [ ${DIST_NAME} = "AIX" ]; then
-  INSTALL="/opt/freeware/bin/install"
+        INSTALL="/opt/freeware/bin/install"
     fi
 
     ./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX} ${INSTYPE}

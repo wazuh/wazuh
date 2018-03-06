@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+#ifndef CLIENT
+
 #ifndef WM_VULNDETECTOR
 #define WM_VULNDETECTOR
 
@@ -38,7 +40,7 @@
 #define VU_PRECISE    "PRECISE"
 #define VU_TRUSTY     "TRUSTY"
 #define VU_XENIAL     "XENIAL"
-#define VU_RHEL       "REDHAT"
+#define VU_RHEL       "RED HAT"
 #define VU_CENTOS     "CENTOS"
 #define VU_RHEL5      "RHEL5"
 #define VU_RHEL6      "RHEL6"
@@ -182,4 +184,5 @@ int get_interval(char *source, unsigned long *interval);
 int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software);
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list);
 
+#endif
 #endif

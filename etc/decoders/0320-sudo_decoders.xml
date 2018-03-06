@@ -15,6 +15,7 @@
   -  Dec 30 19:36:11 rheltest sudo: cplummer : TTY=pts/2 ; PWD=/home/cplummer1 ; USER=root ; TSID=0000UM ; COMMAND=/bin/bash
   -  Oct 18 20:49:02 ip-10-0-0-10 sudo: santiago : TTY=pts/1 ; PWD=/root ; USER=root ; COMMAND=/bin/su
   -  Dec  1 09:50:51 ip-10-0-0-20 sudo:    homer : user NOT in sudoers ; TTY=pts/2 ; PWD=/home/homer ; USER=root ; COMMAND=/bin/ls
+  -  Feb 26 07:27:16 localhost sudo:   homer : TTY=pts/0 ; PWD=/home/homer ; USER=root ; COMMAND=/bin/ls /var/ossec/etc
 
   - Output for /etc/sudoers
   - Aug 31 08:11:00 2017 : homer : HOST=hostname : TTY=pts/1 ; PWD=/home ; USER=root ; COMMAND=/bin/bash
@@ -56,7 +57,7 @@
 
 <decoder name="sudo-fields">
   <parent>sudo</parent>
-  <regex offset="after_regex">COMMAND=(\S+)</regex>
+  <regex offset="after_regex">COMMAND=(\.+)</regex>
   <order>command</order>
 </decoder>
 

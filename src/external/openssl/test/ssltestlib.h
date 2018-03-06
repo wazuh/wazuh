@@ -20,10 +20,10 @@ int create_ssl_objects(SSL_CTX *serverctx, SSL_CTX *clientctx, SSL **sssl,
 int create_ssl_connection(SSL *serverssl, SSL *clientssl);
 
 /* Note: Not thread safe! */
-BIO_METHOD *bio_f_tls_dump_filter(void);
+const BIO_METHOD *bio_f_tls_dump_filter(void);
 void bio_f_tls_dump_filter_free(void);
 
-BIO_METHOD *bio_s_mempacket_test(void);
+const BIO_METHOD *bio_s_mempacket_test(void);
 void bio_s_mempacket_test_free(void);
 
 /* Packet types - value 0 is reserved */
@@ -32,5 +32,9 @@ void bio_s_mempacket_test_free(void);
 
 int mempacket_test_inject(BIO *bio, const char *in, int inl, int pktnum,
                           int type);
+
+typedef struct mempacket_st MEMPACKET;
+
+DEFINE_STACK_OF(MEMPACKET)
 
 #endif /* HEADER_SSLTESTLIB_H */

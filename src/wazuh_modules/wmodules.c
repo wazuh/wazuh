@@ -103,14 +103,13 @@ int wm_check() {
                 if (j->context->destroy)
                     j->context->destroy(j->data);
 
-                free(j);
-
                 if (j == wmodules) {
                     wmodules = next;
                 } else {
                     prev->next = next;
                 }
 
+                free(j);
             }
         }
     }
@@ -245,8 +244,57 @@ void wm_free(wmodule * config) {
 
     for (cur_module = config; cur_module; cur_module = next_module) {
         next_module = cur_module->next;
-        if (cur_module->context)
+        if (cur_module->context && cur_module->context->destroy)
             cur_module->context->destroy(cur_module->data);
         free(cur_module);
     }
+}
+
+// Send message to a queue waiting for a specific delay
+int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
+
+#ifdef WIN32
+    int msec = usec / 1000;
+    Sleep(msec);
+#else
+    struct timeval timeout = {0, usec};
+    select(0, NULL, NULL, NULL, &timeout);
+#endif
+
+    if (SendMSG(queue, message, locmsg, loc) < 0) {
+        merror("At wm_sendmsg(): Unable to send message to queue: (%s)", strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+// Check if a path is relative or absolute.
+// Returns 0 if absolute, 1 if relative or -1 on error.
+int wm_relative_path(const char * path) {
+
+    if (!path || path[0] == '\0') {
+        merror("At wm_relative_path(): Null path.");
+        return -1;
+    }
+
+#ifdef WIN32
+    if (((path[0] >= 'a' && path[0] <= 'z') || (path[0] >= 'A' && path[0] <= 'Z')) && path[1] == ':') {
+        // Is a full path
+        return 0;
+    } else if ((path[0] == '\\' && path[1] == '\\')) {
+        // Is a network resource
+        return 0;
+    } else {
+        // Relative path
+        return 1;
+    }
+#else
+    if (path[0] != '/') {
+        // Relative path
+        return 1;
+    }
+#endif
+
+    return 0;
 }

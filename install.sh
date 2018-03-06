@@ -89,6 +89,8 @@ Install()
 	      MAKEBIN=gmake
     elif [ "X$NUNAME" = "XHP-UX" ]; then
           MAKEBIN=/usr/local/bin/gmake
+    elif [ "X$NUNAME" = "XAIX" ]; then
+          MAKEBIN=/opt/freeware/bin/gmake
     fi
 
 
@@ -499,7 +501,7 @@ ConfigureServer()
 
     for ip in ${NAMESERVERS} ${NAMESERVERS2};
     do
-    if [ ! "X${ip}" = "X" ]; then
+    if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
         echo "      - ${ip}"
     fi
     done
