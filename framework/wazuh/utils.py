@@ -15,6 +15,7 @@ import stat
 import re
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
+from operator import itemgetter
 
 try:
     from subprocess import check_output
@@ -337,7 +338,17 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def plain_dict_to_nested_dict(data, force_fields=[]):
+
+def get_fields_to_nest(fields, force_fields=[]):
+    nest = {k:list(filter(lambda x: x != k, chain.from_iterable(g)))
+             for k,g in groupby(map(lambda x: x.split('_'), sorted(fields)),
+             key=lambda x:x[0])}
+    nested = filter(lambda x: len(x[1]) > 1 or x[0] in force_fields, nest.items())
+    non_nested = filter(lambda x: x.split('_')[0] not in map(itemgetter(0), nested), fields)
+    return nested, non_nested
+
+
+def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[]):
     """
     Turns an input dictionary with "nested" fields in form
                 field_subfield
@@ -368,14 +379,13 @@ def plain_dict_to_nested_dict(data, force_fields=[]):
     }
 
     :param data: dictionary to nest
+    :param nested: fields to nest
     :param force_fields: fields to force nesting in
     """
     # separate fields and subfields:
     # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
-    nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g)))
-             for k,g in groupby(map(lambda x: x.split('_'), sorted(data.keys())),
-             key=lambda x:x[0])}
-
+    if nested is None:
+        nested, non_nested = get_fields_to_nest(data.keys(), force_fields)
     # create a nested dictionary with those fields that have subfields
     # (board_serial won't be added because it only has one subfield)
     #  nested_dict = {
@@ -389,13 +399,13 @@ def plain_dict_to_nested_dict(data, force_fields=[]):
     #           'total': '2045956'
     #       }
     #    }
-    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl} for f,sfl
-                  in nested.items() if len(sfl) > 1 or f in force_fields}
+    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl 
+                  if data.get('{}_{}'.format(f,sf)) is not None} for f,sfl
+                  in nested}
 
     # create a dictionary with the non nested fields
     # non_nested_dict = {'board_serial': 'BSS-0123456789'}
-    non_nested_dict = {f:data[f] for f in data.keys() if f.split('_')[0]
-                       not in nested_dict.keys()}
+    non_nested_dict = {f:data[f] for f in non_nested if data.get(f) is not None}
 
     # append both dictonaries
     nested_dict.update(non_nested_dict)
