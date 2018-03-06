@@ -340,11 +340,11 @@ def md5(fname):
 
 
 def get_fields_to_nest(fields, force_fields=[]):
-    nest = {k:list(filter(lambda x: x != k, chain.from_iterable(g)))
+    nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))
              for k,g in groupby(map(lambda x: x.split('_'), sorted(fields)),
              key=lambda x:x[0])}
     nested = filter(lambda x: len(x[1]) > 1 or x[0] in force_fields, nest.items())
-    non_nested = filter(lambda x: x.split('_')[0] not in map(itemgetter(0), nested), fields)
+    non_nested = set(filter(lambda x: x.split('_')[0] not in map(itemgetter(0), nested), fields))
     return nested, non_nested
 
 
@@ -384,8 +384,9 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     """
     # separate fields and subfields:
     # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
+    keys = set(data.keys())
     if nested is None:
-        nested, non_nested = get_fields_to_nest(data.keys(), force_fields)
+        nested, non_nested = get_fields_to_nest(keys, force_fields)
     # create a nested dictionary with those fields that have subfields
     # (board_serial won't be added because it only has one subfield)
     #  nested_dict = {
@@ -399,13 +400,12 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     #           'total': '2045956'
     #       }
     #    }
-    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl 
-                  if data.get('{}_{}'.format(f,sf)) is not None} for f,sfl
-                  in nested}
+    nested_dict = {f:{sf:data['_'.join([f,sf])] for sf in sfl if '_'.join([f,sf]) in keys} 
+                  for f,sfl in nested}
 
     # create a dictionary with the non nested fields
     # non_nested_dict = {'board_serial': 'BSS-0123456789'}
-    non_nested_dict = {f:data[f] for f in non_nested if data.get(f) is not None}
+    non_nested_dict = {f:data[f] for f in non_nested & keys}
 
     # append both dictonaries
     nested_dict.update(non_nested_dict)
