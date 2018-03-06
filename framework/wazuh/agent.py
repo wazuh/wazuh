@@ -975,7 +975,7 @@ class Agent:
         conn = Connection(db_global[0])
 
         # Init query
-        query = "SELECT DISTINCT {0} FROM agent WHERE os_platform IS NOTf null AND os_platform != ''"
+        query = "SELECT DISTINCT {0} FROM agent WHERE os_platform IS NOT null AND os_platform != ''"
         fields = {'os.platform': 'os_platform'}  # field: db_column
         select = ["os_platform"]
         request = {}
