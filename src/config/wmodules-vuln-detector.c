@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#ifndef CLIENT
 #ifndef WIN32
 #include "wazuh_modules/wmodules.h"
 
@@ -258,4 +259,5 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
     return 0;
 }
 
+#endif
 #endif

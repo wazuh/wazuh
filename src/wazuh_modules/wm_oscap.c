@@ -140,9 +140,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     wm_oscap_profile *profile;
 
     // Define time to sleep between messages sent
-
     int usec = 1000000 / wm_max_eps;
-    struct timeval timeout = {0, usec};
 
     // Create arguments
 
@@ -222,15 +220,11 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     }
 
     for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
-        timeout.tv_usec = usec;
-        select(0 , NULL, NULL, NULL, &timeout);
-        SendMSG(queue_fd, line, WM_OSCAP_LOCATION, LOCALFILE_MQ);
+        wm_sendmsg(usec, queue_fd, line, WM_OSCAP_LOCATION, LOCALFILE_MQ);
     }
 
     snprintf(msg, OS_MAXSTR, "Ending OpenSCAP scan. File: %s. ", eval->path);
-    timeout.tv_usec = usec;
-    select(0 , NULL, NULL, NULL, &timeout);
-    SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
+    wm_sendmsg(usec, queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
 
     free(output);
     free(command);

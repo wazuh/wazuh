@@ -15,6 +15,7 @@
 static wm_sys_t *sys;                           // Pointer to configuration
 
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
+static void wm_sys_destroy(wm_sys_t *sys);      // Destroy data
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 
 // Syscollector module context definition
@@ -22,7 +23,7 @@ const char *WM_SYS_LOCATION = "syscollector";   // Location field for event send
 const wm_context WM_SYS_CONTEXT = {
     "syscollector",
     (wm_routine)wm_sys_main,
-    NULL
+    (wm_routine)wm_sys_destroy
 };
 
 #ifndef WIN32
@@ -262,4 +263,8 @@ void delay(unsigned int ms) {
     select(0, NULL, NULL, NULL, &timeout);
 #endif
 
+}
+
+void wm_sys_destroy(wm_sys_t *sys) {
+    free(sys);
 }

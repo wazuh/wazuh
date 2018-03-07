@@ -3,12 +3,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from xml.etree.ElementTree import fromstring
 from os import listdir, path as os_path
 import re
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.utils import cut_array
+from wazuh.utils import cut_array, load_wazuh_xml
 
 # Aux functions
 
@@ -32,6 +31,14 @@ conf_sections = {
     'open-scap': {
         'type': 'simple',
         'list_options': ['content']
+    },
+    'cis-cat': {
+        'type': 'simple',
+        'list_options': []
+    },
+    'syscollector': {
+        'type': 'simple',
+        'list_options': []
     },
     'rootcheck': {
         'type': 'simple',
@@ -115,7 +122,7 @@ def _read_option(section_name, opt):
                 opt_value[a] = opt.attrib[a]
             # profiles
             profiles_list = []
-            for profiles in opt.getchildren():
+            for profiles in opt.iter():
                 profiles_list.append(profiles.text)
 
             if profiles_list:
@@ -153,11 +160,11 @@ def _conf2json(src_xml, dst_json):
     Parses src_xml to json. It is inserted in dst_json.
     """
 
-    for section in src_xml.getchildren():
-        section_name = 'open-scap' if section.tag.lower() == 'wodle' else section.tag.lower()
+    for section in list(src_xml):
+        section_name = section.attrib['name'] if section.tag.lower() == 'wodle' else section.tag.lower()
         section_json = {}
 
-        for option in section.getchildren():
+        for option in list(section):
             option_name, option_value = _read_option(section_name, option)
             if type(option_value) is list:
                 for ov in option_value:
@@ -174,7 +181,7 @@ def _ossecconf2json(xml_conf):
     """
     final_json = {}
 
-    for root in xml_conf.getchildren():
+    for root in list(xml_conf):
         if root.tag.lower() == "ossec_config":
             _conf2json(root, final_json)
 
@@ -188,7 +195,7 @@ def _agentconf2json(xml_conf):
 
     final_json = []
 
-    for root in xml_conf.getchildren():
+    for root in xml_conf.iter():
         if root.tag.lower() == "agent_config":
             # Get attributes (os, name, profile)
             filters = {}
@@ -380,16 +387,8 @@ def get_ossec_conf(section=None, field=None):
     """
 
     try:
-        # wrap the data
-        with open(common.ossec_conf) as f:
-            txt_data = f.read()
-
-        txt_data = re.sub("(<!--.*?-->)", "", txt_data, flags=re.MULTILINE | re.DOTALL)
-        txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
-        txt_data = '<root_tag>' + txt_data + '</root_tag>'
-
         # Read XML
-        xml_data = fromstring(txt_data)
+        xml_data = load_wazuh_xml(common.ossec_conf)
 
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
@@ -399,8 +398,11 @@ def get_ossec_conf(section=None, field=None):
     if section:
         try:
             data = data[section]
-        except:
-            raise WazuhException(1102)
+        except KeyError as e:
+            if section not in conf_sections.keys():
+                raise WazuhException(1102, e.args[0])
+            else:
+                raise WazuhException(1106, e.args[0])
 
     if section and field:
         try:
@@ -428,15 +430,8 @@ def get_agent_conf_from_path(agent_conf, offset=0, limit=common.database_limit, 
         raise WazuhException(1006, agent_conf)
 
     try:
-        # wrap the data
-        f = open(agent_conf)
-        txt_data = f.read()
-        txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
-        f.close()
-        txt_data = '<root_tag>' + txt_data + '</root_tag>'
-
         # Read XML
-        xml_data = fromstring(txt_data)
+        xml_data = load_wazuh_xml(agent_conf)
 
         # Parse XML to JSON
         data = _agentconf2json(xml_data)

@@ -9,11 +9,13 @@
  * Foundation.
  */
 
+#ifdef  ENABLE_CISCAT
 #ifndef WM_CISCAT
 #define WM_CISCAT
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
+#define MAX_RESULT          64              // Maximum result length
 
 #define WM_CISCAT_LOGTAG ARGV0 ":ciscat"
 #define WM_CISCAT_DEFAULT_DIR WM_DEFAULT_DIR "/ciscat"
@@ -102,3 +104,4 @@ extern const wm_context WM_CISCAT_CONTEXT;   // Context
 int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 #endif // WM_OSCAP
+#endif

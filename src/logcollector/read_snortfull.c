@@ -72,7 +72,7 @@ void *read_snortfull(int pos, int *rc, int drop_it)
                     /* Send the message */
                     if (drop_it == 0) {
                         if (SendMSGtoSCK(logr_queue, f_msg, logff[pos].file,
-                                    LOCALFILE_MQ, logff[pos].target_socket) < 0) {
+                                    LOCALFILE_MQ, logff[pos].target_socket, logff[pos].outformat) < 0) {
                             merror(QUEUE_SEND);
                             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                                 merror_exit(QUEUE_FATAL, DEFAULTQPATH);
@@ -96,7 +96,7 @@ void *read_snortfull(int pos, int *rc, int drop_it)
                     /* Send the message */
                     if (drop_it == 0) {
                         if (SendMSGtoSCK(logr_queue, f_msg, logff[pos].file,
-                                    LOCALFILE_MQ, logff[pos].target_socket) < 0) {
+                                    LOCALFILE_MQ, logff[pos].target_socket, logff[pos].outformat) < 0) {
                             merror(QUEUE_SEND);
                             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                                 merror_exit(QUEUE_FATAL, DEFAULTQPATH);
