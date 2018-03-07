@@ -109,7 +109,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
         }
     }
     if (al_data->new_sha256) {
-        log_size = strlen(al_data->new_sha1) + 19 + 4;
+        log_size = strlen(al_data->new_sha256) + 19 + 4;
         if (body_size > log_size) {
             strncat(logs, "New sha256sum is : ", 1256);
             strncat(logs, al_data->new_sha256, body_size);
