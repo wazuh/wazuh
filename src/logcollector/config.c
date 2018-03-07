@@ -58,17 +58,16 @@ int LogCollectorConfig(const char *cfgfile)
     return (1);
 }
 
-cJSON *LogCollectorGetConfig(void) {
+cJSON *getLocalfileConfig(void) {
 
     if (!logff) {
         return NULL;
     }
 
     cJSON *root = cJSON_CreateObject();
-
-    // Read localfiles
     cJSON *localfiles = cJSON_CreateArray();
-    int i, j;
+    unsigned int i, j;
+
     for (i=0;logff[i].file;i++) {
         cJSON *file = cJSON_CreateObject();
 
@@ -104,8 +103,19 @@ cJSON *LogCollectorGetConfig(void) {
         cJSON_AddItemToObject(root,"localfiles",localfiles);
     }
 
-    // Read targets
+    return root;
+}
+
+cJSON *getSocketConfig(void) {
+
+    if (!logsk) {
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
     cJSON *targets = cJSON_CreateArray();
+    unsigned int i;
+
     for (i=0;logsk[i].name;i++) {
         cJSON *target = cJSON_CreateObject();
 
@@ -126,5 +136,4 @@ cJSON *LogCollectorGetConfig(void) {
     }
 
     return root;
-
 }
