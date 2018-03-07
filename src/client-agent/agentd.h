@@ -43,6 +43,9 @@ typedef struct agent_state_t {
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
+/* Parse readed client config into JSON format */
+cJSON *ClientGetConfig(void);
+
 /* Agentd init function */
 void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
 

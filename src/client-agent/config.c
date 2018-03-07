@@ -58,3 +58,35 @@ int ClientConf(const char *cfgfile)
 
     return (1);
 }
+
+
+cJSON *ClientGetConfig(void) {
+
+    if (!agt) {
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *client = cJSON_CreateObject();
+
+    if (agt->profile) cJSON_AddStringToObject(client,"config-profile",agt->profile);
+    if (agt->notify_time) cJSON_AddNumberToObject(client,"notify_time",agt->notify_time);
+    if (agt->max_time_reconnect_try) cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
+    if (agt->lip) cJSON_AddStringToObject(client,"local_ip",agt->lip);
+    if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
+    unsigned int i;
+    if (agt->server) {
+        cJSON *servers = cJSON_CreateArray();
+        for (i=0;agt->server[i].rip;i++) {
+            cJSON *server = cJSON_CreateObject();
+            cJSON_AddStringToObject(server,"address",agt->server[i].rip);
+            cJSON_AddNumberToObject(server,"port",agt->server[i].port);
+            if (agt->server[i].protocol == UDP_PROTO) cJSON_AddStringToObject(server,"protocol","udp"); else cJSON_AddStringToObject(server,"protocol","tcp");
+            cJSON_AddItemToArray(servers,server);
+        }
+        cJSON_AddItemToObject(client,"server",servers);
+    }
+    cJSON_AddItemToObject(root,"client",client);
+
+    return root;
+}
