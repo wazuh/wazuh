@@ -754,16 +754,16 @@ class Agent:
     @staticmethod
     def get_agents_dict(conn, min_select_fields, user_select_fields):
         db_api_name = {name:name for name in min_select_fields}
-        db_api_name.update({"`group`":"group","date_add":"dateAdd", "last_keepalive":"lastKeepAlive"})
+        db_api_name.update({"`group`":"group","date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
         fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])
 
-        items = [{db_api_name[field]:value for field,value in zip(min_select_fields, tuple) if value is not None and field in user_select_fields} for tuple in conn]
+        items = [{db_api_name[field]:value for field,value in zip(min_select_fields, tuple) if value is not None and field.replace('`','') in user_select_fields} for tuple in conn]
         items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested) for d in items]
 
         if 'id' in user_select_fields:
             map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), items)
 
-        if items[0]['id'] == '000':
+        if len(items) > 0 and items[0]['id'] == '000' and 'ip' in user_select_fields:
             items[0]['ip'] = '127.0.0.1'
 
         if 'status' in user_select_fields:
@@ -820,7 +820,7 @@ class Agent:
             min_select_fields = valid_select_fields
 
         # save the fields that the user has selected
-        user_select_fields = set(select['fields']) if select else min_select_fields.copy()
+        user_select_fields = (set(select['fields']) if select else min_select_fields.copy()) | {'id'}
 
         if status != "all":
             limit_seconds = 1830 # 600*3 + 30
@@ -902,13 +902,6 @@ class Agent:
             min_select_fields.remove('group')
             min_select_fields.add('`group`')
 
-        select_os_arch = 'os_arch' in min_select_fields
-        select_os_uname = 'os_uname' in min_select_fields
-        if select_os_arch:
-            min_select_fields.remove('os_arch')
-            if not select_os_uname:
-                min_select_fields.add('os_uname')
-                user_select_fields.add('os_uname')
         conn.execute(query.format(','.join(min_select_fields)), request)
 
         data['items'] = Agent.get_agents_dict(conn, min_select_fields, user_select_fields)
