@@ -60,15 +60,14 @@ int ClientConf(const char *cfgfile)
 }
 
 
-cJSON *ClientGetConfig(void) {
+cJSON *getClientConfig(void) {
 
     if (!agt) {
         return NULL;
     }
 
+    unsigned int i;
     cJSON *root = cJSON_CreateObject();
-
-    // Read client configuration
     cJSON *client = cJSON_CreateObject();
 
     if (agt->profile) cJSON_AddStringToObject(client,"config-profile",agt->profile);
@@ -76,7 +75,7 @@ cJSON *ClientGetConfig(void) {
     cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
     if (agt->lip) cJSON_AddStringToObject(client,"local_ip",agt->lip);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
-    unsigned int i;
+    if (agt->flags.remote_conf) cJSON_AddStringToObject(client,"remote_conf","yes"); else cJSON_AddStringToObject(client,"remote_conf","no");
     if (agt->server) {
         cJSON *servers = cJSON_CreateArray();
         for (i=0;agt->server[i].rip;i++) {
@@ -90,7 +89,16 @@ cJSON *ClientGetConfig(void) {
     }
     cJSON_AddItemToObject(root,"client",client);
 
-    // Read buffer configuration
+    return root;
+}
+
+cJSON *getBufferConfig(void) {
+
+    if (!agt) {
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
     cJSON *buffer = cJSON_CreateObject();
 
     if (agt->buffer) cJSON_AddStringToObject(buffer,"disabled","no"); else cJSON_AddStringToObject(buffer,"disabled","yes");
@@ -98,6 +106,28 @@ cJSON *ClientGetConfig(void) {
     cJSON_AddNumberToObject(buffer,"events_per_second",agt->events_persec);
 
     cJSON_AddItemToObject(root,"client_buffer",buffer);
+
+    return root;
+}
+
+
+cJSON *getLabelsConfig(void) {
+
+    if (!agt) {
+        return NULL;
+    }
+
+    unsigned int i;
+    cJSON *root = cJSON_CreateObject();
+    cJSON *labels = cJSON_CreateObject();
+
+    if (agt->labels) {
+        for (i=0;agt->labels[i].key;i++) {
+            cJSON_AddStringToObject(labels,agt->labels[i].key,agt->labels[i].value);
+        }
+    }
+
+    cJSON_AddItemToObject(root,"labels",labels);
 
     return root;
 }
