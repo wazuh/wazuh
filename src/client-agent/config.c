@@ -67,11 +67,13 @@ cJSON *ClientGetConfig(void) {
     }
 
     cJSON *root = cJSON_CreateObject();
+
+    // Read client configuration
     cJSON *client = cJSON_CreateObject();
 
     if (agt->profile) cJSON_AddStringToObject(client,"config-profile",agt->profile);
-    if (agt->notify_time) cJSON_AddNumberToObject(client,"notify_time",agt->notify_time);
-    if (agt->max_time_reconnect_try) cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
+    cJSON_AddNumberToObject(client,"notify_time",agt->notify_time);
+    cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
     if (agt->lip) cJSON_AddStringToObject(client,"local_ip",agt->lip);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
     unsigned int i;
@@ -87,6 +89,15 @@ cJSON *ClientGetConfig(void) {
         cJSON_AddItemToObject(client,"server",servers);
     }
     cJSON_AddItemToObject(root,"client",client);
+
+    // Read buffer configuration
+    cJSON *buffer = cJSON_CreateObject();
+
+    if (agt->buffer) cJSON_AddStringToObject(buffer,"disabled","no"); else cJSON_AddStringToObject(buffer,"disabled","yes");
+    cJSON_AddNumberToObject(buffer,"queue_size",agt->buflength);
+    cJSON_AddNumberToObject(buffer,"events_per_second",agt->events_persec);
+
+    cJSON_AddItemToObject(root,"client_buffer",buffer);
 
     return root;
 }
