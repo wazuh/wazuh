@@ -72,6 +72,8 @@ static void wm_sync_manager();
 
 static void wm_check_agents();
 
+static void wm_get_os_arch(char * os_header, char * os_arch);
+
 // Synchronize agents and groups
 static void wm_sync_agents();
 
@@ -196,6 +198,7 @@ void wm_sync_manager() {
     char *os_version = NULL;
     char *os_codename = NULL;
     char *os_platform = NULL;
+    char *os_arch = NULL;
     struct stat buffer;
     regmatch_t match[2];
     int match_size;
@@ -221,6 +224,8 @@ void wm_sync_manager() {
     OS_ClearXML(&xml);
 
     if ((os_uname = strdup(getuname()))) {
+        os_arch = (char *) malloc(50);
+        wm_get_os_arch(os_uname, os_arch);
         char *ptr;
 
         if ((ptr = strstr(os_uname, " - ")))
@@ -265,12 +270,13 @@ void wm_sync_manager() {
             }
         }
 
-        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __ossec_version, NULL, NULL, hostname, node_name);
+        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, os_arch, __ossec_name " " __ossec_version, NULL, NULL, hostname, node_name);
 
         free(node_name);
         free(os_major);
         free(os_minor);
         free(os_uname);
+        free(os_arch);
     }
 
     // Set starting offset if full_sync disabled
@@ -401,6 +407,20 @@ void wm_sync_agents() {
 
 #endif // LOCAL
 
+void wm_get_os_arch(char * os_header, char *os_arch) {
+    if      (strstr(os_header, "x86_64") != NULL) snprintf(os_arch, strlen("x86_64")+1, "%s", "x86_64");
+    else if (strstr(os_header, "i386") != NULL) snprintf(os_arch, strlen("i386")+1, "%s", "i386");
+    else if (strstr(os_header, "i686") != NULL) snprintf(os_arch, strlen("i686")+1, "%s", "i686");
+    else if (strstr(os_header, "sparc") != NULL) snprintf(os_arch, strlen("sparc")+1, "%s", "sparc");
+    else if (strstr(os_header, "amd64") != NULL) snprintf(os_arch, strlen("amd64")+1, "%s", "amd64");
+    else if (strstr(os_header, "ia64") != NULL) snprintf(os_arch, strlen("ia64")+1, "%s", "ia64");
+    else if (strstr(os_header, "AIX") != NULL) snprintf(os_arch, strlen("AIX")+1, "%s", "AIX");
+    else if (strstr(os_header, "armv6") != NULL) snprintf(os_arch, strlen("armv6")+1, "%s", "armv6");
+    else if (strstr(os_header, "armv7") != NULL) snprintf(os_arch, strlen("armv7")+1, "%s", "armv7");
+    else                                         memset(os_arch,'\0',sizeof(os_arch));
+    mtdebug2(WM_DATABASE_LOGTAG, "Detected architecture from %s: %s", os_header, os_arch);
+}
+
 int wm_sync_agentinfo(int id_agent, const char *path) {
     char header[OS_MAXSTR];
     char files[OS_MAXSTR];
@@ -414,6 +434,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char *os_version = NULL;
     char *os_codename = NULL;
     char *os_platform = NULL;
+    char *os_arch = NULL;
     char *config_sum = NULL;
     char *merged_sum = NULL;
     char manager_host[512] = "";
@@ -435,6 +456,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
     if (os = fgets(header, OS_MAXSTR, fp), !os) {
         mtdebug1(WM_DATABASE_LOGTAG, "Empty file '%s'. Agent is pending.", path);
+
 
     } else {
 
@@ -532,6 +554,8 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
                     os_platform ++;
                 }
             }
+            os_arch = (char *) malloc(50);
+            wm_get_os_arch(os, os_arch);
         }
 
         // Search for merged.mg sum
@@ -574,12 +598,13 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     }
 
 
-    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, version, config_sum, merged_sum, manager_host, node_name);
+    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, os_arch, version, config_sum, merged_sum, manager_host, node_name);
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agentinfo(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 
     free(os_major);
     free(os_minor);
     free(os_build);
+    free(os_arch);
     fclose(fp);
     return result;
 }
