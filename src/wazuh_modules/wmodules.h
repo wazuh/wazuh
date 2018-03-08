@@ -100,7 +100,7 @@ void wm_remove_sid(pid_t sid);
 void wm_kill_children();
 
 // Reads an HTTP header and extracts the size of the response
-int wm_read_http_header(char *header);
+long int wm_read_http_size(char *header);
 
 /* Concatenate strings with optional separator
  *

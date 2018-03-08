@@ -219,9 +219,9 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     return nmemb - 1;
 }
 
-int wm_read_http_header(char *header) {
-    int size;
-    char *size_tag = "Content-Length:";
+long int wm_read_http_size(char *header) {
+    long int size;
+    char size_tag[] = "Content-Length:";
     char *found;
     char c_aux;
 

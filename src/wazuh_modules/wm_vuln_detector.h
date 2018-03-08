@@ -23,9 +23,13 @@
 #define HTTP_HEADER "http://"
 #define HTTPS_HEADER "https://"
 #define CANONICAL_REPO "people.canonical.com"
+#define DEBIAN_REPO "www.debian.org"
 #define REDHAT_REPO "www.redhat.com"
+#define CISECURITY_REPO "oval.cisecurity.org"
 #define UBUNTU_OVAL "/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml"
+#define DEBIAN_OVAL "/security/oval/oval-definitions-%s.xml"
 #define REDHAT_OVAL "/security/data/oval/Red_Hat_Enterprise_Linux_%s.xml"
+#define WINDOWS_OVAL "/repository/download/5.11.2/vulnerability/microsoft_windows_%s.xml"
 #define OVAL_REQUEST "GET %s HTTP/1.1\r\n" \
                      "User-Agent: Wazuh\r\n" \
                      "Accept: */*\r\n" \
@@ -42,7 +46,6 @@
 #define VU_AGENT_REQUEST_LIMIT   0
 #define VU_ALERT_HEADER "[%s] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
-#define VU_INV_OS     2
 #define VU_MODERATE   "Moderate"
 #define VU_MEDIUM     "Medium"
 #define VU_HIGH       "High"
@@ -50,36 +53,82 @@
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
-static const char *vu_dist[] = {
+static const char *vu_dist_tag[] = {
     "UBUNTU",
+    "DEBIAN",
     "REDHAT",
     "CENTOS",
+    "WINDOWS",
     "PRECISE",
     "TRUSTY",
     "XENIAL",
+    "JESSIE",
+    "STRETCH",
+    "WHEEZY",
     "RHEL5",
     "RHEL6",
     "RHEL7",
+    "WS2016",
     "UNKNOW"
 };
 
+static const char *vu_dist_ext[] = {
+    "Ubuntu",
+    "Debian",
+    "Red Hat",
+    "CentOS",
+    "Microsoft Windows",
+    "Ubuntu Precise",
+    "Ubuntu Trusty",
+    "Ubuntu Xenial",
+    "Debian Jessie",
+    "Debian Stretch",
+    "Debian Wheezy",
+    "Red Hat Enterprise Linux 5",
+    "Red Hat Enterprise Linux 6",
+    "Red Hat Enterprise Linux 7",
+    "Windows Server 2016",
+    "Unknow OS"
+};
+
+typedef enum vu_logic {
+    VU_TRUE,
+    VU_FALSE,
+    VU_OR,
+    VU_AND,
+    VU_PACKG,
+    VU_FILE_TEST
+} vu_logic;
+
 typedef enum distribution{
     DIS_UBUNTU,
+    DIS_DEBIAN,
     DIS_REDHAT,
     DIS_CENTOS,
+    DIS_WINDOWS,
+    // Ubuntu versions
     DIS_PRECISE,
     DIS_TRUSTY,
     DIS_XENIAL,
+    // Debian versions
+    DIS_JESSIE,
+    DIS_STRETCH,
+    DIS_WHEEZY,
+    // RedHat versions
     DIS_RHEL5,
     DIS_RHEL6,
     DIS_RHEL7,
+    // Windows versions
+    DIS_WS2016,
     DIS_UNKNOW
 } distribution;
 
 typedef struct update_flags {
     unsigned int update:1;
     unsigned int update_ubuntu:1;
+    unsigned int update_debian:1;
     unsigned int update_redhat:1;
+    unsigned int update_windows:1;
 } update_flags;
 
 typedef struct wm_vulnerability_detector_flags {
@@ -106,15 +155,22 @@ typedef enum {
     CVE_PRECISE,
     CVE_TRUSTY,
     CVE_XENIAL,
+    CVE_JESSIE,
+    CVE_STRETCH,
+    CVE_WHEEZY,
     CVE_RHEL5,
     CVE_RHEL6,
     CVE_RHEL7,
+    CVE_WS2016,
     OS_SUPP_SIZE
 } cve_db;
 
 typedef struct update_node {
     char *dist;
     char *version;
+    distribution dist_ref;
+    const char *dist_tag;
+    const char *dist_ext;
     time_t last_update;
     unsigned long interval;
     char *url;
@@ -142,6 +198,7 @@ typedef enum {
     V_HEADER,
     V_DESCRIPTION,
     V_SIGNED_TEST,
+    V_VARIABLES,
     V_STATES
 } parser_state;
 
@@ -162,8 +219,16 @@ typedef struct info_state {
 typedef struct info_test {
     char *id;
     char *state;
+    char *second_state;
     struct info_test *prev;
 } info_test;
+
+typedef struct file_test {
+    char *id;
+    char *state;
+    char *second_state;
+    struct file_test *prev;
+} file_test;
 
 typedef struct info_cve {
     char *cveid;
@@ -179,6 +244,7 @@ typedef struct info_cve {
 typedef struct vulnerability {
     char *cve_id;
     char *state_id;
+    char *second_state_id;
     char *package_name;
     char pending;
     struct vulnerability *prev;
@@ -187,6 +253,7 @@ typedef struct vulnerability {
 typedef struct wm_vulnerability_detector_db {
     vulnerability *vulnerabilities;
     info_test *info_tests;
+    file_test *file_tests;
     info_state *info_states;
     info_cve *info_cves;
     oval_metadata metadata;
