@@ -150,7 +150,7 @@ int Start_win32_Syscheck()
     minfo(STARTUP_MSG, getpid());
 
     /* Some sync time */
-    sleep(syscheck.tsleep + 10);
+    sleep(syscheck.tsleep * 5);
 
     /* Wait if agent started properly */
     os_wait();
@@ -353,7 +353,7 @@ int main(int argc, char **argv)
     }
 
     /* Some sync time */
-    sleep(syscheck.tsleep + 10);
+    sleep(syscheck.tsleep * 5);
 
     /* Start the daemon */
     start_daemon();

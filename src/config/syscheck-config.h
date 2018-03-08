@@ -12,7 +12,7 @@
 
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
-#define SYSCHECK_WAIT   300
+#define SYSCHECK_WAIT   1
 
 /* Checking options */
 #define CHECK_MD5SUM        0000001
