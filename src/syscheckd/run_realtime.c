@@ -237,10 +237,13 @@ int realtime_process()
                 snprintf(final_name, MAX_LINE, "%s/%s",
                          (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar),
                          event->name);
-		/* Need a sleep here to avoid triggering on vim edits
-  		 * (and finding the file removed)
-  		 */
-		sleep(1);
+
+                /* Need a sleep here to avoid triggering on vim
+                * (and finding the file removed)
+                */
+
+                struct timeval timeout = {0, syscheck.rt_delay * 1000};
+                select(0, NULL, NULL, NULL, &timeout);
 
                 realtime_checksumfile(final_name);
             }
