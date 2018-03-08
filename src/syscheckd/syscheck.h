@@ -11,6 +11,8 @@
 #define __SYSCHECK_H
 
 #include "config/syscheck-config.h"
+#include "external/cJSON/cJSON.h"
+
 #define MAX_LINE PATH_MAX+256
 
 /* Notify list size */
@@ -34,6 +36,9 @@ void start_daemon(void) __attribute__((noreturn));
 
 /* Read the XML config */
 int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
+
+/* Parse readed config into JSON format */
+cJSON *getSyscheckConfig(void);
 
 /* Create the database */
 int create_db(void);
