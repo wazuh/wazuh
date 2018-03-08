@@ -47,6 +47,7 @@ static void read_internal(int debug_level)
 {
     syscheck.tsleep = (unsigned int) getDefine_Int("syscheck", "sleep", 0, 64);
     syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
+    syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
 
     /* Check current debug_level
      * Command line setting takes precedence
