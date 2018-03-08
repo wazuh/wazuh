@@ -72,7 +72,7 @@ static void wm_sync_manager();
 
 static void wm_check_agents();
 
-static void wm_get_os_arch(char * os_header, char * os_arch);
+static char * wm_get_os_arch(char * os_header);
 
 // Synchronize agents and groups
 static void wm_sync_agents();
@@ -225,7 +225,7 @@ void wm_sync_manager() {
 
     if ((os_uname = strdup(getuname()))) {
         os_arch = (char *) malloc(50);
-        wm_get_os_arch(os_uname, os_arch);
+        os_arch = wm_get_os_arch(os_uname);
         char *ptr;
 
         if ((ptr = strstr(os_uname, " - ")))
@@ -276,7 +276,6 @@ void wm_sync_manager() {
         free(os_major);
         free(os_minor);
         free(os_uname);
-        free(os_arch);
     }
 
     // Set starting offset if full_sync disabled
@@ -407,18 +406,24 @@ void wm_sync_agents() {
 
 #endif // LOCAL
 
-void wm_get_os_arch(char * os_header, char *os_arch) {
-    if      (strstr(os_header, "x86_64") != NULL) snprintf(os_arch, strlen("x86_64")+1, "%s", "x86_64");
-    else if (strstr(os_header, "i386") != NULL) snprintf(os_arch, strlen("i386")+1, "%s", "i386");
-    else if (strstr(os_header, "i686") != NULL) snprintf(os_arch, strlen("i686")+1, "%s", "i686");
-    else if (strstr(os_header, "sparc") != NULL) snprintf(os_arch, strlen("sparc")+1, "%s", "sparc");
-    else if (strstr(os_header, "amd64") != NULL) snprintf(os_arch, strlen("amd64")+1, "%s", "amd64");
-    else if (strstr(os_header, "ia64") != NULL) snprintf(os_arch, strlen("ia64")+1, "%s", "ia64");
-    else if (strstr(os_header, "AIX") != NULL) snprintf(os_arch, strlen("AIX")+1, "%s", "AIX");
-    else if (strstr(os_header, "armv6") != NULL) snprintf(os_arch, strlen("armv6")+1, "%s", "armv6");
-    else if (strstr(os_header, "armv7") != NULL) snprintf(os_arch, strlen("armv7")+1, "%s", "armv7");
-    else                                         memset(os_arch,'\0',sizeof(os_arch));
+char * wm_get_os_arch(char * os_header) {
+    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "ia64", "AIX", "armv6", "armv7", NULL };
+    char * os_arch;
+    int i;
+
+    for (i = 0; ARCHS[i]; i++) {
+        if (strstr(os_header, ARCHS[i])) {
+            os_strdup(ARCHS[i], os_arch);
+            break;
+        }
+    }
+
+    if (!ARCHS[i]) {
+        os_strdup("", os_arch);
+    }
+
     mtdebug2(WM_DATABASE_LOGTAG, "Detected architecture from %s: %s", os_header, os_arch);
+    return os_arch;
 }
 
 int wm_sync_agentinfo(int id_agent, const char *path) {
@@ -554,8 +559,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
                     os_platform ++;
                 }
             }
-            os_arch = (char *) malloc(50);
-            wm_get_os_arch(os, os_arch);
+            os_arch = wm_get_os_arch(os);
         }
 
         // Search for merged.mg sum
@@ -604,7 +608,6 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     free(os_major);
     free(os_minor);
     free(os_build);
-    free(os_arch);
     fclose(fp);
     return result;
 }
