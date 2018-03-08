@@ -7,14 +7,17 @@ All notable changes to this project will be documented in this file.
 
 - Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
 - Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
+- Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
 
 ### Changed
 
 - Add default value for option -x in agent_control tool.
+- Syscheck RT process granularized to make frequency option more accurate.
 
 ### Fixed
 
 - Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
+- Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
 
 ## [v3.2.1]
 
