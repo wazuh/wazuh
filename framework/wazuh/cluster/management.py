@@ -103,6 +103,7 @@ class WazuhClusterClient(asynchat.async_chat):
         self.received_data.append(data)
 
     def found_terminator(self):
+        logging.debug("Received {}".format(len(''.join(self.received_data))))
         self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
         self.close()
 
@@ -249,20 +250,23 @@ def connect_to_db_socket(retry=False):
 
     return cluster_socket
 
-
 def receive_data_from_db_socket(cluster_socket):
     return ''.join(filter(lambda x: x != '\x00', cluster_socket.recv(10000).decode()))
-
 
 def send_recv_and_check(cluster_socket, query):
     send_to_socket(cluster_socket, query)
     received = receive_data_from_db_socket(cluster_socket)
     if received != "Command OK":
-        logging.debug("Query {} did not executed correctly: {}".format(query, received))
-
+        logging.debug("Query {} did not executed correctly: {}".format(query.split(' ')[0], received))
 
 def send_to_socket(cluster_socket, query):
-    cluster_socket.send(query.encode())
+    # add the query size to the message
+    query_size = len(query)+1
+    new_query = "{} {}".format(query_size+len(str(query_size)), query)
+    query = "{} {}".format(len(new_query), query)
+    sent = cluster_socket.send(query.encode())
+    if sent != len(query):
+        logging.debug("Error sending query: sent {}/{}".format(sent, len(query)))
 
 
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]

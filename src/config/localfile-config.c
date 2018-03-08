@@ -96,7 +96,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             char *key_value = 0;
             int j;
-            for (j = 0; node[i]->attributes[j]; j++) {
+            for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
                 if (strcmp(node[i]->attributes[j], "key") == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
                         key_value = node[i]->values[j];
