@@ -251,6 +251,19 @@ void os_logging_config(){
   }
 }
 
+cJSON *getLoggingConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *logg = cJSON_CreateObject();
+
+    if (flags.log_plain) cJSON_AddStringToObject(logg,"plain","yes"); else cJSON_AddStringToObject(logg,"plain","no");
+    if (flags.log_json) cJSON_AddStringToObject(logg,"json","yes"); else cJSON_AddStringToObject(logg,"json","no");
+
+    cJSON_AddItemToObject(root,"logging",logg);
+
+    return root;
+}
+
 void mdebug1(const char *msg, ...)
 {
     if (dbg_flag >= 1) {
