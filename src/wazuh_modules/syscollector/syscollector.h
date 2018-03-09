@@ -29,6 +29,12 @@
 #define DHCP_LENGTH 10
 #define CLOCK_LENGTH 256
 #define V_LENGTH    128
+#define COMMAND_LENGTH  512
+#define PATH_LENGTH     512
+#define TIME_LENGTH     64
+#define ADDR6_LENGTH    256
+#define IFNAME_LENGTH   256
+#define SERIAL_LENGTH   512
 
 #define TAG_NAME        1000
 #define TAG_VERSION     1001

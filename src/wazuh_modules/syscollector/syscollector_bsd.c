@@ -50,9 +50,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -63,8 +63,8 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    os_calloc(OS_MAXSTR + 1, sizeof(char), command);
-    snprintf(command, OS_MAXSTR, "%s", "pkg query -a '\%n|%m|%v|%q|\%c'");
+    os_calloc(COMMAND_LENGTH, sizeof(char), command);
+    snprintf(command, COMMAND_LENGTH - 1, "%s", "pkg query -a '\%n|%m|%v|%q|\%c'");
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -148,9 +148,9 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -169,7 +169,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     /* Motherboard serial-number */
 #if defined(__OpenBSD__)
 
-    char serial[OS_MAXSTR];
+    char serial[SERIAL_LENGTH];
     int mib[2];
     size_t len;
     mib[0] = CTL_HW;
@@ -187,14 +187,13 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     char *serial = NULL;
     char *command;
     FILE *output;
-    size_t buf_length = 1024;
-    char read_buff[buf_length];
+    char read_buff[SERIAL_LENGTH];
     int i;
 
-    memset(read_buff, 0, buf_length);
+    memset(read_buff, 0, SERIAL_LENGTH);
     command = "system_profiler SPHardwareDataType | grep Serial";
     if (output = popen(command, "r"), output) {
-        if(!fgets(read_buff, buf_length, output)){
+        if(!fgets(read_buff, SERIAL_LENGTH, output)){
             mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
             serial = strdup("unknown");
         }else{
@@ -375,9 +374,9 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 

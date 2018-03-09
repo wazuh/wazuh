@@ -38,44 +38,44 @@ char* get_default_gateway(char *ifa_name);      // Get Default Gatewat for netwo
 char* get_port_state(int state){
 
     char *port_state;
-    os_calloc(OS_MAXSTR, sizeof(char), port_state);
+    os_calloc(STATE_LENGTH, sizeof(char), port_state);
 
     switch(state){
         case TCP_ESTABLISHED:
-            snprintf(port_state, OS_MAXSTR, "%s", "established");
+            snprintf(port_state, STATE_LENGTH, "%s", "established");
             break;
         case TCP_SYN_SENT:
-            snprintf(port_state, OS_MAXSTR, "%s", "syn_sent");
+            snprintf(port_state, STATE_LENGTH, "%s", "syn_sent");
             break;
         case TCP_SYN_RECV:
-            snprintf(port_state, OS_MAXSTR, "%s", "syn_recv");
+            snprintf(port_state, STATE_LENGTH, "%s", "syn_recv");
             break;
         case TCP_FIN_WAIT1:
-            snprintf(port_state, OS_MAXSTR, "%s", "fin_wait1");
+            snprintf(port_state, STATE_LENGTH, "%s", "fin_wait1");
             break;
         case TCP_FIN_WAIT2:
-            snprintf(port_state, OS_MAXSTR, "%s", "fin_wait2");
+            snprintf(port_state, STATE_LENGTH, "%s", "fin_wait2");
             break;
         case TCP_TIME_WAIT:
-            snprintf(port_state, OS_MAXSTR, "%s", "time_wait");
+            snprintf(port_state, STATE_LENGTH, "%s", "time_wait");
             break;
         case TCP_CLOSE:
-            snprintf(port_state, OS_MAXSTR, "%s", "close");
+            snprintf(port_state, STATE_LENGTH, "%s", "close");
             break;
         case TCP_CLOSE_WAIT:
-            snprintf(port_state, OS_MAXSTR, "%s", "close_wait");
+            snprintf(port_state, STATE_LENGTH, "%s", "close_wait");
             break;
         case TCP_LAST_ACK:
-            snprintf(port_state, OS_MAXSTR, "%s", "last_ack");
+            snprintf(port_state, STATE_LENGTH, "%s", "last_ack");
             break;
         case TCP_LISTEN:
-            snprintf(port_state, OS_MAXSTR, "%s", "listening");
+            snprintf(port_state, STATE_LENGTH, "%s", "listening");
             break;
         case TCP_CLOSING:
-            snprintf(port_state, OS_MAXSTR, "%s", "closing");
+            snprintf(port_state, STATE_LENGTH, "%s", "closing");
             break;
         default:
-            snprintf(port_state, OS_MAXSTR, "%s", "unknown");
+            snprintf(port_state, STATE_LENGTH, "%s", "unknown");
             break;
     }
     return port_state;
@@ -106,7 +106,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
     os_calloc(NI_MAXHOST, sizeof(char), laddress);
     os_calloc(NI_MAXHOST, sizeof(char), raddress);
-    os_calloc(OS_MAXSTR, sizeof(char), command);
+    os_calloc(COMMAND_LENGTH, sizeof(char), command);
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -156,7 +156,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                 free(port_state);
             }
 
-            snprintf(command, OS_MAXSTR, "lsof | grep %lu", inode);
+            snprintf(command, COMMAND_LENGTH - 1, "lsof | grep %lu", inode);
             char *proc_name;
             if ((output = popen(command, "r"))){
                 if(fgets(read_buff, OS_MAXSTR, output)){
@@ -217,24 +217,24 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
-    char local_addr[OS_MAXSTR], rem_addr[OS_MAXSTR];
+    char local_addr[ADDR_LENGTH], rem_addr[ADDR_LENGTH];
     char laddress[INET6_ADDRSTRLEN];
     char raddress[INET6_ADDRSTRLEN];
     struct in6_addr local;
     struct in6_addr rem;
     char read_buff[OS_MAXSTR];
-    char file[OS_MAXSTR];
+    char file[PATH_LENGTH];
     FILE *fp;
     int first_line = 1, i;
     int listening;
-    char command[OS_MAXSTR];
+    char command[COMMAND_LENGTH];
     FILE *output;
     int status;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    snprintf(file, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, protocol);
+    snprintf(file, PATH_LENGTH - 1, "%s%s", WM_SYS_NET_DIR, protocol);
     memset(read_buff, 0, OS_MAXSTR);
 
     if ((fp = fopen(file, "r"))){
@@ -258,7 +258,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                 &local.s6_addr32[2], &local.s6_addr32[3]);
             inet_ntop(AF_INET6, &local, laddress, sizeof(laddress));
 
-            sscanf(local_addr, "%08X%08X%08X%08X",
+            sscanf(rem_addr, "%08X%08X%08X%08X",
                 &rem.s6_addr32[0], &rem.s6_addr32[1],
                 &rem.s6_addr32[2], &rem.s6_addr32[3]);
             inet_ntop(AF_INET6, &rem, raddress, sizeof(raddress));
@@ -288,7 +288,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                 free(port_state);
             }
 
-            snprintf(command, OS_MAXSTR, "lsof | grep %lu", inode);
+            snprintf(command, COMMAND_LENGTH - 1, "lsof | grep %lu", inode);
             char *proc_name;
             if ((output = popen(command, "r"))){
                 if(fgets(read_buff, OS_MAXSTR, output)){
@@ -354,9 +354,9 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH - 1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -458,9 +458,9 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -581,12 +581,12 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
                     }
 
                     if (!strncmp(info->tag, "install_time", 12)) {    // Format date
-                        char installt[OS_MAXSTR];
+                        char installt[TIME_LENGTH];
                         struct tm itime;
                         time_t dateint = result;
                         localtime_r(&dateint, &itime);
 
-                        snprintf(installt,6499,"%d/%02d/%02d %02d:%02d:%02d",
+                        snprintf(installt,TIME_LENGTH - 1,"%d/%02d/%02d %02d:%02d:%02d",
                                 itime.tm_year + 1900, itime.tm_mon + 1,
                                 itime.tm_mday, itime.tm_hour, itime.tm_min, itime.tm_sec);
 
@@ -667,7 +667,7 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
 int sys_deb_packages(int queue_fd, const char* LOCATION){
 
     char format[FORMAT_LENGTH] = "deb";
-    char file[OS_MAXSTR] = "/var/lib/dpkg/status";
+    char file[PATH_LENGTH] = "/var/lib/dpkg/status";
     char read_buff[OS_MAXSTR];
     FILE *fp;
     size_t length;
@@ -687,9 +687,9 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -893,9 +893,9 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -956,9 +956,9 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -1007,9 +1007,9 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -1044,9 +1044,9 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             }
         }
         if (!found){
-            os_calloc(OS_MAXSTR, sizeof(char), ifaces_list[j]);
-            strncpy(ifaces_list[j], ifa->ifa_name, OS_MAXSTR - 1);
-            ifaces_list[j][OS_MAXSTR - 1] = '\0';
+            os_calloc(IFNAME_LENGTH, sizeof(char), ifaces_list[j]);
+            strncpy(ifaces_list[j], ifa->ifa_name, IFNAME_LENGTH - 1);
+            ifaces_list[j][IFNAME_LENGTH - 1] = '\0';
             j++;
         }
     }
@@ -1353,24 +1353,24 @@ hw_info *get_system_linux(){
 /* Get Motherboard Serial Number */
 char* get_serial_number(){
 
-    char file[OS_MAXSTR];
+    char file[PATH_LENGTH];
 
     FILE *fp;
-    char serial_str[OS_MAXSTR] = "";
+    char serial_str[SERIAL_LENGTH] = "";
     char * serial;
     char ** parts;
     int i;
 
-    os_calloc(OS_MAXSTR + 1, sizeof(char), serial);
+    os_calloc(SERIAL_LENGTH + 1, sizeof(char), serial);
 
-    snprintf(serial, OS_MAXSTR, "%s", "unknown");
-    snprintf(file, OS_MAXSTR, "%s/%s", WM_SYS_HW_DIR, "board_serial");
+    snprintf(serial, SERIAL_LENGTH, "%s", "unknown");
+    snprintf(file, PATH_LENGTH - 1, "%s/%s", WM_SYS_HW_DIR, "board_serial");
 
     if((fp = fopen(file, "r"))){
-        if (fgets(serial_str, OS_MAXSTR, fp) != NULL){
+        if (fgets(serial_str, SERIAL_LENGTH, fp) != NULL){
 
             parts = OS_StrBreak('\n', serial_str, 2);
-            snprintf(serial, OS_MAXSTR, "%s", parts[0]);
+            snprintf(serial, SERIAL_LENGTH, "%s", parts[0]);
             for (i = 0; parts[i]; i++){
                 free(parts[i]);
             }
@@ -1384,7 +1384,7 @@ char* get_serial_number(){
 /* Get interface type */
 char* get_if_type(char *ifa_name){
 
-    char file[256];
+    char file[PATH_LENGTH];
 
     FILE *fp;
     char type_str[3];
@@ -1393,7 +1393,7 @@ char* get_if_type(char *ifa_name){
     os_calloc(TYPE_LENGTH + 1, sizeof(char), type);
 
     snprintf(type, TYPE_LENGTH, "%s", "unknown");
-    snprintf(file, 256, "%s%s/%s", WM_SYS_IFDATA_DIR, ifa_name, "type");
+    snprintf(file, PATH_LENGTH - 1, "%s%s/%s", WM_SYS_IFDATA_DIR, ifa_name, "type");
 
     if((fp = fopen(file, "r"))){
         if (fgets(type_str, 3, fp) != NULL){
@@ -1437,10 +1437,10 @@ char* get_if_type(char *ifa_name){
 /* Get operation state of a network interface */
 char* get_oper_state(char *ifa_name){
 
-    char file[OS_MAXSTR];
+    char file[PATH_LENGTH];
 
     FILE *fp;
-    char state_str[20] = "";
+    char state_str[STATE_LENGTH] = "";
     char * state;
     char ** parts;
     int i;
@@ -1448,10 +1448,10 @@ char* get_oper_state(char *ifa_name){
     os_calloc(STATE_LENGTH + 1, sizeof(char), state);
 
     snprintf(state, STATE_LENGTH, "%s", "unknown");
-    snprintf(file, OS_MAXSTR, "%s%s/%s", WM_SYS_IFDATA_DIR, ifa_name, "operstate");
+    snprintf(file, PATH_LENGTH, "%s%s/%s", WM_SYS_IFDATA_DIR, ifa_name, "operstate");
 
     if((fp = fopen(file, "r"))){
-        if (fgets(state_str, 20, fp) != NULL){
+        if (fgets(state_str, STATE_LENGTH, fp) != NULL){
 
             parts = OS_StrBreak('\n', state_str, 2);
             snprintf(state, STATE_LENGTH, "%s", parts[0]);
@@ -1468,7 +1468,7 @@ char* get_oper_state(char *ifa_name){
 /* Get MTU of a network interface */
 char* get_mtu(char *ifa_name){
 
-    char file[OS_MAXSTR];
+    char file[PATH_LENGTH];
 
     FILE *fp;
     char mtu_str[20] = "";
@@ -1479,7 +1479,7 @@ char* get_mtu(char *ifa_name){
     os_calloc(MTU_LENGTH + 1, sizeof(char), mtu);
 
     snprintf(mtu, MTU_LENGTH, "%s", "unknown");
-    snprintf(file, OS_MAXSTR, "%s%s/%s", WM_SYS_IFDATA_DIR, ifa_name, "mtu");
+    snprintf(file, PATH_LENGTH, "%s%s/%s", WM_SYS_IFDATA_DIR, ifa_name, "mtu");
 
     if((fp = fopen(file, "r"))){
         if (fgets(mtu_str, 20, fp) != NULL){
@@ -1499,8 +1499,8 @@ char* get_mtu(char *ifa_name){
 /* Check DHCP status for IPv4 and IPv6 addresses in each interface */
 char* check_dhcp(char *ifa_name, int family){
 
-    char file[OS_MAXSTR];
-    char file_location[OS_MAXSTR];
+    char file[IFNAME_LENGTH];
+    char file_location[PATH_LENGTH];
     FILE *fp;
     DIR *dir;
     char string[OS_MAXSTR];
@@ -1511,7 +1511,7 @@ char* check_dhcp(char *ifa_name, int family){
     os_calloc(DHCP_LENGTH + 1, sizeof(char), dhcp);
 
     snprintf(dhcp, DHCP_LENGTH, "%s", "unknown");
-    snprintf(file_location, OS_MAXSTR, "%s", WM_SYS_IF_FILE);
+    snprintf(file_location, PATH_LENGTH, "%s", WM_SYS_IF_FILE);
 
     /* Check DHCP configuration for Debian based systems */
     if ((fp = fopen(file_location, "r"))){
@@ -1586,17 +1586,17 @@ char* check_dhcp(char *ifa_name, int family){
     }else{
 
         /* Check DHCP configuration for Red Hat based systems and SUSE distributions */
-        snprintf(file, OS_MAXSTR, "%s%s", "ifcfg-", ifa_name);
+        snprintf(file, IFNAME_LENGTH - 1, "%s%s", "ifcfg-", ifa_name);
 
         if ((dir = opendir(WM_SYS_IF_DIR_RH))){
-            snprintf(file_location, OS_MAXSTR, "%s%s", WM_SYS_IF_DIR_RH, file);
+            snprintf(file_location, PATH_LENGTH, "%s%s", WM_SYS_IF_DIR_RH, file);
             snprintf(dhcp, DHCP_LENGTH, "%s", "enabled");
             closedir(dir);
         }
 
         /* For SUSE Linux distributions */
         if ((dir = opendir(WM_SYS_IF_DIR_SUSE))){
-        snprintf(file_location, OS_MAXSTR, "%s%s", WM_SYS_IF_DIR_SUSE, file);
+        snprintf(file_location, PATH_LENGTH, "%s%s", WM_SYS_IF_DIR_SUSE, file);
             snprintf(dhcp, DHCP_LENGTH, "%s", "enabled");
             closedir(dir);
         }
@@ -1667,8 +1667,8 @@ char* check_dhcp(char *ifa_name, int family){
 char* get_default_gateway(char *ifa_name){
 
     FILE *fp;
-    char file_location[OS_MAXSTR];
-    char interface[OS_MAXSTR] = "";
+    char file_location[PATH_LENGTH];
+    char interface[IFNAME_LENGTH] = "";
     char string[OS_MAXSTR];
     in_addr_t address = 0;
     int destination, gateway;
@@ -1676,7 +1676,7 @@ char* get_default_gateway(char *ifa_name){
     os_calloc(NI_MAXHOST, sizeof(char) + 1, def_gateway);
 
     strncpy(interface, ifa_name, sizeof(interface) - 1);
-    snprintf(file_location, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, "route");
+    snprintf(file_location, PATH_LENGTH, "%s%s", WM_SYS_NET_DIR, "route");
     snprintf(def_gateway, NI_MAXHOST, "%s", "unknown");
 
     if ((fp = fopen(file_location, "r"))){
@@ -1713,9 +1713,9 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 

@@ -37,8 +37,8 @@ char* get_process_name(DWORD pid){
     int status;
 
     memset(read_buff, 0, OS_MAXSTR);
-    os_calloc(OS_MAXSTR, sizeof(char), command);
-    snprintf(command, OS_MAXSTR, "wmic process where processID=%lu get Name", pid);
+    os_calloc(COMMAND_LENGTH, sizeof(char), command);
+    snprintf(command, COMMAND_LENGTH - 1, "wmic process where processID=%lu get Name", pid);
     output = popen(command, "r");
     if (!output) {
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
@@ -78,47 +78,47 @@ char* get_process_name(DWORD pid){
 char* get_port_state(int state){
 
     char *port_state;
-    os_calloc(OS_MAXSTR, sizeof(char), port_state);
+    os_calloc(STATE_LENGTH, sizeof(char), port_state);
 
     switch (state) {
         case MIB_TCP_STATE_CLOSED:
-            snprintf(port_state, OS_MAXSTR, "%s", "close");
+            snprintf(port_state, STATE_LENGTH, "%s", "close");
             break;
         case MIB_TCP_STATE_LISTEN:
-            snprintf(port_state, OS_MAXSTR, "%s", "listening");
+            snprintf(port_state, STATE_LENGTH, "%s", "listening");
             break;
         case MIB_TCP_STATE_SYN_SENT:
-            snprintf(port_state, OS_MAXSTR, "%s", "syn_sent");
+            snprintf(port_state, STATE_LENGTH, "%s", "syn_sent");
             break;
         case MIB_TCP_STATE_SYN_RCVD:
-            snprintf(port_state, OS_MAXSTR, "%s", "syn_recv");
+            snprintf(port_state, STATE_LENGTH, "%s", "syn_recv");
             break;
         case MIB_TCP_STATE_ESTAB:
-            snprintf(port_state, OS_MAXSTR, "%s", "established");
+            snprintf(port_state, STATE_LENGTH, "%s", "established");
             break;
         case MIB_TCP_STATE_FIN_WAIT1:
-            snprintf(port_state, OS_MAXSTR, "%s", "fin_wait1");
+            snprintf(port_state, STATE_LENGTH, "%s", "fin_wait1");
             break;
         case MIB_TCP_STATE_FIN_WAIT2:
-            snprintf(port_state, OS_MAXSTR, "%s", "fin_wait2");
+            snprintf(port_state, STATE_LENGTH, "%s", "fin_wait2");
             break;
         case MIB_TCP_STATE_CLOSE_WAIT:
-            snprintf(port_state, OS_MAXSTR, "%s", "close_wait");
+            snprintf(port_state, STATE_LENGTH, "%s", "close_wait");
             break;
         case MIB_TCP_STATE_CLOSING:
-            snprintf(port_state, OS_MAXSTR, "%s", "closing");
+            snprintf(port_state, STATE_LENGTH, "%s", "closing");
             break;
         case MIB_TCP_STATE_LAST_ACK:
-            snprintf(port_state, OS_MAXSTR, "%s", "last_ack");
+            snprintf(port_state, STATE_LENGTH, "%s", "last_ack");
             break;
         case MIB_TCP_STATE_TIME_WAIT:
-            snprintf(port_state, OS_MAXSTR, "%s", "time_wait");
+            snprintf(port_state, STATE_LENGTH, "%s", "time_wait");
             break;
         case MIB_TCP_STATE_DELETE_TCB:
-            snprintf(port_state, OS_MAXSTR, "%s", "delete_tcp");
+            snprintf(port_state, STATE_LENGTH, "%s", "delete_tcp");
             break;
         default:
-            snprintf(port_state, OS_MAXSTR, "%s", "unknown");
+            snprintf(port_state, STATE_LENGTH, "%s", "unknown");
             break;
     }
     return port_state;
@@ -147,8 +147,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     unsigned int ID1 = os_random();
     unsigned int ID2 = os_random();
 
-    char random_id[OS_MAXSTR];
-    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+    char random_id[SERIAL_LENGTH];
+    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
 
     int ID = atoi(random_id);
     if (ID < 0)
@@ -163,9 +163,9 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -257,7 +257,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        printf("Call to GetExtendedTcpTable failed with error: %lu\n", dwRetVal);
+        mterror(WM_SYS_LOG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
         FREE(pTcpTable);
         return;
     }
@@ -372,7 +372,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        printf("Call to GetExtendedTcpTable failed with error: %lu\n", dwRetVal);
+        mterror(WM_SYS_LOG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
         FREE(pTcp6Table);
         return;
     }
@@ -457,7 +457,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        printf("Call to GetExtendedUdpTable failed with error: %lu\n", dwRetVal);
+        mterror(WM_SYS_LOG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
         FREE(pUdpTable);
         return;
     }
@@ -526,7 +526,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        printf("Call to GetExtendedUdpTable failed with error: %lu\n", dwRetVal);
+        mterror(WM_SYS_LOG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
         FREE(pUdp6Table);
         return;
     }
@@ -573,9 +573,9 @@ void sys_programs_windows(const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -584,8 +584,8 @@ void sys_programs_windows(const char* LOCATION){
     unsigned int ID1 = os_random();
     unsigned int ID2 = os_random();
 
-    char random_id[OS_MAXSTR];
-    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+    char random_id[SERIAL_LENGTH];
+    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
 
     int ID = atoi(random_id);
     if (ID < 0)
@@ -676,8 +676,7 @@ void sys_hw_windows(const char* LOCATION){
     char *command;
     char *end;
     FILE *output;
-    size_t buf_length = 1024;
-    char read_buff[buf_length];
+    char read_buff[SERIAL_LENGTH];
     int status;
 
     // Set timestamp
@@ -689,9 +688,9 @@ void sys_hw_windows(const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -700,8 +699,8 @@ void sys_hw_windows(const char* LOCATION){
     unsigned int ID1 = os_random();
     unsigned int ID2 = os_random();
 
-    char random_id[OS_MAXSTR];
-    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+    char random_id[SERIAL_LENGTH];
+    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
 
     int ID = atoi(random_id);
     if (ID < 0)
@@ -718,15 +717,15 @@ void sys_hw_windows(const char* LOCATION){
 
     /* Get Serial number */
     char *serial = NULL;
-    memset(read_buff, 0, buf_length);
+    memset(read_buff, 0, SERIAL_LENGTH);
     command = "wmic baseboard get SerialNumber";
     output = popen(command, "r");
     if (!output){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
     }else{
-        if (fgets(read_buff, buf_length, output)) {
+        if (fgets(read_buff, SERIAL_LENGTH, output)) {
             if (strncmp(read_buff ,"SerialNumber", 12) == 0) {
-                if (!fgets(read_buff, buf_length, output)){
+                if (!fgets(read_buff, SERIAL_LENGTH, output)){
                     mtwarn(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
                     serial = strdup("unknown");
                 }
@@ -795,9 +794,9 @@ void sys_os_windows(const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -806,8 +805,8 @@ void sys_os_windows(const char* LOCATION){
     unsigned int ID1 = os_random();
     unsigned int ID2 = os_random();
 
-    char random_id[OS_MAXSTR];
-    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+    char random_id[SERIAL_LENGTH];
+    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
 
     int ID = atoi(random_id);
     if (ID < 0)
@@ -860,8 +859,8 @@ void sys_network_windows(const char* LOCATION){
             unsigned int ID1 = os_random();
             unsigned int ID2 = os_random();
 
-            char random_id[OS_MAXSTR];
-            snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+            char random_id[SERIAL_LENGTH];
+            snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
 
             int ID = atoi(random_id);
             if (ID < 0)
@@ -874,9 +873,9 @@ void sys_network_windows(const char* LOCATION){
             now = time(NULL);
             localtime_r(&now, &localtm);
 
-            os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+            os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-            snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
                     localtm.tm_year + 1900, localtm.tm_mon + 1,
                     localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -1196,9 +1195,9 @@ void sys_proc_windows(const char* LOCATION) {
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -1207,8 +1206,8 @@ void sys_proc_windows(const char* LOCATION) {
     unsigned int ID1 = os_random();
     unsigned int ID2 = os_random();
 
-    char random_id[OS_MAXSTR];
-    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+    char random_id[SERIAL_LENGTH];
+    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", ID1, ID2);
 
     int ID = atoi(random_id);
     if (ID < 0)
