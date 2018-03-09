@@ -745,17 +745,17 @@ int decode_package(char *agent_id, cJSON * logJSON) {
         cJSON * format = cJSON_GetObjectItem(package, "format");
         cJSON * name = cJSON_GetObjectItem(package, "name");
         cJSON * priority = cJSON_GetObjectItem(package, "priority");
-        cJSON * section = cJSON_GetObjectItem(package, "section");
-        cJSON * size = cJSON_GetObjectItem(package, "size(kB)");
+        cJSON * section = cJSON_GetObjectItem(package, "group");
+        cJSON * size = cJSON_GetObjectItem(package, "size");
         cJSON * vendor = cJSON_GetObjectItem(package, "vendor");
         cJSON * version = cJSON_GetObjectItem(package, "version");
         cJSON * architecture = cJSON_GetObjectItem(package, "architecture");
         cJSON * multiarch = cJSON_GetObjectItem(package, "multi-arch");
         cJSON * source = cJSON_GetObjectItem(package, "source");
         cJSON * description = cJSON_GetObjectItem(package, "description");
+        cJSON * installtime = cJSON_GetObjectItem(package, "install_time");
 
         snprintf(msg, OS_MAXSTR - 1, "agent %s package save", agent_id);
-
 
         if (scan_id) {
             char id[OS_MAXSTR];
@@ -805,6 +805,12 @@ int decode_package(char *agent_id, cJSON * logJSON) {
 
         if (vendor) {
             wm_strcat(&msg, vendor->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (install_time) {
+            wm_strcat(&msg, install_time->valuestring, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }

@@ -318,7 +318,7 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 }
 
 // Function to save Package info into the DB. Return 0 on success or -1 on error.
-int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description) {
+int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         merror("at wdb_package_save(): cannot begin transaction");
@@ -334,6 +334,7 @@ int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         section,
         size,
         vendor,
+        install_time,
         version,
         architecture,
         multiarch,
@@ -348,7 +349,7 @@ int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 }
 
 // Insert Package info tuple. Return 0 on success or -1 on error.
-int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description) {
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_INSERT) > 0) {
@@ -370,11 +371,12 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
         sqlite3_bind_null(stmt, 7);
     }
     sqlite3_bind_text(stmt, 8, vendor, -1, NULL);
-    sqlite3_bind_text(stmt, 9, version, -1, NULL);
-    sqlite3_bind_text(stmt, 10, architecture, -1, NULL);
-    sqlite3_bind_text(stmt, 11, multiarch, -1, NULL);
-    sqlite3_bind_text(stmt, 12, source, -1, NULL);
-    sqlite3_bind_text(stmt, 13, description, -1, NULL);
+    sqlite3_bind_text(stmt, 9, install_time, -1, NULL);
+    sqlite3_bind_text(stmt, 10, version, -1, NULL);
+    sqlite3_bind_text(stmt, 11, architecture, -1, NULL);
+    sqlite3_bind_text(stmt, 12, multiarch, -1, NULL);
+    sqlite3_bind_text(stmt, 13, source, -1, NULL);
+    sqlite3_bind_text(stmt, 14, description, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;

@@ -156,6 +156,7 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     section TEXT,
     size INTEGER CHECK (size >= 0),
     vendor TEXT,
+    install_time TEXT,
     version TEXT,
     architecture TEXT,
     multiarch TEXT,

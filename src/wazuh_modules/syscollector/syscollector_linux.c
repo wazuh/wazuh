@@ -749,7 +749,7 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "section", parts[1]);
+                cJSON_AddStringToObject(package, "group", parts[1]);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -760,7 +760,7 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddNumberToObject(package, "size(kB)", atoi(parts[1]));
+                cJSON_AddNumberToObject(package, "size", atoi(parts[1]));
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);

@@ -1296,6 +1296,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
     char * section;
     long size;
     char * vendor;
+    char * install_time;
     char * version;
     char * architecture;
     char * multiarch;
@@ -1436,6 +1437,20 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
+        install_time = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(install_time, "NULL"))
+            install_time = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", install_time);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", install_time);
+            return -1;
+        }
+
         version = curr;
         *next++ = '\0';
         curr = next;
@@ -1489,7 +1504,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         else
             description = next;
 
-        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, version, architecture, multiarch, source, description), result < 0) {
+        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description), result < 0) {
             mdebug1("Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
