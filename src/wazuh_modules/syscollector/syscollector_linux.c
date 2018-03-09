@@ -23,6 +23,7 @@
 #include <linux/if_link.h>
 #include <linux/if_packet.h>
 #include "external/procps/readproc.h"
+#include "external/db-6.2.32.NC/build_unix/db.h"
 
 hw_info *get_system_linux();                    // Get system information
 char* get_serial_number();                      // Get Motherboard serial number
@@ -415,8 +416,252 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
         if (sys_deb_packages(queue_fd, LOCATION) < 0) {
             mterror(WM_SYS_LOGTAG, "Unable to get debian packages due to: %s", strerror(errno));
         }
+    } else if ((dir = opendir("var/lib/rpm"))){
+        closedir(dir);
+        if (sys_rpm_packages(queue_fd, LOCATION) < 0) {
+            mterror(WM_SYS_LOGTAG, "Unable to get rpm packages due to: %s", strerror(errno));
+        }
     }
-    // else if RPM
+}
+
+int sys_rpm_packages(int queue_fd, const char* LOCATION){
+
+    char format[FORMAT_LENGTH] = "rpm";
+    int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+    cJSON *object = NULL;
+    cJSON *package = NULL;
+
+    DBT key, data;
+    DBC *cursor;
+    DB *dbp;
+    int ret, skip;
+    int i;
+    u_int8_t* bytes;
+    u_int8_t* store;
+    int index, offset;
+    rpm_data *info;
+    rpm_data *next_info;
+    rpm_data *head;
+    int epoch;
+    char version[TYPE_LENGTH];
+    char release[TYPE_LENGTH];
+    char final_version[V_LENGTH];
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
+    // Set timestamp
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+
+    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+
+    /* Set positive random ID for each event */
+
+    if (ID < 0)
+        ID = -ID;
+
+    if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): failed to initialize the DB handler: %s", db_strerror(ret));
+        return -1;
+    }
+
+    // Set Little-endian order by default
+    if ((ret = dbp->set_lorder(dbp, 1234)) != 0) {
+        mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Error setting byte-order.");
+    }
+
+    if ((ret = dbp->open(dbp, NULL, RPM_DATABASE, NULL, DB_HASH, DB_RDONLY, 0)) != 0) {
+        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
+        return -1;
+    }
+
+    if ((ret = dbp->cursor(dbp, NULL, &cursor, 0)) != 0) {
+        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Error creating cursor: %s", db_strerror(ret));
+        return -1;
+    }
+
+    memset(&key, 0, sizeof(DBT));
+    memset(&data, 0, sizeof(DBT));
+
+    int j = 0;
+
+    while((ret = cursor->c_get(cursor, &key, &data, DB_NEXT)) == 0) {
+
+        if (ret == DB_NOTFOUND){
+            mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Not found any record in database '%s'", RPM_DATABASE);
+            break;
+        }
+
+        // First header is not a package
+
+        if (j == 0) {
+            j++;
+            continue;
+        }
+
+        bytes = (u_int8_t*)data.data;
+
+        // Read number of index entries (First 4 bytes)
+
+        index = four_bytes_to_int32(bytes);
+
+        // Set offset to first index entry
+
+        offset = 8;
+        bytes = &bytes[offset];
+
+        os_calloc(1, sizeof(rpm_data), info);
+        head = info;
+
+        // Read all indexes
+
+        for (i = 0; i < index; i++) {
+            offset = 16;
+            if ((ret = read_entry(bytes, info)) == 0) {
+                os_calloc(1, sizeof(rpm_data), info->next);
+                info = info->next;
+            }
+            bytes = &bytes[offset];
+        }
+
+        // Start reading the data
+
+        store = bytes;
+        epoch = 0;
+        skip = 0;
+
+        object = cJSON_CreateObject();
+        package = cJSON_CreateObject();
+        cJSON_AddStringToObject(object, "type", "package");
+        cJSON_AddNumberToObject(object, "ID", ID);
+        cJSON_AddStringToObject(object, "timestamp", timestamp);
+        cJSON_AddItemToObject(object, "package", package);
+        cJSON_AddStringToObject(package, "format", format);
+
+        for (info = head; info; info = next_info) {
+            next_info = info->next;
+            bytes = &store[info->offset];
+            char * read;
+            int result;
+
+            switch(info->type) {
+                case 0:
+                    break;
+                case 6:   // String
+
+                    read = read_string(bytes);
+
+                    if (!strncmp(info->tag, "name", 4) && !strncmp(read, "gpg-pubkey", 10))
+                        skip = 1;
+
+                    if (!strncmp(info->tag, "version", 7)) {
+                        snprintf(version, TYPE_LENGTH - 1, "%s", read);
+                    } else if (!strncmp(info->tag, "release", 7)) {
+                        snprintf(release, TYPE_LENGTH - 1, "%s", read);
+                    } else {
+                        cJSON_AddStringToObject(package, info->tag, read);
+                    }
+                    free(read);
+                    break;
+
+                case 4:   // int32
+                    result = four_bytes_to_int32(bytes);
+
+                    if (!strncmp(info->tag, "size", 4)) {
+                        result = result / 1024;   // Bytes to KBytes
+                    }
+
+                    if (!strncmp(info->tag, "install_time", 12)) {    // Format date
+                        char installt[OS_MAXSTR];
+                        struct tm itime;
+                        time_t dateint = result;
+                        localtime_r(&dateint, &itime);
+
+                        snprintf(installt,6499,"%d/%02d/%02d %02d:%02d:%02d",
+                                itime.tm_year + 1900, itime.tm_mon + 1,
+                                itime.tm_mday, itime.tm_hour, itime.tm_min, itime.tm_sec);
+
+                        cJSON_AddStringToObject(package, info->tag, installt);
+                    } else if (!strncmp(info->tag, "epoch", 5)) {
+                        epoch = result;
+                    } else {
+                        cJSON_AddNumberToObject(package, info->tag, result);
+                    }
+
+                    break;
+
+                case 9:   // Vector of strings
+                    read = read_string(bytes);
+                    cJSON_AddStringToObject(package, info->tag, read);
+                    free(read);
+                    break;
+
+                default:
+                    mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Unknown type of data: %d", info->type);
+            }
+        }
+
+        if (epoch) {
+            snprintf(final_version, V_LENGTH - 1, "%d:%s-%s", epoch, version, release);
+        } else {
+            snprintf(final_version, V_LENGTH - 1, "%s-%s" version, release);
+        }
+        cJSON_AddStringToObject(package, "version", final_version);
+
+        // Send RPM package information to the manager
+
+        if (skip) {
+            cJSON_Delete(object);
+        } else {
+            char *string;
+            string = cJSON_PrintUnformatted(object);
+            mtdebug2(WM_SYS_LOGTAG, "sys_rpm_packages() sending '%s'", string);
+            wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(object);
+            free(string);
+        }
+
+        j++;
+
+        // Free resources
+
+        for (info = head; info; info = next_info) {
+            next_info = info->next;
+            free(info->tag);
+            free(info);
+        }
+    }
+
+    if (cursor != NULL)
+        cursor->c_close(cursor);
+
+    if (dbp != NULL)
+        dbp->close(dbp, 0);
+
+    object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "package_end");
+    cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+
+    char *end_msg;
+    end_msg = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_rpm_packages() sending '%s'", end_msg);
+    wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(end_msg);
+    free(timestamp);
+
+    return 0;
+
 }
 
 int sys_deb_packages(int queue_fd, const char* LOCATION){
@@ -597,7 +842,7 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
                     char *string;
                     string = cJSON_PrintUnformatted(object);
                     mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", string);
-                    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     cJSON_Delete(object);
                     free(string);
 
@@ -1561,6 +1806,101 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     cJSON_Delete(object);
     free(end_msg);
     free(timestamp);
+
+}
+
+// Read string from a byte array until find a NULL byte
+char* read_string(u_int8_t* bytes) {
+
+    char * data;
+    char hex[10];
+    int i = 0;
+
+    os_calloc(OS_MAXSTR, sizeof(char), data);
+
+    while (bytes[i]) {
+        sprintf(hex, "%c", bytes[i]);
+        strcat(data, hex);
+        i++;
+    }
+
+    return data;
+
+}
+
+// Read four bytes and retrieve its decimal value
+int four_bytes_to_int32(u_int8_t* bytes){
+
+    int result = (int)bytes[3] | (int)bytes[2] << 8 | (int)bytes[1] << 16 | (int)bytes[0] << 24;
+    return result;
+
+}
+
+// Read index entry from a RPM header
+int read_entry(u_int8_t* bytes, rpm_data *info) {
+
+    u_int8_t* entry;
+    int tag;
+    char* tag_name = NULL;
+
+    // Read 4 first bytes looking for a known tag
+    tag = four_bytes_to_int32(bytes);
+
+    switch(tag) {
+        case TAG_NAME:
+            tag_name = "name";
+            break;
+        case TAG_VERSION:
+            tag_name = "version";
+            break;
+        case TAG_RELEASE:
+            tag_name = "release";
+            break;
+        case TAG_EPOCH:
+            tag_name = "epoch";
+            break;
+        case TAG_SUMMARY:
+            tag_name = "description";
+            break;
+        case TAG_ITIME:
+            tag_name = "install_time";
+            break;
+        case TAG_SIZE:
+            tag_name = "size";
+            break;
+        case TAG_VENDOR:
+            tag_name = "vendor";
+            break;
+        case TAG_GROUP:
+            tag_name = "group";
+            break;
+        case TAG_SOURCE:
+            tag_name = "source";
+            break;
+        case TAG_ARCH:
+            tag_name = "architecture";
+            break;
+        default:
+            return -1;
+    }
+
+    os_strdup(tag_name, info->tag);
+
+    // Read next 4 bytes (type)
+
+    entry = &bytes[4];
+    info->type = four_bytes_to_int32(entry);
+
+    // Read next 4 bytes (offset)
+
+    entry = &bytes[8];
+    info->offset = four_bytes_to_int32(entry);
+
+    // Last 4 bytes (count of elements of the entry)
+    entry = &bytes[12];
+    info->count = four_bytes_to_int32(entry);
+
+    return 0;
 
 }
 
