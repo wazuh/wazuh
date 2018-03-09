@@ -19,6 +19,7 @@
 
 /* Prototypes */
 static void helpmsg(void) __attribute__((noreturn));
+static int verify_agent_conf(const char * path);
 
 
 static void helpmsg()
@@ -42,11 +43,6 @@ int main(int argc, char **argv)
     struct dirent *entry;
     int c = 0;
     int error = 0;
-    int modules = 0;
-    logreader_config log_config;
-
-    modules |= CLOCALFILE;
-    modules |= CAGENT_CONFIG;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -76,9 +72,7 @@ int main(int argc, char **argv)
                             break;
                         }
 
-                        log_config.config = NULL;
-
-                        if (ReadConfig(modules, optarg, &log_config, NULL) < 0)
+                        if (verify_agent_conf(optarg) < 0)
                             error = 1;
                         else
                             printf("%s: OK\n", ARGV0);
@@ -133,9 +127,7 @@ int main(int argc, char **argv)
                 continue;
             }
 
-            log_config.config = NULL;
-
-            if (ReadConfig(modules, path_f, &log_config, NULL) < 0)
+            if (verify_agent_conf(path_f) < 0)
                 error = 1;
             else
                 printf("%s: OK\n", ARGV0);
@@ -146,4 +138,25 @@ int main(int argc, char **argv)
     }
     printf("\n");
     return (error);
+}
+
+int verify_agent_conf(const char * path) {
+
+    if (Test_Syscheck(path) < 0) {
+        return -1;
+    } else if (Test_Rootcheck(path) < 0) {
+        return -1;
+    } else if (Test_Localfile(path) < 0) {
+        return -1;
+    } else if (Test_Client(path) < 0) {
+        return -1;
+    } else if (Test_ClientBuffer(path) < 0) {
+        return -1;
+    } else if (Test_WModule(path) < 0) {
+        return -1;
+    } else if (Test_Labels(path) < 0) {
+        return -1;
+    }
+
+    return 0;
 }

@@ -8,7 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
+#ifdef ENABLE_CISCAT
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_CONTENT = "content";
@@ -208,3 +208,4 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
     return 0;
 }
+#endif

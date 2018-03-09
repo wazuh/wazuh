@@ -43,12 +43,12 @@ int DecodeSyscollector(Eventinfo *lf)
     // Check location
     if (lf->location[0] == '(') {
         char* search;
-        search = strchr(lf->location, '>') + 1;
+        search = strchr(lf->location, '>');
         if (!search) {
             mdebug1("Invalid received event.");
             return (0);
         }
-        else if (strcmp(search, "syscollector") != 0) {
+        else if (strcmp(search + 1, "syscollector") != 0) {
             mdebug1("Invalid received event. Not syscollector.");
             return (0);
         }
@@ -487,6 +487,7 @@ int decode_osinfo(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
+            free(msg);
             return -1;
         }
 
@@ -613,6 +614,7 @@ int decode_port(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
+            free(msg);
             return -1;
         }
 
@@ -632,6 +634,7 @@ int decode_port(char *agent_id, cJSON * logJSON) {
             snprintf(msg, OS_MAXSTR - 1, "agent %s port del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
+                free(msg);
                 return -1;
             }
         }
@@ -720,6 +723,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
+            free(msg);
             return -1;
         }
     }
@@ -856,6 +860,7 @@ int decode_package(char *agent_id, cJSON * logJSON) {
             snprintf(msg, OS_MAXSTR - 1, "agent %s package del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
+                free(msg);
                 return -1;
             }
         }
@@ -1128,6 +1133,7 @@ int decode_process(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
+            free(msg);
             return -1;
         }
 
@@ -1147,6 +1153,7 @@ int decode_process(char *agent_id, cJSON * logJSON) {
             snprintf(msg, OS_MAXSTR - 1, "agent %s process del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
+                free(msg);
                 return -1;
             }
         }
@@ -1170,9 +1177,8 @@ int sc_send_db(char * msg) {
 
     if (sock < 0) {
         if (mtime = time(NULL), mtime > last_attempt + 10) {
-            last_attempt = mtime;
-
             if (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+                last_attempt = mtime;
                 merror("Unable to connect to socket '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
                 goto end;
             }
@@ -1189,17 +1195,18 @@ int sc_send_db(char * msg) {
             merror("Syscollector decoder: database socket is full");
         } else if (errno == EPIPE) {
             if (mtime = time(NULL), mtime > last_attempt + 10) {
-                last_attempt = mtime;
-
                 // Retry to connect
                 mwarn("Connection with wazuh-db lost. Reconnecting.");
+                close(sock);
 
                 if (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+                    last_attempt = mtime;
                     merror("Unable to connect to socket '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
                     goto end;
                 }
 
                 if (send(sock, msg, size + 1, MSG_DONTWAIT) < size) {
+                    last_attempt = mtime;
                     merror("at sc_send_db(): at send() (retry): %s (%d)", strerror(errno), errno);
                     goto end;
                 }

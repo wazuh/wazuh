@@ -18,7 +18,7 @@ static void __send_mssql_msg(int pos, int drop_it, char *buffer)
 {
     mdebug2("Reading MSSQL message: '%s'", buffer);
     if (drop_it == 0) {
-        if (SendMSG(logr_queue, buffer, logff[pos].file, LOCALFILE_MQ) < 0) {
+        if (SendMSGtoSCK(logr_queue, buffer, logff[pos].file, LOCALFILE_MQ, logff[pos].target_socket, logff[pos].outformat) < 0) {
             merror(QUEUE_SEND);
             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                 merror_exit(QUEUE_FATAL, DEFAULTQPATH);

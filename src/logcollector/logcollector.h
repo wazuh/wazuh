@@ -81,7 +81,9 @@ extern int loop_timeout;
 extern int logr_queue;
 extern int open_file_attempts;
 extern logreader *logff;
+extern logsocket *logsk;
 extern int vcheck_files;
 extern int maximum_lines;
+extern logsocket default_agent;
 
 #endif /* __LOGREADER_H */

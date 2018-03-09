@@ -212,8 +212,8 @@ int wdb_create_agent_db2(const char * agent_id) {
     snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
 
     if (!(dest = fopen(path, "w"))) {
+        merror("Couldn't create database '%s': %s (%d)", path, strerror(errno), errno);
         fclose(source);
-        merror("Couldn't create database '%s'.", path);
         return -1;
     }
 
@@ -642,9 +642,8 @@ void wdb_close_old() {
     w_mutex_lock(&pool_mutex);
 
     for (node = db_pool_begin; node && db_pool_size > config.open_db_limit; node = node->next) {
-        mdebug2("Closing database for agent %s", node->agent_id);
-
         if (node->refcount == 0 && !node->transaction) {
+            mdebug2("Closing database for agent %s", node->agent_id);
             wdb_close(node);
         }
     }

@@ -34,6 +34,7 @@ class WazuhException(Exception):
         1103: 'Invalid field in section',
         1104: 'Invalid type',
         1105: 'Error reading API configuration',
+        1106: 'Requested section not present in configuration',
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
@@ -92,6 +93,7 @@ class WazuhException(Exception):
         1725: 'Error registering a new agent',
         1726: 'Ossec authd is not running',
         1727: 'Error listing group files',
+        1728: 'Error removing group',
 
         # Manager:
 
@@ -118,7 +120,8 @@ class WazuhException(Exception):
         3011: 'Agent info file received in a client node',
         3012: 'Received an old file',
         3013: 'Cluster is disabled',
-        3014: 'Manager name or IP incorrect'
+        3014: 'Manager name or IP incorrect',
+        3015: 'Cannot access directory'
 
         # > 9000: Authd
     }

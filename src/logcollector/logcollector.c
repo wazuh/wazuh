@@ -18,9 +18,11 @@ int loop_timeout;
 int logr_queue;
 int open_file_attempts;
 logreader *logff;
+logsocket *logsk;
 int vcheck_files;
 int maximum_lines;
 static int _cday = 0;
+logsocket default_agent = { .name = "agent" };
 
 
 static char *rand_keepalive_str(char *dst, int size)
@@ -46,7 +48,7 @@ static char *rand_keepalive_str(char *dst, int size)
 /* Handle file management */
 void LogCollectorStart()
 {
-    int i = 0, r = 0;
+    int i = 0, r = 0, tg;
     int max_file = 0;
     int f_check = 0;
     time_t curr_time = 0;
@@ -73,24 +75,12 @@ void LogCollectorStart()
 
     /* Initialize each file and structure */
     for (i = 0;; i++) {
+        if (logff[i].duplicated) {
+            continue;
+        }
+
         if (logff[i].file == NULL) {
             break;
-        }
-
-        /* Remove duplicate entries */
-        for (r = 0; r < i; r++) {
-            if (logff[r].file && strcmp(logff[i].file, logff[r].file) == 0) {
-                mwarn("Duplicated log file given: '%s'.", logff[i].file);
-                logff[i].file = NULL;
-                logff[i].command = NULL;
-                logff[i].fp = NULL;
-
-                break;
-            }
-        }
-
-        if (logff[i].file == NULL) {
-            /* Do nothing, duplicated entry */
         }
 
         else if (strcmp(logff[i].logformat, "eventlog") == 0) {
@@ -131,6 +121,13 @@ void LogCollectorStart()
                 logff[i].read = read_command;
 
                 minfo("Monitoring output of command(%d): %s", logff[i].ign, logff[i].command);
+                tg = 0;
+                if (logff[i].target){
+                    while (logff[i].target[tg]) {
+                        mdebug1("Socket target for '%s' -> %s", logff[i].command, logff[i].target[tg]);
+                        tg++;
+                    }
+                }
 
                 if (!logff[i].alias) {
                     os_strdup(logff[i].command, logff[i].alias);
@@ -146,6 +143,13 @@ void LogCollectorStart()
                 logff[i].read = read_fullcommand;
 
                 minfo("Monitoring full output of command(%d): %s", logff[i].ign, logff[i].command);
+                tg = 0;
+                if (logff[i].target){
+                    while (logff[i].target[tg]) {
+                        mdebug1("Socket target for '%s' -> %s", logff[i].command, logff[i].target[tg]);
+                        tg++;
+                    }
+                }
 
                 if (!logff[i].alias) {
                     os_strdup(logff[i].command, logff[i].alias);
@@ -173,6 +177,13 @@ void LogCollectorStart()
             }
 
             minfo(READING_FILE, logff[i].file);
+            tg = 0;
+            if (logff[i].target){
+                while (logff[i].target[tg]) {
+                    mdebug1("Socket target for '%s' -> %s", logff[i].file, logff[i].target[tg]);
+                    tg++;
+                }
+            }
 
             /* Get the log type */
             if (strcmp("snort-full", logff[i].logformat) == 0) {

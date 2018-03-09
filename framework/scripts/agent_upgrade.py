@@ -44,6 +44,12 @@ def list_outdated():
         print("\nTotal outdated agents: {0}".format(agents['totalItems']))
 
 def main():
+    # Capture Ctrl + C
+    signal(SIGINT, signal_handler)
+
+    # Initialize framework
+    myWazuh = Wazuh(get_init=True)
+
     # Check arguments
     if args.list_outdated:
         list_outdated()
@@ -56,12 +62,6 @@ def main():
     if args.silent:
         args.debug = False
 
-    # Capture Ctrl + C
-    signal(SIGINT, signal_handler)
-
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
-
     agent = Agent(id=args.agent)
     agent._load_info_from_DB()
 
@@ -71,30 +71,27 @@ def main():
 
     # Custom WPK file
     if args.file:
-        if args.execute:
-            upgrade_command_result = agent.upgrade_custom(file_path=args.file, installer=args.execute, debug=args.debug, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=-1 if args.timeout == None else args.timeout)
-            if not args.silent:
-                if not args.debug:
-                    print("\n{0}... Please wait.".format(upgrade_command_result))
-                else:
-                    print(upgrade_command_result)
+        upgrade_command_result = agent.upgrade_custom(file_path=args.file, installer=args.execute if args.execute else "upgrade.sh", debug=args.debug, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=-1 if args.timeout == None else args.timeout)
+        if not args.silent:
+            if not args.debug:
+                print("\n{0}... Please wait.".format(upgrade_command_result))
+            else:
+                print(upgrade_command_result)
 
-            counter = 0
-            agent_info_stat = os.stat(agent_info).st_mtime
+        counter = 0
+        agent_info_stat = os.stat(agent_info).st_mtime
 
-            sleep(10)
-            while agent_info_stat == os.stat(agent_info).st_mtime and counter < common.agent_info_retries:
-                sleep(common.agent_info_sleep)
-                counter = counter + 1
+        sleep(10)
+        while agent_info_stat == os.stat(agent_info).st_mtime and counter < common.agent_info_retries:
+            sleep(common.agent_info_sleep)
+            counter = counter + 1
 
-            if agent_info_stat == os.stat(agent_info).st_mtime:
-                raise WazuhException(1716, "Timeout waiting for agent reconnection.")
+        if agent_info_stat == os.stat(agent_info).st_mtime:
+            raise WazuhException(1716, "Timeout waiting for agent reconnection.")
 
-            upgrade_result = agent.upgrade_result(debug=args.debug)
-            if not args.silent:
-                print(upgrade_result)
-        else:
-            print("Error: Need executable filename.")
+        upgrade_result = agent.upgrade_result(debug=args.debug)
+        if not args.silent:
+            print(upgrade_result)
 
     # WPK upgrade file
     else:
@@ -140,7 +137,7 @@ if __name__ == "__main__":
     arg_parser.add_argument("-c", "--chunk_size", type=int, help="Chunk size sending WPK file.")
     arg_parser.add_argument("-t", "--timeout", type=int, help="Timeout until agent restart is unlocked.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
-    arg_parser.add_argument("-x", "--execute", type=str, help="Executable filename in the WPK custom file.")
+    arg_parser.add_argument("-x", "--execute", type=str, help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
     args = arg_parser.parse_args()
 
     try:

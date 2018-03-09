@@ -1,6 +1,6 @@
 
 ' Script for configuration Windows agent.
-' Copyright (c) 2017 Wazuh, Inc <support@wazuh.com>
+' Copyright (C) 2018 Wazuh, Inc <support@wazuh.com>
 '
 ' This program is free software; you can redistribute it and/or modify
 ' it under the terms of the GNU General Public License as published by
@@ -98,10 +98,10 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
                 Set re = new regexp
                 re.Pattern = "<protocol>.*</protocol>"
                 re.Global = True
-                strNewText = re.Replace(strNewText, "<protocol>" & protocol & "</protocol>")
+                strNewText = re.Replace(strNewText, "<protocol>" & LCase(protocol) & "</protocol>")
             Else
             ' Fix for the legacy files (not including the key)
-                strNewText = Replace(strNewText, "</client>", "   <protocol>" & protocol & "</protocol>"& vbCrLf &"  </client>")
+                strNewText = Replace(strNewText, "</client>", "   <protocol>" & LCase(protocol) & "</protocol>"& vbCrLf &"  </client>")
             End If
         End If
 

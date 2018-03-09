@@ -44,6 +44,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     struct tm localtm;
     int status;
 
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
     now = time(NULL);
     localtime_r(&now, &localtm);
 
@@ -99,8 +102,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             free(parts);
 
             string = cJSON_PrintUnformatted(object);
+
             mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
-            SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
 
             free(string);
@@ -122,7 +126,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     char *string;
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
     free(timestamp);
@@ -364,6 +368,9 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -607,7 +614,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         /* Send interface data in JSON format */
         string = cJSON_PrintUnformatted(object);
         mtdebug2(WM_SYS_LOGTAG, "sys_network_bsd() sending '%s'", string);
-        SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
         cJSON_Delete(object);
         free(string);
     }
@@ -626,7 +633,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     char *string;
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_network_bsd() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
     free(timestamp);

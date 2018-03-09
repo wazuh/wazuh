@@ -1,4 +1,11 @@
-#!/usr/bin/env perl
+#! /usr/bin/env perl
+# Copyright 2014-2016 The OpenSSL Project Authors. All Rights Reserved.
+#
+# Licensed under the OpenSSL license (the "License").  You may not use
+# this file except in compliance with the License.  You can obtain a copy
+# in the file LICENSE in the source distribution or at
+# https://www.openssl.org/source/license.html
+
 
 ##############################################################################
 #                                                                            #
@@ -60,7 +67,7 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-open OUT,"| \"$^X\" $xlate $flavour $output";
+open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
 if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
@@ -1178,19 +1185,18 @@ __ecp_nistz256_sqr_montx:
 	adox	$t1, $acc5
 	.byte	0x67,0x67
 	mulx	%rdx, $t0, $t4
-	 mov	$acc0, %rdx
+	 mov	.Lpoly+8*3(%rip), %rdx
 	adox	$t0, $acc6
 	 shlx	$a_ptr, $acc0, $t0
 	adox	$t4, $acc7
 	 shrx	$a_ptr, $acc0, $t4
-	 mov	.Lpoly+8*3(%rip), $t1
+	mov	%rdx,$t1
 
 	# reduction step 1
 	add	$t0, $acc1
 	adc	$t4, $acc2
 
-	mulx	$t1, $t0, $acc0
-	 mov	$acc1, %rdx
+	mulx	$acc0, $t0, $acc0
 	adc	$t0, $acc3
 	 shlx	$a_ptr, $acc1, $t0
 	adc	\$0, $acc0
@@ -1200,8 +1206,7 @@ __ecp_nistz256_sqr_montx:
 	add	$t0, $acc2
 	adc	$t4, $acc3
 
-	mulx	$t1, $t0, $acc1
-	 mov	$acc2, %rdx
+	mulx	$acc1, $t0, $acc1
 	adc	$t0, $acc0
 	 shlx	$a_ptr, $acc2, $t0
 	adc	\$0, $acc1
@@ -1211,8 +1216,7 @@ __ecp_nistz256_sqr_montx:
 	add	$t0, $acc3
 	adc	$t4, $acc0
 
-	mulx	$t1, $t0, $acc2
-	 mov	$acc3, %rdx
+	mulx	$acc2, $t0, $acc2
 	adc	$t0, $acc1
 	 shlx	$a_ptr, $acc3, $t0
 	adc	\$0, $acc2
@@ -1222,12 +1226,12 @@ __ecp_nistz256_sqr_montx:
 	add	$t0, $acc0
 	adc	$t4, $acc1
 
-	mulx	$t1, $t0, $acc3
+	mulx	$acc3, $t0, $acc3
 	adc	$t0, $acc2
 	adc	\$0, $acc3
 
-	xor	$t3, $t3		# cf=0
-	adc	$acc0, $acc4		# accumulate upper half
+	xor	$t3, $t3
+	add	$acc0, $acc4		# accumulate upper half
 	 mov	.Lpoly+8*1(%rip), $a_ptr
 	adc	$acc1, $acc5
 	 mov	$acc4, $acc0
@@ -1236,8 +1240,7 @@ __ecp_nistz256_sqr_montx:
 	 mov	$acc5, $acc1
 	adc	\$0, $t3
 
-	xor	%eax, %eax		# cf=0
-	sbb	\$-1, $acc4		# .Lpoly[0]
+	sub	\$-1, $acc4		# .Lpoly[0]
 	 mov	$acc6, $acc2
 	sbb	$a_ptr, $acc5		# .Lpoly[1]
 	sbb	\$0, $acc6		# .Lpoly[2]
@@ -1371,20 +1374,44 @@ my ($M1,$T2a,$T2b,$TMP2,$M2,$T2a,$T2b,$TMP2)=map("%xmm$_",(8..15));
 
 $code.=<<___;
 ################################################################################
-# void ecp_nistz256_select_w5(uint64_t *val, uint64_t *in_t, int index);
-.globl	ecp_nistz256_select_w5
-.type	ecp_nistz256_select_w5,\@abi-omnipotent
+# void ecp_nistz256_scatter_w5(uint64_t *val, uint64_t *in_t, int index);
+.globl	ecp_nistz256_scatter_w5
+.type	ecp_nistz256_scatter_w5,\@abi-omnipotent
 .align	32
-ecp_nistz256_select_w5:
+ecp_nistz256_scatter_w5:
+	lea	-3($index,$index,2), $index
+	movdqa	0x00($in_t), %xmm0
+	shl	\$5, $index
+	movdqa	0x10($in_t), %xmm1
+	movdqa	0x20($in_t), %xmm2
+	movdqa	0x30($in_t), %xmm3
+	movdqa	0x40($in_t), %xmm4
+	movdqa	0x50($in_t), %xmm5
+	movdqa	%xmm0, 0x00($val,$index)
+	movdqa	%xmm1, 0x10($val,$index)
+	movdqa	%xmm2, 0x20($val,$index)
+	movdqa	%xmm3, 0x30($val,$index)
+	movdqa	%xmm4, 0x40($val,$index)
+	movdqa	%xmm5, 0x50($val,$index)
+
+	ret
+.size	ecp_nistz256_scatter_w5,.-ecp_nistz256_scatter_w5
+
+################################################################################
+# void ecp_nistz256_gather_w5(uint64_t *val, uint64_t *in_t, int index);
+.globl	ecp_nistz256_gather_w5
+.type	ecp_nistz256_gather_w5,\@abi-omnipotent
+.align	32
+ecp_nistz256_gather_w5:
 ___
 $code.=<<___	if ($avx>1);
 	mov	OPENSSL_ia32cap_P+8(%rip), %eax
 	test	\$`1<<5`, %eax
-	jnz	.Lavx2_select_w5
+	jnz	.Lavx2_gather_w5
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_ecp_nistz256_select_w5:
+.LSEH_begin_ecp_nistz256_gather_w5:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0x0f,0x29,0x70,0xe0		#movaps	%xmm6, -0x20(%rax)
 	.byte	0x0f,0x29,0x78,0xf0		#movaps	%xmm7, -0x10(%rax)
@@ -1461,27 +1488,46 @@ $code.=<<___	if ($win64);
 	movaps	0x80(%rsp), %xmm14
 	movaps	0x90(%rsp), %xmm15
 	lea	0xa8(%rsp), %rsp
-.LSEH_end_ecp_nistz256_select_w5:
+.LSEH_end_ecp_nistz256_gather_w5:
 ___
 $code.=<<___;
 	ret
-.size	ecp_nistz256_select_w5,.-ecp_nistz256_select_w5
+.size	ecp_nistz256_gather_w5,.-ecp_nistz256_gather_w5
 
 ################################################################################
-# void ecp_nistz256_select_w7(uint64_t *val, uint64_t *in_t, int index);
-.globl	ecp_nistz256_select_w7
-.type	ecp_nistz256_select_w7,\@abi-omnipotent
+# void ecp_nistz256_scatter_w7(uint64_t *val, uint64_t *in_t, int index);
+.globl	ecp_nistz256_scatter_w7
+.type	ecp_nistz256_scatter_w7,\@abi-omnipotent
 .align	32
-ecp_nistz256_select_w7:
+ecp_nistz256_scatter_w7:
+	movdqu	0x00($in_t), %xmm0
+	shl	\$6, $index
+	movdqu	0x10($in_t), %xmm1
+	movdqu	0x20($in_t), %xmm2
+	movdqu	0x30($in_t), %xmm3
+	movdqa	%xmm0, 0x00($val,$index)
+	movdqa	%xmm1, 0x10($val,$index)
+	movdqa	%xmm2, 0x20($val,$index)
+	movdqa	%xmm3, 0x30($val,$index)
+
+	ret
+.size	ecp_nistz256_scatter_w7,.-ecp_nistz256_scatter_w7
+
+################################################################################
+# void ecp_nistz256_gather_w7(uint64_t *val, uint64_t *in_t, int index);
+.globl	ecp_nistz256_gather_w7
+.type	ecp_nistz256_gather_w7,\@abi-omnipotent
+.align	32
+ecp_nistz256_gather_w7:
 ___
 $code.=<<___	if ($avx>1);
 	mov	OPENSSL_ia32cap_P+8(%rip), %eax
 	test	\$`1<<5`, %eax
-	jnz	.Lavx2_select_w7
+	jnz	.Lavx2_gather_w7
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_ecp_nistz256_select_w7:
+.LSEH_begin_ecp_nistz256_gather_w7:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0x0f,0x29,0x70,0xe0		#movaps	%xmm6, -0x20(%rax)
 	.byte	0x0f,0x29,0x78,0xf0		#movaps	%xmm7, -0x10(%rax)
@@ -1547,11 +1593,11 @@ $code.=<<___	if ($win64);
 	movaps	0x80(%rsp), %xmm14
 	movaps	0x90(%rsp), %xmm15
 	lea	0xa8(%rsp), %rsp
-.LSEH_end_ecp_nistz256_select_w7:
+.LSEH_end_ecp_nistz256_gather_w7:
 ___
 $code.=<<___;
 	ret
-.size	ecp_nistz256_select_w7,.-ecp_nistz256_select_w7
+.size	ecp_nistz256_gather_w7,.-ecp_nistz256_gather_w7
 ___
 }
 if ($avx>1) {
@@ -1562,16 +1608,16 @@ my ($M1,$T1a,$T1b,$T1c,$TMP1)=map("%ymm$_",(10..14));
 
 $code.=<<___;
 ################################################################################
-# void ecp_nistz256_avx2_select_w5(uint64_t *val, uint64_t *in_t, int index);
-.type	ecp_nistz256_avx2_select_w5,\@abi-omnipotent
+# void ecp_nistz256_avx2_gather_w5(uint64_t *val, uint64_t *in_t, int index);
+.type	ecp_nistz256_avx2_gather_w5,\@abi-omnipotent
 .align	32
-ecp_nistz256_avx2_select_w5:
-.Lavx2_select_w5:
+ecp_nistz256_avx2_gather_w5:
+.Lavx2_gather_w5:
 	vzeroupper
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_ecp_nistz256_avx2_select_w5:
+.LSEH_begin_ecp_nistz256_avx2_gather_w5:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0xc5,0xf8,0x29,0x70,0xe0	#vmovaps %xmm6, -0x20(%rax)
 	.byte	0xc5,0xf8,0x29,0x78,0xf0	#vmovaps %xmm7, -0x10(%rax)
@@ -1649,11 +1695,11 @@ $code.=<<___	if ($win64);
 	movaps	0x80(%rsp), %xmm14
 	movaps	0x90(%rsp), %xmm15
 	lea	0xa8(%rsp), %rsp
-.LSEH_end_ecp_nistz256_avx2_select_w5:
+.LSEH_end_ecp_nistz256_avx2_gather_w5:
 ___
 $code.=<<___;
 	ret
-.size	ecp_nistz256_avx2_select_w5,.-ecp_nistz256_avx2_select_w5
+.size	ecp_nistz256_avx2_gather_w5,.-ecp_nistz256_avx2_gather_w5
 ___
 }
 if ($avx>1) {
@@ -1666,17 +1712,17 @@ my ($M2,$T2a,$T2b,$TMP2)=map("%ymm$_",(12..15));
 $code.=<<___;
 
 ################################################################################
-# void ecp_nistz256_avx2_select_w7(uint64_t *val, uint64_t *in_t, int index);
-.globl	ecp_nistz256_avx2_select_w7
-.type	ecp_nistz256_avx2_select_w7,\@abi-omnipotent
+# void ecp_nistz256_avx2_gather_w7(uint64_t *val, uint64_t *in_t, int index);
+.globl	ecp_nistz256_avx2_gather_w7
+.type	ecp_nistz256_avx2_gather_w7,\@abi-omnipotent
 .align	32
-ecp_nistz256_avx2_select_w7:
-.Lavx2_select_w7:
+ecp_nistz256_avx2_gather_w7:
+.Lavx2_gather_w7:
 	vzeroupper
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_ecp_nistz256_avx2_select_w7:
+.LSEH_begin_ecp_nistz256_avx2_gather_w7:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0xc5,0xf8,0x29,0x70,0xe0	#vmovaps %xmm6, -0x20(%rax)
 	.byte	0xc5,0xf8,0x29,0x78,0xf0	#vmovaps %xmm7, -0x10(%rax)
@@ -1769,21 +1815,21 @@ $code.=<<___	if ($win64);
 	movaps	0x80(%rsp), %xmm14
 	movaps	0x90(%rsp), %xmm15
 	lea	0xa8(%rsp), %rsp
-.LSEH_end_ecp_nistz256_avx2_select_w7:
+.LSEH_end_ecp_nistz256_avx2_gather_w7:
 ___
 $code.=<<___;
 	ret
-.size	ecp_nistz256_avx2_select_w7,.-ecp_nistz256_avx2_select_w7
+.size	ecp_nistz256_avx2_gather_w7,.-ecp_nistz256_avx2_gather_w7
 ___
 } else {
 $code.=<<___;
-.globl	ecp_nistz256_avx2_select_w7
-.type	ecp_nistz256_avx2_select_w7,\@function,3
+.globl	ecp_nistz256_avx2_gather_w7
+.type	ecp_nistz256_avx2_gather_w7,\@function,3
 .align	32
-ecp_nistz256_avx2_select_w7:
+ecp_nistz256_avx2_gather_w7:
 	.byte	0x0f,0x0b	# ud2
 	ret
-.size	ecp_nistz256_avx2_select_w7,.-ecp_nistz256_avx2_select_w7
+.size	ecp_nistz256_avx2_gather_w7,.-ecp_nistz256_avx2_gather_w7
 ___
 }
 {{{
@@ -3001,6 +3047,36 @@ ___
 &gen_add_affine("x");
 }
 }}}
+
+########################################################################
+# Convert ecp_nistz256_table.c to layout expected by ecp_nistz_gather_w7
+#
+open TABLE,"<ecp_nistz256_table.c"		or 
+open TABLE,"<${dir}../ecp_nistz256_table.c"	or 
+die "failed to open ecp_nistz256_table.c:",$!;
+
+use integer;
+
+foreach(<TABLE>) {
+	s/TOBN\(\s*(0x[0-9a-f]+),\s*(0x[0-9a-f]+)\s*\)/push @arr,hex($2),hex($1)/geo;
+}
+close TABLE;
+
+die "insane number of elements" if ($#arr != 64*16*37-1);
+
+print <<___;
+.text
+.globl	ecp_nistz256_precomputed
+.type	ecp_nistz256_precomputed,\@object
+.align	4096
+ecp_nistz256_precomputed:
+___
+while (@line=splice(@arr,0,16)) {
+	print ".long\t",join(',',map { sprintf "0x%08x",$_} @line),"\n";
+}
+print <<___;
+.size	ecp_nistz256_precomputed,.-ecp_nistz256_precomputed
+___
 
 $code =~ s/\`([^\`]*)\`/eval $1/gem;
 print $code;
