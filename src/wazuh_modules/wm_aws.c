@@ -22,13 +22,15 @@ static void wm_aws_cleanup();                           // Cleanup function, doe
 static void wm_aws_check();                             // Check configuration, disable flag
 static void wm_aws_run_s3(wm_aws_bucket *bucket);       // Run a s3
 static void wm_aws_destroy(wm_aws *aws_config);         // Destroy data
+cJSON *wm_aws_dump(const wm_aws *aws_config);
 
 // Command module context definition
 
 const wm_context WM_AWS_CONTEXT = {
     "aws-s3",
     (wm_routine)wm_aws_main,
-    (wm_routine)wm_aws_destroy
+    (wm_routine)wm_aws_destroy,
+    (cJSON * (*)(const void *))wm_aws_dump
 };
 
 // Module module main function. It won't return.
@@ -95,6 +97,28 @@ void* wm_aws_main(wm_aws *aws_config) {
 
     return NULL;
 }
+
+
+// Get readed data
+
+cJSON *wm_aws_dump(const wm_aws *aws_config) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_aws = cJSON_CreateObject();
+
+    if (aws_config->enabled) cJSON_AddStringToObject(wm_aws,"disabled","no"); else cJSON_AddStringToObject(wm_aws,"disabled","yes");
+    if (aws_config->run_on_start) cJSON_AddStringToObject(wm_aws,"run_on_start","yes"); else cJSON_AddStringToObject(wm_aws,"run_on_start","no");
+    if (aws_config->remove_from_bucket) cJSON_AddStringToObject(wm_aws,"remove_from_bucket","yes"); else cJSON_AddStringToObject(wm_aws,"remove_from_bucket","no");
+    cJSON_AddNumberToObject(wm_aws,"interval",aws_config->interval);
+    if (aws_config->bucket) cJSON_AddStringToObject(wm_aws,"bucket",aws_config->bucket);
+    if (aws_config->access_key) cJSON_AddStringToObject(wm_aws,"access_key",aws_config->access_key);
+    if (aws_config->secret_key) cJSON_AddStringToObject(wm_aws,"secret_key",aws_config->secret_key);
+
+    cJSON_AddItemToObject(root,"aws-cloudtrail",wm_aws);
+
+    return root;
+}
+
 
 // Destroy data
 

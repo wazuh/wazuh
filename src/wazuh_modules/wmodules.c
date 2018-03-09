@@ -263,6 +263,7 @@ void wm_free(wmodule * config) {
     }
 }
 
+
 void wm_module_free(wmodule * config){
     if (config->context && config->context->destroy)
             config->context->destroy(config->data);
@@ -270,6 +271,27 @@ void wm_module_free(wmodule * config){
     free(config->tag);
     free(config);
 }
+
+
+// Get readed data
+cJSON *getModulesConfig(void) {
+
+    wmodule *cur_module;
+    wmodule *next_module;
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_mod = cJSON_CreateArray();
+
+    for (cur_module = wmodules; cur_module; cur_module = next_module) {
+        next_module = cur_module->next;
+        cJSON_AddItemToArray(wm_mod,cur_module->context->dump(cur_module->data));
+    }
+
+    cJSON_AddItemToObject(root,"wmodules",wm_mod);
+
+    return root;
+}
+
 
 // Send message to a queue waiting for a specific delay
 int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
