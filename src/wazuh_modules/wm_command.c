@@ -13,13 +13,15 @@
 
 static void * wm_command_main(wm_command_t * command);    // Module main function. It won't return
 static void wm_command_destroy(wm_command_t * command);   // Destroy data
+cJSON *wm_command_dump(const wm_command_t * command);
 
 // Command module context definition
 
 const wm_context WM_COMMAND_CONTEXT = {
     "command",
     (wm_routine)wm_command_main,
-    (wm_routine)wm_command_destroy
+    (wm_routine)wm_command_destroy,
+    (cJSON * (*)(const void *))wm_command_dump
 };
 
 // Module module main function. It won't return.
@@ -228,6 +230,27 @@ void * wm_command_main(wm_command_t * command) {
 
     return NULL;
 }
+
+
+// Get readed data
+
+cJSON *wm_command_dump(const wm_command_t * command) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_comm = cJSON_CreateObject();
+
+    if (command->enabled) cJSON_AddStringToObject(wm_comm,"disabled","no"); else cJSON_AddStringToObject(wm_comm,"disabled","yes");
+    if (command->run_on_start) cJSON_AddStringToObject(wm_comm,"run_on_start","yes"); else cJSON_AddStringToObject(wm_comm,"run_on_start","no");
+    if (command->ignore_output) cJSON_AddStringToObject(wm_comm,"ignore_output","yes"); else cJSON_AddStringToObject(wm_comm,"ignore_output","no");
+    cJSON_AddNumberToObject(wm_comm,"interval",command->interval);
+    if (command->tag) cJSON_AddStringToObject(wm_comm,"tag",command->tag);
+    if (command->command) cJSON_AddStringToObject(wm_comm,"command",command->command);
+
+    cJSON_AddItemToObject(root,"command",wm_comm);
+
+    return root;
+}
+
 
 // Destroy data
 
