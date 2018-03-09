@@ -45,6 +45,7 @@ typedef struct wm_context {
     const char *name;                   // Name for module
     wm_routine start;                   // Main function
     wm_routine destroy;                 // Destructor
+    cJSON *(* dump)(const void *);
 } wm_context;
 
 // Main module structure
@@ -83,6 +84,7 @@ extern int wm_kill_timeout;     // Time for a process to quit before killing it
 
 // Read XML configuration and internal options
 int wm_config();
+cJSON *getModulesConfig(void);
 
 // Add module to the global list
 void wm_add(wmodule *module);
