@@ -44,6 +44,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     logr->rip_id = 0;
 
     for (i = 0; node[i]; i++) {
+        rip = NULL;
         XML_NODE chld_node = NULL;
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -163,17 +164,16 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
-    }
 
-    // Add extra server (legacy configuration)
-
-    if (rip) {
-        os_realloc(logr->server, sizeof(agent_server) * (logr->rip_id + 2), logr->server);
-        os_strdup(rip, logr->server[logr->rip_id].rip);
-        logr->server[logr->rip_id].port = port;
-        logr->server[logr->rip_id].protocol = protocol;
-        memset(logr->server + logr->rip_id + 1, 0, sizeof(agent_server));
-        logr->rip_id++;
+        // Add extra server (legacy configuration)
+        if (rip) {
+            os_realloc(logr->server, sizeof(agent_server) * (logr->rip_id + 2), logr->server);
+            os_strdup(rip, logr->server[logr->rip_id].rip);
+            logr->server[logr->rip_id].port = port;
+            logr->server[logr->rip_id].protocol = protocol;
+            memset(logr->server + logr->rip_id + 1, 0, sizeof(agent_server));
+            logr->rip_id++;
+        }
     }
 
     return (0);

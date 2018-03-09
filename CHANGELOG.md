@@ -16,6 +16,14 @@ All notable changes to this project will be documented in this file.
 
 - Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
 
+## [v3.2.2]
+
+### Fixed
+
+- Fixed bug in labels settings parser that may make Agentd or Logcollector crash.
+- Fixed issue when setting multiple <server-ip> stanzas in versions 3.0 - 3.2.1. ([#433](https://github.com/wazuh/wazuh/pull/433))
+- Fixed bug when socket database messages we not sent correctly. ([#435](https://github.com/wazuh/wazuh/pull/435))
+
 ## [v3.2.1]
 
 ### Added
