@@ -320,8 +320,8 @@
 #define READ_CONFIG "Read configuration ..."
 
 /* Wait operations */
-#define WAITING_MSG     "Process locked. Waiting for permission..."
-#define WAITING_FREE    "Lock free. Continuing..."
+#define WAITING_MSG     "Process locked due to agent is offline. Waiting for connection..."
+#define WAITING_FREE    "Agent is now online. Process unlocked, continuing..."
 #define SERVER_UNAV     "Server unavailable. Setting lock."
 #define SERVER_UP       "Server responded. Releasing lock."
 #define LOCK_RES        "Agent auto-restart locked for %d seconds."
