@@ -68,11 +68,11 @@ static void* wm_database_destroy(wm_database *data);
 // Update manager information
 static void wm_sync_manager();
 
+static char * wm_get_os_arch(char * os_header);
+
 #ifndef LOCAL
 
 static void wm_check_agents();
-
-static char * wm_get_os_arch(char * os_header);
 
 // Synchronize agents and groups
 static void wm_sync_agents();
