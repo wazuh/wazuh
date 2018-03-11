@@ -599,6 +599,7 @@ InstallCommon(){
     OSSEC_USER_MAIL='ossecm'
     OSSEC_USER_REM='ossecr'
     EXTERNAL_LUA='external/lua-5.2.3/'
+    EXTERNAL_BERKELEY='external/db-6.2.32.NC/build_unix/'
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -639,6 +640,8 @@ InstallCommon(){
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
     fi
 
+  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lib
+  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_BERKELEY}.libs/libdb-6.2.so ${PREFIX}/lib
   ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua
   ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/native
   ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/compiled

@@ -217,7 +217,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
-    char local_addr[ADDR_LENGTH], rem_addr[ADDR_LENGTH];
+    char local_addr[ADDR6_LENGTH], rem_addr[ADDR6_LENGTH];
     char laddress[INET6_ADDRSTRLEN];
     char raddress[INET6_ADDRSTRLEN];
     struct in6_addr local;
@@ -416,7 +416,7 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
         if (sys_deb_packages(queue_fd, LOCATION) < 0) {
             mterror(WM_SYS_LOGTAG, "Unable to get debian packages due to: %s", strerror(errno));
         }
-    } else if ((dir = opendir("var/lib/rpm"))){
+    } else if ((dir = opendir("/var/lib/rpm/"))){
         closedir(dir);
         if (sys_rpm_packages(queue_fd, LOCATION) < 0) {
             mterror(WM_SYS_LOGTAG, "Unable to get rpm packages due to: %s", strerror(errno));
@@ -613,7 +613,7 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
         if (epoch) {
             snprintf(final_version, V_LENGTH - 1, "%d:%s-%s", epoch, version, release);
         } else {
-            snprintf(final_version, V_LENGTH - 1, "%s-%s" version, release);
+            snprintf(final_version, V_LENGTH - 1, "%s-%s", version, release);
         }
         cJSON_AddStringToObject(package, "version", final_version);
 

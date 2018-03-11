@@ -809,8 +809,8 @@ int decode_package(char *agent_id, cJSON * logJSON) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (install_time) {
-            wm_strcat(&msg, install_time->valuestring, '|');
+        if (installtime) {
+            wm_strcat(&msg, installtime->valuestring, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
