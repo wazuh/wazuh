@@ -10,7 +10,7 @@ from wazuh.InputValidator import InputValidator
 from wazuh.database import Connection
 from wazuh.agent import Agent
 from wazuh.configuration import get_file_conf_path, get_agent_conf_from_path
-from os import path, listdir, chmod
+from os import path, listdir, chmod, chown
 from shutil import move, copytree
 from time import time
 from glob import glob
