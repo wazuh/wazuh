@@ -761,6 +761,12 @@ crypto_sha256_o := $(crypto_sha256_c:.c=.o)
 os_crypto/sha256/%.o: os_crypto/sha256/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
+crypto_aes_c := os_crypto/aes/aes_op.c
+crypto_aes_o := $(crypto_aes_c:.c=.o)
+
+os_crypto/aes/%.o: os_crypto/aes/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
 crypto_md5_sha1_c := os_crypto/md5_sha1/md5_sha1_op.c
 crypto_md5_sha1_o := $(crypto_md5_sha1_c:.c=.o)
 
@@ -799,6 +805,7 @@ crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_sha1_o} \
 					 ${crypto_md5_sha1_sha256_o} \
 					 ${crypto_sha256_o} \
+					 ${crypto_aes_o} \
 					 ${crypto_hmac_o} \
 					 ${crypto_signature_o}
 

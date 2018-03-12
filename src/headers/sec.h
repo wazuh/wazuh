@@ -13,6 +13,10 @@
 #include <time.h>
 #include <pthread.h>
 
+typedef enum _crypt_method{
+    W_METH_BLOWFISH,W_METH_AES
+} crypt_method;
+
 typedef struct keystore_flags_t {
     unsigned int rehash_keys:1;     // Flag: rehash keys on adding
     unsigned int save_removed:1;    // Save removed keys into list
@@ -34,6 +38,7 @@ typedef struct _keyentry {
     pthread_mutex_t mutex;
     struct sockaddr_in peer_info;
     FILE *fp;
+    crypt_method crypto_method;
 } keyentry;
 
 /* Key storage */
