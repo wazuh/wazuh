@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS agent (
     os_build TEXT,
     os_platform TEXT,
     os_uname TEXT,
+    os_arch TEXT,
     version TEXT,
     config_sum TEXT,
     merged_sum TEXT,
