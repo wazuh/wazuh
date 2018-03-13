@@ -191,6 +191,16 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         lock_restart(timeout);
 
         return strlen(output);
+
+    } else if (strcmp(rcv_comm, "getconfig") == 0){
+        // getconfig section
+        if (!rcv_args){
+            merror("WCOM getconfig needs arguments.");
+            strcpy(output, "err WCOM getconfig needs arguments");
+            return strlen(output);
+        }
+        return wcom_getconfig(rcv_args, output);
+
     } else {
         merror("WCOM Unrecognized command '%s'.", rcv_comm);
         strcpy(output, "err Unrecognized command");
@@ -535,7 +545,131 @@ size_t wcom_restart(char *output) {
     return strlen(output);
 }
 
+#ifdef WIN32
+size_t wcom_getconfig(const char * section, char * output) {
+
+    cJSON *cfg;
+
+    if (strcmp(section, "client") == 0){
+        if (cfg = getClientConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "client-buffer") == 0){
+        if (cfg = getBufferConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "localfile") == 0){
+        if (cfg = getLocalfileConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "socket") == 0){
+        if (cfg = getSocketConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "labels") == 0){
+        if (cfg = getLabelsConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "syscheck") == 0){
+        if (cfg = getSyscheckConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "rootcheck") == 0){
+        if (cfg = getRootcheckConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "active-response") == 0){
+        if (cfg = getARConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "logging") == 0){
+        if (cfg = getLoggingConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "modules") == 0){
+        if (cfg = getModulesConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else {
+        goto error;
+    }
+error:
+    merror("At WCOM getconfig: Could not get '%s' section", section);
+    strcpy(output, "err Could not get requested section");
+    return strlen(output);
+}
+#endif
+
 #ifndef WIN32
+
+size_t wcom_getconfig(const char * section, char * output) {
+
+    cJSON *cfg;
+
+    if (strcmp(section, "active-response") == 0){
+        if (cfg = getARConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "logging") == 0){
+        if (cfg = getLoggingConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else {
+        goto error;
+    }
+error:
+    merror("At WCOM getconfig: Could not get '%s' section", section);
+    strcpy(output, "err Could not get requested section");
+    return strlen(output);
+}
 
 void * wcom_main(__attribute__((unused)) void * arg) {
     int sock;
