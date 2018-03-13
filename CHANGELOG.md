@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
 - Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
 - Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
+- Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
 
 ### Changed
 
@@ -27,7 +28,7 @@ All notable changes to this project will be documented in this file.
 - Fixed issue when setting multiple <server-ip> stanzas in versions 3.0 - 3.2.1. ([#433](https://github.com/wazuh/wazuh/pull/433))
 - Fixed bug when socket database messages we not sent correctly. ([#435](https://github.com/wazuh/wazuh/pull/435))
 
-## [v3.2.1]
+## [v3.2.1] 2018-03-03
 
 ### Added
 
@@ -68,7 +69,7 @@ All notable changes to this project will be documented in this file.
 - Fixed memory leaks in vulnerability-detector and CIS-CAT wodle.
 - Fixed behavior when working directory is not found in CIS-CAT wodle.
 
-## [v3.2.0]
+## [v3.2.0] 2018-02-13
 
 ### Added
 - Added support to synchronize custom rules and decoders in the cluster.([#344](https://github.com/wazuh/wazuh/pull/344))
