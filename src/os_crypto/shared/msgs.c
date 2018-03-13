@@ -207,11 +207,9 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
     char *f_msg;
     char AES_token[5] ="#AES";
     char *AES_cipher;
-    unsigned int uses_AES = 0;
 
     if((AES_cipher = strstr(buffer,AES_token)) != NULL){
         buffer+=4;
-        uses_AES = 1;
         keys->keyentries[id]->crypto_method = W_METH_AES;
     }
     else{
