@@ -56,6 +56,7 @@ size_t wcom_upgrade_result(char *output);
 size_t wcom_restart(char *output);
 size_t wcom_dispatch(char *command, size_t length, char *output);
 size_t lock_restart(int timeout);
+size_t wcom_getconfig(const char * section, char * output);
 
 #ifndef WIN32
 // Com request thread dispatcher
