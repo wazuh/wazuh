@@ -52,7 +52,8 @@ int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
     "vulnerability-detector",
     (wm_routine)wm_vulnerability_detector_main,
-    (wm_routine)wm_vulnerability_detector_destroy
+    (wm_routine)wm_vulnerability_detector_destroy,
+    NULL
 };
 
 const char *vu_dist_tag[] = {
