@@ -257,7 +257,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        mterror(WM_SYS_LOG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
+        mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
         FREE(pTcpTable);
         return;
     }
@@ -372,7 +372,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        mterror(WM_SYS_LOG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
+        mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
         FREE(pTcp6Table);
         return;
     }
@@ -457,7 +457,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        mterror(WM_SYS_LOG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
+        mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
         FREE(pUdpTable);
         return;
     }
@@ -526,7 +526,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        mterror(WM_SYS_LOG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
+        mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
         FREE(pUdp6Table);
         return;
     }
