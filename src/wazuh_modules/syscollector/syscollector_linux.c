@@ -426,7 +426,7 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
 
 int sys_rpm_packages(int queue_fd, const char* LOCATION){
 
-    char format[FORMAT_LENGTH] = "rpm";
+    char *format = "rpm";
     int ID = os_random();
     char *timestamp;
     time_t now;
