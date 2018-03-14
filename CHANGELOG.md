@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 - Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
 - Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
+- Add selective agent software request in vulnerability-detector. ([#404](https://github.com/wazuh/wazuh/pull/404))
 
 ### Changed
 
