@@ -69,8 +69,8 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.addr = addr
         self.f = Fernet(key.encode('base64','strict'))
         self.set_terminator('\n\t\t\n')
-        self.received_data=[]
-        self.data=""
+        self.received_data = []
+        self.data = ""
         self.counter = 0
         self.node_type = node_type
         self.requests_queue = requests_queue
@@ -148,12 +148,11 @@ class WazuhClusterHandler(asynchat.async_chat):
         while i < msg_len:
             next_i = i+4096 if i+4096 < msg_len else msg_len
             sent = self.send(msg[i:next_i])
-            if sent == 4096 or next_i == msg_len:
-                i = next_i
-            logging.debug("SERVER: Sending {} of {}".format(i, msg_len))
+            i += sent
 
-        logging.debug("Data sent to {0}".format(self.addr))
+        logging.debug("SERVER: Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
         self.handle_close()
+
 
 class WazuhClusterServer(asyncore.dispatcher):
 

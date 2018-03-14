@@ -63,10 +63,23 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
     {
         if(errno == ENOTDIR){
 		/*Deletion message sending*/
+        char * buf;
 		char alert_msg[PATH_MAX+4];
 		alert_msg[PATH_MAX + 3] = '\0';
 		snprintf(alert_msg, PATH_MAX + 4, "-1 %s", file_name);
 		send_syscheck_msg(alert_msg);
+
+        // Update database
+
+        if (buf = (char *) OSHash_Get(syscheck.fp, file_name), buf) {
+            snprintf(alert_msg, sizeof(alert_msg), "%.*s -1", SK_DB_NATTR, buf);
+            free(buf);
+
+            if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
+                merror("Unable to update file to db: %s", file_name);
+            }
+        }
+
 		return (0);
 	}else{
 		merror("Error accessing '%s'.", file_name);
@@ -226,7 +239,15 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 return (0);
             }
 
-            if (strcmp(c_sum, buf + 6) != 0) {
+            if (strcmp(c_sum, buf + SK_DB_NATTR) != 0) {
+                // Update database
+                snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
+                free(buf);
+
+                if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
+                    merror("Unable to update file to db: %s", file_name);
+                }
+
                 /* Send the new checksum to the analysis server */
                 alert_msg[OS_MAXSTR] = '\0';
                 char *fullalert = NULL;
