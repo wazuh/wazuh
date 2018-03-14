@@ -84,6 +84,14 @@ void win_start_event_channel(char *evt_log, char future, char *query);
 void win_format_event_string(char *string);
 #endif
 
+#ifndef WIN32
+// Com request thread dispatcher
+void * lccom_main(void * arg);
+#endif
+
+size_t lccom_dispatch(char *command, size_t length, char *output);
+size_t lccom_getconfig(const char * section, char * output);
+
 /*** Global variables ***/
 extern int loop_timeout;
 extern int logr_queue;
