@@ -61,6 +61,11 @@ int doEncryptByMethod(const char *input, char *output, const char *charkey,
     }
 }
 
+/* Set the agent crypto method readed from the ossec.conf file */
+void os_set_agent_crypto_method(keystore * keys,const int method){
+    keys->keyentries[0]->crypto_method = method;
+}
+
 /* Read counters for each agent */
 void OS_StartCounter(keystore *keys)
 {
@@ -205,10 +210,8 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
     unsigned int msg_global = 0;
     unsigned int msg_local = 0;
     char *f_msg;
-    char AES_token[5] ="#AES";
-    char *AES_cipher;
 
-    if((AES_cipher = strstr(buffer,AES_token)) != NULL){
+    if(strncmp(buffer, "#AES", 4)==0){
         buffer+=4;
         keys->keyentries[id]->crypto_method = W_METH_AES;
     }
@@ -432,12 +435,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
         return (0);
     }
 
-    if(!isAgent){
-        crypto_method = keys->keyentries[id]->crypto_method;
-    }
-    else{
-        crypto_method = agt->crypto_method;
-    }
+    crypto_method = keys->keyentries[id]->crypto_method;
 
     switch(crypto_method)
     {

@@ -25,7 +25,6 @@ int ClientConf(const char *cfgfile)
 {
     int modules = 0;
     int min_eps;
-    int crypto_method;
 
     agt->server = NULL;
     agt->lip = NULL;
@@ -36,7 +35,7 @@ int ClientConf(const char *cfgfile)
     agt->buflength = 5000;
     agt->events_persec = 500;
     agt->flags.auto_restart = 1;
-    agt->crypto_method = 0;
+    agt->crypto_method = W_METH_AES;
 
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
@@ -49,9 +48,6 @@ int ClientConf(const char *cfgfile)
 #ifdef CLIENT
     if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
         ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
-    }
-    if(crypto_method = getDefine_Int("agent", "crypto_method", 0, 1), crypto_method > 0){
-        agt->crypto_method = crypto_method; 
     }
 #endif
 
