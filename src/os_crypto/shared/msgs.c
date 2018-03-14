@@ -211,13 +211,19 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
     unsigned int msg_local = 0;
     char *f_msg;
 
+
     if(strncmp(buffer, "#AES", 4)==0){
         buffer+=4;
-        keys->keyentries[id]->crypto_method = W_METH_AES;
+        #ifndef CLIENT
+            keys->keyentries[id]->crypto_method = W_METH_AES;
+        #endif
     }
     else{
-        keys->keyentries[id]->crypto_method = W_METH_BLOWFISH;
+        #ifndef CLIENT
+            keys->keyentries[id]->crypto_method = W_METH_BLOWFISH;
+        #endif
     } 
+
 
     if (*buffer == ':') {
         buffer++;
