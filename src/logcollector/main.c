@@ -49,6 +49,8 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     const char *cfg = DEFAULTCPATH;
+    gid_t gid;
+    const char *group = GROUPGLOBAL;
 
     /* Setup random */
     srandom_init();
@@ -85,6 +87,17 @@ int main(int argc, char **argv)
                 break;
         }
 
+    }
+
+    /* Check if the group given is valid */
+    gid = Privsep_GetGroup(group);
+    if (gid == (gid_t) - 1) {
+        merror_exit(USER_ERROR, "", group);
+    }
+
+    /* Privilege separation */
+    if (Privsep_SetGroup(gid) < 0) {
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Check current debug_level

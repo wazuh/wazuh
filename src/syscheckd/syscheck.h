@@ -110,4 +110,12 @@ int fim_initialize();
 int fim_check_ignore(const char *file_name);
 int fim_check_restrict(const char *file_name, OSMatch *restriction);
 
+#ifndef WIN32
+// Com request thread dispatcher
+void * syscom_main(void * arg);
+#endif
+
+size_t syscom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output);
+size_t syscom_getconfig(const char * section, char * output);
+
 #endif
