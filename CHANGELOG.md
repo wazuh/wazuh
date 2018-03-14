@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.2.2]
 
+### Changed
+
+- Updated Slack integration. ([#443](https://github.com/wazuh/wazuh/pull/443))
+
+
 ### Fixed
 
 - Fixed bug in labels settings parser that may make Agentd or Logcollector crash.
