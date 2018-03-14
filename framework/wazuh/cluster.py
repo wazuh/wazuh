@@ -325,19 +325,17 @@ def get_nodes(updateDBname=False):
     error_response = False
 
     for url in config_cluster["nodes"]:
-        if not url in localhost_ips:
-            error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
-                                data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
-            if error == 0:
-                if response['error'] == 0:
-                    response = response['data']
-                    response['localhost'] = False
-                else:
-                    logging.warning("Received an error response from {0}: {1}".format(url, response))
-                    error_response = True
-        else:
-            error = 0
-            response = get_node()
+        error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
+                            data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
+        if error == 0:
+            if response['error'] == 0:
+                response = response['data']
+                response['localhost'] = False
+            else:
+                logging.warning("Received an error response from {0}: {1}".format(url, response))
+                error_response = True
+
+        if url in localhost_ips:
             response['localhost'] = True
 
         if error == 1:
@@ -345,14 +343,14 @@ def get_nodes(updateDBname=False):
             error_response = True
 
         if error_response:
-            data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
+            data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'Red', 'url':url, 'localhost': False})
             error_response = False
             continue
 
         if config_cluster['node_type'] == 'master' or \
            response['type'] == 'master' or response["localhost"]:
             data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
-                         'status':'connected', 'cluster':response['cluster']})
+                         'status': response['status'], 'cluster':response['cluster']})
 
             if updateDBname:
                 query = "insertname " +response['node'] + " " + url
@@ -829,7 +827,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
     if is_agent_info or is_agent_groups:
         if node_type=='master':
             # check if the date is older than the manager's date
-            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) >= mtime:
+            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
                 logging.warning("Receiving an old file ({})".format(fullpath))
                 raise WazuhException(3012)
         elif is_agent_info:
@@ -975,7 +973,7 @@ def get_remote_nodes(connected=True, updateDBname=False):
 
     # Get connected nodes in the cluster
     if connected:
-        cluster = [(n['url'], n['localhost']) for n in filter(lambda x: x['status'] == 'connected',
+        cluster = [(n['url'], n['localhost']) for n in filter(lambda x: x['status'] == 'Green',
                     all_nodes)]
     else:
         cluster = [(n['url'], n['localhost']) for n in all_nodes]
@@ -984,7 +982,7 @@ def get_remote_nodes(connected=True, updateDBname=False):
         localhost_index = next (x[0] for x in enumerate(cluster) if x[1][1])
     except StopIteration as e:
         logging.error("Cluster nodes are not correctly configured at ossec.conf.")
-        exit(1)
+        raise WazuhException(3016)
 
     return list(compress(map(itemgetter(0), cluster), map(lambda x: x != localhost_index, range(len(cluster)))))
 
