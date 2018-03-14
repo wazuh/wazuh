@@ -26,6 +26,8 @@ int main(int argc, char **argv)
     int debug = 0;
     int test_config = 0;
     wmodule *cur_module;
+    gid_t gid;
+    const char *group = GROUPGLOBAL;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -65,6 +67,17 @@ int main(int argc, char **argv)
         }
     }
 
+    /* Check if the group given is valid */
+    gid = Privsep_GetGroup(group);
+    if (gid == (gid_t) - 1) {
+        merror_exit(USER_ERROR, "", group);
+    }
+
+    /* Privilege separation */
+    if (Privsep_SetGroup(gid) < 0) {
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
+    }
+
     // Setup daemon
 
     wm_setup();
@@ -73,6 +86,9 @@ int main(int argc, char **argv)
         exit(EXIT_SUCCESS);
 
     minfo("Process started.");
+
+    // Start com request thread
+    w_create_thread(wmcom_main, NULL);
 
     // Run modules
 
