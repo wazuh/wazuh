@@ -1,6 +1,6 @@
 /* Remote request listener
  * Copyright (C) 2018 Wazuh Inc.
- * Mar 12, 2018.
+ * Mar 14, 2018.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,12 +9,13 @@
  */
 
 #include <shared.h>
-#include "logcollector.h"
+#include "syscheck.h"
+#include "rootcheck/rootcheck.h"
 #include "os_net/os_net.h"
 
 #ifndef WIN32
 
-size_t lccom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output){
+size_t syscom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output){
 
     char *rcv_comm = command;
     char *rcv_args = NULL;
@@ -27,33 +28,33 @@ size_t lccom_dispatch(char *command, size_t length __attribute__ ((unused)), cha
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            merror("LCCOM getconfig needs arguments.");
-            strcpy(output, "err LCCOM getconfig needs arguments");
+            merror("SYSCOM getconfig needs arguments.");
+            strcpy(output, "err SYSCOM getconfig needs arguments");
             return strlen(output);
         }
-        return lccom_getconfig(rcv_args, output);
+        return syscom_getconfig(rcv_args, output);
 
     } else {
-        merror("LCCOM Unrecognized command '%s'.", rcv_comm);
+        merror("SYSCOM Unrecognized command '%s'.", rcv_comm);
         strcpy(output, "err Unrecognized command");
         return strlen(output);
     }
 }
 
-size_t lccom_getconfig(const char * section, char * output) {
+size_t syscom_getconfig(const char * section, char * output) {
 
     cJSON *cfg;
 
-    if (strcmp(section, "localfile") == 0){
-        if (cfg = getLocalfileConfig(), cfg) {
+    if (strcmp(section, "syscheck") == 0){
+        if (cfg = getSyscheckConfig(), cfg) {
             snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
             cJSON_free(cfg);
             return strlen(output);
         } else {
             goto error;
         }
-    } else if (strcmp(section, "socket") == 0){
-        if (cfg = getSocketConfig(), cfg) {
+    } else if (strcmp(section, "rootcheck") == 0){
+        if (cfg = getRootcheckConfig(), cfg) {
             snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
             cJSON_free(cfg);
             return strlen(output);
@@ -64,12 +65,12 @@ size_t lccom_getconfig(const char * section, char * output) {
         goto error;
     }
 error:
-    merror("At LCCOM getconfig: Could not get '%s' section", section);
+    merror("At SYSCOM getconfig: Could not get '%s' section", section);
     strcpy(output, "err Could not get requested section");
     return strlen(output);
 }
 
-void * lccom_main(__attribute__((unused)) void * arg) {
+void * syscom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
     char buffer[OS_MAXSTR + 1];
@@ -79,8 +80,8 @@ void * lccom_main(__attribute__((unused)) void * arg) {
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR LC_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s'. Closing local server.", LC_LOCAL_SOCK);
+    if (sock = OS_BindUnixDomain(DEFAULTDIR SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        merror("Unable to bind to socket '%s'. Closing local server.", SYS_LOCAL_SOCK);
         return NULL;
     }
 
@@ -93,7 +94,7 @@ void * lccom_main(__attribute__((unused)) void * arg) {
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                merror_exit("At lccom_main(): select(): %s", strerror(errno));
+                merror_exit("At syscom_main(): select(): %s", strerror(errno));
             }
 
             continue;
@@ -104,7 +105,7 @@ void * lccom_main(__attribute__((unused)) void * arg) {
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror("At lccom_main(): accept(): %s", strerror(errno));
+                merror("At syscom_main(): accept(): %s", strerror(errno));
             }
 
             continue;
@@ -112,7 +113,7 @@ void * lccom_main(__attribute__((unused)) void * arg) {
 
         switch (length = recv(peer, buffer, OS_MAXSTR, 0), length) {
         case -1:
-            merror("At lccom_main(): recv(): %s", strerror(errno));
+            merror("At syscom_main(): recv(): %s", strerror(errno));
             break;
 
         case 0:
@@ -122,7 +123,7 @@ void * lccom_main(__attribute__((unused)) void * arg) {
 
         default:
             buffer[length] = '\0';
-            length = lccom_dispatch(buffer, length, response);
+            length = syscom_dispatch(buffer, length, response);
             send(peer, response, length, 0);
             close(peer);
         }

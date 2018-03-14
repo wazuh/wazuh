@@ -198,6 +198,9 @@ void start_daemon()
         }
     }
 
+    // Start com request thread
+    w_create_thread(syscom_main, NULL);
+
     /* Check every SYSCHECK_WAIT */
     while (1) {
         int run_now = 0;
