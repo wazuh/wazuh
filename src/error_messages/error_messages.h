@@ -309,6 +309,7 @@
 #define VU_SYSC_SCAN_REQUEST_ERROR  "(5431): Last Syscollector scan from the agent %s could not be requested."
 #define VU_HTTP_HEADER_ERROR        "(5432): Invalid HTTP header."
 #define VU_PACKAGE_RECOG_ERROR      "(5433): The package could not be recognized in '%s'."
+#define VU_NO_SYSC_SCANS            "(5433): No Syscollector scans found for agent %s, so their vulnerabilities will not be checked."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
