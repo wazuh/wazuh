@@ -306,7 +306,8 @@
 #define VU_SOFTWARE_REQUEST_ERROR   "(5428): Agent %s software could not be requested."
 #define VU_NO_AGENT_ERROR           "(5429): The agents information could not be processed."
 #define VU_CREATE_HASH_ERRO         "(5430): The agents hash table could not be created."
-#define VU_SYSC_SCAN_REQUEST_ERROR   "(5431): Last Syscollector scan from the agent %s could not be requested."
+#define VU_SYSC_SCAN_REQUEST_ERROR  "(5431): Last Syscollector scan from the agent %s could not be requested."
+#define VU_NO_SYSC_SCANS            "(5432): No Syscollector scans found for agent %s, so their vulnerabilities will not be checked."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

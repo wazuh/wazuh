@@ -438,6 +438,7 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     agent_software *agents_it;
     sqlite3 *db;
     sqlite3_stmt *stmt = NULL;
+    int result;
     int i;
 
     if (!agents) {
@@ -460,23 +461,25 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     sqlite3_finalize(stmt);
 
     for (i = 1, agents_it = agents;; i++) {
-        if (wm_vulnerability_detector_get_software_info(agents_it, db, agents_trig, ignore_time)) {
+        if (result = wm_vulnerability_detector_get_software_info(agents_it, db, agents_trig, ignore_time), result == OS_INVALID) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR);
             return OS_INVALID;
         }
 
-        if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
-            wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
-            i = 0;
-            if (sqlite3_prepare_v2(db, vu_queries[VU_AGENTS_TABLE], -1, &stmt, NULL) != SQLITE_OK) {
+        if (result != 2) {
+            if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
+                wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
+                i = 0;
+                if (sqlite3_prepare_v2(db, vu_queries[VU_AGENTS_TABLE], -1, &stmt, NULL) != SQLITE_OK) {
+                        sqlite3_finalize(stmt);
+                        return wm_vulnerability_detector_sql_error(db);
+                }
+                if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
                     sqlite3_finalize(stmt);
                     return wm_vulnerability_detector_sql_error(db);
-            }
-            if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+                }
                 sqlite3_finalize(stmt);
-                return wm_vulnerability_detector_sql_error(db);
             }
-            sqlite3_finalize(stmt);
         }
         if (agents_it->next) {
             agents_it = agents_it->next;
@@ -1667,13 +1670,15 @@ int wm_vulnerability_detector_updatedb(update_flags *flags, time_intervals *max,
 };
 
 int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agents_trig, unsigned long ignore_time) {
-    int sock;
+    int sock = 0;
     unsigned int i;
     int size;
     char buffer[OS_MAXSTR];
     char json_str[OS_MAXSTR];
     char scan_id[OS_SIZE_1024];
     int request = VU_SOFTWARE_REQUEST;
+    char *found;
+    int retval;
     sqlite3_stmt *stmt;
     cJSON *obj = NULL;
     cJSON *package_list = NULL;
@@ -1700,16 +1705,24 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     buffer[size] = '\0';
     if (!strncmp(buffer, "ok", 2)) {
         buffer[0] = buffer[1] = ' ';
+        // Check empty answers
+        if ((found = strchr(buffer, '[')) && *(++found) != '\0' && *found == ']') {
+            mtdebug1(WM_VULNDETECTOR_LOGTAG , VU_NO_SYSC_SCANS, agent->agent_id);
+            retval = 2;
+            goto end;
+        }
         size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
         json_str[size] = '\0';
     } else {
-        goto error;
+        retval = OS_INVALID;
+        goto end;
     }
 
     if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
         cJSON_GetObjectItem(obj, "data");
     } else {
-        goto error;
+        retval = OS_INVALID;
+        goto end;
     }
 
     size = snprintf(scan_id, OS_SIZE_1024, "%i", (int) cJSON_GetObjectItem(obj, "data")->child->child->valuedouble);
@@ -1760,13 +1773,15 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
                 size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
                 json_str[size] = '\0';
             } else {
-                goto error;
+                retval = OS_INVALID;
+                goto end;
             }
             if (obj) {
                 cJSON *new_obj;
                 cJSON *data;
                 if (new_obj = cJSON_Parse(json_str), !new_obj || !cJSON_IsObject(new_obj)) {
-                    goto error;
+                    retval = OS_INVALID;
+                    goto end;
                 }
                 data = cJSON_GetObjectItem(new_obj, "data");
                 if (data) {
@@ -1778,20 +1793,24 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
             } else if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
                 package_list = cJSON_GetObjectItem(obj, "data");
                 if (!package_list) {
-                    goto error;
+                    retval = OS_INVALID;
+                    goto end;
                 }
             } else {
-                goto error;
+                retval = OS_INVALID;
+                goto end;
             }
 
             i += VU_MAX_PACK_REQ;
             size = snprintf(buffer, OS_MAXSTR, vu_queries[request], agent->agent_id, scan_id, VU_MAX_PACK_REQ, i);
             if (send(sock, buffer, size + 1, 0) < size) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
-                goto error;
+                retval = OS_INVALID;
+                goto end;
             }
         } else {
-            goto error;
+            retval = OS_INVALID;
+            goto end;
         }
     }
 
@@ -1799,10 +1818,12 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     size = snprintf(buffer, OS_MAXSTR, vu_queries[VU_SYSC_UPDATE_SCAN], agent->agent_id, scan_id);
     if (send(sock, buffer, size + 1, 0) < size) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
-        goto error;
+        retval = OS_INVALID;
+        goto end;
     }
 
     close(sock);
+    sock = 0;
 
     if (package_list) {
         sqlite3_exec(db, vu_queries[BEGIN_T], NULL, NULL, NULL);
@@ -1828,16 +1849,15 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
         mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_NO_SOFTWARE, agent->agent_id);
     }
 
+    retval = 0;
+end:
     if (obj) {
         cJSON_Delete(obj);
     }
-    return 0;
-error:
-    if (obj) {
-        cJSON_Delete(obj);
+    if (sock) {
+        close(sock);
     }
-    close(sock);
-    return OS_INVALID;
+    return retval;
 }
 
 void wm_vulnerability_update_intervals(time_intervals *remaining, time_t time_sleep) {
