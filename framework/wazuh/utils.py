@@ -344,6 +344,7 @@ def get_fields_to_nest(fields, force_fields=[]):
              for k,g in groupby(map(lambda x: x.split('_'), sorted(fields)),
              key=lambda x:x[0])}
     nested = filter(lambda x: len(x[1]) > 1 or x[0] in force_fields, nest.items())
+    nested = [(field,{(subfield, '_'.join([field,subfield])) for subfield in subfields}) for field, subfields in nested]
     non_nested = set(filter(lambda x: x.split('_')[0] not in map(itemgetter(0), nested), fields))
     return nested, non_nested
 
@@ -383,7 +384,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     :param force_fields: fields to force nesting in
     """
     # separate fields and subfields:
-    # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
+    # nested = {'cpu': [('cores', 'cpu_cores'), ('mhz', 'cpu_mhz'), ('name', 'cpu_name')], 'ram': [('free','ram_free'), ('total', 'ram_total')]}
     keys = set(data.keys())
     if nested is None:
         nested, non_nested = get_fields_to_nest(keys, force_fields)
@@ -400,7 +401,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     #           'total': '2045956'
     #       }
     #    }
-    nested_dict = {f:{sf:data['_'.join([f,sf])] for sf in sfl if '_'.join([f,sf]) in keys} 
+    nested_dict = {f:{sf:data[full_sf] for sf,full_sf in sfl if full_sf in keys} 
                   for f,sfl in nested}
 
     # create a dictionary with the non nested fields

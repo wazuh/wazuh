@@ -27,7 +27,6 @@ import hashlib
 import re
 import fcntl
 from json import loads
-from operator import setitem
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -754,21 +753,19 @@ class Agent:
     @staticmethod
     def get_agents_dict(conn, min_select_fields, user_select_fields):
         db_api_name = {name:name for name in min_select_fields}
-        db_api_name.update({"`group`":"group","date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
+        min_select_fields = map(lambda x: x.replace('`',''), min_select_fields)
+        db_api_name.update({"date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
         fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])
 
-        items = [{db_api_name[field]:value for field,value in zip(min_select_fields, tuple) if value is not None and field.replace('`','') in user_select_fields} for tuple in conn]
+        items = [{db_api_name[field]:value for field,value in zip(min_select_fields, tuple) if value is not None and field in user_select_fields} for tuple in conn]
         items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested) for d in items]
-
-        if 'id' in user_select_fields:
-            map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), items)
-
-        if len(items) > 0 and items[0]['id'] == '000' and 'ip' in user_select_fields:
-            items[0]['ip'] = '127.0.0.1'
 
         if 'status' in user_select_fields:
             today = date.today()
-            map(lambda agent: setitem(agent, 'status', Agent.calculate_status(agent.get('lastKeepAlive'), agent.get('version') == None, today)), items)
+            items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('lastKeepAlive'), item.get('version') is None, today)) for item in items]
+
+        if len(items) > 0 and items[0]['id'] == '000' and 'ip' in user_select_fields:
+            items[0]['ip'] = '127.0.0.1'
 
         return items
 
