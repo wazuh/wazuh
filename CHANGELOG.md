@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Fixed bug when socket database messages we not sent correctly. ([#435](https://github.com/wazuh/wazuh/pull/435))
 - Fixed sudden stop in the sources installer when overwriting a previous corrupt installation.
 - Fixed issue in CSyslogd when filtering by rule group. ([#446](https://github.com/wazuh/wazuh/pull/446))
+- Fixed error on DB daemon when parsing rules with options introduced in version 3.0.0.
 
 ## [v3.2.1]
 
