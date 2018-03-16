@@ -65,7 +65,7 @@ except:
     exit()
 
 class WazuhClusterHandler(asynchat.async_chat):
-    def __init__(self, sock, addr, key, node_type, requests_queue, finished_clients, restart_after_sync, connected_clients, child_process):
+    def __init__(self, sock, addr, key, node_type, requests_queue, finished_clients, restart_after_sync, connected_clients):
         asynchat.async_chat.__init__(self, sock)
         self.addr = addr
         self.f = Fernet(key.encode('base64','strict'))
@@ -79,7 +79,6 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.command = []
         self.restart_after_sync = restart_after_sync
         self.connected_clients = connected_clients
-        self.child_process = child_process
 
     def handle_close(self):
         self.requests_queue[self.addr] = False
@@ -106,7 +105,6 @@ class WazuhClusterHandler(asynchat.async_chat):
         if error == 0:
             if self.command[0] == 'node':
                 res = get_node()
-                res['status'] = 'Green' if self.child_process.is_alive() else 'Yellow'
             elif self.command[0] == 'zip':
                 zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
                 res = extract_zip(zip_bytes)
@@ -159,7 +157,7 @@ class WazuhClusterHandler(asynchat.async_chat):
 
 class WazuhClusterServer(asyncore.dispatcher):
 
-    def __init__(self, bind_addr, port, key, node_type, requests_queue, finished_clients, restart_after_sync, connected_clients, child_process):
+    def __init__(self, bind_addr, port, key, node_type, requests_queue, finished_clients, restart_after_sync, connected_clients):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(common.cluster_timeout)
@@ -170,7 +168,6 @@ class WazuhClusterServer(asyncore.dispatcher):
         self.finished_clients = finished_clients
         self.restart_after_sync = restart_after_sync
         self.connected_clients = connected_clients
-        self.child_process = child_process
         try:
             self.bind((bind_addr, port))
         except socket.error as e:
@@ -192,8 +189,7 @@ class WazuhClusterServer(asyncore.dispatcher):
             logging.info("Accepted connection from host {0}".format(addr[0]))
             handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type, 
                                         self.requests_queue, self.finished_clients, 
-                                        self.restart_after_sync, self.connected_clients, 
-                                        self.child_process)
+                                        self.restart_after_sync, self.connected_clients)
         return
 
     def handle_error(self):
@@ -444,7 +440,7 @@ if __name__ == '__main__':
 
         server = WazuhClusterServer('' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr'],
                                     int(cluster_config['port']), cluster_config['key'], cluster_config['node_type'],
-                                    requests_queue, finished_clients, restart_after_sync, connected_clients, p)
+                                    requests_queue, finished_clients, restart_after_sync, connected_clients)
         asyncore.loop()
 
     except Exception as e:

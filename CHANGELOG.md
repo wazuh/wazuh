@@ -3,10 +3,6 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.2.2]
 
-### Changed
-
-- Change cluster status namings to give more accurate information about it ([#447](https://github.com/wazuh/wazuh/pull/447))
-
 ### Fixed
 
 - Fixed bug in labels settings parser that may make Agentd or Logcollector crash.

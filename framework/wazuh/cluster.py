@@ -325,17 +325,19 @@ def get_nodes(updateDBname=False):
     error_response = False
 
     for url in config_cluster["nodes"]:
-        error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
-                            data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
-        if error == 0:
-            if response['error'] == 0:
-                response = response['data']
-                response['localhost'] = False
-            else:
-                logging.warning("Received an error response from {0}: {1}".format(url, response))
-                error_response = True
-
-        if url in localhost_ips:
+        if not url in localhost_ips:
+            error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
+                                data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
+            if error == 0:
+                if response['error'] == 0:
+                    response = response['data']
+                    response['localhost'] = False
+                else:
+                    logging.warning("Received an error response from {0}: {1}".format(url, response))
+                    error_response = True
+        else:
+            error = 0
+            response = get_node()
             response['localhost'] = True
 
         if error == 1:
@@ -343,14 +345,14 @@ def get_nodes(updateDBname=False):
             error_response = True
 
         if error_response:
-            data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'Red', 'url':url, 'localhost': False})
+            data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
             error_response = False
             continue
 
         if config_cluster['node_type'] == 'master' or \
            response['type'] == 'master' or response["localhost"]:
             data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
-                         'status': response['status'], 'cluster':response['cluster']})
+                         'status':'connected', 'cluster':response['cluster']})
 
             if updateDBname:
                 query = "insertname " +response['node'] + " " + url
@@ -973,7 +975,7 @@ def get_remote_nodes(connected=True, updateDBname=False):
 
     # Get connected nodes in the cluster
     if connected:
-        cluster = [(n['url'], n['localhost']) for n in filter(lambda x: x['status'] == 'Green',
+        cluster = [(n['url'], n['localhost']) for n in filter(lambda x: x['status'] == 'connected',
                     all_nodes)]
     else:
         cluster = [(n['url'], n['localhost']) for n in all_nodes]
