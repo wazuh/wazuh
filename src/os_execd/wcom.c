@@ -578,14 +578,6 @@ size_t wcom_getconfig(const char * section, char * output) {
         } else {
             goto error;
         }
-    } else if (strcmp(section, "socket") == 0){
-        if (cfg = getSocketConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
-            cJSON_free(cfg);
-            return strlen(output);
-        } else {
-            goto error;
-        }
     } else if (strcmp(section, "labels") == 0){
         if (cfg = getLabelsConfig(), cfg) {
             snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
@@ -626,7 +618,7 @@ size_t wcom_getconfig(const char * section, char * output) {
         } else {
             goto error;
         }
-    } else if (strcmp(section, "modules") == 0){
+    } else if (strcmp(section, "wmodules") == 0){
         if (cfg = getModulesConfig(), cfg) {
             snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
             cJSON_free(cfg);
