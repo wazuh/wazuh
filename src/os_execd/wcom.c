@@ -638,9 +638,8 @@ error:
     strcpy(output, "err Could not get requested section");
     return strlen(output);
 }
-#endif
 
-#ifndef WIN32
+#else
 
 size_t wcom_getconfig(const char * section, char * output) {
 

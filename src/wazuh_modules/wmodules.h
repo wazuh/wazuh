@@ -178,9 +178,8 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 #ifndef WIN32
 // Com request thread dispatcher
 void * wmcom_main(void * arg);
-#endif
-
 size_t wmcom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output);
 size_t wmcom_getconfig(const char * section, char * output);
+#endif
 
 #endif // W_MODULES

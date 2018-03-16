@@ -16,6 +16,7 @@
 typedef struct req_node_t {
     int sock;
     char *counter;
+    char *target;
     char *buffer;
     size_t length;
     pthread_mutex_t mutex;
@@ -23,7 +24,7 @@ typedef struct req_node_t {
 } req_node_t;
 
 // Create node
-req_node_t * req_create(int sock, const char * counter, const char * buffer, size_t length);
+req_node_t * req_create(int sock, const char * counter, const char * target, const char * buffer, size_t length);
 
 // Update node and signal available. It locks mutex.
 void req_update(req_node_t * node, const char * buffer, size_t length);
