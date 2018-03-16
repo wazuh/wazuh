@@ -52,7 +52,7 @@ size_t agcom_getconfig(const char * section, char * output) {
         } else {
             goto error;
         }
-    } else if (strcmp(section, "buffer") == 0){
+    } else if (strcmp(section, "client-buffer") == 0){
         if (cfg = getBufferConfig(), cfg) {
             snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
             cJSON_free(cfg);

@@ -175,5 +175,6 @@ void w_create_input_threads();
 /* Set mutexes for each file */
 void w_set_file_mutexes();
 extern int sample_log_length;
+extern int max_file;
 
 #endif /* __LOGREADER_H */
