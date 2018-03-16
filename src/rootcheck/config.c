@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "rootcheck.h"
 #include "config/config.h"
+#include "external/cJSON/cJSON.h"
 
 
 /* Read the rootcheck config */
@@ -31,7 +32,6 @@ int Read_Rootcheck_Config(const char *cfgfile)
 
     return (0);
 }
-#endif /* OSSECHIDS */
 
 
 cJSON *getRootcheckConfig(void) {
@@ -76,3 +76,5 @@ cJSON *getRootcheckConfig(void) {
 
     return root;
 }
+
+#endif /* OSSECHIDS */

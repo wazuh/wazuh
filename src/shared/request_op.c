@@ -14,12 +14,13 @@
 
 // Create node
 
-req_node_t * req_create(int sock, const char * counter, const char * buffer, size_t length) {
+req_node_t * req_create(int sock, const char * counter, const char * target, const char * buffer, size_t length) {
     req_node_t * node;
 
     os_malloc(sizeof(req_node_t), node);
     node->sock = sock;
     os_strdup(counter, node->counter);
+    os_strdup(target, node->target);
     os_malloc(length + 1, node->buffer);
     memcpy(node->buffer, buffer, length);
     node->buffer[length] = '\0';
@@ -48,6 +49,7 @@ void req_free(req_node_t * node) {
 #ifndef WIN32
         close(node->sock);
 #endif
+        free(node->target);
         free(node->buffer);
         free(node->counter);
         pthread_mutex_destroy(&node->mutex);

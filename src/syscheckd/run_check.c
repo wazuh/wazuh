@@ -198,8 +198,10 @@ void start_daemon()
         }
     }
 
+#ifndef WIN32
     // Start com request thread
     w_create_thread(syscom_main, NULL);
+#endif
 
     /* Check every SYSCHECK_WAIT */
     while (1) {
