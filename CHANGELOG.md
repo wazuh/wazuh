@@ -34,6 +34,7 @@ All notable changes to this project will be documented in this file.
 - Fixed issue when setting multiple <server-ip> stanzas in versions 3.0 - 3.2.1. ([#433](https://github.com/wazuh/wazuh/pull/433))
 - Fixed bug when socket database messages we not sent correctly. ([#435](https://github.com/wazuh/wazuh/pull/435))
 - Fixed sudden stop in the sources installer when overwriting a previous corrupt installation.
+- Added a synchronization timeout in the cluster to prevent it from blocking ([#447](https://github.com/wazuh/wazuh/pull/447))
 - Fixed issue in CSyslogd when filtering by rule group. ([#446](https://github.com/wazuh/wazuh/pull/446))
 - Fixed error on DB daemon when parsing rules with options introduced in version 3.0.0.
 
