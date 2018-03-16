@@ -321,13 +321,38 @@ void * run_worker(__attribute__((unused)) void * args) {
             char buffer2[OS_MAXSTR + 1] = {0};
             ssize_t count;
             length = 0;
+            int rc = 0;
 
-            memset(buffer,0,OS_MAXSTR+1);
+            while(1){
+                FD_ZERO(&fdset_recv);
+                FD_SET(*peer, &fdset_recv);
+                struct timeval timeout_recv;
+                timeout_recv.tv_sec = 0;
+                timeout_recv.tv_usec = 100000;
 
-            while((count = recv(*peer, buffer, OS_MAXSTR, 0))>0)
-            {
-             	length += count;
-                strcat(buffer2,buffer);
+                rc = select(*peer + 1, &fdset_recv, NULL, NULL, &timeout_recv);
+
+                if(rc == 0){
+                    break;
+                }
+                if(rc == -1)
+                {
+                    if (errno == EINTR) {
+                        minfo("at run_worker(): select(): %s", strerror(EINTR));
+                    } else {
+                        merror_exit("at run_worker(): select(): %s", strerror(errno));
+                    }
+                    break;
+                }
+                else{
+                    if((count = recv(*peer, buffer, OS_MAXSTR, 0))>0){
+                        memcpy(buffer2+length,buffer,count);
+                        length += count;
+                    }
+                    else{
+                        break;
+                    }
+                }
             }
 
             switch (length) {
