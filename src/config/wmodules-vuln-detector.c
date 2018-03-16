@@ -91,6 +91,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
     vulnerability_detector->flags.u_flags.update_debian = 0;
     vulnerability_detector->flags.u_flags.update_redhat = 0;
     vulnerability_detector->flags.u_flags.update_windows = 0;
+    vulnerability_detector->flags.u_flags.update_macos = 0;
     vulnerability_detector->ignore_time = VU_DEF_IGNORE_TIME;
     vulnerability_detector->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vulnerability_detector->agents_software = NULL;
@@ -147,19 +148,19 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
 
             // Check OS
             if (!strcmp(feed, vu_dist_tag[DIS_UBUNTU])) {
-                if (!strcmp(version, "12") || strcasestr(version, vu_dist_tag[DIS_PRECISE])) {
+                if (!strcmp(version, "12") || !strcmp(version, vu_dist_tag[DIS_PRECISE])) {
                     os_index = CVE_PRECISE;
                     os_strdup(vu_dist_tag[DIS_PRECISE], upd->version);
                     upd->dist_tag = vu_dist_tag[DIS_PRECISE];
                     upd->dist_ext = vu_dist_ext[DIS_PRECISE];
                     upd->dist_ref = DIS_UBUNTU;
-                } else if (!strcmp(version, "14") || strcasestr(version, vu_dist_tag[DIS_TRUSTY])) {
+                } else if (!strcmp(version, "14") || !strcmp(version, vu_dist_tag[DIS_TRUSTY])) {
                     os_index = CVE_TRUSTY;
                     os_strdup(vu_dist_tag[DIS_TRUSTY], upd->version);
                     upd->dist_tag = vu_dist_tag[DIS_TRUSTY];
                     upd->dist_ext = vu_dist_ext[DIS_TRUSTY];
                     upd->dist_ref = DIS_UBUNTU;
-                } else if (!strcmp(version, "16") || strcasestr(version, vu_dist_tag[DIS_XENIAL])) {
+                } else if (!strcmp(version, "16") || !strcmp(version, vu_dist_tag[DIS_XENIAL])) {
                     os_index = CVE_XENIAL;
                     os_strdup(vu_dist_tag[DIS_XENIAL], upd->version);
                     upd->dist_tag = vu_dist_tag[DIS_XENIAL];
@@ -170,19 +171,19 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     return OS_INVALID;
                 }
             } else  if (!strcmp(feed, vu_dist_tag[DIS_DEBIAN])) {
-                if (!strcmp(version, "9") || strcasestr(version, vu_dist_tag[DIS_STRETCH])) {
+                if (!strcmp(version, "9") || !strcmp(version, vu_dist_tag[DIS_STRETCH])) {
                     os_index = CVE_STRETCH;
                     os_strdup(vu_dist_tag[DIS_STRETCH], upd->version);
                     upd->dist_tag = vu_dist_tag[DIS_STRETCH];
                     upd->dist_ext = vu_dist_ext[DIS_STRETCH];
                     upd->dist_ref = DIS_DEBIAN;
-                } else if (!strcmp(version, "8") || strcasestr(version, vu_dist_tag[DIS_JESSIE])) {
+                } else if (!strcmp(version, "8") || !strcmp(version, vu_dist_tag[DIS_JESSIE])) {
                     os_index = CVE_JESSIE;
                     os_strdup(vu_dist_tag[DIS_JESSIE], upd->version);
                     upd->dist_tag = vu_dist_tag[DIS_JESSIE];
                     upd->dist_ext = vu_dist_ext[DIS_JESSIE];
                     upd->dist_ref = DIS_DEBIAN;
-                } else if (!strcmp(version, "7") || strcasestr(version, vu_dist_tag[DIS_WHEEZY])) {
+                } else if (!strcmp(version, "7") || !strcmp(version, vu_dist_tag[DIS_WHEEZY])) {
                     os_index = CVE_WHEEZY;
                     os_strdup(vu_dist_tag[DIS_WHEEZY], upd->version);
                     upd->dist_tag = vu_dist_tag[DIS_WHEEZY];
@@ -213,7 +214,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     return OS_INVALID;
                 }
             } else if (!strcmp(feed, vu_dist_tag[DIS_WINDOWS])) {
-                if (strcasestr(version, "S2016")) {
+                if (!strcmp(version, "S2016")) {
                     os_index = CVE_WS2016;
                     os_strdup("server_2016", upd->version);
                     upd->dist_tag = vu_dist_tag[DIS_WS2016];
@@ -221,6 +222,17 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     upd->dist_ref = DIS_WINDOWS;
                 } else {
                     merror("Invalid Windows version '%s'.", version);
+                    return OS_INVALID;
+                }
+            } else if (!strcmp(feed, vu_dist_tag[DIS_MACOS])) {
+                if (!strcmp(version, "X")) {
+                    os_index = CVE_MACOSX;
+                    os_strdup("x", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_MACOSX];
+                    upd->dist_ext = vu_dist_ext[DIS_MACOSX];
+                    upd->dist_ref = DIS_MACOS;
+                } else {
+                    merror("Invalid Mac version '%s'.", version);
                     return OS_INVALID;
                 }
             } else {
@@ -265,6 +277,8 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                             vulnerability_detector->flags.u_flags.update_debian = 1;
                         } else if (!strcmp(upd->dist, vu_dist_tag[DIS_WINDOWS])) {
                             vulnerability_detector->flags.u_flags.update_windows = 1;
+                        } else if (!strcmp(upd->dist, vu_dist_tag[DIS_MACOS])) {
+                            vulnerability_detector->flags.u_flags.update_macos = 1;
                         }
                     } else {
                         merror("Invalid content for '%s' option at module '%s'", XML_DISABLED, WM_VULNDETECTOR_CONTEXT.name);
@@ -313,7 +327,8 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
     if (vulnerability_detector->flags.u_flags.update_ubuntu    ||
         vulnerability_detector->flags.u_flags.update_debian    ||
         vulnerability_detector->flags.u_flags.update_redhat    ||
-        vulnerability_detector->flags.u_flags.update_windows) {
+        vulnerability_detector->flags.u_flags.update_windows   ||
+        vulnerability_detector->flags.u_flags.update_macos) {
         vulnerability_detector->flags.u_flags.update = 1;
     }
 

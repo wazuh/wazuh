@@ -30,6 +30,7 @@
 #define DEBIAN_OVAL "/security/oval/oval-definitions-%s.xml"
 #define REDHAT_OVAL "/security/data/oval/Red_Hat_Enterprise_Linux_%s.xml"
 #define WINDOWS_OVAL "/repository/download/5.11.2/vulnerability/microsoft_windows_%s.xml"
+#define MACOSX_OVAL "/repository/download/5.11.2/vulnerability/apple_mac_os_%s.xml"
 #define OVAL_REQUEST "GET %s HTTP/1.1\r\n" \
                      "User-Agent: Wazuh\r\n" \
                      "Accept: */*\r\n" \
@@ -59,6 +60,7 @@ static const char *vu_dist_tag[] = {
     "REDHAT",
     "CENTOS",
     "WINDOWS",
+    "MACOS",
     "PRECISE",
     "TRUSTY",
     "XENIAL",
@@ -69,6 +71,7 @@ static const char *vu_dist_tag[] = {
     "RHEL6",
     "RHEL7",
     "WS2016",
+    "MACOSX",
     "UNKNOW"
 };
 
@@ -78,6 +81,7 @@ static const char *vu_dist_ext[] = {
     "Red Hat",
     "CentOS",
     "Microsoft Windows",
+    "Apple Mac OS",
     "Ubuntu Precise",
     "Ubuntu Trusty",
     "Ubuntu Xenial",
@@ -88,6 +92,7 @@ static const char *vu_dist_ext[] = {
     "Red Hat Enterprise Linux 6",
     "Red Hat Enterprise Linux 7",
     "Windows Server 2016",
+    "Mac OS X",
     "Unknow OS"
 };
 
@@ -106,6 +111,7 @@ typedef enum distribution{
     DIS_REDHAT,
     DIS_CENTOS,
     DIS_WINDOWS,
+    DIS_MACOS,
     // Ubuntu versions
     DIS_PRECISE,
     DIS_TRUSTY,
@@ -120,6 +126,8 @@ typedef enum distribution{
     DIS_RHEL7,
     // Windows versions
     DIS_WS2016,
+    // MacOS versions
+    DIS_MACOSX,
     DIS_UNKNOW
 } distribution;
 
@@ -129,6 +137,7 @@ typedef struct update_flags {
     unsigned int update_debian:1;
     unsigned int update_redhat:1;
     unsigned int update_windows:1;
+    unsigned int update_macos:1;
 } update_flags;
 
 typedef struct wm_vulnerability_detector_flags {
@@ -162,6 +171,7 @@ typedef enum {
     CVE_RHEL6,
     CVE_RHEL7,
     CVE_WS2016,
+    CVE_MACOSX,
     OS_SUPP_SIZE
 } cve_db;
 

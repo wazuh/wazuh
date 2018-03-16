@@ -46,7 +46,7 @@ int wm_vulnerability_create_file(const char *path, const char *source);
 int wm_vulnerability_check_update_period(update_node *upd);
 int wm_vulnerability_check_update(update_node *upd, const char *dist);
 int wm_vulnerability_ssl_request_size(char octet_stream, long int *octet_rem, SSL *ssl, long int oval_size, long int readed);
-OSRegex * wm_vulnerability_set_windows_packages_patterns();
+OSRegex * wm_vulnerability_set_packages_patterns();
 int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *tag);
 
 int *vu_queue;
@@ -56,11 +56,11 @@ const wm_context WM_VULNDETECTOR_CONTEXT = {
     (wm_routine)wm_vulnerability_detector_destroy
 };
 
-OSRegex * wm_vulnerability_set_windows_packages_patterns() {
+OSRegex * wm_vulnerability_set_packages_patterns() {
     int i;
     char result = 0;
     OSRegex *reg;
-    const char windows_patterns[][OS_SIZE_1024] = {
+    const char patterns[][OS_SIZE_1024] = {
         "the firmware version is",
         "the release of (\\.+) is",
         "the version of (\\.+) is",
@@ -77,10 +77,10 @@ OSRegex * wm_vulnerability_set_windows_packages_patterns() {
 
     os_calloc(1, sizeof(OSRegex), reg);
 
-    for(i = 0; *windows_patterns[i] != '\0'; i++) {
+    for(i = 0; *patterns[i] != '\0'; i++) {
         os_realloc(reg, (i + 2)*sizeof(OSRegex), reg);
-        if (!OSRegex_Compile(windows_patterns[i], &reg[i], OS_RETURN_SUBSTRING)) {
-            mterror(WM_VULNDETECTOR_LOGTAG, REGEX_COMPILE, windows_patterns[i], reg[i].error);
+        if (!OSRegex_Compile(patterns[i], &reg[i], OS_RETURN_SUBSTRING)) {
+            mterror(WM_VULNDETECTOR_LOGTAG, REGEX_COMPILE, patterns[i], reg[i].error);
             result = 1;
             break;
         }
@@ -1001,7 +1001,7 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                       state = V_TESTS;
                     }
             }
-        } else if (dist == DIS_WINDOWS) { //5.11.2
+        } else if (dist == DIS_WINDOWS || dist == DIS_MACOS) { //5.11.2
             switch (state) {
                 case V_OVALDEFINITIONS:
                     if (found = strstr(buffer, "?>"), found) {
@@ -1062,7 +1062,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     XML_NODE chld_node;
     distribution dist = update->dist_ref;
     const char *dist_name = update->dist_ext;
-    static OSRegex *windows_packages = NULL;
+    static OSRegex *reg_packages = NULL;
     static const char *install_check = "is installed";
     static const char *check_if = "Check if ";
     static const char *check_that = "Check that ";
@@ -1070,28 +1070,41 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     static const char *XML_GENERATOR = "generator";
     static const char *XML_DEFINITIONS = "definitions";
     static const char *XML_DEFINITION = "definition";
+    static const char *XML_OVAL_DEF_DEFINITION = "oval-def:definition";
     static const char *XML_TITLE = "title";
+    static const char *XML_OVAL_DEF_TITLE = "oval-def:title";
     static const char *XML_CLASS = "class";
     static const char *XML_VULNERABILITY = "vulnerability"; //ub 15.11.1
     static const char *XML_PATH = "patch"; //rh 15.10
     static const char *XML_METADATA = "metadata";
+    static const char *XML_OVAL_DEF_METADATA = "oval-def:metadata";
     static const char *XML_CRITERIA = "criteria";
+    static const char *XML_OVAL_DEF_CRITERIA = "oval-def:criteria";
     static const char *XML_REFERENCE = "reference";
+    static const char *XML_OVAL_DEF_REFERENCE = "oval-def:reference";
+    static const char *XML_REF_ID = "ref_id";
     static const char *XML_REF_URL = "ref_url";
     static const char *XML_OPERATOR = "operator";
     static const char *XML_OR = "OR";
     static const char *XML_AND = "AND";
     static const char *XML_COMMENT = "comment";
     static const char *XML_CRITERION = "criterion";
+    static const char *XML_OVAL_DEF_CRITERION = "oval-def:criterion";
     static const char *XML_TEST_REF = "test_ref";
     static const char *XML_TESTS = "tests";
     static const char *XML_DPKG_LINUX_INFO_TEST = "linux-def:dpkginfo_test";
     static const char *XML_DPKG_INFO_TEST = "dpkginfo_test";
+    static const char *XML_MACOS_INFO_TEST = "plist510_test";
     static const char *XML_RPM_INFO_TEST = "red-def:rpminfo_test";
     static const char *XML_FILE_TEST = "file_test";
     static const char *XML_REGISTRY_TEST = "registry_test";
+    static const char *XML_PLIST_TEST = "plist_test";
+    static const char *XML_UNAME_TEST = "uname_test";
+    static const char *XML_FAMILY_TEST = "family_test";
     static const char *XML_ID = "id";
     static const char *XML_LINUX_STATE = "linux-def:state";
+    static const char *XML_MACOS_STATE = "plist510_state";
+    static const char *XML_UNAME_STATE = "uname_state";
     static const char *XML_STATE = "state";
     static const char *XML_RPM_STATE = "red-def:state";
     static const char *XML_STATE_REF = "state_ref";
@@ -1107,6 +1120,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     static const char *XML_VALUE = "value";
     static const char *XML_RPM_DEF_SIGN = "red-def:signature_keyid";
     static const char *XML_OPERATION = "operation";
+    static const char *XML_DATATYPE = "datatype";
     static const char *XML_OVAL_PRODUCT_NAME = "oval:product_name";
     static const char *XML_OVAL_PRODUCT_VERSION = "oval:product_version";
     static const char *XML_OVAL_SCHEMA_VERSION = "oval:schema_version";
@@ -1117,14 +1131,19 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     static const char *XML_ISSUED = "issued";
     static const char *XML_UPDATED = "updated";
     static const char *XML_DESCRIPTION = "description";
+    static const char *XML_OVAL_DEF_DESCRIPTION = "oval-def:description";
     static const char *XML_DATE = "date";
     static const char *XML_DATES = "dates";
+    static const char *XML_OVAL_DEF_DATES = "oval-def:dates";
     static const char *XML_RHEL_CHECK = "Red Hat Enterprise Linux ";
     static const char *XML_DEBIAN = "debian";
     static const char *XML_EXTENDED_DEFINITION = "extend_definition";
     static const char *XML_OVAL_REPOSITORY = "oval_repository";
+    static const char *XML_OVAL_DEF_OV_REPO = "oval-def:oval_repository";
     static const char *XML_SUBMITTED = "submitted";
+    static const char *XML_OVAL_DEF_SUBMITTED = "oval-def:submitted";
     static const char *XML_STATUS_CHANGE = "status_change";
+    static const char *XML_OVAL_DEF_STATUS_CHANGE = "oval-def:status_change";
     static const char *XML_ACCEPTED = "ACCEPTED";
 
     for (i = 0; node[i]; i++) {
@@ -1137,6 +1156,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
         if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_STATE)) ||
             (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_DPKG_INFO_STATE))       ||
             (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_INFO_STATE))        ||
+            (dist == DIS_MACOS && (!strcmp(node[i]->element, XML_MACOS_STATE)            ||
+                                   !strcmp(node[i]->element, XML_UNAME_STATE)))          ||
             (dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_REGISTRY_STATE))) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
@@ -1157,6 +1178,10 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_TEST)) ||
                    (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_DPKG_INFO_TEST))       ||
                    (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_INFO_TEST))        ||
+                   (dist == DIS_MACOS && (!strcmp(node[i]->element, XML_MACOS_INFO_TEST)       ||
+                                          !strcmp(node[i]->element, XML_PLIST_TEST)            ||
+                                          !strcmp(node[i]->element, XML_FAMILY_TEST)           ||
+                                          !strcmp(node[i]->element, XML_UNAME_TEST)))          ||
                    (dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_REGISTRY_TEST))) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
@@ -1176,7 +1201,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, update, VU_PACKG) == OS_INVALID) {
                 goto end;
             }
-        } else if (dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_FILE_TEST)) {
+        } else if ((dist == DIS_WINDOWS || dist == DIS_MACOS) && !strcmp(node[i]->element, XML_FILE_TEST)) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
@@ -1195,11 +1220,11 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, update, VU_FILE_TEST) == OS_INVALID) {
                 goto end;
             }
-        } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
-                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_EVR))           ||
-                   (dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_VALUE))        ||
-                   (dist == DIS_REDHAT && (!strcmp(node[i]->element, XML_RPM_DEF_EVR)   ||
-                   !strcmp(node[i]->element, XML_RPM_DEF_VERSION)                       ||
+        } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR))                        ||
+                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_EVR))                                  ||
+                   ((dist == DIS_WINDOWS || dist == DIS_MACOS) && !strcmp(node[i]->element, XML_VALUE))        ||
+                   (dist == DIS_REDHAT && (!strcmp(node[i]->element, XML_RPM_DEF_EVR)                          ||
+                   !strcmp(node[i]->element, XML_RPM_DEF_VERSION)                                              ||
                    !strcmp(node[i]->element, XML_RPM_DEF_SIGN)))) {
             if (node[i]->attributes) {
                 for (j = 0; node[i]->attributes[j]; j++) {
@@ -1208,9 +1233,15 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         os_strdup(node[i]->content, parsed_oval->info_states->operation_value);
                     }
                 }
+                if (!parsed_oval->info_states->operation && !strcmp(*node[i]->attributes, XML_DATATYPE) && !strcmp(*node[i]->values, "version")) {
+                    os_strdup("equal", parsed_oval->info_states->operation);
+                    os_strdup(node[i]->content, parsed_oval->info_states->operation_value);
+                }
+
             }
-        } else if ((condition == VU_PACKG) && ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_STATE)) ||
-                   ((dist == DIS_DEBIAN || dist == DIS_WINDOWS) && !strcmp(node[i]->element, XML_STATE))          ||
+        } else if ((condition == VU_PACKG) &&
+                   ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_STATE))                                        ||
+                   ((dist == DIS_DEBIAN || dist == DIS_WINDOWS || dist == DIS_MACOS) && !strcmp(node[i]->element, XML_STATE)) ||
                    (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_STATE)))) {
             // Windows oval has multi-state tests
             for (j = 0; node[i]->attributes[j]; j++) {
@@ -1233,7 +1264,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     }
                 }
             }
-        } else if (!strcmp(node[i]->element, XML_DEFINITION)) {
+        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_DEFINITION)) || !strcmp(node[i]->element, XML_DEFINITION)) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
@@ -1268,38 +1299,41 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     }
                 }
             }
-        } else if (!strcmp(node[i]->element, XML_METADATA)) {
-            if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
-                goto invalid_elem;
-            }
-            if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, update, condition) == OS_INVALID) {
-                retval = OS_INVALID;
-                goto end;
-            }
-        } else if (!strcmp(node[i]->element, XML_REFERENCE)) {
+        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_REFERENCE)) || !strcmp(node[i]->element, XML_REFERENCE)) {
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!parsed_oval->info_cves->reference && !strcmp(node[i]->attributes[j], XML_REF_URL)) {
                     os_strdup(node[i]->values[j], parsed_oval->info_cves->reference);
+                } else if (!strcmp(node[i]->attributes[j], XML_REF_ID)){
+                    if (!parsed_oval->info_cves->cveid) {
+                        os_strdup(node[i]->values[j], parsed_oval->info_cves->cveid);
+                    }
+                    if (!parsed_oval->vulnerabilities->cve_id) {
+                        os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->cve_id);
+                    }
                 }
             }
-        } else if (!strcmp(node[i]->element, XML_TITLE)) {
+        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_TITLE)) || !strcmp(node[i]->element, XML_TITLE)) {
                 char *found, *end;
-                if ((dist != DIS_REDHAT && (found = strstr(node[i]->content, "CVE-"))) ||
-                    (dist == DIS_REDHAT && (found = strstr(node[i]->content, "RHSA-")))) {
-                    os_strdup(node[i]->content, parsed_oval->info_cves->title);
-                    if (end = strchr(found, ' '), end) {
-                        if (*(end - 1) == ':') {
-                            end--;
+                os_strdup(node[i]->content, parsed_oval->info_cves->title);
+                if (dist != DIS_MACOS) {
+                    if ((dist != DIS_REDHAT && (found = strstr(node[i]->content, "CVE-"))) ||
+                        (dist == DIS_REDHAT && (found = strstr(node[i]->content, "RHSA-")))) {
+
+                        if (end = strchr(found, ' '), end) {
+                            if (*(end - 1) == ':') {
+                                end--;
+                            }
+                            *end = '\0';
                         }
-                        *end = '\0';
+                        os_strdup(found, parsed_oval->info_cves->cveid);
+                        os_strdup(found, parsed_oval->vulnerabilities->cve_id);
+
+                        continue;
                     }
-                    os_strdup(found, parsed_oval->info_cves->cveid);
-                    os_strdup(found, parsed_oval->vulnerabilities->cve_id);
-                    continue;
+                    mterror(WM_VULNDETECTOR_LOGTAG, VU_CVE_ID_FETCH_ERROR, node[i]->content);
+                    goto end;
                 }
-                mterror(WM_VULNDETECTOR_LOGTAG, VU_CVE_ID_FETCH_ERROR, node[i]->content);
-                goto end;
-        } else if (!strcmp(node[i]->element, XML_CRITERIA)) {
+        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_CRITERIA)) || !strcmp(node[i]->element, XML_CRITERIA)) {
             if (!node[i]->attributes) {
                 if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                     goto invalid_elem;
@@ -1383,7 +1417,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     }
                 }
             }
-        } else if (!strcmp(node[i]->element, XML_CRITERION)) {
+        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_CRITERION)) || !strcmp(node[i]->element, XML_CRITERION)) {
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_TEST_REF)) {
                     static const char pending_state[] = "tst:10\0";
@@ -1464,7 +1498,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     } else if (dist == DIS_REDHAT && (found = strstr(node[i]->values[j], " "))) {
                         *found = '\0';
                         os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->package_name);
-                    } else if (dist == DIS_WINDOWS) {
+                    } else if (dist == DIS_WINDOWS || dist == DIS_MACOS) {
                         char match;
                         int k;
                         int size;
@@ -1480,14 +1514,14 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                             found = node[i]->values[j];
                         }
 
-                        if (!windows_packages) {
-                            if (windows_packages = wm_vulnerability_set_windows_packages_patterns(), !windows_packages) {
+                        if (!reg_packages) {
+                            if (reg_packages = wm_vulnerability_set_packages_patterns(), !reg_packages) {
                                 return OS_INVALID;
                             }
                         }
 
-                        for (k = 0, match = 0; windows_packages[k].patterns; k++) {
-                            if (OSRegex_Execute(found, &windows_packages[k])) {
+                        for (k = 0, match = 0; reg_packages[k].patterns; k++) {
+                            if (OSRegex_Execute(found, &reg_packages[k])) {
                                 match = 1;
                                 break;
                             }
@@ -1495,9 +1529,9 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         if (!match) {
                             mterror(WM_VULNDETECTOR_LOGTAG, VU_PACKAGE_RECOG_ERROR, node[i]->values[j]);
                             return OS_INVALID;
-                        } else if (*windows_packages[k].sub_strings) {
-                            os_strdup(*windows_packages[k].sub_strings, parsed_oval->vulnerabilities->package_name);
-                            OSRegex_FreeSubStrings(&windows_packages[k]);
+                        } else if (*reg_packages[k].sub_strings) {
+                            os_strdup(*reg_packages[k].sub_strings, parsed_oval->vulnerabilities->package_name);
+                            OSRegex_FreeSubStrings(&reg_packages[k]);
 
                             // Check if it is a double condition
                             if (!and_condition && (vuln = parsed_oval->vulnerabilities) && vuln->prev &&
@@ -1524,7 +1558,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     and_condition = 1;
                 }
             }
-        } else if (!strcmp(node[i]->element, XML_DESCRIPTION)) {
+        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_DESCRIPTION)) || !strcmp(node[i]->element, XML_DESCRIPTION)) {
             os_strdup(node[i]->content, parsed_oval->info_cves->description);
         } else if (!strcmp(node[i]->element, XML_OVAL_PRODUCT_VERSION)) {
             os_strdup(node[i]->content, parsed_oval->metadata.product_version);
@@ -1559,7 +1593,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     }
                 }
             }
-        } else if (dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_STATUS_CHANGE)) {
+        } else if ((dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_STATUS_CHANGE)) ||
+                   (dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_STATUS_CHANGE))) {
             if (node[i]->attributes && !strcmp(node[i]->content, XML_ACCEPTED)) {
                 for (j = 0; node[i]->attributes[j]; j++) {
                     if (!strcmp(node[i]->attributes[j], XML_DATE)) {
@@ -1569,8 +1604,9 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             }
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_PUBLIC_DATE)) ||
                    (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_ISSUED))      ||
-                   (dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_SUBMITTED))) {
-                       if (dist == DIS_REDHAT || dist == DIS_WINDOWS) {
+                   (dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_SUBMITTED))  ||
+                   (dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_SUBMITTED))) {
+                       if (dist == DIS_REDHAT || dist == DIS_WINDOWS || dist == DIS_MACOS) {
                            if (node[i]->attributes) {
                                for (j = 0; node[i]->attributes[j]; j++) {
                                    if (!strcmp(node[i]->attributes[j], XML_DATE)) {
@@ -1583,13 +1619,17 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                        }
         } else if (!strcmp(node[i]->element, XML_OVAL_DEFINITIONS)  ||
                    !strcmp(node[i]->element, XML_DEFINITIONS)       ||
+                   !strcmp(node[i]->element, XML_METADATA)          ||
+                   !strcmp(node[i]->element, XML_OVAL_DEF_METADATA) ||
                    !strcmp(node[i]->element, XML_TESTS)             ||
                    !strcmp(node[i]->element, XML_STATES)            ||
                    !strcmp(node[i]->element, XML_ADVIDSORY)         ||
                    !strcmp(node[i]->element, XML_DEBIAN)            ||
                    !strcmp(node[i]->element, XML_GENERATOR)         ||
                    !strcmp(node[i]->element, XML_OVAL_REPOSITORY)   ||
-                   !strcmp(node[i]->element, XML_DATES)) {
+                   !strcmp(node[i]->element, XML_OVAL_DEF_OV_REPO)  ||
+                   !strcmp(node[i]->element, XML_DATES)             ||
+                   !strcmp(node[i]->element, XML_OVAL_DEF_DATES)) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             } else if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, update, condition) == OS_INVALID) {
@@ -1782,6 +1822,9 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
             snprintf(repo, OS_SIZE_2048, "%s", REDHAT_REPO);
         } else if (!strcmp(update->dist, vu_dist_tag[DIS_WINDOWS])) {
             snprintf(repo_file, OS_SIZE_2048, WINDOWS_OVAL, update->version);
+            snprintf(repo, OS_SIZE_2048, "%s", CISECURITY_REPO);
+        } else if (!strcmp(update->dist, vu_dist_tag[DIS_MACOS])) {
+            snprintf(repo_file, OS_SIZE_2048, MACOSX_OVAL, update->version);
             snprintf(repo, OS_SIZE_2048, "%s", CISECURITY_REPO);
         } else {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
@@ -2005,7 +2048,8 @@ int wm_vulnerability_detector_updatedb(update_node **updates) {
         wm_vulnerability_run_update(updates[CVE_RHEL5],    vu_dist_tag[DIS_RHEL5],    vu_dist_ext[DIS_RHEL5])    ||
         wm_vulnerability_run_update(updates[CVE_RHEL6],    vu_dist_tag[DIS_RHEL6],    vu_dist_ext[DIS_RHEL6])    ||
         wm_vulnerability_run_update(updates[CVE_RHEL7],    vu_dist_tag[DIS_RHEL7],    vu_dist_ext[DIS_RHEL7])    ||
-        wm_vulnerability_run_update(updates[CVE_WS2016],   vu_dist_tag[DIS_WS2016],   vu_dist_ext[DIS_WS2016])) {
+        wm_vulnerability_run_update(updates[CVE_WS2016],   vu_dist_tag[DIS_WS2016],   vu_dist_ext[DIS_WS2016])   ||
+        wm_vulnerability_run_update(updates[CVE_MACOSX],   vu_dist_tag[DIS_MACOSX],   vu_dist_ext[DIS_MACOSX])) {
         return OS_INVALID;
     }
 
