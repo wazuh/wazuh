@@ -150,8 +150,9 @@ os_info *get_win_version()
                 else {
                     if (strcmp(strtok(read_buff," "), "64-bit") == 0) {
                         info->machine = strdup("x86_64");
-                    }
-                    else {
+                    } else if (strncmp(read_buff, "64", 2) == 0) {
+                        info->machine = strdup("x86_64");
+                    } else {
                         info->machine = strdup("i686");
                     }
                 }
