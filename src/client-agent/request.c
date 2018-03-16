@@ -92,24 +92,26 @@ int req_push(char * buffer, size_t length) {
 
 #ifndef WIN32
 
-        char sockname[PATH_MAX];
-        snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
+        if (strcmp(target, "agent")) {
+            char sockname[PATH_MAX];
+            snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
 
-        if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-            switch (errno) {
-            case ECONNREFUSED:
-                merror("At req_push(): Target '%s' refused connection. Is Active Response enabled?", target);
-                break;
+            if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+                switch (errno) {
+                case ECONNREFUSED:
+                    merror("At req_push(): Target '%s' refused connection. Is Active Response enabled?", target);
+                    break;
 
-            default:
-                merror("At req_push(): Could not connect to socket '%s': %s (%d).", target, strerror(errno), errno);
+                default:
+                    merror("At req_push(): Could not connect to socket '%s': %s (%d).", target, strerror(errno), errno);
+                }
+
+                // Example: #!-req 16 err Permission denied
+                snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err %s", counter, errno == ENOENT ? "Invalid target" : strerror(errno));
+                send_msg(response, -1);
+
+                return -1;
             }
-
-            // Example: #!-req 16 err Permission denied
-            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err %s", counter, errno == ENOENT ? "Invalid target" : strerror(errno));
-            send_msg(response, -1);
-
-            return -1;
         }
 
 #else
@@ -136,7 +138,7 @@ int req_push(char * buffer, size_t length) {
         }
 
         // Create and insert node
-        node = req_create(sock, counter, payload, length);
+        node = req_create(sock, counter, target, payload, length);
         w_mutex_lock(&mutex_table);
         error = OSHash_Add(req_table, counter, node);
         w_mutex_unlock(&mutex_table);
@@ -212,34 +214,39 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         length = wcom_dispatch(node->buffer, node->length, buffer);
 #else
         // In Unix, forward request to target socket
+        if (strncmp(node->target, "agent", 5) == 0) {
+            length = agcom_dispatch(node->buffer, node->length, buffer);
+        }
+        else {
 
-        mdebug2("req_receiver(): sending '%s' to socket", node->buffer);
+            mdebug2("req_receiver(): sending '%s' to socket", node->buffer);
 
-        // Send data
+            // Send data
 
-        if (send(node->sock, node->buffer, node->length, 0) != (ssize_t)node->length) {
-            merror("send(): %s", strerror(errno));
-            strcpy(buffer, "err Send data");
-            length = strlen(buffer);
-        } else {
-
-            // Get response
-
-            switch (length = recv(node->sock, buffer, OS_MAXSTR, 0), length) {
-            case -1:
-                merror("recv(): %s", strerror(errno));
-                strcpy(buffer, "err Receive data");
+            if (send(node->sock, node->buffer, node->length, 0) != (ssize_t)node->length) {
+                merror("send(): %s", strerror(errno));
+                strcpy(buffer, "err Send data");
                 length = strlen(buffer);
-                break;
+            } else {
 
-            case 0:
-                mdebug1("Empty message from local client.");
-                strcpy(buffer, "err Empty response");
-                length = strlen(buffer);
-                break;
+                // Get response
 
-            default:
-                buffer[length] = '\0';
+                switch (length = recv(node->sock, buffer, OS_MAXSTR, 0), length) {
+                case -1:
+                    merror("recv(): %s", strerror(errno));
+                    strcpy(buffer, "err Receive data");
+                    length = strlen(buffer);
+                    break;
+
+                case 0:
+                    mdebug1("Empty message from local client.");
+                    strcpy(buffer, "err Empty response");
+                    length = strlen(buffer);
+                    break;
+
+                default:
+                    buffer[length] = '\0';
+                }
             }
         }
 

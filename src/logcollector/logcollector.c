@@ -231,8 +231,10 @@ void LogCollectorStart()
     minfo(STARTUP_MSG, (int)getpid());
     mdebug2(CURRENT_FILES, current_files, maximum_files);
 
+#ifndef WIN32
     // Start com request thread
     w_create_thread(lccom_main, NULL);
+#endif
 
     /* Daemon loop */
     while (1) {
