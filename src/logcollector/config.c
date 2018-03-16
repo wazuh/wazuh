@@ -60,15 +60,15 @@ int LogCollectorConfig(const char *cfgfile)
 
 cJSON *getLocalfileConfig(void) {
 
-    if (!logff) {
+    if (!max_file) {
         return NULL;
     }
 
     cJSON *root = cJSON_CreateObject();
     cJSON *localfiles = cJSON_CreateArray();
-    unsigned int i, j;
+    int i, j;
 
-    for (i=0;logff[i].file;i++) {
+    for (i=0;i<max_file ;i++) {
         cJSON *file = cJSON_CreateObject();
 
         if (logff[i].file) cJSON_AddStringToObject(file,"file",logff[i].file);
@@ -114,7 +114,7 @@ cJSON *getSocketConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *targets = cJSON_CreateArray();
-    unsigned int i;
+    int i;
 
     for (i=0;logsk[i].name;i++) {
         cJSON *target = cJSON_CreateObject();
