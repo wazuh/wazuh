@@ -120,7 +120,8 @@ class WazuhException(Exception):
         3012: 'Received an old file',
         3013: 'Cluster is disabled',
         3014: 'Manager name or IP incorrect',
-        3015: 'Cannot access directory'
+        3015: 'Cannot access directory',
+        3016: "Cluster nodes are not correctly configured at ossec.conf."
 
         # > 9000: Authd
     }
