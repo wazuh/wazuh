@@ -20,6 +20,18 @@
 #define WORKING_BUFFER_SIZE 15000
 #define MAX_TRIES 3
 
+#define ARCH32  0
+#define ARCH64  1
+#define NOARCH  2
+
+#define LM_KEY   1
+#define U_KEY    0
+
+#define MAX_VALUE_NAME 16383
+
+#define TOTALBYTES      8192
+#define BYTEINCREMENT   4096
+
 #define PROTO_LENGTH 6
 #define FORMAT_LENGTH 3
 #define MAC_LENGTH 18
@@ -35,6 +47,7 @@
 #define ADDR6_LENGTH    256
 #define IFNAME_LENGTH   256
 #define SERIAL_LENGTH   512
+#define KEY_LENGTH      255
 
 #define TAG_NAME        1000
 #define TAG_VERSION     1001
@@ -114,6 +127,15 @@ int sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION);
 
 // Installed programs inventory for Windows
 void sys_programs_windows(const char* LOCATION);
+
+// Get values about a single program from the registry
+void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
+
+// List installed programs from the registry
+void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
+
+// List Windows users from the registry
+void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION);
 
 #if defined(__FreeBSD__)
 // Installed programs inventory for BSD based systems
