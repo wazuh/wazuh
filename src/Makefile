@@ -3,14 +3,12 @@
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 EXTERNAL_JSON=external/cJSON/
-EXTERNAL_LUA=external/lua-5.2.3/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 endif
-LUA_PLAT=posix
 MAXAGENTS?=8000
 REUSE_ID?=no
 # XXX Becareful NO EXTRA Spaces here
@@ -69,7 +67,6 @@ ifeq (${uname_S},SunOS)
 		OSSEC_LDFLAGS+=-Wl,--end-group
 		OSSEC_LDFLAGS+=-z relax=secadj
 		OSSEC_LDFLAGS+=-lsocket -lnsl -lresolv
-		LUA_PLAT=solaris
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
 		OSSEC_LDFLAGS+=-pthread -lrt
@@ -78,13 +75,11 @@ else
 ifeq (${uname_S},Darwin)
 		DEFINES+=-DDarwin
 		DEFINES+=-DHIGHFIRST
-		LUA_PLAT=macosx
 
 else
 ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
 		OSSEC_LDFLAGS+=-pthread
-		LUA_PLAT=freebsd
 		CFLAGS+=-I/usr/local/include -Wl,--start-group
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 else
@@ -92,12 +87,10 @@ ifeq (${uname_S},NetBSD)
 		DEFINES+=-DNetBSD
 		OSSEC_LDFLAGS+=-pthread
 		CFLAGS+=-Wl,--start-group
-		LUA_PLAT=posix
 else
 ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
 		DEFINES+=-pthread
-		LUA_PLAT=posix
 		CFLAGS+=-I/usr/local/include -Wl,--start-group
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 else
@@ -107,7 +100,6 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
 		DEFINES+=-DOS_BIG_ENDIAN
-		LUA_PLAT=posix
 		OSSEC_LDFLAGS+=-pthread -lrt
 		PATH:=${PATH}:/usr/local/bin
 		CC=gcc
@@ -403,8 +395,6 @@ settings:
 	@echo "    OSSEC_USER:       ${OSSEC_USER}"
 	@echo "    OSSEC_USER_MAIL:  ${OSSEC_USER_MAIL}"
 	@echo "    OSSEC_USER_REM:   ${OSSEC_USER_REM}"
-	@echo "Lua settings:"
-	@echo "    LUA_PLAT:         ${LUA_PLAT}"
 	@echo "USE settings:"
 	@echo "    USE_ZEROMQ:       ${USE_ZEROMQ}"
 	@echo "    USE_GEOIP:        ${USE_GEOIP}"
@@ -490,9 +480,6 @@ endif
 .PHONY: winagent
 winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a ${EXTERNAL_ZLIB}libz.a win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
-	cd ${EXTERNAL_LUA}src/ && ${MAKE} CC=${MING_BASE}${CC} -f Makefile.mingw mingw
-	cp ${EXTERNAL_LUA}src/ossec-lua.exe win32/
-	cp ${EXTERNAL_LUA}src/ossec-luac.exe win32/
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
@@ -511,15 +498,12 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 #### External ######
 ####################
 
-.PHONY: external lua
+.PHONY: external
 ifeq (${uname_S},Linux)
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a
+external: libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a
 else
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+external: libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
 endif
-
-lua:
-	cd ${EXTERNAL_LUA} && ${MAKE} ${LUA_PLAT}
 
 #### OpenSSL ##########
 
@@ -1310,7 +1294,6 @@ clean-external:
 	rm -f ${cjson_o} libcJSON.a
 	cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
 	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
-	cd ${EXTERNAL_LUA} && ${MAKE} clean
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
 	rm -f ${OPENSSL_LIB}
 	rm -f ${CRYPTO_LIB}
@@ -1360,11 +1343,6 @@ clean-windows:
 	rm -f ${win32_o} ${win32_ui_o} win32/win_service_rk.o
 	rm -f win32/icon.o win32/resource.o
 	rm -f ${WINDOWS_BINS}
-	rm -f ${EXTERNAL_LUA}src/lua52.dll
-	rm -f ${EXTERNAL_LUA}src/ossec-lua.exe
-	rm -f ${EXTERNAL_LUA}src/ossec-luac.exe
-	rm -f win32/ossec-lua.exe
-	rm -f win32/ossec-luac.exe
 	rm -f win32/wazuh-agent-*.exe
 	rm -f win32/libwinpthread-1.dll
 	rm -f win32/VERSION

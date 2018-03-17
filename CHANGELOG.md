@@ -21,6 +21,10 @@ All notable changes to this project will be documented in this file.
 - Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
 - Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
 
+### Removed
+
+- Deleted Lua language support.
+
 ## [v3.2.2]
 
 ### Changed

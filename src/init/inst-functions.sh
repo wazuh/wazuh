@@ -599,7 +599,6 @@ InstallCommon(){
     OSSEC_USER='ossec'
     OSSEC_USER_MAIL='ossecm'
     OSSEC_USER_REM='ossecr'
-    EXTERNAL_LUA='external/lua-5.2.3/'
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -640,15 +639,10 @@ InstallCommon(){
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
     fi
 
-  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua
-  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/native
-  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/compiled
   ${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-lua ${PREFIX}/bin/
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-luac ${PREFIX}/bin/
   ${INSTALL} -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
