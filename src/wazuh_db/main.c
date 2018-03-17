@@ -322,8 +322,9 @@ void * run_worker(__attribute__((unused)) void * args) {
             ssize_t count;
             length = 0;
             int rc = 0;
+            int fetch_socket_data = 1;
 
-            while(1){
+            while(fetch_socket_data){
                 FD_ZERO(&fdset_recv);
                 FD_SET(*peer, &fdset_recv);
                 struct timeval timeout_recv;
@@ -332,27 +333,39 @@ void * run_worker(__attribute__((unused)) void * args) {
 
                 rc = select(*peer + 1, &fdset_recv, NULL, NULL, &timeout_recv);
 
-                if(rc == 0){
-                    break;
-                }
-                if(rc == -1)
-                {
-                    if (errno == EINTR) {
-                        minfo("at run_worker(): select(): %s", strerror(EINTR));
-                    } else {
-                        merror_exit("at run_worker(): select(): %s", strerror(errno));
-                    }
-                    break;
-                }
-                else{
-                    if((count = recv(*peer, buffer, OS_MAXSTR, 0))>0){
-                        memcpy(buffer2+length,buffer,count);
-                        length += count;
-                    }
-                    else{
+                switch(rc){
+
+                    case -1:
+                        if (errno == EINTR) {
+                            minfo("at run_worker(): select(): %s", strerror(EINTR));
+                        } else {
+                            merror_exit("at run_worker(): select(): %s", strerror(errno));
+                        }
+                        fetch_socket_data=0;
                         break;
-                    }
+
+                    case 0:
+
+                        fetch_socket_data = 0;
+                        break;
+
+                    default:
+
+                        if((count = recv(*peer, buffer, OS_MAXSTR, 0))>0){
+
+                            if((length+count) > OS_MAXSTR){
+                                fetch_socket_data=0;
+                                merror_exit("query size exceeded");
+                            }
+
+                            memcpy(buffer2+length,buffer,count);
+                            length += count;
+                        }
+                        else{
+                            fetch_socket_data = 0;
+                        }
                 }
+                
             }
 
             switch (length) {
