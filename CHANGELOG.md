@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Updated Slack integration. ([#443](https://github.com/wazuh/wazuh/pull/443))
 - Increased connection timeout for remote upgrades. ([#480](https://github.com/wazuh/wazuh/pull/480))
 - Vulnerability-detector does not stop agents detection if it fails to find the software for one of them.
+- Improve the version comparator algorithm in vulnerability-detector. ([#508](https://github.com/wazuh/wazuh/pull/508/files))
 
 ### Fixed
 

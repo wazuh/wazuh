@@ -40,10 +40,11 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
 int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, int max);
 int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents);
 int wm_vulnerability_detector_sql_prepare(sqlite3 *db, char *sql, size_t size, sqlite3_stmt **stmt);
-int wm_checks_package_vulnerability(const char *package, char *version, const char *operation, char *operation_value);
+int wm_checks_package_vulnerability(char *version, const char *operation, char *operation_value);
 void wm_vulnerability_update_intervals(time_intervals *remaining, time_t time_sleep);
 int wm_vulnerability_detector_step(sqlite3_stmt *stmt);
 int wm_vulnerability_create_file(const char *path, const char *source);
+int wm_vulnerability_detector_compare(char *version_it, char *cversion_it);
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
@@ -125,186 +126,187 @@ int wm_vulnerability_detector_step(sqlite3_stmt *stmt) {
     return result;
 }
 
-int wm_checks_package_vulnerability(const char *package, char *version, const char *operation, char *operation_value) {
+int wm_checks_package_vulnerability(char *version, const char *operation, char *operation_value) {
     if (operation_value) {
         if (!strcmp(operation, "less than")) {
-            int i, j;
-            int attemps = 0;
-            int version_value, limit_value;
-            int version_found, limit_found;
+            int size;
+            int result;
+            int version_value, cversion_value;
             char version_cl[KEY_SIZE];
-            char limit_cl[KEY_SIZE];
-            char *version_it, *version_it2;
-            char *limit_it, *limit_it2;
+            char cversion_cl[KEY_SIZE];
+            char *version_it, *release_it;
+            char *cversion_it, *crelease_it;
 
-            snprintf(version_cl, KEY_SIZE, "%s", version);
-            snprintf(limit_cl, KEY_SIZE, "%s", operation_value);
+            // Copy the original values
+            if (size = snprintf(version_cl, KEY_SIZE, "%s", version), size < 1) {
+                return OS_INVALID;
+            } else {
+                cversion_cl[size] = '\0';
+            }
+            if (size = snprintf(cversion_cl, KEY_SIZE, "%s", operation_value), size < 1) {
+                return OS_INVALID;
+            } else {
+                cversion_cl[size] = '\0';
+            }
 
             // Check EPOCH
             if (version_it = strchr(version_cl, ':'), version_it) {
-                *version_it = '\0';
+                *(version_it++) = '\0';
                 version_value = strtol(version_cl, NULL, 10);
-                version_it++;
             } else {
                 version_it = version_cl;
                 version_value = 0;
             }
-
-            if (limit_it = strchr(limit_cl, ':'), limit_it) {
-                *limit_it = '\0';
-                limit_value = strtol(limit_cl, NULL, 10);
-                limit_it++;
+            if (cversion_it = strchr(cversion_cl, ':'), cversion_it) {
+                *(cversion_it++) = '\0';
+                cversion_value = strtol(cversion_cl, NULL, 10);
             } else {
-                limit_it = limit_cl;
-                limit_value = 0;
+                cversion_it = cversion_cl;
+                cversion_value = 0;
             }
 
-            if (version_value > limit_value) {
+            if (version_value > cversion_value) {
                 return 0;
-            } else if (version_value < limit_value) {
+            } else if (version_value < cversion_value) {
                 return 1;
             }
 
-            // Check Version
-            if ((version_it2 = strchr(version_it, '~')) ||
-                (version_it2 = strchr(version_it, '-')) ||
-                (version_it2 = strchr(version_it, '+'))) {
-                *version_it2 = '\0';
-                version_it2++;
-                if (*version_it2 == '\0') {
-                    version_it2 = NULL;
+            // Separate the version from the revision
+            if (release_it = strchr(version_it, '-'), release_it) {
+                if (*(release_it++) = '\0', *release_it == '\0') {
+                    release_it = NULL;
                 }
             }
 
-            if ((limit_it2 = strchr(limit_it, '~')) ||
-                (limit_it2 = strchr(limit_it, '-')) ||
-                (limit_it2 = strchr(limit_it, '+'))) {
-                *limit_it2 = '\0';
-                limit_it2++;
-                if (*limit_it2 == '\0') {
-                    limit_it2 = NULL;
+            if (crelease_it = strchr(cversion_it, '-'), crelease_it) {
+                if (*(crelease_it++) = '\0', *crelease_it == '\0') {
+                    crelease_it = NULL;
                 }
             }
 
-            if (strcmp(version_it, limit_it)) {
-                for (i = 0, j = 0, version_found = 0, limit_found = 0; attemps < VU_MAX_VERSION_ATTEMPS; attemps++) {
-                    if (!version_found) {
-                        if (version_it[i] == '.' || isalpha(version_it[i])) {
-                            version_found = 1;
-                            version_it[i] = '\0';
-                        } else if (version_it[i] == '\0') {
-                            version_found = 2;
-                        } else {
-                            i++;
-                        }
-                    }
-
-                    if (!limit_found) {
-                        if (limit_it[j] == '.' || isalpha(limit_it[j])) {
-                            limit_found = 1;
-                            limit_it[j] = '\0';
-                        } else if (limit_it[j] == '\0') {
-                            limit_found = 2;
-                        } else {
-                            j++;
-                        }
-                    }
-
-                    if (version_found && limit_found) {
-                        version_value = strtol(version_it, NULL, 10);
-                        limit_value = strtol(limit_it, NULL, 10);
-                        if (version_value > limit_value) {
-                            return 0;
-                        } else if (version_value < limit_value) {
-                            return 1;
-                        } else if (version_found != limit_found) {
-                            if (version_found < limit_found) {
-                                return 0;
-                            } else {
-                                return 1;
-                            }
-                        } else if (version_found > 1) {
-                            break;
-                        }
-                        attemps = 0;
-                        version_found = 0;
-                        limit_found = 0;
-                        version_it = &version_it[i + 1];
-                        limit_it = &limit_it[j + 1];
-                        i = 0;
-                        j = 0;
-                    }
-                }
-            }
-
-            if (attemps == VU_MAX_VERSION_ATTEMPS) {
-                mterror(WM_VULNDETECTOR_LOGTAG, VU_COMPARE_VERSION_ERROR, version, package, operation_value);
-                return 0;
-            }
-
-            if (version_it2 && limit_it2) {
-                version_it = version_it2;
-                limit_it = limit_it2;
-            } else {
-                return 0;
+            // Check version
+            if (result = wm_vulnerability_detector_compare(version_it, cversion_it), result != VU_EQUAL) {
+                return result;
             }
 
             // Check release
-            version_found = 0;
-            limit_found = 0;
-            for (i = 0, j = 0, attemps = 0, version_found = 0, limit_found = 0; i < KEY_SIZE && j < KEY_SIZE;) {
-                if (version_it[i] != '\0' && isdigit(version_it[i])) {
-                    if (!version_found) {
-                        version_it = &version_it[i];
-                        version_found = 1;
-                        i = -1;
-                    }
-                    i++;
-                } else if (version_found) {
-                    version_it[i] = '\0';
-                } else {
-                    i++;
-                }
+            result = wm_vulnerability_detector_compare(release_it, crelease_it);
 
-                if (limit_it[j] != '\0' && isdigit(limit_it[j])) {
-                    if (!limit_found) {
-                        limit_it = &limit_it[j];
-                        limit_found = 1;
-                        j = -1;
-                    }
-                    j++;
-                } else if (limit_found) {
-                    limit_it[j] = '\0';
-                } else {
-                    j++;
-                }
-
-                if (version_found && limit_found) {
-                    version_value = strtol(version_it, NULL, 10);
-                    limit_value = strtol(limit_it, NULL, 10);
-                    if (version_value > limit_value) {
-                        return 0;
-                    } else if (version_value < limit_value) {
-                        return 1;
-                    }
-                    version_found = 0;
-                    limit_found = 0;
-                    if (!(i < (KEY_SIZE - 1) && j < (KEY_SIZE - 1))) {
-                        return 0;
-                    }
-                    version_it = &version_it[i + 1];
-                    limit_it = &limit_it[j + 1];
-                    if (*version_it == '\0' || *limit_it == '\0') {
-                        break;
-                    }
-                    i = 0;
-                    j = 0;
-                }
+            if (result != VU_EQUAL) {
+                return result;
             }
         }
-        return 0;
+        // The OVALs supported only contemplate the operation "less than" and "exists"
+        return VU_NOT_VULNERABLE;
     }
-    return 2;
+    return VU_NOT_FIXED;
+}
+
+int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
+    char *found;
+    int i, j;
+    int version_found, cversion_found;
+    int version_value, cversion_value;
+
+    if (version_it && !cversion_it) {
+        return VU_NOT_VULNERABLE;
+    } else if (!version_it && cversion_it) {
+        return VU_VULNERABLE;
+    }
+
+    (found = strchr(version_it, '~'))? *found = '\0' : 0;
+    (found = strchr(version_it, '+'))? *found = '\0' : 0;
+    (found = strchr(cversion_it, '~'))? *found = '\0' : 0;
+    (found = strchr(cversion_it, '+'))? *found = '\0' : 0;
+
+    // For RedHat/CentOS packages
+    (found = strstr(version_it, ".el"))? *found = '\0' : 0;
+    (found = strstr(cversion_it, ".el"))? *found = '\0' : 0;
+
+    // Check version
+    if (strcmp(version_it, cversion_it)) {
+        for (i = 0, j = 0, version_found = 0, cversion_found = 0;;) {
+            if (!version_found) {
+                if (version_it[i] == '\0') {
+                    version_found = 3;
+                } else if (!isdigit(version_it[i])) {
+                    if (i) {
+                        version_found = 1;
+                    } else {
+                        if (isalpha(version_it[i]) && !isalpha(version_it[i + 1])) {
+                            version_found = 2;
+                        } else {
+                            if (*version_it == '.') {
+                                version_it++;
+                            } else {
+                                for (; *version_it != '\0' && !isdigit(*version_it); version_it++);
+                            }
+                            i = 0;
+                        }
+                    }
+                } else {
+                    i++;
+                }
+            }
+
+            if (!cversion_found) {
+                if (cversion_it[j] == '\0') {
+                    cversion_found = 3;
+                } else if (!isdigit(cversion_it[j])) {
+                    if (j) {
+                        cversion_found = 1;
+                    } else {
+                        if (isalpha(cversion_it[j]) && !isalpha(cversion_it[j + 1])) {
+                            cversion_found = 2;
+                        } else {
+                            if (*cversion_it == '.') {
+                                cversion_it++;
+                            } else {
+                                for (; *cversion_it != '\0' && !isdigit(*cversion_it); cversion_it++);
+                            }
+                            j = 0;
+                        }
+                    }
+                } else {
+                    j++;
+                }
+            }
+
+            if (version_found && cversion_found) {
+                if (version_found == 2 && version_found == cversion_found) {
+                    // Check version letter
+                    version_value = *version_it;
+                    cversion_value = *cversion_it;
+                } else {
+                    version_value = strtol(version_it, NULL, 10);
+                    cversion_value = strtol(cversion_it, NULL, 10);
+                }
+                if (version_value > cversion_value) {
+                    return VU_NOT_VULNERABLE;
+                } else if (version_value < cversion_value) {
+                    return VU_VULNERABLE;
+                } else if (version_found != cversion_found) {
+                    // The version with more digits is higher
+                    if (version_found < cversion_found) {
+                        return VU_NOT_VULNERABLE;
+                    } else {
+                        return VU_VULNERABLE;
+                    }
+                } else if (version_found > 2) {
+                    // The version is over
+                    break;
+                }
+                version_found = 0;
+                cversion_found = 0;
+                version_it = &version_it[i];
+                cversion_it = &cversion_it[j];
+                i = 0;
+                j = 0;
+            }
+        }
+    }
+
+    return VU_EQUAL;
 }
 
 int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, int max) {
@@ -372,16 +374,18 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             }
             if (pending) {
                 size = snprintf(state, 30, "Pending confirmation");
-            } else if (v_type = wm_checks_package_vulnerability(package, version, operation, operation_value), v_type) {
-                if (v_type != 2) {
+            } else if (v_type = wm_checks_package_vulnerability(version, operation, operation_value), v_type != VU_NOT_VULNERABLE && v_type != OS_INVALID) {
+                if (v_type != VU_NOT_FIXED) {
                     size = snprintf(state, 15, "Fixed");
-                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VER_VULN, package, version, operation_value, agents_it->agent_id, cve);
+                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VER_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
                 } else {
                     size = snprintf(state, 15, "Unfixed");
                     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VULN, package, cve);
                 }
+            } else if (v_type == OS_INVALID) {
+                return OS_INVALID;
             } else {
-                mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_NOT_VULN, package, version, operation_value, agents_it->agent_id, cve);
+                mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_NOT_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
                 continue;
             }
             state[size] = '\0';
