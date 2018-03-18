@@ -102,7 +102,11 @@ typedef enum vu_logic {
     VU_OR,
     VU_AND,
     VU_PACKG,
-    VU_FILE_TEST
+    VU_FILE_TEST,
+    VU_VULNERABLE,
+    VU_NOT_VULNERABLE,
+    VU_EQUAL,
+    VU_NOT_FIXED
 } vu_logic;
 
 typedef enum distribution{

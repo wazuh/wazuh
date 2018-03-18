@@ -290,7 +290,6 @@
 #define VU_AG_CHECK_ERR             "(5411): Agent vulnerabilities could not be checked."
 #define VU_TABLE_ERROR              "(5412): Table %s is not available."
 #define VU_PACKAGE_TABLE_ERROR      "(5414): The packages table for agent %s could not be created."
-#define VU_COMPARE_VERSION_ERROR    "(5415): It has not been possible to compare version '%s' of '%s' package with version '%s'."
 #define VU_TIMESTAMP_LABEL_ERROR    "(5416): Timestamp label has not been found in the first %i fetches"
 #define VU_DB_TIMESTAMP_OVAL_ERROR  "(5417): Stored timestamp could not be compared. %s OVAL will continue to be downloaded."
 #define VU_SSL_LIBRARY_ERROR        "(5418): Could not initialize the OpenSSL library."
