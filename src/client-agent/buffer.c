@@ -22,10 +22,10 @@ static volatile int i = 0;
 static volatile int j = 0;
 static volatile int state = NORMAL;
 
-static int warn_level;
-static int normal_level;
-static int tolerance;
-static int ms_slept;
+int warn_level;
+int normal_level;
+int tolerance;
+int ms_slept;
 
 struct{
   unsigned int full:1;
