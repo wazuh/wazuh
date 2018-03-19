@@ -24,9 +24,34 @@ static const char *XML_IGNORE_TIME = "ignore_time";
 static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
+static const char *XML_ALLOW = "allow";
 // Deprecated
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
+
+char *format_os_version(char *OS) {
+    char *OS_format = NULL;
+    char distr[OS_SIZE_128];
+    char vers[OS_SIZE_128];
+    char subvers[OS_SIZE_128];
+    int size;
+    int elements;
+
+    elements = sscanf(OS, "%s %s %s", distr, vers, subvers);
+    size = strlen(distr) + strlen(vers) + strlen(subvers);
+    os_calloc(size, sizeof(char), OS_format);
+    if (strcasestr(distr, vu_dist_tag[DIS_WINDOWS])) {
+        if (elements == 3) {
+            snprintf(OS_format, OS_SIZE_256, "%s %s %s", distr, vers, subvers);
+        } else {
+            snprintf(OS_format, OS_SIZE_256, "%s %s", distr, vers);
+        }
+    } else {
+        snprintf(OS_format, OS_SIZE_256, "%s: %s", distr, vers);
+    }
+
+    return OS_format;
+}
 
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list) {
     agent_software *next = NULL;
@@ -145,6 +170,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
             }
 
             os_calloc(1, sizeof(update_node), upd);
+            upd->allowed_list = NULL;
 
             // Check OS
             if (!strcmp(feed, vu_dist_tag[DIS_UBUNTU])) {
@@ -289,6 +315,23 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
                         return OS_INVALID;
                     }
+                } else if (!strcmp(chld_node[j]->element, XML_ALLOW)) {
+                    int size;
+                    char *found;
+                    char *OS = chld_node[j]->content;
+
+                    os_calloc(1, sizeof(char *), upd->allowed_list);
+
+                    for (size = 0; (found = strchr(OS, ',')); size++) {
+                        *(found++) = '\0';
+                        os_realloc(upd->allowed_list, (size + 2)*sizeof(char *), upd->allowed_list);
+                        upd->allowed_list[size] = format_os_version(OS);
+                        upd->allowed_list[size + 1] = NULL;
+                        OS = found;
+                    }
+                    os_realloc(upd->allowed_list, (size + 2)*sizeof(char *), upd->allowed_list);
+                    upd->allowed_list[size] = format_os_version(OS);
+                    upd->allowed_list[size + 1] = NULL;
                 } else if (!strcmp(chld_node[j]->element, XML_URL)) {
                     os_strdup(chld_node[j]->content, upd->url);
                     if (*chld_node[j]->attributes && !strcmp(*chld_node[j]->attributes, XML_PORT)) {
