@@ -30,6 +30,7 @@ int LogCollectorConfig(const char *cfgfile);
 /* Parse readed config into JSON format */
 cJSON *getLocalfileConfig(void);
 cJSON *getSocketConfig(void);
+cJSON *getLogcollectorInternalOptions(void);
 
 /* Start log collector daemon */
 void LogCollectorStart(void) __attribute__((noreturn));
@@ -176,5 +177,6 @@ void w_create_input_threads();
 void w_set_file_mutexes();
 extern int sample_log_length;
 extern int max_file;
+extern int debug_level;
 
 #endif /* __LOGREADER_H */

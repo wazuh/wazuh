@@ -25,6 +25,7 @@
 /* Prototypes */
 static void help_logcollector(void) __attribute__((noreturn));
 
+int debug_level;
 
 /* Print help statement */
 static void help_logcollector()
@@ -46,7 +47,7 @@ static void help_logcollector()
 int main(int argc, char **argv)
 {
     int c;
-    int debug_level = 0;
+    debug_level = 0;
     int test_config = 0, run_foreground = 0;
     const char *cfg = DEFAULTCPATH;
     gid_t gid;
