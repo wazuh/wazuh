@@ -11,6 +11,7 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+int rotate_log;
 
 /* Start the agent daemon */
 void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group)
@@ -108,7 +109,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Launch rotation thread */
 
-    if (getDefine_Int("monitord", "rotate_log", 0, 1) && CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
+    rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
+    if (rotate_log && CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
         merror_exit(THREAD_ERROR);
     }
 

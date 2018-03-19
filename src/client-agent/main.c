@@ -16,6 +16,8 @@
 #define ARGV0 "ossec-agentd"
 #endif
 
+int debug_level;
+
 /* Prototypes */
 static void help_agentd(void) __attribute((noreturn));
 
@@ -40,11 +42,12 @@ static void help_agentd()
     exit(1);
 }
 
+
 int main(int argc, char **argv)
 {
     int c = 0;
     int test_config = 0;
-    int debug_level = 0;
+    debug_level = 0;
 
     const char *dir = DEFAULTDIR;
     const char *user = USER;

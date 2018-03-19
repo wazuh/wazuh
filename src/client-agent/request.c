@@ -27,10 +27,10 @@ static pthread_mutex_t mutex_table = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pool_available = PTHREAD_COND_INITIALIZER;
 
-static int request_pool;
-static int rto_sec;
-static int rto_msec;
-static int max_attempts;
+int request_pool;
+int rto_sec;
+int rto_msec;
+int max_attempts;
 
 // Initialize request module
 void req_init() {
