@@ -479,9 +479,7 @@ def send_recv_and_check(cluster_socket, query):
 
 def send_to_socket(cluster_socket, query):
     # add the query size to the message
-    query_size = len(query)+1
-    new_query = "{} {}".format(query_size+len(str(query_size)), query)
-    query = "{} {}".format(len(new_query), query)
+    query = "{} {}".format(len(query), query)
     sent = cluster_socket.send(query.encode())
     if sent != len(query):
         logging.debug("Error sending query: sent {}/{}".format(sent, len(query)))

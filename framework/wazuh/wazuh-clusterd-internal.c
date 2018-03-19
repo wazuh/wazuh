@@ -410,9 +410,9 @@ int execute_db_command(char *response, sqlite3 *db, sqlite3_stmt **res) {
 int receive_db_cmd(char *buf, char* buf2, char *response, sqlite3 *db, sqlite3_stmt **res) {
     char *cmd;
     if (strlen(buf2) == 0) {
-        strcpy(buf2, buf);
-        size_t supposed_len, real_msg_len = strlen(buf);
         cmd = strtok(buf, " ");
+        strcpy(buf2, buf+strlen(cmd)+1);
+        size_t supposed_len, real_msg_len = strlen(buf2);
         int number_of_fields;
         if ((number_of_fields = sscanf(cmd, "%zu", &supposed_len)) != 1) 
             mtdebug2(DB_TAG, "Failed extracting lenth of command: %d", number_of_fields);
@@ -911,11 +911,13 @@ char * inotify_pop() {
     return cmd;
 }
 
+
 unsigned int get_number_of_digits(int n) {
     unsigned int digits;
     for(digits = 1; n /= 10; digits++);
     return digits;
 }
+
 
 void* daemon_inotify(void * args) {
     char * node_type = args;
@@ -967,11 +969,11 @@ void* daemon_inotify(void * args) {
         // add cmd size before sending
         char *cmd = inotify_pop();
         char aux_buf[BUFFER_SIZE];
-        size_t cmd_size = strlen(cmd) + 1;
-        unsigned int number_of_digits = get_number_of_digits(cmd_size);
-        unsigned int total_size = number_of_digits + cmd_size;
+        size_t cmd_size = strlen(cmd);
         int copied;
-        if ((copied = snprintf(aux_buf, total_size+1, "%d %s", total_size, cmd)) > (ssize_t)total_size)
+        int total_size = cmd_size + get_number_of_digits(cmd_size) + 1;
+
+        if ((copied = snprintf(aux_buf, total_size + 1, "%zu %s", cmd_size, cmd)) > total_size)
             mterror(INOTIFY_TAG, "Overflow copying command to cluster database socket: %d/%d", copied, total_size);
 
         if ((db_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
