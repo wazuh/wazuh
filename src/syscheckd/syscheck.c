@@ -18,6 +18,7 @@
 // Global variables
 syscheck_config syscheck;
 pthread_cond_t audit_thread_started;
+int debug_level;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -225,7 +226,7 @@ __attribute__((noreturn)) static void help_syscheckd()
 int main(int argc, char **argv)
 {
     int c, r;
-    int debug_level = 0;
+    debug_level = 0;
     int test_config = 0, run_foreground = 0;
     const char *cfg = DEFAULTCPATH;
     gid_t gid;
