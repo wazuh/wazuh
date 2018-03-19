@@ -15,6 +15,12 @@
 #define localtime_r(x, y) localtime_s(y, x)
 #endif
 
+int log_compress;
+int keep_log_days;
+int day_wait;
+int daily_rotations;
+int size_rotate_read;
+
 // Thread to rotate internal log
 void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     char path[PATH_MAX];
@@ -24,11 +30,12 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     time_t now = time(NULL);
     struct tm tm;
     int today;
-    int compress = getDefine_Int("monitord", "compress", 0, 1);
-    int keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
-    int day_wait = getDefine_Int("monitord", "day_wait", 0, 600);
-    unsigned long size_rotate = (unsigned long) getDefine_Int("monitord", "size_rotate", 0, 4096) * 1024 * 1024;
-    int daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
+    log_compress = getDefine_Int("monitord", "compress", 0, 1);
+    keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
+    day_wait = getDefine_Int("monitord", "day_wait", 0, 600);
+    size_rotate_read = getDefine_Int("monitord", "size_rotate", 0, 4096);
+    unsigned long size_rotate = (unsigned long) size_rotate_read * 1024 * 1024;
+    daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
 
     mdebug1("Log rotating thread started.");
 
@@ -54,7 +61,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
         if (today != tm.tm_mday) {
             sleep(day_wait);
             /* Daily rotation and compression of ossec.log/ossec.json */
-            w_rotate_log(compress, keep_log_days, 1, 0, daily_rotations);
+            w_rotate_log(log_compress, keep_log_days, 1, 0, daily_rotations);
             today = tm.tm_mday;
         }
 
@@ -63,7 +70,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.log */
                 if ( (unsigned long) size >= size_rotate) {
-                    w_rotate_log(compress, keep_log_days, 0, 0, daily_rotations);
+                    w_rotate_log(log_compress, keep_log_days, 0, 0, daily_rotations);
                 }
             }
 
@@ -71,7 +78,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.json */
                 if ( (unsigned long) size >= size_rotate) {
-                    w_rotate_log(compress, keep_log_days, 0, 1, daily_rotations);
+                    w_rotate_log(log_compress, keep_log_days, 0, 1, daily_rotations);
                 }
             }
         }else

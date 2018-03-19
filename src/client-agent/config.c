@@ -18,13 +18,13 @@ time_t available_server;
 int run_foreground;
 keystore keys;
 agent *agt;
-
+int remote_conf;
+int min_eps;
 
 /* Read the config file (for the remote client) */
 int ClientConf(const char *cfgfile)
 {
     int modules = 0;
-    int min_eps;
 
     agt->server = NULL;
     agt->lip = NULL;
@@ -47,6 +47,7 @@ int ClientConf(const char *cfgfile)
 
 #ifdef CLIENT
     if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
+        remote_conf = agt->flags.remote_conf;
         ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
     }
 #endif
@@ -128,6 +129,38 @@ cJSON *getLabelsConfig(void) {
     }
 
     cJSON_AddItemToObject(root,"labels",labels);
+
+    return root;
+}
+
+
+cJSON *getAgentInternalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internals = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(internals,"agent.debug",debug_level);
+    cJSON_AddNumberToObject(internals,"agent.warn_level",warn_level);
+    cJSON_AddNumberToObject(internals,"agent.normal_level",normal_level);
+    cJSON_AddNumberToObject(internals,"agent.tolerance",tolerance);
+    cJSON_AddNumberToObject(internals,"agent.recv_timeout",timeout);
+    cJSON_AddNumberToObject(internals,"agent.state_interval",interval);
+    cJSON_AddNumberToObject(internals,"agent.min_eps",min_eps);
+#ifdef CLIENT
+    cJSON_AddNumberToObject(internals,"agent.remote_conf",remote_conf);
+#endif
+    cJSON_AddNumberToObject(internals,"monitord.rotate_log",rotate_log);
+    cJSON_AddNumberToObject(internals,"monitord.request_pool",request_pool);
+    cJSON_AddNumberToObject(internals,"monitord.request_rto_sec",rto_sec);
+    cJSON_AddNumberToObject(internals,"monitord.request_rto_msec",rto_msec);
+    cJSON_AddNumberToObject(internals,"monitord.max_attempts",max_attempts);
+    cJSON_AddNumberToObject(internals,"monitord.compress",log_compress);
+    cJSON_AddNumberToObject(internals,"monitord.keep_log_days",keep_log_days);
+    cJSON_AddNumberToObject(internals,"monitord.day_wait",day_wait);
+    cJSON_AddNumberToObject(internals,"monitord.size_rotate",size_rotate_read);
+    cJSON_AddNumberToObject(internals,"monitord.daily_rotations",daily_rotations);
+
+    cJSON_AddItemToObject(root,"internals_options",internals);
 
     return root;
 }

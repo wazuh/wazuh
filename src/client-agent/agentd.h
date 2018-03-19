@@ -47,6 +47,7 @@ int ClientConf(const char *cfgfile);
 cJSON *getClientConfig(void);
 cJSON *getBufferConfig(void);
 cJSON *getLabelsConfig(void);
+cJSON *getAgentInternalOptions(void);
 
 /* Agentd init function */
 void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
@@ -122,6 +123,22 @@ size_t agcom_getconfig(const char * section, char * output);
 #endif
 
 /*** Global variables ***/
+extern int debug_level;
+extern int warn_level;
+extern int normal_level;
+extern int tolerance;
+extern int rotate_log;
+extern int request_pool;
+extern int rto_sec;
+extern int rto_msec;
+extern int max_attempts;
+extern int log_compress;
+extern int keep_log_days;
+extern int day_wait;
+extern int daily_rotations;
+extern int size_rotate_read;
+extern int timeout;
+extern int interval;
 
 /* Global variables. Only modified during startup. */
 
