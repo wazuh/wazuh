@@ -28,6 +28,7 @@ try:
     parser.add_argument('-f', help="Run in foreground", action='store_true')
     parser.add_argument('-d', help="Enable debug messages", action='store_true')
     parser.add_argument('-V', help="Print version", action='store_true')
+    parser.add_argument('-r', help="Run as root", action='store_true')
 
     # Set framework path
     path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
@@ -397,10 +398,12 @@ if __name__ == '__main__':
         except CalledProcessError:
             run_internal_daemon(args.d, cluster_config)
 
-        # Drop privileges to ossec
-        pwdnam_ossec = getpwnam('ossec')
-        setgid(pwdnam_ossec.pw_gid)
-        seteuid(pwdnam_ossec.pw_uid)
+
+        if not args.r:
+            # Drop privileges to ossec
+            pwdnam_ossec = getpwnam('ossec')
+            setgid(pwdnam_ossec.pw_gid)
+            seteuid(pwdnam_ossec.pw_uid)
 
         create_pid("wazuh-clusterd", getpid())
 
