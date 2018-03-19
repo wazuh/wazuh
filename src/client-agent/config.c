@@ -160,7 +160,7 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"monitord.size_rotate",size_rotate_read);
     cJSON_AddNumberToObject(internals,"monitord.daily_rotations",daily_rotations);
 
-    cJSON_AddItemToObject(root,"internals_options",internals);
+    cJSON_AddItemToObject(root,"internal_options",internals);
 
     return root;
 }

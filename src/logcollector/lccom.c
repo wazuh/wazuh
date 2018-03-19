@@ -60,6 +60,14 @@ size_t lccom_getconfig(const char * section, char * output) {
         } else {
             goto error;
         }
+    } else if (strcmp(section, "internal_options") == 0){
+        if (cfg = getLogcollectorInternalOptions(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
     } else {
         goto error;
     }

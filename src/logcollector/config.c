@@ -10,6 +10,7 @@
 #include "shared.h"
 #include "logcollector.h"
 
+int accept_remote;
 
 /* Read the config file (the localfiles) */
 int LogCollectorConfig(const char *cfgfile)
@@ -24,7 +25,8 @@ int LogCollectorConfig(const char *cfgfile)
     log_config.globs = NULL;
     log_config.socket_list = NULL;
     log_config.agent_cfg = 0;
-    log_config.accept_remote = getDefine_Int("logcollector", "remote_commands", 0, 1);
+    accept_remote = getDefine_Int("logcollector", "remote_commands", 0, 1);
+    log_config.accept_remote = accept_remote;
 
     /* Get loop timeout */
     loop_timeout = getDefine_Int("logcollector", "loop_timeout", 1, 120);
@@ -134,6 +136,25 @@ cJSON *getSocketConfig(void) {
     if (cJSON_GetArraySize(targets) > 0) {
         cJSON_AddItemToObject(root,"targets",targets);
     }
+
+    return root;
+}
+
+cJSON *getLogcollectorInternalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internals = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(internals,"logcollector.remote_commands",accept_remote);
+    cJSON_AddNumberToObject(internals,"logcollector.loop_timeout",loop_timeout);
+    cJSON_AddNumberToObject(internals,"logcollector.open_attempts",open_file_attempts);
+    cJSON_AddNumberToObject(internals,"logcollector.vcheck_files",vcheck_files);
+    cJSON_AddNumberToObject(internals,"logcollector.max_lines",maximum_lines);
+    cJSON_AddNumberToObject(internals,"logcollector.debug",debug_level);
+
+
+
+    cJSON_AddItemToObject(root,"internal_options",internals);
 
     return root;
 }
