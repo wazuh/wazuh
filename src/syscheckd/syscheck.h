@@ -25,6 +25,7 @@
 
 /* Global config */
 extern syscheck_config syscheck;
+extern int debug_level;
 
 /** Function Prototypes **/
 
@@ -39,6 +40,7 @@ int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 
 /* Parse readed config into JSON format */
 cJSON *getSyscheckConfig(void);
+cJSON *getSyscheckInternalOptions(void);
 
 /* Create the database */
 int create_db(void);
