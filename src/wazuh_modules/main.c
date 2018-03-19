@@ -17,13 +17,14 @@ static void wm_cleanup();               // Cleanup function, called on exiting.
 static void wm_handler(int signum);     // Action on signal.
 
 static int flag_foreground = 0;         // Running in foreground.
+int wm_debug;
 
 // Main function
 
 int main(int argc, char **argv)
 {
     int c;
-    int debug = 0;
+    wm_debug = 0;
     int test_config = 0;
     wmodule *cur_module;
     gid_t gid;
@@ -38,7 +39,7 @@ int main(int argc, char **argv)
         switch (c) {
         case 'd':
             nowDebug();
-            debug = 1;
+            wm_debug = 1;
             break;
         case 'f':
             flag_foreground = 1;
@@ -58,12 +59,12 @@ int main(int argc, char **argv)
 
     // Get default debug level
 
-    if (debug == 0) {
-        debug = getDefine_Int("wazuh_modules", "debug", 0, 2);
+    if (wm_debug == 0) {
+        wm_debug = getDefine_Int("wazuh_modules", "debug", 0, 2);
 
-        while (debug != 0) {
+        while (wm_debug != 0) {
             nowDebug();
-            debug--;
+            wm_debug--;
         }
     }
 
