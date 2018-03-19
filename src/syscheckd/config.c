@@ -10,6 +10,7 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "config/config.h"
+#include "rootcheck/rootcheck.h"
 
 #ifdef WIN32
 static char *SYSCHECK_EMPTY[] = { NULL };
@@ -191,6 +192,22 @@ cJSON *getSyscheckConfig(void) {
     if (syscheck.prefilter_cmd) cJSON_AddStringToObject(syscfg,"prefilter_cmd",syscheck.prefilter_cmd);
 
     cJSON_AddItemToObject(root,"syscheck",syscfg);
+
+    return root;
+}
+
+
+cJSON *getSyscheckInternalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internals = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(internals,"syscheck.sleep",syscheck.tsleep);
+    cJSON_AddNumberToObject(internals,"syscheck.sleep_after",syscheck.sleep_after);
+    cJSON_AddNumberToObject(internals,"syscheck.debug",debug_level);
+    cJSON_AddNumberToObject(internals,"rootcheck.sleep",rootcheck.tsleep);
+
+    cJSON_AddItemToObject(root,"internal_options",internals);
 
     return root;
 }
