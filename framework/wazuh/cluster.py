@@ -389,6 +389,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
     send_to_socket(cluster_socket, count_query)
     n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
     removed = False
+    removed_files = 0
 
     if n_files == 0:
         logging.info("New manager found: {0}".format(node))
@@ -429,6 +430,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
                                     and all_files[x] != 'deleted', files_in_db)):
             delete_sql = "update2"
             removed = True
+            removed_files += len(missing)
             for m in missing:
                 delete_sql += " tobedeleted {} {}".format(node, m)
 
@@ -443,6 +445,11 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
                 send_to_socket(cluster_socket, delete_sql)
                 data = receive_data_from_db_socket(cluster_socket)
 
+    logging.info("{}: Found {} files. {} synchronized, {} pending, {} deleted and {} to be deleted in the next sync.".format(
+                node, len(all_files),
+                len(filter(lambda x: x == 'synchronized', all_files.values())),
+                len(filter(lambda x: x == 'pending', all_files.values())),
+                len(filter(lambda x: x == 'deleted', all_files.values())), removed_files))
     return all_files, removed
 
 
@@ -492,6 +499,7 @@ def scan_for_new_files():
     own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
 
     for node in get_remote_nodes():
+        logging.info("Scanning new files for node {}.".format(node))
         scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket, own_items)
 
     cluster_socket.close()

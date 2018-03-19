@@ -166,6 +166,8 @@ if __name__ == '__main__':
 
             sync(debug=args.debug)
 
+            logging.info("Synchronization successfully completed.")
+
         elif args.manager is not None and args.files is None and args.force is None:
             logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
 
@@ -196,9 +198,12 @@ if __name__ == '__main__':
                 for node in args.manager:
                     sync_one_node(debug=args.debug, node=node, force=True)
 
+            logging.info("Forced synchronization successfully completed.")
+
         elif args.scan is not None:
             try:
                 scan_for_new_files()
+                logging.info("Scan successfully completed.")
             except socket.error as e:
                 raise e
 
