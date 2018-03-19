@@ -152,8 +152,6 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"logcollector.max_lines",maximum_lines);
     cJSON_AddNumberToObject(internals,"logcollector.debug",debug_level);
 
-
-
     cJSON_AddItemToObject(root,"internal_options",internals);
 
     return root;
