@@ -25,7 +25,7 @@
 /* Prototypes */
 static void help_logcollector(void) __attribute__((noreturn));
 
-int debug_level;
+int lc_debug_level;
 
 /* Print help statement */
 static void help_logcollector()
@@ -47,11 +47,12 @@ static void help_logcollector()
 int main(int argc, char **argv)
 {
     int c;
-    debug_level = 0;
+    int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     const char *cfg = DEFAULTCPATH;
     gid_t gid;
     const char *group = GROUPGLOBAL;
+    lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
 
     /* Setup random */
     srandom_init();
@@ -106,7 +107,7 @@ int main(int argc, char **argv)
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = getDefine_Int("logcollector", "debug", 0, 2);
+        debug_level = lc_debug_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;

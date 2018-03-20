@@ -204,7 +204,7 @@ cJSON *getSyscheckInternalOptions(void) {
 
     cJSON_AddNumberToObject(internals,"syscheck.sleep",syscheck.tsleep);
     cJSON_AddNumberToObject(internals,"syscheck.sleep_after",syscheck.sleep_after);
-    cJSON_AddNumberToObject(internals,"syscheck.debug",debug_level);
+    cJSON_AddNumberToObject(internals,"syscheck.debug",sys_debug_level);
     cJSON_AddNumberToObject(internals,"rootcheck.sleep",rootcheck.tsleep);
 
     cJSON_AddItemToObject(root,"internal_options",internals);

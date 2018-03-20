@@ -18,7 +18,7 @@ wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
 int wm_max_eps;             // Maximum events per second sent by OpenScap and CIS-CAT Wazuh Module
 int wm_kill_timeout;        // Time for a process to quit before killing it
-int wm_debug;
+int wm_debug_level;
 
 // Read XML configuration and internal options
 
@@ -302,7 +302,7 @@ cJSON *getModulesInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"wazuh_modules.task_nice",wm_task_nice);
     cJSON_AddNumberToObject(internals,"wazuh_modules.max_eps",wm_max_eps);
     cJSON_AddNumberToObject(internals,"wazuh_modules.kill_timeout",wm_kill_timeout);
-    cJSON_AddNumberToObject(internals,"wazuh_modules.debug",wm_debug);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.debug",wm_debug_level);
 
     cJSON_AddItemToObject(root,"internal_options",internals);
 
