@@ -101,5 +101,9 @@ global cluster_timeout
 cluster_timeout = 1
 cluster_internal_timeout = 15
 
+# global dictionary to store and reuse connections among cluster nodes
+global cluster_connections
+cluster_connections = {}
+
 # Common variables based on ossec path (/var/ossec by default)
 set_paths_based_on_ossec()

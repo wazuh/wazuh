@@ -55,6 +55,7 @@ try:
 except:
     compression = zipfile.ZIP_STORED
 
+
 def check_cluster_status():
     """
     Function to check if cluster is enabled
@@ -86,55 +87,50 @@ if check_cluster_status():
         raise WazuhException(3008, str(e))
 
 
-class WazuhClusterClient(asynchat.async_chat):
-    def __init__(self, host, port, key, data, file, map=None):
-        asynchat.async_chat.__init__(self, map=map)
-        if not map:
-            self.map = asyncore.socket_map
-        else:
-            self.map = map
-        self.can_read = False
-        self.can_write = True
+class WazuhClusterClient():
+    def __init__(self, host, port, key, data, file):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.can_close = False
         self.received_data = []
         self.response = ""
         self.f = key
         self.data = data
         self.file = file
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(common.cluster_timeout)
         self.addr = host
+        self.port = port
+        self.terminator = '\n'
+        self.chunk = 4096
+        self.connect()
+
+
+    def connect(self):
         try:
-            self.socket.connect((host, port))
+            self.socket.connect((self.addr, self.port))
         except socket.error as e:
-            self.close()
+            self.can_close = True
+            self.socket.close()
             # raise WazuhException(3010, strerror(e[0]))
             raise WazuhException(3010, str(e))
-        self.set_terminator('\n')
+
 
     def handle_close(self):
-        self.close()
+        if self.can_close:
+            self.close()
 
-    def readable(self):
-        return self.can_read
 
-    def writable(self):
-        return self.can_write
-
-    def handle_error(self):
-        nil, t, v, tbinfo = asyncore.compact_traceback()
-        self.close()
-        if InvalidToken == t or InvalidSignature == t:
-            raise WazuhException(3010, "Could not decrypt message from {0}".format(self.addr))
-        else:
-            raise WazuhException(3010, str(v))
-
-    def collect_incoming_data(self, data):
-        self.received_data.append(data)
+    def handle_receive(self):
+        data = ""
+        self.received_data = []
+        while not self.terminator in data:
+            data = self.socket.recv(self.chunk)
+            self.received_data.append(data)
+        self.found_terminator()
 
     def found_terminator(self):
         logging.debug("Received {}".format(len(''.join(self.received_data))))
         self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
-        self.close()
+        self.handle_close()
 
     def handle_write(self):
         if self.file is not None:
@@ -145,23 +141,32 @@ class WazuhClusterClient(asynchat.async_chat):
         i = 0
         msg_len = len(msg)
         while i < msg_len:
-            next_i = i+4096 if i+4096 < msg_len else msg_len
-            sent = self.send(msg[i:next_i])
+            next_i = i+self.chunk if i+self.chunk < msg_len else msg_len
+            sent = self.socket.send(msg[i:next_i])
             i += sent
 
         logging.debug("CLIENT: Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
-        self.can_read=True
-        self.can_write=False
+        self.handle_receive()
 
 
 def send_request(host, port, key, data, file=None):
     error = 0
     try:
-        fernet_key = Fernet(key.encode('base64','strict'))
-        mymap = dict()
-        client = WazuhClusterClient(host, int(port), fernet_key, data, file, mymap)
-        asyncore.loop(map=mymap)
-        data = client.response
+        logging.debug("Send_request: {}".format(common.cluster_connections))
+        client = common.cluster_connections.get(host)
+        if not client:
+            logging.debug("No opened connection with {}".format(host))
+            fernet_key = Fernet(key.encode('base64','strict'))
+            client = WazuhClusterClient(host, int(port), fernet_key, data, file)
+            client.handle_write()
+            data = client.response
+            common.cluster_connections[host] = client
+        else:
+            # client.connect()
+            client.data = data
+            client.file = file
+            client.handle_write()
+            data = client.response
 
     except NameError as e:
         data = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"
@@ -172,6 +177,12 @@ def send_request(host, port, key, data, file=None):
         data = str(e)
 
     return error, data
+
+
+def restart_connection(host):
+    logging.debug("restart_connection: {}".format(common.cluster_connections))
+    del common.cluster_connections[host]
+
 
 def get_status_json():
     return {"enabled": "yes" if check_cluster_status() else "no",
@@ -1017,51 +1028,60 @@ def check_files_to_restart(pending_files, cluster_items):
         return set()
 
 
-def push_updates_single_node(all_files, node_dest, config_cluster, removed, cluster_items, result_queue):
-    # filter to send only pending files
-    pending_files = set(filter(lambda x: x[1] != 'synchronized' and x[1] != 'tobedeleted' and x[1] != 'deleted', all_files.items()))
-    tobedeleted_files = filter(lambda x: x[1] == 'tobedeleted', all_files.items())
-    restart_files = check_files_to_restart(pending_files, cluster_items)
-    pending_files -= restart_files
+def push_updates_single_node(all_files, node_dest, config_cluster, removed, cluster_items, result_queue, debug=False):
+    try:
+        # filter to send only pending files
+        pending_files = set(filter(lambda x: x[1] != 'synchronized' and x[1] != 'tobedeleted' and x[1] != 'deleted', all_files.items()))
+        tobedeleted_files = filter(lambda x: x[1] == 'tobedeleted', all_files.items())
+        restart_files = check_files_to_restart(pending_files, cluster_items)
+        pending_files -= restart_files
 
-    if len(pending_files) > 0 or removed or len(tobedeleted_files) > 0:
-        logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
-        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
-                                  node_type=config_cluster['node_type'],
-                                  tobedeleted_files=map(itemgetter(0), tobedeleted_files))
+        if len(pending_files) > 0 or removed or len(tobedeleted_files) > 0:
+            logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
+            zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
+                                      node_type=config_cluster['node_type'],
+                                      tobedeleted_files=map(itemgetter(0), tobedeleted_files))
 
-        error, response = send_request(host=node_dest, port=config_cluster['port'],
-                                       data="zip {0}".format(str(len(zip_file)).
-                                        zfill(common.cluster_protocol_plain_size - len("zip "))),
-                                       file=zip_file, key=config_cluster['key'])
+            error, response = send_request(host=node_dest, port=config_cluster['port'],
+                                           data="zip {0}".format(str(len(zip_file)).
+                                            zfill(common.cluster_protocol_plain_size - len("zip "))),
+                                           file=zip_file, key=config_cluster['key'])
 
-        try:
-            res = literal_eval(response)
-        except Exception as e:
-            res = response
+            try:
+                res = literal_eval(response)
+            except Exception as e:
+                res = response
 
-    else:
-        logging.info("No pending files to send to {0} ".format(node_dest))
-        res = {'error': 0, 'data':{'updated':[], 'error':[], 'deleted':[], 'restart': False}}
-        error = 0
+        else:
+            logging.info("No pending files to send to {0} ".format(node_dest))
+            res = {'error': 0, 'data':{'updated':[], 'error':[], 'deleted':[], 'restart': False}}
+            error = 0
 
 
-    if error != 0:
-        logging.error(res)
-        result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
-                          'error': 1, 'files':{'updated':[], 'deleted':[],
-                                        'error':list(map(itemgetter(0), pending_files))}})
+        if error != 0:
+            logging.error(res)
+            result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
+                              'error': 1, 'files':{'updated':[], 'deleted':[],
+                                            'error':list(map(itemgetter(0), pending_files))}})
 
-    elif res['error'] != 0:
-        logging.debug(res)
-        result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
-                          'error': 1, 'files':{'updated':[], 'deleted':[],
-                                        'error':list(map(itemgetter(0), pending_files)), 'restart': False}})
-    else:
-        logging.debug({'updated': len(res['data']['updated']),
-                      'error': res['data']['error'],
-                      'deleted': len(res['data']['deleted'])})
-        result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
+        elif res['error'] != 0:
+            logging.debug(res)
+            result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
+                              'error': 1, 'files':{'updated':[], 'deleted':[],
+                                            'error':list(map(itemgetter(0), pending_files)), 'restart': False}})
+        else:
+            logging.debug({'updated': len(res['data']['updated']),
+                          'error': res['data']['error'],
+                          'deleted': len(res['data']['deleted'])})
+            result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
+    except Exception as e:
+        logging.error("Error receiving updates from {}: {} ({})".format(node_dest, str(e), res))
+        if debug:
+            raise
+    except Exception as e:
+        logging.error("Error sending/receiving updates from {}: {}".format(node_dest, str(e)))
+        if debug:
+            raise
 
 
 def update_node_db_after_sync(data, node, cluster_socket):
@@ -1137,7 +1157,7 @@ def sync_one_node(debug, node, force=False, config_cluster=None, cluster_items=N
 
     before = time()
     result_queue = queue()
-    push_updates_single_node(all_files, node, config_cluster, removed, cluster_items, result_queue)
+    push_updates_single_node(all_files, node, config_cluster, removed, cluster_items, result_queue, debug)
 
     after = time()
     synchronization_duration += after-before
@@ -1216,7 +1236,7 @@ def sync(debug, force=False, config_cluster=None, cluster_items=None):
     for node in remote_nodes:
         t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node],node,
                                                                     config_cluster, removed,
-                                                                    cluster_items, result_queue))
+                                                                    cluster_items, result_queue, debug))
         threads.append(t)
         t.start()
         result = result_queue.get()
