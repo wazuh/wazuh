@@ -11,6 +11,7 @@
 #include "logcollector.h"
 
 int accept_remote;
+int lc_debug_level;
 
 /* Read the config file (the localfiles) */
 int LogCollectorConfig(const char *cfgfile)
@@ -150,7 +151,7 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"logcollector.open_attempts",open_file_attempts);
     cJSON_AddNumberToObject(internals,"logcollector.vcheck_files",vcheck_files);
     cJSON_AddNumberToObject(internals,"logcollector.max_lines",maximum_lines);
-    cJSON_AddNumberToObject(internals,"logcollector.debug",debug_level);
+    cJSON_AddNumberToObject(internals,"logcollector.debug",lc_debug_level);
 
     cJSON_AddItemToObject(root,"internal_options",internals);
 

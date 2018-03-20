@@ -123,7 +123,8 @@ size_t agcom_getconfig(const char * section, char * output);
 #endif
 
 /*** Global variables ***/
-extern int debug_level;
+extern int agent_debug_level;
+extern int win_debug_level;
 extern int warn_level;
 extern int normal_level;
 extern int tolerance;
@@ -139,6 +140,8 @@ extern int daily_rotations;
 extern int size_rotate_read;
 extern int timeout;
 extern int interval;
+extern int remote_conf;
+extern int min_eps;
 
 /* Global variables. Only modified during startup. */
 
