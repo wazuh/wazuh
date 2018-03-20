@@ -161,7 +161,7 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.opts[i] & CHECK_INODE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_inode"));
             if (syscheck.opts[i] & CHECK_REALTIME) cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
             if (syscheck.opts[i] & CHECK_SEECHANGES) cJSON_AddItemToArray(opts, cJSON_CreateString("report_changes"));
-            // if (syscheck.opts[i] & CHECK_SHA256SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
+            if (syscheck.opts[i] & CHECK_SHA256SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
             cJSON_AddItemToObject(pair,"opts",opts);
             cJSON_AddStringToObject(pair,"dir",syscheck.dir[i]);
             cJSON_AddItemToArray(dirs, pair);
@@ -219,6 +219,7 @@ cJSON *getSyscheckInternalOptions(void) {
 
     cJSON_AddNumberToObject(internals,"syscheck.sleep",syscheck.tsleep);
     cJSON_AddNumberToObject(internals,"syscheck.sleep_after",syscheck.sleep_after);
+    cJSON_AddNumberToObject(internals,"syscheck.rt_delay",syscheck.rt_delay);
     cJSON_AddNumberToObject(internals,"syscheck.debug",sys_debug_level);
     cJSON_AddNumberToObject(internals,"rootcheck.sleep",rootcheck.tsleep);
 
