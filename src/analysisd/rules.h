@@ -237,15 +237,15 @@ int _setlevels(RuleNode *node, int nnode);
 #define SYSCHECK_MODULE     13
 #define HOSTINFO_MODULE     15
 
-#define ROOTCHECK_MOD   "rootcheck"
-#define HOSTINFO_NEW    "hostinfo_new"
-#define HOSTINFO_MOD    "hostinfo_modified"
-#define SYSCHECK_MOD    "syscheck_integrity_changed"
-#define SYSCHECK_MOD2   "syscheck_integrity_changed_2nd"
-#define SYSCHECK_MOD3   "syscheck_integrity_changed_3rd"
-#define SYSCHECK_NEW    "syscheck_new_entry"
-#define SYSCHECK_DEL    "syscheck_deleted"
-#define SYSC_MOD        "syscollector"
+#define ROOTCHECK_MOD       "rootcheck"
+#define HOSTINFO_NEW        "hostinfo_new"
+#define HOSTINFO_MOD        "hostinfo_modified"
+#define SYSCHECK_MOD        "syscheck_integrity_changed"
+#define SYSCHECK_MOD2       "syscheck_integrity_changed_2nd"
+#define SYSCHECK_MOD3       "syscheck_integrity_changed_3rd"
+#define SYSCHECK_NEW        "syscheck_new_entry"
+#define SYSCHECK_DEL        "syscheck_deleted"
+#define SYSCOLLECTOR_MOD    "syscollector"
 
 /* Global variables */
 extern int _max_freq;
