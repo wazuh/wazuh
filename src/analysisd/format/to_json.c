@@ -188,6 +188,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if (lf->sha1_after) {
             cJSON_AddStringToObject(file_diff, "sha1_after", lf->sha1_after);
         }
+        if (lf->sha256_before) {
+            cJSON_AddStringToObject(file_diff, "sha256_before", lf->sha256_before);
+        }
+        if (lf->sha256_after) {
+            cJSON_AddStringToObject(file_diff, "sha256_after", lf->sha256_after);
+        }
         if (lf->uname_before) {
             cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);
         }

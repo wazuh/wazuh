@@ -23,7 +23,7 @@
 #include <linux/if_link.h>
 #include <linux/if_packet.h>
 #include "external/procps/readproc.h"
-#include "external/db-6.2.32.NC/build_unix/db.h"
+#include <db.h>
 
 hw_info *get_system_linux();                    // Get system information
 char* get_serial_number();                      // Get Motherboard serial number

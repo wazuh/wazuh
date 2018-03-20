@@ -12,6 +12,8 @@
 #include "os_zlib/os_zlib.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/blowfish/bf_op.h"
+#include "os_crypto/aes/aes_op.h"
+#include "client-agent/agentd.h"
 
 /* Prototypes */
 static void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local) __attribute((nonnull));
@@ -34,6 +36,35 @@ static unsigned int _s_recv_flush = 0;
 
 static int _s_verify_counter = 1;
 
+agent *agt;
+
+
+/* Crypto methods function */
+int doEncryptByMethod(const char *input, char *output, const char *charkey,
+    long size, short int action,int method)
+{    
+    switch(method) 
+    {
+        case W_METH_BLOWFISH:
+            return OS_BF_Str(input, output,
+                    charkey,
+                    size,
+                    action);
+        case W_METH_AES:
+            return OS_AES_Str(input, output,
+                charkey,
+                size,
+                action);
+
+        default:
+            return OS_INVALID;
+    }
+}
+
+/* Set the agent crypto method readed from the ossec.conf file */
+void os_set_agent_crypto_method(keystore * keys,const int method){
+    keys->keyentries[0]->crypto_method = method;
+}
 
 /* Read counters for each agent */
 void OS_StartCounter(keystore *keys)
@@ -180,6 +211,20 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
     unsigned int msg_local = 0;
     char *f_msg;
 
+
+    if(strncmp(buffer, "#AES", 4)==0){
+        buffer+=4;
+        #ifndef CLIENT
+            keys->keyentries[id]->crypto_method = W_METH_AES;
+        #endif
+    }
+    else{
+        #ifndef CLIENT
+            keys->keyentries[id]->crypto_method = W_METH_BLOWFISH;
+        #endif
+    } 
+
+
     if (*buffer == ':') {
         buffer++;
     } else {
@@ -188,14 +233,25 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
     }
 
     /* Decrypt message */
-    if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->key,
-                   buffer_size, OS_DECRYPT)) {
-        merror(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
-        return (NULL);
+    switch(keys->keyentries[id]->crypto_method){
+        case W_METH_BLOWFISH:
+            if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->key,
+                        buffer_size, OS_DECRYPT)) {
+                merror(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
+                return (NULL);
+            }
+            break;
+        case W_METH_AES:
+            if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->key,
+                buffer_size-4, OS_DECRYPT)) {
+                merror(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
+                return (NULL);
+            }
+            break;
     }
 
     /* Compressed */
-    else if (cleartext[0] == '!') {
+    if (cleartext[0] == '!') {
         cleartext[buffer_size] = '\0';
         cleartext++;
         buffer_size--;
@@ -374,6 +430,9 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     u_int16_t rand1;
     char _tmpmsg[OS_MAXSTR + 2];
     char _finmsg[OS_MAXSTR + 2];
+    char crypto_token[6] = {0};
+    unsigned long crypto_length = 0;
+    int crypto_method = 0;
     os_md5 md5sum;
 
     /* Check for invalid msg sizes */
@@ -382,6 +441,20 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
         return (0);
     }
 
+    crypto_method = keys->keyentries[id]->crypto_method;
+
+    switch(crypto_method)
+    {
+        case W_METH_BLOWFISH:
+            memcpy(crypto_token,":",1);
+            break;
+        case W_METH_AES:
+            memcpy(crypto_token,"#AES:",5);
+            break;
+        default:
+            return OS_INVALID;
+    }   
+    
     /* Random number, take only 5 chars ~= 2^16=65536*/
     rand1 = (u_int16_t) os_random();
 
@@ -452,25 +525,26 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
 
     /* If the IP is dynamic (not single host), append agent ID to the message */
     if (!isSingleHost(keys->keyentries[id]->ip) && isAgent) {
-        length = snprintf(msg_encrypted, 16, "!%s!:", keys->keyentries[id]->id);
+        length = snprintf(msg_encrypted, 16, "!%s!%s", keys->keyentries[id]->id,crypto_token);    
     } else {
         /* Set beginning of the message */
-        msg_encrypted[0] = ':';
-        length = 1;
+        length = snprintf(msg_encrypted, 6, "%s",crypto_token);    
     }
 
     /* length is the amount of non-encrypted message appended to the buffer
      * On dynamic IPs, it will include the agent ID
      */
-
     /* Encrypt everything */
-    OS_BF_Str(_tmpmsg + (7 - bfsize), msg_encrypted + length,
-              keys->keyentries[id]->key,
-              (long) cmp_size,
-              OS_ENCRYPT);
-
+    crypto_length = doEncryptByMethod(_tmpmsg + (7 - bfsize), msg_encrypted + length,
+        keys->keyentries[id]->key,
+        (long) cmp_size,
+        OS_ENCRYPT,crypto_method);
+    
     /* Store before leaving */
     StoreSenderCounter(keys, global_count, local_count);
+
+    if(cmp_size < crypto_length)
+        cmp_size = crypto_length;
 
     return (cmp_size + length);
 }

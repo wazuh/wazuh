@@ -74,6 +74,7 @@ class WazuhClusterClient(asynchat.async_chat):
         self.file = file
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(common.cluster_timeout)
+        self.addr = host
         try:
             self.socket.connect((host, port))
         except socket.error as e:
@@ -118,11 +119,9 @@ class WazuhClusterClient(asynchat.async_chat):
         while i < msg_len:
             next_i = i+4096 if i+4096 < msg_len else msg_len
             sent = self.send(msg[i:next_i])
-            if sent == 4096 or next_i == msg_len:
-                i = next_i
-            logging.debug("CLIENT: Sending {} of {}".format(i, msg_len))
+            i += sent
 
-
+        logging.debug("CLIENT: Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
         self.can_read=True
         self.can_write=False
 
@@ -145,6 +144,7 @@ def send_request(host, port, key, data, file=None):
         data = str(e)
 
     return error, data
+
 
 def get_status_json():
     return {"enabled": "yes" if check_cluster_status() else "no",
@@ -203,6 +203,7 @@ def check_cluster_config(config):
 
     if len(invalid_elements) != 0:
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
+
 
 def get_cluster_items():
     try:

@@ -510,6 +510,8 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->md5_after = NULL;
     lf->sha1_before = NULL;
     lf->sha1_after = NULL;
+    lf->sha256_before = NULL;
+    lf->sha256_after = NULL;
     lf->size_before = NULL;
     lf->size_after = NULL;
     lf->owner_before = NULL;
@@ -634,6 +636,12 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->sha1_after) {
         free(lf->sha1_after);
+    }
+    if (lf->sha256_before) {
+        free(lf->sha256_before);
+    }
+    if (lf->sha256_after) {
+        free(lf->sha256_after);
     }
     if (lf->size_before) {
         free(lf->size_before);

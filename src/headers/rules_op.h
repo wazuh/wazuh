@@ -31,15 +31,17 @@
 #define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
 
 /* Alert options - stored in a uint8 */
-#define DO_FTS          0x001
-#define DO_MAILALERT    0x002
-#define DO_LOGALERT     0x004
-#define NO_AR           0x008
-#define NO_ALERT        0x010
-#define DO_OVERWRITE    0x020
-#define DO_PACKETINFO   0x040
-#define DO_EXTRAINFO    0x100
-#define SAME_EXTRAINFO  0x200
+#define DO_FTS          0x0001
+#define DO_MAILALERT    0x0002
+#define DO_LOGALERT     0x0004
+#define NO_AR           0x0008
+#define NO_ALERT        0x0010
+#define DO_OVERWRITE    0x0020
+#define DO_PACKETINFO   0x0040
+#define DO_EXTRAINFO    0x0100
+#define SAME_EXTRAINFO  0x0200
+#define NO_FULL_LOG     0x0400
+#define NO_COUNTER      0x1000
 
 /* Types of events (from decoders) */
 #define UNKNOWN             0   /* Unknown */

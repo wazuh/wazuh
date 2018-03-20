@@ -343,7 +343,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
     if is_agent_info or is_agent_groups:
         if node_type=='master':
             # check if the date is older than the manager's date
-            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) >= mtime:
+            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
                 logging.warning("Receiving an old file ({})".format(fullpath))
                 raise WazuhException(3012)
         elif is_agent_info:
@@ -496,7 +496,7 @@ def get_remote_nodes(connected=True, updateDBname=False):
         localhost_index = next (x[0] for x in enumerate(cluster) if x[1][1])
     except StopIteration as e:
         logging.error("Cluster nodes are not correctly configured at ossec.conf.")
-        exit(1)
+        raise WazuhException(3016)
 
     return list(compress(map(itemgetter(0), cluster), map(lambda x: x != localhost_index, range(len(cluster)))))
 
