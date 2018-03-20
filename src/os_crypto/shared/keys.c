@@ -95,6 +95,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->keyid = keys->keysize;
     keys->keyentries[keys->keysize]->global = 0;
     keys->keyentries[keys->keysize]->fp = NULL;
+    keys->keyentries[keys->keysize]->inode = 0;
     keys->keyentries[keys->keysize]->sock = -1;
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 

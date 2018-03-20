@@ -18,6 +18,7 @@
 /* Prototypes */
 static void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local) __attribute((nonnull));
 static void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local) __attribute((nonnull));
+static void ReloadCounter(const keystore *keys, int id, const char * cid) __attribute((nonnull));
 static char *CheckSum(char *msg, size_t length) __attribute((nonnull));
 
 /* Sending counts */
@@ -27,6 +28,7 @@ static unsigned int local_count  = 0;
 /* Average compression rates */
 static unsigned int evt_count = 0;
 static unsigned int rcv_count = 0;
+static unsigned int snd_count = 0;
 static size_t c_orig_size = 0;
 static size_t c_comp_size = 0;
 
@@ -90,6 +92,7 @@ void OS_StartCounter(keystore *keys)
         }
 
         keys->keyentries[i]->fp = fopen(rids_file, "r+");
+        keys->keyentries[i]->inode = File_Inode(rids_file);
 
         /* If nothing is there, try to open as write only */
         if (!keys->keyentries[i]->fp) {
@@ -172,6 +175,7 @@ static void StoreSenderCounter(const keystore *keys, unsigned int global, unsign
     /* Write to the beginning of the file */
     fseek(keys->keyentries[keys->keysize]->fp, 0, SEEK_SET);
     fprintf(keys->keyentries[keys->keysize]->fp, "%u:%u:", global, local);
+    fflush(keys->keyentries[keys->keysize]->fp);
 }
 
 /* Store the global and local count of events */
@@ -180,6 +184,43 @@ static void StoreCounter(const keystore *keys, int id, unsigned int global, unsi
     /* Write to the beginning of the file */
     fseek(keys->keyentries[id]->fp, 0, SEEK_SET);
     fprintf(keys->keyentries[id]->fp, "%u:%u:", global, local);
+    fflush(keys->keyentries[id]->fp);
+}
+
+/* Reload the global and local count of events */
+static void ReloadCounter(const keystore *keys, int id, const char * cid)
+{
+    ino_t new_inode;
+    char rids_file[OS_FLSIZE + 1];
+
+    snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, cid);
+    new_inode = File_Inode(rids_file);
+
+    if (keys->keyentries[id]->inode != new_inode) {
+        w_mutex_lock(&keys->keyentries[id]->mutex);
+        keys->keyentries[id]->fp = fopen(rids_file, "r+");
+
+        if (!keys->keyentries[id]->fp) {
+            keys->keyentries[id]->fp = fopen(rids_file, "w");
+            if (!keys->keyentries[id]->fp) {
+                goto fail_open;
+            }
+            fprintf(keys->keyentries[keys->keysize]->fp, "%u:%u:", 
+                    keys->keyentries[id]->global, keys->keyentries[id]->local);
+        }
+        else {
+            fscanf(keys->keyentries[id]->fp, "%u:%u:", 
+                    &keys->keyentries[id]->global, &keys->keyentries[id]->local);
+        }
+
+        keys->keyentries[id]->inode = new_inode;
+        w_mutex_unlock(&keys->keyentries[id]->mutex);
+    }
+    return;
+
+fail_open:
+    w_mutex_unlock(&keys->keyentries[id]->mutex);
+    merror("Unable to reload counter '%s': %s (%d)", cid, strerror(errno), errno);
 }
 
 /* Verify the checksum of the message
@@ -315,6 +356,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
             keys->keyentries[id]->local = msg_local;
 
             if (rcv_count >= _s_recv_flush) {
+                ReloadCounter(keys, id, keys->keyentries[id]->id);
                 StoreCounter(keys, id, msg_global, msg_local);
                 rcv_count = 0;
             }
@@ -462,6 +504,10 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     _finmsg[OS_MAXSTR + 1] = '\0';
     msg_encrypted[OS_MAXSTR] = '\0';
 
+    if (snd_count >= _s_recv_flush) {
+        ReloadCounter(keys, keys->keysize, SENDER_COUNTER);
+    }
+
     /* Increase local and global counters */
     if (local_count >= 9997) {
         local_count = 0;
@@ -541,7 +587,11 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
         OS_ENCRYPT,crypto_method);
     
     /* Store before leaving */
-    StoreSenderCounter(keys, global_count, local_count);
+    if (snd_count >= _s_recv_flush) {
+        StoreSenderCounter(keys, global_count, local_count);
+        snd_count = 0;
+    }
+    snd_count++;
 
     if(cmp_size < crypto_length)
         cmp_size = crypto_length;

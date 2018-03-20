@@ -33,6 +33,8 @@ typedef struct _keyentry {
     char *key;
     char *name;
 
+    ino_t inode;
+
     os_ip *ip;
     int sock;
     pthread_mutex_t mutex;
