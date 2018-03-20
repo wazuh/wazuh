@@ -30,6 +30,19 @@ static int decode_program(char *agent_id, cJSON * logJSON);
 static int decode_port(char *agent_id, cJSON * logJSON);
 static int decode_process(char *agent_id, cJSON * logJSON);
 
+static OSDecoderInfo *sysc_decoder = NULL;
+
+void SyscollectorInit(){
+
+    os_calloc(1, sizeof(OSDecoderInfo), sysc_decoder);
+    sysc_decoder->id = getDecoderfromlist(SYSCOLLECTOR_MOD);
+    sysc_decoder->name = SYSCOLLECTOR_MOD;
+    sysc_decoder->type = OSSEC_RL;
+    sysc_decoder->fts = 0;
+
+    mdebug1("SyscollectorInit completed.");
+}
+
 /* Special decoder for syscollector */
 int DecodeSyscollector(Eventinfo *lf)
 {
@@ -38,6 +51,8 @@ int DecodeSyscollector(Eventinfo *lf)
 
     // Decoding JSON
     JSON_Decoder_Exec(lf);
+
+    lf->decoder_info = sysc_decoder;
 
     // Check location
     if (lf->location[0] == '(') {
