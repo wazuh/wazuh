@@ -181,7 +181,7 @@ def send_request(host, port, key, data, file=None):
             else:
                 common.cluster_connections[host].socket.close()
                 del common.cluster_connections[host]
-                raise WazuhException(3010, "Connection with {} has status {}".format(connection_status))
+                return send_request(host, port, key, data, file)
 
     except NameError as e:
         response = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"

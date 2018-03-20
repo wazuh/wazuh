@@ -270,7 +270,10 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
 def crontab_sync_client(config_cluster, restart_after_sync, debug):
     def sync_handler(n_signal, frame):
         logging.debug("Starting to send files to the master node")
-        master = get_remote_nodes()[0]
+        remotes = get_remote_nodes()
+        if len(remotes) == 0:
+            raise WazuhException(3017)
+        master = remotes[0]
         sync_one_node(debug=debug, node=master, config_cluster=config_cluster, cluster_items=cluster_items)
         if restart_after_sync.value == 'T':
             restart_after_sync.value = 'F'
@@ -349,7 +352,7 @@ def signal_handler(n_signal, frame):
                     raise
         else:
             for connections in common.cluster_connections.values():
-                logging.debug("Closing socket {}...".format(connections.socket))
+                logging.debug("Closing socket {}...".format(connections.socket.getpeername()))
                 connections.socket.close()
     exit(1)
 
