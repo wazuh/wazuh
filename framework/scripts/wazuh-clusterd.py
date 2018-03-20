@@ -20,8 +20,9 @@ try:
     import ctypes
     import ctypes.util
     from operator import or_
-    from traceback import print_exc
+    from traceback import print_exc, extract_tb
     from io import BytesIO
+    from sys import exc_info
 
     import argparse
     parser =argparse.ArgumentParser()
@@ -61,8 +62,8 @@ try:
     import logging
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
                         filename="{0}/logs/cluster.log".format(common.ossec_path))
-except:
-    print("wazuh-clusterd: Python 2.7 required. Exiting.")
+except Exception as e:
+    print("wazuh-clusterd: Python 2.7 required. Exiting. {}".format(str(e)))
     exit()
 
 class WazuhClusterHandler(asynchat.async_chat):
@@ -225,14 +226,28 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
         cluster_items = get_cluster_items()
         signal(SIGALRM, sleep_handler)
         while True:
+            max_retries = 5
+            n_retries = 0
             logging.debug("Elements in requests queue: {}".format(requests_queue.items()))
             if len(requests_queue.values()) == 0 or not reduce(or_, requests_queue.values()):
-                logging.debug("Crontab: starting to sync")
-                try:
-                    sync(debug=False, config_cluster=config_cluster, cluster_items=cluster_items)
-                except Exception as e:
-                    logging.error(str(e))
-                    kill(child_pid, SIGINT)
+                logging.info("Crontab: starting to sync")
+                while n_retries <= max_retries:
+                    try:
+                        sync(debug=False, config_cluster=config_cluster, cluster_items=cluster_items)
+                        break
+                    # except InterruptedError:
+                    #     continue
+                    #     n_retries += 1
+                    except Exception as e:
+                        exc_type, exc_value, exc_traceback = exc_info()
+                        filename, line_number, module, line_content = extract_tb(exc_traceback)[-1]
+                        logging.error("Error {} synchronizing information ({}:{}): {}".format(exc_type, filename, line_number, exc_value.args[0]))
+                        n_retries += 1
+                        if n_retries < max_retries:
+                            sleep(sleep_time)
+                        else:
+                            sleep(60)
+                            n_retries = 0
 
                 remote_nodes = get_remote_nodes()
                 connected_clients.value = len(remote_nodes)
@@ -264,7 +279,13 @@ def crontab_sync_client(config_cluster, restart_after_sync, debug):
     def sync_handler(n_signal, frame):
         logging.debug("Starting to send files to the master node")
         master = get_remote_nodes()[0]
-        sync_one_node(debug=False, node=master, config_cluster=config_cluster, cluster_items=cluster_items)
+        try:
+            sync_one_node(debug=False, node=master, config_cluster=config_cluster, cluster_items=cluster_items)
+        except Exception as e:
+            exc_type, exc_value, exc_traceback = exc_info()
+            filename, line_number, module, line_content = extract_tb(exc_traceback)[-1]
+            logging.error("Error {} synchronizing information ({}:{}): {}".format(exc_type, filename, line_number, exc_value.args[0]))
+            
         if restart_after_sync.value == 'T':
             restart_after_sync.value = 'F'
             cluster_socket = connect_to_db_socket()
