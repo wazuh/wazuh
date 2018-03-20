@@ -79,6 +79,10 @@ cJSON *getClientConfig(void) {
     if (agt->lip) cJSON_AddStringToObject(client,"local_ip",agt->lip);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
     if (agt->flags.remote_conf) cJSON_AddStringToObject(client,"remote_conf","yes"); else cJSON_AddStringToObject(client,"remote_conf","no");
+    if (agt->crypto_method == W_METH_BLOWFISH)
+        cJSON_AddStringToObject(client,"crypto_method","blowfish");
+    else if (agt->crypto_method == W_METH_AES) 
+        cJSON_AddStringToObject(client,"crypto_method","aes");
     if (agt->server) {
         cJSON *servers = cJSON_CreateArray();
         for (i=0;agt->server[i].rip;i++) {
