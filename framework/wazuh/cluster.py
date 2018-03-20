@@ -32,6 +32,7 @@ import socket
 import asyncore
 import asynchat
 import errno
+import struct
 
 # import the C accelerated API of ElementTree
 try:
@@ -122,9 +123,13 @@ class WazuhClusterClient():
     def handle_receive(self):
         data = ""
         self.received_data = []
-        while not self.terminator in data:
-            data = self.socket.recv(self.chunk)
-            self.received_data.append(data)
+        try:
+            while not self.terminator in data:
+                data = self.socket.recv(self.chunk)
+                self.received_data.append(data)
+        except socket.error as e:
+            logging.error("Could not receive data from {}: {}".format(self.addr, str(e)))
+            raise WazuhException(3010, str(e))
         self.found_terminator()
 
     def found_terminator(self):
@@ -138,50 +143,77 @@ class WazuhClusterClient():
         else:
             msg = self.f.encrypt(self.data.encode()) + '\n\t\t\n'
 
-        i = 0
-        msg_len = len(msg)
-        while i < msg_len:
-            next_i = i+self.chunk if i+self.chunk < msg_len else msg_len
-            sent = self.socket.send(msg[i:next_i])
-            i += sent
+        try:
+            i = 0
+            msg_len = len(msg)
+            while i < msg_len:
+                next_i = i+self.chunk if i+self.chunk < msg_len else msg_len
+                sent = self.socket.send(msg[i:next_i])
+                i += sent
 
-        logging.debug("CLIENT: Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
-        self.handle_receive()
+            logging.debug("CLIENT: Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
+            self.handle_receive()
+        except socket.error as e:
+            logging.error("Could not send data to {}: {}".format(self.addr, str(e)))
+            raise WazuhException(3010, str(e))
 
 
 def send_request(host, port, key, data, file=None):
     error = 0
     try:
-        logging.debug("Send_request: {}".format(common.cluster_connections))
+        logging.debug("Active connections: {}".format(common.cluster_connections.keys()))
         client = common.cluster_connections.get(host)
         if not client:
             logging.debug("No opened connection with {}".format(host))
             fernet_key = Fernet(key.encode('base64','strict'))
             client = WazuhClusterClient(host, int(port), fernet_key, data, file)
             client.handle_write()
-            data = client.response
+            response = client.response
             common.cluster_connections[host] = client
         else:
-            # client.connect()
-            client.data = data
-            client.file = file
-            client.handle_write()
-            data = client.response
+            connection_status = get_connection_status(host)
+            logging.info("Connection status with {} is {}".format(host, connection_status))
+            if connection_status == 'ESTABLISHED':
+                client.data = data
+                client.file = file
+                client.handle_write()
+                response = client.response
+            else:
+                common.cluster_connections[host].socket.close()
+                del common.cluster_connections[host]
+                raise WazuhException(3010, "Connection with {} has status {}".format(connection_status))
 
     except NameError as e:
-        data = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"
+        response = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"
         error = 1
 
-    except WazuhException as e:
+    except Exception as e:
+        logging.error("Error sending request to {}: {}".format(host, str(e)))
         error = 1
-        data = str(e)
+        response = str(e)
 
-    return error, data
+    return error, response
 
 
-def restart_connection(host):
-    logging.debug("restart_connection: {}".format(common.cluster_connections))
-    del common.cluster_connections[host]
+def get_connection_status(host):
+    # Taken from: http://www.cse.scu.edu/~dclark/am_256_graph_theory/linux_2_6_stack/linux_2tcp_8h-source.html (line 78)
+    tcp_states = {
+        1: 'ESTABLISHED',
+        2: 'SYN_SENT',
+        3: 'SYN_RECV',
+        4: 'FIN_WAIT1',
+        5: 'FIN_WAIT2',
+        6: 'TIME_WAIT',
+        7: 'CLOSE',
+        8: 'CLOSE_WAIT',
+        9: 'LAST_ACK',
+        10: 'LISTEN',
+        11: 'CLOSING'
+    }
+    host_socket = common.cluster_connections[host].socket
+    # retrieve a struct tcp_info (/usr/include/linux/tcp.h). The first value is the status of the connection
+    state = struct.unpack("B"*7+"I"*24, host_socket.getsockopt(socket.SOL_TCP, socket.TCP_INFO, 104))[0]
+    return tcp_states[state]
 
 
 def get_status_json():
@@ -1074,10 +1106,6 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, clus
                           'error': res['data']['error'],
                           'deleted': len(res['data']['deleted'])})
             result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
-    except Exception as e:
-        logging.error("Error receiving updates from {}: {} ({})".format(node_dest, str(e), res))
-        if debug:
-            raise
     except Exception as e:
         logging.error("Error sending/receiving updates from {}: {}".format(node_dest, str(e)))
         if debug:

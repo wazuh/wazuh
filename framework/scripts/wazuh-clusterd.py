@@ -223,9 +223,8 @@ def restart_manager():
 def crontab_sync_master(interval, config_cluster, requests_queue, connected_clients, finished_clients, clients_to_restart, debug):
     def sleep_handler(n_signal, frame):
         logging.debug("Resetting connection of clients: {}".format(', '.join(clients_to_restart)))
-        for client in clients_to_restart:
-            del common.cluster_connections[client]
-
+        while clients_to_restart:
+            del common.cluster_connections[clients_to_restart.pop()]
         alarm(0)
         logging.debug("Sleeping for {}{}...".format(interval_number, interval_measure))
         sleep(sleep_time)
@@ -348,6 +347,10 @@ def signal_handler(n_signal, frame):
                 logging.error("Error killing child process: {}".format(str(e)))
                 if args.d:
                     raise
+        else:
+            for connections in common.cluster_connections.values():
+                logging.debug("Closing socket {}...".format(connections.socket))
+                connections.socket.close()
     exit(1)
 
 
