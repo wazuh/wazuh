@@ -620,6 +620,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *id_exist = NULL;
     char buf[4096 + 1];
     int index;
+    int add_to_centralized_group = 0;
 
     authd_sigblock();
 
@@ -720,6 +721,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 tmpstr++;
             }
         }
+        tmpstr++;
 
         if (parseok == 0) {
             merror("Invalid request for new agent from: %s", srcip);
@@ -737,6 +739,46 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 SSL_free(ssl);
                 close(client.socket);
                 continue;
+            }
+
+            /* Check for valid centralized group */
+            char centralized_group[256] = {0};
+            char centralized_group_token[2] = "G:";
+	    
+            if(strncmp(++tmpstr,centralized_group_token,2)==0)
+            {
+                
+                char group_path[PATH_MAX] = {0};
+        
+                sscanf(tmpstr," G:\'%255[^\']\"",centralized_group);
+                
+                if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s",centralized_group) >= PATH_MAX){	
+                    merror("Invalid group name: %.255s... , group path is too large.",centralized_group);
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s...\n\n, group path is too large", centralized_group);
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    continue;
+                }
+
+                /* Check if group exists */
+                DIR *group_dir = opendir(group_path);
+                if(group_dir){ 
+                    add_to_centralized_group = 1;
+                }
+                else{
+                    merror("Invalid group: %.255s",centralized_group);
+                    snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", centralized_group);
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    continue;
+                }
+                closedir(group_dir);
             }
 
             pthread_mutex_lock(&mutex_keys);
@@ -838,6 +880,21 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 SSL_free(ssl);
                 close(client.socket);
                 continue;
+            }
+
+            /* Add the agent to the centralized configuration group */
+            if(add_to_centralized_group) {
+                if(set_agent_group(keys.keyentries[index]->id,centralized_group) == -1){
+                    OS_RemoveAgent(keys.keyentries[index]->id);
+                    merror("Unable to set agent centralized group: %s (internal error)", centralized_group);
+                    snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", centralized_group);
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    continue;
+                }
             }
 
             snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, config.flags.use_source_ip ? srcip : "any", keys.keyentries[index]->key);

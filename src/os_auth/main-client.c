@@ -36,7 +36,7 @@ static void help_agent_auth(void) __attribute__((noreturn));
 static void help_agent_auth()
 {
     print_header();
-    print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass]", ARGV0);
+    print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -54,6 +54,7 @@ static void help_agent_auth()
     print_out("    -k <path>   Full path to agent key");
     print_out("    -P <pass>   Authorization password");
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
+    print_out("    -G <group>  Set the group for centralized configuration");
     print_out(" ");
     exit(1);
 }
@@ -79,6 +80,7 @@ int main(int argc, char **argv)
     const char *agent_cert = NULL;
     const char *agent_key = NULL;
     const char *ca_cert = NULL;
+    const char *centralized_group = NULL;
     char lhostname[512 + 1];
     char buf[4096 + 1];
     SSL_CTX *ctx;
@@ -94,7 +96,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "Vdhtg:m:p:A:c:v:x:k:D:P:a")) != -1) {
+    while ((c = getopt(argc, argv, "VdhtgG:m:p:A:c:v:x:k:D:P:a")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -174,6 +176,12 @@ int main(int argc, char **argv)
             case 'a':
                 auto_method = 1;
                 break;
+            case 'G':
+                if(!optarg){
+                    merror_exit("-%c needs an argument",c);
+                }
+                centralized_group = optarg;
+                break;
             default:
                 help_agent_auth();
                 break;
@@ -224,6 +232,10 @@ int main(int argc, char **argv)
             exit(1);
         }
         agentname = lhostname;
+    }
+
+    if(centralized_group == NULL){
+        centralized_group = DEFAULT_CENTRALIZED_GROUP;
     }
 
     /* Start SSL */
@@ -309,10 +321,10 @@ int main(int argc, char **argv)
     printf("INFO: Using agent name as: %s\n", agentname);
 
     if (authpass) {
-        snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s'\n", authpass, agentname);
+        snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s' G:'%s'\n", authpass, agentname,centralized_group);
     }
     else {
-        snprintf(buf, 2048, "OSSEC A:'%s'\n", agentname);
+        snprintf(buf, 2048, "OSSEC A:'%s' G:'%s'\n", agentname,centralized_group);
     }
 
     ret = SSL_write(ssl, buf, strlen(buf));
