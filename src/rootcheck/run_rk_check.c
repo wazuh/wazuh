@@ -62,28 +62,19 @@ void run_rk_check()
     time_t time2;
     FILE *fp;
     OSList *plist;
+    size_t i;
 
 #ifndef WIN32
     /* On non-Windows, always start at / */
-    size_t i;
-    char basedir[] = "/";
-
-    /* Removing the last / from basedir */
-    i = strlen(basedir);
-    if (i > 0) {
-        if (basedir[i - 1] == '/') {
-            basedir[i - 1] = '\0';
-        }
-    }
+    char basedir[] = "";
 #else
     /* On Windows, always start at C:\ */
     char basedir[] = "C:\\";
-
 #endif
 
     /* Set basedir */
     if (rootcheck.basedir == NULL) {
-        rootcheck.basedir = basedir;
+        rootcheck.basedir = strdup(basedir);
     }
 
     time1 = time(0);
