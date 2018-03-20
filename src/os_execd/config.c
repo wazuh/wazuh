@@ -279,6 +279,7 @@ cJSON *getExecdInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"logcollector.max_lines",maximum_lines);
     cJSON_AddNumberToObject(internals,"syscheck.sleep",syscheck.tsleep);
     cJSON_AddNumberToObject(internals,"syscheck.sleep_after",syscheck.sleep_after);
+    cJSON_AddNumberToObject(internals,"syscheck.rt_delay",syscheck.rt_delay);
     cJSON_AddNumberToObject(internals,"rootcheck.sleep",rootcheck.tsleep);
     cJSON_AddNumberToObject(internals,"wazuh_modules.task_nice",wm_task_nice);
     cJSON_AddNumberToObject(internals,"wazuh_modules.max_eps",wm_max_eps);
