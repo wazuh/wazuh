@@ -8,6 +8,11 @@
  */
 #include "shared.h"
 #include "execd.h"
+#include "wazuh_modules/wmodules.h"
+#include "client-agent/agentd.h"
+#include "logcollector/logcollector.h"
+#include "syscheckd/syscheck.h"
+#include "rootcheck/rootcheck.h"
 
 
 char **wcom_ca_store;
@@ -250,7 +255,6 @@ cJSON *getExecdInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"execd.request_timeout",req_timeout);
     cJSON_AddNumberToObject(internals,"execd.max_restart_lock",max_restart_lock);
 #ifdef WIN32
-    cJSON_AddNumberToObject(internals,"agent.debug",debug_level);
     cJSON_AddNumberToObject(internals,"agent.warn_level",warn_level);
     cJSON_AddNumberToObject(internals,"agent.normal_level",normal_level);
     cJSON_AddNumberToObject(internals,"agent.tolerance",tolerance);
@@ -273,15 +277,13 @@ cJSON *getExecdInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"logcollector.open_attempts",open_file_attempts);
     cJSON_AddNumberToObject(internals,"logcollector.vcheck_files",vcheck_files);
     cJSON_AddNumberToObject(internals,"logcollector.max_lines",maximum_lines);
-    cJSON_AddNumberToObject(internals,"logcollector.debug",debug_level);
     cJSON_AddNumberToObject(internals,"syscheck.sleep",syscheck.tsleep);
     cJSON_AddNumberToObject(internals,"syscheck.sleep_after",syscheck.sleep_after);
-    cJSON_AddNumberToObject(internals,"syscheck.debug",debug_level);
     cJSON_AddNumberToObject(internals,"rootcheck.sleep",rootcheck.tsleep);
     cJSON_AddNumberToObject(internals,"wazuh_modules.task_nice",wm_task_nice);
     cJSON_AddNumberToObject(internals,"wazuh_modules.max_eps",wm_max_eps);
     cJSON_AddNumberToObject(internals,"wazuh_modules.kill_timeout",wm_kill_timeout);
-    cJSON_AddNumberToObject(internals,"wazuh_modules.debug",wm_debug);
+    cJSON_AddNumberToObject(internals,"windows.debug",win_debug_level);
 #endif
     cJSON_AddItemToObject(root,"internal_options",internals);
 

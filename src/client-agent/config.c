@@ -20,6 +20,8 @@ keystore keys;
 agent *agt;
 int remote_conf;
 int min_eps;
+int rotate_log;
+int agent_debug_level;
 
 /* Read the config file (for the remote client) */
 int ClientConf(const char *cfgfile)
@@ -139,7 +141,7 @@ cJSON *getAgentInternalOptions(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *internals = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(internals,"agent.debug",debug_level);
+    cJSON_AddNumberToObject(internals,"agent.debug",agent_debug_level);
     cJSON_AddNumberToObject(internals,"agent.warn_level",warn_level);
     cJSON_AddNumberToObject(internals,"agent.normal_level",normal_level);
     cJSON_AddNumberToObject(internals,"agent.tolerance",tolerance);

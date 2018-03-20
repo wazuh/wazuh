@@ -18,7 +18,7 @@
 // Global variables
 syscheck_config syscheck;
 pthread_cond_t audit_thread_started;
-int debug_level;
+int sys_debug_level;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -56,12 +56,13 @@ static void read_internal(int debug_level)
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
 #endif
+    sys_debug_level = getDefine_Int("syscheck", "debug", 0, 2);
 
     /* Check current debug_level
      * Command line setting takes precedence
      */
     if (debug_level == 0) {
-        debug_level = getDefine_Int("syscheck", "debug", 0, 2);
+        int debug_level = sys_debug_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
@@ -226,7 +227,7 @@ __attribute__((noreturn)) static void help_syscheckd()
 int main(int argc, char **argv)
 {
     int c, r;
-    debug_level = 0;
+    int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     const char *cfg = DEFAULTCPATH;
     gid_t gid;
