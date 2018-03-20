@@ -498,11 +498,18 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 #### External ######
 ####################
 
-.PHONY: external
+EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+
 ifeq (${uname_S},Linux)
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a
-else
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+EXTERNAL_LIBS += libproc.a
+endif
+
+.PHONY: external test_external
+external: test_external $(EXTERNAL_LIBS)
+
+test_external:
+ifeq ($(wildcard external/*/*),)
+	$(error No external directory found. Run "make deps" before compiling external libraries)
 endif
 
 #### OpenSSL ##########
@@ -595,6 +602,29 @@ libproc.a: ${procps_o}
 	${OSSEC_RANLIB} $@
 endif
 endif
+
+################################
+#### External dependencies  ####
+################################
+
+TAR := tar -zxf
+CURL := curl -so
+space =
+space +=
+VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
+RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
+
+EXTERNAL_RES := cJSON openssl procps sqlite zlib
+EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
+EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
+
+.PHONY: deps
+deps: $(EXTERNAL_TAR)
+
+external/%.tar.gz:
+	$(CURL) $@ $(RESOURCES_URL)/$(patsubst external/%,%,$@)
+	$(TAR) $@ -C external
+	rm $(@)
 
 ####################
 #### OSSEC Libs ####
@@ -1282,7 +1312,7 @@ win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.c addagent/validat
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
+clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config clean-deps
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1291,6 +1321,7 @@ clean-test:
 	find . -name "*.gcda" -exec rm {} \;
 
 clean-external:
+ifneq ($(wildcard external/*/*),)
 	rm -f ${cjson_o} libcJSON.a
 	cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
 	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
@@ -1298,6 +1329,10 @@ clean-external:
 	rm -f ${OPENSSL_LIB}
 	rm -f ${CRYPTO_LIB}
 	rm -f ${procps_o} libproc.a
+endif
+
+clean-deps:
+	rm -rf $(EXTERNAL_DIR)
 
 clean-internals:
 	rm -f ${os_zlib_o} os_zlib.a
