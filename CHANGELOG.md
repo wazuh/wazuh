@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
 - Get Linux packages inventory natively. ([#441](https://github.com/wazuh/wazuh/pull/441))
 - Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
+- Added Rids Synchronization. ([#459](https://github.com/wazuh/wazuh/pull/459))
 
 ### Changed
 
