@@ -31,6 +31,8 @@ static struct {
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
 static int _unsign(const char * source, char dest[PATH_MAX + 1]);
 static int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]);
+int req_timeout;
+int max_restart_lock;
 
 size_t wcom_dispatch(char *command, size_t length, char *output){
 
@@ -173,7 +175,7 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
     } else if (strcmp(rcv_comm, "restart") == 0) {
         return wcom_restart(output);
     } else if (strcmp(rcv_comm, "lock_restart") == 0) {
-        static int max_restart_lock = 0;
+        max_restart_lock = 0;
         int timeout;
 
         if (!max_restart_lock) {
@@ -406,12 +408,12 @@ size_t wcom_upgrade(const char * package, const char * installer, char * output)
     char installer_j[PATH_MAX + 1];
     char compressed[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
-    static int timeout = 0;
+    req_timeout = 0;
     int status;
     char *out;
 
-    if (timeout == 0) {
-        timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
+    if (req_timeout == 0) {
+        req_timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
     }
 
     // Unsign
@@ -473,7 +475,7 @@ size_t wcom_upgrade(const char * package, const char * installer, char * output)
     }
 #endif
 
-    if (wm_exec(installer_j, &out, &status, timeout) < 0) {
+    if (wm_exec(installer_j, &out, &status, req_timeout) < 0) {
         merror("At WCOM upgrade: Error executing command [%s]", installer_j);
         strcpy(output, "err Cannot execute installer");
         return strlen(output);
@@ -626,6 +628,14 @@ size_t wcom_getconfig(const char * section, char * output) {
         } else {
             goto error;
         }
+    } else if (strcmp(section, "internal_options") == 0){
+        if (cfg = getExecdInternalOptions(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
     } else {
         goto error;
     }
@@ -651,6 +661,14 @@ size_t wcom_getconfig(const char * section, char * output) {
         }
     } else if (strcmp(section, "logging") == 0){
         if (cfg = getLoggingConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "internal_options") == 0){
+        if (cfg = getExecdInternalOptions(), cfg) {
             snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
             cJSON_free(cfg);
             return strlen(output);
