@@ -234,9 +234,6 @@ int main(int argc, char **argv)
         agentname = lhostname;
     }
 
-    if(centralized_group == NULL){
-        centralized_group = DEFAULT_CENTRALIZED_GROUP;
-    }
 
     /* Start SSL */
     ctx = os_ssl_keys(0, dir, ciphers, agent_cert, agent_key, ca_cert, auto_method);
@@ -321,10 +318,16 @@ int main(int argc, char **argv)
     printf("INFO: Using agent name as: %s\n", agentname);
 
     if (authpass) {
-        snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s' G:'%s'\n", authpass, agentname,centralized_group);
+        if(!centralized_group)
+            snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s'\n", authpass, agentname);
+        else
+            snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s' G:'%s'\n", authpass, agentname,centralized_group);
     }
     else {
-        snprintf(buf, 2048, "OSSEC A:'%s' G:'%s'\n", agentname,centralized_group);
+        if(!centralized_group)
+            snprintf(buf, 2048, "OSSEC A:'%s'\n", agentname);
+        else
+            snprintf(buf, 2048, "OSSEC A:'%s' G:'%s'\n", agentname,centralized_group);     
     }
 
     ret = SSL_write(ssl, buf, strlen(buf));
