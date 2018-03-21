@@ -77,7 +77,7 @@ int DecodeSyscollector(Eventinfo *lf)
             return (0);
         }
     }
-    else if (strcmp(msg_type, "package") == 0 || strcmp(msg_type, "package_end") == 0) {
+    else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
         if (decode_package(lf->agent_id, logJSON) < 0) {
             mdebug1("Unable to send packages information to Wazuh DB.");
             return (0);
@@ -739,7 +739,7 @@ int decode_package(char *agent_id, cJSON * logJSON) {
 
     cJSON * package;
 
-    if (package = cJSON_GetObjectItem(logJSON, "package"), package) {
+    if (package = cJSON_GetObjectItem(logJSON, "program"), package) {
         cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
         cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
         cJSON * format = cJSON_GetObjectItem(package, "format");
@@ -860,7 +860,7 @@ int decode_package(char *agent_id, cJSON * logJSON) {
             merror("Invalid message. Type not found.");
             free(msg);
             return -1;
-        } else if (strcmp(msg_type, "package_end") == 0) {
+        } else if (strcmp(msg_type, "program_end") == 0) {
 
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
             snprintf(msg, OS_MAXSTR - 1, "agent %s package del %d", agent_id, scan_id->valueint);

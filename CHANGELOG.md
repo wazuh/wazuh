@@ -7,17 +7,44 @@ All notable changes to this project will be documented in this file.
 
 - Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
 - Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
+- Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
+- Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
 - Get Linux packages inventory natively. ([#441](https://github.com/wazuh/wazuh/pull/441))
+- Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
 
 ### Changed
 
 - Add default value for option -x in agent_control tool.
+- Syscheck RT process granularized to make frequency option more accurate.
+- External libraries moved to an external repository.
 
 ### Fixed
 
 - Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
+- Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
 
-## [v3.2.1]
+### Removed
+
+- Deleted Lua language support.
+
+## [v3.2.2]
+
+### Changed
+
+- Updated Slack integration. ([#443](https://github.com/wazuh/wazuh/pull/443))
+
+
+### Fixed
+
+- Fixed bug in labels settings parser that may make Agentd or Logcollector crash.
+- Fixed issue when setting multiple <server-ip> stanzas in versions 3.0 - 3.2.1. ([#433](https://github.com/wazuh/wazuh/pull/433))
+- Fixed bug when socket database messages we not sent correctly. ([#435](https://github.com/wazuh/wazuh/pull/435))
+- Fixed sudden stop in the sources installer when overwriting a previous corrupt installation.
+- Added a synchronization timeout in the cluster to prevent it from blocking ([#447](https://github.com/wazuh/wazuh/pull/447))
+- Fixed issue in CSyslogd when filtering by rule group. ([#446](https://github.com/wazuh/wazuh/pull/446))
+- Fixed error on DB daemon when parsing rules with options introduced in version 3.0.0.
+
+## [v3.2.1] 2018-03-03
 
 ### Added
 
@@ -58,7 +85,7 @@ All notable changes to this project will be documented in this file.
 - Fixed memory leaks in vulnerability-detector and CIS-CAT wodle.
 - Fixed behavior when working directory is not found in CIS-CAT wodle.
 
-## [v3.2.0]
+## [v3.2.0] 2018-02-13
 
 ### Added
 - Added support to synchronize custom rules and decoders in the cluster.([#344](https://github.com/wazuh/wazuh/pull/344))

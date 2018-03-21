@@ -555,6 +555,10 @@ int OS_ReadXMLRules(const char *rulefile,
                         if (!(config_ruleinfo->alert_opts & NO_AR)) {
                             config_ruleinfo->alert_opts |= NO_AR;
                         }
+                    } else if (strcmp("no_full_log", rule_opt[k]->content) == 0) {
+                        config_ruleinfo->alert_opts |= NO_FULL_LOG;
+                    } else if (strcmp("no_counter", rule_opt[k]->content) == 0) {
+                        config_ruleinfo->alert_opts |= NO_COUNTER;
                     } else {
                         merror(XML_VALUEERR, xml_options, rule_opt[k]->content);
 

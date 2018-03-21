@@ -630,7 +630,7 @@ void sys_programs_windows(const char* LOCATION){
     RegCloseKey(main_key);
 
     cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "package_end");
+    cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
@@ -640,6 +640,7 @@ void sys_programs_windows(const char* LOCATION){
     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
+    free(timestamp);
 
 }
 
@@ -832,10 +833,10 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             cJSON *object = cJSON_CreateObject();
             cJSON *package = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "package");
+            cJSON_AddStringToObject(object, "type", "program");
             cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "package", package);
+            cJSON_AddItemToObject(object, "program", package);
             cJSON_AddStringToObject(package, "format", "win");
             cJSON_AddStringToObject(package, "name", program_name);
             free(program_name);

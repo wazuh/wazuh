@@ -740,6 +740,7 @@ int SetDecodeXML()
     addDecoder2list(SYSCHECK_DEL);
     addDecoder2list(HOSTINFO_NEW);
     addDecoder2list(HOSTINFO_MOD);
+    addDecoder2list(SYSC_MOD);
 
     /* Set ids - for our two lists */
     if (!os_setdecoderids(NULL)) {

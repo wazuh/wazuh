@@ -12,7 +12,7 @@
 
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
-#define SYSCHECK_WAIT   300
+#define SYSCHECK_WAIT   1
 
 /* Checking options */
 #define CHECK_MD5SUM        0000001
@@ -25,6 +25,7 @@
 #define CHECK_SEECHANGES    0000200
 #define CHECK_MTIME         0000400
 #define CHECK_INODE         0001000
+#define CHECK_SHA256SUM     0002000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1
@@ -64,6 +65,7 @@ typedef struct _config {
     int scan_on_start;
     int realtime_count;
     short skip_nfs;
+    int rt_delay;                   /* Delay before real-time dispatching (ms) */
 
     int time;                       /* frequency (secs) for syscheck to run */
     int queue;                      /* file descriptor of socket to write to queue */

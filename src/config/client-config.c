@@ -11,6 +11,7 @@
 #include "client-config.h"
 #include "os_net/os_net.h"
 #include "config.h"
+#include "headers/sec.h"
 
 int Read_Client_Server(XML_NODE node, agent *logr);
 
@@ -31,6 +32,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_max_time_reconnect_try = "time-reconnect";
     const char *xml_profile_name = "config-profile";
     const char *xml_auto_restart = "auto_restart";
+    const char *xml_crypto_method = "crypto_method";
 
     /* Old XML definitions */
     const char *xml_client_ip = "server-ip";
@@ -44,6 +46,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     logr->rip_id = 0;
 
     for (i = 0; node[i]; i++) {
+        rip = NULL;
         XML_NODE chld_node = NULL;
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -159,21 +162,30 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        }else if(strcmp(node[i]->element, xml_crypto_method) == 0){
+            if(strcmp(node[i]->content, "blowfish") == 0){
+                logr->crypto_method = W_METH_BLOWFISH;
+            }
+            else if(strcmp(node[i]->content, "aes") == 0){
+                logr->crypto_method = W_METH_AES;
+            }else{
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
-    }
 
-    // Add extra server (legacy configuration)
-
-    if (rip) {
-        os_realloc(logr->server, sizeof(agent_server) * (logr->rip_id + 2), logr->server);
-        os_strdup(rip, logr->server[logr->rip_id].rip);
-        logr->server[logr->rip_id].port = port;
-        logr->server[logr->rip_id].protocol = protocol;
-        memset(logr->server + logr->rip_id + 1, 0, sizeof(agent_server));
-        logr->rip_id++;
+        // Add extra server (legacy configuration)
+        if (rip) {
+            os_realloc(logr->server, sizeof(agent_server) * (logr->rip_id + 2), logr->server);
+            os_strdup(rip, logr->server[logr->rip_id].rip);
+            logr->server[logr->rip_id].port = port;
+            logr->server[logr->rip_id].protocol = protocol;
+            memset(logr->server + logr->rip_id + 1, 0, sizeof(agent_server));
+            logr->rip_id++;
+        }
     }
 
     return (0);
