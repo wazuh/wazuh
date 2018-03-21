@@ -587,10 +587,36 @@ void sys_programs_windows(const char* LOCATION){
     mtdebug1(WM_SYS_LOGTAG, "Starting installed programs inventory.");
 
     HKEY main_key;
+    int arch;
+
+    // Detect Windows architecture
+
+    os_info *info;
+    if (info = get_win_version(), info) {
+        mtdebug1(WM_SYS_LOGTAG, "System arch: %s", info->machine);
+        if (strcmp(info->machine, "unknown") == 0 || strcmp(info->machine, "x86_64") == 0) {
+
+            // Read 64 bits programs only in 64 bits systems
+
+            arch = ARCH64;
+
+            if( RegOpenKeyEx( HKEY_LOCAL_MACHINE,
+                 TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
+                 0,
+                 KEY_READ| KEY_WOW64_64KEY,
+                 &main_key) == ERROR_SUCCESS
+               ){
+               mtdebug2(WM_SYS_LOGTAG, "Reading 64 bits programs from registry.");
+               list_programs(main_key, arch, NULL, usec, timestamp, ID, LOCATION);
+            }
+            RegCloseKey(main_key);
+        }
+    }
+    free_osinfo(info);
 
     // Read 32 bits programs
 
-    int arch = ARCH32;
+    arch = ARCH32;
 
     if( RegOpenKeyEx( HKEY_LOCAL_MACHINE,
          TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
@@ -598,20 +624,7 @@ void sys_programs_windows(const char* LOCATION){
          KEY_READ| KEY_WOW64_32KEY,
          &main_key) == ERROR_SUCCESS
        ){
-       list_programs(main_key, arch, NULL, usec, timestamp, ID, LOCATION);
-    }
-    RegCloseKey(main_key);
-
-    // Read 64 bits programs
-
-    arch = ARCH64;
-
-    if( RegOpenKeyEx( HKEY_LOCAL_MACHINE,
-         TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
-         0,
-         KEY_READ| KEY_WOW64_64KEY,
-         &main_key) == ERROR_SUCCESS
-       ){
+       mtdebug2(WM_SYS_LOGTAG, "Reading 32 bits programs from registry.");
        list_programs(main_key, arch, NULL, usec, timestamp, ID, LOCATION);
     }
     RegCloseKey(main_key);

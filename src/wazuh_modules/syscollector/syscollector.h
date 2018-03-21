@@ -13,6 +13,7 @@
 
 #include "../wmodules.h"
 #include "shared.h"
+#include "version_op.h"
 
 #ifdef WIN32
 #include <windows.h>
