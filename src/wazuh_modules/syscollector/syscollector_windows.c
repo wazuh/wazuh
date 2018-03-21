@@ -606,10 +606,10 @@ void sys_programs_windows(const char* LOCATION){
 
             cJSON *object = cJSON_CreateObject();
             cJSON *package = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "package");
+            cJSON_AddStringToObject(object, "type", "program");
             cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "package", package);
+            cJSON_AddItemToObject(object, "program", package);
             cJSON_AddStringToObject(package, "format", "win");
 
             char *string;
@@ -657,7 +657,7 @@ void sys_programs_windows(const char* LOCATION){
 
 
     cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "package_end");
+    cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", ID);
 
     char *string;

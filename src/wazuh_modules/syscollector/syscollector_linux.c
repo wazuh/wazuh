@@ -541,10 +541,10 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
 
         object = cJSON_CreateObject();
         package = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "package");
+        cJSON_AddStringToObject(object, "type", "program");
         cJSON_AddNumberToObject(object, "ID", ID);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
-        cJSON_AddItemToObject(object, "package", package);
+        cJSON_AddItemToObject(object, "program", package);
         cJSON_AddStringToObject(package, "format", format);
 
         for (info = head; info; info = next_info) {
@@ -648,7 +648,7 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
         dbp->close(dbp, 0);
 
     object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "package_end");
+    cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
@@ -712,10 +712,10 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
 
                 object = cJSON_CreateObject();
                 package = cJSON_CreateObject();
-                cJSON_AddStringToObject(object, "type", "package");
+                cJSON_AddStringToObject(object, "type", "program");
                 cJSON_AddNumberToObject(object, "ID", ID);
                 cJSON_AddStringToObject(object, "timestamp", timestamp);
-                cJSON_AddItemToObject(object, "package", package);
+                cJSON_AddItemToObject(object, "program", package);
                 cJSON_AddStringToObject(package, "format", format);
 
                 char ** parts = NULL;
@@ -864,7 +864,7 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
     }
 
     object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "package_end");
+    cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
