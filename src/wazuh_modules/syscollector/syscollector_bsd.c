@@ -32,7 +32,7 @@ hw_info *get_system_bsd();    // Get system information
 
 // Get installed programs inventory
 
-void sys_programs_bsd(int queue_fd, const char* LOCATION){
+void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     char read_buff[OS_MAXSTR];
     char *command;
@@ -50,9 +50,9 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -63,8 +63,8 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    os_calloc(OS_MAXSTR + 1, sizeof(char), command);
-    snprintf(command, OS_MAXSTR, "%s", "pkg query -a '\%n|%m|%v|%q|\%c'");
+    os_calloc(COMMAND_LENGTH, sizeof(char), command);
+    snprintf(command, COMMAND_LENGTH - 1, "%s", "pkg query -a '\%n|%m|%v|%q|\%c'");
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -73,25 +73,25 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
         while(fgets(read_buff, OS_MAXSTR, output)){
 
             cJSON *object = cJSON_CreateObject();
-            cJSON *program = cJSON_CreateObject();
+            cJSON *package = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
             cJSON_AddNumberToObject(object, "ID", ID);
             cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "program", program);
-            cJSON_AddStringToObject(program, "format", "pkg");
+            cJSON_AddItemToObject(object, "program", package);
+            cJSON_AddStringToObject(package, "format", "pkg");
 
             char *string;
             char ** parts = NULL;
 
             parts = OS_StrBreak('|', read_buff, 5);
-            cJSON_AddStringToObject(program, "name", parts[0]);
-            cJSON_AddStringToObject(program, "vendor", parts[1]);
-            cJSON_AddStringToObject(program, "version", parts[2]);
-            cJSON_AddStringToObject(program, "architecture", parts[3]);
+            cJSON_AddStringToObject(package, "name", parts[0]);
+            cJSON_AddStringToObject(package, "vendor", parts[1]);
+            cJSON_AddStringToObject(package, "version", parts[2]);
+            cJSON_AddStringToObject(package, "architecture", parts[3]);
 
             char ** description = NULL;
             description = OS_StrBreak('\n', parts[4], 2);
-            cJSON_AddStringToObject(program, "description", description[0]);
+            cJSON_AddStringToObject(package, "description", description[0]);
             for (i=0; description[i]; i++){
                 free(description[i]);
             }
@@ -102,7 +102,8 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
             free(parts);
 
             string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_programs_bsd() sending '%s'", string);
+
+            mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
             wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
 
@@ -124,7 +125,7 @@ void sys_programs_bsd(int queue_fd, const char* LOCATION){
 
     char *string;
     string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_programs_bsd() sending '%s'", string);
+    mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
@@ -147,9 +148,9 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
@@ -168,7 +169,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     /* Motherboard serial-number */
 #if defined(__OpenBSD__)
 
-    char serial[OS_MAXSTR];
+    char serial[SERIAL_LENGTH];
     int mib[2];
     size_t len;
     mib[0] = CTL_HW;
@@ -186,14 +187,13 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     char *serial = NULL;
     char *command;
     FILE *output;
-    size_t buf_length = 1024;
-    char read_buff[buf_length];
+    char read_buff[SERIAL_LENGTH];
     int i;
 
-    memset(read_buff, 0, buf_length);
+    memset(read_buff, 0, SERIAL_LENGTH);
     command = "system_profiler SPHardwareDataType | grep Serial";
     if (output = popen(command, "r"), output) {
-        if(!fgets(read_buff, buf_length, output)){
+        if(!fgets(read_buff, SERIAL_LENGTH, output)){
             mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
             serial = strdup("unknown");
         }else{
@@ -374,9 +374,9 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     now = time(NULL);
     localtime_r(&now, &localtm);
 
-    os_calloc(OS_MAXSTR, sizeof(char), timestamp);
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,OS_MAXSTR,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 

@@ -83,6 +83,8 @@ typedef struct _Eventinfo {
     char *md5_after;
     char *sha1_before;
     char *sha1_after;
+    char *sha256_before;
+    char *sha256_after;
     char *size_before;
     char *size_after;
     char *owner_before;

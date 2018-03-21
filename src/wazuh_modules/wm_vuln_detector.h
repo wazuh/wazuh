@@ -128,7 +128,7 @@ typedef struct wm_vulnerability_detector_t {
     unsigned long ignore_time;
     time_t last_detection;
     agent_software *agents_software;
-    OSHash *agents_trig;
+    OSHash *agents_triag;
     int queue_fd;
     wm_vulnerability_detector_state state;
     wm_vulnerability_detector_flags flags;
