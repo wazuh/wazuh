@@ -161,17 +161,20 @@ def send_request(host, port, key, data, file=None):
         mymap = dict()
         client = WazuhClusterClient(host, int(port), fernet_key, data, file, mymap)
         asyncore.loop(map=mymap)
-        data = client.response
+        res = client.response
+
+        if res == "":
+            raise WazuhException(3010, "Empty response to query '{}' from node {}".format(data, host))
 
     except NameError as e:
-        data = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"
+        res = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"
         error = 1
 
     except WazuhException as e:
         error = 1
-        data = str(e)
+        res = str(e)
 
-    return error, data
+    return error, res
 
 def get_status_json():
     return {"enabled": "yes" if check_cluster_status() else "no",
@@ -328,39 +331,48 @@ def get_nodes(updateDBname=False, config=None):
     error_response = False
 
     for url in config_cluster["nodes"]:
-        if not url in localhost_ips:
-            error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
-                                data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
-            if error == 0:
-                if response['error'] == 0:
-                    response = response['data']
-                    response['localhost'] = False
-                else:
-                    logging.warning("Received an error response from {0}: {1}".format(url, response))
-                    error_response = True
-        else:
-            error = 0
-            response = get_node()
-            response['localhost'] = True
+        try:
+            if not url in localhost_ips:
+                error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
+                                    data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
+                if error == 0:
+                    if response['error'] == 0:
+                        response = response['data']
+                        response['localhost'] = False
+                    else:
+                        logging.warning("Received an error response from {0}: {1}".format(url, response))
+                        error_response = True
+            else:
+                error = 0
+                response = get_node()
+                response['localhost'] = True
 
-        if error == 1:
-            logging.warning("Error connecting with {0}: {1}".format(url, response))
-            error_response = True
+            if error == 1:
+                logging.warning("Error connecting with {0}: {1}".format(url, response))
+                error_response = True
 
-        if error_response:
-            data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
-            error_response = False
-            continue
+            if error_response:
+                data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
+                error_response = False
+                continue
 
-        if config_cluster['node_type'] == 'master' or \
-           response['type'] == 'master' or response["localhost"]:
-            data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
-                         'status':'connected', 'cluster':response['cluster']})
+            if config_cluster['node_type'] == 'master' or \
+               response['type'] == 'master' or response["localhost"]:
+                data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
+                             'status':'connected', 'cluster':response['cluster']})
 
-            if updateDBname:
-                query = "insertname " +response['node'] + " " + url
-                send_to_socket(cluster_socket, query)
-                receive_data_from_db_socket(cluster_socket)
+                if updateDBname:
+                    query = "insertname " +response['node'] + " " + url
+                    send_to_socket(cluster_socket, query)
+                    receive_data_from_db_socket(cluster_socket)
+        except TypeError as e:
+            error_text = "Response from {} is not in JSON format: {} ({})".format(url, str(e), response)
+            logging.error(error_text)
+            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
+        except Exception as e:
+            error_text = "Error getting information of node {}: {}".format(url, str(e))
+            logging.error(error_text)
+            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
 
     cluster_socket.close()
     return {'items': data, 'totalItems': len(data)}
@@ -980,7 +992,11 @@ def divide_list(l, size=1000):
     return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
 
 def get_remote_nodes(connected=True, updateDBname=False, config=None):
-    all_nodes = get_nodes(updateDBname, config)['items']
+    try:
+        all_nodes = get_nodes(updateDBname, config)['items']
+    except Exception as e:
+        logging.error("Could not get remote nodes' information: {}".format(str(e)))
+        raise #WazuhException(3017, str(e))
 
     # Get connected nodes in the cluster
     if connected:

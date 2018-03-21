@@ -240,12 +240,13 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
                     #     n_retries += 1
                     except Exception as e:
                         exc_type, exc_value, exc_traceback = exc_info()
-                        filename, line_number, module, line_content = extract_tb(exc_traceback)[-1]
+                        filename, line_number, module, line_content = extract_tb(exc_traceback)[-2]
                         logging.error("Error {} synchronizing information ({}:{}): {}".format(exc_type, filename, line_number, exc_value.args[0]))
                         n_retries += 1
                         if n_retries < max_retries:
-                            sleep(sleep_time)
+                            sleep(5)
                         else:
+                            logging.warning("Reached maximum number of retries: sleeping for 60s.")
                             sleep(60)
                             n_retries = 0
 
@@ -278,12 +279,15 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
 def crontab_sync_client(config_cluster, restart_after_sync, debug):
     def sync_handler(n_signal, frame):
         logging.debug("Starting to send files to the master node")
-        master = get_remote_nodes()[0]
+        try:
+            master = get_remote_nodes()[0]
+        except IndexError:
+            raise WazuhException(3010, "Master node is down")
         try:
             sync_one_node(debug=False, node=master, config_cluster=config_cluster, cluster_items=cluster_items)
         except Exception as e:
             exc_type, exc_value, exc_traceback = exc_info()
-            filename, line_number, module, line_content = extract_tb(exc_traceback)[-1]
+            filename, line_number, module, line_content = extract_tb(exc_traceback)[-2]
             logging.error("Error {} synchronizing information ({}:{}): {}".format(exc_type, filename, line_number, exc_value.args[0]))
             
         if restart_after_sync.value == 'T':
@@ -311,7 +315,10 @@ def crontab_sync_client(config_cluster, restart_after_sync, debug):
             send_to_socket(cluster_socket, "insertres 0")
             receive_data_from_db_socket(cluster_socket)
             cluster_socket.close()
-            master = get_remote_nodes()[0]
+            try:
+                master = get_remote_nodes()[0]
+            except IndexError:
+                raise WazuhException(3010, "Master node is down")
             error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
                                 data="finished {}".format('-'*(common.cluster_protocol_plain_size - len("finished "))))
         else:
