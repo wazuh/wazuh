@@ -31,14 +31,21 @@ static const char * SQL_STMT[] = {
     "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = changes + 1, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ? WHERE file = ?;",
     "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_osinfo;",
-    "INSERT INTO sys_programs (scan_id, scan_time, format, name, vendor, version, architecture, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_programs WHERE scan_id != ?;",
     "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_hwinfo;",
     "INSERT INTO sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_ports WHERE scan_id != ?;",
     "INSERT INTO sys_processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    "DELETE FROM sys_processes WHERE scan_id != ?;"
+    "DELETE FROM sys_processes WHERE scan_id != ?;",
+    "INSERT INTO sys_netiface (scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_netaddr (scan_id, type, address, netmask, broadcast, gateway, dhcp) VALUES (?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE sys_netiface SET id_ipv4 = ? WHERE name = ?;",
+    "UPDATE sys_netiface SET id_ipv6 = ? WHERE name = ?;",
+    "DELETE FROM sys_netiface WHERE scan_id != ?;",
+    "DELETE FROM sys_netaddr WHERE scan_id != ?;",
+    "DELETE FROM sqlite_sequence WHERE name = 'sys_netaddr';"
 };
 
 sqlite3 *wdb_global = NULL;

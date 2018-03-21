@@ -9,12 +9,14 @@ All notable changes to this project will be documented in this file.
 - Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
 - Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
 - Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
+- Get Linux packages inventory natively. ([#441](https://github.com/wazuh/wazuh/pull/441))
 - Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
 
 ### Changed
 
 - Add default value for option -x in agent_control tool.
 - Syscheck RT process granularized to make frequency option more accurate.
+- External libraries moved to an external repository.
 
 ### Fixed
 

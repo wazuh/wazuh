@@ -8,6 +8,7 @@ EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
+EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
 MAXAGENTS?=8000
 REUSE_ID?=no
@@ -49,6 +50,8 @@ ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
+		OSSEC_LDFLAGS+=-L${EXTERNAL_LIBDB}.libs -ldb-6.2
+		OSSEC_LDFLAGS+=-Wl,-rpath,${PREFIX}/lib
 #		OSSEC_LDFLAGS+=-lmagic
 		CFLAGS+=-Wl,--start-group
 else
@@ -498,11 +501,18 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 #### External ######
 ####################
 
-.PHONY: external
+EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+
 ifeq (${uname_S},Linux)
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a
-else
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so
+endif
+
+.PHONY: external test_external
+external: test_external $(EXTERNAL_LIBS)
+
+test_external:
+ifeq ($(wildcard external/*/*),)
+	$(error No external directory found. Run "make deps" before compiling external libraries)
 endif
 
 #### OpenSSL ##########
@@ -595,6 +605,38 @@ libproc.a: ${procps_o}
 	${OSSEC_RANLIB} $@
 endif
 endif
+
+#### Berkeley DB ######
+
+DB_LIB=${EXTERNAL_LIBDB}.libs/libdb-6.2.so
+
+${DB_LIB}:
+ifeq (${uname_S},Linux)
+	cd ${EXTERNAL_LIBDB} && ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics --enable-shared --enable-static=no && ${MAKE} library_build
+endif
+
+################################
+#### External dependencies  ####
+################################
+
+TAR := tar -zxf
+CURL := curl -so
+space =
+space +=
+VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
+RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
+
+EXTERNAL_RES := cJSON libdb openssl procps sqlite zlib
+EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
+EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
+
+.PHONY: deps
+deps: $(EXTERNAL_TAR)
+
+external/%.tar.gz:
+	$(CURL) $@ $(RESOURCES_URL)/$(patsubst external/%,%,$@)
+	$(TAR) $@ -C external
+	rm $(@)
 
 ####################
 #### OSSEC Libs ####
@@ -706,7 +748,7 @@ endif # DLL for Windows
 
 ifndef DISABLE_SYSC
 wazuh_modules/syscollector/%.o: wazuh_modules/syscollector/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -I${EXTERNAL_LIBDB} -pthread -c $^ -o $@
 endif
 
 wmodules_dep := ${wmodules_o} ${wdblib_o}
@@ -1282,7 +1324,7 @@ win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.c addagent/validat
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
+clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config clean-deps
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1291,6 +1333,7 @@ clean-test:
 	find . -name "*.gcda" -exec rm {} \;
 
 clean-external:
+ifneq ($(wildcard external/*/*),)
 	rm -f ${cjson_o} libcJSON.a
 	cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
 	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
@@ -1298,6 +1341,11 @@ clean-external:
 	rm -f ${OPENSSL_LIB}
 	rm -f ${CRYPTO_LIB}
 	rm -f ${procps_o} libproc.a
+	cd ${EXTERNAL_LIBDB} && make realclean
+endif
+
+clean-deps:
+	rm -rf $(EXTERNAL_DIR)
 
 clean-internals:
 	rm -f ${os_zlib_o} os_zlib.a
