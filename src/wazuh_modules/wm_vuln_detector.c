@@ -51,6 +51,18 @@ const wm_context WM_VULNDETECTOR_CONTEXT = {
     (wm_routine)wm_vulnerability_detector_destroy
 };
 
+const char *vu_dist[] = {
+    "UBUNTU",
+    "REDHAT",
+    "CENTOS",
+    "PRECISE",
+    "TRUSTY",
+    "XENIAL",
+    "RHEL5",
+    "RHEL6",
+    "RHEL7",
+    "UNKNOW"
+};
 
 int wm_vulnerability_create_file(const char *path, const char *source) {
     const char *ROOT = "root";

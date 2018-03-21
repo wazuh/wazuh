@@ -50,18 +50,7 @@
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
-static const char *vu_dist[] = {
-    "UBUNTU",
-    "REDHAT",
-    "CENTOS",
-    "PRECISE",
-    "TRUSTY",
-    "XENIAL",
-    "RHEL5",
-    "RHEL6",
-    "RHEL7",
-    "UNKNOW"
-};
+extern const char *vu_dist[];
 
 typedef enum distribution{
     DIS_UBUNTU,
