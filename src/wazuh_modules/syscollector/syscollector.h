@@ -14,6 +14,10 @@
 #include "../wmodules.h"
 #include "shared.h"
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 #ifndef WM_SYSCOLLECTOR
 #define WM_SYSCOLLECTOR
 
@@ -124,6 +128,7 @@ void sys_packages_linux(int queue_fd, const char* WM_SYS_LOCATION);
 int sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION);
 int sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION);
 
+#ifdef WIN32
 // Installed programs inventory for Windows
 void sys_programs_windows(const char* LOCATION);
 
@@ -135,6 +140,7 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
 
 // List Windows users from the registry
 void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION);
+#endif
 
 #if defined(__FreeBSD__)
 // Installed programs inventory for BSD based systems
