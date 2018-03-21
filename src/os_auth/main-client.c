@@ -36,7 +36,7 @@ static void help_agent_auth(void) __attribute__((noreturn));
 static void help_agent_auth()
 {
     print_header();
-    print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group]", ARGV0);
+    print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-i IP address]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -55,6 +55,7 @@ static void help_agent_auth()
     print_out("    -P <pass>   Authorization password");
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -G <group>  Set the group for centralized configuration");
+    print_out("    -i <IP>     Set the agent IP address");
     print_out(" ");
     exit(1);
 }
@@ -97,7 +98,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "VdhtgG:m:p:A:c:v:x:k:D:P:a:s:")) != -1) {
+    while ((c = getopt(argc, argv, "VdhtgG:m:p:A:c:v:x:k:D:P:a:i:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -183,7 +184,7 @@ int main(int argc, char **argv)
                 }
                 centralized_group = optarg;
                 break;
-            case 's':
+            case 'i':
                 if(!optarg){
                     merror_exit("-%c needs an argument",c);
                 }
