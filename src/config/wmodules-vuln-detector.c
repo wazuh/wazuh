@@ -219,7 +219,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     }
                 } else if (!strcmp(chld_node[j]->element, XML_URL)) {
                     os_strdup(chld_node[j]->content, upd->url);
-                    if (*chld_node[j]->attributes && !strcmp(*chld_node[j]->attributes, XML_PORT)) {
+                    if (chld_node[j]->attributes && !strcmp(*chld_node[j]->attributes, XML_PORT)) {
                         upd->port = strtol(*chld_node[j]->values, NULL, 10);
                     }
                 } else if (!strcmp(chld_node[j]->element, XML_PATH)) {
