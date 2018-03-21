@@ -666,7 +666,7 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
 
 int sys_deb_packages(int queue_fd, const char* LOCATION){
 
-    char format[FORMAT_LENGTH] = "deb";
+    const char * format = "deb";
     char file[PATH_LENGTH] = "/var/lib/dpkg/status";
     char read_buff[OS_MAXSTR];
     FILE *fp;

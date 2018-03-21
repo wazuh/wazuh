@@ -21,7 +21,6 @@
 #define MAX_TRIES 3
 
 #define PROTO_LENGTH 6
-#define FORMAT_LENGTH 3
 #define MAC_LENGTH 18
 #define TYPE_LENGTH 64
 #define STATE_LENGTH 20
