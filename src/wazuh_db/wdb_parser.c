@@ -1043,13 +1043,13 @@ int wdb_parse_programs(wdb_t * wdb, char * input, char * output) {
         if (result = wdb_program_update(wdb, scan_id), result < 0) {
             mdebug1("Cannot save scanned packages before delete old Program information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old Program information.");
+        }
+
+        if (result = wdb_program_delete(wdb, scan_id), result < 0) {
+            mdebug1("Cannot delete old Program information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Program information.");
         } else {
-            if (result = wdb_program_delete(wdb, scan_id), result < 0) {
-                mdebug1("Cannot delete old Program information.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Program information.");
-            } else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-            }
+            snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
         return result;
