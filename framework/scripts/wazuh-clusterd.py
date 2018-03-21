@@ -23,6 +23,7 @@ try:
     from traceback import print_exc, extract_tb
     from io import BytesIO
     from sys import exc_info
+    from errno import EINTR
 
     import argparse
     parser =argparse.ArgumentParser()
@@ -189,8 +190,8 @@ class WazuhClusterServer(asyncore.dispatcher):
         if pair is not None:
             sock, addr = pair
             logging.info("Accepted connection from host {0}".format(addr[0]))
-            handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type, 
-                                        self.requests_queue, self.finished_clients, 
+            handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type,
+                                        self.requests_queue, self.finished_clients,
                                         self.restart_after_sync, self.connected_clients)
         return
 
@@ -216,18 +217,20 @@ def restart_manager():
 def crontab_sync_master(interval, config_cluster, requests_queue, connected_clients, finished_clients, debug):
     def sleep_handler(n_signal, frame):
         alarm(0)
-        logging.debug("Sleeping for {}{}...".format(interval_number, interval_measure))
+        logging.info("Sleeping for {}{}...".format(interval_number, interval_measure))
         sleep(sleep_time)
 
-    try:
-        interval_number  = int(search('\d+', interval).group(0))
-        interval_measure = interval[-1]
-        sleep_time = interval_number if interval_measure == 's' else interval_number*60
-        cluster_items = get_cluster_items()
-        signal(SIGALRM, sleep_handler)
-        while True:
+    interval_number  = int(search('\d+', interval).group(0))
+    interval_measure = interval[-1]
+    sleep_time = interval_number if interval_measure == 's' else interval_number*60
+    cluster_items = get_cluster_items()
+    signal(SIGALRM, sleep_handler)
+    while True:
+        try:
             max_retries = 5
             n_retries = 0
+            max_interruptions = 100
+            n_interruptions = 0
             logging.debug("Elements in requests queue: {}".format(requests_queue.items()))
             if len(requests_queue.values()) == 0 or not reduce(or_, requests_queue.values()):
                 logging.info("Crontab: starting to sync")
@@ -235,9 +238,18 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
                     try:
                         sync(debug=False, config_cluster=config_cluster, cluster_items=cluster_items)
                         break
-                    # except InterruptedError:
-                    #     continue
-                    #     n_retries += 1
+                    except IOError as e:
+                        if e.errno != EINTR:
+                            raise
+                        else:
+                            n_interruptions += 1
+                            if max_interruptions >= n_interruptions:
+                                logging.error("Reached maximum number of EINTR errors: {}. Sleeping for 60s.".format(str(e)))
+                                sleep(60)
+                                n_interruptions = 0
+                                continue
+                            else:
+                                continue
                     except Exception as e:
                         exc_type, exc_value, exc_traceback = exc_info()
                         filename, line_number, module, line_content = extract_tb(exc_traceback)[-2]
@@ -266,30 +278,36 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
             else:
                 alarm(common.cluster_internal_timeout)
                 pause()
-    except Exception as e:
-        error_msg = "Error in cluster master process: {}".format(str(e))
-        if debug:
-            exc_buffer = BytesIO()
-            print_exc(file=exc_buffer)
-            debug_info = exc_buffer.getvalue()
-            error_msg += '\n' + debug_info
-        logging.error(error_msg)
+        except Exception as e:
+            error_msg = "Error in cluster master process: {}".format(str(e))
+            if debug:
+                exc_buffer = BytesIO()
+                print_exc(file=exc_buffer)
+                debug_info = exc_buffer.getvalue()
+                error_msg += '\n' + debug_info
+            logging.error(error_msg)
+            logging.info("Sleeping for {}s".format(sleep_time))
+            sleep(sleep_time)
+            continue
 
 
 def crontab_sync_client(config_cluster, restart_after_sync, debug):
     def sync_handler(n_signal, frame):
         logging.debug("Starting to send files to the master node")
+
         try:
             master = get_remote_nodes()[0]
         except IndexError:
-            raise WazuhException(3010, "Master node is down")
+            logging.error("Master node is not reachable")
+            return 1
+
         try:
             sync_one_node(debug=False, node=master, config_cluster=config_cluster, cluster_items=cluster_items)
         except Exception as e:
             exc_type, exc_value, exc_traceback = exc_info()
             filename, line_number, module, line_content = extract_tb(exc_traceback)[-2]
             logging.error("Error {} synchronizing information ({}:{}): {}".format(exc_type, filename, line_number, exc_value.args[0]))
-            
+
         if restart_after_sync.value == 'T':
             restart_after_sync.value = 'F'
             cluster_socket = connect_to_db_socket()
@@ -317,10 +335,11 @@ def crontab_sync_client(config_cluster, restart_after_sync, debug):
             cluster_socket.close()
             try:
                 master = get_remote_nodes()[0]
+                error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
+                    data="finished {}".format('-'*(common.cluster_protocol_plain_size - len("finished "))))
             except IndexError:
-                raise WazuhException(3010, "Master node is down")
-            error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
-                                data="finished {}".format('-'*(common.cluster_protocol_plain_size - len("finished "))))
+                logging.error("Master node is not reachable")
+
         else:
             cluster_socket.close()
 
