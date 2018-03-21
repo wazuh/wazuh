@@ -97,7 +97,7 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
             break;
     }
 
-    /* Type of interface */
+    /* Operational status */
     switch (pCurrAddresses->OperStatus){
         case IfOperStatusUp:
             cJSON_AddStringToObject(iface_info, "state", "up");

@@ -21,7 +21,7 @@
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
 !define VERSION "3.3.0"
-!define REVISION "3304"
+!define REVISION "3306"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -178,8 +178,6 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\wodles"
 
     ; install files
-    File ossec-lua.exe
-    File ossec-luac.exe
     File ossec-agent.exe
     File ossec-agent-eventchannel.exe
     File default-ossec.conf
@@ -467,8 +465,6 @@ Section "Uninstall"
     ; remove files and uninstaller
     Delete "$INSTDIR\ossec-agent.exe"
 	Delete "$INSTDIR\agent-auth.exe"
-    Delete "$INSTDIR\ossec-lua.exe"
-    Delete "$INSTDIR\ossec-luac.exe"
     Delete "$INSTDIR\manage_agents.exe"
     Delete "$INSTDIR\ossec.conf"
     Delete "$INSTDIR\uninstall.exe"

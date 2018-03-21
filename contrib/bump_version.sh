@@ -81,7 +81,7 @@ then
         exit 1
     fi
 
-    sed -E -i'' "s/^(#define __ossec_version +)\"v.*\"/\1\"$version\"/" $DEFS_FILE
+    sed -E -i'' -e "s/^(#define __ossec_version +)\"v.*\"/\1\"$version\"/" $DEFS_FILE
 
     # File ossec-installer.nsi
 
@@ -93,7 +93,7 @@ then
         exit 1
     fi
 
-    sed -E -i'' "s/^(\!define VERSION \").+\"/\1${version:1}\"/g" $NSIS_FILE
+    sed -E -i'' -e "s/^(\!define VERSION \").+\"/\1${version:1}\"/g" $NSIS_FILE
 
     # File wazuh-installer.wxs
 
@@ -105,12 +105,12 @@ then
         exit 1
     fi
 
-    sed -E -i'' "s/(<Product Id=\"\*\" Name=\"Wazuh Agent ).+(\" Language=\"1033\" Version=\").+(\" Manufacturer=)/\1${version:1}\2${version:1}\3/g" $MSI_FILE
+    sed -E -i'' -e "s/(<Product Id=\"\*\" Name=\"Wazuh Agent ).+(\" Language=\"1033\" Version=\").+(\" Manufacturer=)/\1${version:1}\2${version:1}\3/g" $MSI_FILE
 
     # Framework
 
-    sed -E -i'' "s/version='.+',/version='${version:1}',/g" $FW_SETUP
-    sed -E -i'' "s/__version__ = '.+'/__version__ = '${version:1}'/g" $FW_INIT
+    sed -E -i'' -e "s/version='.+',/version='${version:1}',/g" $FW_SETUP
+    sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $FW_INIT
 fi
 
 if [ -n "$revision" ]
@@ -130,7 +130,7 @@ then
         exit 1
     fi
 
-    sed -E -i'' "s/^(\!define REVISION \").+\"/\1$revision\"/g" $NSIS_FILE
+    sed -E -i'' -e "s/^(\!define REVISION \").+\"/\1$revision\"/g" $NSIS_FILE
 fi
 
 if [ -n "$product" ]
@@ -146,5 +146,5 @@ then
         exit 1
     fi
 
-    sed -E -i'' "s/^(VIProductVersion \").+\"/\1$product\"/g" $NSIS_FILE
+    sed -E -i'' -e "s/^(VIProductVersion \").+\"/\1$product\"/g" $NSIS_FILE
 fi

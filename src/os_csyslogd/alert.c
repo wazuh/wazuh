@@ -113,6 +113,12 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " Current MD5: %s;", al_data->new_md5 );
         field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA1: %s;", al_data->old_sha1 );
         field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA1: %s;", al_data->new_sha1 );
+        if(al_data->old_sha256){
+            field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA256: %s;", al_data->old_sha256 );
+        }
+        if(al_data->new_sha256){
+            field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA256: %s;", al_data->new_sha256 );
+        }
      /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
         field_add_string(syslog_msg, OS_SIZE_2048, " Size changed: from %s;", al_data->file_size );
         field_add_string(syslog_msg, OS_SIZE_2048, " User ownership: was %s;", al_data->owner_chg );
@@ -210,6 +216,12 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         if (al_data->new_sha1) {
             cJSON_AddStringToObject(root,   "sha1_new",   al_data->new_sha1);
         }
+        if (al_data->old_sha256) {
+            cJSON_AddStringToObject(root,   "sha256_old",   al_data->old_sha256);
+        }
+        if (al_data->new_sha256) {
+            cJSON_AddStringToObject(root,   "sha256_new",   al_data->new_sha256);
+        }
 #ifdef LIBGEOIP_ENABLED
         if (al_data->srcgeoip) {
             cJSON_AddStringToObject(root, "src_city", al_data->srcgeoip);
@@ -269,6 +281,12 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " md5_new=\"%s\",", al_data->new_md5 );
         field_add_string(syslog_msg, OS_SIZE_2048, " sha1_old=\"%s\",", al_data->old_sha1 );
         field_add_string(syslog_msg, OS_SIZE_2048, " sha1_new=\"%s\",", al_data->new_sha1 );
+        if(al_data->old_sha256){
+            field_add_string(syslog_msg, OS_SIZE_2048, " sha256_old=\"%s\",", al_data->old_sha256 );
+        }
+        if(al_data->new_sha256){
+            field_add_string(syslog_msg, OS_SIZE_2048, " sha256_new=\"%s\",", al_data->new_sha256 );
+        }   
         /* Message */
         field_add_truncated(syslog_msg, OS_SIZE_2048, " message=\"%s\"", al_data->log[0], 2 );
     }
@@ -341,7 +359,7 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
     if (syslog_config->group) {
         int found = 0;
 
-        if (!(rule && (groups = cJSON_GetObjectItem(json_data, "groups"), groups))) {
+        if (!(rule && (groups = cJSON_GetObjectItem(rule, "groups"), groups))) {
             return 0;
         }
 

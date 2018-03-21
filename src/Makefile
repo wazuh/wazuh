@@ -3,14 +3,13 @@
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 EXTERNAL_JSON=external/cJSON/
-EXTERNAL_LUA=external/lua-5.2.3/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
+EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
-LUA_PLAT=posix
 MAXAGENTS?=8000
 REUSE_ID?=no
 # XXX Becareful NO EXTRA Spaces here
@@ -51,6 +50,8 @@ ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
+		OSSEC_LDFLAGS+=-L${EXTERNAL_LIBDB}.libs -ldb-6.2
+		OSSEC_LDFLAGS+=-Wl,-rpath,${PREFIX}/lib
 #		OSSEC_LDFLAGS+=-lmagic
 		CFLAGS+=-Wl,--start-group
 else
@@ -69,7 +70,6 @@ ifeq (${uname_S},SunOS)
 		OSSEC_LDFLAGS+=-Wl,--end-group
 		OSSEC_LDFLAGS+=-z relax=secadj
 		OSSEC_LDFLAGS+=-lsocket -lnsl -lresolv
-		LUA_PLAT=solaris
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
 		OSSEC_LDFLAGS+=-pthread -lrt
@@ -78,13 +78,11 @@ else
 ifeq (${uname_S},Darwin)
 		DEFINES+=-DDarwin
 		DEFINES+=-DHIGHFIRST
-		LUA_PLAT=macosx
 
 else
 ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
 		OSSEC_LDFLAGS+=-pthread
-		LUA_PLAT=freebsd
 		CFLAGS+=-I/usr/local/include -Wl,--start-group
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 else
@@ -92,12 +90,10 @@ ifeq (${uname_S},NetBSD)
 		DEFINES+=-DNetBSD
 		OSSEC_LDFLAGS+=-pthread
 		CFLAGS+=-Wl,--start-group
-		LUA_PLAT=posix
 else
 ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
 		DEFINES+=-pthread
-		LUA_PLAT=posix
 		CFLAGS+=-I/usr/local/include -Wl,--start-group
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 else
@@ -107,7 +103,6 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
 		DEFINES+=-DOS_BIG_ENDIAN
-		LUA_PLAT=posix
 		OSSEC_LDFLAGS+=-pthread -lrt
 		PATH:=${PATH}:/usr/local/bin
 		CC=gcc
@@ -403,8 +398,6 @@ settings:
 	@echo "    OSSEC_USER:       ${OSSEC_USER}"
 	@echo "    OSSEC_USER_MAIL:  ${OSSEC_USER_MAIL}"
 	@echo "    OSSEC_USER_REM:   ${OSSEC_USER_REM}"
-	@echo "Lua settings:"
-	@echo "    LUA_PLAT:         ${LUA_PLAT}"
 	@echo "USE settings:"
 	@echo "    USE_ZEROMQ:       ${USE_ZEROMQ}"
 	@echo "    USE_GEOIP:        ${USE_GEOIP}"
@@ -490,9 +483,6 @@ endif
 .PHONY: winagent
 winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a ${EXTERNAL_ZLIB}libz.a win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
-	cd ${EXTERNAL_LUA}src/ && ${MAKE} CC=${MING_BASE}${CC} -f Makefile.mingw mingw
-	cp ${EXTERNAL_LUA}src/ossec-lua.exe win32/
-	cp ${EXTERNAL_LUA}src/ossec-luac.exe win32/
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
@@ -511,15 +501,19 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 #### External ######
 ####################
 
-.PHONY: external lua
+EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+
 ifeq (${uname_S},Linux)
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a
-else
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so
 endif
 
-lua:
-	cd ${EXTERNAL_LUA} && ${MAKE} ${LUA_PLAT}
+.PHONY: external test_external
+external: test_external $(EXTERNAL_LIBS)
+
+test_external:
+ifeq ($(wildcard external/*/*),)
+	$(error No external directory found. Run "make deps" before compiling external libraries)
+endif
 
 #### OpenSSL ##########
 
@@ -611,6 +605,38 @@ libproc.a: ${procps_o}
 	${OSSEC_RANLIB} $@
 endif
 endif
+
+#### Berkeley DB ######
+
+DB_LIB=${EXTERNAL_LIBDB}.libs/libdb-6.2.so
+
+${DB_LIB}:
+ifeq (${uname_S},Linux)
+	cd ${EXTERNAL_LIBDB} && ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics --enable-shared --enable-static=no && ${MAKE} library_build
+endif
+
+################################
+#### External dependencies  ####
+################################
+
+TAR := tar -zxf
+CURL := curl -so
+space =
+space +=
+VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
+RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
+
+EXTERNAL_RES := cJSON libdb openssl procps sqlite zlib
+EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
+EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
+
+.PHONY: deps
+deps: $(EXTERNAL_TAR)
+
+external/%.tar.gz:
+	$(CURL) $@ $(RESOURCES_URL)/$(patsubst external/%,%,$@)
+	$(TAR) $@ -C external
+	rm $(@)
 
 ####################
 #### OSSEC Libs ####
@@ -722,7 +748,7 @@ endif # DLL for Windows
 
 ifndef DISABLE_SYSC
 wazuh_modules/syscollector/%.o: wazuh_modules/syscollector/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -pthread -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -I${EXTERNAL_LIBDB} -pthread -c $^ -o $@
 endif
 
 wmodules_dep := ${wmodules_o} ${wdblib_o}
@@ -755,10 +781,28 @@ crypto_sha1_o := $(crypto_sha1_c:.c=.o)
 os_crypto/sha1/%.o: os_crypto/sha1/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
+crypto_sha256_c := os_crypto/sha256/sha256_op.c
+crypto_sha256_o := $(crypto_sha256_c:.c=.o)
+
+os_crypto/sha256/%.o: os_crypto/sha256/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+crypto_aes_c := os_crypto/aes/aes_op.c
+crypto_aes_o := $(crypto_aes_c:.c=.o)
+
+os_crypto/aes/%.o: os_crypto/aes/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
 crypto_md5_sha1_c := os_crypto/md5_sha1/md5_sha1_op.c
 crypto_md5_sha1_o := $(crypto_md5_sha1_c:.c=.o)
 
 os_crypto/md5_sha1/%.o: os_crypto/md5_sha1/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+crypto_md5_sha1_sha256_c := os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.c
+crypto_md5_sha1_sha256_o := $(crypto_md5_sha1_sha256_c:.c=.o)
+
+os_crypto/md5_sha1_sha256/%.o: os_crypto/md5_sha1_sha256/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
 crypto_hmac_c := os_crypto/hmac/hmac.c
@@ -784,7 +828,10 @@ crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_o} \
 					 ${crypto_sha1_o} \
 					 ${crypto_shared_o} \
-					 ${crypto_md5_sha1_o}\
+					 ${crypto_md5_sha1_o} \
+					 ${crypto_md5_sha1_sha256_o} \
+					 ${crypto_sha256_o} \
+					 ${crypto_aes_o} \
 					 ${crypto_hmac_o} \
 					 ${crypto_signature_o}
 
@@ -1277,7 +1324,7 @@ win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.c addagent/validat
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
+clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config clean-deps
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1286,14 +1333,19 @@ clean-test:
 	find . -name "*.gcda" -exec rm {} \;
 
 clean-external:
+ifneq ($(wildcard external/*/*),)
 	rm -f ${cjson_o} libcJSON.a
 	cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
 	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
-	cd ${EXTERNAL_LUA} && ${MAKE} clean
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
 	rm -f ${OPENSSL_LIB}
 	rm -f ${CRYPTO_LIB}
 	rm -f ${procps_o} libproc.a
+	cd ${EXTERNAL_LIBDB} && make realclean
+endif
+
+clean-deps:
+	rm -rf $(EXTERNAL_DIR)
 
 clean-internals:
 	rm -f ${os_zlib_o} os_zlib.a
@@ -1339,11 +1391,6 @@ clean-windows:
 	rm -f ${win32_o} ${win32_ui_o} win32/win_service_rk.o
 	rm -f win32/icon.o win32/resource.o
 	rm -f ${WINDOWS_BINS}
-	rm -f ${EXTERNAL_LUA}src/lua52.dll
-	rm -f ${EXTERNAL_LUA}src/ossec-lua.exe
-	rm -f ${EXTERNAL_LUA}src/ossec-luac.exe
-	rm -f win32/ossec-lua.exe
-	rm -f win32/ossec-luac.exe
 	rm -f win32/wazuh-agent-*.exe
 	rm -f win32/libwinpthread-1.dll
 	rm -f win32/VERSION

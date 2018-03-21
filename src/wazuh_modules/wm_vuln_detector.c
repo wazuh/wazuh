@@ -296,7 +296,7 @@ int wm_checks_package_vulnerability(const char *package, char *version, const ch
                     limit_it = &limit_it[j + 1];
                     if (*version_it == '\0' || *limit_it == '\0') {
                         break;
-}
+                    }
                     i = 0;
                     j = 0;
                 }
@@ -311,6 +311,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     sqlite3_stmt *stmt = NULL;
     char alert_msg[OS_MAXSTR];
     char header[OS_SIZE_256];
+    char condition[OS_SIZE_1024];
     int size;
     agent_software *agents_it;
     cJSON *alert = NULL;
@@ -404,6 +405,14 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 cJSON_AddItemToObject(alert, "vulnerability", alert_cve);
                 cJSON_AddStringToObject(jPackage, "name", package);
                 cJSON_AddStringToObject(jPackage, "version", version);
+                if (!pending) {
+                    if (operation_value) {
+                        snprintf(condition, OS_SIZE_1024, "%s %s", operation, operation_value);
+                        cJSON_AddStringToObject(jPackage, "condition", condition);
+                    } else {
+                        cJSON_AddStringToObject(jPackage, "condition", operation);
+                    }
+                }
             } else {
                 cJSON_Delete(alert);
                 return OS_INVALID;

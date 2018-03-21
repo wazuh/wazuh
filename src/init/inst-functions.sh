@@ -302,6 +302,7 @@ WriteAgent()
     echo "    <notify_time>60</notify_time>" >> $NEWCONFIG
     echo "    <time-reconnect>300</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
+    echo "    <crypto_method>aes</crypto_method>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -598,7 +599,7 @@ InstallCommon(){
     OSSEC_USER='ossec'
     OSSEC_USER_MAIL='ossecm'
     OSSEC_USER_REM='ossecr'
-    EXTERNAL_LUA='external/lua-5.2.3/'
+    EXTERNAL_BERKELEY='external/libdb/build_unix/'
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -639,15 +640,12 @@ InstallCommon(){
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
     fi
 
-  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua
-  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/native
-  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/compiled
+  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lib
+  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_BERKELEY}.libs/libdb-6.2.so ${PREFIX}/lib
   ${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-lua ${PREFIX}/bin/
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-luac ${PREFIX}/bin/
   ${INSTALL} -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
