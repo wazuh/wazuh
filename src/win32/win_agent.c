@@ -206,7 +206,7 @@ int local_start()
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id, agt->profile);
 
     /*Set the crypto method for the agent */
-    os_set_agent_crypto_method(&keys,agt);
+    os_set_agent_crypto_method(&keys, agt->crypto_method);
 
     /* Initialize random numbers */
     srandom(time(0));
