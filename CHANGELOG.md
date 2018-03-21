@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Added a synchronization timeout in the cluster to prevent it from blocking ([#447](https://github.com/wazuh/wazuh/pull/447))
 - Fixed issue in CSyslogd when filtering by rule group. ([#446](https://github.com/wazuh/wazuh/pull/446))
 - Fixed error on DB daemon when parsing rules with options introduced in version 3.0.0.
+- Fixed invalid alerts reported by Syscollector when the event contains the word "error". ([#461](https://github.com/wazuh/wazuh/pull/461))
 
 ## [v3.2.1]
 
