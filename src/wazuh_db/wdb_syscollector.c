@@ -120,7 +120,7 @@ int wdb_program_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 }
 
 // Insert Program info tuple. Return 0 on success or -1 on error.
-int wdb_program_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description, const char triggered) {
+int wdb_program_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description, const char triaged) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_INSERT) > 0) {
@@ -138,7 +138,7 @@ int wdb_program_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 6, version, -1, NULL);
     sqlite3_bind_text(stmt, 7, architecture, -1, NULL);
     sqlite3_bind_text(stmt, 8, description, -1, NULL);
-    sqlite3_bind_int(stmt, 9, triggered);
+    sqlite3_bind_int(stmt, 9, triaged);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;

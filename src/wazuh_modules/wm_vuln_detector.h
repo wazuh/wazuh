@@ -98,7 +98,7 @@ typedef struct wm_vulnerability_detector_t {
     time_intervals intervals;
     time_intervals remaining_intervals;
     agent_software *agents_software;
-    OSHash *agents_trig;
+    OSHash *agents_triag;
     int queue_fd;
     wm_vulnerability_detector_state state;
     wm_vulnerability_detector_flags flags;
