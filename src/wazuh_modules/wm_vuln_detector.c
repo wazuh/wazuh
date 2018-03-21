@@ -219,6 +219,8 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
         return VU_NOT_VULNERABLE;
     } else if (!version_it && cversion_it) {
         return VU_VULNERABLE;
+    } else if (!version_it && !cversion_it) {
+        return VU_EQUAL;
     }
 
     (found = strchr(version_it, '~'))? *found = '\0' : 0;
