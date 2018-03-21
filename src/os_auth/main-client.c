@@ -81,6 +81,7 @@ int main(int argc, char **argv)
     const char *agent_key = NULL;
     const char *ca_cert = NULL;
     const char *centralized_group = NULL;
+    const char *sender_ip = NULL;
     char lhostname[512 + 1];
     char buf[4096 + 1];
     SSL_CTX *ctx;
@@ -96,7 +97,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "VdhtgG:m:p:A:c:v:x:k:D:P:a")) != -1) {
+    while ((c = getopt(argc, argv, "VdhtgG:m:p:A:c:v:x:k:D:P:a:s:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -181,6 +182,12 @@ int main(int argc, char **argv)
                     merror_exit("-%c needs an argument",c);
                 }
                 centralized_group = optarg;
+                break;
+            case 's':
+                if(!optarg){
+                    merror_exit("-%c needs an argument",c);
+                }
+                sender_ip = optarg;
                 break;
             default:
                 help_agent_auth();
@@ -318,17 +325,26 @@ int main(int argc, char **argv)
     printf("INFO: Using agent name as: %s\n", agentname);
 
     if (authpass) {
-        if(!centralized_group)
-            snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s'\n", authpass, agentname);
-        else
-            snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s' G:'%s'\n", authpass, agentname,centralized_group);
+        snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s'", authpass, agentname);
     }
     else {
-        if(!centralized_group)
-            snprintf(buf, 2048, "OSSEC A:'%s'\n", agentname);
-        else
-            snprintf(buf, 2048, "OSSEC A:'%s' G:'%s'\n", agentname,centralized_group);     
+        snprintf(buf, 2048, "OSSEC A:'%s'", agentname);
     }
+
+    if(centralized_group){
+        char opt_buf[256] = {0};
+        snprintf(opt_buf,254," G:'%s'",centralized_group);
+        strncat(buf,opt_buf,254);
+    }
+
+    if(sender_ip){
+        char opt_buf[256] = {0};
+        snprintf(opt_buf,254," IP:'%s'",sender_ip);
+        strncat(buf,opt_buf,254);
+    }
+
+    /* Append new line character */
+    strncat(buf,"\n",1);
 
     ret = SSL_write(ssl, buf, strlen(buf));
     if (ret < 0) {
