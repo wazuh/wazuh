@@ -779,6 +779,19 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     continue;
                 }
                 closedir(group_dir);
+
+                /*Forward the string pointer G:'........' 2 for G:, 2 for ''*/
+                tmpstr+= 2+strlen(centralized_group)+2;
+            }
+
+            /* Check for IP when client uses -s option */
+            char client_source_ip[IPSIZE + 1] = {0};
+            char client_source_ip_token[3] = "IP:";
+	    
+            if(strncmp(++tmpstr,client_source_ip_token,3)==0)
+            {
+                sscanf(tmpstr," IP:\'%15[^\']\"",client_source_ip);
+                memcpy(srcip,client_source_ip,IPSIZE);
             }
 
             pthread_mutex_lock(&mutex_keys);
