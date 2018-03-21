@@ -947,31 +947,33 @@ void goDaemon()
 
 int checkVista()
 {
-    const char *m_uname;
+    /* Check if the system is Vista (must be called during the startup) */
     isVista = 0;
 
-    m_uname = getuname();
-    if (!m_uname) {
-        merror(MEM_ERROR, errno, strerror(errno));
-        return (0);
+    OSVERSIONINFOEX osvi;
+    BOOL bOsVersionInfoEx;
+
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+
+    if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
+        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+        if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
+            merror("Cannot get Windows version number.");
+            return -1;
+        }
     }
 
-    /* Check if the system is Vista (must be called during the startup) */
-    if (strstr(m_uname, "Windows Server 2008") ||
-            strstr(m_uname, "Vista") ||
-            strstr(m_uname, "Windows 7") ||
-            strstr(m_uname, "Windows 8") ||
-            strstr(m_uname, "Windows 10") ||
-            strstr(m_uname, "Windows Server 2012") ||
-            strstr(m_uname, "Windows Server 2016")) {
+    if (osvi.dwMajorVersion >= 6) {
         isVista = 1;
-        minfo("System is Vista or newer (%s).", m_uname);
-    } else {
-        minfo("System is older than Vista (%s).", m_uname);
+        minfo("Windows version is 6.0 or newer.");
     }
+    else
+        minfo("Windows version is older than 6.0.");
 
     return (isVista);
 }
+
 
 /* Get basename of path */
 char *basename_ex(char *path)
