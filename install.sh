@@ -115,7 +115,7 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} -j${THREADS} build
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"
