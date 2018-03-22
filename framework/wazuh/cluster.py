@@ -28,7 +28,6 @@ from stat import S_IRWXG, S_IRWXU
 from sys import version
 from difflib import unified_diff
 import re
-import socket
 import asyncore
 import asynchat
 import errno
@@ -129,7 +128,7 @@ class WazuhClusterClient():
                 self.received_data.append(data)
         except socket.error as e:
             logging.error("Could not receive data from {}: {}".format(self.addr, str(e)))
-            raise WazuhException(3010, str(e))
+            raise e
         self.found_terminator()
 
     def found_terminator(self):
@@ -155,7 +154,7 @@ class WazuhClusterClient():
             self.handle_receive()
         except socket.error as e:
             logging.error("Could not send data to {}: {}".format(self.addr, str(e)))
-            raise WazuhException(3010, str(e))
+            raise e
 
 
 def send_request(host, port, key, data, file=None):
@@ -172,11 +171,21 @@ def send_request(host, port, key, data, file=None):
             common.cluster_connections[host] = client
         else:
             connection_status = get_connection_status(host)
-            logging.info("Connection status with {} is {}".format(host, connection_status))
+            logging.debug("Connection status with {} is {}".format(host, connection_status))
             if connection_status == 'ESTABLISHED':
                 client.data = data
                 client.file = file
-                client.handle_write()
+                try:
+                    client.handle_write()
+                except socket.error as e:
+                    # if the error is reported as timed out, remove the connection
+                    # and create a new socket on the next iteration. This way,
+                    # the socket will not be ESTABLISHED but "disconnected"
+                    if str(e) == 'timed out':
+                        logging.debug("Closing connection with {}".format(host))
+                        common.cluster_connections[host].socket.close()
+                        del common.cluster_connections[host]
+                    raise e
                 response = client.response
             else:
                 common.cluster_connections[host].socket.close()
