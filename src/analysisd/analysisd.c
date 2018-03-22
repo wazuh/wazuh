@@ -561,6 +561,9 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Initialize Rootcheck */
     RootcheckInit();
 
+    /* Initialize Syscollector */
+    SyscollectorInit();
+
     /* Initialize host info */
     HostinfoInit();
 
