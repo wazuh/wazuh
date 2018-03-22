@@ -49,7 +49,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
-        if ((c_time - lf->time) > rule->timeframe) {
+        if ((c_time - lf->time.tv_sec) > rule->timeframe) {
             return (NULL);
         }
 
@@ -202,7 +202,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
-        if ((c_time - lf->time) > rule->timeframe) {
+        if ((c_time - lf->time.tv_sec) > rule->timeframe) {
             return (NULL);
         }
 
@@ -349,7 +349,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
         lf = eventnode_pt->event;
 
         /* If time is outside the timeframe, return */
-        if ((c_time - lf->time) > rule->timeframe) {
+        if ((c_time - lf->time.tv_sec) > rule->timeframe) {
             return (NULL);
         }
 
@@ -491,7 +491,8 @@ void Zero_Eventinfo(Eventinfo *lf)
 
     lf->nfields = 0;
 
-    lf->time = 0;
+    lf->time.tv_sec = 0;
+    lf->time.tv_nsec = 0;
     lf->matched = 0;
 
     lf->year = 0;
