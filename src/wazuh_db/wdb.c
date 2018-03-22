@@ -31,7 +31,7 @@ static const char * SQL_STMT[] = {
     "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = changes + 1, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ? WHERE file = ?;",
     "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_osinfo;",
-    "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_programs WHERE scan_id != ?;",
     "UPDATE SYS_PROGRAMS SET TRIAGED = 1 WHERE SCAN_ID = ? AND EXISTS(SELECT OLD.SCAN_ID FROM SYS_PROGRAMS OLD WHERE OLD.SCAN_ID != SYS_PROGRAMS.SCAN_ID AND OLD.TRIAGED = 1 AND OLD.FORMAT = SYS_PROGRAMS.FORMAT AND OLD.NAME = SYS_PROGRAMS.NAME AND OLD.VENDOR = SYS_PROGRAMS.VENDOR AND OLD.VERSION = SYS_PROGRAMS.VERSION AND OLD.ARCHITECTURE = SYS_PROGRAMS.ARCHITECTURE);",
     "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",

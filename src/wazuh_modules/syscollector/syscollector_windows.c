@@ -12,9 +12,6 @@
 #ifdef WIN32
 
 #include "syscollector.h"
-#include <winsock2.h>
-#include <netioapi.h>
-#include <iphlpapi.h>
 
 typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 typedef char* (*CallFunc1)(UCHAR ucLocalAddr[]);

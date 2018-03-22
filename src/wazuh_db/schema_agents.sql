@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     multiarch TEXT,
     source TEXT,
     description TEXT,
+    location TEXT,
     triaged INTEGER(1),
     PRIMARY KEY (scan_id, name, version, architecture)
 );
