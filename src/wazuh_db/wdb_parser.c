@@ -1302,6 +1302,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
     char * multiarch;
     char * source;
     char * description;
+    char * location;
     int result;
 
     if (next = strchr(input, ' '), !next) {
@@ -1495,16 +1496,30 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
         source = curr;
         *next++ = '\0';
+        curr = next;
 
         if (!strcmp(source, "NULL"))
             source = NULL;
 
-        if (!strcmp(next, "NULL"))
-            description = NULL;
-        else
-            description = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", source);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", source);
+            return -1;
+        }
 
-        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description), result < 0) {
+        description = curr;
+        *next++ = '\0';
+
+        if (!strcmp(description, "NULL"))
+            description = NULL;
+
+        if (!strcmp(next, "NULL"))
+            location = NULL;
+        else
+            location = next;
+
+        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location), result < 0) {
             mdebug1("Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
@@ -1522,14 +1537,14 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         else
             scan_id = next;
 
-        if (result = wdb_program_update(wdb, scan_id), result < 0) {
-            mdebug1("Cannot save scanned packages before delete old Program information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old Program information.");
+        if (result = wdb_package_update(wdb, scan_id), result < 0) {
+            mdebug1("Cannot save scanned packages before delete old Package information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old Package information.");
         }
 
-        if (result = wdb_program_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Program information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Program information.");
+        if (result = wdb_package_delete(wdb, scan_id), result < 0) {
+            mdebug1("Cannot delete old Package information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Package information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }

@@ -36,7 +36,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     syscollector->flags.programinfo = 1;
     syscollector->flags.portsinfo = 0;
     syscollector->flags.allports = 0;
-    syscollector->flags.procinfo = 1;
+    syscollector->flags.procinfo = 0;
     module->context = &WM_SYS_CONTEXT;
     module->data = syscollector;
 
