@@ -318,55 +318,14 @@ void * run_worker(__attribute__((unused)) void * args) {
                 continue;
             }
 
-            char buffer2[OS_MAXSTR + 1] = {0};
             ssize_t count;
             length = 0;
-            int rc = 0;
-            int fetch_socket_data = 1;
+            count = OS_RecvSecureTCP(*peer,buffer,OS_MAXSTR);
 
-            while(fetch_socket_data){
-                FD_ZERO(&fdset_recv);
-                FD_SET(*peer, &fdset_recv);
-                struct timeval timeout_recv;
-                timeout_recv.tv_sec = 0;
-                timeout_recv.tv_usec = 100000;
-
-                rc = select(*peer + 1, &fdset_recv, NULL, NULL, &timeout_recv);
-
-                switch(rc){
-
-                    case -1:
-                        if (errno == EINTR) {
-                            minfo("at run_worker(): select(): %s", strerror(EINTR));
-                        } else {
-                            merror_exit("at run_worker(): select(): %s", strerror(errno));
-                        }
-                        fetch_socket_data=0;
-                        break;
-
-                    case 0:
-
-                        fetch_socket_data = 0;
-                        break;
-
-                    default:
-
-                        if((count = recv(*peer, buffer, OS_MAXSTR, 0))>0){
-
-                            if((length+count) > OS_MAXSTR){
-                                fetch_socket_data=0;
-                                merror_exit("query size exceeded");
-                            }
-
-                            memcpy(buffer2+length,buffer,count);
-                            length += count;
-                        }
-                        else{
-                            fetch_socket_data = 0;
-                        }
-                }
-                
+            if(count == OS_SOCKTERR){
+                merror_exit("at run_worker(): received string size is bigger than %d bytes", OS_MAXSTR);
             }
+            length+=count;
 
             switch (length) {
             case -1:
@@ -382,21 +341,21 @@ void * run_worker(__attribute__((unused)) void * args) {
             default:
 
                 if (length > 0 && buffer[length - 1] == '\n') {
-                    buffer2[length - 1] = '\0';
+                    buffer[length - 1] = '\0';
                     terminal = 1;
                 } else {
-                    buffer2[length] = '\0';
+                    buffer[length] = '\0';
                     terminal = 0;
                 }
 
                 *response = '\0';
-                wdb_parse(buffer2, response);
+                wdb_parse(buffer, response);
                 if (length = strlen(response), length > 0) {
                     if (terminal && length < OS_MAXSTR - 1) {
                         response[length++] = '\n';
                     }
-                    if (send(*peer, response, length, 0) < 0) {
-                        merror("at run_worker(): send(%d): %s (%d)", *peer, strerror(errno), errno);
+                    if (OS_SendSecureTCP(*peer,length,response) < 0) {
+                        merror("at run_worker(): OS_SendSecureTCP(%d): %s (%d)", *peer, strerror(errno), errno);
                     }
                 }
             }

@@ -532,6 +532,61 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     return retval;
 }
 
+/* Receive secure TCP message
+ * This function reads a header containing message size as 4-byte little-endian unsigned integer.
+ * Return recvval on success or OS_SOCKTERR on error.
+ */
+int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
+    int recvval;
+    char * buffer;
+    size_t bufsz = size + sizeof(uint32_t);
+    uint32_t msgsize;
+    
+    os_malloc(bufsz, buffer);
+    recvval = recv(sock, buffer, bufsz, 0);
+
+    switch(recvval){
+
+        case -1:
+            free(buffer);
+            return recvval;
+            break;
+            
+        case 0:
+            free(buffer);
+            return recvval;
+            break;
+    }
+
+    msgsize = wnet_order(*(uint32_t*)buffer);
+    
+    if(msgsize > size){
+        free(buffer);
+        return OS_SOCKTERR;
+    }
+
+    if((uint32_t)recvval < msgsize){
+        int recvb = recv(sock, buffer + recvval, msgsize-recvval, MSG_WAITALL);
+
+        switch(recvb){ 
+            case -1:
+                free(buffer);
+                return recvb;
+                break;
+                
+            case 0:
+                free(buffer);
+                return recvb;
+                break;
+        }
+        recvval+=recvb;
+    }
+
+    memcpy(ret, buffer + sizeof(uint32_t), recvval - sizeof(uint32_t));
+
+    free(buffer);
+    return recvval;
+}
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value) {
