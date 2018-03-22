@@ -282,25 +282,30 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         }
                     } else {
                         merror("Invalid content for '%s' option at module '%s'", XML_DISABLED, WM_VULNDETECTOR_CONTEXT.name);
+                        OS_ClearNode(chld_node);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(chld_node[j]->element, XML_UPDATE_INTERVAL)) {
                     if (get_interval(chld_node[j]->content, &upd->interval)) {
                         merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
+                        OS_ClearNode(chld_node);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(chld_node[j]->element, XML_URL)) {
                     os_strdup(chld_node[j]->content, upd->url);
-                    if (*chld_node[j]->attributes && !strcmp(*chld_node[j]->attributes, XML_PORT)) {
+                    if (chld_node[j]->attributes && !strcmp(*chld_node[j]->attributes, XML_PORT)) {
                         upd->port = strtol(*chld_node[j]->values, NULL, 10);
                     }
                 } else if (!strcmp(chld_node[j]->element, XML_PATH)) {
                     os_strdup(chld_node[j]->content, upd->path);
                 } else {
                     merror("Invalid option '%s' for tag '%s' at module '%s'.", chld_node[j]->element, XML_FEED , WM_VULNDETECTOR_CONTEXT.name);
+                    OS_ClearNode(chld_node);
                     return OS_INVALID;
                 }
             }
+
+            OS_ClearNode(chld_node);
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
             if (!strcmp(nodes[i]->content, "yes")) {
                 vulnerability_detector->flags.run_on_start = 1;

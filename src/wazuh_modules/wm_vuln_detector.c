@@ -36,9 +36,9 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval, 
 int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS);
 int wm_vulnerability_detector_sql_error(sqlite3 *db);
 int wm_vulnerability_detector_sql_exec(sqlite3 *db, char *sql, size_t size, int allows_constr);
-int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agents_trig, unsigned long ignore_time);
+int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agents_triag, unsigned long ignore_time);
 int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, int max);
-int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents, OSHash *agents_trig, unsigned long ignore_time);
+int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents, OSHash *agents_triag, unsigned long ignore_time);
 int wm_vulnerability_detector_sql_prepare(sqlite3 *db, char *sql, size_t size, sqlite3_stmt **stmt);
 int wm_checks_package_vulnerability(char *version, const char *operation, char *operation_value);
 int wm_vulnerability_detector_step(sqlite3_stmt *stmt);
@@ -55,6 +55,27 @@ const wm_context WM_VULNDETECTOR_CONTEXT = {
     "vulnerability-detector",
     (wm_routine)wm_vulnerability_detector_main,
     (wm_routine)wm_vulnerability_detector_destroy
+};
+
+const char *vu_dist_tag[] = {
+    "UBUNTU",
+    "DEBIAN",
+    "REDHAT",
+    "CENTOS",
+    "WINDOWS",
+    "MACOS",
+    "PRECISE",
+    "TRUSTY",
+    "XENIAL",
+    "JESSIE",
+    "STRETCH",
+    "WHEEZY",
+    "RHEL5",
+    "RHEL6",
+    "RHEL7",
+    "WS2016",
+    "MACOSX",
+    "UNKNOW"
 };
 
 OSRegex * wm_vulnerability_set_packages_patterns() {
@@ -391,6 +412,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     sqlite3_stmt *stmt = NULL;
     char alert_msg[OS_MAXSTR];
     char header[OS_SIZE_256];
+    char condition[OS_SIZE_1024];
     int size;
     agent_software *agents_it;
     cJSON *alert = NULL;
@@ -486,6 +508,14 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 cJSON_AddItemToObject(alert, "vulnerability", alert_cve);
                 cJSON_AddStringToObject(jPackage, "name", package);
                 cJSON_AddStringToObject(jPackage, "version", version);
+                if (!pending) {
+                    if (operation_value) {
+                        snprintf(condition, OS_SIZE_1024, "%s %s", operation, operation_value);
+                        cJSON_AddStringToObject(jPackage, "condition", condition);
+                    } else {
+                        cJSON_AddStringToObject(jPackage, "condition", operation);
+                    }
+                }
             } else {
                 cJSON_Delete(alert);
                 return OS_INVALID;
@@ -516,7 +546,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
 }
 
 
-int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents, OSHash *agents_trig, unsigned long ignore_time) {
+int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents, OSHash *agents_triag, unsigned long ignore_time) {
     agent_software *agents_it;
     sqlite3 *db;
     sqlite3_stmt *stmt = NULL;
@@ -543,7 +573,7 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     sqlite3_finalize(stmt);
 
     for (i = 1, agents_it = agents;; i++) {
-        if (result = wm_vulnerability_detector_get_software_info(agents_it, db, agents_trig, ignore_time), result == OS_INVALID) {
+        if (result = wm_vulnerability_detector_get_software_info(agents_it, db, agents_triag, ignore_time), result == OS_INVALID) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR);
             return OS_INVALID;
         }
@@ -2059,7 +2089,7 @@ int wm_vulnerability_detector_updatedb(update_node **updates) {
     return 0;
 }
 
-int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agents_trig, unsigned long ignore_time) {
+int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agents_triag, unsigned long ignore_time) {
     int sock = 0;
     unsigned int i;
     int size;
@@ -2122,7 +2152,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     obj = NULL;
 
     // Check to see if the scan has already been reported
-    if (scan = OSHash_Get(agents_trig, agent->agent_id), scan) {
+    if (scan = OSHash_Get(agents_triag, agent->agent_id), scan) {
             if ((scan->last_scan_time + (time_t) ignore_time) < time(NULL)) {
                 scan->last_scan_time = time(NULL);
                 request = VU_SOFTWARE_FULL_REQ;
@@ -2139,7 +2169,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
         os_calloc(1, sizeof(last_scan), scan);
         os_strdup(scan_id, scan->last_scan_id);
         scan->last_scan_time = time(NULL);
-        OSHash_Add(agents_trig, strdup(agent->agent_id), scan);
+        OSHash_Add(agents_triag, strdup(agent->agent_id), scan);
         request = VU_SOFTWARE_FULL_REQ; // Check all at the first time
     }
 
@@ -2302,7 +2332,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
         }
     }
 
-    if (vulnerability_detector->agents_trig = OSHash_Create(), !vulnerability_detector->agents_trig) {
+    if (vulnerability_detector->agents_triag = OSHash_Create(), !vulnerability_detector->agents_triag) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_CREATE_HASH_ERRO);
         pthread_exit(NULL);
     }
@@ -2320,7 +2350,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
             if (wm_vunlnerability_detector_set_agents_info(&vulnerability_detector->agents_software)) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_ERROR);
             } else {
-                if (wm_vulnerability_detector_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_trig, vulnerability_detector->ignore_time)) {
+                if (wm_vulnerability_detector_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_triag, vulnerability_detector->ignore_time)) {
                     mterror(WM_VULNDETECTOR_LOGTAG, VU_AG_CHECK_ERR);
                 } else {
                     mtinfo(WM_VULNDETECTOR_LOGTAG, VU_END_SCAN);
@@ -2592,8 +2622,8 @@ void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerabili
     update_node **update;
     int i;
 
-    if (vulnerability_detector->agents_trig) {
-        OSHash_Free(vulnerability_detector->agents_trig);
+    if (vulnerability_detector->agents_triag) {
+        OSHash_Free(vulnerability_detector->agents_triag);
     }
 
     for (i = 0, update = vulnerability_detector->updates; i < OS_SUPP_SIZE; i++) {

@@ -52,16 +52,32 @@ int realtime_checksumfile(const char *file_name)
 
         /* If it returns < 0, we have already alerted */
         if (c_read_file(file_name, buf, c_sum) < 0) {
+            // Update database
+            snprintf(c_sum, sizeof(c_sum), "%.*s -1", SK_DB_NATTR, buf);
+            free(buf);
+
+            if (!OSHash_Update(syscheck.fp, file_name, strdup(c_sum))) {
+                merror("Unable to update file to db: %s", file_name);
+            }
+
             return (0);
         }
 
-        if (strcmp(c_sum, buf + 8) != 0) {
+        if (strcmp(c_sum, buf + SK_DB_NATTR) != 0) {
             char alert_msg[OS_MAXSTR + 1];
+
+            // Update database
+            snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
+            free(buf);
+
+            if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
+                merror("Unable to update file to db: %s", file_name);
+            }
 
             alert_msg[OS_MAXSTR] = '\0';
             char *fullalert = NULL;
 
-            if (buf[5] == 's' || buf[5] == 'n') {
+            if (buf[6] == 's' || buf[6] == 'n') {
                 fullalert = seechanges_addfile(file_name);
                 if (fullalert) {
                     snprintf(alert_msg, OS_MAXSTR, "%s %s\n%s", c_sum, file_name, fullalert);
@@ -76,6 +92,8 @@ int realtime_checksumfile(const char *file_name)
             send_syscheck_msg(alert_msg);
 
             return (1);
+        } else {
+            mdebug2("Discarding '%s': checksum already reported.", file_name);
         }
         return (0);
     } else {
@@ -219,10 +237,13 @@ int realtime_process()
                 snprintf(final_name, MAX_LINE, "%s/%s",
                          (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar),
                          event->name);
-		/* Need a sleep here to avoid triggering on vim edits
-  		 * (and finding the file removed)
-  		 */
-		sleep(1);
+
+                /* Need a sleep here to avoid triggering on vim
+                * (and finding the file removed)
+                */
+
+                struct timeval timeout = {0, syscheck.rt_delay * 1000};
+                select(0, NULL, NULL, NULL, &timeout);
 
                 realtime_checksumfile(final_name);
             }

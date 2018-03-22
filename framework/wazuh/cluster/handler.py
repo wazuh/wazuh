@@ -230,9 +230,10 @@ def clear_file_status_one_node(manager, cluster_socket):
     """
     files = get_file_status(manager, cluster_socket).keys()
 
-    update_sql = "update2"
-    for file in files:
-        update_sql += " pending {0} {1}".format(manager, file)
+    for file in divide_list(files):
+        update_sql = "update2"
+        for f in file:
+            update_sql += " pending {0} {1}".format(manager, f)
 
         send_recv_and_check(cluster_socket, update_sql)
 
@@ -271,8 +272,7 @@ def clear_file_status():
         query = "selfiles 100 "
         file_status = ""
         for offset in range(0, n_files_db, 100):
-            query += str(offset)
-            send_to_socket(cluster_socket, query)
+            send_to_socket(cluster_socket, query + str(offset))
             file_status += receive_data_from_db_socket(cluster_socket)
 
         db_items = {filename:{'md5': md5, 'timestamp': timestamp} for filename,
@@ -280,9 +280,9 @@ def clear_file_status():
                     filter(lambda x: x != '', file_status.split(' ')))}
 
         # Update status
-        query = "update1 "
         new_items = {}
         for files_slice in divide_list(own_items.items()):
+            query = "update1 "
             try:
                 local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5']
                                 or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
@@ -343,7 +343,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
     if is_agent_info or is_agent_groups:
         if node_type=='master':
             # check if the date is older than the manager's date
-            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) >= mtime:
+            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
                 logging.warning("Receiving an old file ({})".format(fullpath))
                 raise WazuhException(3012)
         elif is_agent_info:
@@ -496,7 +496,7 @@ def get_remote_nodes(connected=True, updateDBname=False):
         localhost_index = next (x[0] for x in enumerate(cluster) if x[1][1])
     except StopIteration as e:
         logging.error("Cluster nodes are not correctly configured at ossec.conf.")
-        exit(1)
+        raise WazuhException(3016)
 
     return list(compress(map(itemgetter(0), cluster), map(lambda x: x != localhost_index, range(len(cluster)))))
 
@@ -566,7 +566,7 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, clus
     else:
         logging.debug({'updated': len(res['data']['updated']),
                       'error': res['data']['error'],
-                      'deleted': res['data']['deleted']})
+                      'deleted': len(res['data']['deleted'])})
         result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
 
 

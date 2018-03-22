@@ -54,26 +54,7 @@
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
-static const char *vu_dist_tag[] = {
-    "UBUNTU",
-    "DEBIAN",
-    "REDHAT",
-    "CENTOS",
-    "WINDOWS",
-    "MACOS",
-    "PRECISE",
-    "TRUSTY",
-    "XENIAL",
-    "JESSIE",
-    "STRETCH",
-    "WHEEZY",
-    "RHEL5",
-    "RHEL6",
-    "RHEL7",
-    "WS2016",
-    "MACOSX",
-    "UNKNOW"
-};
+extern const char *vu_dist_tag[];
 
 static const char *vu_dist_ext[] = {
     "Ubuntu",
@@ -198,7 +179,7 @@ typedef struct wm_vulnerability_detector_t {
     unsigned long ignore_time;
     time_t last_detection;
     agent_software *agents_software;
-    OSHash *agents_trig;
+    OSHash *agents_triag;
     int queue_fd;
     wm_vulnerability_detector_state state;
     wm_vulnerability_detector_flags flags;

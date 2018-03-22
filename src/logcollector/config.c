@@ -58,7 +58,7 @@ int LogCollectorConfig(const char *cfgfile)
 
     // Check sockets
     if (logff) {
-        int i, j, k;
+        int i, j, k, r, count_localfiles = 0;
         for (i=0;logff[i].file;i++) {
             for (j=0;logff[i].target[j];j++) {
                 if (strcmp(logff[i].target[j], "agent") == 0) {
@@ -79,25 +79,25 @@ int LogCollectorConfig(const char *cfgfile)
                 }
             }
         }
-    }
 
-    /* Remove duplicate entries */
-    int i, r, count_localfiles = 0;
-    for (i = 0;; i++) {
-        if (logff[i].file == NULL) {
-            break;
-        }
-        for (r = 0; r < i; r++) {
-            if (logff[r].file && strcmp(logff[i].file, logff[r].file) == 0) {
-                mwarn("Duplicated log file given: '%s'.", logff[i].file);
-                logff[r].duplicated = 1;
-                count_localfiles--;
+        /* Remove duplicate entries */
+
+        for (i = 0;; i++) {
+            if (logff[i].file == NULL) {
                 break;
             }
+            for (r = 0; r < i; r++) {
+                if (logff[r].file && strcmp(logff[i].file, logff[r].file) == 0) {
+                    mwarn("Duplicated log file given: '%s'.", logff[i].file);
+                    logff[r].duplicated = 1;
+                    count_localfiles--;
+                    break;
+                }
+            }
+            count_localfiles++;
         }
-        count_localfiles++;
+        mdebug1("Added %i valid 'localfile' entries.", count_localfiles);
     }
-    mdebug1("Added %i valid 'localfile' entries.", count_localfiles);
 
     return (1);
 }

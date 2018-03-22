@@ -99,6 +99,24 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
             body_size -= log_size;
         }
     }
+    if (al_data->old_sha256) {
+        log_size = strlen(al_data->old_sha256) + 19 + 4;
+        if (body_size > log_size) {
+            strncat(logs, "Old sha256sum was: ", 19);
+            strncat(logs, al_data->old_sha256, body_size);
+            strncat(logs, "\r\n", 4);
+            body_size -= log_size;
+        }
+    }
+    if (al_data->new_sha256) {
+        log_size = strlen(al_data->new_sha256) + 19 + 4;
+        if (body_size > log_size) {
+            strncat(logs, "New sha256sum is : ", 1256);
+            strncat(logs, al_data->new_sha256, body_size);
+            strncat(logs, "\r\n", 4);
+            body_size -= log_size;
+        }
+    }
 
     /* EXTRA DATA */
     if (al_data->srcip) {

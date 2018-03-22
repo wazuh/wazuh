@@ -45,7 +45,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             key = NULL;
             hidden = 0;
 
-            for (j = 0; node[i]->attributes[j]; j++) {
+            for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
                 if (strcmp(node[i]->attributes[j], xml_key) == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
                         key = node[i]->values[j];

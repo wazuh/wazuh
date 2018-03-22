@@ -21,13 +21,31 @@
 #define MAX_TRIES 3
 
 #define PROTO_LENGTH 6
-#define FORMAT_LENGTH 18
 #define MAC_LENGTH 18
 #define TYPE_LENGTH 64
 #define STATE_LENGTH 20
 #define MTU_LENGTH 20
 #define DHCP_LENGTH 10
 #define CLOCK_LENGTH 256
+#define V_LENGTH    128
+#define COMMAND_LENGTH  512
+#define PATH_LENGTH     512
+#define TIME_LENGTH     64
+#define ADDR6_LENGTH    256
+#define IFNAME_LENGTH   256
+#define SERIAL_LENGTH   512
+
+#define TAG_NAME        1000
+#define TAG_VERSION     1001
+#define TAG_RELEASE     1002
+#define TAG_EPOCH       1003
+#define TAG_SUMMARY     1004
+#define TAG_ITIME       1008
+#define TAG_SIZE        1009
+#define TAG_VENDOR      1011
+#define TAG_GROUP       1016
+#define TAG_SOURCE      1018
+#define TAG_ARCH        1022
 
 #define WM_SYS_DEF_INTERVAL 3600            // Default cycle interval (1 hour)
 #define WM_SYS_LOGTAG ARGV0 ":syscollector" // Tag for log messages
@@ -37,6 +55,15 @@
 #define WM_SYS_IFDATA_DIR "/sys/class/net/"
 #define WM_SYS_HW_DIR   "/sys/class/dmi/id"
 #define WM_SYS_NET_DIR  "/proc/net/"
+#define RPM_DATABASE    "/var/lib/rpm/Packages"
+
+typedef struct rpm_data {
+    char *tag;
+    int type;
+    int offset;
+    int count;
+    struct rpm_data *next;
+} rpm_data;
 
 typedef struct hw_info {
     char *cpu_name;
@@ -52,7 +79,7 @@ typedef struct wm_sys_flags_t {
     unsigned int hwinfo:1;                  // Hardware inventory
     unsigned int netinfo:1;                 // Network inventory
     unsigned int osinfo:1;                  // OS inventory
-    unsigned int programinfo:1;             // Installed programs inventory
+    unsigned int programinfo:1;             // Installed packages inventory
     unsigned int portsinfo:1;               // Opened ports inventory
     unsigned int allports:1;                // Scan only listening ports or all
     unsigned int procinfo:1;                // Running processes inventory
@@ -79,15 +106,17 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all);
 // Opened ports inventory for Windows
 void sys_ports_windows(const char* LOCATION, int check_all);
 
-// Installed programs inventory for Linux
-void sys_programs_linux(int queue_fd, const char* WM_SYS_LOCATION);
+// Installed packages inventory for Linux
+void sys_packages_linux(int queue_fd, const char* WM_SYS_LOCATION);
+int sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION);
+int sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION);
 
 // Installed programs inventory for Windows
 void sys_programs_windows(const char* LOCATION);
 
 #if defined(__FreeBSD__)
 // Installed programs inventory for BSD based systems
-void sys_programs_bsd(int queue_fd, const char* LOCATION);
+void sys_packages_bsd(int queue_fd, const char* LOCATION);
 #endif
 
 // Hardware inventory for Linux
@@ -117,6 +146,15 @@ void sys_network_windows(const char* LOCATION);
 // Running processes inventory
 void sys_proc_linux(int queue_fd, const char* LOCATION);
 void sys_proc_windows(const char* LOCATION);
+
+// Read string from a byte array until find a NULL byte
+char* read_string(u_int8_t* bytes);
+
+// Read four bytes and retrieve its decimal value
+int four_bytes_to_int32(u_int8_t* bytes);
+
+// Read index entry from a RPM header
+int read_entry(u_int8_t* bytes, rpm_data *info);
 
 #endif
 #endif

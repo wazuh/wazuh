@@ -70,8 +70,10 @@ PRAGMA journal_mode=WAL;
 
 CREATE TABLE IF NOT EXISTS sys_netaddr (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    address TEXT NOT NULL,
-    netmask TEXT NOT NULL,
+    scan_id INTEGER,
+    type TEXT,
+    address TEXT,
+    netmask TEXT,
     broadcast TEXT,
     gateway TEXT,
     dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown'
@@ -150,11 +152,17 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     scan_time TEXT,
     format TEXT NOT NULL CHECK (format IN ('deb', 'rpm', 'win', 'pkg')),
     name TEXT,
+    priority TEXT,
+    section TEXT,
+    size INTEGER CHECK (size >= 0),
     vendor TEXT,
+    install_time TEXT,
     version TEXT,
     architecture TEXT,
+    multiarch TEXT,
+    source TEXT,
     description TEXT,
-    triggered INTEGER(1),
+    triaged INTEGER(1),
     PRIMARY KEY (scan_id, name, version, architecture)
 );
 
