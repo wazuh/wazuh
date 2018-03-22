@@ -14,12 +14,14 @@ All notable changes to this project will be documented in this file.
 - Get Linux packages inventory natively. ([#441](https://github.com/wazuh/wazuh/pull/441))
 - Get Windows packages inventory natively. ([#471](https://github.com/wazuh/wazuh/pull/471))
 - Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
+- Extend the operating systems supported by vulnerability-detector. ([#470](https://github.com/wazuh/wazuh/pull/470))
 
 ### Changed
 
 - Add default value for option -x in agent_control tool.
 - Syscheck RT process granularized to make frequency option more accurate.
 - External libraries moved to an external repository.
+- Change the version comparator algorithm in vulnerability-detector.
 
 ### Fixed
 
