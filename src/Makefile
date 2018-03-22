@@ -1324,7 +1324,7 @@ win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.c addagent/validat
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config clean-deps
+clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1341,7 +1341,10 @@ ifneq ($(wildcard external/*/*),)
 	rm -f ${OPENSSL_LIB}
 	rm -f ${CRYPTO_LIB}
 	rm -f ${procps_o} libproc.a
+
+ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
+endif
 endif
 
 clean-deps:

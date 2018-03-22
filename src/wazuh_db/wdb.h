@@ -37,31 +37,33 @@
 #define WDB_AGENTINFO 3
 #define WDB_GROUPS 4
 #define WDB_SYSCOLLECTOR 5
-
 #define WDB_NETADDR_IPV4 0
 
-#define WDB_STMT_FIM_LOAD 0
-#define WDB_STMT_FIM_FIND_ENTRY 1
-#define WDB_STMT_FIM_INSERT_ENTRY 2
-#define WDB_STMT_FIM_UPDATE_ENTRY 3
-#define WDB_STMT_OSINFO_INSERT 4
-#define WDB_STMT_OSINFO_DEL 5
-#define WDB_STMT_PROGRAM_INSERT 6
-#define WDB_STMT_PROGRAM_DEL 7
-#define WDB_STMT_HWINFO_INSERT 8
-#define WDB_STMT_HWINFO_DEL 9
-#define WDB_STMT_PORT_INSERT 10
-#define WDB_STMT_PORT_DEL 11
-#define WDB_STMT_PROC_INSERT 12
-#define WDB_STMT_PROC_DEL 13
-#define WDB_STMT_NETINFO_INSERT 14
-#define WDB_STMT_ADDR_INSERT 15
-#define WDB_STMT_ADDR_IPV4_UPDATE 16
-#define WDB_STMT_ADDR_IPV6_UPDATE 17
-#define WDB_STMT_NETINFO_DEL 18
-#define WDB_STMT_ADDR_DEL 19
-#define WDB_STMT_RESET_COUNT 20
-#define WDB_STMT_SIZE 21
+typedef enum wdb_stmt {
+    WDB_STMT_FIM_LOAD,
+    WDB_STMT_FIM_FIND_ENTRY,
+    WDB_STMT_FIM_INSERT_ENTRY,
+    WDB_STMT_FIM_UPDATE_ENTRY,
+    WDB_STMT_OSINFO_INSERT,
+    WDB_STMT_OSINFO_DEL,
+    WDB_STMT_PROGRAM_INSERT,
+    WDB_STMT_PROGRAM_DEL,
+    WDB_STMT_PROGRAM_UPD,
+    WDB_STMT_HWINFO_INSERT,
+    WDB_STMT_HWINFO_DEL,
+    WDB_STMT_PORT_INSERT,
+    WDB_STMT_PORT_DEL,
+    WDB_STMT_PROC_INSERT,
+    WDB_STMT_PROC_DEL,
+    WDB_STMT_NETINFO_INSERT,
+    WDB_STMT_ADDR_INSERT,
+    WDB_STMT_ADDR_IPV4_UPDATE,
+    WDB_STMT_ADDR_IPV6_UPDATE,
+    WDB_STMT_NETINFO_DEL,
+    WDB_STMT_ADDR_DEL,
+    WDB_STMT_RESET_COUNT,
+    WDB_STMT_SIZE
+} wdb_stmt;
 
 typedef struct wdb_t {
     sqlite3 * db;
@@ -255,10 +257,13 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
 int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free);
 
 // Insert package info tuple. Return 0 on success or -1 on error.
-int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description);
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * descriptionn, const char triaged);
 
 // Save Packages info into DB.
 int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description);
+
+// Update the new Program info with the previous scan.
+int wdb_program_update(wdb_t * wdb, const char * scan_id);
 
 // Delete Packages info about previous scan from DB.
 int wdb_package_delete(wdb_t * wdb, const char * scan_id);

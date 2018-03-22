@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 - Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
 - Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
+- Add selective agent software request in vulnerability-detector. ([#404](https://github.com/wazuh/wazuh/pull/404))
 - Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
 - Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
 - Get Linux packages inventory natively. ([#441](https://github.com/wazuh/wazuh/pull/441))
@@ -22,6 +23,7 @@ All notable changes to this project will be documented in this file.
 
 - Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
 - Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
+- Fixed invalid alerts reported by Syscollector when the event contains the word "error". ([#461](https://github.com/wazuh/wazuh/pull/461))
 
 ### Removed
 

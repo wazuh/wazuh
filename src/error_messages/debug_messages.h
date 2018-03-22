@@ -39,5 +39,6 @@
 #define VU_AGENT_INFO_ERROR   "(5474): Agent %s operating system could not be obtained. Maybe it is never connected. It will be omitted..."
 #define VU_NO_SOFTWARE        "(5475): Agent %s software not available."
 #define VU_AG_NO_TARGET       "(5476): The analysis can not be launched because there are no target agents."
+#define VU_SYS_CHECKED        "(5477): The last syscollector scan for the agent %s (ID: %s) has already been checked. The vulnerability search is omitted."
 
 #endif
