@@ -175,10 +175,14 @@ Examples:
 USB
 
 Feb  3 10:23:08 testsys kernel: usb 1-1.2: New USB device found, idVendor=0781, idProduct=5575
+Mar 23 15:04:52 manager kernel: [62828.333722] usb 1-1: New USB device found, idVendor=0930, idProduct=6544
+Mar 23 15:05:23 manager kernel: usb 1-1: USB disconnect, device number 2
+Mar 23 15:05:23 manager kernel: [62859.373865] usb 1-1: USB disconnect, device number 2
+
 -->
 <decoder name="usb-storage-attached">
     <parent>kernel</parent>
-    <prematch offset="after_parent">^usb</prematch>
-    <regex offset="after_parent">^(usb) </regex>
+    <prematch offset="after_parent">^usb|^[\S+] usb</prematch>
+    <regex offset="after_parent">^(usb) |^[\S+] (usb)</regex>
     <order>id</order>
 </decoder>
