@@ -449,8 +449,8 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             char *package;
             char *version;
-            char *operation;
-            char *operation_value;
+            char *operation, *second_operation;
+            char *operation_value, *second_operation_value;
             int pending = 0;
             char state[50];
             int v_type;
@@ -466,7 +466,9 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             version = (char *)sqlite3_column_text(stmt, 8);
             operation = (char *)sqlite3_column_text(stmt, 9);
             operation_value = (char *)sqlite3_column_text(stmt, 10);
-            pending = sqlite3_column_int(stmt, 11);
+            second_operation = (char *)sqlite3_column_text(stmt, 11);
+            second_operation_value = (char *)sqlite3_column_text(stmt, 12);
+            pending = sqlite3_column_int(stmt, 13);
 
             if (*updated == '\0') {
                 updated = published;
@@ -575,10 +577,7 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     for (i = 1, agents_it = agents;; i++) {
         if (result = wm_vulnerability_detector_get_software_info(agents_it, db, agents_triag, ignore_time), result == OS_INVALID) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR);
-            return OS_INVALID;
-        }
-
-        if (result != 2) {
+        } else if (result != 2) {
             if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
                 wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
                 i = 0;
@@ -722,8 +721,8 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval, 
     // Links vulnerabilities to their conditions
     while (test_it) {
         query = vu_queries[VU_UPDATE_CVE];
-        operation_n = 0;
-set_op:
+        //operation_n = 0;
+//set_op:
         if (test_it->state) {
             if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
                 return wm_vulnerability_detector_sql_error(db);
@@ -750,11 +749,12 @@ set_op:
         }
         sqlite3_finalize(stmt);
 
+        /*
         if (dist == DIS_WINDOWS && !operation_n) {
             operation_n = 1;
             query = vu_queries[VU_UPDATE_CVE_SEC];
             goto set_op;
-        }
+        }*/
 
         info_test *test_aux = test_it;
         test_it = test_it->prev;
@@ -763,6 +763,7 @@ set_op:
         free(test_aux->second_state);
         free(test_aux);
     }
+
 
     // Sets the Windows file checks (unused yet)
     if (dist == DIS_WINDOWS) {
@@ -1347,13 +1348,14 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                 if (dist != DIS_MACOS) {
                     if ((dist != DIS_REDHAT && (found = strstr(node[i]->content, "CVE-"))) ||
                         (dist == DIS_REDHAT && (found = strstr(node[i]->content, "RHSA-")))) {
-
+                        int size;
                         if (end = strchr(found, ' '), end) {
-                            if (*(end - 1) == ':') {
-                                end--;
-                            }
                             *end = '\0';
                         }
+                        if (size = strlen(found), !isdigit(found[size - 1])) {
+                            found[size - 1] = '\0';
+                        }
+
                         os_strdup(found, parsed_oval->info_cves->cveid);
                         os_strdup(found, parsed_oval->vulnerabilities->cve_id);
 
@@ -2246,21 +2248,29 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     sock = 0;
 
     if (package_list) {
+        cJSON *name;
+        cJSON *version;
+        cJSON *architecture;
         sqlite3_exec(db, vu_queries[BEGIN_T], NULL, NULL, NULL);
         for (package_list = package_list->child; package_list; package_list = package_list->next) {
             if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_AGENTS], -1, &stmt, NULL) != SQLITE_OK) {
                 return wm_vulnerability_detector_sql_error(db);
             }
+            if ((name = cJSON_GetObjectItem(package_list, "name")) &&
+                (version = cJSON_GetObjectItem(package_list, "version")) &&
+                (architecture = cJSON_GetObjectItem(package_list, "architecture"))) {
 
-            sqlite3_bind_text(stmt, 1, agent->agent_id, -1, NULL);
-            sqlite3_bind_text(stmt, 2, cJSON_GetObjectItem(package_list, "name")->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt, 3, cJSON_GetObjectItem(package_list, "version")->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt, 4, cJSON_GetObjectItem(package_list, "architecture")->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 1, agent->agent_id, -1, NULL);
+                sqlite3_bind_text(stmt, 2, name->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 3, version->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 4, architecture->valuestring, -1, NULL);
 
-            if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
-                sqlite3_finalize(stmt);
-                return wm_vulnerability_detector_sql_error(db);
+                if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+                    sqlite3_finalize(stmt);
+                    return wm_vulnerability_detector_sql_error(db);
+                }
             }
+
             sqlite3_finalize(stmt);
         }
         sqlite3_exec(db, vu_queries[END_T], NULL, NULL, NULL);
