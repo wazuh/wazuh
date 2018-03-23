@@ -121,7 +121,8 @@ class WazuhException(Exception):
         3013: 'Cluster is disabled',
         3014: 'Manager name or IP incorrect',
         3015: 'Cannot access directory',
-        3016: "Cluster nodes are not correctly configured at ossec.conf."
+        3016: "Cluster nodes are not correctly configured at ossec.conf.",
+        3017: "Could not get remote nodes' information"
 
         # > 9000: Authd
     }
