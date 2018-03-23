@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Updated Slack integration. ([#443](https://github.com/wazuh/wazuh/pull/443))
-
+- Increased connection timeout for remote upgrades. ([#480](https://github.com/wazuh/wazuh/pull/480))
 
 ### Fixed
 
