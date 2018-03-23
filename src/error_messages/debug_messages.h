@@ -40,5 +40,6 @@
 #define VU_NO_SOFTWARE        "(5475): Agent %s software not available."
 #define VU_AG_NO_TARGET       "(5476): The analysis can not be launched because there are no target agents."
 #define VU_SYS_CHECKED        "(5477): The last syscollector scan for the agent %s (ID: %s) has already been checked. The vulnerability search is omitted."
+#define VU_LOCAL_FETCH        "(5478): Fetching OVAL from '%s'..."
 
 #endif
