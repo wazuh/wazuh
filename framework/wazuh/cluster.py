@@ -88,29 +88,37 @@ if check_cluster_status():
 
 
 class WazuhClusterClient():
-    def __init__(self, host, port, key, data, file):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    def __init__(self, host, port, key, data, file, connection_timeout, socket_timeout):
         self.can_close = False
         self.received_data = []
         self.response = ""
         self.f = key
         self.data = data
         self.file = file
-        self.socket.settimeout(common.cluster_timeout)
         self.addr = host
         self.port = port
         self.terminator = '\n'
         self.chunk = 4096
+        self.connection_timeout = connection_timeout
+        self.socket_timeout = socket_timeout
         self.connect()
 
 
     def connect(self):
+        # the two exceptions need to be processed separately because the first
+        # one doesn't need to close the socket since it creates it but
+        # the second one needs to both close the socket and raise the exception
         try:
-            self.socket.connect((self.addr, self.port))
+            self.socket = socket.create_connection((self.addr, self.port),
+                                                    self.connection_timeout)
+        except socket.error as e:
+            raise WazuhException(3010, str(e))
+
+        try:
+            self.socket.settimeout(self.socket_timeout)
         except socket.error as e:
             self.can_close = True
             self.socket.close()
-            # raise WazuhException(3010, strerror(e[0]))
             raise WazuhException(3010, str(e))
 
 
@@ -128,6 +136,8 @@ class WazuhClusterClient():
                 self.received_data.append(data)
         except socket.error as e:
             logging.error("Could not receive data from {}: {}".format(self.addr, str(e)))
+            if str(e) == "timed out":
+                logging.warning("Try increasing socket_timeout configuration at ossec.conf to solve this issue and check your firewall is properly configured")
             raise e
         self.found_terminator()
 
@@ -157,7 +167,7 @@ class WazuhClusterClient():
             raise e
 
 
-def send_request(host, port, key, data, file=None):
+def send_request(host, port, key, data, connection_timeout, socket_timeout, file=None):
     error = 0
     try:
         logging.debug("Active connections: {}".format(common.cluster_connections.keys()))
@@ -165,12 +175,12 @@ def send_request(host, port, key, data, file=None):
         if not client:
             logging.debug("No opened connection with {}".format(host))
             fernet_key = Fernet(key.encode('base64','strict'))
-            client = WazuhClusterClient(host, int(port), fernet_key, data, file)
+            client = WazuhClusterClient(host, int(port), fernet_key, data, file, connection_timeout, socket_timeout)
             client.handle_write()
             response = client.response
             common.cluster_connections[host] = client
         else:
-            connection_status = get_connection_status(host)
+            connection_status = get_connection_status(common.cluster_connections[host].socket)
             logging.debug("Connection status with {} is {}".format(host, connection_status))
             if connection_status == 'ESTABLISHED':
                 client.data = data
@@ -190,7 +200,7 @@ def send_request(host, port, key, data, file=None):
             else:
                 common.cluster_connections[host].socket.close()
                 del common.cluster_connections[host]
-                return send_request(host, port, key, data, file)
+                return send_request(host, port, key, data, connection_timeout, socket_timeout, file)
 
     except NameError as e:
         response = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"
@@ -204,7 +214,7 @@ def send_request(host, port, key, data, file=None):
     return error, response
 
 
-def get_connection_status(host):
+def get_connection_status(host_socket):
     # Taken from: http://www.cse.scu.edu/~dclark/am_256_graph_theory/linux_2_6_stack/linux_2tcp_8h-source.html (line 78)
     tcp_states = {
         1: 'ESTABLISHED',
@@ -219,9 +229,10 @@ def get_connection_status(host):
         10: 'LISTEN',
         11: 'CLOSING'
     }
-    host_socket = common.cluster_connections[host].socket
-    # retrieve a struct tcp_info (/usr/include/linux/tcp.h). The first value is the status of the connection
-    state = struct.unpack("B"*7+"I"*24, host_socket.getsockopt(socket.SOL_TCP, socket.TCP_INFO, 104))[0]
+    # retrieve a struct tcp_info (/usr/include/linux/tcp.h). The first value is
+    # the status of the connection
+    state = struct.unpack("B"*7+"I"*24, host_socket.getsockopt(socket.SOL_TCP,
+                                                    socket.TCP_INFO, 104))[0]
     return tcp_states[state]
 
 
@@ -379,6 +390,8 @@ def get_nodes(updateDBname=False):
     for url in config_cluster["nodes"]:
         if not url in localhost_ips:
             error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
+                                connection_timeout=int(config_cluster['connection_timeout']),
+                                socket_timeout=int(config_cluster['socket_timeout']),
                                 data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
             if error == 0:
                 if response['error'] == 0:
@@ -1086,7 +1099,9 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, clus
             error, response = send_request(host=node_dest, port=config_cluster['port'],
                                            data="zip {0}".format(str(len(zip_file)).
                                             zfill(common.cluster_protocol_plain_size - len("zip "))),
-                                           file=zip_file, key=config_cluster['key'])
+                                           file=zip_file, key=config_cluster['key'],
+                                           connection_timeout=int(config_cluster['connection_timeout']),
+                                           socket_timeout=int(config_cluster['socket_timeout']))
 
             try:
                 res = literal_eval(response)

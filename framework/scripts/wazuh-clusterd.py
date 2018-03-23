@@ -85,7 +85,6 @@ class WazuhClusterHandler(asynchat.async_chat):
     def handle_close(self):
         self.requests_queue[self.addr] = False
         self.received_data = []
-        # self.close()
 
     def collect_incoming_data(self, data):
         self.requests_queue[self.addr] = True
@@ -164,10 +163,10 @@ class WazuhClusterHandler(asynchat.async_chat):
 
 class WazuhClusterServer(asyncore.dispatcher):
 
-    def __init__(self, bind_addr, port, key, node_type, requests_queue, finished_clients, restart_after_sync, connected_clients, clients_to_restart):
+    def __init__(self, bind_addr, port, key, node_type, requests_queue, finished_clients, restart_after_sync, connected_clients, clients_to_restart, socket_timeout):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.settimeout(common.cluster_timeout)
+        self.socket.settimeout(socket_timeout)
         self.set_reuse_addr()
         self.key = key
         self.node_type = node_type
@@ -195,8 +194,8 @@ class WazuhClusterServer(asyncore.dispatcher):
         if pair is not None:
             sock, addr = pair
             logging.info("Accepted connection from host {0}".format(addr[0]))
-            handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type, 
-                                        self.requests_queue, self.finished_clients, 
+            handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type,
+                                        self.requests_queue, self.finished_clients,
                                         self.restart_after_sync, self.connected_clients,
                                         self.clients_to_restart)
         return
@@ -247,6 +246,8 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
                 for node in remote_nodes:
                     # ask clients to send updates
                     error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
+                                        socket_timeout=int(config_cluster['socket_timeout']),
+                                        connection_timeout=int(config_cluster['connection_timeout']),
                                         data="ready {0}".format('-'*(common.cluster_protocol_plain_size - len("ready "))))
 
             else:
@@ -272,7 +273,9 @@ def crontab_sync_client(config_cluster, restart_after_sync, debug):
         logging.debug("Starting to send files to the master node")
         remotes = get_remote_nodes()
         if len(remotes) == 0:
-            raise WazuhException(3017)
+            #raise WazuhException(3017)
+            logging.error("Master node is down")
+            return 1
         master = remotes[0]
         sync_one_node(debug=debug, node=master, config_cluster=config_cluster, cluster_items=cluster_items)
         if restart_after_sync.value == 'T':
@@ -286,6 +289,8 @@ def crontab_sync_client(config_cluster, restart_after_sync, debug):
             restart_manager()
         else:
             error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
+                            socket_timeout=int(config_cluster['socket_timeout']),
+                            connection_timeout=int(config_cluster['connection_timeout']),
                             data="finished {}".format('0'.zfill(common.cluster_protocol_plain_size - len("finished "))))
 
     try:
@@ -300,9 +305,14 @@ def crontab_sync_client(config_cluster, restart_after_sync, debug):
             send_to_socket(cluster_socket, "insertres 0")
             receive_data_from_db_socket(cluster_socket)
             cluster_socket.close()
-            master = get_remote_nodes()[0]
-            error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
-                                data="finished {}".format('1'.zfill(common.cluster_protocol_plain_size - len("finished "))))
+            try:
+                master = get_remote_nodes()[0]
+                error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
+                                    socket_timeout=int(config_cluster['socket_timeout']),
+                                    connection_timeout=int(config_cluster['connection_timeout']),
+                                    data="finished {}".format('1'.zfill(common.cluster_protocol_plain_size - len("finished "))))
+            except IndexError:
+                logging.error("Master node is down")
         else:
             cluster_socket.close()
 
@@ -352,8 +362,14 @@ def signal_handler(n_signal, frame):
                     raise
         else:
             for connections in common.cluster_connections.values():
-                logging.debug("Closing socket {}...".format(connections.socket.getpeername()))
-                connections.socket.close()
+                try:
+                    logging.debug("Closing socket {}...".format(connections.socket.getpeername()))
+                    connections.socket.close()
+                except socket.error as e:
+                    if e.errno == socket.error.errno.EBADF:
+                        logging.debug("Socket already closed: {}".format(str(e)))
+                    else:
+                        logging.error("Could not close socket: {}".format(str(e)))
     exit(1)
 
 
@@ -461,7 +477,8 @@ if __name__ == '__main__':
 
         server = WazuhClusterServer('' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr'],
                                     int(cluster_config['port']), cluster_config['key'], cluster_config['node_type'],
-                                    requests_queue, finished_clients, restart_after_sync, connected_clients, clients_to_restart)
+                                    requests_queue, finished_clients, restart_after_sync, connected_clients, clients_to_restart,
+                                    int(cluster_config['socket_timeout']))
         asyncore.loop()
 
     except Exception as e:
