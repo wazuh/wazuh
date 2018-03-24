@@ -81,6 +81,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.restart_after_sync = restart_after_sync
         self.connected_clients = connected_clients
         self.clients_to_restart = clients_to_restart
+        self.socket.setblocking(1)
 
     def handle_close(self):
         self.requests_queue[self.addr] = False
@@ -138,6 +139,15 @@ class WazuhClusterHandler(asynchat.async_chat):
 
     def handle_error(self):
         nil, t, v, tbinfo = asyncore.compact_traceback()
+        if t == socket.error and (v.args[0] == socket.errno.EPIPE or
+                                  v.args[0] == socket.errno.EBADF):
+            # there is an error in the connection with the other node.
+            logging.error("Error in connection with {}: {}".format(self.addr, str(v)))
+            self.handle_close()
+            self.close()
+            self.socket.close()
+            return 1
+
         if t == InvalidToken or t == InvalidSignature:
             error = "Could not decrypt message from {0}".format(self.addr)
         else:
@@ -154,9 +164,12 @@ class WazuhClusterHandler(asynchat.async_chat):
         msg_len = len(msg)
         while i < msg_len:
             next_i = i+4096 if i+4096 < msg_len else msg_len
-            sent = self.send(msg[i:next_i])
-            i += sent
-
+            try:
+                sent = self.socket.send(msg[i:next_i])
+                i += sent
+            except socket.error as e:
+                self.socket.close()
+                raise e
         logging.debug("SERVER: Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
         self.handle_close()
 
@@ -366,7 +379,7 @@ def signal_handler(n_signal, frame):
                     logging.debug("Closing socket {}...".format(connections.socket.getpeername()))
                     connections.socket.close()
                 except socket.error as e:
-                    if e.errno == socket.error.errno.EBADF:
+                    if e.errno == socket.errno.EBADF:
                         logging.debug("Socket already closed: {}".format(str(e)))
                     else:
                         logging.error("Could not close socket: {}".format(str(e)))
