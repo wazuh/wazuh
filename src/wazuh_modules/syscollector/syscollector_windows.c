@@ -12,10 +12,6 @@
 #ifdef WIN32
 
 #include "syscollector.h"
-#include <winsock2.h>
-#include <windows.h>
-#include <netioapi.h>
-#include <iphlpapi.h>
 
 typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 typedef char* (*CallFunc1)(UCHAR ucLocalAddr[]);
@@ -555,12 +551,6 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
 void sys_programs_windows(const char* LOCATION){
 
-    char *command;
-    FILE *output;
-    char read_buff[OS_MAXSTR];
-    int i;
-    int status;
-
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
@@ -591,74 +581,67 @@ void sys_programs_windows(const char* LOCATION){
     if (ID < 0)
         ID = -ID;
 
-    mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
+    mtdebug1(WM_SYS_LOGTAG, "Starting installed programs inventory.");
 
-    memset(read_buff, 0, OS_MAXSTR);
-    command = "wmic product get Name,Version,Vendor / format:csv";
-    output = popen(command, "r");
+    HKEY main_key;
+    int arch;
 
-    if (!output){
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
-    }else{
-        while (fgets(read_buff, OS_MAXSTR, output) && strncmp(read_buff,"Node,Name,Vendor,Version", 24) != 0);
+    // Detect Windows architecture
 
-        while(fgets(read_buff, OS_MAXSTR, output)){
+    os_info *info;
+    if (info = get_win_version(), info) {
+        mtdebug1(WM_SYS_LOGTAG, "System arch: %s", info->machine);
+        if (strcmp(info->machine, "unknown") == 0 || strcmp(info->machine, "x86_64") == 0) {
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *package = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "program");
-            cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "program", package);
-            cJSON_AddStringToObject(package, "format", "win");
+            // Read 64 bits programs only in 64 bits systems
 
-            char *string;
-            char ** parts = NULL;
+            arch = ARCH64;
 
-            parts = OS_StrBreak(',', read_buff, 4);
-            cJSON_AddStringToObject(package, "name", parts[1]);
-            cJSON_AddStringToObject(package, "vendor", parts[2]);
-
-            char ** version = NULL;
-
-            if (strrchr(parts[3], ',') != 0) {
-                char ** aux_version = NULL;
-                aux_version = OS_StrBreak(',', parts[3], 2);
-                version = OS_StrBreak('\r', aux_version[1], 2);
-                for (i=0; aux_version[i]; i++){
-                    free(aux_version[i]);
-                }
-                free(aux_version);
-            } else {
-                version = OS_StrBreak('\r', parts[3], 2);
+            if( RegOpenKeyEx( HKEY_LOCAL_MACHINE,
+                 TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
+                 0,
+                 KEY_READ| KEY_WOW64_64KEY,
+                 &main_key) == ERROR_SUCCESS
+               ){
+               mtdebug2(WM_SYS_LOGTAG, "Reading 64 bits programs from registry.");
+               list_programs(main_key, arch, NULL, usec, timestamp, ID, LOCATION);
             }
-
-            cJSON_AddStringToObject(package, "version", version[0]);
-            for (i=0; version[i]; i++){
-                free(version[i]);
-            }
-            for (i=0; parts[i]; i++){
-                free(parts[i]);
-            }
-            free(version);
-            free(parts);
-
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
-            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
-            free(string);
-        }
-
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting software inventory.", status);
+            RegCloseKey(main_key);
         }
     }
+    free_osinfo(info);
 
+    // Read 32 bits programs
+
+    arch = ARCH32;
+
+    if( RegOpenKeyEx( HKEY_LOCAL_MACHINE,
+         TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
+         0,
+         KEY_READ| KEY_WOW64_32KEY,
+         &main_key) == ERROR_SUCCESS
+       ){
+       mtdebug2(WM_SYS_LOGTAG, "Reading 32 bits programs from registry.");
+       list_programs(main_key, arch, NULL, usec, timestamp, ID, LOCATION);
+    }
+    RegCloseKey(main_key);
+
+    // Get users list and their particular programs
+
+    if( RegOpenKeyEx( HKEY_USERS,
+         NULL,
+         0,
+         KEY_READ,
+         &main_key) == ERROR_SUCCESS
+       ){
+       list_users(main_key, usec, timestamp, ID, LOCATION);
+    }
+    RegCloseKey(main_key);
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
     cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
     string = cJSON_PrintUnformatted(object);
@@ -668,6 +651,315 @@ void sys_programs_windows(const char* LOCATION){
     free(string);
     free(timestamp);
 
+}
+
+// List installed programs from the registry
+void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
+
+    TCHAR    achKey[KEY_LENGTH];   // buffer for subkey name
+    DWORD    cbName;                   // size of name string
+    TCHAR    achClass[MAX_PATH] = TEXT("");  // buffer for class name
+    DWORD    cchClassName = MAX_PATH;  // size of class string
+    DWORD    cSubKeys=0;               // number of subkeys
+    DWORD    cbMaxSubKey;              // longest subkey size
+    DWORD    cchMaxClass;              // longest class string
+    DWORD    cValues;              // number of values for key
+    DWORD    cchMaxValue;          // longest value name
+    DWORD    cbMaxValueData;       // longest value data
+    DWORD    cbSecurityDescriptor; // size of security descriptor
+    FILETIME ftLastWriteTime;      // last write time
+
+    DWORD i, retCode;
+
+    // Get the class name and the value count
+    retCode = RegQueryInfoKey(
+        hKey,                    // key handle
+        achClass,                // buffer for class name
+        &cchClassName,           // size of class string
+        NULL,                    // reserved
+        &cSubKeys,               // number of subkeys
+        &cbMaxSubKey,            // longest subkey size
+        &cchMaxClass,            // longest class string
+        &cValues,                // number of values for this key
+        &cchMaxValue,            // longest value name
+        &cbMaxValueData,         // longest value data
+        &cbSecurityDescriptor,   // security descriptor
+        &ftLastWriteTime);       // last write time
+
+    // Enumerate the subkeys, until RegEnumKeyEx fails
+
+    if (cSubKeys) {
+        for (i=0; i<cSubKeys; i++) {
+
+            cbName = KEY_LENGTH;
+            retCode = RegEnumKeyEx(hKey, i,
+                     achKey,
+                     &cbName,
+                     NULL,
+                     NULL,
+                     NULL,
+                     &ftLastWriteTime);
+            if (retCode == ERROR_SUCCESS) {
+
+                char * full_key;
+                os_calloc(KEY_LENGTH, sizeof(char), full_key);
+
+                if (root_key) {
+                    snprintf(full_key, KEY_LENGTH - 1, "%s\\%s", root_key, achKey);
+                    read_win_program(full_key, arch, U_KEY, usec, timestamp, ID, LOCATION);
+                } else {
+                    snprintf(full_key, KEY_LENGTH - 1, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\%s", achKey);
+                    read_win_program(full_key, arch, LM_KEY, usec, timestamp, ID, LOCATION);
+                }
+
+                free(full_key);
+            } else {
+                mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, retCode);
+            }
+        }
+    }
+}
+
+// List Windows users from the registry
+void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION) {
+
+    TCHAR    achKey[KEY_LENGTH];   // buffer for subkey name
+    DWORD    cbName;                   // size of name string
+    TCHAR    achClass[MAX_PATH] = TEXT("");  // buffer for class name
+    DWORD    cchClassName = MAX_PATH;  // size of class string
+    DWORD    cSubKeys=0;               // number of subkeys
+    DWORD    cbMaxSubKey;              // longest subkey size
+    DWORD    cchMaxClass;              // longest class string
+    DWORD    cValues;              // number of values for key
+    DWORD    cchMaxValue;          // longest value name
+    DWORD    cbMaxValueData;       // longest value data
+    DWORD    cbSecurityDescriptor; // size of security descriptor
+    FILETIME ftLastWriteTime;      // last write time
+
+    int arch = NOARCH;
+    DWORD i, retCode;
+
+    // Get the class name and the value count
+    retCode = RegQueryInfoKey(
+        hKey,                    // key handle
+        achClass,                // buffer for class name
+        &cchClassName,           // size of class string
+        NULL,                    // reserved
+        &cSubKeys,               // number of subkeys
+        &cbMaxSubKey,            // longest subkey size
+        &cchMaxClass,            // longest class string
+        &cValues,                // number of values for this key
+        &cchMaxValue,            // longest value name
+        &cbMaxValueData,         // longest value data
+        &cbSecurityDescriptor,   // security descriptor
+        &ftLastWriteTime);       // last write time
+
+    // Enumerate the subkeys, until RegEnumKeyEx fails
+
+    if (cSubKeys) {
+        for (i=0; i<cSubKeys; i++) {
+
+            // Get subkey name
+
+            cbName = KEY_LENGTH;
+            retCode = RegEnumKeyEx(hKey, i,
+                     achKey,
+                     &cbName,
+                     NULL,
+                     NULL,
+                     NULL,
+                     &ftLastWriteTime);
+            if (retCode == ERROR_SUCCESS) {
+
+                // For each user list its registered programs
+
+                HKEY uKey;
+                char * user_key;
+                os_calloc(KEY_LENGTH, sizeof(char), user_key);
+                snprintf(user_key, KEY_LENGTH - 1, "%s\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall", achKey);
+
+                if( RegOpenKeyEx( HKEY_USERS,
+                     user_key,
+                     0,
+                     KEY_READ,
+                     &uKey) == ERROR_SUCCESS
+                   ){
+                   list_programs(uKey, arch, user_key, usec, timestamp, ID, LOCATION);
+                }
+
+                RegCloseKey(uKey);
+                free(user_key);
+
+            } else {
+                mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, retCode);
+            }
+        }
+    }
+}
+
+// Get values about a single program from the registry
+void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
+
+    HKEY primary_key;
+    HKEY program_key;
+    DWORD cbData, ret;
+    DWORD buffer_size = TOTALBYTES;
+    char * program_name;
+    char * version;
+    char * vendor;
+    char * date;
+    char * location;
+
+    if (root_key == LM_KEY)
+        primary_key = HKEY_LOCAL_MACHINE;
+    else
+        primary_key = HKEY_USERS;
+
+    if (arch == NOARCH)
+        ret = RegOpenKeyEx(primary_key, sec_key, 0, KEY_READ, &program_key);
+    else
+        ret = RegOpenKeyEx(primary_key, sec_key, 0, KEY_READ | (arch == ARCH32 ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &program_key);
+
+    if( ret == ERROR_SUCCESS) {
+
+        // Get name of program
+
+        program_name = (char *)malloc(TOTALBYTES);
+        cbData = buffer_size;
+
+        ret = RegQueryValueEx(program_key, "DisplayName", NULL, NULL, (LPBYTE)program_name, &cbData);
+        while (ret == ERROR_MORE_DATA) {
+
+            // Increase buffer length
+
+            buffer_size += BYTEINCREMENT;
+            program_name = (char *)realloc(program_name, buffer_size);
+            cbData = buffer_size;
+            ret = RegQueryValueEx(program_key, "DisplayName", NULL, NULL, (LPBYTE)program_name, &cbData);
+        }
+
+        if (ret == ERROR_SUCCESS && program_name[0] != '\0') {
+
+            cJSON *object = cJSON_CreateObject();
+            cJSON *package = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "program");
+            cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
+            cJSON_AddItemToObject(object, "program", package);
+            cJSON_AddStringToObject(package, "format", "win");
+            cJSON_AddStringToObject(package, "name", program_name);
+            free(program_name);
+
+            if (arch == ARCH32)
+                cJSON_AddStringToObject(package, "architecture", "i686");
+            else if (arch == ARCH64)
+                cJSON_AddStringToObject(package, "architecture", "x86_64");
+            else
+                cJSON_AddStringToObject(package, "architecture", "unknown");
+
+            // Get version
+
+            version = (char *)malloc(TOTALBYTES);
+            cbData = buffer_size;
+
+            ret = RegQueryValueEx(program_key, "DisplayVersion", NULL, NULL, (LPBYTE)version, &cbData);
+            while (ret == ERROR_MORE_DATA) {
+
+                // Increase buffer length
+
+                buffer_size += BYTEINCREMENT;
+                version = (char *)realloc(version, buffer_size);
+                cbData = buffer_size;
+                ret = RegQueryValueEx(program_key, "DisplayVersion", NULL, NULL, (LPBYTE)version, &cbData);
+            }
+
+            if (ret == ERROR_SUCCESS && version[0] != '\0') {
+                cJSON_AddStringToObject(package, "version", version);
+            }
+
+            free(version);
+
+            // Get vendor
+
+            vendor = (char *)malloc(TOTALBYTES);
+            cbData = buffer_size;
+
+            ret = RegQueryValueEx(program_key, "Publisher", NULL, NULL, (LPBYTE)vendor, &cbData);
+            while (ret == ERROR_MORE_DATA) {
+
+                // Increase buffer length
+
+                buffer_size += BYTEINCREMENT;
+                vendor = (char *)realloc(vendor, buffer_size);
+                cbData = buffer_size;
+                ret = RegQueryValueEx(program_key, "Publisher", NULL, NULL, (LPBYTE)vendor, &cbData);
+            }
+
+            if (ret == ERROR_SUCCESS && vendor[0] != '\0') {
+                cJSON_AddStringToObject(package, "vendor", vendor);
+            }
+
+            free(vendor);
+
+            // Get install date
+
+            date = (char *)malloc(TOTALBYTES);
+            cbData = buffer_size;
+
+            ret = RegQueryValueEx(program_key, "InstallDate", NULL, NULL, (LPBYTE)date, &cbData);
+            while (ret == ERROR_MORE_DATA) {
+
+                // Increase buffer length
+
+                buffer_size += BYTEINCREMENT;
+                date = (char *)realloc(date, buffer_size);
+                cbData = buffer_size;
+                ret = RegQueryValueEx(program_key, "InstallDate", NULL, NULL, (LPBYTE)date, &cbData);
+            }
+
+            if (ret == ERROR_SUCCESS && date[0] != '\0') {
+                cJSON_AddStringToObject(package, "install_time", date);
+            }
+
+            free(date);
+
+            // Get install location
+
+            location = (char *)malloc(TOTALBYTES);
+            cbData = buffer_size;
+
+            ret = RegQueryValueEx(program_key, "InstallLocation", NULL, NULL, (LPBYTE)location, &cbData);
+            while (ret == ERROR_MORE_DATA) {
+
+                // Increase buffer length
+
+                buffer_size += BYTEINCREMENT;
+                location = (char *)realloc(location, buffer_size);
+                cbData = buffer_size;
+                ret = RegQueryValueEx(program_key, "InstallLocation", NULL, NULL, (LPBYTE)location, &cbData);
+            }
+
+            if (ret == ERROR_SUCCESS && location[0] != '\0') {
+                cJSON_AddStringToObject(package, "location", location);
+            }
+
+            free(location);
+
+            char *string;
+            string = cJSON_PrintUnformatted(object);
+            mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
+            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(object);
+            free(string);
+
+        } else
+            free(program_name);
+
+    } else {
+        mterror(WM_SYS_LOGTAG, "At read_win_program(): Unable to read key: (Error code %lu)", ret);
+    }
+
+    RegCloseKey(program_key);
 }
 
 void sys_hw_windows(const char* LOCATION){

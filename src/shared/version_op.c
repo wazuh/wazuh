@@ -19,6 +19,8 @@ os_info *get_win_version()
     FILE *cmd_output;
     char *command;
     size_t buf_tam = 100;
+    size_t ver_length = 60;
+    size_t v_length = 20;
     char read_buff[buf_tam];
     int status;
 
@@ -150,8 +152,9 @@ os_info *get_win_version()
                 else {
                     if (strcmp(strtok(read_buff," "), "64-bit") == 0) {
                         info->machine = strdup("x86_64");
-                    }
-                    else {
+                    } else if (strncmp(read_buff, "64", 2) == 0) {
+                        info->machine = strdup("x86_64");
+                    } else {
                         info->machine = strdup("i686");
                     }
                 }
@@ -218,13 +221,19 @@ os_info *get_win_version()
             info->os_name = strdup("Microsoft Windows");
         }
 
-        snprintf(info->os_major, 20, "%i",(int)osvi.dwMajorVersion);
-        snprintf(info->os_minor, 20, "%i",(int)osvi.dwMinorVersion);
-        snprintf(info->os_build, 20, "%d",(int)osvi.dwBuildNumber & 0xFFFF);
-        snprintf(info->os_version, 60, "%i.%i.%d",
+        os_calloc(ver_length + 1, sizeof(char), info->os_version);
+        os_calloc(v_length + 1, sizeof(char), info->os_major);
+        os_calloc(v_length + 1, sizeof(char), info->os_minor);
+        os_calloc(v_length + 1, sizeof(char), info->os_build);
+
+        snprintf(info->os_major, v_length, "%i",(int)osvi.dwMajorVersion);
+        snprintf(info->os_minor, v_length, "%i",(int)osvi.dwMinorVersion);
+        snprintf(info->os_build, v_length, "%d",(int)osvi.dwBuildNumber & 0xFFFF);
+        snprintf(info->os_version, ver_length, "%i.%i.%d",
                  (int)osvi.dwMajorVersion,
                  (int)osvi.dwMinorVersion,
                  (int)osvi.dwBuildNumber & 0xFFFF );
+
     }
 
     return info;

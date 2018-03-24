@@ -769,6 +769,7 @@ int decode_package(char *agent_id, cJSON * logJSON) {
         cJSON * source = cJSON_GetObjectItem(package, "source");
         cJSON * description = cJSON_GetObjectItem(package, "description");
         cJSON * installtime = cJSON_GetObjectItem(package, "install_time");
+        cJSON * location = cJSON_GetObjectItem(package, "location");
 
         snprintf(msg, OS_MAXSTR - 1, "agent %s package save", agent_id);
 
@@ -856,6 +857,12 @@ int decode_package(char *agent_id, cJSON * logJSON) {
 
         if (description) {
             wm_strcat(&msg, description->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (location) {
+            wm_strcat(&msg, location->valuestring, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
