@@ -110,7 +110,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
     if ((fp = fopen(file, "r"))){
 
-        while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
+        while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL){
 
             listening = 0;
 
@@ -237,7 +237,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
     if ((fp = fopen(file, "r"))){
 
-        while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
+        while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL){
 
             listening = 0;
 
@@ -683,6 +683,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
     if (getifaddrs(&ifaddr) == -1) {
         mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");
+        free(timestamp);
         return;
     }
 

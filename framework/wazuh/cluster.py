@@ -382,10 +382,13 @@ def read_config():
 
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
 
-def get_nodes(updateDBname=False):
-    config_cluster = read_config()
-    if not config_cluster:
-        raise WazuhException(3000, "No config found")
+def get_nodes(updateDBname=False, config=None):
+    if not config:
+        config_cluster = read_config()
+        if not config_cluster:
+            raise WazuhException(3000, "No config found")
+    else:
+        config_cluster = config
 
     cluster_socket = connect_to_db_socket()
     # list with all the ips the localhost has
@@ -394,41 +397,50 @@ def get_nodes(updateDBname=False):
     error_response = False
 
     for url in config_cluster["nodes"]:
-        if not url in localhost_ips:
-            error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
-                                connection_timeout=int(config_cluster['connection_timeout']),
-                                socket_timeout=int(config_cluster['socket_timeout']),
-                                data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
-            if error == 0:
-                if response['error'] == 0:
-                    response = response['data']
-                    response['localhost'] = False
-                else:
-                    logging.warning("Received an error response from {0}: {1}".format(url, response))
-                    error_response = True
-        else:
-            error = 0
-            response = get_node()
-            response['localhost'] = True
+        try:
+            if not url in localhost_ips:
+                error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
+                                    connection_timeout=int(config_cluster['connection_timeout']),
+                                    socket_timeout=int(config_cluster['socket_timeout']),
+                                    data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
+                if error == 0:
+                    if response['error'] == 0:
+                        response = response['data']
+                        response['localhost'] = False
+                    else:
+                        logging.warning("Received an error response from {0}: {1}".format(url, response))
+                        error_response = True
+            else:
+                error = 0
+                response = get_node()
+                response['localhost'] = True
 
-        if error == 1:
-            logging.warning("Error connecting with {0}: {1}".format(url, response))
-            error_response = True
+            if error == 1:
+                logging.warning("Error connecting with {0}: {1}".format(url, response))
+                error_response = True
 
-        if error_response:
-            data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
-            error_response = False
-            continue
+            if error_response:
+                data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
+                error_response = False
+                continue
 
-        if config_cluster['node_type'] == 'master' or \
-           response['type'] == 'master' or response["localhost"]:
-            data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
-                         'status':'connected', 'cluster':response['cluster']})
+            if config_cluster['node_type'] == 'master' or \
+               response['type'] == 'master' or response["localhost"]:
+                data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
+                             'status':'connected', 'cluster':response['cluster']})
 
-            if updateDBname:
-                query = "insertname " +response['node'] + " " + url
-                send_to_socket(cluster_socket, query)
-                receive_data_from_db_socket(cluster_socket)
+                if updateDBname:
+                    query = "insertname " +response['node'] + " " + url
+                    send_to_socket(cluster_socket, query)
+                    receive_data_from_db_socket(cluster_socket)
+        except TypeError as e:
+            error_text = "Response from {} is not in JSON format: {} ({})".format(url, str(e), response)
+            logging.error(error_text)
+            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
+        except Exception as e:
+            error_text = "Error getting information of node {}: {}".format(url, str(e))
+            logging.error(error_text)
+            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
 
     cluster_socket.close()
     return {'items': data, 'totalItems': len(data)}
@@ -1047,8 +1059,12 @@ def receive_zip(zip_file):
 def divide_list(l, size=1000):
     return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
 
-def get_remote_nodes(connected=True, updateDBname=False):
-    all_nodes = get_nodes(updateDBname)['items']
+def get_remote_nodes(connected=True, updateDBname=False, config=None):
+    try:
+        all_nodes = get_nodes(updateDBname, config)['items']
+    except Exception as e:
+        logging.error("Could not get remote nodes' information: {}".format(str(e)))
+        raise #WazuhException(3017, str(e))
 
     # Get connected nodes in the cluster
     if connected:
@@ -1202,45 +1218,49 @@ def sync_one_node(debug, node, force=False, config_cluster=None, cluster_items=N
     own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     own_items_names = own_items.keys()
 
-    cluster_socket = connect_to_db_socket()
-    logging.debug("Connected to cluster database socket")
+    try:
+        cluster_socket = connect_to_db_socket()
+        logging.debug("Connected to cluster database socket")
 
-    if force:
-        clear_file_status_one_node(node, cluster_socket)
-    all_files, removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
+        if force:
+            clear_file_status_one_node(node, cluster_socket)
+        all_files, removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
 
-    after = time()
-    synchronization_duration += after-before
-    logging.debug("Time retrieving info from DB: {0}".format(after-before))
+        after = time()
+        synchronization_duration += after-before
+        logging.debug("Time retrieving info from DB: {0}".format(after-before))
 
-    before = time()
-    result_queue = queue()
-    push_updates_single_node(all_files, node, config_cluster, removed, cluster_items, result_queue, debug)
+        before = time()
+        result_queue = queue()
+        push_updates_single_node(all_files, node, config_cluster, removed, cluster_items, result_queue, debug)
 
-    after = time()
-    synchronization_duration += after-before
-    logging.debug("Time sending info: {0}".format(after-before))
-    before = time()
+        after = time()
+        synchronization_duration += after-before
+        logging.debug("Time sending info: {0}".format(after-before))
+        before = time()
 
-    result = result_queue.get()
-    update_node_db_after_sync(result, node, cluster_socket)
-    after = time()
-    synchronization_duration += after-before
+        result = result_queue.get()
+        update_node_db_after_sync(result, node, cluster_socket)
+        after = time()
+        synchronization_duration += after-before
 
-    send_recv_and_check(cluster_socket, "clearlast")
-    send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
+        send_recv_and_check(cluster_socket, "clearlast")
+        send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
 
-    cluster_socket.close()
-    logging.debug("Time updating DB: {0}".format(after-before))
+        cluster_socket.close()
+        logging.debug("Time updating DB: {0}".format(after-before))
 
-    if debug:
-        return result
-    else:
-        return {'updated': len(result['files']['updated']),
-                  'error': result['files']['error'],
-                  'deleted': result['files']['deleted'],
-                  'error': result['error'],
-                  'reason': result['reason']}
+        if debug:
+            return result
+        else:
+            return {'updated': len(result['files']['updated']),
+                      'error': result['files']['error'],
+                      'deleted': result['files']['deleted'],
+                      'error': result['error'],
+                      'reason': result['reason']}
+    except Exception as e:
+        cluster_socket.close()
+        raise e
 
 
 def sync(debug, force=False, config_cluster=None, cluster_items=None):
@@ -1264,68 +1284,72 @@ def sync(debug, force=False, config_cluster=None, cluster_items=None):
     own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     own_items_names = own_items.keys()
 
-    remote_nodes = get_remote_nodes(True, True)
+    remote_nodes = get_remote_nodes(True, True, config_cluster)
     local_node = get_node()['node']
     logging.info("Starting to sync {0}'s files".format(local_node))
 
-    cluster_socket = connect_to_db_socket()
-    logging.debug("Connected to cluster database socket")
+    try:
+        cluster_socket = connect_to_db_socket()
+        logging.debug("Connected to cluster database socket")
 
-    # for each connected manager, check its files. If the manager is not on database add it
-    # with all files marked as pending
-    all_nodes_files = {}
+        # for each connected manager, check its files. If the manager is not on database add it
+        # with all files marked as pending
+        all_nodes_files = {}
 
-    logging.debug("Nodes to sync: {0}".format(str(remote_nodes)))
-    logging.info("Found {0} connected nodes".format(len(remote_nodes)))
+        logging.debug("Nodes to sync: {0}".format(str(remote_nodes)))
+        logging.info("Found {0} connected nodes".format(len(remote_nodes)))
 
-    for node in remote_nodes:
-        if force:
-            clear_file_status_one_node(node, cluster_socket)
-        all_nodes_files[node], removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
+        for node in remote_nodes:
+            if force:
+                clear_file_status_one_node(node, cluster_socket)
+            all_nodes_files[node], removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
 
-    after = time()
-    synchronization_duration += after-before
-    logging.debug("Time retrieving info from DB: {0}".format(after-before))
+        after = time()
+        synchronization_duration += after-before
+        logging.debug("Time retrieving info from DB: {0}".format(after-before))
 
-    before = time()
-    result_queue = queue()
-    threads = []
-    thread_results = {}
-    for node in remote_nodes:
-        t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node],node,
-                                                                    config_cluster, removed,
-                                                                    cluster_items, result_queue, debug))
-        threads.append(t)
-        t.start()
-        result = result_queue.get()
-        thread_results[result['node']] = {'files': result['files'], 'error': result['error'],
-                                          'reason': result['reason']}
+        before = time()
+        result_queue = queue()
+        threads = []
+        thread_results = {}
+        for node in remote_nodes:
+            t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node],node,
+                                                                        config_cluster, removed,
+                                                                        cluster_items, result_queue, debug))
+            threads.append(t)
+            t.start()
+            result = result_queue.get()
+            thread_results[result['node']] = {'files': result['files'], 'error': result['error'],
+                                              'reason': result['reason']}
 
-    for t in threads:
-        t.join()
-    after = time()
-    synchronization_duration += after-before
-    logging.debug("Time sending info: {0}".format(after-before))
+        for t in threads:
+            t.join()
+        after = time()
+        synchronization_duration += after-before
+        logging.debug("Time sending info: {0}".format(after-before))
 
-    before = time()
-    for node,data in thread_results.items():
-        update_node_db_after_sync(data, node, cluster_socket)
+        before = time()
+        for node,data in thread_results.items():
+            update_node_db_after_sync(data, node, cluster_socket)
 
-    after = time()
-    synchronization_duration += after-before
+        after = time()
+        synchronization_duration += after-before
 
-    send_recv_and_check(cluster_socket, "clearlast")
-    send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
+        send_recv_and_check(cluster_socket, "clearlast")
+        send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
 
-    cluster_socket.close()
-    logging.debug("Time updating DB: {0}".format(after-before))
+        cluster_socket.close()
+        logging.debug("Time updating DB: {0}".format(after-before))
 
-    if debug:
-        return thread_results
-    else:
-        return {node:{'updated': len(data['files']['updated']),
-                      'error': data['files']['error'],
-                      'deleted': data['files']['deleted'],
-                      'error': data['error'],
-                      'reason': data['reason']}
-                      for node,data in thread_results.items()}
+        if debug:
+            return thread_results
+        else:
+            return {node:{'updated': len(data['files']['updated']),
+                          'error': data['files']['error'],
+                          'deleted': data['files']['deleted'],
+                          'error': data['error'],
+                          'reason': data['reason']}
+                          for node,data in thread_results.items()}
+    except Exception as e:
+        cluster_socket.close()
+        raise e
