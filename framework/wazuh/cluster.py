@@ -143,14 +143,20 @@ class WazuhClusterClient():
 
     def found_terminator(self):
         logging.debug("Received {}".format(len(''.join(self.received_data))))
-        self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
+        try:
+            self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
+        except (InvalidSignature, InvalidToken) as e:
+            raise InvalidToken("Could not encrypt message")
         self.handle_close()
 
     def handle_write(self):
-        if self.file is not None:
-            msg = self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file) + '\n\t\t\n'
-        else:
-            msg = self.f.encrypt(self.data.encode()) + '\n\t\t\n'
+        try:
+            if self.file is not None:
+                msg = self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file) + '\n\t\t\n'
+            else:
+                msg = self.f.encrypt(self.data.encode()) + '\n\t\t\n'
+        except (InvalidToken, InvalidSignature) as e:
+            raise InvalidToken("Could not encrypt message")
 
         try:
             i = 0
@@ -1115,7 +1121,7 @@ def push_updates_single_node(all_files, node_dest, config_cluster, removed, clus
 
 
         if error != 0:
-            logging.error(res)
+            logging.error("Error response received from {}: {}".format(node_dest, response))
             result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
                               'error': 1, 'files':{'updated':[], 'deleted':[],
                                             'error':list(map(itemgetter(0), pending_files))}})
