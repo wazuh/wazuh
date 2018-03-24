@@ -130,7 +130,7 @@ void * req_main(__attribute__((unused)) void * arg) {
             // Set counter, create node and insert into hash table
 
             snprintf(counter_s, COUNTER_LENGTH, "%x", counter++);
-            node = req_create(peer, counter_s, buffer, length);
+            node = req_create(peer, counter_s, NULL, buffer, length);
 
             w_mutex_lock(&mutex_table);
             error = OSHash_Add(req_table, counter_s, node);

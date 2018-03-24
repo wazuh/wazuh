@@ -142,92 +142,101 @@ char* local_dispatch(const char *input) {
     cJSON *response = NULL;
     char *output = NULL;
     int ierror;
+    char com_response[OS_MAXSTR + 1];
 
-    if (request = cJSON_Parse(input), !request) {
-        ierror = EJSON;
-        goto fail;
+    if (input[0] == '{') {
+        if (request = cJSON_Parse(input), !request) {
+            ierror = EJSON;
+            goto fail;
+        }
+
+        if (function = cJSON_GetObjectItem(request, "function"), !function) {
+            ierror = ENOFUNCTION;
+            goto fail;
+        }
+
+        if (!strcmp(function->valuestring, "add")) {
+            cJSON *item;
+            char *id;
+            char *name;
+            char *ip;
+            char *key = NULL;
+            int force = 0;
+
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+
+            id = (item = cJSON_GetObjectItem(arguments, "id"), item) ? item->valuestring : NULL;
+
+            if (item = cJSON_GetObjectItem(arguments, "name"), !item) {
+                ierror = ENONAME;
+                goto fail;
+            }
+
+            name = item->valuestring;
+
+            if (item = cJSON_GetObjectItem(arguments, "ip"), !item) {
+                ierror = ENOIP;
+                goto fail;
+            }
+
+            ip = item->valuestring;
+            key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
+            force = (item = cJSON_GetObjectItem(arguments, "force"), item) ? item->valueint : -1;
+            response = local_add(id, name, ip, key, force);
+        } else if (!strcmp(function->valuestring, "remove")) {
+            cJSON *item;
+            int purge;
+
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+
+            if (item = cJSON_GetObjectItem(arguments, "id"), !item) {
+                ierror = ENOID;
+                goto fail;
+            }
+
+            purge = cJSON_IsTrue(cJSON_GetObjectItem(arguments, "purge"));
+            response = local_remove(item->valuestring, purge);
+        } else if (!strcmp(function->valuestring, "get")) {
+            cJSON *item;
+
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+
+            if (item = cJSON_GetObjectItem(arguments, "id"), !item) {
+                ierror = ENOID;
+                goto fail;
+            }
+
+            response = local_get(item->valuestring);
+        }
+
+        if (!response) {
+            merror("at local_dispatch(): response is null.");
+            ierror = EINTERNAL;
+            goto fail;
+        }
+
+        if (response) {
+            output = cJSON_PrintUnformatted(response);
+            cJSON_Delete(response);
+        }
+
+        cJSON_Delete(request);
+    }
+    // Read configuration commands
+    else {
+        authcom_dispatch(input,com_response);
+        output = strdup(com_response);
     }
 
-    if (function = cJSON_GetObjectItem(request, "function"), !function) {
-        ierror = ENOFUNCTION;
-        goto fail;
-    }
-
-    if (!strcmp(function->valuestring, "add")) {
-        cJSON *item;
-        char *id;
-        char *name;
-        char *ip;
-        char *key = NULL;
-        int force = 0;
-
-        if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
-            ierror = ENOARGUMENT;
-            goto fail;
-        }
-
-        id = (item = cJSON_GetObjectItem(arguments, "id"), item) ? item->valuestring : NULL;
-
-        if (item = cJSON_GetObjectItem(arguments, "name"), !item) {
-            ierror = ENONAME;
-            goto fail;
-        }
-
-        name = item->valuestring;
-
-        if (item = cJSON_GetObjectItem(arguments, "ip"), !item) {
-            ierror = ENOIP;
-            goto fail;
-        }
-
-        ip = item->valuestring;
-        key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
-        force = (item = cJSON_GetObjectItem(arguments, "force"), item) ? item->valueint : -1;
-        response = local_add(id, name, ip, key, force);
-    } else if (!strcmp(function->valuestring, "remove")) {
-        cJSON *item;
-        int purge;
-
-        if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
-            ierror = ENOARGUMENT;
-            goto fail;
-        }
-
-        if (item = cJSON_GetObjectItem(arguments, "id"), !item) {
-            ierror = ENOID;
-            goto fail;
-        }
-
-        purge = cJSON_IsTrue(cJSON_GetObjectItem(arguments, "purge"));
-        response = local_remove(item->valuestring, purge);
-    } else if (!strcmp(function->valuestring, "get")) {
-        cJSON *item;
-
-        if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
-            ierror = ENOARGUMENT;
-            goto fail;
-        }
-
-        if (item = cJSON_GetObjectItem(arguments, "id"), !item) {
-            ierror = ENOID;
-            goto fail;
-        }
-
-        response = local_get(item->valuestring);
-    }
-
-    if (!response) {
-        merror("at local_dispatch(): response is null.");
-        ierror = EINTERNAL;
-        goto fail;
-    }
-
-    if (response) {
-        output = cJSON_PrintUnformatted(response);
-        cJSON_Delete(response);
-    }
-
-    cJSON_Delete(request);
     return output;
 
 fail:
