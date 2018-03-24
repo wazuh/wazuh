@@ -94,7 +94,7 @@ int wm_check() {
     // Get the last module of the same type
 
     for (i = wmodules->next; i; i = i->next) {
-        for (j = prev = wmodules; j != i; prev = j, j = next) {
+        for (j = prev = wmodules; j != i; j = next) {
             next = j->next;
 
             if (i->context->name == j->context->name) {
@@ -104,12 +104,14 @@ int wm_check() {
                     j->context->destroy(j->data);
 
                 if (j == wmodules) {
-                    wmodules = next;
+                    wmodules = prev = next;
                 } else {
                     prev->next = next;
                 }
 
                 free(j);
+            } else {
+                prev = j;
             }
         }
     }

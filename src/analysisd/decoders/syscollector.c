@@ -896,6 +896,7 @@ int sc_send_db(char * msg) {
 
                 // Retry to connect
                 mwarn("Connection with wazuh-db lost. Reconnecting.");
+                close(sock);
 
                 if (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
                     merror("Unable to connect to socket '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
