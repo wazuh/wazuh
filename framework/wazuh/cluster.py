@@ -368,7 +368,10 @@ def read_config():
     # Get api/configuration/config.js content
     try:
         config_cluster = get_ossec_conf('cluster')
-
+        if not config_cluster.get('socket_timeout'):
+            config_cluster['socket_timeout'] = 5
+        if not config_cluster.get('connection_timeout'):
+            config_cluster['connection_timeout'] = 1
     except WazuhException as e:
         if e.code == 1102:
             raise WazuhException(3006, "Cluster configuration not present in ossec.conf")
