@@ -10,9 +10,12 @@ OSSEC_GROUP  = ossec
 PREFIX       = /var/ossec
 
 OPENSSL_DIR      = ../src/external/openssl
+JSON_DIR         = ../src/external/cJSON
 
 CC           = gcc
 CFLAGS       = -pipe -Wall -Wextra
+LDFLAGS      = -L$(JSON_DIR) -L$(OPENSSL_DIR) -Wl,-rpath,../lib
+LIBS         = -lcjson -lssl -lcrypto -ldl -lm
 THREAD_FLAGS = -pthread
 RM_FILE      = rm -f
 INSTALL_DIR  = install -o root -g ${OSSEC_GROUP} -m 0750  -d
@@ -20,12 +23,10 @@ INSTALL_EXEC = install -o root -g ${OSSEC_GROUP} -m 0750
 INSTALL_FILE = install -o root -g ${OSSEC_GROUP} -m 0640
 
 SQLITE_DIR       = ../src/external/sqlite
-JSON_DIR         = ../src/external/cJSON
 HEADERS_DIR      = ../src/headers
 MD5_DIR          = ../src/os_crypto/md5
 
 DEBUG_OP         = ../src/shared/debug_op.o
-JSON_LIB         = $(JSON_DIR)/cJSON.o
 XML_LIB          = ../src/os_xml/os_xml.o
 XML_ACCESS       = ../src/os_xml/os_xml_access.o
 STRBREAK         = ../src/os_regex/os_regex_strbreak.o
@@ -92,7 +93,7 @@ libsqlite3.so.0: $(SQLITE_DIR)/sqlite3.o
 
 ifeq (${uname_S},Linux)
 wazuh-clusterd-internal: wazuh-clusterd-internal.o $(SQLITE_DIR)/sqlite3.o $(DEBUG_OP_DEPS) $(HASH_OP_DEPS) $(QUEUE_OP) $(MD5_DEPS)
-	$(CC) $(THREAD_FLAGS) -DDEFAULTDIR=\"${PREFIX}\" $^ -o $@ $(OPENSSL_DIR)/libssl.a $(OPENSSL_DIR)/libcrypto.a -L$(OPENSSL_DIR) -lcrypto -lssl -ldl -lm
+	$(CC) $(THREAD_FLAGS) -DDEFAULTDIR=\"${PREFIX}\" $(LDFLAGS) $^ -o $@ $(LIBS)
 endif
 
 ifeq (${uname_S},Linux)
