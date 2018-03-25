@@ -602,6 +602,7 @@ InstallCommon(){
     EXTERNAL_BERKELEY='external/libdb/build_unix/'
     EXTERNAL_JSON="external/cJSON/"
     EXTERNAL_SQLITE="external/sqlite/"
+    EXTERNAL_SSL="external/openssl/"
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -646,6 +647,8 @@ InstallCommon(){
   ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_BERKELEY}.libs/libdb-6.2.so ${PREFIX}/lib
   ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_JSON}libcjson.* ${PREFIX}/lib
   ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SQLITE}libsqlite3.* ${PREFIX}/lib
+  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libssl*1.1* ${PREFIX}/lib
+  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libcrypto*1.1* ${PREFIX}/lib
 
   ${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
