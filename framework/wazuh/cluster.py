@@ -919,7 +919,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
         if node_type=='master':
             # check if the date is older than the manager's date
             if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
-                logging.warning("Receiving an old file ({})".format(fullpath))
+                logging.debug("Receiving an old file ({})".format(fullpath))
                 raise WazuhException(3012)
         elif is_agent_info:
             logging.warning("Agent-info received in a client node.")
@@ -1044,8 +1044,14 @@ def receive_zip(zip_file):
                             w_mode=remote_write_mode,
                             node_type=config['node_type'])
 
+        except WazuhException as e:
+            if e.code != 3012:
+                logging.error("Error extracting zip file: {0}".format(str(e)))
+            final_dict['error'].append({'item': name, 'reason': str(e)})
+            continue
+
         except Exception as e:
-            logging.error("Error extracting zip file: {0}".format(str(e)))
+            logging.error("Error processing file {} from received zip file: {0}".format(name, str(e)))
             final_dict['error'].append({'item': name, 'reason': str(e)})
             continue
 
@@ -1173,12 +1179,8 @@ def update_node_db_after_sync(data, node, cluster_socket):
         for f in failed:
             if isinstance(f, dict):
                 if f['reason'].startswith('Error 3012'):
-                    if 'agent-info' in f['item']:
-                        pass
-                        #delete_sql += " /{0}".format(f['item'])
-                    else:
-                        # set old files as synchronized so the node doesn't send them anymore
-                        update_sql += " synchronized {} /{}".format(node, f['item'])
+                    # set old files as synchronized so the node doesn't send them anymore
+                    update_sql += " synchronized {} /{}".format(node, f['item'])
                 else:
                     update_sql += " failed {0} /{1}".format(node, f['item'])
             else:
