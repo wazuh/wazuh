@@ -206,6 +206,7 @@ Section "Wazuh Agent (required)" MainSec
 	File agent-auth.exe
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
+    File /oname=libcjson.dll ../external/cJSON/libcjson.dll
     File VERSION
     File REVISION
 
@@ -480,6 +481,7 @@ Section "Uninstall"
     Delete "$INSTDIR\incoming\*"
     Delete "$INSTDIR\wodles\*"
     Delete "$INSTDIR\syscollector_win_ext.dll"
+    Delete "$INSTDIR\libcjson.dll"
 
     ; remove shortcuts
     SetShellVarContext all
