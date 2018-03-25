@@ -44,9 +44,10 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 	DEFINES+=-DREUSE_ID
 endif
 
-OSSEC_LDFLAGS=-L${EXTERNAL_OPENSSL} -L$(EXTERNAL_JSON) -lcjson -lm -lssl -lcrypto ${LDFLAGS} -Wl,-rpath,../lib
+OSSEC_LDFLAGS=-L${EXTERNAL_OPENSSL} -L$(EXTERNAL_JSON) -lcjson -lm -lssl -lcrypto ${LDFLAGS}
 
 ifneq (${TARGET},winagent)
+		OSSEC_LDFLAGS+=-L$(EXTERNAL_SQLITE) -lsqlite3 -Wl,-rpath,../lib
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
@@ -508,6 +509,8 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 EXTERNAL_LIBS := $(EXTERNAL_JSON)libcjson.$(SHARED) ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
 
 ifneq (${TARGET},winagent)
+EXTERNAL_LIBS += ${EXTERNAL_SQLITE}libsqlite3.$(SHARED)
+
 ifeq (${uname_S},Linux)
 EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so
 endif
@@ -578,7 +581,22 @@ os_zlib.a: ${os_zlib_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
+#### SQLite #########
 
+SQLITE_LIB = ${EXTERNAL_SQLITE}libsqlite3.$(SHARED)
+
+ifeq (${uname_S},Darwin)
+SQLITE_SHFLAGS=-install_name @loader_path/../lib/libsqlite3.$(SHARED)
+endif
+
+sqlite_c = ${EXTERNAL_SQLITE}sqlite3.c
+sqlite_o = ${EXTERNAL_SQLITE}sqlite3.o
+
+$(SQLITE_LIB): $(sqlite_o)
+	${OSSEC_SHARED} ${OSSEC_CFLAGS} $(SQLITE_SHFLAGS) -o $@ $^
+
+$(sqlite_o): $(sqlite_c)
+	${OSSEC_CC} ${OSSEC_CFLAGS} -w -fPIC -c $^ -o $@ -fPIC
 
 #### cJSON #########
 
@@ -707,7 +725,7 @@ shared.a: ${shared_o}
 #### Wazuh DB ####
 
 wdb_sql := $(wildcard wazuh_db/*.sql)
-wdblib_c := $(wildcard wazuh_db/wdb*.c) ${EXTERNAL_SQLITE}sqlite3.c
+wdblib_c := $(wildcard wazuh_db/wdb*.c)
 wdblib_o := $(wdblib_c:.c=.o) $(wdb_sql:.sql=.o)
 wdb_o := wazuh_db/main.o $(wdblib_o:.c=.o) $(wdb_c:.c=.o) $(wdb_sql:.sql=.o)
 
@@ -716,9 +734,6 @@ wazuh_db/schema_%.o: wazuh_db/schema_%.sql
 
 wazuh_db/%.o: wazuh_db/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-db\" -c $^ -o $@
-
-${EXTERNAL_SQLITE}sqlite3.o: ${EXTERNAL_SQLITE}sqlite3.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -w -c $^ -o $@ -fPIC
 
 wazuh-db: ${wdb_o} ${ossec_libs}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
@@ -1192,7 +1207,7 @@ ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} aler
 wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
-wazuh-modulesd: ${wmodulesd_o} ${EXTERNAL_SQLITE}sqlite3.o ${ossec_libs} ${ZLIB_LIB} ${PROCPS_LIB}
+wazuh-modulesd: ${wmodulesd_o} ${ossec_libs} ${ZLIB_LIB} ${PROCPS_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 ### wazuh-framework ##
@@ -1352,6 +1367,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -f ${OPENSSL_LIB}
 	rm -f ${CRYPTO_LIB}
 	rm -f ${procps_o} libproc.a
+	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
