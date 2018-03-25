@@ -481,7 +481,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a ${EXTERNAL_ZLIB}libz.a win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
+winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
@@ -503,8 +503,10 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 
 EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
 
+ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so
+endif
 endif
 
 .PHONY: external test_external
