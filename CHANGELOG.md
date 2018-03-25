@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Fixed error on DB daemon when parsing rules with options introduced in version 3.0.0.
 - Fixed unrecognizable characters error in Windows version name. ([#478](https://github.com/wazuh/wazuh/pull/478))
 - Fix Authd client in old versions of Windows ([#479](https://github.com/wazuh/wazuh/pull/479))
+- Cluster's socket management improved to use persistent connections ([#481](https://github.com/wazuh/wazuh/pull/481))
 
 ## [v3.2.1]
 
