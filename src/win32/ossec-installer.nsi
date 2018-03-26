@@ -208,6 +208,7 @@ Section "Wazuh Agent (required)" MainSec
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libcjson.dll ../external/cJSON/libcjson.dll
     File /oname=libcrypto-1_1.dll ../external/openssl/libcrypto-1_1.dll
+    File /oname=zlib1.dll ../external/zlib/zlib1.dll
     File VERSION
     File REVISION
 
@@ -484,6 +485,7 @@ Section "Uninstall"
     Delete "$INSTDIR\syscollector_win_ext.dll"
     Delete "$INSTDIR\libcjson.dll"
     Delete "$INSTDIR\libcrypto-1_1.dll"
+    Delete "$INSTDIR\zlib1.dll"
 
     ; remove shortcuts
     SetShellVarContext all
