@@ -52,6 +52,7 @@ ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
+		OSSEC_LDFLAGS+=-L$(EXTERNAL_PROCPS) -lproc
 		OSSEC_LDFLAGS+=-L${EXTERNAL_LIBDB}.libs -ldb-6.2
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 #		OSSEC_LDFLAGS+=-lmagic
@@ -522,6 +523,7 @@ endif
 
 SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.$(SHARED)
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.$(SHARED)
+PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.$(SHARED)
 
 EXTERNAL_LIBS := $(JSON_LIB) ${EXTERNAL_ZLIB}libz.a $(OPENSSL_LIB)
 
@@ -529,7 +531,7 @@ ifneq (${TARGET},winagent)
 EXTERNAL_LIBS += $(SQLITE_LIB)
 
 ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so
+EXTERNAL_LIBS += $(PROCPS_LIB) ${EXTERNAL_LIBDB}.libs/libdb-6.2.so
 endif
 endif
 
@@ -624,22 +626,17 @@ ${EXTERNAL_JSON}%.o: ${EXTERNAL_JSON}%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
 
 #### procps #########
-ifneq (${TARGET},winagent)
-ifeq (${uname_S},Linux)
-PROCPS_LIB=libproc.a
+
 PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
 
 procps_c := $(wildcard ${EXTERNAL_PROCPS}*.c)
 procps_o := $(procps_c:.c=.o)
 
 ${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
 
-libproc.a: ${procps_o}
-	${OSSEC_LINK} $@ $^
-	${OSSEC_RANLIB} $@
-endif
-endif
+$(PROCPS_LIB): ${procps_o}
+	${OSSEC_SHARED} ${OSSEC_CFLAGS} -o $@ $^
 
 #### Berkeley DB ######
 
@@ -679,7 +676,7 @@ external/%.tar.gz:
 #### OSSEC Libs ####
 ####################
 
-ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a ${PROCPS_LIB}
+ossec_libs = config.a wmodules.a os_crypto.a shared.a os_net.a os_regex.a os_xml.a
 
 #### os_xml ########
 
@@ -1215,7 +1212,7 @@ ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${format_o} aler
 wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
-wazuh-modulesd: ${wmodulesd_o} ${ossec_libs} ${ZLIB_LIB} ${PROCPS_LIB}
+wazuh-modulesd: ${wmodulesd_o} ${ossec_libs} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 ### wazuh-framework ##
@@ -1372,7 +1369,7 @@ ifneq ($(wildcard external/*/*),)
 	cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
 	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
-	rm -f ${procps_o} libproc.a
+	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
