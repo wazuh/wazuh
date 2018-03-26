@@ -1289,7 +1289,7 @@ int wm_vulnerability_update_oval(cve_db version) {
     os_strdup(OS_VERSION, parsed_oval.OS);
 
     // Reduces a level of recurrence
-    if (chld_node = OS_GetElementsbyNode(&xml, *node), !node) {
+    if (chld_node = OS_GetElementsbyNode(&xml, *node), !chld_node) {
         goto free_mem;
     }
 
@@ -1358,6 +1358,7 @@ int wm_vulnerability_detector_socketconnect(char *url) {
 		addr_it = (struct sockaddr_in *) hinfo_it->ai_addr;
 		if (addr_it->sin_addr.s_addr) {
 			strncpy(ip_addr , inet_ntoa(addr_it->sin_addr) , sizeof(ip_addr));
+            ip_addr[sizeof(ip_addr) - 1] = '\0';
 		}
 	}
 
@@ -1371,7 +1372,6 @@ int wm_vulnerability_detector_socketconnect(char *url) {
 	addr.sin_port = htons(port);
 	addr.sin_family = AF_INET;
 	sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&on, sizeof(int));
 
 	if(sock < 0 || connect(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
         mterror(WM_VULNDETECTOR_LOGTAG, "Cannot connect to %s:%i.", host, (int)port);
@@ -1379,6 +1379,7 @@ int wm_vulnerability_detector_socketconnect(char *url) {
         return OS_INVALID;
 	}
 
+    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&on, sizeof(int));
 	return sock;
 }
 
@@ -1582,7 +1583,7 @@ free_mem:
     if (fp) {
         fclose(fp);
     }
-    if (sock) {
+    if (sock >= 0) {
         close(sock);
     }
     if (ssl) {
@@ -1595,7 +1596,6 @@ free_mem:
         free(repo);
     }
     if (success) {
-        close(sock);
         if (OS) {
             free(OS);
             OS = NULL;
@@ -1688,7 +1688,7 @@ int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 
 
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
 
-    for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR)) < 1; i++) {
+    for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR)) < 0; i++) {
         mterror(WM_VULNDETECTOR_LOGTAG, "Unable to connect to socket '%s'. Waiting %d seconds.", WDB_LOCAL_SOCK_PATH, i);
         sleep(i);
     }
@@ -1722,16 +1722,19 @@ int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 
             if (obj) {
                 cJSON *new_obj;
                 cJSON *data;
-                if (new_obj = cJSON_Parse(json_str), !new_obj || !cJSON_IsObject(new_obj)) {
+                if (new_obj = cJSON_Parse(json_str), !new_obj) {
+                    goto error;
+                } else if (!cJSON_IsObject(new_obj)) {
+                    free(new_obj);
                     goto error;
                 }
                 data = cJSON_GetObjectItem(new_obj, "data");
                 if (data) {
                     cJSON_AddItemToArray(package_list, data->child);
+                    free(data->string);
+                    free(data);
                 }
                 free(new_obj);
-                free(data->string);
-                free(data);
             } else if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
                 package_list = cJSON_GetObjectItem(obj, "data");
                 if (!package_list) {
@@ -1757,6 +1760,7 @@ int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 
         sqlite3_exec(db, BEGIN_T, NULL, NULL, NULL);
         for (package_list = package_list->child; package_list; package_list = package_list->next) {
             if (sqlite3_prepare_v2(db, VU_INSERT_AGENTS, -1, &stmt, NULL) != SQLITE_OK) {
+                close(sock);
                 return wm_vulnerability_detector_sql_error(db);
             }
 
@@ -1767,6 +1771,7 @@ int wm_vulnerability_detector_get_software_info(agent_software * agent, sqlite3 
 
             if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
                 sqlite3_finalize(stmt);
+                close(sock);
                 return wm_vulnerability_detector_sql_error(db);
             }
             sqlite3_finalize(stmt);
@@ -1968,8 +1973,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
     *agents_software = agents;
     agents->prev = NULL;
     size = snprintf(agent_info, OS_MAXSTR, "%s", uname);
-    if (buffer = strchr(agent_info, '|'), buffer) {
-        uname_p = strchr(++buffer, '|');
+    if (buffer = strchr(agent_info, '|'), buffer && (uname_p = strchr(++buffer, '|'), uname_p)) {
         *uname_p = '\0';
     } else {
         free(uname);

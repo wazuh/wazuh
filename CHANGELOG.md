@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Fixed unrecognizable characters error in Windows version name. ([#478](https://github.com/wazuh/wazuh/pull/478))
 - Fix Authd client in old versions of Windows ([#479](https://github.com/wazuh/wazuh/pull/479))
 - Cluster's socket management improved to use persistent connections ([#481](https://github.com/wazuh/wazuh/pull/481))
+- Fix memory corruption in Syscollector decoder and memory leaks in Vulnerability Detector. ([#482](https://github.com/wazuh/wazuh/pull/482))
 
 ## [v3.2.1]
 
