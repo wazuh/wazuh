@@ -372,29 +372,29 @@ def plain_dict_to_nested_dict(data, force_fields=[]):
     """
     # separate fields and subfields:
     # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
-    nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g))) 
-             for k,g in groupby(map(lambda x: x.split('_'), sorted(data.keys())), 
+    nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g)))
+             for k,g in groupby(map(lambda x: x.split('_'), sorted(data.keys())),
              key=lambda x:x[0])}
 
     # create a nested dictionary with those fields that have subfields
     # (board_serial won't be added because it only has one subfield)
     #  nested_dict = {
     #       'cpu': {
-    #           'cores': '4', 
+    #           'cores': '4',
     #           'mhz': '2394.464',
     #           'name': 'Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz'
-    #       }, 
+    #       },
     #       'ram': {
-    #           'free': '1669524', 
+    #           'free': '1669524',
     #           'total': '2045956'
     #       }
     #    }
-    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl} for f,sfl 
+    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl} for f,sfl
                   in nested.items() if len(sfl) > 1 or f in force_fields}
 
     # create a dictionary with the non nested fields
     # non_nested_dict = {'board_serial': 'BSS-0123456789'}
-    non_nested_dict = {f:data[f] for f in data.keys() if f.split('_')[0] 
+    non_nested_dict = {f:data[f] for f in data.keys() if f.split('_')[0]
                        not in nested_dict.keys()}
 
     # append both dictonaries
@@ -414,7 +414,7 @@ def load_wazuh_xml(xml_path):
         data = data.replace(comment.group(2), good_comment)
 
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
-    data = re.sub(r"<(?!/?[\w='$,#\"\. -]+>|!--)", "&lt;", data)
+    data = re.sub(r"<(?!/?[\w='$,#\"\.\@ -]+>|!--)", "&lt;", data)
 
     # & characters should be scaped if they don't represent an &entity;
     data = re.sub(r"&(?!\w+;)", "&amp;", data)
