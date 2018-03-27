@@ -214,6 +214,9 @@ int main_analysisd(int argc, char **argv)
         merror_exit(USER_ERROR, user, group);
     }
 
+    // Start com request thread
+    w_create_thread(syscom_main, NULL);
+
     /* Found user */
     mdebug1(FOUND_USER);
 

@@ -126,11 +126,12 @@ void * req_main(__attribute__((unused)) void * arg) {
 
         default:
             buffer[length] = '\0';
+            const char* target = "";
 
             // Set counter, create node and insert into hash table
 
             snprintf(counter_s, COUNTER_LENGTH, "%x", counter++);
-            node = req_create(peer, counter_s, NULL, buffer, length);
+            node = req_create(peer, counter_s, target, buffer, length);
 
             w_mutex_lock(&mutex_table);
             error = OSHash_Add(req_table, counter_s, node);
