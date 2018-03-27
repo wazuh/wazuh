@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Cluster's socket management improved to use persistent connections ([#481](https://github.com/wazuh/wazuh/pull/481))
 - Fix memory corruption in Syscollector decoder and memory leaks in Vulnerability Detector. ([#482](https://github.com/wazuh/wazuh/pull/482))
 - Fixed memory corruption in Wazuh DB autoclosing procedure.
+- Fixed dangling db files at DB Sync module folder. ([#489](https://github.com/wazuh/wazuh/pull/489))
 
 ## [v3.2.1]
 
