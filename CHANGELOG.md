@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - Fix Authd client in old versions of Windows ([#479](https://github.com/wazuh/wazuh/pull/479))
 - Cluster's socket management improved to use persistent connections ([#481](https://github.com/wazuh/wazuh/pull/481))
 - Fix memory corruption in Syscollector decoder and memory leaks in Vulnerability Detector. ([#482](https://github.com/wazuh/wazuh/pull/482))
+- Fixed memory corruption in Wazuh DB autoclosing procedure.
 
 ## [v3.2.1]
 
