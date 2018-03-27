@@ -2292,7 +2292,7 @@ class Agent:
         # Open file on agent
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(common.ossec_path + "/queue/ossec/request")
-        msg = "{0} com open w {1}".format(str(self.id).zfill(3), wpk_file)
+        msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
