@@ -72,3 +72,29 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
 
     return (0);
 }
+
+
+cJSON *getMailConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *email = cJSON_CreateObject();
+    unsigned int i;
+
+    if (mail.to) {
+        cJSON *mail_list = cJSON_CreateArray();
+        for (i=0;mail.to[i];i++) {
+            cJSON_AddItemToArray(mail_list,cJSON_CreateString(mail.to[i]));
+        }
+        cJSON_AddItemToObject(email,"email_to",mail_list);
+    }
+    if (mail.from) cJSON_AddStringToObject(email,"email_from",mail.from);
+    if (mail.reply_to) cJSON_AddStringToObject(email,"email_reply_to",mail.reply_to);
+    if (mail.idsname) cJSON_AddStringToObject(email,"email_idsname",mail.idsname);
+    if (mail.smtpserver) cJSON_AddStringToObject(email,"smtp_server",mail.smtpserver);
+    if (mail.heloserver) cJSON_AddStringToObject(email,"helo_server",mail.heloserver);
+    cJSON_AddNumberToObject(email,"email_maxperhour",mail.maxperhour);
+
+    cJSON_AddItemToObject(root,"mail",email);
+
+    return root;
+}
