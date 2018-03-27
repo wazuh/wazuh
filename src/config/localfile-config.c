@@ -444,7 +444,6 @@ void Free_Localfile(logreader_config * config){
     if (config) {
         if (config->config) {
             int i;
-
             for (i = 0; config->config[i].file; i++) {
                 free(config->config[i].ffile);
                 free(config->config[i].file);
