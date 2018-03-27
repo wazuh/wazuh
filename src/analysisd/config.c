@@ -109,3 +109,59 @@ int GlobalConf(const char *cfgfile)
 
     return (0);
 }
+
+
+cJSON *getGlobalConfig(void) {
+
+    unsigned int i;
+    cJSON *root = cJSON_CreateObject();
+    cJSON *global = cJSON_CreateObject();
+
+    if (Config.mailnotify) cJSON_AddStringToObject(global,"email_notification","yes"); else cJSON_AddStringToObject(global,"email_notification","no");
+    if (Config.logall) cJSON_AddStringToObject(global,"logall","yes"); else cJSON_AddStringToObject(global,"logall","no");
+    if (Config.logall_json) cJSON_AddStringToObject(global,"logall_json","yes"); else cJSON_AddStringToObject(global,"logall_json","no");
+    cJSON_AddNumberToObject(global,"integrity_checking",Config.integrity);
+    cJSON_AddNumberToObject(global,"rootkit_detection",Config.rootcheck);
+    cJSON_AddNumberToObject(global,"host_information",Config.hostinfo);
+    if (Config.prelude) cJSON_AddStringToObject(global,"prelude_output","yes"); else cJSON_AddStringToObject(global,"prelude_output","no");
+    if (Config.prelude_profile) cJSON_AddStringToObject(global,"prelude_profile",Config.prelude_profile);
+    if (Config.prelude) cJSON_AddNumberToObject(global,"prelude_log_level",Config.hostinfo);
+    if (Config.geoipdb_file) cJSON_AddStringToObject(global,"geoipdb",Config.geoipdb_file);
+    if (Config.zeromq_output) cJSON_AddStringToObject(global,"zeromq_output","yes"); else cJSON_AddStringToObject(global,"zeromq_output","no");
+    if (Config.zeromq_output_uri) cJSON_AddStringToObject(global,"zeromq_uri",Config.zeromq_output_uri);
+    if (Config.zeromq_output_server_cert) cJSON_AddStringToObject(global,"zeromq_server_cert",Config.zeromq_output_server_cert);
+    if (Config.zeromq_output_client_cert) cJSON_AddStringToObject(global,"zeromq_client_cert",Config.zeromq_output_client_cert);
+    if (Config.jsonout_output) cJSON_AddStringToObject(global,"jsonout_output","yes"); else cJSON_AddStringToObject(global,"jsonout_output","no");
+    if (Config.alerts_log) cJSON_AddStringToObject(global,"alerts_log","yes"); else cJSON_AddStringToObject(global,"alerts_log","no");
+    cJSON_AddNumberToObject(global,"stats",Config.stats);
+    cJSON_AddNumberToObject(global,"memory_size",Config.memorysize);
+    if (Config.white_list) {
+        cJSON *ip_list = cJSON_CreateArray();
+        for (i=0;Config.white_list[i] && Config.white_list[i]->ip;i++) {
+            cJSON_AddItemToArray(ip_list,cJSON_CreateString(Config.white_list[i]->ip));
+        }
+        OSMatch **wl;
+        wl = Config.hostname_white_list;
+        while (*wl) {
+            char **tmp_pts = (*wl)->patterns;
+            while (*tmp_pts) {
+                cJSON_AddItemToArray(ip_list,cJSON_CreateString(*tmp_pts));
+                tmp_pts++;
+            }
+            wl++;
+        }
+        cJSON_AddItemToObject(global,"white_list",ip_list);
+    }
+    if (Config.custom_alert_output) cJSON_AddStringToObject(global,"custom_alert_output",Config.custom_alert_output_format);
+    cJSON_AddNumberToObject(global,"rotate_interval",Config.rotate_interval);
+    cJSON_AddNumberToObject(global,"max_output_size",Config.max_output_size);
+
+#ifdef LIBGEOIP_ENABLED
+    if (Config.geoip_db_path) cJSON_AddStringToObject(global,"geoip_db_path",Config.geoip_db_path);
+    if (Config.geoip6_db_path) cJSON_AddStringToObject(global,"geoip6_db_path",Config.geoip6_db_path);
+#endif
+
+    cJSON_AddItemToObject(root,"global",global);
+
+    return root;
+}
