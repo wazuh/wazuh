@@ -386,7 +386,9 @@ void wm_sync_agents() {
             snprintf(id, 9, "%03d", agents[i]);
 
             if (OS_IsAllowedID(&keys, id) == -1)
-                wdb_remove_agent(agents[i]);
+                if (wdb_remove_agent(agents[i]) < 0) {
+                    mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
+                }
             }
 
         free(agents);
