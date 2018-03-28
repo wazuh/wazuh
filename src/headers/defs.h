@@ -130,6 +130,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_LOCAL_SOCK  "/queue/ossec/wmodules"
 #define ANLSYS_LOCAL_SOCK  "/queue/ossec/analysisd"
 #define MAIL_LOCAL_SOCK "/queue/ossec/maild"
+#define LESSD_LOCAL_SOCK "/queue/ossec/agentlessd"
 
 // Database socket
 #define WDB_LOCAL_SOCK "/queue/db/wdb"
