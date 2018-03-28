@@ -225,3 +225,20 @@ cJSON *getARCommandsConfig(void) {
 
     return root;
 }
+
+
+cJSON *getAlertsConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *alerts = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(alerts,"email_alert_level",Config.mailbylevel);
+    cJSON_AddNumberToObject(alerts,"log_alert_level",Config.logbylevel);
+#ifdef LIBGEOIP_ENABLED
+    if (Config.loggeoip) cJSON_AddStringToObject(alerts,"use_geoip","yes"); else cJSON_AddStringToObject(alerts,"use_geoip","no");
+#endif
+
+    cJSON_AddItemToObject(root,"alerts",alerts);
+
+    return root;
+}
