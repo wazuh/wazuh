@@ -466,13 +466,13 @@ def update_master_files_in_client(wrong_files, files_to_update):
     cluster_items = get_cluster_items()
 
     if not wrong_files['shared'] and not wrong_files['missing'] and not wrong_files['extra']:
-        logging.info("[Client] [Sync process] [Step 4]: Client meets integrity checks. No actions.")
+        logging.info("[Client] [Sync process] [Step 3]: Client meets integrity checks. No actions.")
     else:
-        logging.info("[Client] [Sync process] [Step 4]: Client does not meet integrity checks. Actions required.")
+        logging.info("[Client] [Sync process] [Step 3]: Client does not meet integrity checks. Actions required.")
 
 
     if wrong_files['shared']:
-        logging.info("[Client] [Sync process] [Step 4]: Received {} wrong files to fix from master. Action: Overwrite files.".format(len(wrong_files['shared'])))
+        logging.info("[Client] [Sync process] [Step 3]: Received {} wrong files to fix from master. Action: Overwrite files.".format(len(wrong_files['shared'])))
         try:
             for file_to_overwrite, data in wrong_files['shared'].iteritems():
                 logging.debug("\tOVERWRITE {0}".format(file_to_overwrite))
@@ -495,7 +495,7 @@ def update_master_files_in_client(wrong_files, files_to_update):
             raise e
 
     if wrong_files['missing']:
-        logging.info("[Client] [Sync process] [Step 4]: Received {} missing files from master. Action: Create files.".format(len(wrong_files['missing'])))
+        logging.info("[Client] [Sync process] [Step 3]: Received {} missing files from master. Action: Create files.".format(len(wrong_files['missing'])))
         for file_to_create, data in wrong_files['missing'].iteritems():
             logging.debug("\tCREATE {0}".format(file_to_create))
 
@@ -515,7 +515,7 @@ def update_master_files_in_client(wrong_files, files_to_update):
 
 
     if wrong_files['extra']:
-        logging.info("[Client] [Sync process] [Step 4]: Received {} extra files from master. Action: Remove files.".format(len(wrong_files['extra'])))
+        logging.info("[Client] [Sync process] [Step 3]: Received {} extra files from master. Action: Remove files.".format(len(wrong_files['extra'])))
         for file_to_remove in wrong_files['extra']:
             logging.debug("\tREMOVE {0}".format(file_to_remove))
             file_path = common.ossec_path + file_to_remove
@@ -560,7 +560,7 @@ def send_client_files_to_master(master_node, config_cluster, files):
 
 
     # Send compressed file to master
-    logging.info("[Client] [Sync process] [Step 3]: Sending files to master.")
+    logging.info("[Client] [Sync process] [Step 2]: Sending files to master.")
     error, response = send_request2( host=master_node,
                                     port=config_cluster["port"],
                                     key=config_cluster['key'],
@@ -575,16 +575,16 @@ def send_client_files_to_master(master_node, config_cluster, files):
     if error == 0:
         if 'error' in response and 'data' in response:
             if response['error'] != 0:
-                logging.error("[Client] [Sync process] [Step 4]: ERROR receiving files from master (1): {}".format(response['data']))
+                logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master (1): {}".format(response['data']))
         else:
             try:
-                logging.info("[Client] [Sync process] [Step 4]: KO files received from master.")
+                logging.info("[Client] [Sync process] [Step 3]: KO files received from master.")
                 master_data  = decompress_files2(response)
                 sync_result = process_files_from_master(master_data)
             except Exception as e:
-                logging.error("[Client] [Sync process] [Step 4]: ERROR receiving files from master (2): {}".format(str(e)))
+                logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master (2): {}".format(str(e)))
     else:
-        logging.error("[Client] [Sync process] [Step 4]: ERROR receiving files from master")
+        logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master")
 
     # Send ACK
     # ToDo
