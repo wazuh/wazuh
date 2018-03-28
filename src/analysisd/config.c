@@ -17,6 +17,8 @@
 
 long int __crt_ftell; /* Global ftell pointer */
 _Config Config;       /* Global Config structure */
+OSList *active_responses;
+OSList *ar_commands;
 
 int GlobalConf(const char *cfgfile)
 {
@@ -162,6 +164,64 @@ cJSON *getGlobalConfig(void) {
 #endif
 
     cJSON_AddItemToObject(root,"global",global);
+
+    return root;
+}
+
+
+cJSON *getARManagerConfig(void) {
+
+    if (!active_responses) {
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    OSListNode *node = OSList_GetFirstNode(active_responses);
+    cJSON *ar_list = cJSON_CreateArray();
+    while (node && node->data) {
+        active_response *data = node->data;
+        cJSON *ar = cJSON_CreateObject();
+        if (data->command) cJSON_AddStringToObject(ar,"command",data->command);
+        if (data->agent_id) cJSON_AddStringToObject(ar,"agent_id",data->agent_id);
+        if (data->rules_id) cJSON_AddStringToObject(ar,"rules_id",data->rules_id);
+        if (data->rules_group) cJSON_AddStringToObject(ar,"rules_group",data->rules_group);
+        cJSON_AddNumberToObject(ar,"timeout",data->timeout);
+        cJSON_AddNumberToObject(ar,"level",data->level);
+        if (data->location & AS_ONLY) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("AS_ONLY"));
+        else if (data->location & REMOTE_AGENT) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("REMOTE_AGENT"));
+        else if (data->location & SPECIFIC_AGENT) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("SPECIFIC_AGENT"));
+        else if (data->location & ALL_AGENTS) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("ALL_AGENTS"));
+        cJSON_AddItemToArray(ar_list,ar);
+        node = node->next;
+    }
+    cJSON_AddItemToObject(root,"active-response",ar_list);
+
+    return root;
+}
+
+
+cJSON *getARCommandsConfig(void) {
+
+    if (!ar_commands) {
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    OSListNode *node = OSList_GetFirstNode(ar_commands);
+    cJSON *ar_list = cJSON_CreateArray();
+    while (node && node->data) {
+        ar_command *data = node->data;
+        cJSON *ar = cJSON_CreateObject();
+        if (data->name) cJSON_AddStringToObject(ar,"name",data->name);
+        if (data->executable) cJSON_AddStringToObject(ar,"executable",data->executable);
+        cJSON_AddNumberToObject(ar,"timeout_allowed",data->timeout_allowed);
+        if (data->expect & USERNAME) cJSON_AddItemToObject(ar,"expect",cJSON_CreateString("username"));
+        else if (data->expect & SRCIP) cJSON_AddItemToObject(ar,"expect",cJSON_CreateString("srcip"));
+        else if (data->expect & FILENAME) cJSON_AddItemToObject(ar,"expect",cJSON_CreateString("filename"));
+        cJSON_AddItemToArray(ar_list,ar);
+        node = node->next;
+    }
+    cJSON_AddItemToObject(root,"command",ar_list);
 
     return root;
 }

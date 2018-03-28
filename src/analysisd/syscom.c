@@ -50,6 +50,24 @@ size_t syscom_getconfig(const char * section, char * output) {
         } else {
             goto error;
         }
+    }
+    else if (strcmp(section, "active-response") == 0){
+        if (cfg = getARManagerConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    }
+    else if (strcmp(section, "command") == 0){
+        if (cfg = getARCommandsConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
     } else {
         goto error;
     }
