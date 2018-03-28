@@ -60,6 +60,15 @@ size_t syscom_getconfig(const char * section, char * output) {
             goto error;
         }
     }
+    else if (strcmp(section, "alerts") == 0){
+        if (cfg = getAlertsConfig(), cfg) {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    }
     else if (strcmp(section, "command") == 0){
         if (cfg = getARCommandsConfig(), cfg) {
             snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
