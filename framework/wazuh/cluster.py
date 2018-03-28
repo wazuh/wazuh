@@ -239,8 +239,8 @@ class WazuhClusterClient2():
         self.port = port
         self.terminator = '\n'
         self.chunk = 4096
-        self.connection_timeout = connection_timeout
-        self.socket_timeout = socket_timeout
+        self.connection_timeout = 100 #connection_timeout
+        self.socket_timeout = 100 #socket_timeout
         self.connect()
 
 
