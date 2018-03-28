@@ -12,6 +12,7 @@
 
 #include "config/config.h"
 #include "config/global-config.h"
+#include "config/active-response.h"
 #ifdef LIBGEOIP_ENABLED
 #include "GeoIP.h"
 #endif
@@ -26,6 +27,8 @@ GeoIP *geoipdb;
 
 int GlobalConf(const char *cfgfile);
 cJSON *getGlobalConfig(void);
+cJSON *getARManagerConfig(void);
+cJSON *getARCommandsConfig(void);
 void * syscom_main(__attribute__((unused)) void * arg) ;
 size_t syscom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output);
 size_t syscom_getconfig(const char * section, char * output);
