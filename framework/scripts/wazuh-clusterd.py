@@ -11,7 +11,7 @@ try:
     from sys import argv, exit, path
     from os.path import dirname
     from subprocess import check_call, CalledProcessError
-    from os import devnull, seteuid, setgid, getpid, kill
+    from os import devnull, seteuid, setgid, getpid, kill, remove
     from multiprocessing import Process, Manager, Value
     from re import search
     from time import sleep
@@ -24,6 +24,7 @@ try:
     from io import BytesIO
     from sys import exc_info
     from errno import EINTR
+    from datetime import datetime, timedelta
 
     import argparse
     parser =argparse.ArgumentParser()
@@ -67,6 +68,9 @@ except Exception as e:
     print("wazuh-clusterd: Python 2.7 required. Exiting. {}".format(str(e)))
     exit()
 
+
+# Both
+
 class WazuhClusterHandler(asynchat.async_chat):
     def __init__(self, sock, addr, key, node_type, requests_queue, finished_clients, restart_after_sync, connected_clients, clients_to_restart):
         asynchat.async_chat.__init__(self, sock)
@@ -94,20 +98,27 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.received_data.append(data)
 
     def found_terminator(self):
+        res_is_zip = False
         response = b''.join(self.received_data)
         error = 0
-        cmd = self.f.decrypt(response[:common.cluster_sync_msg_size]).decode()
+
+        response_decrypted = self.f.decrypt(response)
+
+        cmd = response_decrypted[:common.cluster_protocol_plain_size].decode()
         self.command = cmd.split(" ")
 
         logging.debug("Command received: {0}".format(self.command))
 
-        if not check_cluster_cmd(self.command, self.node_type):
-            logging.error("Received invalid cluster command {0} from {1}".format(
-                            self.command[0], self.addr))
-            error = 1
-            res = "Received invalid cluster command {0}".format(self.command[0])
+        # if not check_cluster_cmd(self.command, self.node_type):
+        #     logging.error("Received invalid cluster command {0} from {1}".format(
+        #                     self.command[0], self.addr))
+        #     error = 1
+        #     res = "Received invalid cluster command {0}".format(self.command[0])
 
         if error == 0:
+
+
+            # Review
             if self.command[0] == 'node':
                 res = get_node()
             elif self.command[0] == 'zip':
@@ -133,14 +144,31 @@ class WazuhClusterHandler(asynchat.async_chat):
                     self.connected_clients.value = 0
                     kill(child_pid, SIGALRM)
 
-            logging.debug("Command {0} executed for {1}".format(self.command[0], self.addr))
 
-        self.data = json.dumps({'error': error, 'data': res})
+
+            # New
+            elif self.command[0] == 'm_c_sync':
+                zip_bytes = response_decrypted[common.cluster_protocol_plain_size:]
+                unzip = decompress_files2(zip_bytes)
+                res = process_files_from_client(unzip)
+
+
+                res_is_zip = True
+                # Continuing working on master node
+                kill(child_pid, SIGUSR1)
+
+
+            logging.debug("Command {0} executed for {1}".format(self.command[0], self.addr))
+        if res_is_zip:
+            self.data = res
+        else:
+            self.data = json.dumps({'error': error, 'data': res})
         self.handle_write()
 
 
     def handle_error(self):
         nil, t, v, tbinfo = asyncore.compact_traceback()
+
         if t == socket.error and (v.args[0] == socket.errno.EPIPE or
                                   v.args[0] == socket.errno.EBADF):
             # there is an error in the connection with the other node.
@@ -221,88 +249,87 @@ class WazuhClusterServer(asyncore.dispatcher):
         raise t(v)
 
 
-def restart_manager():
-    if run_logtest(True):
-        try:
-            logging.info("Restarting manager...")
-            sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            sock.connect("{0}/queue/alerts/execq".format(common.ossec_path))
-            sock.send("restart-ossec0 cluster restart")
-        except CalledProcessError as e:
-            logging.warning("Could not restart manager: {0}.".format(str(e)))
-        except Exception as e:
-            logging.error("Error restarting manager: {}".format(e))
+def master_main():
+    def sync_handler(n_signal, frame):
+        logging.debug("[Master] Signal received - deprecated.")
+
+    try:
+        signal(SIGUSR1, sync_handler)
+        while True:
+            logging.info("[Master] Waiting for client requests.")
+            pause()
+
+    except Exception as e:
+        error_msg = "Error in cluster client process: {}".format(str(e))
+        logging.error(error_msg)
 
 
-def crontab_sync_master(interval, config_cluster, requests_queue, connected_clients, finished_clients, clients_to_restart, debug):
+
+def client_main(cluster_config, debug):
     def sleep_handler(n_signal, frame):
-        logging.debug("Resetting connection of clients: {}".format(', '.join(clients_to_restart)))
-        while clients_to_restart:
-            del common.cluster_connections[clients_to_restart.pop()]
         alarm(0)
-        logging.info("Sleeping for {}{}...".format(interval_number, interval_measure))
+        logging.info("[Client] Nothing to do. Sleeping for {}{}...".format(interval_number, interval_measure))
         sleep(sleep_time)
 
-    interval_number  = int(search('\d+', interval).group(0))
-    interval_measure = interval[-1]
+    interval_number  = int(search('\d+', cluster_config['interval']).group(0))
+    interval_measure = cluster_config['interval'][-1]
     sleep_time = interval_number if interval_measure == 's' else interval_number*60
-    cluster_items = get_cluster_items()
+
     signal(SIGALRM, sleep_handler)
+
     while True:
+        logging.info("[Client] Starting work.")
+
+        try:
+            all_nodes = get_nodes2()['items']
+            master_node = 'unknown'
+            for item in all_nodes:
+                if item['type'] == 'master':
+                    master_node = item['url']
+
+            if master_node == 'unknown':
+                raise
+        except:
+            logging.error("[Client] Master not found. Going to sleep.")
+            alarm(1)
+            pause()
+
         try:
             max_retries = 5
             n_retries = 0
             max_interruptions = 100
             n_interruptions = 0
-            logging.debug("Elements in requests queue: {}".format(requests_queue.items()))
-            if len(requests_queue.values()) == 0 or not reduce(or_, requests_queue.values()):
-                logging.info("Crontab: starting to sync")
-                while n_retries <= max_retries:
-                    try:
-                        sync(debug=debug, config_cluster=config_cluster, cluster_items=cluster_items)
-                        break
-                    except IOError as e:
-                        if e.errno != EINTR:
-                            raise
-                        else:
-                            n_interruptions += 1
-                            if max_interruptions >= n_interruptions:
-                                logging.error("Reached maximum number of EINTR errors: {}. Sleeping for 60s.".format(str(e)))
-                                sleep(60)
-                                n_interruptions = 0
-                                continue
-                            else:
-                                continue
-                    except Exception as e:
-                        exc_type, exc_value, exc_traceback = exc_info()
-                        filename, line_number, module, line_content = extract_tb(exc_traceback)[-2]
-                        logging.error("Error {} synchronizing information ({}:{}): {}".format(exc_type, filename, line_number, exc_value.args[0]))
-                        n_retries += 1
-                        if n_retries < max_retries:
-                            sleep(5)
-                        else:
-                            logging.warning("Reached maximum number of retries: sleeping for 60s.")
+
+            while n_retries <= max_retries:
+                try:
+                    send_client_files_to_master(master_node, cluster_config, [])
+                    break
+                except IOError as e:
+                    if e.errno != EINTR:
+                        raise
+                    else:
+                        n_interruptions += 1
+                        if max_interruptions >= n_interruptions:
+                            logging.error("Reached maximum number of EINTR errors: {}. Sleeping for 60s.".format(str(e)))
                             sleep(60)
-                            n_retries = 0
+                            n_interruptions = 0
+                            continue
+                        else:
+                            continue
+                except Exception as e:
+                    exc_type, exc_value, exc_traceback = exc_info()
+                    filename, line_number, module, line_content = extract_tb(exc_traceback)[-1]
+                    logging.error("Error {} synchronizing information ({}:{}): {}".format(exc_type, filename, line_number, exc_value.args[0]))
+                    n_retries += 1
+                    if n_retries < max_retries:
+                        sleep(5)
+                    else:
+                        logging.warning("Reached maximum number of retries: sleeping for 60s.")
+                        sleep(60)
+                        n_retries = 0
 
-                remote_nodes = get_remote_nodes()
-                connected_clients.value = len(remote_nodes)
-                finished_clients.value = 0
-                for node in remote_nodes:
-                    # ask clients to send updates
-                    error, response = send_request(host=node, port=config_cluster["port"], key=config_cluster['key'],
-                                        socket_timeout=int(config_cluster['socket_timeout']),
-                                        connection_timeout=int(config_cluster['connection_timeout']),
-                                        data="ready {0}".format('-'*(common.cluster_protocol_plain_size - len("ready "))))
-
-            else:
-                logging.debug("Receiving data...")
-
-            if connected_clients.value == 0:
-                sleep_handler(0,0)
-            else:
-                alarm(common.cluster_internal_timeout)
-                pause()
+            alarm(1)
+            pause()
         except Exception as e:
             error_msg = "Error in cluster master process: {}".format(str(e))
             if debug:
@@ -316,76 +343,6 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
             continue
 
 
-def crontab_sync_client(config_cluster, restart_after_sync, debug):
-    def sync_handler(n_signal, frame):
-        logging.debug("Starting to send files to the master node")
-
-        try:
-            master = get_remote_nodes()[0]
-        except IndexError:
-            logging.error("Master node is not reachable")
-            return 1
-
-        try:
-            sync_one_node(debug=debug, node=master, config_cluster=config_cluster, cluster_items=cluster_items)
-        except Exception as e:
-            exc_type, exc_value, exc_traceback = exc_info()
-            filename, line_number, module, line_content = extract_tb(exc_traceback)[-2]
-            logging.error("Error {} synchronizing information ({}:{}): {}".format(exc_type, filename, line_number, exc_value.args[0]))
-
-        if restart_after_sync.value == 'T':
-            restart_after_sync.value = 'F'
-            cluster_socket = connect_to_db_socket()
-            send_to_socket(cluster_socket, "delres")
-            receive_data_from_db_socket(cluster_socket)
-            send_to_socket(cluster_socket, "insertres 1")
-            receive_data_from_db_socket(cluster_socket)
-            cluster_socket.close()
-            restart_manager()
-        else:
-            error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
-                            socket_timeout=int(config_cluster['socket_timeout']),
-                            connection_timeout=int(config_cluster['connection_timeout']),
-                            data="finished {}".format('0'.zfill(common.cluster_protocol_plain_size - len("finished "))))
-
-    try:
-        cluster_socket = connect_to_db_socket()
-        send_to_socket(cluster_socket, "selres")
-        restart_str = receive_data_from_db_socket(cluster_socket)
-        restart = True if restart_str == '1' else False
-        if restart:
-            logging.info("Client restarted")
-            send_to_socket(cluster_socket, "delres")
-            receive_data_from_db_socket(cluster_socket)
-            send_to_socket(cluster_socket, "insertres 0")
-            receive_data_from_db_socket(cluster_socket)
-            cluster_socket.close()
-            try:
-                master = get_remote_nodes()[0]
-                error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
-                                    socket_timeout=int(config_cluster['socket_timeout']),
-                                    connection_timeout=int(config_cluster['connection_timeout']),
-                                    data="finished {}".format('1'.zfill(common.cluster_protocol_plain_size - len("finished "))))
-            except IndexError:
-                logging.error("Master node is not reachable")
-        else:
-            cluster_socket.close()
-
-
-        signal(SIGUSR1, sync_handler)
-        cluster_items = get_cluster_items()
-        while True:
-            pause()
-    except Exception as e:
-        error_msg = "Error in cluster client process: {}".format(str(e))
-        if debug:
-            exc_buffer = BytesIO()
-            print_exc(file=exc_buffer)
-            debug_info = exc_buffer.getvalue()
-            error_msg += '\n' + debug_info
-        logging.error(error_msg)
-
-
 def signal_handler(n_signal, frame):
     def strsignal(n_signal):
         libc = ctypes.CDLL(ctypes.util.find_library('c'))
@@ -394,16 +351,10 @@ def signal_handler(n_signal, frame):
 
         return strsignal_c(n_signal)
 
-    logging.info("Signal [{0}-{1}] received. Exit cleaning...".format(n_signal,
-                                                               strsignal(n_signal)))
+    logging.info("Signal [{0}-{1}] received. Exit cleaning...".format(n_signal, strsignal(n_signal)))
+
     # received Cntrl+C
     if n_signal == SIGINT or n_signal == SIGTERM:
-        # kill C daemon if it's running
-        try:
-            pid = int(check_output(["pidof","{0}/bin/wazuh-clusterd-internal".format(common.ossec_path)]))
-            kill(pid, SIGINT)
-        except Exception:
-            pass
 
         if child_pid != 0:
             try:
@@ -428,26 +379,16 @@ def signal_handler(n_signal, frame):
     exit(1)
 
 
-def run_internal_daemon(debug, cluster_config):
-    call_list = ["{0}/bin/wazuh-clusterd-internal".format(common.ossec_path), "-t{0}".format(cluster_config['node_type'])]
-    if debug:
-        call_list.append("-ddd")
-    check_call(call_list)
-
-
 if __name__ == '__main__':
     global cluster_connections
 
     args = parser.parse_args()
     try:
-        if args.V:
-            check_output(["{0}/bin/wazuh-clusterd-internal".format(common.ossec_path), '-V'])
-            exit(0)
-
         # Capture Cntrl + C
         signal(SIGINT, signal_handler)
         signal(SIGTERM, signal_handler)
 
+        # Foreground/daemon and logging
         if not args.f:
             res_code = pyDaemon()
         else:
@@ -461,6 +402,10 @@ if __name__ == '__main__':
             # add the handler to the root logger
             logging.getLogger('').addHandler(console)
 
+        if not args.d:
+            logging.getLogger('').setLevel(logging.INFO)
+
+        # Read configuration
         try:
             cluster_config = read_config()
         except WazuhException as e:
@@ -473,40 +418,23 @@ if __name__ == '__main__':
             logging.info("Cluster disabled. Exiting...")
             kill(getpid(), SIGINT)
 
-        # execute C cluster daemon (database & inotify) if it's not running
-        try:
-            exit_code = check_call(["ps", "-C", "wazuh-clusterd-internal"], stdout=open(devnull, 'w'))
-            pid = check_output(["pidof", "{0}/bin/wazuh-clusterd-internal".format(common.ossec_path)]).split(" ")
-            for p in pid:
-                p = p[:-1] if '\n' in p else p
-                check_call(["kill", p])
-
-            run_internal_daemon(args.d, cluster_config)
-        except CalledProcessError:
-            run_internal_daemon(args.d, cluster_config)
-
-
+        # Drop privileges to ossec
         if not args.r:
-            # Drop privileges to ossec
             pwdnam_ossec = getpwnam('ossec')
             setgid(pwdnam_ossec.pw_gid)
             seteuid(pwdnam_ossec.pw_uid)
 
+        # ToDo:
         create_pid("wazuh-clusterd", getpid())
 
-        if not args.d:
-            logging.getLogger('').setLevel(logging.INFO)
-
+        # Get cluster configuration
         try:
             check_cluster_config(cluster_config)
         except WazuhException as e:
             logging.error(str(e))
             kill(getpid(), SIGINT)
 
-
-        logging.info("Cleaning database before starting service...")
-        clear_file_status()
-
+        # Main process for master or client
         m = Manager()
         remote_connections = set(cluster_config['nodes']) - set(get_localhost_ips())
         requests_queue = m.dict([(node_ip, False) for node_ip in remote_connections])
@@ -516,24 +444,31 @@ if __name__ == '__main__':
         restart_after_sync = Value('c','F')
 
         if cluster_config['node_type'] == 'master':
-            # execute an independent process to "crontab" the sync interval
-            p = Process(target=crontab_sync_master, args=(cluster_config['interval'],cluster_config,requests_queue,connected_clients,finished_clients,clients_to_restart,args.d,))
+            #p = Process(target=crontab_sync_master, args=(cluster_config['interval'],cluster_config,requests_queue,connected_clients,finished_clients,clients_to_restart,args.d,))
+            p = Process(target=master_main, args=())
             if not args.f:
                 p.daemon=True
             p.start()
             child_pid = p.pid
         else:
-            # execute an independent process to "crontab" the sync interval
-            p = Process(target=crontab_sync_client, args=(cluster_config,restart_after_sync,args.d,))
+            p = Process(target=client_main, args=(cluster_config,args.d,))
             if not args.f:
                 p.daemon=True
             p.start()
             child_pid = p.pid
 
+        # Create server
         server = WazuhClusterServer('' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr'],
-                                    int(cluster_config['port']), cluster_config['key'], cluster_config['node_type'],
-                                    requests_queue, finished_clients, restart_after_sync, connected_clients, clients_to_restart,
-                                    int(cluster_config['socket_timeout']))
+                                    int(cluster_config['port']),
+                                    cluster_config['key'],
+                                    cluster_config['node_type'],
+                                    requests_queue,
+                                    finished_clients,
+                                    restart_after_sync,
+                                    connected_clients,
+                                    clients_to_restart,
+                                    100 #int(cluster_config['socket_timeout'])
+                                    )
         asyncore.loop()
 
     except Exception as e:

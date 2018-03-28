@@ -11,7 +11,7 @@ from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh import common
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from hashlib import sha512
 from time import time, mktime, sleep
 from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror, remove
@@ -87,7 +87,147 @@ if check_cluster_status():
         raise WazuhException(3008, str(e))
 
 
-class WazuhClusterClient():
+
+
+#
+# Both: Master & Client
+#
+def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, get_md5=True, whoami='master'):
+    walk_files = {}
+
+    try:
+        entries = listdir(dirname)
+    except OSError as e:
+        raise WazuhException(3015, str(e))
+
+    for entry in entries:
+        if entry in excluded_files or entry[-1] == '~':
+            continue
+
+        if entry in files or files == ["all"]:
+            full_path = path.join(dirname, entry)
+
+            if not path.isdir(full_path):
+                file_mod_time = datetime.utcfromtimestamp(stat(full_path).st_mtime)
+
+                if whoami == 'client' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
+                    continue
+
+                new_key = full_path.replace(common.ossec_path, "")
+                walk_files[new_key] = {"mod_time" : str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
+
+                if get_md5:
+                    walk_files[new_key]['md5'] = md5(full_path)
+
+            elif recursive:
+                walk_files.update(walk_dir(full_path, recursive, files, excluded_files, get_cluster_item_key, get_md5, whoami))
+
+    return walk_files
+
+def get_files_status(node_type, get_md5=True):
+
+    cluster_items = get_cluster_items()
+
+    final_items = {}
+    for file_path, item in cluster_items.items():
+        if file_path == "excluded_files":
+            continue
+        if item['source'] == node_type or item['source'] == 'all':
+            fullpath = common.ossec_path + file_path
+            try:
+                final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['excluded_files'], file_path, get_md5, node_type))
+            except WazuhException as e:
+                logging.warning(e)
+
+    return final_items
+
+
+
+def compress_files2(source, list_path, cluster_control_json=None):
+    path_files = "files/"
+    zipped_file = BytesIO()
+    with zipfile.ZipFile(zipped_file, 'w') as zf:
+        # write files
+        for f in list_path:
+            try:
+                zf.write(filename = common.ossec_path + f, arcname = path_files + f, compress_type=compression)
+            except Exception as e:
+                logging.error(str(WazuhException(3001, str(e))))
+
+        try:
+            zf.writestr("cluster_control.json", json.dumps(cluster_control_json), compression)
+        except Exception as e:
+            raise WazuhException(3001, str(e))
+
+    return zipped_file.getvalue()
+
+
+def decompress_files2(zip_bytes):
+    zip_json = {}
+    with zipfile.ZipFile(BytesIO(zip_bytes)) as zipf:
+        zip_json = {name:{'data':zipf.open(name).read(), 'time':datetime(*zipf.getinfo(name).date_time)} for name in zipf.namelist()}
+
+    return zip_json
+
+
+def _update_file2(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, whoami='master'):
+
+    if path.basename(fullpath) == 'client.keys':
+        if whoami =='client':
+            logging.info("ToDo: _check_removed_agents***********************************************")
+            #_check_removed_agents(new_content.split('\n'))
+        else:
+            logging.warning("Client.keys file received in a master node.")
+            raise WazuhException(3007)
+
+    is_agent_info   = 'agent-info' in fullpath
+    is_agent_groups = 'agent-groups' in fullpath
+    if is_agent_info or is_agent_groups:
+        if whoami =='master':
+            # check if the date is older than the manager's date
+            if path.isfile(fullpath) and datetime.utcfromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
+                #logging.debug("Receiving an old file ({})".format(fullpath))
+                return
+        elif is_agent_info:
+            logging.warning("Agent-info received in a client node.")
+            raise WazuhException(3011)
+
+    # Write
+    if w_mode == "atomic":
+        f_temp = '{0}.tmp.cluster'.format(fullpath)
+    else:
+        f_temp = '{0}'.format(fullpath)
+
+    if umask_int:
+        oldumask = umask(umask_int)
+
+    try:
+        dest_file = open(f_temp, "w")
+    except IOError as e:
+        if e.errno == errno.ENOENT:
+            dirpath = path.dirname(fullpath)
+            mkdir(dirpath)
+            chmod(dirpath, S_IRWXU | S_IRWXG)
+            dest_file = open(f_temp, "a+")
+        else:
+            raise e
+
+    dest_file.write(new_content)
+
+    if umask_int:
+        umask(oldumask)
+
+    dest_file.close()
+
+    mtime_epoch = int(mktime(mtime.timetuple()))
+    utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
+
+    # Atomic
+    if w_mode == "atomic":
+        rename(f_temp, fullpath)
+
+
+class WazuhClusterClient2():
     def __init__(self, host, port, key, data, file, connection_timeout, socket_timeout):
         self.can_close = False
         self.received_data = []
@@ -143,16 +283,21 @@ class WazuhClusterClient():
 
     def found_terminator(self):
         logging.debug("Received {}".format(len(''.join(self.received_data))))
+
         try:
             self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
         except (InvalidSignature, InvalidToken) as e:
             raise InvalidToken("Could not encrypt message")
+        except: # ToDo: Improve this. It shoul be like a cmd?
+            response = b''.join(self.received_data)
+            self.response = self.f.decrypt(response)
+
         self.handle_close()
 
     def handle_write(self):
         try:
             if self.file is not None:
-                msg = self.f.encrypt(self.data.encode()) + self.f.encrypt(self.file) + '\n\t\t\n'
+                msg = self.f.encrypt(self.data.encode() + self.file) + '\n\t\t\n'
             else:
                 msg = self.f.encrypt(self.data.encode()) + '\n\t\t\n'
         except (InvalidToken, InvalidSignature) as e:
@@ -172,8 +317,7 @@ class WazuhClusterClient():
             logging.error("Could not send data to {}: {}".format(self.addr, str(e)))
             raise e
 
-
-def send_request(host, port, key, data, connection_timeout, socket_timeout, file=None):
+def send_request2(host, port, key, data, connection_timeout, socket_timeout, file=None):
     error = 0
     try:
         logging.debug("Active connections: {}".format(common.cluster_connections.keys()))
@@ -181,7 +325,7 @@ def send_request(host, port, key, data, connection_timeout, socket_timeout, file
         if not client:
             logging.debug("No opened connection with {}".format(host))
             fernet_key = Fernet(key.encode('base64','strict'))
-            client = WazuhClusterClient(host, int(port), fernet_key, data, file, connection_timeout, socket_timeout)
+            client = WazuhClusterClient2(host, int(port), fernet_key, data, file, connection_timeout, socket_timeout)
             client.handle_write()
             response = client.response
             common.cluster_connections[host] = client
@@ -206,7 +350,7 @@ def send_request(host, port, key, data, connection_timeout, socket_timeout, file
             else:
                 common.cluster_connections[host].socket.close()
                 del common.cluster_connections[host]
-                return send_request(host, port, key, data, connection_timeout, socket_timeout, file)
+                return send_request2(host, port, key, data, connection_timeout, socket_timeout, file)
 
     except NameError as e:
         response = "Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)"
@@ -219,6 +363,239 @@ def send_request(host, port, key, data, connection_timeout, socket_timeout, file
 
     return error, response
 
+
+
+
+
+
+
+#
+# Master
+#
+def compare_files(good_files, check_files):
+
+    missing_files = set(good_files.keys()) - set(check_files.keys())
+    extra_files = set(check_files.keys()) - set(good_files.keys())
+
+    shared_files = {name: {'cluster_item_key': data['cluster_item_key']} for name, data in good_files.iteritems() if name in check_files and data['md5'] != check_files[name]['md5']}
+
+    if not missing_files:
+        missing_files = {}
+    else:
+        missing_files = {missing_file: {'cluster_item_key': good_files[missing_file]['cluster_item_key']} for missing_file in missing_files }
+
+    if not extra_files:
+        extra_files = {}
+    else:
+        extra_files = {extra_file: {'cluster_item_key': check_files[extra_file]['cluster_item_key']} for extra_file in extra_files }
+
+    return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
+
+
+def update_client_files_in_master(json_file, files_to_update):
+    cluster_items = get_cluster_items()
+
+    try:
+
+        for file_name, data in json_file.iteritems():
+            # Full path
+            file_path = common.ossec_path + file_name
+
+            # Cluster items information: write mode and umask
+            cluster_item_key = data['cluster_item_key']
+            w_mode = cluster_items[cluster_item_key]['write_mode']
+            umask = int(cluster_items[cluster_item_key]['umask'], base=0)
+
+            # File content and time
+            file_data = files_to_update[file_name]['data']
+            file_time = files_to_update[file_name]['time']
+
+            _update_file2(fullpath=file_path, new_content=file_data, umask_int=umask, mtime=file_time, w_mode=w_mode, whoami='master')
+
+    except Exception as e:
+        print(str(e))
+        raise e
+
+def process_files_from_client(data_received):
+    logging.info("[Master] [Data received]: Start.")
+
+    # Extract recevied data
+    logging.info("[Master] [Data received] [STEP 1]: Analyzing received files.")
+
+    master_files_from_client = {}
+    client_files = {}
+    for key in data_received:
+        if key == 'cluster_control.json':
+            json_file = json.loads(data_received['cluster_control.json']['data'])
+            master_files_from_client = json_file['master_files']
+            client_files_json = json_file['client_files']
+        else:
+            full_path_key = key.replace('files/', '/')
+            client_files[full_path_key] = data_received[key]
+
+    # Get master files
+    master_files = get_files_status('master')
+
+    # Compare
+    client_files_ko = compare_files(master_files, master_files_from_client)
+
+    logging.info("[Master] [Data received] [STEP 2]: Updating manager files.")
+    # Update files
+    update_client_files_in_master(client_files_json, client_files)
+
+    # Compress data: master files (only KO shared and missing)
+    logging.info("[Master] [Data received] [STEP 3]: Compressing KO files for client.")
+
+    master_files_paths = [item for item in client_files_ko['shared']]
+    master_files_paths.extend([item for item in client_files_ko['missing']])
+
+    compressed_data = compress_files2('master', master_files_paths, client_files_ko)
+
+    logging.info("[Master] [Data received]: End. Sending KO files to client.")
+    # Send KO files
+    return compressed_data
+
+
+
+
+#
+# Client
+#
+def update_master_files_in_client(wrong_files, files_to_update):
+
+    cluster_items = get_cluster_items()
+
+    if not wrong_files['shared'] and not wrong_files['missing'] and not wrong_files['extra']:
+        logging.info("[Client] [Sync process] [Step 4]: Client meets integrity checks. No actions.")
+    else:
+        logging.info("[Client] [Sync process] [Step 4]: Client does not meet integrity checks. Actions required.")
+
+
+    if wrong_files['shared']:
+        logging.info("[Client] [Sync process] [Step 4]: Received {} wrong files to fix from master. Action: Overwrite files.".format(len(wrong_files['shared'])))
+        try:
+            for file_to_overwrite, data in wrong_files['shared'].iteritems():
+                logging.debug("\tOVERWRITE {0}".format(file_to_overwrite))
+                # Full path
+                file_path = common.ossec_path + file_to_overwrite
+
+                # Cluster items information: write mode and umask
+                cluster_item_key = data['cluster_item_key']
+                w_mode = cluster_items[cluster_item_key]['write_mode']
+                umask = int(cluster_items[cluster_item_key]['umask'], base=0)
+
+                # File content and time
+                file_data = files_to_update[file_to_overwrite]['data']
+                file_time = files_to_update[file_to_overwrite]['time']
+
+                _update_file2(fullpath=file_path, new_content=file_data, umask_int=umask, mtime=file_time, w_mode=w_mode, whoami='client')
+
+        except Exception as e:
+            print(str(e))
+            raise e
+
+    if wrong_files['missing']:
+        logging.info("[Client] [Sync process] [Step 4]: Received {} missing files from master. Action: Create files.".format(len(wrong_files['missing'])))
+        for file_to_create, data in wrong_files['missing'].iteritems():
+            logging.debug("\tCREATE {0}".format(file_to_create))
+
+            # Full path
+            file_path = common.ossec_path + file_to_create
+
+            # Cluster items information: write mode and umask
+            cluster_item_key = data['cluster_item_key']
+            w_mode = cluster_items[cluster_item_key]['write_mode']
+            umask = int(cluster_items[cluster_item_key]['umask'], base=0)
+
+            # File content and time
+            file_data = files_to_update[file_to_create]['data']
+            file_time = files_to_update[file_to_create]['time']
+
+            _update_file2(fullpath=file_path, new_content=file_data, umask_int=umask, mtime=file_time, w_mode=w_mode, whoami='client')
+
+
+    if wrong_files['extra']:
+        logging.info("[Client] [Sync process] [Step 4]: Received {} extra files from master. Action: Remove files.".format(len(wrong_files['extra'])))
+        for file_to_remove in wrong_files['extra']:
+            logging.debug("\tREMOVE {0}".format(file_to_remove))
+            file_path = common.ossec_path + file_to_remove
+            remove(file_path)
+
+    return True
+
+
+def process_files_from_master(data_received):
+
+    # Extract recevied data
+    ko_files = {}
+    master_files = {}
+    for key in data_received:
+        if key == 'cluster_control.json':
+            ko_files = json.loads(data_received['cluster_control.json']['data'])
+        else:
+            full_path_key = key.replace('files/', '/')
+            master_files[full_path_key] = data_received[key]
+
+    # Update files
+    update_result = update_master_files_in_client(ko_files, master_files)
+
+    return update_result
+
+def send_client_files_to_master(master_node, config_cluster, files):
+    sync_result = False
+
+    logging.info("[Client] [Sync process]: Start.")
+
+    logging.info("[Client] [Sync process] [Step 1]: Gathering files.")
+    # Get master files (path, md5, mtime): client.keys, ossec.conf, groups, ...
+    master_files = get_files_status('master')
+    client_files = get_files_status('client', get_md5=False)
+    cluster_control_json = {'master_files': master_files, 'client_files': client_files}
+
+    # Getting client file paths: agent-info, agent-groups.
+    client_files_paths = client_files.keys()
+
+    # Compress data: client files + control json
+    compressed_data = compress_files2('client', client_files_paths, cluster_control_json)
+
+
+    # Send compressed file to master
+    logging.info("[Client] [Sync process] [Step 3]: Sending files to master.")
+    error, response = send_request2( host=master_node,
+                                    port=config_cluster["port"],
+                                    key=config_cluster['key'],
+                                    connection_timeout=100, #int(config_cluster['connection_timeout']),
+                                    socket_timeout=100, #int(config_cluster['socket_timeout']),
+                                    #data="zip {0}".format(str(len(compressed_data)).zfill(common.cluster_protocol_plain_size - len("zip "))),
+                                    data="m_c_sync {0}".format(str(len(compressed_data)).zfill(common.cluster_protocol_plain_size - len("m_c_sync "))),
+                                    file=compressed_data
+    )
+
+    # Update files
+    if error == 0:
+        if 'error' in response and 'data' in response:
+            if response['error'] != 0:
+                logging.error("[Client] [Sync process] [Step 4]: ERROR receiving files from master (1): {}".format(response['data']))
+        else:
+            try:
+                logging.info("[Client] [Sync process] [Step 4]: KO files received from master.")
+                master_data  = decompress_files2(response)
+                sync_result = process_files_from_master(master_data)
+            except Exception as e:
+                logging.error("[Client] [Sync process] [Step 4]: ERROR receiving files from master (2): {}".format(str(e)))
+    else:
+        logging.error("[Client] [Sync process] [Step 4]: ERROR receiving files from master")
+
+    # Send ACK
+    # ToDo
+
+    # Log
+    logging.info("[Client] [Sync process]: Result - {}.".format(sync_result))
+
+
+#
+# Review
+#
 
 def get_connection_status(host_socket):
     # Taken from: http://www.cse.scu.edu/~dclark/am_256_graph_theory/linux_2_6_stack/linux_2tcp_8h-source.html (line 78)
@@ -307,62 +684,6 @@ def get_cluster_items():
     except Exception as e:
         raise WazuhException(3005, str(e))
 
-def get_file_info(filename, cluster_items, node_type):
-    def is_synced_file(mtime, node_type):
-        if node_type == 'master':
-            return False
-        else:
-            return (datetime.now() - datetime.fromtimestamp(mtime)).seconds / 60 > 30
-
-    fullpath = common.ossec_path + filename
-
-    if not path.isfile(fullpath):
-        raise WazuhException(3000, "Could not open file {0}".format(filename))
-
-    stat_obj = stat(fullpath)
-    st_mtime = stat_obj.st_mtime
-    st_size = stat_obj.st_size
-
-    directory = path.dirname(filename)+'/'
-    new_item = cluster_items[directory] if directory in cluster_items.keys() else cluster_items['/etc/']
-
-    file_item = {
-        "umask" : new_item['umask'],
-        "format" : new_item['format'],
-        "write_mode" : new_item['write_mode'],
-        "md5": md5(fullpath),
-        "modification_time" : str(datetime.utcfromtimestamp(st_mtime)),
-        'timestamp': st_mtime,
-        "size" : st_size,
-        'is_synced': is_synced_file(st_mtime, node_type)
-    }
-
-    return file_item
-
-
-def compress_files(list_path, node_type, tobedeleted_files):
-    zipped_file = BytesIO()
-    with zipfile.ZipFile(zipped_file, 'w') as zf:
-        # write files
-        for f in list_path:
-            try:
-                zf.write(filename = common.ossec_path + f, arcname = f, compress_type=compression)
-            except Exception as e:
-                logging.error(str(WazuhException(3001, str(e))))
-
-        # write a file with the name of all the groups only if the node type is master
-        if node_type == 'master':
-            try:
-                local_groups = [x['name'] for x in Agent.get_all_groups(limit=None)['items']]
-                zf.writestr("remote_groups.txt", '\n'.join(local_groups), compression)
-
-                if len(tobedeleted_files) > 0:
-                    zf.writestr("remote_deleted.txt", '\n'.join(tobedeleted_files), compression)
-
-            except Exception as e:
-                raise WazuhException(3001, str(e))
-
-    return zipped_file.getvalue()
 
 def read_config():
     # Get api/configuration/config.js content
@@ -384,6 +705,63 @@ def read_config():
 
 
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
+
+def get_nodes2():
+    config_cluster = read_config()
+    if not config_cluster:
+        raise WazuhException(3000, "No config found")
+
+    # list with all the ips the localhost has
+    localhost_ips = get_localhost_ips()
+
+    data = []
+    error_response = False
+
+    for url in config_cluster["nodes"]:
+        try:
+            if not url in localhost_ips:
+                error, response = send_request2(host=url, port=config_cluster["port"], key=config_cluster['key'],
+                                    connection_timeout=int(config_cluster['connection_timeout']),
+                                    socket_timeout=int(config_cluster['socket_timeout']),
+                                    data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
+                if error == 0:
+                    if response['error'] == 0:
+                        response = response['data']
+                        response['localhost'] = False
+                    else:
+                        logging.warning("Received an error response from {0}: {1}".format(url, response))
+                        error_response = True
+            else:
+                error = 0
+                response = get_node()
+                response['localhost'] = True
+
+            if error == 1:
+                logging.warning("Error connecting with {0}: {1}".format(url, response))
+                error_response = True
+
+            if error_response:
+                data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
+                error_response = False
+                continue
+
+            if config_cluster['node_type'] == 'master' or \
+               response['type'] == 'master' or response["localhost"]:
+                data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
+                             'status':'connected', 'cluster':response['cluster']})
+
+        except TypeError as e:
+            error_text = "Response from {} is not in JSON format: {} ({})".format(url, str(e), response)
+            logging.error(error_text)
+            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
+        except Exception as e:
+            error_text = "Error getting information of node {}: {}".format(url, str(e))
+            logging.error(error_text)
+            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
+
+    return {'items': data, 'totalItems': len(data)}
+
+
 
 def get_nodes(updateDBname=False, config=None):
     if not config:
@@ -464,352 +842,6 @@ def get_node(name=None):
 
     return data
 
-
-def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket=None, own_items=None, remove_rows=False):
-    if not own_items:
-        own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
-    own_items_names = own_items.keys()
-
-    # check files in database
-    count_query = "count {0}".format(node)
-    send_to_socket(cluster_socket, count_query)
-    n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
-    removed = False
-    removed_files = 0
-
-    if n_files == 0:
-        logging.info("New manager found: {0}".format(node))
-        logging.debug("Adding {0}'s files to database".format(node))
-
-        # if the manager is not in the database, add it with all files
-        for files in divide_list(own_items_names):
-
-            insert_sql = "insert"
-            for file in files:
-                insert_sql += " {0} {1}".format(node, file)
-
-            send_to_socket(cluster_socket, insert_sql)
-            data = cluster_socket.recv(10000)
-
-        all_files = {file:'pending' for file in own_items_names}
-
-    else:
-        logging.debug("Retrieving {0}'s files from database".format(node))
-        all_files = get_file_status(node, cluster_socket)
-        # if there are missing files that are not being controled in database
-        # add them as pending
-        set_own_items = set(own_items_names)
-        set_all_files = set(all_files.keys())
-        for missing in divide_list(set_own_items - set_all_files):
-            insert_sql = "insert"
-            for m in missing:
-                all_files[m] = 'pending'
-                insert_sql += " {0} {1}".format(node,m)
-
-            send_to_socket(cluster_socket, insert_sql)
-            data = receive_data_from_db_socket(cluster_socket)
-
-        # remove files that are not present in the filesystem but present in the database
-        # and have not been marked as deleted
-        files_in_db = set_all_files - set_own_items
-        for missing in divide_list(filter(lambda x: all_files[x] != "tobedeleted"
-                                    and all_files[x] != 'deleted', files_in_db)):
-            delete_sql = "update2"
-            removed = True
-            removed_files += len(missing)
-            for m in missing:
-                delete_sql += " tobedeleted {} {}".format(node, m)
-
-            send_to_socket(cluster_socket, delete_sql)
-            data = receive_data_from_db_socket(cluster_socket)
-
-        if remove_rows:
-            for deleted in divide_list(filter(lambda x: all_files[x] == 'deleted', set_all_files)):
-                delete_sql = "delete2"
-                for d in deleted:
-                    delete_sql += " {} {}".format(node,d)
-                send_to_socket(cluster_socket, delete_sql)
-                data = receive_data_from_db_socket(cluster_socket)
-
-    logging.info("{}: Found {} files. {} synchronized, {} pending, {} deleted and {} to be deleted in the next sync.".format(
-                node, len(all_files),
-                len(filter(lambda x: x == 'synchronized', all_files.values())),
-                len(filter(lambda x: x == 'pending', all_files.values())),
-                len(filter(lambda x: x == 'deleted', all_files.values())), removed_files))
-    return all_files, removed
-
-
-def connect_to_db_socket(retry=False):
-    if not  check_cluster_status():
-        raise WazuhException(3013)
-
-    cluster_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    max_retries = 100 if retry else 1
-    n_retries = 0
-    while n_retries <= max_retries:
-        try:
-            cluster_socket.connect("{0}/queue/ossec/cluster_db".format(common.ossec_path))
-        except socket.error as e:
-            error_msg = str(e)
-            n_retries += 1
-            sleep(1)
-            continue
-        break
-
-    if n_retries >= max_retries:
-        raise WazuhException(3009, error_msg)
-
-    return cluster_socket
-
-def receive_data_from_db_socket(cluster_socket):
-    return ''.join(filter(lambda x: x != '\x00', cluster_socket.recv(10000).decode()))
-
-def send_recv_and_check(cluster_socket, query):
-    send_to_socket(cluster_socket, query)
-    received = receive_data_from_db_socket(cluster_socket)
-    if received != "Command OK":
-        logging.debug("Query {} did not executed correctly: {}".format(query.split(' ')[0], received))
-
-def send_to_socket(cluster_socket, query):
-    # add the query size to the message
-    query = "{} {}".format(len(query), query)
-    sent = cluster_socket.send(query.encode())
-    if sent != len(query):
-        logging.debug("Error sending query: sent {}/{}".format(sent, len(query)))
-
-def scan_for_new_files():
-    cluster_socket = connect_to_db_socket()
-
-    cluster_items = get_cluster_items()
-    cluster_config = read_config()
-    own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
-
-    for node in get_remote_nodes():
-        logging.info("Scanning new files for node {}.".format(node))
-        scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket, own_items)
-
-    cluster_socket.close()
-
-
-def list_files_from_filesystem(node_type, cluster_items):
-    def get_files_from_dir(dirname, recursive, files, cluster_items):
-        items = []
-
-        try:
-            entries = listdir(dirname)
-        except OSError as e:
-            raise WazuhException(3015, str(e))
-
-        for entry in entries:
-            if entry in cluster_items['excluded_files'] or entry[-1] == '~':
-                continue
-
-            if entry in files or files == ["all"]:
-
-                full_path = path.join(dirname, entry)
-                if not path.isdir(full_path):
-                    items.append(full_path.replace(common.ossec_path, ""))
-                elif recursive:
-                    items.extend(get_files_from_dir(full_path, recursive, files, cluster_items))
-
-        return items
-
-    # Expand directory
-    expanded_items = []
-    for file_path, item in cluster_items.items():
-        if file_path == "excluded_files":
-            continue
-        if item['source'] == node_type or \
-           item['source'] == 'all':
-            fullpath = common.ossec_path + file_path
-            try:
-                expanded_items.extend(get_files_from_dir(fullpath, item['recursive'],item['files'], cluster_items))
-            except WazuhException as e:
-                logging.warning(e)
-
-    final_items = {}
-    for new_item in expanded_items:
-        try:
-            final_items[new_item] = get_file_info(new_item, cluster_items, node_type)
-        except Exception as e:
-            continue
-
-    return dict(filter(lambda x: not x[1]['is_synced'], final_items.items()))
-
-def get_file_status(manager, cluster_socket):
-    count_query = "count {0}".format(manager)
-    send_to_socket(cluster_socket, count_query)
-    n_files = int(receive_data_from_db_socket(cluster_socket))
-
-    query = "select {0} 100 ".format(manager)
-    file_status = ""
-    # limit = 100
-    for offset in range(0,n_files,100):
-        send_to_socket(cluster_socket, query + str(offset))
-        file_status += receive_data_from_db_socket(cluster_socket)
-
-    # retrieve all files for a node in database with its status
-    all_files = {f[0]:f[1] for f in map(lambda x: x.split('*'), filter(lambda x: x != '', file_status.split(' ')))}
-
-    return all_files
-
-def get_file_status_all_managers(file_list, manager):
-    """
-    Return a nested list where each element has the following structure
-    [manager, filename, status]
-    """
-    fix_manager = []
-    cluster_socket = connect_to_db_socket()
-    if manager:
-        for m in manager:
-            if re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").match(m):
-                fix_manager.append(m)
-            elif re.compile(r"\w+").match(m):
-                send_to_socket(cluster_socket, "getip {0}".format(m))
-                fix_manager.append(receive_data_from_db_socket(cluster_socket))
-            else:
-                raise WazuhException(3014, m)
-
-        manager = fix_manager
-
-
-    files = []
-
-    nodes = get_remote_nodes(False)
-    if manager:
-        remote_nodes = filter(lambda x: x in manager, nodes)
-    else:
-        remote_nodes = nodes
-
-    for node in remote_nodes:
-        all_files = get_file_status(node, cluster_socket)
-        if file_list == []:
-            file_list = all_files.keys()
-
-        try:
-            files.extend([[node, file, all_files[file]] for file in file_list])
-        except KeyError as e:
-            logging.debug("File {} not found for node {}".format(file, node))
-
-    cluster_socket.close()
-    return files
-
-
-def get_last_sync():
-    """
-    Function to retrieve information about the last synchronization
-    """
-    cluster_socket = connect_to_db_socket()
-
-    send_to_socket(cluster_socket, "sellast")
-
-    date, duration = receive_data_from_db_socket(cluster_socket).split(" ")
-
-    cluster_socket.close()
-
-    return str(datetime.fromtimestamp(int(date))), float(duration)
-
-
-def clear_file_status_one_node(manager, cluster_socket):
-    """
-    Function to set the status of all manager's files to pending
-    """
-    files = get_file_status(manager, cluster_socket).keys()
-
-    for file in divide_list(files):
-        update_sql = "update2"
-        for f in file:
-            update_sql += " pending {0} {1}".format(manager, f)
-
-        send_recv_and_check(cluster_socket, update_sql)
-
-
-def update_file_info_bd(cluster_socket, files):
-    """
-    Function to update the files' information in database
-    """
-    for file in divide_list(files.items()):
-        query = "insertfile "
-        for fname, finfo in file:
-            query += "{} {} {} ".format(fname, finfo['md5'], finfo['timestamp'])
-
-        send_recv_and_check(cluster_socket, query)
-
-
-def clear_file_status():
-    """
-    Function to set all database files' status to pending
-    """
-    # Get information of files from filesystem
-    config_cluster = read_config()
-    if not config_cluster:
-        raise WazuhException(3000, "No config found")
-    own_items = list_files_from_filesystem(config_cluster['node_type'], get_cluster_items())
-
-    cluster_socket = connect_to_db_socket(retry=True)
-
-    # n files DB
-    send_to_socket(cluster_socket, "countfiles")
-    n_files_db = int(receive_data_from_db_socket(cluster_socket))
-
-    # Only update status for modified files
-    if n_files_db > 0:
-        # Get information of files from DB (limit = 100)
-        query = "selfiles 100 "
-        file_status = ""
-        for offset in range(0, n_files_db, 100):
-            send_to_socket(cluster_socket, query + str(offset))
-            file_status += receive_data_from_db_socket(cluster_socket)
-
-        db_items = {filename:{'md5': md5, 'timestamp': timestamp} for filename,
-                    md5, timestamp in map(lambda x: x.split('*'),
-                    filter(lambda x: x != '', file_status.split(' ')))}
-
-        # Update status
-        new_items = {}
-        for files_slice in divide_list(own_items.items()):
-            query = "update1 "
-            try:
-                local_items = dict(filter(lambda x: db_items[x[0]]['md5'] != x[1]['md5']
-                                or int(db_items[x[0]]['timestamp']) < int(x[1]['timestamp']), files_slice))
-            except KeyError as e:
-                new_items[e.args[0]] = {'md5': own_items[e.args[0]]['md5'],
-                                        'timestamp': own_items[e.args[0]]['timestamp']}
-                logging.debug("File not found in database: {0}".format(e.args[0]))
-                continue
-            if len(local_items.keys()) > 0:
-                query += ' '.join(local_items.keys())
-                send_recv_and_check(cluster_socket, query)
-                new_items.update(local_items)
-    else:
-        new_items = own_items
-
-
-    update_file_info_bd(cluster_socket, new_items)
-    cluster_socket.close()
-
-
-def get_file_status_json(file_list = {'fields':[]}, manager = {'fields':[]}):
-    """
-    Return a nested list where each element has the following structure
-    {
-        manager: {
-            status: [
-                files
-            ]
-        }
-    }
-    """
-    files = get_file_status_all_managers(file_list['fields'], manager['fields'])
-    cluster_dict = {}
-    for manager, file, status in files:
-        try:
-            cluster_dict[manager][status].append(file)
-        except KeyError:
-            cluster_dict[manager] = {}
-            cluster_dict[manager][status] = [file]
-
-    return cluster_dict
 
 def get_agents_status():
     """
@@ -905,73 +937,6 @@ def _check_removed_agents(new_client_keys):
                 logging.error("Error deleting agent {0}: {1}".format(agent_id, str(e)))
 
 
-def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, node_type='master'):
-    # Set Timezone to epoch converter
-    # environ['TZ']='UTC'
-
-    if path.basename(fullpath) == 'client.keys':
-        if node_type=='client':
-            _check_removed_agents(new_content.split('\n'))
-        else:
-            logging.warning("Client.keys file received in a master node.")
-            raise WazuhException(3007)
-
-    is_agent_info   = 'agent-info' in fullpath
-    is_agent_groups = 'agent-groups' in fullpath
-    if is_agent_info or is_agent_groups:
-        if node_type=='master':
-            # check if the date is older than the manager's date
-            if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
-                logging.debug("Receiving an old file ({})".format(fullpath))
-                raise WazuhException(3012)
-        elif is_agent_info:
-            logging.warning("Agent-info received in a client node.")
-            raise WazuhException(3011)
-
-    # Write
-    if w_mode == "atomic":
-        f_temp = '{0}.tmp.cluster'.format(fullpath)
-    else:
-        f_temp = '{0}'.format(fullpath)
-
-    if umask_int:
-        oldumask = umask(umask_int)
-
-    try:
-        dest_file = open(f_temp, "w")
-    except IOError as e:
-        if e.errno == errno.ENOENT:
-            dirpath = path.dirname(fullpath)
-            mkdir(dirpath)
-            chmod(dirpath, S_IRWXU | S_IRWXG)
-            dest_file = open(f_temp, "a+")
-        else:
-            raise e
-
-    dest_file.write(new_content)
-
-    if umask_int:
-        umask(oldumask)
-
-    dest_file.close()
-
-    mtime_epoch = int(mktime(mtime.timetuple()))
-    utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
-
-    # Atomic
-    if w_mode == "atomic":
-        rename(f_temp, fullpath)
-
-
-def extract_zip(zip_bytes):
-    zip_json = {}
-    with zipfile.ZipFile(BytesIO(zip_bytes)) as zipf:
-        zip_json = {name:{'data':zipf.open(name).read(),
-                          'time':datetime(*zipf.getinfo(name).date_time)}
-                    for name in zipf.namelist()}
-
-    return receive_zip(zip_json)
-
 def check_groups(remote_group_set):
     """
     Function to remove the groups that are on the local node and not in the remote node
@@ -983,86 +948,6 @@ def check_groups(remote_group_set):
             logging.info("Group {0} removed successfully".format(removed_group))
         except Exception as e:
             logging.error("Error deleting group {0}: {1}".format(removed_group, str(e)))
-
-
-def check_removed_files(removed_files):
-    """
-    Function to remove files not present in the remote node
-    """
-    deleted_files, failed_files = [], []
-    for file_name in removed_files:
-        try:
-            full_path = common.ossec_path + file_name
-            if path.exists(full_path):
-                remove(full_path)
-                logging.info("The file {0} has been deleted".format(full_path))
-            else:
-                logging.debug("The file {0} is not in the filesystem. Skipping.".format(full_path))
-            deleted_files.append(file_name)
-        except Exception as e:
-            logging.error("Error deleting the file {0}: {1}".format(file_name, str(e)))
-            failed_files.append({'item': file_name, 'reason': str(e)})
-
-    return deleted_files, failed_files
-
-
-def receive_zip(zip_file):
-    cluster_items = get_cluster_items()
-    config = read_config()
-    logging.info("Receiving package with {0} files".format(len(zip_file)))
-
-    final_dict = {'error':[], 'updated': [], 'deleted': []}
-    restart = [False]
-
-    if 'remote_groups.txt' in zip_file.keys():
-        check_groups(set(zip_file['remote_groups.txt']['data'].split('\n')))
-        del zip_file['remote_groups.txt']
-
-
-    if 'remote_deleted.txt' in zip_file.keys():
-        final_dict['deleted'], final_dict['error'] = check_removed_files(zip_file['remote_deleted.txt']['data'].split('\n'))
-        del zip_file['remote_deleted.txt']
-
-    for name,content in zip_file.items():
-        try:
-            fixed_name = '/' + name
-            dir_name = path.dirname(fixed_name) + '/'
-            file_path = common.ossec_path + fixed_name
-            try:
-                remote_umask = int(cluster_items[dir_name]['umask'], base=0)
-                remote_write_mode = cluster_items[dir_name]['write_mode']
-                restart.append(cluster_items[dir_name]['restart'])
-            except KeyError:
-                # cluster_items entries with the flag recursive = true will make
-                # some paths to not match directly in this loop.
-                key = path.split(dir_name[:-1])[0] + '/'
-
-                remote_umask = int(cluster_items[key]['umask'], base=0)
-                remote_write_mode = cluster_items[key]['write_mode']
-                restart.append(cluster_items[key]['restart'])
-
-            _update_file(file_path, new_content=content['data'],
-                            umask_int=remote_umask,
-                            mtime=content['time'],
-                            w_mode=remote_write_mode,
-                            node_type=config['node_type'])
-
-        except WazuhException as e:
-            if e.code != 3012:
-                logging.error("Error extracting zip file: {0}".format(str(e)))
-            final_dict['error'].append({'item': name, 'reason': str(e)})
-            continue
-
-        except Exception as e:
-            logging.error("Error processing file {} from received zip file: {0}".format(name, str(e)))
-            final_dict['error'].append({'item': name, 'reason': str(e)})
-            continue
-
-        final_dict['updated'].append(name)
-
-    final_dict['restart'] = reduce(or_, restart)
-
-    return final_dict
 
 
 def divide_list(l, size=1000):
@@ -1111,250 +996,3 @@ def check_files_to_restart(pending_files, cluster_items):
         return {x for x in pending_files if path.dirname(x[0])+'/' in restart_files}
     else:
         return set()
-
-
-def push_updates_single_node(all_files, node_dest, config_cluster, removed, cluster_items, result_queue, debug=False):
-    try:
-        # filter to send only pending files
-        pending_files = set(filter(lambda x: x[1] != 'synchronized' and x[1] != 'tobedeleted' and x[1] != 'deleted', all_files.items()))
-        tobedeleted_files = filter(lambda x: x[1] == 'tobedeleted', all_files.items())
-        restart_files = check_files_to_restart(pending_files, cluster_items)
-        pending_files -= restart_files
-
-        if len(pending_files) > 0 or removed or len(tobedeleted_files) > 0:
-            logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
-            zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
-                                      node_type=config_cluster['node_type'],
-                                      tobedeleted_files=map(itemgetter(0), tobedeleted_files))
-
-            error, response = send_request(host=node_dest, port=config_cluster['port'],
-                                           data="zip {0}".format(str(len(zip_file)).
-                                            zfill(common.cluster_protocol_plain_size - len("zip "))),
-                                           file=zip_file, key=config_cluster['key'],
-                                           connection_timeout=int(config_cluster['connection_timeout']),
-                                           socket_timeout=int(config_cluster['socket_timeout']))
-
-            try:
-                res = literal_eval(response)
-            except Exception as e:
-                res = response
-
-        else:
-            logging.info("No pending files to send to {0} ".format(node_dest))
-            res = {'error': 0, 'data':{'updated':[], 'error':[], 'deleted':[], 'restart': False}}
-            error = 0
-
-
-        if error != 0:
-            logging.error("Error response received from {}: {}".format(node_dest, response))
-            result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
-                              'error': 1, 'files':{'updated':[], 'deleted':[],
-                                            'error':list(map(itemgetter(0), pending_files))}})
-
-        elif res['error'] != 0:
-            logging.debug(res)
-            result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
-                              'error': 1, 'files':{'updated':[], 'deleted':[],
-                                            'error':list(map(itemgetter(0), pending_files)), 'restart': False}})
-        else:
-            logging.debug({'updated': len(res['data']['updated']),
-                          'error': res['data']['error'],
-                          'deleted': len(res['data']['deleted'])})
-            result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
-    except Exception as e:
-        logging.error("Error sending/receiving updates from {}: {}".format(node_dest, str(e)))
-        if debug:
-            raise
-
-
-def update_node_db_after_sync(data, node, cluster_socket):
-    logging.info("Updating {0}'s file status in DB".format(node))
-    for updated in divide_list(data['files']['updated']):
-        update_sql = "update2"
-        for u in updated:
-            update_sql += " synchronized {0} /{1}".format(node, u)
-
-        send_recv_and_check(cluster_socket, update_sql)
-
-    for failed in divide_list(data['files']['error']):
-        # delete_sql = "delete1"
-        update_sql = "update2"
-        for f in failed:
-            if isinstance(f, dict):
-                if f['reason'].startswith('Error 3012'):
-                    # set old files as synchronized so the node doesn't send them anymore
-                    update_sql += " synchronized {} /{}".format(node, f['item'])
-                else:
-                    update_sql += " failed {0} /{1}".format(node, f['item'])
-            else:
-                update_sql += " failed {0} {1}".format(node, f)
-
-        send_recv_and_check(cluster_socket, update_sql)
-        # if len(delete_sql) > len("delete1"):
-        #     send_to_socket(cluster_socket, delete_sql)
-        #     received = receive_data_from_db_socket(cluster_socket)
-
-    for deleted in divide_list(data['files']['deleted']):
-        update_sql = "update2"
-        for d in deleted:
-            update_sql += " deleted {0} {1}".format(node, d)
-
-        send_recv_and_check(cluster_socket, update_sql)
-
-
-def sync_one_node(debug, node, force=False, config_cluster=None, cluster_items=None):
-    """
-    Sync files with only one node
-    """
-    synchronization_date = time()
-    synchronization_duration = 0.0
-
-    if not config_cluster:
-        config_cluster = read_config()
-
-        if not config_cluster:
-            raise WazuhException(3000, "No config found")
-
-    if not cluster_items:
-        cluster_items = get_cluster_items()
-
-    before = time()
-    # Get own items status
-    own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
-    own_items_names = own_items.keys()
-
-    try:
-        cluster_socket = connect_to_db_socket()
-        logging.debug("Connected to cluster database socket")
-
-        if force:
-            clear_file_status_one_node(node, cluster_socket)
-        all_files, removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
-
-        after = time()
-        synchronization_duration += after-before
-        logging.debug("Time retrieving info from DB: {0}".format(after-before))
-
-        before = time()
-        result_queue = queue()
-        push_updates_single_node(all_files, node, config_cluster, removed, cluster_items, result_queue, debug)
-
-        after = time()
-        synchronization_duration += after-before
-        logging.debug("Time sending info: {0}".format(after-before))
-        before = time()
-
-        result = result_queue.get()
-        update_node_db_after_sync(result, node, cluster_socket)
-        after = time()
-        synchronization_duration += after-before
-
-        send_recv_and_check(cluster_socket, "clearlast")
-        send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
-
-        cluster_socket.close()
-        logging.debug("Time updating DB: {0}".format(after-before))
-
-        if debug:
-            return result
-        else:
-            return {'updated': len(result['files']['updated']),
-                      'error': result['files']['error'],
-                      'deleted': result['files']['deleted'],
-                      'error': result['error'],
-                      'reason': result['reason']}
-    except Exception as e:
-        cluster_socket.close()
-        raise e
-
-
-def sync(debug, force=False, config_cluster=None, cluster_items=None):
-    """
-    Sync this node with others
-    :return: Files synced.
-    """
-    synchronization_date = time()
-    synchronization_duration = 0.0
-
-    if not config_cluster:
-        config_cluster = read_config()
-        if not config_cluster:
-            raise WazuhException(3000, "No config found")
-
-    if not cluster_items:
-        cluster_items = get_cluster_items()
-
-    before = time()
-    # Get own items status
-    own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
-    own_items_names = own_items.keys()
-
-    remote_nodes = get_remote_nodes(True, True, config_cluster)
-    local_node = get_node()['node']
-    logging.info("Starting to sync {0}'s files".format(local_node))
-
-    try:
-        cluster_socket = connect_to_db_socket()
-        logging.debug("Connected to cluster database socket")
-
-        # for each connected manager, check its files. If the manager is not on database add it
-        # with all files marked as pending
-        all_nodes_files = {}
-
-        logging.debug("Nodes to sync: {0}".format(str(remote_nodes)))
-        logging.info("Found {0} connected nodes".format(len(remote_nodes)))
-
-        for node in remote_nodes:
-            if force:
-                clear_file_status_one_node(node, cluster_socket)
-            all_nodes_files[node], removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
-
-        after = time()
-        synchronization_duration += after-before
-        logging.debug("Time retrieving info from DB: {0}".format(after-before))
-
-        before = time()
-        result_queue = queue()
-        threads = []
-        thread_results = {}
-        for node in remote_nodes:
-            t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node],node,
-                                                                        config_cluster, removed,
-                                                                        cluster_items, result_queue, debug))
-            threads.append(t)
-            t.start()
-            result = result_queue.get()
-            thread_results[result['node']] = {'files': result['files'], 'error': result['error'],
-                                              'reason': result['reason']}
-
-        for t in threads:
-            t.join()
-        after = time()
-        synchronization_duration += after-before
-        logging.debug("Time sending info: {0}".format(after-before))
-
-        before = time()
-        for node,data in thread_results.items():
-            update_node_db_after_sync(data, node, cluster_socket)
-
-        after = time()
-        synchronization_duration += after-before
-
-        send_recv_and_check(cluster_socket, "clearlast")
-        send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
-
-        cluster_socket.close()
-        logging.debug("Time updating DB: {0}".format(after-before))
-
-        if debug:
-            return thread_results
-        else:
-            return {node:{'updated': len(data['files']['updated']),
-                          'error': data['files']['error'],
-                          'deleted': data['files']['deleted'],
-                          'error': data['error'],
-                          'reason': data['reason']}
-                          for node,data in thread_results.items()}
-    except Exception as e:
-        cluster_socket.close()
-        raise e
