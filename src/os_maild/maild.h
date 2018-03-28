@@ -62,6 +62,7 @@ typedef struct _MailMsg {
 /* Config function */
 int MailConf(int test_config, const char *cfgfile, MailConfig *Mail) __attribute__((nonnull));
 cJSON *getMailConfig(void);
+cJSON *getMailAlertsConfig(void);
 void * mailcom_main(__attribute__((unused)) void * arg);
 size_t mailcom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output);
 size_t mailcom_getconfig(const char * section, char * output);
