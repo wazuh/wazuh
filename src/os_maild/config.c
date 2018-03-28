@@ -94,7 +94,69 @@ cJSON *getMailConfig(void) {
     if (mail.heloserver) cJSON_AddStringToObject(email,"helo_server",mail.heloserver);
     cJSON_AddNumberToObject(email,"email_maxperhour",mail.maxperhour);
 
-    cJSON_AddItemToObject(root,"mail",email);
+    cJSON_AddItemToObject(root,"global",email);
+
+    return root;
+}
+
+
+cJSON *getMailAlertsConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *email = cJSON_CreateObject();
+    unsigned int i;
+
+    if (mail.gran_to) {
+        cJSON *mail_list = cJSON_CreateArray();
+        for (i=0;mail.gran_to[i];i++) {
+            cJSON_AddItemToArray(mail_list,cJSON_CreateString(mail.gran_to[i]));
+        }
+        cJSON_AddItemToObject(email,"email_to",mail_list);
+    }
+    if (mail.gran_level) {
+        cJSON *list = cJSON_CreateArray();
+        for (i=0;mail.gran_level[i];i++) {
+            cJSON_AddItemToArray(list,cJSON_CreateNumber(mail.gran_level[i]));
+        }
+        cJSON_AddItemToObject(email,"level",list);
+    }
+    if (mail.gran_group) {
+        cJSON *list = cJSON_CreateArray();
+        OSMatch **wl;
+        wl = mail.gran_group;
+        while (*wl) {
+            char **tmp_pts = (*wl)->patterns;
+            while (*tmp_pts) {
+                cJSON_AddItemToArray(list,cJSON_CreateString(*tmp_pts));
+                tmp_pts++;
+            }
+            wl++;
+        }
+        cJSON_AddItemToObject(email,"group",list);
+    }
+    if (mail.gran_location) {
+        cJSON *list = cJSON_CreateArray();
+        OSMatch **wl;
+        wl = mail.gran_location;
+        while (*wl) {
+            char **tmp_pts = (*wl)->patterns;
+            while (*tmp_pts) {
+                cJSON_AddItemToArray(list,cJSON_CreateString(*tmp_pts));
+                tmp_pts++;
+            }
+            wl++;
+        }
+        cJSON_AddItemToObject(email,"location",list);
+    }
+    if (mail.gran_format) {
+        cJSON *list = cJSON_CreateArray();
+        for (i=0;mail.gran_format[i];i++) {
+            cJSON_AddItemToArray(list,cJSON_CreateNumber(mail.gran_format[i]));
+        }
+        cJSON_AddItemToObject(email,"format",list);
+    }
+
+    cJSON_AddItemToObject(root,"email_alerts",email);
 
     return root;
 }

@@ -99,6 +99,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
 
             Mail->gran_level[granto_size] = atoi(node[i]->content);
         } else if (strcmp(node[i]->element, xml_email_to) == 0) {
+            free(Mail->gran_to[granto_size]);
             os_strdup(node[i]->content, Mail->gran_to[granto_size]);
         } else if (strcmp(node[i]->element, xml_email_id) == 0) {
             int r_id = 0;
