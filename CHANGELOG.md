@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Fix memory corruption in Syscollector decoder and memory leaks in Vulnerability Detector. ([#482](https://github.com/wazuh/wazuh/pull/482))
 - Fixed memory corruption in Wazuh DB autoclosing procedure.
 - Fixed dangling db files at DB Sync module folder. ([#489](https://github.com/wazuh/wazuh/pull/489))
+- Fixed agent group file deletion when using Authd.
 
 ## [v3.2.1]
 
