@@ -1540,7 +1540,7 @@ class Agent:
         query = "SELECT {0} FROM agent WHERE `group` = :group_id"
         fields = {'id': 'id', 'name': 'name'}  # field: db_column
         request = {'group_id': group_id}
-
+	
         # Select
         if select:
             select_fields_param = set(select['fields'])
@@ -1554,6 +1554,112 @@ class Agent:
         else:
             select_fields = valid_select_fiels
 
+        # add dependent select fields to the database select query
+        db_select_fields = set()
+        for dependent, fields in dependent_select_fields.items():
+            if dependent in select_fields:
+                db_select_fields |= fields
+        db_select_fields |= (select_fields - set(dependent_select_fields.keys()))
+
+        # Search
+        if search:
+            query += " AND NOT" if bool(search['negation']) else ' AND'
+            query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
+            request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
+                                                                    else search['value'])
+
+        # Count
+        conn.execute(query.format('COUNT(*)'), request)
+        data = {'totalItems': conn.fetch()[0]}
+
+        # Sorting
+        if sort:
+            if sort['fields']:
+                allowed_sort_fields = db_select_fields
+                # Check if every element in sort['fields'] is in allowed_sort_fields.
+                if not set(sort['fields']).issubset(allowed_sort_fields):
+                    raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.\
+                        format(allowed_sort_fields, sort['fields']))
+
+                order_str_fields = ['{0} {1}'.format(fields[i], sort['order']) for i in sort['fields']]
+                query += ' ORDER BY ' + ','.join(order_str_fields)
+            else:
+                query += ' ORDER BY id {0}'.format(sort['order'])
+        else:
+            query += ' ORDER BY id ASC'
+
+        # OFFSET - LIMIT
+        if limit:
+            query += ' LIMIT :offset,:limit'
+            request['offset'] = offset
+            request['limit'] = limit
+
+        # Data query
+        conn.execute(query.format(','.join(db_select_fields)), request)
+
+        non_nested = [{field:tuple_elem for field,tuple_elem \
+                in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
+
+        if 'id' in select_fields:
+            map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+
+        if 'status' in select_fields:
+            try:
+                map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+            except KeyError:
+                pass
+
+        # return only the fields requested by the user (saved in select_fields) and not the dependent ones
+        non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
+
+        data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
+
+        return data
+
+    @staticmethod
+    def get_agents_unassigned(offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+        """
+        Gets the agents in a group
+
+        :param group_id: Group ID.
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+
+        # Connect DB
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+        valid_select_fiels = {"id", "name", "ip", "last_keepalive", "os_name",
+                             "os_version", "os_platform", "os_uname", "version",
+                             "config_sum", "merged_sum", "manager_host", "status"}
+        # fields like status need to retrieve others to be properly computed.
+        dependent_select_fields = {'status': {'last_keepalive','version'}}
+        search_fields = {"id", "name", "os_name"}
+
+        # Init query
+        query = "SELECT {0} FROM agent WHERE `group` IS NULL AND id != 0"
+        fields = {'id': 'id', 'name': 'name'}  # field: db_column
+        request = {}
+
+        # Select
+        if select:
+            select_fields_param = set(select['fields'])
+
+            if not select_fields_param.issubset(valid_select_fiels):
+                uncorrect_fields = select_fields_param - valid_select_fiels
+                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
+                        format(', '.join(list(valid_select_fiels)), ', '.join(uncorrect_fields)))
+
+            select_fields = select_fields_param
+        else:
+            select_fields = valid_select_fiels
+            
         # add dependent select fields to the database select query
         db_select_fields = set()
         for dependent, fields in dependent_select_fields.items():
