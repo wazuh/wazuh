@@ -38,7 +38,7 @@
     "/queue/agent-groups/": {
         "umask": "0o117",
         "format":"plain",
-        "source": "all",
+        "source": "master",
         "write_mode": "atomic",
         "flags": ["IN_CLOSE_WRITE", "IN_MOVED_TO", "IN_DELETE"],
         "files": ["all"],
