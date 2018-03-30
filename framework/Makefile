@@ -68,9 +68,11 @@ install:
 	$(INSTALL_DIR) $(PREFIX)/framework
 	$(INSTALL_DIR) $(PREFIX)/framework/wazuh
 	$(INSTALL_DIR) $(PREFIX)/framework/lib
+	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/cluster
 
 	$(INSTALL_FILE) wazuh/*.py ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) wazuh/*.json ${PREFIX}/framework/wazuh
+	$(INSTALL_FILE) wazuh/cluster/*.py ${PREFIX}/framework/wazuh/cluster
 	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib/
 ifeq (${uname_S},Linux)
 	$(INSTALL_EXEC) wazuh-clusterd-internal ${PREFIX}/bin

@@ -9,8 +9,25 @@ import argparse
 from itertools import chain
 import logging
 import socket
+import json
 from signal import signal, SIGINT
+
+# Set framework path
+path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
+
+# Import framework
+try:
+    from wazuh import Wazuh
+    from wazuh.cluster.wazuh_server import req_file_status_to_clients, force_clients_to_start_sync, get_nodes
+    from wazuh.cluster.cluster import get_agents_status, get_status_json
+    from wazuh.exception import WazuhException
+except Exception as e:
+    print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
+    exit()
+
+
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
 
 class WazuhHelpFormatter(argparse.ArgumentParser):
     def format_help(self):
@@ -51,17 +68,6 @@ exclusive.add_argument('-l', '--list-files', const='list_files', action='store_c
 exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
 exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List tnodes")
 
-# Set framework path
-path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
-
-# Import framework
-try:
-    from wazuh import Wazuh
-    from wazuh.cluster import *
-    from wazuh.exception import WazuhException
-except Exception as e:
-    print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
-    exit()
 
 def pprint_table(data, headers, show_header=False):
     """
@@ -99,8 +105,10 @@ def _get_file_status(file_list, node_list):
     file_status = req_file_status_to_clients()
     print(json.dumps(file_status, indent=4))
 
+
 def _get_agents_status():
     print pprint_table(data=get_agents_status(), headers=["ID", "IP", "Name", "Status", "Node name"], show_header=True)
+
 
 def _get_nodes_status(node_list):
     logging.disable(logging.WARNING)
@@ -113,6 +121,7 @@ def _get_nodes_status(node_list):
 
     print pprint_table(data=node_info, headers=["Node","Address","Type", "Status"], show_header=True)
 
+
 def _sync(node_list):
     if node_list:
         if type(node_list) is list:
@@ -124,6 +133,7 @@ def _sync(node_list):
 
 
     print(json.dumps(response, indent=4))
+
 
 def signal_handler(n_signal, frame):
     exit(1)

@@ -4,26 +4,18 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 try:
     import asyncore
-    import asynchat
     import socket
     import json
-    from distutils.util import strtobool
     from sys import argv, exit, path
     from os.path import dirname
-    from subprocess import check_call, CalledProcessError
-    from os import devnull, seteuid, setgid, getpid, kill, remove
-    from multiprocessing import Process, Manager, Value
+    from os import seteuid, setgid, getpid, kill
+    from multiprocessing import Process
     from re import search
     from time import sleep
     from pwd import getpwnam
     from signal import signal, pause, alarm, SIGINT, SIGTERM, SIGUSR1, SIGALRM
     import ctypes
     import ctypes.util
-    from operator import or_
-    from traceback import print_exc, extract_tb
-    from io import BytesIO
-    from sys import exc_info
-    from errno import EINTR
     from datetime import datetime, timedelta
 
     import argparse
@@ -46,20 +38,13 @@ try:
         myWazuh = Wazuh(get_init=True)
 
         from wazuh import common
-        from wazuh.cluster import *
+        from wazuh.cluster.wazuh_server import WazuhClusterServer, send_client_files_to_master
+        from wazuh.cluster.cluster import read_config, check_cluster_config
         from wazuh.exception import WazuhException
-        from wazuh.utils import check_output
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
     except Exception as e:
         print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
         exit()
-
-    if check_cluster_status():
-        try:
-            from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
-        except ImportError as e:
-            print("Error importing cryptography module. Please install it with pip, yum (python-cryptography & python-setuptools) or apt (python-cryptography)")
-            exit(-1)
 
     import logging
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
@@ -67,168 +52,6 @@ try:
 except Exception as e:
     print("wazuh-clusterd: Python 2.7 required. Exiting. {}".format(str(e)))
     exit()
-
-
-# Both
-
-class WazuhClusterHandler(asynchat.async_chat):
-    def __init__(self, sock, addr, key, node_type, requests_queue):
-        asynchat.async_chat.__init__(self, sock)
-        self.addr = addr
-        self.f = Fernet(key.encode('base64','strict'))
-        self.set_terminator('\n\t\t\n')
-        self.received_data = []
-        self.data = ""
-        self.counter = 0
-        self.node_type = node_type
-        self.requests_queue = requests_queue
-        self.command = []
-        self.socket.setblocking(1)
-
-    def handle_close(self):
-        self.requests_queue[self.addr] = False
-        self.received_data = []
-
-    def collect_incoming_data(self, data):
-        self.requests_queue[self.addr] = True
-        self.received_data.append(data)
-
-    def found_terminator(self):
-        res_is_zip = False
-        response = b''.join(self.received_data)
-        error = 0
-
-        response_decrypted = self.f.decrypt(response)
-
-        cmd = response_decrypted[:common.cluster_protocol_plain_size].decode()
-        self.command = cmd.split(" ")
-
-        logging.debug("[WServer] Command received: {0}".format(self.command))
-
-        # if not check_cluster_cmd(self.command, self.node_type):
-        #     logging.error("Received invalid cluster command {0} from {1}".format(
-        #                     self.command[0], self.addr))
-        #     error = 1
-        #     res = "Received invalid cluster command {0}".format(self.command[0])
-
-        if error == 0:
-
-            # node: Information about node
-            if self.command[0] == 'node':
-                res = get_node()
-            # m_c_sync: The client initiates the sync process with the master
-            elif self.command[0] == 'm_c_sync':
-                zip_bytes = response_decrypted[common.cluster_protocol_plain_size:]
-                unzip = decompress_files2(zip_bytes)
-                res = process_files_from_client(unzip)
-
-                res_is_zip = True
-                # Continuing working on master node
-                kill(child_pid, SIGUSR1)
-            # file_status: The client returns information about its files
-            elif self.command[0] == 'file_status':
-                res = get_files_status('master') # Get 'master files' in a client node
-            # force_sync: The master requests the client to start the sync (m_c_sync)
-            elif self.command[0] == 'force_sync':
-                cluster_config = read_config()
-                send_client_files_to_master(cluster_config, "Master required")
-                res = 1
-
-            logging.debug("[WServer] Command {0} executed for {1}".format(self.command[0], self.addr))
-        if res_is_zip:
-            self.data = res
-        else:
-            self.data = json.dumps({'error': error, 'data': res})
-        self.handle_write()
-
-
-    def handle_error(self):
-        nil, t, v, tbinfo = asyncore.compact_traceback()
-
-        if t == socket.error and (v.args[0] == socket.errno.EPIPE or
-                                  v.args[0] == socket.errno.EBADF):
-            # there is an error in the connection with the other node.
-            logging.error("[WServer] Error in connection with {}: {}".format(self.addr, str(v)))
-            self.handle_close()
-            self.close()
-            self.socket.close()
-            return 1
-
-        if t == InvalidToken or t == InvalidSignature:
-            error = "Could not decrypt message from {0}".format(self.addr)
-        else:
-            error = str(v)
-
-        logging.error("[WServer] Error handling client request: {0}".format(error))
-        self.data = json.dumps({'error': 1, 'data': error})
-        self.handle_write()
-
-
-    def handle_write(self):
-        msg = self.f.encrypt(self.data) + '\n'
-        i = 0
-        msg_len = len(msg)
-        while i < msg_len:
-            next_i = i+4096 if i+4096 < msg_len else msg_len
-            try:
-                sent = self.socket.send(msg[i:next_i])
-                i += sent
-            except socket.error as e:
-                self.socket.close()
-                raise e
-        logging.debug("[WServer] Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
-        self.handle_close()
-
-
-class WazuhClusterServer(asyncore.dispatcher):
-
-
-    def __init__(self, cluster_config):
-        asyncore.dispatcher.__init__(self)
-
-        self.bind_addr = '' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr']
-        self.port = int(cluster_config['port'])
-        self.key = cluster_config['key']
-        self.node_type = cluster_config['node_type']
-        self.socket_timeout = 100 #int(cluster_config['socket_timeout'])
-
-        remote_connections = set(cluster_config['nodes']) - set(get_localhost_ips())
-        self.requests_queue = dict([(node_ip, False) for node_ip in remote_connections])
-
-
-        # Create socket
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.settimeout(self.socket_timeout)
-        self.set_reuse_addr()
-
-        try:
-            self.bind((self.bind_addr, self.port))
-        except socket.error as e:
-            logging.error("Can't bind socket: {0}".format(str(e)))
-            raise e
-
-        self.listen(50)
-
-        logging.info("[WServer] Starting cluster {0}".format(cluster_config['name']))
-        logging.info("[WServer] Listening on port {0}.".format(self.port))
-        logging.info("[WServer] {0} nodes found in configuration".format(len(cluster_config['nodes'])))
-        logging.info("[WServer] Synchronization interval: {0}".format(cluster_config['interval']))
-
-
-    def handle_accept(self):
-        pair = self.accept()
-
-        if pair is not None:
-            sock, addr = pair
-            logging.info("[WServer] Accepted connection from host {0}".format(addr[0]))
-            handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type, self.requests_queue)
-
-        return
-
-    def handle_error(self):
-        nil, t, v, tbinfo = asyncore.compact_traceback()
-        self.close()
-        raise t(v)
 
 
 def master_main():
@@ -244,7 +67,6 @@ def master_main():
     except Exception as e:
         error_msg = "[Master] Error: {}".format(str(e))
         logging.error(error_msg)
-
 
 
 def client_main(cluster_config, debug):
@@ -376,7 +198,7 @@ if __name__ == '__main__':
             child_pid = p.pid
 
         # Create server
-        server = WazuhClusterServer(cluster_config)
+        server = WazuhClusterServer(cluster_config, child_pid)
 
         asyncore.loop()
 
