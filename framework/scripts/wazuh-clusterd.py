@@ -72,7 +72,7 @@ except Exception as e:
 # Both
 
 class WazuhClusterHandler(asynchat.async_chat):
-    def __init__(self, sock, addr, key, node_type, requests_queue, finished_clients, restart_after_sync, connected_clients, clients_to_restart):
+    def __init__(self, sock, addr, key, node_type, requests_queue):
         asynchat.async_chat.__init__(self, sock)
         self.addr = addr
         self.f = Fernet(key.encode('base64','strict'))
@@ -82,11 +82,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         self.counter = 0
         self.node_type = node_type
         self.requests_queue = requests_queue
-        self.finished_clients = finished_clients
         self.command = []
-        self.restart_after_sync = restart_after_sync
-        self.connected_clients = connected_clients
-        self.clients_to_restart = clients_to_restart
         self.socket.setblocking(1)
 
     def handle_close(self):
@@ -186,41 +182,47 @@ class WazuhClusterHandler(asynchat.async_chat):
 
 class WazuhClusterServer(asyncore.dispatcher):
 
-    def __init__(self, bind_addr, port, key, node_type, requests_queue, finished_clients, restart_after_sync, connected_clients, clients_to_restart, socket_timeout):
+
+    def __init__(self, cluster_config):
         asyncore.dispatcher.__init__(self)
+
+        self.bind_addr = '' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr']
+        self.port = int(cluster_config['port'])
+        self.key = cluster_config['key']
+        self.node_type = cluster_config['node_type']
+        self.socket_timeout = 100 #int(cluster_config['socket_timeout'])
+
+        remote_connections = set(cluster_config['nodes']) - set(get_localhost_ips())
+        self.requests_queue = dict([(node_ip, False) for node_ip in remote_connections])
+
+
+        # Create socket
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.settimeout(socket_timeout)
+        self.socket.settimeout(self.socket_timeout)
         self.set_reuse_addr()
-        self.key = key
-        self.node_type = node_type
-        self.requests_queue = requests_queue
-        self.finished_clients = finished_clients
-        self.restart_after_sync = restart_after_sync
-        self.connected_clients = connected_clients
-        self.clients_to_restart = clients_to_restart
+
         try:
-            self.bind((bind_addr, port))
+            self.bind((self.bind_addr, self.port))
         except socket.error as e:
             logging.error("Can't bind socket: {0}".format(str(e)))
             raise e
+
         self.listen(50)
 
-        cluster_info = read_config()
-        logging.info("[WServer] Starting cluster {0}".format(cluster_info['name']))
-        logging.info("[WServer] Listening on port {0}.".format(port))
-        logging.info("[WServer] {0} nodes found in configuration".format(len(cluster_info['nodes'])))
-        logging.info("[WServer] Synchronization interval: {0}".format(cluster_info['interval']))
+        logging.info("[WServer] Starting cluster {0}".format(cluster_config['name']))
+        logging.info("[WServer] Listening on port {0}.".format(self.port))
+        logging.info("[WServer] {0} nodes found in configuration".format(len(cluster_config['nodes'])))
+        logging.info("[WServer] Synchronization interval: {0}".format(cluster_config['interval']))
 
 
     def handle_accept(self):
         pair = self.accept()
+
         if pair is not None:
             sock, addr = pair
             logging.info("[WServer] Accepted connection from host {0}".format(addr[0]))
-            handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type,
-                                        self.requests_queue, self.finished_clients,
-                                        self.restart_after_sync, self.connected_clients,
-                                        self.clients_to_restart)
+            handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type, self.requests_queue)
+
         return
 
     def handle_error(self):
@@ -350,7 +352,6 @@ if __name__ == '__main__':
             setgid(pwdnam_ossec.pw_gid)
             seteuid(pwdnam_ossec.pw_uid)
 
-        # ToDo:
         create_pid("wazuh-clusterd", getpid())
 
         # Get cluster configuration
@@ -360,17 +361,8 @@ if __name__ == '__main__':
             logging.error(str(e))
             kill(getpid(), SIGINT)
 
-        # Main process for master or client
-        m = Manager()
-        remote_connections = set(cluster_config['nodes']) - set(get_localhost_ips())
-        requests_queue = m.dict([(node_ip, False) for node_ip in remote_connections])
-        clients_to_restart = m.list()
-        finished_clients = Value('i',0)
-        connected_clients = Value('i',0)
-        restart_after_sync = Value('c','F')
 
         if cluster_config['node_type'] == 'master':
-            #p = Process(target=crontab_sync_master, args=(cluster_config['interval'],cluster_config,requests_queue,connected_clients,finished_clients,clients_to_restart,args.d,))
             p = Process(target=master_main, args=())
             if not args.f:
                 p.daemon=True
@@ -384,17 +376,8 @@ if __name__ == '__main__':
             child_pid = p.pid
 
         # Create server
-        server = WazuhClusterServer('' if cluster_config['bind_addr'] == '0.0.0.0' else cluster_config['bind_addr'],
-                                    int(cluster_config['port']),
-                                    cluster_config['key'],
-                                    cluster_config['node_type'],
-                                    requests_queue,
-                                    finished_clients,
-                                    restart_after_sync,
-                                    connected_clients,
-                                    clients_to_restart,
-                                    100 #int(cluster_config['socket_timeout'])
-                                    )
+        server = WazuhClusterServer(cluster_config)
+
         asyncore.loop()
 
     except Exception as e:
