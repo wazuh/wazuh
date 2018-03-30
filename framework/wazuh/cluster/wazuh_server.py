@@ -162,7 +162,7 @@ class WazuhClusterHandler(asynchat.async_chat):
             except socket.error as e:
                 self.socket.close()
                 raise e
-        logging.debug("[Server-S] Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
+        logging.debug("[Server] Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
         self.handle_close()
 
 
