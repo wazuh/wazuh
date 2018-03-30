@@ -175,6 +175,7 @@ if __name__ == '__main__':
             seteuid(pwdnam_ossec.pw_uid)
 
         create_pid("wazuh-clusterd", getpid())
+        logging.info("[wazuh-clusterd] PID: {0}".format(getpid()))
 
         # Get cluster configuration
         try:
@@ -190,12 +191,14 @@ if __name__ == '__main__':
                 p.daemon=True
             p.start()
             child_pid = p.pid
+            logging.info("[Master] PID: {0}".format(child_pid))
         else:
             p = Process(target=client_main, args=(cluster_config,args.d,))
             if not args.f:
                 p.daemon=True
             p.start()
             child_pid = p.pid
+            logging.info("[Client] PID: {0}".format(child_pid))
 
         # Create server
         server = WazuhClusterServer(cluster_config, child_pid)
