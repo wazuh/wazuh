@@ -137,7 +137,7 @@ def get_files_status(node_type, get_md5=True):
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['excluded_files'], file_path, get_md5, node_type))
             except WazuhException as e:
-                logging.warning(e)
+                logging.warning("get_files_status: {}".format(e))
 
     return final_items
 
@@ -275,19 +275,19 @@ class WazuhClusterClient2():
                 data = self.socket.recv(self.chunk)
                 self.received_data.append(data)
         except socket.error as e:
-            logging.error("Could not receive data from {}: {}".format(self.addr, str(e)))
+            logging.error("[WClient] Could not receive data from {}: {}".format(self.addr, str(e)))
             if str(e) == "timed out":
-                logging.warning("Try increasing socket_timeout configuration at ossec.conf to solve this issue and check your firewall is properly configured")
+                logging.warning("[WClient] Try increasing socket_timeout configuration at ossec.conf to solve this issue and check your firewall is properly configured")
             raise e
         self.found_terminator()
 
     def found_terminator(self):
-        logging.debug("Received {}".format(len(''.join(self.received_data))))
+        logging.debug("[WClient] Received {}".format(len(''.join(self.received_data))))
 
         try:
             self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
         except (InvalidSignature, InvalidToken) as e:
-            raise InvalidToken("Could not encrypt message")
+            raise InvalidToken("[WClient] Could not encrypt message")
         except: # ToDo: Improve this. It shoul be like a cmd?
             response = b''.join(self.received_data)
             self.response = self.f.decrypt(response)
@@ -301,7 +301,7 @@ class WazuhClusterClient2():
             else:
                 msg = self.f.encrypt(self.data.encode()) + '\n\t\t\n'
         except (InvalidToken, InvalidSignature) as e:
-            raise InvalidToken("Could not encrypt message")
+            raise InvalidToken("[WClient] Could not encrypt message")
 
         try:
             i = 0
@@ -311,19 +311,19 @@ class WazuhClusterClient2():
                 sent = self.socket.send(msg[i:next_i])
                 i += sent
 
-            logging.debug("CLIENT: Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
+            logging.debug("[WClient] Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
             self.handle_receive()
         except socket.error as e:
-            logging.error("Could not send data to {}: {}".format(self.addr, str(e)))
+            logging.error("[WClient] Could not send data to {}: {}".format(self.addr, str(e)))
             raise e
 
 def send_request2(host, port, key, data, connection_timeout, socket_timeout, file=None):
     error = 0
     try:
-        logging.debug("Active connections: {}".format(common.cluster_connections.keys()))
+        logging.debug("[WClient] Active connections: {}".format(common.cluster_connections.keys()))
         client = common.cluster_connections.get(host)
         if not client:
-            logging.debug("No opened connection with {}".format(host))
+            logging.debug("[WClient] No opened connection with {}".format(host))
             fernet_key = Fernet(key.encode('base64','strict'))
             client = WazuhClusterClient2(host, int(port), fernet_key, data, file, connection_timeout, socket_timeout)
             client.handle_write()
@@ -331,7 +331,7 @@ def send_request2(host, port, key, data, connection_timeout, socket_timeout, fil
             common.cluster_connections[host] = client
         else:
             connection_status = get_connection_status(common.cluster_connections[host].socket)
-            logging.debug("Connection status with {} is {}".format(host, connection_status))
+            logging.debug("[WClient] Connection status with {} is {}".format(host, connection_status))
             if connection_status == 'ESTABLISHED':
                 client.data = data
                 client.file = file
@@ -342,7 +342,7 @@ def send_request2(host, port, key, data, connection_timeout, socket_timeout, fil
                     # and create a new socket on the next iteration. This way,
                     # the socket will not be ESTABLISHED but "disconnected"
                     if str(e) == 'timed out':
-                        logging.debug("Closing connection with {}".format(host))
+                        logging.debug("[WClient] Closing connection with {}".format(host))
                         common.cluster_connections[host].socket.close()
                         del common.cluster_connections[host]
                     raise e
@@ -357,7 +357,7 @@ def send_request2(host, port, key, data, connection_timeout, socket_timeout, fil
         error = 1
 
     except Exception as e:
-        logging.error("Error sending request to {}: {}".format(host, str(e)))
+        logging.error("[WClient] Error sending request to {}: {}".format(host, str(e)))
         error = 1
         response = str(e)
 
@@ -541,7 +541,7 @@ def update_master_files_in_client(wrong_files, files_to_update):
         logging.info("[Client] [Sync process] [Step 3]: Received {} wrong files to fix from master. Action: Overwrite files.".format(len(wrong_files['shared'])))
         try:
             for file_to_overwrite, data in wrong_files['shared'].iteritems():
-                logging.debug("\tOVERWRITE {0}".format(file_to_overwrite))
+                logging.debug("\t[Client] OVERWRITE {0}".format(file_to_overwrite))
                 # Full path
                 file_path = common.ossec_path + file_to_overwrite
 
@@ -563,7 +563,7 @@ def update_master_files_in_client(wrong_files, files_to_update):
     if wrong_files['missing']:
         logging.info("[Client] [Sync process] [Step 3]: Received {} missing files from master. Action: Create files.".format(len(wrong_files['missing'])))
         for file_to_create, data in wrong_files['missing'].iteritems():
-            logging.debug("\tCREATE {0}".format(file_to_create))
+            logging.debug("\t[Client] CREATE {0}".format(file_to_create))
 
             # Full path
             file_path = common.ossec_path + file_to_create
@@ -583,7 +583,7 @@ def update_master_files_in_client(wrong_files, files_to_update):
     if wrong_files['extra']:
         logging.info("[Client] [Sync process] [Step 3]: Received {} extra files from master. Action: Remove files.".format(len(wrong_files['extra'])))
         for file_to_remove in wrong_files['extra']:
-            logging.debug("\tREMOVE {0}".format(file_to_remove))
+            logging.debug("\t[Client] REMOVE {0}".format(file_to_remove))
             file_path = common.ossec_path + file_to_remove
             remove(file_path)
 

@@ -107,7 +107,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         cmd = response_decrypted[:common.cluster_protocol_plain_size].decode()
         self.command = cmd.split(" ")
 
-        logging.debug("Command received: {0}".format(self.command))
+        logging.debug("[WServer] Command received: {0}".format(self.command))
 
         # if not check_cluster_cmd(self.command, self.node_type):
         #     logging.error("Received invalid cluster command {0} from {1}".format(
@@ -138,7 +138,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                 send_client_files_to_master(cluster_config, "Master required")
                 res = 1
 
-            logging.debug("Command {0} executed for {1}".format(self.command[0], self.addr))
+            logging.debug("[WServer] Command {0} executed for {1}".format(self.command[0], self.addr))
         if res_is_zip:
             self.data = res
         else:
@@ -152,7 +152,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         if t == socket.error and (v.args[0] == socket.errno.EPIPE or
                                   v.args[0] == socket.errno.EBADF):
             # there is an error in the connection with the other node.
-            logging.error("Error in connection with {}: {}".format(self.addr, str(v)))
+            logging.error("[WServer] Error in connection with {}: {}".format(self.addr, str(v)))
             self.handle_close()
             self.close()
             self.socket.close()
@@ -163,7 +163,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         else:
             error = str(v)
 
-        logging.error("Error handling client request: {0}".format(error))
+        logging.error("[WServer] Error handling client request: {0}".format(error))
         self.data = json.dumps({'error': 1, 'data': error})
         self.handle_write()
 
@@ -180,7 +180,7 @@ class WazuhClusterHandler(asynchat.async_chat):
             except socket.error as e:
                 self.socket.close()
                 raise e
-        logging.debug("SERVER: Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
+        logging.debug("[WServer] Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
         self.handle_close()
 
 
@@ -206,17 +206,17 @@ class WazuhClusterServer(asyncore.dispatcher):
         self.listen(50)
 
         cluster_info = read_config()
-        logging.info("Starting cluster {0}".format(cluster_info['name']))
-        logging.info("Listening on port {0}.".format(port))
-        logging.info("{0} nodes found in configuration".format(len(cluster_info['nodes'])))
-        logging.info("Synchronization interval: {0}".format(cluster_info['interval']))
+        logging.info("[WServer] Starting cluster {0}".format(cluster_info['name']))
+        logging.info("[WServer] Listening on port {0}.".format(port))
+        logging.info("[WServer] {0} nodes found in configuration".format(len(cluster_info['nodes'])))
+        logging.info("[WServer] Synchronization interval: {0}".format(cluster_info['interval']))
 
 
     def handle_accept(self):
         pair = self.accept()
         if pair is not None:
             sock, addr = pair
-            logging.info("Accepted connection from host {0}".format(addr[0]))
+            logging.info("[WServer] Accepted connection from host {0}".format(addr[0]))
             handler = WazuhClusterHandler(sock, addr[0], self.key, self.node_type,
                                         self.requests_queue, self.finished_clients,
                                         self.restart_after_sync, self.connected_clients,
@@ -240,7 +240,7 @@ def master_main():
             pause()
 
     except Exception as e:
-        error_msg = "Error in cluster client process: {}".format(str(e))
+        error_msg = "[Master] Error: {}".format(str(e))
         logging.error(error_msg)
 
 
@@ -277,7 +277,7 @@ def signal_handler(n_signal, frame):
 
         return strsignal_c(n_signal)
 
-    logging.info("Signal [{0}-{1}] received. Exit cleaning...".format(n_signal, strsignal(n_signal)))
+    logging.info("[wazuh-clusterd] Signal [{0}-{1}] received. Exit cleaning...".format(n_signal, strsignal(n_signal)))
 
     # received Cntrl+C
     if n_signal == SIGINT or n_signal == SIGTERM:
@@ -289,19 +289,19 @@ def signal_handler(n_signal, frame):
                 # remove pid files
                 delete_pid("wazuh-clusterd", getpid())
             except Exception as e:
-                logging.error("Error killing child process: {}".format(str(e)))
+                logging.error("[wazuh-clusterd] Error killing child process: {}".format(str(e)))
                 if args.d:
                     raise
         else:
             for connections in common.cluster_connections.values():
                 try:
-                    logging.debug("Closing socket {}...".format(connections.socket.getpeername()))
+                    logging.debug("[wazuh-clusterd] Closing socket {}...".format(connections.socket.getpeername()))
                     connections.socket.close()
                 except socket.error as e:
                     if e.errno == socket.errno.EBADF:
-                        logging.debug("Socket already closed: {}".format(str(e)))
+                        logging.debug("[wazuh-clusterd] Socket already closed: {}".format(str(e)))
                     else:
-                        logging.error("Could not close socket: {}".format(str(e)))
+                        logging.error("[wazuh-clusterd] Could not close socket: {}".format(str(e)))
     exit(1)
 
 
@@ -341,7 +341,7 @@ if __name__ == '__main__':
                 raise e
 
         if not cluster_config or cluster_config['disabled'] == 'yes':
-            logging.info("Cluster disabled. Exiting...")
+            logging.info("[wazuh-clusterd] Cluster disabled. Exiting...")
             kill(getpid(), SIGINT)
 
         # Drop privileges to ossec
@@ -398,6 +398,6 @@ if __name__ == '__main__':
         asyncore.loop()
 
     except Exception as e:
-        logging.error("Error in wazuh-clusterd: {}".format(str(e)))
+        logging.error("[wazuh-clusterd] Error: {}".format(str(e)))
         if args.d:
             raise
