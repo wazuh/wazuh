@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - Fixed memory corruption in Wazuh DB autoclosing procedure.
 - Fixed dangling db files at DB Sync module folder. ([#489](https://github.com/wazuh/wazuh/pull/489))
 - Fixed agent group file deletion when using Authd.
+- Fix memory leak in Maild with JSON input. ([#498](https://github.com/wazuh/wazuh/pull/498))
 
 ## [v3.2.1]
 
