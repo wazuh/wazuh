@@ -117,46 +117,26 @@ class WazuhClusterHandler(asynchat.async_chat):
 
         if error == 0:
 
-
-            # Review
+            # node: Information about node
             if self.command[0] == 'node':
                 res = get_node()
-            elif self.command[0] == 'zip':
-                zip_bytes = self.f.decrypt(response[common.cluster_sync_msg_size:])
-                res = extract_zip(zip_bytes)
-                self.restart_after_sync.value = 'T' if res['restart'] else 'F'
-            elif self.command[0] == 'ready':
-                # sync_one_node(False, self.addr)
-                res = "Starting to sync client's files"
-                # execute an independent process to "crontab" the sync interval
-                kill(child_pid, SIGUSR1)
-            elif self.command[0] == 'finished':
-                res = "Sleeping..."
-
-                if bool(int(self.command[1])):
-                    clients_to_restart.append(self.addr)
-
-                self.finished_clients.value += 1
-                logging.debug("Finished clients: {} of {}".format(self.finished_clients.value, self.connected_clients.value))
-                # execute an independent process to "crontab" the sync interval
-                if self.finished_clients.value == self.connected_clients.value:
-                    self.finished_clients.value = 0
-                    self.connected_clients.value = 0
-                    kill(child_pid, SIGALRM)
-
-
-
-            # New
+            # m_c_sync: The client initiates the sync process with the master
             elif self.command[0] == 'm_c_sync':
                 zip_bytes = response_decrypted[common.cluster_protocol_plain_size:]
                 unzip = decompress_files2(zip_bytes)
                 res = process_files_from_client(unzip)
 
-
                 res_is_zip = True
                 # Continuing working on master node
                 kill(child_pid, SIGUSR1)
-
+            # file_status: The client returns information about its files
+            elif self.command[0] == 'file_status':
+                res = get_files_status('master') # Get 'master files' in a client node
+            # force_sync: The master requests the client to start the sync (m_c_sync)
+            elif self.command[0] == 'force_sync':
+                cluster_config = read_config()
+                send_client_files_to_master(cluster_config, "Master required")
+                res = 1
 
             logging.debug("Command {0} executed for {1}".format(self.command[0], self.addr))
         if res_is_zip:
@@ -281,66 +261,12 @@ def client_main(cluster_config, debug):
         logging.info("[Client] Starting work.")
 
         try:
-            all_nodes = get_nodes2()['items']
-            master_node = 'unknown'
-            for item in all_nodes:
-                if item['type'] == 'master':
-                    master_node = item['url']
-
-            if master_node == 'unknown':
-                raise
-        except:
-            logging.error("[Client] Master not found. Going to sleep.")
-            alarm(1)
-            pause()
-
-        try:
-            max_retries = 5
-            n_retries = 0
-            max_interruptions = 100
-            n_interruptions = 0
-
-            while n_retries <= max_retries:
-                try:
-                    send_client_files_to_master(master_node, cluster_config, [])
-                    break
-                except IOError as e:
-                    if e.errno != EINTR:
-                        raise
-                    else:
-                        n_interruptions += 1
-                        if max_interruptions >= n_interruptions:
-                            logging.error("Reached maximum number of EINTR errors: {}. Sleeping for 60s.".format(str(e)))
-                            sleep(60)
-                            n_interruptions = 0
-                            continue
-                        else:
-                            continue
-                except Exception as e:
-                    exc_type, exc_value, exc_traceback = exc_info()
-                    filename, line_number, module, line_content = extract_tb(exc_traceback)[-1]
-                    logging.error("Error {} synchronizing information ({}:{}): {}".format(exc_type, filename, line_number, exc_value.args[0]))
-                    n_retries += 1
-                    if n_retries < max_retries:
-                        sleep(5)
-                    else:
-                        logging.warning("Reached maximum number of retries: sleeping for 60s.")
-                        sleep(60)
-                        n_retries = 0
-
-            alarm(1)
-            pause()
+            send_client_files_to_master(cluster_config, "Client interval")
         except Exception as e:
-            error_msg = "Error in cluster master process: {}".format(str(e))
-            if debug:
-                exc_buffer = BytesIO()
-                print_exc(file=exc_buffer)
-                debug_info = exc_buffer.getvalue()
-                error_msg += '\n' + debug_info
-            logging.error(error_msg)
-            logging.info("Sleeping for {}s".format(sleep_time))
-            sleep(sleep_time)
-            continue
+            logging.error("[Client] Error synchronizing: '{0}'.".format(str(e)))
+
+        alarm(1)
+        pause()
 
 
 def signal_handler(n_signal, frame):

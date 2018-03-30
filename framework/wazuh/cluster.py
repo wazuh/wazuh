@@ -367,11 +367,77 @@ def send_request2(host, port, key, data, connection_timeout, socket_timeout, fil
 
 
 
-
-
 #
 # Master
 #
+
+def force_clients_to_start_sync(node_list=None):
+    nodes_response = {}
+
+    config_cluster = read_config()
+    if not config_cluster:
+        raise WazuhException(3000, "No config found")
+
+    # Get nodes
+    all_nodes = get_nodes()['items']
+
+    for node in all_nodes:
+        if node['type'] == 'master':
+            continue
+
+        if node_list and node['node'] not in node_list:
+            continue
+
+        if node['status'] == 'connected':
+
+            error, response = send_request2( host=node['url'],
+                                    port=config_cluster["port"],
+                                    key=config_cluster['key'],
+                                    connection_timeout=100, #int(config_cluster['connection_timeout']),
+                                    socket_timeout=100, #int(config_cluster['socket_timeout']),
+                                    data="force_sync {0}".format('-'*(common.cluster_protocol_plain_size - len("force_sync ")))
+            )
+
+            nodes_response[node['node']] = response['data']
+        else:
+            nodes_response[node['node']] = 'Disconnected: {0}'.format(node['url'])
+
+    return nodes_response
+
+def req_file_status_to_clients():
+    config_cluster = read_config()
+    if not config_cluster:
+        raise WazuhException(3000, "No config found")
+
+    # Get master files
+    master_files = get_files_status('master')
+
+    # Get nodes
+    all_nodes = get_nodes()['items']
+
+    nodes_file = {}
+    for node in all_nodes:
+        if node['type'] == 'master':
+            continue
+
+        if node['status'] == 'connected':
+
+            error, response = send_request2( host=node['url'],
+                                    port=config_cluster["port"],
+                                    key=config_cluster['key'],
+                                    connection_timeout=100, #int(config_cluster['connection_timeout']),
+                                    socket_timeout=100, #int(config_cluster['socket_timeout']),
+                                    data="file_status {0}".format('-'*(common.cluster_protocol_plain_size - len("file_status ")))
+            )
+
+            client_files_ko = compare_files(master_files, response['data'])
+            nodes_file[node['node']] = client_files_ko
+        else:
+            nodes_file[node['node']] = 'disconnected'
+
+    return nodes_file
+
+
 def compare_files(good_files, check_files):
 
     missing_files = set(good_files.keys()) - set(check_files.keys())
@@ -541,56 +607,138 @@ def process_files_from_master(data_received):
 
     return update_result
 
-def send_client_files_to_master(master_node, config_cluster, files):
+def send_client_files_to_master(config_cluster, reason=None):
     sync_result = False
 
-    logging.info("[Client] [Sync process]: Start.")
-
-    logging.info("[Client] [Sync process] [Step 1]: Gathering files.")
-    # Get master files (path, md5, mtime): client.keys, ossec.conf, groups, ...
-    master_files = get_files_status('master')
-    client_files = get_files_status('client', get_md5=False)
-    cluster_control_json = {'master_files': master_files, 'client_files': client_files}
-
-    # Getting client file paths: agent-info, agent-groups.
-    client_files_paths = client_files.keys()
-
-    # Compress data: client files + control json
-    compressed_data = compress_files2('client', client_files_paths, cluster_control_json)
+    logging.info("[Client] [Sync process]: Start. Reason: '{0}'".format(reason))
 
 
-    # Send compressed file to master
-    logging.info("[Client] [Sync process] [Step 2]: Sending files to master.")
-    error, response = send_request2( host=master_node,
-                                    port=config_cluster["port"],
-                                    key=config_cluster['key'],
-                                    connection_timeout=100, #int(config_cluster['connection_timeout']),
-                                    socket_timeout=100, #int(config_cluster['socket_timeout']),
-                                    #data="zip {0}".format(str(len(compressed_data)).zfill(common.cluster_protocol_plain_size - len("zip "))),
-                                    data="m_c_sync {0}".format(str(len(compressed_data)).zfill(common.cluster_protocol_plain_size - len("m_c_sync "))),
-                                    file=compressed_data
-    )
+    logging.info("[Client] [Sync process] [Step 0]: Finding master.")
 
-    # Update files
-    if error == 0:
-        if 'error' in response and 'data' in response:
-            if response['error'] != 0:
-                logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master (1): {}".format(response['data']))
-        else:
-            try:
-                logging.info("[Client] [Sync process] [Step 3]: KO files received from master.")
-                master_data  = decompress_files2(response)
-                sync_result = process_files_from_master(master_data)
-            except Exception as e:
-                logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master (2): {}".format(str(e)))
+    all_nodes = get_nodes()['items']
+    master_node = 'unknown'
+    for item in all_nodes:
+        if item['type'] == 'master':
+            master_node = item['url']
+
+    if master_node == 'unknown':
+        logging.error("[Client] [Sync process] [Step 0]: Master not found.")
     else:
-        logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master")
+        logging.info("[Client] [Sync process] [Step 0]: Master: {0}.".format(master_node))
+
+        logging.info("[Client] [Sync process] [Step 1]: Gathering files.")
+        # Get master files (path, md5, mtime): client.keys, ossec.conf, groups, ...
+        master_files = get_files_status('master')
+        client_files = get_files_status('client', get_md5=False)
+        cluster_control_json = {'master_files': master_files, 'client_files': client_files}
+
+        # Getting client file paths: agent-info, agent-groups.
+        client_files_paths = client_files.keys()
+
+        # Compress data: client files + control json
+        compressed_data = compress_files2('client', client_files_paths, cluster_control_json)
+
+
+        # Send compressed file to master
+        logging.info("[Client] [Sync process] [Step 2]: Sending files to master.")
+        error, response = send_request2( host=master_node,
+                                        port=config_cluster["port"],
+                                        key=config_cluster['key'],
+                                        connection_timeout=100, #int(config_cluster['connection_timeout']),
+                                        socket_timeout=100, #int(config_cluster['socket_timeout']),
+                                        #data="zip {0}".format(str(len(compressed_data)).zfill(common.cluster_protocol_plain_size - len("zip "))),
+                                        data="m_c_sync {0}".format(str(len(compressed_data)).zfill(common.cluster_protocol_plain_size - len("m_c_sync "))),
+                                        file=compressed_data
+        )
+
+        # Update files
+        if error == 0:
+            if 'error' in response and 'data' in response:
+                if response['error'] != 0:
+                    logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master (1): {}".format(response['data']))
+            else:
+                try:
+                    logging.info("[Client] [Sync process] [Step 3]: KO files received from master.")
+                    master_data  = decompress_files2(response)
+                    sync_result = process_files_from_master(master_data)
+                except Exception as e:
+                    logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master (2): {}".format(str(e)))
+        else:
+            logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master")
 
     # Send ACK
     # ToDo
 
     # Log
     logging.info("[Client] [Sync process]: Result - {}.".format(sync_result))
+
+    return sync_result
+
+
+
+#
+# Others
+#
+
+get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
+
+def get_nodes():
+    config_cluster = read_config()
+    if not config_cluster:
+        raise WazuhException(3000, "No config found")
+
+    # list with all the ips the localhost has
+    localhost_ips = get_localhost_ips()
+
+    data = []
+    error_response = False
+
+    for url in config_cluster["nodes"]:
+        try:
+            if not url in localhost_ips:
+                error, response = send_request2(host=url,
+                                                port=config_cluster["port"],
+                                                key=config_cluster['key'],
+                                                connection_timeout=int(config_cluster['connection_timeout']),
+                                                socket_timeout=int(config_cluster['socket_timeout']),
+                                                data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
+                if error == 0:
+                    if response['error'] == 0:
+                        response = response['data']
+                        response['localhost'] = False
+                    else:
+                        logging.warning("Received an error response from {0}: {1}".format(url, response))
+                        error_response = True
+            else:
+                error = 0
+                response = get_node()
+                response['localhost'] = True
+
+            if error == 1:
+                logging.warning("Error connecting with {0}: {1}".format(url, response))
+                error_response = True
+
+            if error_response:
+                data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
+                error_response = False
+                continue
+
+            if config_cluster['node_type'] == 'master' or \
+               response['type'] == 'master' or response["localhost"]:
+                data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
+                             'status':'connected', 'cluster':response['cluster']})
+
+        except TypeError as e:
+            error_text = "Response from {} is not in JSON format: {} ({})".format(url, str(e), response)
+            logging.error(error_text)
+            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
+        except Exception as e:
+            error_text = "Error getting information of node {}: {}".format(url, str(e))
+            logging.error(error_text)
+            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
+
+    return {'items': data, 'totalItems': len(data)}
+
 
 
 #
@@ -704,127 +852,10 @@ def read_config():
     return config_cluster
 
 
-get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
-
-def get_nodes2():
-    config_cluster = read_config()
-    if not config_cluster:
-        raise WazuhException(3000, "No config found")
-
-    # list with all the ips the localhost has
-    localhost_ips = get_localhost_ips()
-
-    data = []
-    error_response = False
-
-    for url in config_cluster["nodes"]:
-        try:
-            if not url in localhost_ips:
-                error, response = send_request2(host=url, port=config_cluster["port"], key=config_cluster['key'],
-                                    connection_timeout=int(config_cluster['connection_timeout']),
-                                    socket_timeout=int(config_cluster['socket_timeout']),
-                                    data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
-                if error == 0:
-                    if response['error'] == 0:
-                        response = response['data']
-                        response['localhost'] = False
-                    else:
-                        logging.warning("Received an error response from {0}: {1}".format(url, response))
-                        error_response = True
-            else:
-                error = 0
-                response = get_node()
-                response['localhost'] = True
-
-            if error == 1:
-                logging.warning("Error connecting with {0}: {1}".format(url, response))
-                error_response = True
-
-            if error_response:
-                data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
-                error_response = False
-                continue
-
-            if config_cluster['node_type'] == 'master' or \
-               response['type'] == 'master' or response["localhost"]:
-                data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
-                             'status':'connected', 'cluster':response['cluster']})
-
-        except TypeError as e:
-            error_text = "Response from {} is not in JSON format: {} ({})".format(url, str(e), response)
-            logging.error(error_text)
-            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
-        except Exception as e:
-            error_text = "Error getting information of node {}: {}".format(url, str(e))
-            logging.error(error_text)
-            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
-
-    return {'items': data, 'totalItems': len(data)}
 
 
 
-def get_nodes(updateDBname=False, config=None):
-    if not config:
-        config_cluster = read_config()
-        if not config_cluster:
-            raise WazuhException(3000, "No config found")
-    else:
-        config_cluster = config
 
-    cluster_socket = connect_to_db_socket()
-    # list with all the ips the localhost has
-    localhost_ips = get_localhost_ips()
-    data = []
-    error_response = False
-
-    for url in config_cluster["nodes"]:
-        try:
-            if not url in localhost_ips:
-                error, response = send_request(host=url, port=config_cluster["port"], key=config_cluster['key'],
-                                    connection_timeout=int(config_cluster['connection_timeout']),
-                                    socket_timeout=int(config_cluster['socket_timeout']),
-                                    data="node {0}".format('-'*(common.cluster_protocol_plain_size - len("node "))))
-                if error == 0:
-                    if response['error'] == 0:
-                        response = response['data']
-                        response['localhost'] = False
-                    else:
-                        logging.warning("Received an error response from {0}: {1}".format(url, response))
-                        error_response = True
-            else:
-                error = 0
-                response = get_node()
-                response['localhost'] = True
-
-            if error == 1:
-                logging.warning("Error connecting with {0}: {1}".format(url, response))
-                error_response = True
-
-            if error_response:
-                data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
-                error_response = False
-                continue
-
-            if config_cluster['node_type'] == 'master' or \
-               response['type'] == 'master' or response["localhost"]:
-                data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
-                             'status':'connected', 'cluster':response['cluster']})
-
-                if updateDBname:
-                    query = "insertname " +response['node'] + " " + url
-                    send_to_socket(cluster_socket, query)
-                    receive_data_from_db_socket(cluster_socket)
-        except TypeError as e:
-            error_text = "Response from {} is not in JSON format: {} ({})".format(url, str(e), response)
-            logging.error(error_text)
-            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
-        except Exception as e:
-            error_text = "Error getting information of node {}: {}".format(url, str(e))
-            logging.error(error_text)
-            data.append({'url': url, 'node': 'unknown', 'type': 'unknown', 'status': 'connected', 'url':url, 'error': error_text, 'localhost': False})
-
-    cluster_socket.close()
-    return {'items': data, 'totalItems': len(data)}
 
 
 

@@ -15,36 +15,22 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 class WazuhHelpFormatter(argparse.ArgumentParser):
     def format_help(self):
         msg = """
-    {0} [-h] | [-d] | [-s] | [-p] | [-f  [-m MANAGER [MANAGER ...]]] | [-l [FILE [FILE ...]]] [-m MANAGER [MANAGER ...]]] | [-a [AGENT [AGENT ...]]] | [ -n [NODE [NODE ...]]] | [ --debug ]
-    Usage:
-\t-h                                  # Show this help message
-\t-d                                  # Get last synchronization date and duration
-\t
-\t-s                                  # Scan for new files
-\t-p                                  # Send all not synchronized files
-\t-f -m MANAGER [MANAGER ...]         # Force synchronization of manager files
-\t
-\t-l                                  # List the status of all files
-\t-l FILE [FILE ...]                  # List the status of specified files
-\t-l -m MANAGER [MANAGER ...]         # List the status of all files of specified managers (name or IP)
-\t
-\t-a                                  # List the status of all agents
-\t-a AGENT [AGENT ...]                # List the status of specified agents (IP)
-\t
-\t-n                                  # List nodes status
-\t-n NODE [NODE ...]                  # List the status of specified nodes (name or IP)
-    Params:
-\t-h, --help
-\t-d, --date
-\t    --debug                         # Show debug information
-\t
-\t-s, --scan
-\t-p, --push
-\t-f, --force
-\t
-\t-l, --files
-\t-a, --agents
-\t-n, --nodes
+{0} --help | --sync [-t Node1 NodeN] [--debug] | --list-files [-t Node1 NodeN] [-f File1 FileN] [--debug] | --list-agents [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
+
+Usage:
+\t-h, --help                                  # Show this help message
+\t-s, --sync                                  # Force the nodes to initiate the synchronization process
+\t-l, --list-files                            # List the file status for every node
+\t-a, --list-agents                           # List agents
+\t-n, --list-nodes                            # List nodes
+
+Filters:
+\t -t, --filter-node                          # Filter by node
+\t -f, --filter-file                          # Filter by file
+
+Others:
+\t     --debug                                 # Show debug information
+
 """.format(basename(argv[0]))
         return msg
     def error(self, message):
@@ -55,17 +41,15 @@ class WazuhHelpFormatter(argparse.ArgumentParser):
 parser=WazuhHelpFormatter(usage='custom usage')
 parser._positionals.title = 'Wazuh Cluster control interface'
 
-parser.add_argument('-m', '--manager', dest='manager', nargs='*', type=str, help="List the status of the files of that manager")
+parser.add_argument('-t', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
+parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
 parser.add_argument('--debug', action='store_const', const='debug', help="Enable debug mode")
 
 exclusive = parser.add_mutually_exclusive_group()
-exclusive.add_argument('-d', '--date', action='store_const', const='date', help="Get last synchronization date and duration")
-exclusive.add_argument('-s', '--scan', const='scan', action='store_const', help="Scan for new files in the manager")
-exclusive.add_argument('-p', '--push', const='push', action='store_const', help="Send all not synchronized files")
-exclusive.add_argument('-f', '--force', const='force', action='store_const', help="Force synchronization of all files (use with -m to only force in one node)")
-exclusive.add_argument('-l', '--files', metavar='FILE', dest='files', nargs='*', type=str, help="List the status of specified files (all if not specified)")
-exclusive.add_argument('-a', '--agents', metavar='AGENT', dest='agents', nargs='*', type=bool, help="List all agents")
-exclusive.add_argument('-n', '--nodes', metavar='NODE', dest='nodes', nargs='*', type=str, help="List the status of nodes (all if not specified)")
+exclusive.add_argument('-s', '--sync', const='sync', action='store_const', help="Force the nodes to initiate the synchronization process")
+exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
+exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
+exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List tnodes")
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
@@ -109,14 +93,11 @@ def pprint_table(data, headers, show_header=False):
     return table_str
 
 
-def _get_file_status(file_list, manager):
-    try:
-        all_files = get_file_status_all_managers(file_list, manager)
-    except socket.error as e:
-        print("Error connecting to wazuh cluster service: {0}".format(str(e)))
-        exit(1)
+def _get_file_status(file_list, node_list):
+    print("ToDo: Filters not implemented")
 
-    print pprint_table(data=all_files, headers=["Manager","Filename","Status"], show_header=True)
+    file_status = req_file_status_to_clients()
+    print(json.dumps(file_status, indent=4))
 
 def _get_agents_status():
     print pprint_table(data=get_agents_status(), headers=["ID", "IP", "Name", "Status", "Node name"], show_header=True)
@@ -132,15 +113,24 @@ def _get_nodes_status(node_list):
 
     print pprint_table(data=node_info, headers=["Node","Address","Type", "Status"], show_header=True)
 
+def _sync(node_list):
+    if node_list:
+        if type(node_list) is list:
+            response = force_clients_to_start_sync(node_list)
+        else:
+            response = force_clients_to_start_sync([node_list])
+    else:
+        response = force_clients_to_start_sync()
+
+
+    print(json.dumps(response, indent=4))
+
 def signal_handler(n_signal, frame):
     exit(1)
 
-def _get_last_sync():
-    date, duration = get_last_sync()
-
-    print pprint_table(data=[[date, str(duration)]], headers=["Date", "Duration (s)"], show_header=True)
 
 if __name__ == '__main__':
+
     # get arguments
     args = parser.parse_args()
 
@@ -158,64 +148,21 @@ if __name__ == '__main__':
         elif status['running'] == 'no':
             raise WazuhException(3000, "The cluster is not running")
 
-        if args.push:
-            try:
-                check_cluster_config(read_config())
-            except WazuhException as e:
-                raise e
-
-            sync(debug=args.debug)
-
-            logging.info("Synchronization successfully completed.")
-
-        elif args.manager is not None and args.files is None and args.force is None:
-            logging.error("Invalid argument: -m parameter requires -f (--force) or -l (--files)")
-
-        elif args.files is not None:
-            try:
-                _get_file_status(args.files, args.manager)
-            except WazuhException as e:
-                raise e
-
-        elif args.agents is not None:
-            try:
+        try:
+            if args.sync is not None:
+                _sync(args.filter_node)
+            elif args.list_files is not None:
+                _get_file_status(args.filter_file, args.filter_node)
+            elif args.list_agents is not None:
                 _get_agents_status()
-            except WazuhException as e:
-                raise e
-
-        elif args.nodes is not None:
-            _get_nodes_status(args.nodes)
-
-        elif args.force is not None:
-            try:
-                check_cluster_config(read_config())
-            except WazuhException as e:
-                raise e
-
-            if args.manager is None:
-                sync(debug=args.debug, force=True)
+            elif args.list_nodes is not None:
+                _get_nodes_status(args.filter_node)
             else:
-                for node in args.manager:
-                    sync_one_node(debug=args.debug, node=node, force=True)
+                parser.print_help()
+                exit()
+        except WazuhException as e:
+            raise e
 
-            logging.info("Forced synchronization successfully completed.")
-
-        elif args.scan is not None:
-            try:
-                scan_for_new_files()
-                logging.info("Scan successfully completed.")
-            except socket.error as e:
-                raise e
-
-        elif args.date is not None:
-            try:
-                _get_last_sync()
-            except socket.error as e:
-                raise e
-
-        else:
-            parser.print_help()
-            exit()
     except Exception as e:
         logging.error(str(e))
         if args.debug:
