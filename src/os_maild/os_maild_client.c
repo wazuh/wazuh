@@ -340,7 +340,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     char *timestamp = NULL;
     unsigned int rule_id = 0;
 
-    MailMsg *mail;
+    MailMsg *mail = NULL;
     cJSON *al_json;
     cJSON *json_object;
     cJSON *json_field;
@@ -359,7 +359,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     }
 
     if (!(rule = cJSON_GetObjectItem(al_json, "rule"), rule && (mail_flag = cJSON_GetObjectItem(rule, "mail"), mail_flag && cJSON_IsTrue(mail_flag))))
-        return NULL;
+        goto end;
 
     /* If e-mail came correctly, generate the e-mail body/subject */
     os_calloc(1, sizeof(MailMsg), mail);
@@ -648,10 +648,11 @@ end:
 
     if (end_ok) {
         return mail;
-    } else {
+    } else if (mail) {
         free(mail->body);
         free(mail->subject);
         free(mail);
-        return NULL;
     }
+
+    return NULL;
 }
