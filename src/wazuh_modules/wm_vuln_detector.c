@@ -470,22 +470,21 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
 
     for (i = 1, agents_it = agents;; i++) {
         if (wm_vulnerability_detector_get_software_info(agents_it, db)) {
-            mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR);
-            return OS_INVALID;
-        }
-
-        if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
-            wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
-            i = 0;
-            if (sqlite3_prepare_v2(db, VU_AGENTS_TABLE, -1, &stmt, NULL) != SQLITE_OK) {
+            mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR, agents_it->agent_id);
+        } else {
+            if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
+                wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
+                i = 0;
+                if (sqlite3_prepare_v2(db, VU_AGENTS_TABLE, -1, &stmt, NULL) != SQLITE_OK) {
+                        sqlite3_finalize(stmt);
+                        return wm_vulnerability_detector_sql_error(db);
+                }
+                if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
                     sqlite3_finalize(stmt);
                     return wm_vulnerability_detector_sql_error(db);
-            }
-            if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+                }
                 sqlite3_finalize(stmt);
-                return wm_vulnerability_detector_sql_error(db);
             }
-            sqlite3_finalize(stmt);
         }
         if (agents_it->next) {
             agents_it = agents_it->next;
