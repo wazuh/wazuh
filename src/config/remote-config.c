@@ -34,6 +34,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_remote_ipv6 = "ipv6";
     const char *xml_remote_connection = "connection";
     const char *xml_remote_lip = "local_ip";
+    const char * xml_queue_size = "queue_size";
 
     logr = (remoted *)d1;
 
@@ -190,6 +191,20 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             if (!OS_IsValidIP(node[i]->content, logr->denyips[deny_size - 2])) {
                 merror(INVALID_IP, node[i]->content);
                 return (OS_INVALID);
+            }
+        } else if (strcmp(node[i]->element, xml_queue_size) == 0) {
+            char * end;
+
+            logr->queue_size = strtol(node[i]->content, &end, 10);
+
+            if (*end || logr->queue_size < 1) {
+                merror("Invalid value for option '<%s>'", xml_queue_size);
+                return OS_INVALID;
+            }
+
+            if (*end) {
+                merror("Invalid value for option '<%s>'", xml_queue_size);
+                return OS_INVALID;
             }
         } else {
             merror(XML_INVELEM, node[i]->element);
