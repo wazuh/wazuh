@@ -443,8 +443,8 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
 
         # Parse XML to JSON
         data = _agentconf2json(xml_data)
-    except:
-        raise WazuhException(1101)
+    except Exception as e:
+        raise WazuhException(1101, str(e))
 
 
     return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
