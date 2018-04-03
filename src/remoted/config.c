@@ -56,3 +56,40 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     return (1);
 }
+
+
+cJSON *getRemoteConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *rem = cJSON_CreateArray();
+    unsigned int i,j;
+
+    if(logr.conn) {
+        for(i=0;logr.conn[i];i++){
+            cJSON *conn = cJSON_CreateObject();
+            if (logr.conn[i] == SYSLOG_CONN) cJSON_AddStringToObject(conn,"connection","syslog");
+            else if (logr.conn[i] == SECURE_CONN) cJSON_AddStringToObject(conn,"connection","secure");
+            if (logr.ipv6 && logr.ipv6[i]) cJSON_AddStringToObject(conn,"ipv6","yes"); else cJSON_AddStringToObject(conn,"ipv6","no");
+            if (logr.lip && logr.lip[i]) cJSON_AddStringToObject(conn,"local_ip",logr.lip[i]);
+            if (logr.allowips && (int)i!=logr.position) {
+                cJSON *list = cJSON_CreateArray();
+                for(j=0;logr.allowips[j];j++){
+                    cJSON_AddItemToArray(list,cJSON_CreateString(logr.allowips[j]->ip));
+                }
+                cJSON_AddItemToObject(conn,"allowed-ips",list);
+            }
+            if (logr.denyips && (int)i!=logr.position) {
+                cJSON *list = cJSON_CreateArray();
+                for(j=0;logr.denyips[j];j++){
+                    cJSON_AddItemToArray(list,cJSON_CreateString(logr.denyips[j]->ip));
+                }
+                cJSON_AddItemToObject(conn,"denied-ips",list);
+            }
+            cJSON_AddItemToArray(rem,conn);
+        }
+    }
+
+    cJSON_AddItemToObject(root,"remote",rem);
+
+    return root;
+}
