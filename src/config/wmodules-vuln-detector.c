@@ -200,7 +200,8 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                                 if (version[k] == ',' || out) {
                                     version[k] = '\0';
                                     if (!strcmp(version, "5")) {
-                                        vulnerability_detector->flags.u_flags.rh5 = 1;
+                                        mwarn("Vulnerability detection is not available for agents with CentOS/RedHat 5");
+                                        //vulnerability_detector->flags.u_flags.rh5 = 1;
                                     } else if (!strcmp(version, "6")) {
                                         vulnerability_detector->flags.u_flags.rh6 = 1;
                                     } else if (!strcmp(version, "7")) {

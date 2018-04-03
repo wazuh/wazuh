@@ -2050,9 +2050,9 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                                 os_strdup(VU_RHEL7, agents->OS);
                             } else if (strstr(buffer, " 6")) {
                                 os_strdup(VU_RHEL6, agents->OS);
-                            } else if (strstr(VU_RHEL5, " 5")) {
+                            } /*else if (strstr(VU_RHEL5, " 5")) {
                                 os_strdup(VU_RHEL5, agents->OS);
-                            } else {
+                            }*/ else {
                                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_RHEL, agents->agent_name);
                                 if (agents = skip_agent(agents, agents_software), !agents) {
                                     break;
@@ -2065,9 +2065,9 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                                 os_strdup(VU_RHEL7, agents->OS);
                             } else if (strstr(buffer, " 6")) {
                                 os_strdup(VU_RHEL6, agents->OS);
-                            } else if (strstr(buffer, " 5")) {
+                            } /*else if (strstr(buffer, " 5")) {
                                 os_strdup(VU_RHEL5, agents->OS);
-                            } else {
+                            }*/ else {
                                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_CENTOS, agents->agent_name);
                                 if (agents = skip_agent(agents, agents_software), !agents) {
                                     break;
