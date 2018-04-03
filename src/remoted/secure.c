@@ -18,6 +18,9 @@
 #include "os_net/os_net.h"
 #include "remoted.h"
 
+// Message handler thread
+static void * rem_handler_main(__attribute__((unused)) void * args);
+
 /* Handle each message received */
 static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client);
 
@@ -51,6 +54,9 @@ void HandleSecure()
     /* Initialize manager */
     manager_init();
 
+    // Initialize messag equeue
+    rem_msginit(logr.queue_size);
+
     /* Create Active Response forwarder thread */
     w_create_thread(update_shared_files, NULL);
 
@@ -72,6 +78,9 @@ void HandleSecure()
             w_create_thread(wait_for_msgs, NULL);
         }
     }
+
+    // Create message handler thread
+    w_create_thread(rem_handler_main, NULL);
 
     /* Connect to the message queue
      * Exit if it fails.
@@ -236,7 +245,7 @@ void HandleSecure()
 #endif /* __linux__ */
                         _close_sock(&keys, sock_client);
                     } else {
-                        HandleSecureMessage(buffer, recv_b, &peer_info, sock_client);
+                        rem_msgpush(buffer, recv_b, &peer_info, sock_client);
                     }
                 }
             }
@@ -247,10 +256,26 @@ void HandleSecure()
             if (recv_b <= 0) {
                 continue;
             } else {
-                HandleSecureMessage(buffer, recv_b, &peer_info, -1);
+                rem_msgpush(buffer, recv_b, &peer_info, -1);
             }
         }
     }
+}
+
+// Message handler thread
+void * rem_handler_main(__attribute__((unused)) void * args) {
+    message_t * message;
+    char buffer[OS_MAXSTR + 1] = "";
+    mdebug1("Message handler thread started.");
+
+    while (1) {
+        message = rem_msgpop();
+        memcpy(buffer, message->buffer, message->size);
+        HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        rem_msgfree(message);
+    }
+
+    return NULL;
 }
 
 static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client) {
@@ -369,7 +394,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
              keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
 
-             mdebug1("000000000000000000000000000000 '%s' _ '%s'", tmp_msg, srcmsg);
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
      */
