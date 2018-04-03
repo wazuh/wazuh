@@ -126,6 +126,10 @@ void rem_inc_ctrl_msg();
 void rem_inc_msg_sent();
 void rem_inc_discarded();
 
+// Read config
+size_t rem_getconfig(const char * section, char * output, size_t size);
+cJSON *getRemoteConfig(void);
+
 /** Global variables **/
 
 extern keystore keys;
