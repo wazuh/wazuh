@@ -12,6 +12,8 @@
 /* Prototypes */
 static void help_csyslogd(void) __attribute__((noreturn));
 
+/* Database Structure */
+SyslogConfig **syslog_config;
 
 /* Print help statement */
 static void help_csyslogd()
@@ -44,9 +46,6 @@ int main(int argc, char **argv)
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
-
-    /* Database Structure */
-    SyslogConfig **syslog_config;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -132,6 +131,9 @@ int main(int argc, char **argv)
     if (test_config) {
         exit(0);
     }
+
+    // Start com request thread
+    w_create_thread(csyscom_main, NULL);
 
     if (!run_foreground) {
         /* Going on daemon mode */
