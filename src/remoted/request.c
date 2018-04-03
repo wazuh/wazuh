@@ -183,6 +183,7 @@ void * req_dispatch(req_node_t * node) {
     char * payload = NULL;
     char * _payload;
     char response[REQ_RESPONSE_LENGTH];
+    char output[OS_MAXSTR];
     struct timespec timeout;
     struct timeval now = { 0, 0 };
 
@@ -200,100 +201,118 @@ void * req_dispatch(req_node_t * node) {
     *_payload = '\0';
     _payload++;
 
-    os_strdup(node->buffer, agentid);
-    ldata = strlen(CONTROL_HEADER) + strlen(HC_REQUEST) + strlen(node->counter) + 1 + node->length - (_payload - node->buffer);
-    os_malloc(ldata + 1, payload);
-    ploff = snprintf(payload, ldata, CONTROL_HEADER HC_REQUEST "%s ", node->counter);
-    memcpy(payload + ploff, _payload, ldata - ploff);
-    payload[ldata] = '\0';
+    if (strcmp(node->buffer, "getconfig") == 0) {
 
-    // Drain payload
-
-    free(node->buffer);
-    node->buffer = NULL;
-    node->length = 0;
-
-    mdebug2("Sending request: '%s'", payload);
-
-    for (attempts = 0; attempts < max_attempts; attempts++) {
-
-        // Try to send message
-
-        if (send_msg(agentid, payload, ldata)) {
-            merror("Sending request to agent '%s'.", agentid);
-
-            if (send(node->sock, WR_SEND_ERROR, strlen(WR_SEND_ERROR), 0) < 0) {
-                merror("Couldn't report sending error to client.");
-            }
+        if (!_payload){
+            merror("request getconfig needs arguments.");
+            strcpy(output, "err request getconfig needs arguments");
             goto cleanup;
         }
+        node->length = rem_getconfig(_payload, output, sizeof(output));
 
-        // Wait for ACK or response, only in UDP mode
+        if (OS_SendSecureTCP(node->sock, node->length, output) < 0) {
+            merror("At req_dispatch(): send(): %s", strerror(errno));
+            goto cleanup;
+        }
+    }
+    else {
 
-        if (logr.proto[logr.position] == UDP_PROTO) {
-            gettimeofday(&now, NULL);
-            nsec = now.tv_usec * 1000 + rto_msec * 1000000;
-            timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
-            timeout.tv_nsec = nsec % 1000000000;
+        os_strdup(node->buffer, agentid);
+        ldata = strlen(CONTROL_HEADER) + strlen(HC_REQUEST) + strlen(node->counter) + 1 + node->length - (_payload - node->buffer);
+        os_malloc(ldata + 1, payload);
+        ploff = snprintf(payload, ldata, CONTROL_HEADER HC_REQUEST "%s ", node->counter);
+        memcpy(payload + ploff, _payload, ldata - ploff);
+        payload[ldata] = '\0';
 
-            if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0 && node->buffer) {
+        // Drain payload
+
+        free(node->buffer);
+        node->buffer = NULL;
+        node->length = 0;
+
+        mdebug2("Sending request: '%s'", payload);
+
+        for (attempts = 0; attempts < max_attempts; attempts++) {
+
+            // Try to send message
+
+            if (send_msg(agentid, payload, ldata)) {
+                merror("Sending request to agent '%s'.", agentid);
+
+                if (send(node->sock, WR_SEND_ERROR, strlen(WR_SEND_ERROR), 0) < 0) {
+                    merror("Couldn't report sending error to client.");
+                }
+                goto cleanup;
+            }
+
+            // Wait for ACK or response, only in UDP mode
+
+            if (logr.proto[logr.position] == UDP_PROTO) {
+                gettimeofday(&now, NULL);
+                nsec = now.tv_usec * 1000 + rto_msec * 1000000;
+                timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
+                timeout.tv_nsec = nsec % 1000000000;
+
+                if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0 && node->buffer) {
+                    break;
+                }
+            } else {
+                // TCP handles ACK by itself
                 break;
             }
-        } else {
-            // TCP handles ACK by itself
-            break;
+
+            mdebug2("Timeout for waiting ACK from agent '%s', resending.", agentid);
         }
 
-        mdebug2("Timeout for waiting ACK from agent '%s', resending.", agentid);
-    }
+        if (attempts == max_attempts) {
+            merror("Couldn't send request to agent '%s': number of attempts exceeded.", agentid);
 
-    if (attempts == max_attempts) {
-        merror("Couldn't send request to agent '%s': number of attempts exceeded.", agentid);
+            if (send(node->sock, WR_ATTEMPT_ERROR, strlen(WR_ATTEMPT_ERROR), 0) < 0) {
+                merror("Couldn't report error about number of attempts exceeded to client.");
+            }
 
-        if (send(node->sock, WR_ATTEMPT_ERROR, strlen(WR_ATTEMPT_ERROR), 0) < 0) {
-            merror("Couldn't report error about number of attempts exceeded to client.");
-        }
-
-        goto cleanup;
-    }
-
-    // If buffer is ACK, wait for response
-
-    for (attempts = 0; attempts < max_attempts && (!node->buffer || IS_ACK(node->buffer)); attempts++) {
-        gettimeofday(&now, NULL);
-        timeout.tv_sec = now.tv_sec + response_timeout;
-        timeout.tv_nsec = now.tv_usec * 1000;
-
-        if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0) {
-            continue;
-        } else {
-            merror("Response timeout for request counter '%s'.", node->counter);
-            send(node->sock, WR_TIMEOUT_ERROR, strlen(WR_TIMEOUT_ERROR), 0);
             goto cleanup;
         }
-    }
 
-    if (attempts == max_attempts) {
-        merror("Couldn't get response from agent '%s': number of attempts exceeded.", agentid);
-        send(node->sock, WR_ATTEMPT_ERROR, strlen(WR_ATTEMPT_ERROR), 0);
-        goto cleanup;
-    }
+        // If buffer is ACK, wait for response
 
-    // Send ACK, only in UDP mode
+        for (attempts = 0; attempts < max_attempts && (!node->buffer || IS_ACK(node->buffer)); attempts++) {
+            gettimeofday(&now, NULL);
+            timeout.tv_sec = now.tv_sec + response_timeout;
+            timeout.tv_nsec = now.tv_usec * 1000;
 
-    if (logr.proto[logr.position] == UDP_PROTO) {
-        // Example: #!-req 16 ack
-        mdebug2("req_dispatch(): Sending ack (%s).", node->counter);
-        snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);
-        send_msg(agentid, response, -1);
-    }
+            if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0) {
+                continue;
+            } else {
+                merror("Response timeout for request counter '%s'.", node->counter);
+                send(node->sock, WR_TIMEOUT_ERROR, strlen(WR_TIMEOUT_ERROR), 0);
+                goto cleanup;
+            }
+        }
 
-    // Send response to local peer
+        if (attempts == max_attempts) {
+            merror("Couldn't get response from agent '%s': number of attempts exceeded.", agentid);
+            send(node->sock, WR_ATTEMPT_ERROR, strlen(WR_ATTEMPT_ERROR), 0);
+            goto cleanup;
+        }
 
-    mdebug2("Sending response: '%s'", node->buffer);
+        // Send ACK, only in UDP mode
 
-    if (send(node->sock, node->buffer, node->length, 0) != (ssize_t)node->length) {
-        merror("At req_dispatch(): send(): %s", strerror(errno));
+        if (logr.proto[logr.position] == UDP_PROTO) {
+            // Example: #!-req 16 ack
+            mdebug2("req_dispatch(): Sending ack (%s).", node->counter);
+            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);
+            send_msg(agentid, response, -1);
+        }
+
+        // Send response to local peer
+
+        mdebug2("Sending response: '%s'", node->buffer);
+
+        if (send(node->sock, node->buffer, node->length, 0) != (ssize_t)node->length) {
+            merror("At req_dispatch(): send(): %s", strerror(errno));
+        }
+
     }
 
 cleanup:
@@ -309,8 +328,8 @@ cleanup:
 
     w_mutex_unlock(&mutex_table);
     req_free(node);
-    free(agentid);
-    free(payload);
+    if (agentid) free(agentid);
+    if (payload) free(payload);
     req_pool_post();
     return NULL;
 }
@@ -378,4 +397,26 @@ int req_pool_wait() {
 
     w_mutex_unlock(&mutex_pool);
     return wait_ok;
+}
+
+
+size_t rem_getconfig(const char * section, char * output, size_t size) {
+
+    cJSON *cfg;
+
+    if (strcmp(section, "remote") == 0){
+        if (cfg = getRemoteConfig(), cfg) {
+            snprintf(output, size, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    } else {
+        goto error;
+    }
+error:
+    merror("At request getconfig: Could not get '%s' section", section);
+    strcpy(output, "err Could not get requested section");
+    return strlen(output);
 }
