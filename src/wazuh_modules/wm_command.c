@@ -43,8 +43,6 @@ void * wm_command_main(wm_command_t * command) {
     }
 #endif
 
-    int command_timeout = getDefine_Int("wazuh_command", "timeout", 0, 1800);
-
     mtinfo(WM_COMMAND_LOGTAG, "Module command:%s started", command->tag);
 
     // Set extended tag
@@ -94,7 +92,7 @@ void * wm_command_main(wm_command_t * command) {
         // Get time and execute
         time_start = time(NULL);
 
-        switch (wm_exec(command->command, command->ignore_output ? NULL : &output, &status, command_timeout)) {
+        switch (wm_exec(command->command, command->ignore_output ? NULL : &output, &status, command->timeout)) {
         case 0:
             if (status > 0) {
                 mtwarn(WM_COMMAND_LOGTAG, "Command '%s' returned exit code %d.", command->tag, status);
