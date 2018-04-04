@@ -266,7 +266,7 @@ int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 int wdb_package_update(wdb_t * wdb, const char * scan_id);
 
 // Delete Packages info about previous scan from DB.
-int wdb_program_delete(wdb_t * wdb, const char * scan_id);
+int wdb_package_delete(wdb_t * wdb, const char * scan_id);
 
 // Insert process info tuple. Return 0 on success or -1 on error.
 int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor);
