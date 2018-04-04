@@ -2034,9 +2034,9 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                                 os_strdup(VU_XENIAL, agents->OS);
                             } else if (strstr(buffer, " 14")) {
                                 os_strdup(VU_TRUSTY, agents->OS);
-                            } else if (strstr(buffer, " 12")) {
+                            } /*else if (strstr(buffer, " 12")) {
                                 os_strdup(VU_PRECISE, agents->OS);
-                            } else {
+                            }*/ else {
                                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, VU_UBUNTU, agents->agent_name);
                                 if (agents = skip_agent(agents, agents_software), !agents) {
                                     break;
