@@ -54,6 +54,7 @@
 #define SOCK_RECV_TIME0 300             /* Socket receiving timeout (s) */
 #define MIN_ORDER_SIZE  10              /* Minimum size of orders array */
 #define KEEPALIVE_SIZE  700             /* Random keepalive string size */
+#define MAX_DYN_STR     4194304         /* Max message size received 4MiB */
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
