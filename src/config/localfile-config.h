@@ -24,6 +24,7 @@ typedef struct _logsocket {
     int mode;
     char *prefix;
     int socket;
+    time_t last_attempt;
 } logsocket;
 
 /* Logreader config */

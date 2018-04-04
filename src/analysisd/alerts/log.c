@@ -124,7 +124,7 @@ void OS_LogOutput(Eventinfo *lf)
         "** Alert %ld.%ld:%s - %s\n"
         "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
         "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%.1256s\n",
-        (long int)lf->time,
+        (long int)lf->time.tv_sec,
         __crt_ftell,
         lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
         lf->generated_rule->group,
@@ -297,7 +297,7 @@ void OS_Log(Eventinfo *lf)
             "** Alert %ld.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
             "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%.1256s\n",
-            (long int)lf->time,
+            (long int)lf->time.tv_sec,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
             lf->generated_rule->group,
@@ -451,7 +451,7 @@ void OS_CustomLog(const Eventinfo *lf, const char *format)
     /* Replace all the tokens */
     os_strdup(format, log);
 
-    snprintf(tmp_buffer, 1024, "%ld", (long int)lf->time);
+    snprintf(tmp_buffer, 1024, "%ld", (long int)lf->time.tv_sec);
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_TIMESTAMP], tmp_buffer);
     free(log);
 

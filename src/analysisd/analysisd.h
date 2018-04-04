@@ -23,7 +23,8 @@ extern char prev_month[4];
 extern int __crt_hour;
 extern int __crt_wday;
 
-extern time_t c_time; /* Current time of event. Used everywhere */
+extern struct timespec c_timespec; /* Current time of event. Used everywhere */
+#define c_time c_timespec.tv_sec
 
 /* Local host name */
 extern char __shost[512];
