@@ -283,9 +283,13 @@ int wdb_remove_agent_db(int id, const char * name) {
 
     if (!remove(path)) {
         snprintf(path_aux, OS_FLSIZE, "%s-shm", path);
-        remove(path_aux);
+        if (remove(path_aux) < 0) {
+            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
+        }
         snprintf(path_aux, OS_FLSIZE, "%s-wal", path);
-        remove(path_aux);
+        if (remove(path_aux) < 0) {
+            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
+        }
         return 0;
     } else
         return -1;

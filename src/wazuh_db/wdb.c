@@ -221,9 +221,10 @@ int wdb_create_agent_db2(const char * agent_id) {
     fclose(source);
     fclose(dest);
 
-    if (result < 0)
+    if (result < 0) {
         unlink(path);
         return -1;
+    }
 
     if (chmod(path, 0640) < 0) {
         merror(CHMOD_ERROR, path, errno, strerror(errno));
