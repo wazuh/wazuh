@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.2.2]
 
+### Added
+
+- Created an input queue for Remoted to prevent agent connection starvation. ([#509](https://github.com/wazuh/wazuh/pull/509))
+
 ### Changed
 
 - Updated Slack integration. ([#443](https://github.com/wazuh/wazuh/pull/443))
