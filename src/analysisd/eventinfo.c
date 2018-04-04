@@ -457,6 +457,8 @@ void Zero_Eventinfo(Eventinfo *lf)
 {
     lf->log = NULL;
     lf->full_log = NULL;
+    lf->log_after_parent = NULL;
+    lf->log_after_prematch = NULL;
     lf->agent_id = NULL;
     lf->hostname = NULL;
     lf->program_name = NULL;
