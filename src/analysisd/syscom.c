@@ -10,9 +10,10 @@
 
 #include <shared.h>
 #include "os_net/os_net.h"
+#include "analysisd.h"
 #include "config.h"
 
-size_t syscom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output) {
+size_t syscom_dispatch(char *command, char *output) {
 
     const char *rcv_comm = command;
     char *rcv_args = NULL;
@@ -90,15 +91,15 @@ error:
 void * syscom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
-    char buffer[OS_MAXSTR + 1];
+    char *buffer = NULL;
     char response[OS_MAXSTR + 1];
     ssize_t length;
     fd_set fdset;
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR ANLSYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s'. Closing local server.", ANLSYS_LOCAL_SOCK);
+    if (sock = OS_BindUnixDomain(ANLSYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        merror("Unable to bind to socket '%s'. Closing local server: %s (%d)", ANLSYS_LOCAL_SOCK,strerror(errno),errno);
         return NULL;
     }
 
@@ -128,9 +129,9 @@ void * syscom_main(__attribute__((unused)) void * arg) {
             continue;
         }
 
-        switch (length = recv(peer, buffer, OS_MAXSTR, 0), length) {
+        switch (length = OS_RecvSecureTCP_Dynamic(peer, &buffer), length) {
         case -1:
-            merror("At syscom_main(): recv(): %s", strerror(errno));
+            merror("At syscom_main(): OS_RecvSecureTCP_Dynamic(): %s", strerror(errno));
             break;
 
         case 0:
@@ -138,14 +139,19 @@ void * syscom_main(__attribute__((unused)) void * arg) {
             close(peer);
             break;
 
+        case OS_MAXLEN:
+            merror("Received message > %i", MAX_DYN_STR);
+            close(peer);
+            break;
+
         default:
-            buffer[length] = '\0';
-            length = syscom_dispatch(buffer, length, response);
-            send(peer, response, length, 0);
+            length = syscom_dispatch(buffer, response);
+            OS_SendSecureTCP(peer, length, response);
             close(peer);
         }
     }
 
+    if (buffer) free(buffer);
     mdebug1("Local server thread finished.");
 
     close(sock);
