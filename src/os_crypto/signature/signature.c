@@ -81,7 +81,11 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
 
     // Hash of file content
 
-    offset = ftell(filein);
+    if (offset = ftell(filein), offset < 0) {
+        merror(FTELL_ERROR, source, errno, strerror(errno));
+        goto cleanup;
+    }
+
     SHA256_Init(&hash);
 
     while (length = fread(buffer, 1, BUFLEN, filein), length > 0) {
@@ -131,7 +135,10 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
-    fseek(filein, offset, SEEK_SET);
+    if (fseek(filein, offset, SEEK_SET) < 0) {
+        merror(FSEEK_ERROR, source, errno, strerror(errno));
+        goto cleanup;
+    }
 
     while (length = fread(buffer, 1, BUFLEN, filein), length > 0) {
         if (fwrite(buffer, 1, length, fileout) != (size_t)length) {

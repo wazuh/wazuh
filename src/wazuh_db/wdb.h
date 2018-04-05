@@ -180,7 +180,7 @@ int wdb_create_agent_db2(const char * agent_id);
 int wdb_fill_metadata(sqlite3 * db);
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
-int wdb_remove_agent_db(int id);
+int wdb_remove_agent_db(int id, const char * name);
 
 /* Prepare SQL query with availability waiting */
 int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);

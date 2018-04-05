@@ -65,6 +65,13 @@ typedef enum distribution{
     DIS_UNKNOW
 } distribution;
 
+typedef enum vu_logic {
+    VU_VULNERABLE,
+    VU_NOT_VULNERABLE,
+    VU_EQUAL,
+    VU_NOT_FIXED
+} vu_logic;
+
 typedef struct update_flags {
     unsigned int update:1;
     unsigned int update_ubuntu:1;

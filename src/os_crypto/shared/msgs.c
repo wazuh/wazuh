@@ -580,7 +580,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     c_orig_size += length;
     c_comp_size += cmp_size;
     if (evt_count > _s_comp_print) {
-        minfo("Event count after '%u': %lu->%lu (%lu%%)",
+        mdebug1("Event count after '%u': %lu->%lu (%lu%%)",
                 evt_count,
                 (unsigned long)c_orig_size,
                 (unsigned long)c_comp_size,

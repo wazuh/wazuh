@@ -21,6 +21,8 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *node_name = "node_name";
     static const char *node_type = "node_type";
     static const char *key = "key";
+    static const char *socket_timeout = "socket_timeout";
+    static const char *connection_timeout = "connection_timeout";
     static const char *interval = "interval";
     static const char *nodes = "nodes";
     static const char *hidden = "hidden";
@@ -47,6 +49,8 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             os_strdup(node[i]->content, Config->node_name);
         } else if (!strcmp(node[i]->element, node_type)) {
         } else if (!strcmp(node[i]->element, key)) {
+        } else if (!strcmp(node[i]->element, socket_timeout)) {
+        } else if (!strcmp(node[i]->element, connection_timeout)) {
         } else if (!strcmp(node[i]->element, disabled)) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 disable_cluster_info = 1;

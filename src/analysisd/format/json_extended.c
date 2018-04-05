@@ -15,7 +15,7 @@
 void W_ParseJSON(cJSON* root, const Eventinfo* lf)
 {
     // Parse hostname & Parse AGENTIP
-    if(lf->hostname) {
+    if(lf->full_log && lf->hostname) {
         W_JSON_ParseHostname(root, lf);
         W_JSON_ParseAgentIP(root, lf);
     }
