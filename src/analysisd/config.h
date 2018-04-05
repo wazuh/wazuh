@@ -30,8 +30,5 @@ cJSON *getGlobalConfig(void);
 cJSON *getARManagerConfig(void);
 cJSON *getARCommandsConfig(void);
 cJSON *getAlertsConfig(void);
-void * syscom_main(__attribute__((unused)) void * arg) ;
-size_t syscom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output);
-size_t syscom_getconfig(const char * section, char * output);
 
 #endif /* _CONFIG__H */
