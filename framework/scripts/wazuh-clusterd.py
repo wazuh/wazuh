@@ -64,7 +64,7 @@ try:
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
                         filename="{0}/logs/cluster.log".format(common.ossec_path))
 except Exception as e:
-    print("wazuh-clusterd: Python 2.7 required. Exiting. {}".format(str(e)))
+    print("wazuh-clusterd: Python 2.7 required. Exiting. {0}".format(str(e)))
     exit()
 
 class WazuhClusterHandler(asynchat.async_chat):
@@ -126,7 +126,7 @@ class WazuhClusterHandler(asynchat.async_chat):
                     clients_to_restart.append(self.addr)
 
                 self.finished_clients.value += 1
-                logging.debug("Finished clients: {} of {}".format(self.finished_clients.value, self.connected_clients.value))
+                logging.debug("Finished clients: {0} of {1}".format(self.finished_clients.value, self.connected_clients.value))
                 # execute an independent process to "crontab" the sync interval
                 if self.finished_clients.value == self.connected_clients.value:
                     self.finished_clients.value = 0
@@ -144,7 +144,7 @@ class WazuhClusterHandler(asynchat.async_chat):
         if t == socket.error and (v.args[0] == socket.errno.EPIPE or
                                   v.args[0] == socket.errno.EBADF):
             # there is an error in the connection with the other node.
-            logging.error("Error in connection with {}: {}".format(self.addr, str(v)))
+            logging.error("Error in connection with {0}: {1}".format(self.addr, str(v)))
             self.handle_close()
             self.close()
             self.socket.close()
@@ -172,7 +172,7 @@ class WazuhClusterHandler(asynchat.async_chat):
             except socket.error as e:
                 self.socket.close()
                 raise e
-        logging.debug("SERVER: Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
+        logging.debug("SERVER: Sent {0}/{1} bytes to {2}".format(i, msg_len, self.addr))
         self.handle_close()
 
 
@@ -231,16 +231,16 @@ def restart_manager():
         except CalledProcessError as e:
             logging.warning("Could not restart manager: {0}.".format(str(e)))
         except Exception as e:
-            logging.error("Error restarting manager: {}".format(e))
+            logging.error("Error restarting manager: {0}".format(e))
 
 
 def crontab_sync_master(interval, config_cluster, requests_queue, connected_clients, finished_clients, clients_to_restart, debug):
     def sleep_handler(n_signal, frame):
-        logging.debug("Resetting connection of clients: {}".format(', '.join(clients_to_restart)))
+        logging.debug("Resetting connection of clients: {0}".format(', '.join(clients_to_restart)))
         while clients_to_restart:
             del common.cluster_connections[clients_to_restart.pop()]
         alarm(0)
-        logging.info("Sleeping for {}{}...".format(interval_number, interval_measure))
+        logging.info("Sleeping for {0}{1}...".format(interval_number, interval_measure))
         sleep(sleep_time)
 
     interval_number  = int(search('\d+', interval).group(0))
@@ -254,7 +254,7 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
             n_retries = 0
             max_interruptions = 100
             n_interruptions = 0
-            logging.debug("Elements in requests queue: {}".format(requests_queue.items()))
+            logging.debug("Elements in requests queue: {0}".format(requests_queue.items()))
             if len(requests_queue.values()) == 0 or not reduce(or_, requests_queue.values()):
                 logging.info("Crontab: starting to sync")
                 while n_retries <= max_retries:
@@ -267,7 +267,7 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
                         else:
                             n_interruptions += 1
                             if max_interruptions >= n_interruptions:
-                                logging.error("Reached maximum number of EINTR errors: {}. Sleeping for 60s.".format(str(e)))
+                                logging.error("Reached maximum number of EINTR errors: {0}. Sleeping for 60s.".format(str(e)))
                                 sleep(60)
                                 n_interruptions = 0
                                 continue
@@ -276,7 +276,7 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
                     except Exception as e:
                         exc_type, exc_value, exc_traceback = exc_info()
                         filename, line_number, module, line_content = extract_tb(exc_traceback)[-2]
-                        logging.error("Error {} synchronizing information ({}:{}): {}".format(exc_type, filename, line_number, exc_value.args[0]))
+                        logging.error("Error {0} synchronizing information ({1}:{2}): {3}".format(exc_type, filename, line_number, exc_value.args[0]))
                         n_retries += 1
                         if n_retries < max_retries:
                             sleep(5)
@@ -304,14 +304,14 @@ def crontab_sync_master(interval, config_cluster, requests_queue, connected_clie
                 alarm(common.cluster_internal_timeout)
                 pause()
         except Exception as e:
-            error_msg = "Error in cluster master process: {}".format(str(e))
+            error_msg = "Error in cluster master process: {0}".format(str(e))
             if debug:
                 exc_buffer = BytesIO()
                 print_exc(file=exc_buffer)
                 debug_info = exc_buffer.getvalue()
                 error_msg += '\n' + debug_info
             logging.error(error_msg)
-            logging.info("Sleeping for {}s".format(sleep_time))
+            logging.info("Sleeping for {0}s".format(sleep_time))
             sleep(sleep_time)
             continue
 
@@ -331,7 +331,7 @@ def crontab_sync_client(config_cluster, restart_after_sync, debug):
         except Exception as e:
             exc_type, exc_value, exc_traceback = exc_info()
             filename, line_number, module, line_content = extract_tb(exc_traceback)[-2]
-            logging.error("Error {} synchronizing information ({}:{}): {}".format(exc_type, filename, line_number, exc_value.args[0]))
+            logging.error("Error {0} synchronizing information ({1}:{2}): {3}".format(exc_type, filename, line_number, exc_value.args[0]))
 
         if restart_after_sync.value == 'T':
             restart_after_sync.value = 'F'
@@ -346,7 +346,7 @@ def crontab_sync_client(config_cluster, restart_after_sync, debug):
             error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
                             socket_timeout=int(config_cluster['socket_timeout']),
                             connection_timeout=int(config_cluster['connection_timeout']),
-                            data="finished {}".format('0'.zfill(common.cluster_protocol_plain_size - len("finished "))))
+                            data="finished {0}".format('0'.zfill(common.cluster_protocol_plain_size - len("finished "))))
 
     try:
         cluster_socket = connect_to_db_socket()
@@ -365,7 +365,7 @@ def crontab_sync_client(config_cluster, restart_after_sync, debug):
                 error, response = send_request(host=master, port=config_cluster['port'], key=config_cluster['key'],
                                     socket_timeout=int(config_cluster['socket_timeout']),
                                     connection_timeout=int(config_cluster['connection_timeout']),
-                                    data="finished {}".format('1'.zfill(common.cluster_protocol_plain_size - len("finished "))))
+                                    data="finished {0}".format('1'.zfill(common.cluster_protocol_plain_size - len("finished "))))
             except IndexError:
                 logging.error("Master node is not reachable")
         else:
@@ -377,7 +377,7 @@ def crontab_sync_client(config_cluster, restart_after_sync, debug):
         while True:
             pause()
     except Exception as e:
-        error_msg = "Error in cluster client process: {}".format(str(e))
+        error_msg = "Error in cluster client process: {0}".format(str(e))
         if debug:
             exc_buffer = BytesIO()
             print_exc(file=exc_buffer)
@@ -412,19 +412,19 @@ def signal_handler(n_signal, frame):
                 # remove pid files
                 delete_pid("wazuh-clusterd", getpid())
             except Exception as e:
-                logging.error("Error killing child process: {}".format(str(e)))
+                logging.error("Error killing child process: {0}".format(str(e)))
                 if args.d:
                     raise
         else:
             for connections in common.cluster_connections.values():
                 try:
-                    logging.debug("Closing socket {}...".format(connections.socket.getpeername()))
+                    logging.debug("Closing socket {0}...".format(connections.socket.getpeername()))
                     connections.socket.close()
                 except socket.error as e:
                     if e.errno == socket.errno.EBADF:
-                        logging.debug("Socket already closed: {}".format(str(e)))
+                        logging.debug("Socket already closed: {0}".format(str(e)))
                     else:
-                        logging.error("Could not close socket: {}".format(str(e)))
+                        logging.error("Could not close socket: {0}".format(str(e)))
     exit(1)
 
 
@@ -537,6 +537,6 @@ if __name__ == '__main__':
         asyncore.loop()
 
     except Exception as e:
-        logging.error("Error in wazuh-clusterd: {}".format(str(e)))
+        logging.error("Error in wazuh-clusterd: {0}".format(str(e)))
         if args.d:
             raise
