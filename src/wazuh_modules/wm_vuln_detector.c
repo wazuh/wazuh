@@ -138,15 +138,12 @@ int wm_checks_package_vulnerability(char *version, const char *operation, char *
             char *cversion_it, *crelease_it;
 
             // Copy the original values
-            if (size = snprintf(version_cl, KEY_SIZE, "%s", version), size < 1) {
+            if (size = snprintf(version_cl, KEY_SIZE, "%s", version), size >= KEY_SIZE) {
                 return OS_INVALID;
-            } else {
-                cversion_cl[size] = '\0';
             }
-            if (size = snprintf(cversion_cl, KEY_SIZE, "%s", operation_value), size < 1) {
+
+            if (size = snprintf(cversion_cl, KEY_SIZE, "%s", operation_value), size >= KEY_SIZE) {
                 return OS_INVALID;
-            } else {
-                cversion_cl[size] = '\0';
             }
 
             // Check EPOCH
@@ -212,6 +209,8 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
         return VU_NOT_VULNERABLE;
     } else if (!version_it && cversion_it) {
         return VU_VULNERABLE;
+    } else if (!version_it && !cversion_it) {
+        return VU_EQUAL;
     }
 
     (found = strchr(version_it, '~'))? *found = '\0' : 0;
