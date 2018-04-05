@@ -212,6 +212,7 @@ int wdb_create_agent_db2(const char * agent_id) {
 
     while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
         if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
+            unlink(path);
             result = -1;
             break;
         }
@@ -221,10 +222,12 @@ int wdb_create_agent_db2(const char * agent_id) {
     fclose(dest);
 
     if (result < 0)
+        unlink(path);
         return -1;
 
     if (chmod(path, 0640) < 0) {
         merror(CHMOD_ERROR, path, errno, strerror(errno));
+        unlink(path);
         return -1;
     }
 
