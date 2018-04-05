@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
 - Fixed dangling db files at DB Sync module folder. ([#489](https://github.com/wazuh/wazuh/pull/489))
 - Fixed agent group file deletion when using Authd.
 - Fix memory leak in Maild with JSON input. ([#498](https://github.com/wazuh/wazuh/pull/498))
+- Fixed remote command switch option. ([#504](https://github.com/wazuh/wazuh/pull/504))
 
 ## [v3.2.1]
 
