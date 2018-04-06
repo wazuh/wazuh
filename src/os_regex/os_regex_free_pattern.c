@@ -38,6 +38,11 @@ void OSRegex_FreePattern(OSRegex *reg)
     free(reg->flags);
     reg->flags = NULL;
 
+    if (reg->raw) {
+        free(reg->raw);
+        reg->raw = NULL;
+    }
+
     /* Free the closure */
     if (reg->prts_closure) {
         i = 0;
@@ -69,4 +74,3 @@ void OSRegex_FreePattern(OSRegex *reg)
 
     return;
 }
-
