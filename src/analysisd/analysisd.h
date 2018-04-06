@@ -30,6 +30,8 @@ extern struct timespec c_timespec; /* Current time of event. Used everywhere */
 extern char __shost[512];
 
 extern OSDecoderInfo *NULL_Decoder;
+extern OSDecoderNode *osdecodernode_forpname;
+extern OSDecoderNode *osdecodernode_nopname;
 
 void * syscom_main(__attribute__((unused)) void * arg) ;
 size_t syscom_dispatch(char *command, char *output);
