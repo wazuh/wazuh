@@ -45,7 +45,7 @@ size_t syscom_getconfig(const char * section, char * output) {
 
     if (strcmp(section, "global") == 0){
         if (cfg = getGlobalConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            snprintf(output, MAX_DYN_STR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
             cJSON_free(cfg);
             return strlen(output);
         } else {
@@ -54,7 +54,7 @@ size_t syscom_getconfig(const char * section, char * output) {
     }
     else if (strcmp(section, "active-response") == 0){
         if (cfg = getARManagerConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            snprintf(output, MAX_DYN_STR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
             cJSON_free(cfg);
             return strlen(output);
         } else {
@@ -63,7 +63,16 @@ size_t syscom_getconfig(const char * section, char * output) {
     }
     else if (strcmp(section, "alerts") == 0){
         if (cfg = getAlertsConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            snprintf(output, MAX_DYN_STR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            cJSON_free(cfg);
+            return strlen(output);
+        } else {
+            goto error;
+        }
+    }
+    else if (strcmp(section, "decoders") == 0){
+        if (cfg = getDecodersConfig(), cfg) {
+            snprintf(output, MAX_DYN_STR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
             cJSON_free(cfg);
             return strlen(output);
         } else {
@@ -72,7 +81,7 @@ size_t syscom_getconfig(const char * section, char * output) {
     }
     else if (strcmp(section, "command") == 0){
         if (cfg = getARCommandsConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            snprintf(output, MAX_DYN_STR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
             cJSON_free(cfg);
             return strlen(output);
         } else {
@@ -92,13 +101,13 @@ void * syscom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
     char *buffer = NULL;
-    char response[OS_MAXSTR + 1];
+    char response[MAX_DYN_STR + 1];
     ssize_t length;
     fd_set fdset;
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(ANLSYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(ANLSYS_LOCAL_SOCK, SOCK_STREAM, MAX_DYN_STR), sock < 0) {
         merror("Unable to bind to socket '%s'. Closing local server: %s (%d)", ANLSYS_LOCAL_SOCK,strerror(errno),errno);
         return NULL;
     }
