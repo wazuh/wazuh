@@ -13,6 +13,7 @@
 #include <sys/types.h>
 
 #include "decoders/decoder.h"
+#include "rules.h"
 
 /* Time structures */
 extern int today;
@@ -32,6 +33,7 @@ extern char __shost[512];
 extern OSDecoderInfo *NULL_Decoder;
 extern OSDecoderNode *osdecodernode_forpname;
 extern OSDecoderNode *osdecodernode_nopname;
+extern RuleNode *rulenode;
 
 void * syscom_main(__attribute__((unused)) void * arg) ;
 size_t syscom_dispatch(char *command, char *output);

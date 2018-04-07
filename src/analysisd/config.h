@@ -35,5 +35,7 @@ cJSON *getARCommandsConfig(void);
 cJSON *getAlertsConfig(void);
 cJSON *getDecodersConfig(void);
 void _getDecodersListJSON(OSDecoderNode *list, cJSON *array);
+cJSON *getRulesConfig(void);
+void _getRulesListJSON(RuleNode *list, cJSON *array);
 
 #endif /* _CONFIG__H */
