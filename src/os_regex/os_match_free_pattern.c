@@ -34,10 +34,10 @@ void OSMatch_FreePattern(OSMatch *reg)
 
     free(reg->size);
     free(reg->match_fp);
+    free(reg->raw);
 
     reg->size = NULL;
     reg->match_fp = NULL;
 
     return;
 }
-
