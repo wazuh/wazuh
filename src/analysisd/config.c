@@ -21,6 +21,7 @@ OSList *active_responses;
 OSList *ar_commands;
 OSDecoderNode *osdecodernode_forpname;
 OSDecoderNode *osdecodernode_nopname;
+RuleNode *rulenode;
 
 int GlobalConf(const char *cfgfile)
 {
@@ -262,160 +263,16 @@ cJSON *getDecodersConfig(void) {
 }
 
 
-// Reads a linked list and fills a JSON array of objects.
-void _getDecodersListJSON(OSDecoderNode *list, cJSON *array) {
+cJSON *getRulesConfig(void) {
 
-    OSDecoderNode *node = NULL;
-    int i;
+    cJSON *root = cJSON_CreateObject();
+    cJSON *list = cJSON_CreateArray();
 
-    for (node=list;node->next;node = node->next) {
-        cJSON *decoder = cJSON_CreateObject();
-        cJSON_AddNumberToObject(decoder,"id",node->osdecoder->id);
-        if (node->osdecoder->name) cJSON_AddStringToObject(decoder,"name",node->osdecoder->name);
-        if (node->osdecoder->parent) cJSON_AddStringToObject(decoder,"parent",node->osdecoder->parent);
-        if (node->osdecoder->ftscomment) cJSON_AddStringToObject(decoder,"ftscomment",node->osdecoder->ftscomment);
-        if (Config.decoder_order_size && node->osdecoder->order) {
-            cJSON *_list = cJSON_CreateArray();
-            for (i=0;i<Config.decoder_order_size;i++) {
-                if (!node->osdecoder->order[i]) {
-                    continue;
-                }
-                else if (node->osdecoder->order[i] == DstUser_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("dstuser"));
-                }
-                else if (node->osdecoder->order[i] == SrcUser_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("srcuser"));
-                }
-                else if (node->osdecoder->order[i] == SrcIP_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("srcip"));
-                }
-                else if (node->osdecoder->order[i] == DstIP_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("dstip"));
-                }
-                else if (node->osdecoder->order[i] == SrcPort_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("srcport"));
-                }
-                else if (node->osdecoder->order[i] == DstPort_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("dstport"));
-                }
-                else if (node->osdecoder->order[i] == Protocol_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("protocol"));
-                }
-                else if (node->osdecoder->order[i] == Action_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("action"));
-                }
-                else if (node->osdecoder->order[i] == ID_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("id"));
-                }
-                else if (node->osdecoder->order[i] == Url_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("url"));
-                }
-                else if (node->osdecoder->order[i] == Data_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("data"));
-                }
-                else if (node->osdecoder->order[i] == Status_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("status"));
-                }
-                else if (node->osdecoder->order[i] == SystemName_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString("system_name"));
-                }
-                else if (node->osdecoder->order[i] == DynamicField_FP) {
-                    cJSON_AddItemToArray(_list,cJSON_CreateString(node->osdecoder->fields[i]));
-                }
-            }
-            cJSON_AddItemToObject(decoder,"order",_list);
-        }
-
-        if (node->child) {
-            cJSON *children = cJSON_CreateArray();
-            _getDecodersListJSON(node->child,children);
-            cJSON_AddItemToObject(decoder,"children",children);
-        }
-
-        if (node->osdecoder->use_own_name) cJSON_AddStringToObject(decoder,"use_own_name","true"); else cJSON_AddStringToObject(decoder,"use_own_name","false");
-
-        if (node->osdecoder->accumulate) cJSON_AddStringToObject(decoder,"accumulate","yes"); else cJSON_AddStringToObject(decoder,"accumulate","no");
-
-        if (node->osdecoder->prematch) cJSON_AddStringToObject(decoder,"prematch",node->osdecoder->prematch->raw);
-        if (node->osdecoder->prematch_offset & AFTER_PARENT) cJSON_AddStringToObject(decoder,"prematch_offset","after_parent");
-
-        if (node->osdecoder->regex) cJSON_AddStringToObject(decoder,"regex",node->osdecoder->regex->raw);
-        if (node->osdecoder->regex_offset & AFTER_PARENT) cJSON_AddStringToObject(decoder,"regex_offset","after_parent");
-        else if (node->osdecoder->regex_offset & AFTER_PREVREGEX) cJSON_AddStringToObject(decoder,"regex_offset","after_regex");
-        else if (node->osdecoder->regex_offset & AFTER_PREMATCH) cJSON_AddStringToObject(decoder,"regex_offset","after_prematch");
-
-        if (node->osdecoder->program_name) {
-            cJSON *_list = cJSON_CreateArray();
-            for (i=0;node->osdecoder->program_name->patterns[i];i++) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString(node->osdecoder->program_name->patterns[i]));
-            }
-            cJSON_AddItemToObject(decoder,"program_name",_list);
-        }
-
-        if (node->osdecoder->fts) {
-            cJSON *_list = cJSON_CreateArray();
-            if (node->osdecoder->fts & FTS_DSTUSER) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString("dstuser"));
-            } else if (node->osdecoder->fts & FTS_DSTUSER) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString("user"));
-            } else if (node->osdecoder->fts & FTS_SRCUSER) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString("srcuser"));
-            } else if (node->osdecoder->fts & FTS_SRCIP) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString("srcip"));
-            } else if (node->osdecoder->fts & FTS_DSTIP) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString("dstip"));
-            } else if (node->osdecoder->fts & FTS_ID) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString("id"));
-            } else if (node->osdecoder->fts & FTS_LOCATION) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString("location"));
-            } else if (node->osdecoder->fts & FTS_DATA) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString("data"));
-            } else if (node->osdecoder->fts & FTS_DATA) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString("extra_data"));
-            } else if (node->osdecoder->fts & FTS_SYSTEMNAME) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString("system_name"));
-            } else if (node->osdecoder->fts & FTS_NAME) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString("name"));
-            } else if (node->osdecoder->fts & FTS_DYNAMIC) {
-                cJSON_AddItemToArray(_list,cJSON_CreateString(node->osdecoder->fts_fields));
-            }
-            cJSON_AddItemToObject(decoder,"fts",_list);
-        }
-
-        if (node->osdecoder->type) {
-            if (node->osdecoder->type == FIREWALL) {
-                cJSON_AddStringToObject(decoder,"type","firewall");
-            } else if (node->osdecoder->type == IDS) {
-                cJSON_AddStringToObject(decoder,"type","ids");
-            } else if (node->osdecoder->type == WEBLOG) {
-                cJSON_AddStringToObject(decoder,"type","web-log");
-            } else if (node->osdecoder->type == SYSLOG) {
-                cJSON_AddStringToObject(decoder,"type","syslog");
-            } else if (node->osdecoder->type == SQUID) {
-                cJSON_AddStringToObject(decoder,"type","squid");
-            } else if (node->osdecoder->type == DECODER_WINDOWS) {
-                cJSON_AddStringToObject(decoder,"type","windows");
-            } else if (node->osdecoder->type == HOST_INFO) {
-                cJSON_AddStringToObject(decoder,"type","host-information");
-            } else if (node->osdecoder->type == OSSEC_RL) {
-                cJSON_AddStringToObject(decoder,"type","ossec");
-            }
-        }
-
-        if (node->osdecoder->plugindecoder) {
-            if ((void *)node->osdecoder->plugindecoder == PF_Decoder_Exec) {
-                cJSON_AddStringToObject(decoder,"plugin_decoder","PF_Decoder");
-            } else if ((void *)node->osdecoder->plugindecoder == SymantecWS_Decoder_Exec) {
-                cJSON_AddStringToObject(decoder,"plugin_decoder","SymantecWS_Decoder");
-            } else if ((void *)node->osdecoder->plugindecoder == SonicWall_Decoder_Exec) {
-                cJSON_AddStringToObject(decoder,"plugin_decoder","SonicWall_Decoder");
-            } else if ((void *)node->osdecoder->plugindecoder == OSSECAlert_Decoder_Exec) {
-                cJSON_AddStringToObject(decoder,"plugin_decoder","OSSECAlert_Decoder");
-            } else if ((void *)node->osdecoder->plugindecoder == JSON_Decoder_Exec) {
-                cJSON_AddStringToObject(decoder,"plugin_decoder","JSON_Decoder");
-            }
-        }
-
-        cJSON_AddItemToArray(array,decoder);
+    if (rulenode) {
+        _getRulesListJSON(rulenode, list);
     }
+
+    cJSON_AddItemToObject(root,"rules",list);
+
+    return root;
 }
