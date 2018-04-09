@@ -1,4 +1,5 @@
 # TODO: mysql and postgresql?
+# TODO: include libyaml path: export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib"
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
@@ -6,6 +7,8 @@ EXTERNAL_JSON=external/cJSON/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
+EXTERNAL_LIBYAML=external/libyaml/
+EXTERNAL_CURL=external/curl/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -43,7 +46,7 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 	DEFINES+=-DREUSE_ID
 endif
 
-OSSEC_LDFLAGS=-L${EXTERNAL_OPENSSL} -lm -lssl -lcrypto ${LDFLAGS}
+OSSEC_LDFLAGS=-L${EXTERNAL_OPENSSL} -lm -lssl -lcrypto -lcurl -lyaml ${LDFLAGS}
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -52,6 +55,7 @@ ifeq (${uname_S},Linux)
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 		OSSEC_LDFLAGS+=-L${EXTERNAL_LIBDB}.libs -ldb-6.2
 		OSSEC_LDFLAGS+=-Wl,-rpath,${PREFIX}/lib
+#		OSSEC_LDFLAGS+=-L/usr/local/lib
 #		OSSEC_LDFLAGS+=-lmagic
 		CFLAGS+=-Wl,--start-group
 else
@@ -151,7 +155,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include
 
 
 
@@ -501,11 +505,11 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 #### External ######
 ####################
 
-EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a ${EXTERNAL_LIBYAML}libyaml.a ${EXTERNAL_CURL}libcurl.a
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so
+EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.so.2
 endif
 endif
 
@@ -589,6 +593,20 @@ ${EXTERNAL_JSON}%.o: ${EXTERNAL_JSON}%.c
 libcJSON.a: ${cjson_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
+
+#### libyaml ##########
+LIBYAML_LIB=${EXTERNAL_LIBYAML}libyaml.a
+
+${LIBYAML_LIB}:
+	cd ${EXTERNAL_LIBYAML} && ./configure && ${MAKE}
+	cp ${EXTERNAL_LIBYAML}src/.libs/libyaml.a ${EXTERNAL_LIBYAML}libyaml.a
+
+#### curl ##########
+LIBCURL_LIB=${EXTERNAL_CURL}libcurl.a
+
+${LIBCURL_LIB}:
+	cd ${EXTERNAL_CURL} && ./configure --enable-static && ${MAKE}
+	cp ${EXTERNAL_CURL}lib/.libs/libcurl.a ${EXTERNAL_CURL}libcurl.a
 
 #### procps #########
 ifneq (${TARGET},winagent)
