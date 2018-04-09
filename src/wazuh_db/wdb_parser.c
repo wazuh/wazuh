@@ -95,7 +95,9 @@ int wdb_parse(char * input, char * output) {
                 result = -1;
             } else {
                 if (wdb_parse_netinfo(wdb, next, output) == 0){
-                    mdebug2("Stored Network information in DB for agent '%d'", agent_id);
+                    mdebug2("Updated 'sys_netiface' table for agent '%s'", sagent_id);
+                } else {
+                    merror("Unable to update 'sys_netiface' table for agent '%s'", sagent_id);
                 }
             }
         } else if (strcmp(query, "netaddr") == 0) {
@@ -106,7 +108,9 @@ int wdb_parse(char * input, char * output) {
                 result = -1;
             } else {
                 if (wdb_parse_netaddr(wdb, next, output) == 0){
-                    mdebug2("Stored Network interface information in DB for agent '%d'", agent_id);
+                    mdebug2("Updated 'sys_netaddr' table for agent '%s'", sagent_id);
+                } else {
+                    merror("Unable to update 'sys_netaddr' table for agent '%s'", sagent_id);
                 }
             }
         } else if (strcmp(query, "osinfo") == 0) {

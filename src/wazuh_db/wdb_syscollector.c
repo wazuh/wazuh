@@ -33,7 +33,6 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         tx_bytes,
         rx_bytes) < 0) {
 
-        mdebug1("at wdb_netinfo_save(): cannot insert netinfo tuple.");
         return -1;
     }
 
@@ -114,7 +113,6 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int type, const char * n
         gateway,
         dhcp) < 0) {
 
-        mdebug1("at wdb_netaddr_save(): cannot insert netaddr tuple.");
         return -1;
     }
 
@@ -201,7 +199,7 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_netiface' table.");
+        merror("Unable to delete old information from 'sys_netiface' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -215,20 +213,7 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_netaddr' table.");
-        return -1;
-    }
-
-    // Reset autoincrement id for 'sys_netaddr' table
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_RESET_COUNT) > 0) {
-        merror("at wdb_netinfo_delete(): cannot cache statement");
-        return -1;
-    }
-    stmt = wdb->stmt[WDB_STMT_RESET_COUNT];
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to reset id for 'sys_netaddr' table.");
+        merror("Unable to delete old information from 'sys_netaddr' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -411,7 +396,7 @@ int wdb_package_update(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to update the new information from 'sys_programs' table.");
+        merror("Unable to update the new information from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 

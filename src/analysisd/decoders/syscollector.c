@@ -116,7 +116,7 @@ int DecodeSyscollector(Eventinfo *lf)
             return (0);
         }
     }
-    else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_list") == 0  || strcmp(msg_type, "process_end") == 0) {
+    else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_end") == 0) {
         if (decode_process(lf->agent_id, logJSON) < 0) {
             mdebug1("Unable to send processes information to Wazuh DB.");
             return (0);
@@ -136,6 +136,7 @@ int decode_netinfo(char *agent_id, cJSON * logJSON) {
     char *msg = NULL;
     cJSON * iface;
     char id[OS_MAXSTR];
+    int i;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
@@ -270,19 +271,31 @@ int decode_netinfo(char *agent_id, cJSON * logJSON) {
                 }
 
                 if (address) {
-                    wm_strcat(&msg, address->valuestring, '|');
+                    char * addresses = NULL;
+                    for (i = 0; i < cJSON_GetArraySize(address); i++) {
+                        wm_strcat(&addresses, cJSON_GetArrayItem(address,i)->valuestring, '-');
+                    }
+                    wm_strcat(&msg, addresses, '|');
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }
 
                 if (netmask) {
-                    wm_strcat(&msg, netmask->valuestring, '|');
+                    char * masks = NULL;
+                    for (i = 0; i < cJSON_GetArraySize(netmask); i++) {
+                        wm_strcat(&masks, cJSON_GetArrayItem(netmask,i)->valuestring, '-');
+                    }
+                    wm_strcat(&msg, masks, '|');
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }
 
                 if (broadcast) {
-                    wm_strcat(&msg, broadcast->valuestring, '|');
+                    char * broads = NULL;
+                    for (i = 0; i < cJSON_GetArraySize(broadcast); i++) {
+                        wm_strcat(&broads, cJSON_GetArrayItem(broadcast,i)->valuestring, '-');
+                    }
+                    wm_strcat(&msg, broads, '|');
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }
@@ -330,19 +343,31 @@ int decode_netinfo(char *agent_id, cJSON * logJSON) {
                 }
 
                 if (address) {
-                    wm_strcat(&msg, address->valuestring, '|');
+                    char * addresses = NULL;
+                    for (i = 0; i < cJSON_GetArraySize(address); i++) {
+                        wm_strcat(&addresses, cJSON_GetArrayItem(address,i)->valuestring, '-');
+                    }
+                    wm_strcat(&msg, addresses, '|');
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }
 
                 if (netmask) {
-                    wm_strcat(&msg, netmask->valuestring, '|');
+                    char * masks = NULL;
+                    for (i = 0; i < cJSON_GetArraySize(netmask); i++) {
+                        wm_strcat(&masks, cJSON_GetArrayItem(netmask,i)->valuestring, '-');
+                    }
+                    wm_strcat(&msg, masks, '|');
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }
 
                 if (broadcast) {
-                    wm_strcat(&msg, broadcast->valuestring, '|');
+                    char * broads = NULL;
+                    for (i = 0; i < cJSON_GetArraySize(broadcast); i++) {
+                        wm_strcat(&broads, cJSON_GetArrayItem(broadcast,i)->valuestring, '-');
+                    }
+                    wm_strcat(&msg, broads, '|');
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }

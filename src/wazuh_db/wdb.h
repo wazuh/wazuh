@@ -61,7 +61,6 @@ typedef enum wdb_stmt {
     WDB_STMT_ADDR_IPV6_UPDATE,
     WDB_STMT_NETINFO_DEL,
     WDB_STMT_ADDR_DEL,
-    WDB_STMT_RESET_COUNT,
     WDB_STMT_SIZE
 } wdb_stmt;
 

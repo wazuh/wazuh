@@ -45,8 +45,7 @@ static const char * SQL_STMT[] = {
     "UPDATE sys_netiface SET id_ipv4 = ? WHERE name = ?;",
     "UPDATE sys_netiface SET id_ipv6 = ? WHERE name = ?;",
     "DELETE FROM sys_netiface WHERE scan_id != ?;",
-    "DELETE FROM sys_netaddr WHERE scan_id != ?;",
-    "DELETE FROM sqlite_sequence WHERE name = 'sys_netaddr';"
+    "DELETE FROM sys_netaddr WHERE scan_id != ?;"
 };
 
 sqlite3 *wdb_global = NULL;

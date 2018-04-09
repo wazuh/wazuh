@@ -1053,7 +1053,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     }
 
     if(!ifaces_list[0]){
-        mterror(WM_SYS_LOGTAG, "No interfaces found. Network inventory suspended.");
+        mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
         free(ifaces_list);
         free(timestamp);
         return;
@@ -1084,6 +1084,16 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         cJSON_AddStringToObject(interface, "state", state);
         free(state);
 
+        cJSON *ipv4 = cJSON_CreateObject();
+        cJSON *ipv4_addr = cJSON_CreateArray();
+        cJSON *ipv4_netmask = cJSON_CreateArray();
+        cJSON *ipv4_broadcast = cJSON_CreateArray();
+
+        cJSON *ipv6 = cJSON_CreateObject();
+        cJSON *ipv6_addr = cJSON_CreateArray();
+        cJSON *ipv6_netmask = cJSON_CreateArray();
+        cJSON *ipv6_broadcast = cJSON_CreateArray();
+
         for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
 
             if (strcmp(ifaces_list[i], ifa->ifa_name)){
@@ -1097,9 +1107,6 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
             if (family == AF_INET) {
 
-                cJSON *ipv4 = cJSON_CreateObject();
-                cJSON_AddItemToObject(interface, "IPv4", ipv4);
-
                 /* Get IPv4 address */
                 char host[NI_MAXHOST];
                 int result = getnameinfo(ifa->ifa_addr,
@@ -1107,7 +1114,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                         host, NI_MAXHOST,
                         NULL, 0, NI_NUMERICHOST);
                 if (result == 0) {
-                    cJSON_AddStringToObject(ipv4, "address", host);
+                    cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
                 } else {
                     mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                 }
@@ -1120,7 +1127,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                     NULL, 0, NI_NUMERICHOST);
 
                 if (result == 0) {
-                    cJSON_AddStringToObject(ipv4, "netmask", netmask);
+                    cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
                 } else {
                     mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                 }
@@ -1134,28 +1141,13 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                         NULL, 0, NI_NUMERICHOST);
 
                     if (result == 0) {
-                        cJSON_AddStringToObject(ipv4, "broadcast", broadaddr);
+                        cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
                     } else {
                         mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                     }
                 }
 
-                /* Get Default Gateway */
-                char *gateway;
-                gateway = get_default_gateway(ifaces_list[i]);
-                cJSON_AddStringToObject(ipv4, "gateway", gateway);
-                free(gateway);
-
-                /* Get DHCP status for IPv4 */
-                char *dhcp_status;
-                dhcp_status = check_dhcp(ifaces_list[i], family);
-                cJSON_AddStringToObject(ipv4, "DHCP", dhcp_status);
-                free(dhcp_status);
-
             } else if (family == AF_INET6) {
-
-                cJSON *ipv6 = cJSON_CreateObject();
-                cJSON_AddItemToObject(interface, "IPv6", ipv6);
 
                 /* Get IPv6 address */
                 char host[NI_MAXHOST];
@@ -1168,7 +1160,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                     char *ip_addrr;
                     parts = OS_StrBreak('%', host, 2);
                     ip_addrr = w_strtrim(parts[0]);
-                    cJSON_AddStringToObject(ipv6, "address", ip_addrr);
+                    cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(ip_addrr));
                     for (k=0; parts[k]; k++){
                         free(parts[k]);
                     }
@@ -1185,7 +1177,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                     NULL, 0, NI_NUMERICHOST);
 
                 if (result == 0) {
-                    cJSON_AddStringToObject(ipv6, "netmask", netmask6);
+                    cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
                 } else {
                     mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                 }
@@ -1199,17 +1191,11 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                         NULL, 0, NI_NUMERICHOST);
 
                     if (result == 0) {
-                        cJSON_AddStringToObject(ipv6, "broadcast", broadaddr6);
+                        cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
                     } else {
                         mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                     }
                 }
-
-                /* Get DHCP status for IPv6 */
-                char *dhcp_status;
-                dhcp_status = check_dhcp(ifaces_list[i], family);
-                cJSON_AddStringToObject(ipv6, "DHCP", dhcp_status);
-                free(dhcp_status);
 
             } else if (family == AF_PACKET && ifa->ifa_data != NULL){
 
@@ -1234,6 +1220,64 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
             }
         }
+
+        /* Add address information to the structure */
+
+        if (cJSON_GetArraySize(ipv4_addr) > 0) {
+            cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
+            if (cJSON_GetArraySize(ipv4_netmask) > 0) {
+                cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
+            } else {
+                cJSON_Delete(ipv4_netmask);
+            }
+            if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
+                cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
+            } else {
+                cJSON_Delete(ipv4_broadcast);
+            }
+            cJSON_AddItemToObject(interface, "IPv4", ipv4);
+        } else {
+            cJSON_Delete(ipv4_addr);
+            cJSON_Delete(ipv4_netmask);
+            cJSON_Delete(ipv4_broadcast);
+            cJSON_Delete(ipv4);
+        }
+
+        if (cJSON_GetArraySize(ipv6_addr) > 0) {
+            cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
+            if (cJSON_GetArraySize(ipv6_netmask) > 0) {
+                cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
+            } else {
+                cJSON_Delete(ipv6_netmask);
+            }
+            if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
+                cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
+            } else {
+                cJSON_Delete(ipv6_broadcast);
+            }
+            cJSON_AddItemToObject(interface, "IPv6", ipv6);
+        } else {
+            cJSON_Delete(ipv6_addr);
+            cJSON_Delete(ipv6_netmask);
+            cJSON_Delete(ipv6_broadcast);
+            cJSON_Delete(ipv6);
+        }
+
+        /* Get Default Gateway */
+        char *gateway;
+        gateway = get_default_gateway(ifaces_list[i]);
+        cJSON_AddStringToObject(ipv4, "gateway", gateway);
+        free(gateway);
+
+        /* Get DHCP status for IPv4 */
+        char *dhcp_status;
+        dhcp_status = check_dhcp(ifaces_list[i], family);
+        cJSON_AddStringToObject(ipv4, "DHCP", dhcp_status);
+
+        /* Get DHCP status for IPv6 */
+        dhcp_status = check_dhcp(ifaces_list[i], family);
+        cJSON_AddStringToObject(ipv6, "DHCP", dhcp_status);
+        free(dhcp_status);
 
         /* Send interface data in JSON format */
         string = cJSON_PrintUnformatted(object);
