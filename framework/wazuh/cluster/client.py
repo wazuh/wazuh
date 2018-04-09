@@ -5,6 +5,8 @@
 
 import logging
 import json
+import threading
+import time
 from os import remove
 
 from wazuh.cluster.cluster import get_cluster_items, _update_file
@@ -93,3 +95,72 @@ def process_files_from_master(data_received):
     return update_result
 
 
+
+from wazuh.cluster.communication import ClientHandler, Handler
+
+
+class ClientManager(ClientHandler):
+
+    def __init__(self, cluster_config):
+        ClientHandler.__init__(self, cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'])
+
+        self.config = cluster_config
+
+
+    def process_request(self, command, data):
+        logging.debug("[Client] Request received: '{0}'.".format(command))
+
+        if command == 'echo-m':
+            return 'ok-m ', data.decode()
+        else:
+            return ClientHandler.process_request(self, command, data)
+
+    @staticmethod
+    def process_response(response):
+        # FixMe: Move this line to communications
+        answer, payload = Handler.split_data(response)
+
+        logging.debug("[Client] Response received: '{0}'.".format(answer))
+
+        response_data = None
+
+        if answer == 'ok-c':  # test
+            response_data = '[response_only_for_client] Master answered: {}.'.format(payload)
+        else:
+            response_data = ClientHandler.process_response(response)
+
+        return response_data
+
+#
+# Client threads
+#
+class ClientIntervalThread(threading.Thread):
+
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.client = None
+        self.running = True
+
+
+    def run(self):
+        while self.running:
+            if self.client and self.client.is_connected():
+                response = self.client.send_request('echo-c','Keep-alive from client!')
+                processed_response = self.client.process_response(response)
+                if processed_response:
+                    print(processed_response)
+                else:
+                    print ("No response")
+
+                time.sleep(self.client.config['interval'])
+            else:
+                time.sleep(5)
+
+
+    def setclient(self, client):
+        self.client = client
+
+
+    def stop(self):
+        self.running = False

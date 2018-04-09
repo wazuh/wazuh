@@ -104,6 +104,9 @@ def read_config():
     except Exception as e:
         raise WazuhException(3006, str(e))
 
+    if 'port' in config_cluster:
+        config_cluster['port'] = int(config_cluster['port'])
+
     return config_cluster
 
 

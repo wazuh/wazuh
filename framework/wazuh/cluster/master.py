@@ -4,6 +4,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+import threading
+import time
 
 from wazuh.cluster.cluster import get_cluster_items, _update_file
 from wazuh.exception import WazuhException
@@ -53,3 +55,81 @@ def update_client_files_in_master(json_file, files_to_update):
     except Exception as e:
         print(str(e))
         raise e
+
+
+from wazuh.cluster.communication import Server, ServerHandler, Handler
+
+
+class MasterManagerHandler(ServerHandler):
+
+    def __init__(self, sock, server, map):
+        ServerHandler.__init__(self, sock, server, map)
+
+    def process_request(self, command, data):
+        logging.debug("[Master] Request received: '{0}'.".format(command))
+
+        if command == 'echo-c':
+            return 'ok-c ', data.decode()
+        else:
+            return ServerHandler.process_request(self, command, data)
+
+    @staticmethod
+    def process_response(response):
+        # FixMe: Move this line to communications
+        answer, payload = Handler.split_data(response)
+
+        logging.debug("[Master] Response received: '{0}'.".format(answer))
+
+        response_data = None
+
+        if answer == 'ok-m':  # test
+            response_data = '[response_only_for_master] Client answered: {}.'.format(payload)
+        else:
+            response_data = ServerHandler.process_response(response)
+
+        return response_data
+
+
+class MasterManager(Server):
+
+    def __init__(self, cluster_config):
+        Server.__init__(self, cluster_config['bind_addr'],
+            cluster_config['port'], MasterManagerHandler)
+
+        logging.info("[Master] Listening.")
+
+        self.config = cluster_config
+        self.handler = MasterManagerHandler
+
+
+#
+# Master threads
+#
+class MasterKeepAliveThread(threading.Thread):
+
+    def __init__(self, manager):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.running = True
+        self.manager = manager
+
+
+    def run(self):
+
+        while self.running:
+            connected_clients = len(self.manager.get_connected_clients())
+
+            if connected_clients > 0:
+                logging.debug("[Master] Sending KA to clients ({0}).".format(connected_clients))
+
+                for client_name, response in self.manager.send_request_broadcast('echo-m', 'Keep-alive from master!'):
+                    processed_response = self.manager.handler.process_response(response)
+                    if processed_response:
+                        logging.debug("[Master] KA received from client: '{0}'.".format(client_name))
+                    else:
+                        logging.error("[Master] KA was not received from client: '{0}'.".format(client_name))
+
+            time.sleep(self.manager.config['ka_interval'])
+
+    def stop(self):
+        self.running = False

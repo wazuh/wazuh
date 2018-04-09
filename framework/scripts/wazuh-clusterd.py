@@ -2,95 +2,82 @@
 
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+#
+# Imports
+#
 try:
     import asyncore
-    import socket
-    import json
+    import threading
+    import time
+    import argparse
+    import logging
+    import ctypes
+    import ctypes.util
+    from signal import signal, SIGINT, SIGTERM
+    from pwd import getpwnam
     from sys import argv, exit, path
     from os.path import dirname
     from os import seteuid, setgid, getpid, kill
-    from multiprocessing import Process
-    from re import search
-    from time import sleep
-    from pwd import getpwnam
-    from signal import signal, pause, alarm, SIGINT, SIGTERM, SIGUSR1, SIGALRM
-    import ctypes
-    import ctypes.util
-    from datetime import datetime, timedelta
-
-    import argparse
-    parser =argparse.ArgumentParser()
-    parser.add_argument('-f', help="Run in foreground", action='store_true')
-    parser.add_argument('-d', help="Enable debug messages", action='store_true')
-    parser.add_argument('-V', help="Print version", action='store_true')
-    parser.add_argument('-r', help="Run as root", action='store_true')
-
-    # Set framework path
-    path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
-
-    child_pid = 0
 
     # Import framework
     try:
-        from wazuh import Wazuh
+        # Search path
+        path.append(dirname(argv[0]) + '/../framework')
 
-        # Initialize framework
+        # Import and Initialize
+        from wazuh import Wazuh
         myWazuh = Wazuh(get_init=True)
 
         from wazuh import common
-        from wazuh.cluster.wazuh_server import WazuhClusterServer, send_client_files_to_master
-        from wazuh.cluster.cluster import read_config, check_cluster_config
         from wazuh.exception import WazuhException
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
+        from wazuh.cluster.cluster import read_config, check_cluster_config
+        from wazuh.cluster.master import MasterManager, MasterKeepAliveThread
+        from wazuh.cluster.client import ClientManager, ClientIntervalThread
+        from wazuh.cluster.communication import InternalSocket
+
     except Exception as e:
         print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
         exit()
-
-    import logging
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
-                        filename="{0}/logs/cluster.log".format(common.ossec_path))
 except Exception as e:
-    print("wazuh-clusterd: Python 2.7 required. Exiting. {}".format(str(e)))
+    print("wazuh-clusterd: Python 2.7 required. Exiting. {0}".format(str(e)))
     exit()
 
 
-def master_main():
-    def sync_handler(n_signal, frame):
-        logging.debug("[Master] Signal received - deprecated.")
+#
+# Aux functions
+#
 
-    try:
-        signal(SIGUSR1, sync_handler)
-        while True:
-            logging.info("[Master] Waiting for client requests.")
-            pause()
+def set_logging(foreground_mode=False, debug_mode=False):
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
+                        filename="{0}/logs/cluster.log".format(common.ossec_path))
 
-    except Exception as e:
-        error_msg = "[Master] Error: {}".format(str(e))
-        logging.error(error_msg)
+    if not debug_mode:
+        logging.getLogger('').setLevel(logging.INFO)
+
+    if foreground_mode:
+        # define a Handler which writes INFO messages or higher to the sys.stderr
+        console = logging.StreamHandler()
+        console.setLevel(logging.DEBUG)
+        # set a format which is simpler for console use
+        formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+        # tell the handler to use this format
+        console.setFormatter(formatter)
+        # add the handler to the root logger
+        logging.getLogger('').addHandler(console)
 
 
-def client_main(cluster_config, debug):
-    def sleep_handler(n_signal, frame):
-        alarm(0)
-        logging.info("[Client] Nothing to do. Sleeping for {}{}...".format(interval_number, interval_measure))
-        sleep(sleep_time)
+def clean_exit(reason, error=False):
+    msg = "[wazuh-clusterd] Exiting. Reason: '{0}'.".format(reason)
 
-    interval_number  = int(search('\d+', cluster_config['interval']).group(0))
-    interval_measure = cluster_config['interval'][-1]
-    sleep_time = interval_number if interval_measure == 's' else interval_number*60
+    if error:
+        logging.error(msg)
+    else:
+        logging.info(msg)
 
-    signal(SIGALRM, sleep_handler)
-
-    while True:
-        logging.info("[Client] Starting work.")
-
-        try:
-            send_client_files_to_master(cluster_config, "Client interval")
-        except Exception as e:
-            logging.error("[Client] Error synchronizing: '{0}'.".format(str(e)))
-
-        alarm(1)
-        pause()
+    delete_pid("wazuh-clusterd", getpid())
+    exit(1)
 
 
 def signal_handler(n_signal, frame):
@@ -101,111 +88,144 @@ def signal_handler(n_signal, frame):
 
         return strsignal_c(n_signal)
 
-    logging.info("[wazuh-clusterd] Signal [{0}-{1}] received. Exit cleaning...".format(n_signal, strsignal(n_signal)))
-
-    # received Cntrl+C
     if n_signal == SIGINT or n_signal == SIGTERM:
+        clean_exit(reason="Signal [{0}-{1}] received.".format(n_signal, strsignal(n_signal)))
 
-        if child_pid != 0:
-            try:
-                # kill child
-                kill(child_pid, SIGTERM)
-                # remove pid files
-                delete_pid("wazuh-clusterd", getpid())
-            except Exception as e:
-                logging.error("[wazuh-clusterd] Error killing child process: {}".format(str(e)))
-                if args.d:
-                    raise
-        else:
-            for connections in common.cluster_connections.values():
-                try:
-                    logging.debug("[wazuh-clusterd] Closing socket {}...".format(connections.socket.getpeername()))
-                    connections.socket.close()
-                except socket.error as e:
-                    if e.errno == socket.errno.EBADF:
-                        logging.debug("[wazuh-clusterd] Socket already closed: {}".format(str(e)))
-                    else:
-                        logging.error("[wazuh-clusterd] Could not close socket: {}".format(str(e)))
-    exit(1)
+#
+# Internal Socket thread
+#
+class InternalSocketThread(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.manager = None
+        self.running = True
+        self.internal_socket = None
+
+    def setmanager(self, manager, socket_name):
+        self.internal_socket = InternalSocket(socket_name=socket_name, manager=manager)
+
+    def run(self):
+        while self.running:
+            if self.internal_socket:
+                print("[Transport-I] Ready")
+                asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
+                print("[Transport-I] Disconnected")
+                time.sleep(5)
+
+#
+# Master main
+#
+def master_main(cluster_configuration):
+    # ToDo: Add it in ossec.conf
+    cluster_configuration['ka_interval'] = 12  # seconds
+
+    # Initiate master
+    master = MasterManager(cluster_config=cluster_configuration)
+
+    # Send keep alive
+    ka_thread = MasterKeepAliveThread(master)
+    ka_thread.start()
+
+    # Internal socket
+    internal_socket_thread = InternalSocketThread()
+    internal_socket_thread.start()
+    internal_socket_thread.setmanager(master, "c-internal")
+
+    # Loop
+    asyncore.loop(timeout=1, use_poll=False, map=master.map, count=None)
 
 
+#
+# Client main
+#
+def client_main(cluster_configuration):
+    # ToDo: Add it in ossec.conf
+    cluster_configuration['reconnect_time'] = 10  # seconds
+    # ToDo: Get in the proper way
+    cluster_configuration['interval'] = 10  # seconds
+
+    # Create threads
+    interval_thread = ClientIntervalThread()
+    interval_thread.start()
+
+    # Internal socket
+    internal_socket_thread = InternalSocketThread()
+    internal_socket_thread.start()
+
+    # Loop
+    while True:
+        client = ClientManager(cluster_config=cluster_configuration)
+
+        interval_thread.setclient(client)
+        internal_socket_thread.setmanager(client, 'c-internal')
+
+        asyncore.loop(timeout=1, use_poll=False, map=client.map, count=None)
+
+        logging.error("[wazuh-clusterd] Client disconnected. Trying to connect again in {0}s.".format(cluster_configuration['reconnect_time']))
+
+        time.sleep(cluster_configuration['reconnect_time'])
+
+
+#
+# Main
+#
 if __name__ == '__main__':
-    global cluster_connections
+    # Signals
+    signal(SIGINT, signal_handler)
+    signal(SIGTERM, signal_handler)
 
+    # Parse args
+    parser =argparse.ArgumentParser()
+    parser.add_argument('-f', help="Run in foreground", action='store_true')
+    parser.add_argument('-d', help="Enable debug messages", action='store_true')
+    parser.add_argument('-V', help="Print version", action='store_true')
+    parser.add_argument('-r', help="Run as root", action='store_true')
     args = parser.parse_args()
+
+    # Set logger
+    set_logging(foreground_mode=args.f, debug_mode=args.d)
+
+    # Foreground/Daemon
+    if not args.f:
+        res_code = pyDaemon()
+
+    # Get cluster config
     try:
-        # Capture Cntrl + C
-        signal(SIGINT, signal_handler)
-        signal(SIGTERM, signal_handler)
+        cluster_config = read_config()
+    except WazuhException as e:
+        cluster_config = None
 
-        # Foreground/daemon and logging
-        if not args.f:
-            res_code = pyDaemon()
+    if not cluster_config or cluster_config['disabled'] == 'yes':
+        clean_exit(reason="Cluster disabled", error=True)
+
+    # Drop privileges to ossec
+    if not args.r:
+        pwdnam_ossec = getpwnam('ossec')
+        setgid(pwdnam_ossec.pw_gid)
+        seteuid(pwdnam_ossec.pw_uid)
+
+    # Creating pid file
+    create_pid("wazuh-clusterd", getpid())
+    logging.info("[wazuh-clusterd] PID: {0}".format(getpid()))
+
+    # Validate config
+    try:
+        check_cluster_config(cluster_config)
+    except WazuhException as e:
+        clean_exit(reason="Invalid configuration: '{0}'".format(str(e)), error=True)
+
+    # Main
+    try:
+
+        if cluster_config['node_type'] == "master":
+            master_main(cluster_config)
+        elif cluster_config['node_type'] == "client":
+            client_main(cluster_config)
         else:
-            # define a Handler which writes INFO messages or higher to the sys.stderr
-            console = logging.StreamHandler()
-            console.setLevel(logging.DEBUG)
-            # set a format which is simpler for console use
-            formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
-            # tell the handler to use this format
-            console.setFormatter(formatter)
-            # add the handler to the root logger
-            logging.getLogger('').addHandler(console)
-
-        if not args.d:
-            logging.getLogger('').setLevel(logging.INFO)
-
-        # Read configuration
-        try:
-            cluster_config = read_config()
-        except WazuhException as e:
-            if e.code == 3006:
-                cluster_config = None
-            else:
-                raise e
-
-        if not cluster_config or cluster_config['disabled'] == 'yes':
-            logging.info("[wazuh-clusterd] Cluster disabled. Exiting...")
-            kill(getpid(), SIGINT)
-
-        # Drop privileges to ossec
-        if not args.r:
-            pwdnam_ossec = getpwnam('ossec')
-            setgid(pwdnam_ossec.pw_gid)
-            seteuid(pwdnam_ossec.pw_uid)
-
-        create_pid("wazuh-clusterd", getpid())
-        logging.info("[wazuh-clusterd] PID: {0}".format(getpid()))
-
-        # Get cluster configuration
-        try:
-            check_cluster_config(cluster_config)
-        except WazuhException as e:
-            logging.error(str(e))
-            kill(getpid(), SIGINT)
-
-
-        if cluster_config['node_type'] == 'master':
-            p = Process(target=master_main, args=())
-            if not args.f:
-                p.daemon=True
-            p.start()
-            child_pid = p.pid
-            logging.info("[Master] PID: {0}".format(child_pid))
-        else:
-            p = Process(target=client_main, args=(cluster_config,args.d,))
-            if not args.f:
-                p.daemon=True
-            p.start()
-            child_pid = p.pid
-            logging.info("[Client] PID: {0}".format(child_pid))
-
-        # Create server
-        server = WazuhClusterServer(cluster_config, child_pid)
-
-        asyncore.loop()
+            clean_exit(reason="Node type '{0}' not valid.".format(cluster_config['node_type']), error=True)
 
     except Exception as e:
-        logging.error("[wazuh-clusterd] Error: {}".format(str(e)))
         if args.d:
             raise
+        clean_exit(reason="Unkown exception: '{0}'".format(str(e)), error=True)
