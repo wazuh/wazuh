@@ -24,7 +24,7 @@ if __name__ == '__main__':
     try:
         message = argv[1]
     except:
-        message = "echo test"
+        message = "req_file_s_c"
 
     try:
         size = int(argv[3])

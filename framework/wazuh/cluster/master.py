@@ -91,38 +91,6 @@ def force_clients_to_start_sync(node_list=None):
 
     return nodes_response
 
-def req_file_status_to_clients():
-    config_cluster = read_config()
-    if not config_cluster:
-        raise WazuhException(3000, "No config found")
-
-    # Get master files
-    master_files = get_files_status('master')
-
-    # Get nodes
-    all_nodes = get_nodes()['items']
-
-    nodes_file = {}
-    for node in all_nodes:
-        if node['type'] == 'master':
-            continue
-
-        if node['status'] == 'connected':
-
-            error, response = send_request( host=node['url'],
-                                    port=config_cluster["port"],
-                                    key=config_cluster['key'],
-                                    connection_timeout=100, #int(config_cluster['connection_timeout']),
-                                    socket_timeout=100, #int(config_cluster['socket_timeout']),
-                                    data="file_status {0}".format('-'*(common.cluster_protocol_plain_size - len("file_status ")))
-            )
-
-            client_files_ko = compare_files(master_files, response['data'])
-            nodes_file[node['node']] = client_files_ko
-        else:
-            nodes_file[node['node']] = 'disconnected'
-
-    return nodes_file
 
 
 from wazuh.cluster.communication import Server, ServerHandler, Handler
@@ -218,6 +186,14 @@ class MasterManagerHandler(ServerHandler):
         return sync_result
 
 
+    def req_file_status_to_clients(self):
+        nodes_file = {}
+        for node_name, response in self.server.send_request_broadcast(command = 'file_status'):
+            logging.debug("Response from {}: {}".format(node_name, response))
+
+        return 'ok', "File status"
+
+
 class MasterManager(Server):
 
     def __init__(self, cluster_config):
@@ -227,7 +203,6 @@ class MasterManager(Server):
         logging.info("[Master] Listening.")
 
         self.config = cluster_config
-        self.handler = MasterManagerHandler
 
 
 #
@@ -298,16 +273,20 @@ class MasterInternalSocketHandler(InternalSocketHandler):
         logging.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
         serialized_response = ""
 
-        command_splitted = command.split('-',1)
-        command = command_splitted[0]
-        host = command_splitted[1]
+        if command == 'req_file_s_c':
+            return self.manager.handler.req_file_status_to_clients()
 
-        if host == 'b':
-            response = list(self.manager.send_request_broadcast(command=command, data=data))
-            serialized_response = ['ok', json.dumps({node:data for node,data in response})]
         else:
-            response = self.manager.send_request(client_name=host, command=command, data=data)
-            if response:
-                serialized_response = response.split(' ', 1)
+            split_data = data.split(' ', 1)
+            host = split_data[0]
+            data = split_data[1] if len(split_data) > 1 else None
 
-        return serialized_response
+            if host == 'all':
+                response = list(self.manager.send_request_broadcast(command=command, data=data))
+                serialized_response = ['ok', json.dumps({node:data for node,data in response})]
+            else:
+                response = self.manager.send_request(client_name=host, command=command, data=data)
+                if response:
+                    serialized_response = response.split(' ', 1)
+
+            return serialized_response

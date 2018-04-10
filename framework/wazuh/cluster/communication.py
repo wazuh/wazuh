@@ -377,6 +377,7 @@ class Server(asyncore.dispatcher):
         self.bind((host, port))
         self.listen(5)
         self.handle_type = handle_type
+        self.handler = None
 
 
     def handle_accept(self):
@@ -385,7 +386,7 @@ class Server(asyncore.dispatcher):
             sock, addr = pair
             logging.debug("[Transport-S] Incoming connection from {0}.".format(repr(addr)))
             # addr is a tuple of form (ip, port)
-            handler = self.handle_type(sock, self, self.map, addr[0])
+            self.handler = handler = self.handle_type(sock, self, self.map, addr[0])
 
 
 
@@ -568,8 +569,10 @@ def send_to_internal_socket(socket_name, message):
 
     # Send message
     print("[Transport-I] Sending request to SI: '{0}'.".format(message))
-    message = message.split(" ")
-    message_built = msgbuild(random.SystemRandom().randint(0, 2 ** 32 - 1), message[0], message[1])
+    message = message.split(" ", 1)
+    cmd = message[0]
+    data = message[1] if len(message) > 1 else None
+    message_built = msgbuild(random.SystemRandom().randint(0, 2 ** 32 - 1), cmd, data)
     sock.sendall(message_built)
     print("[Transport-I] Sent")
 

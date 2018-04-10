@@ -37,6 +37,11 @@ class ClientManager(ClientHandler):
             return 'ack', 'Starting sync from master on demand'  # TO DO
         elif command == 'getintegrity':
             return 'json', json.dumps({'/etc/client.keys':'pending'})  # TO DO
+        elif command == 'file_status':
+            return 'json', json.dumps({'/etc/client.keys': {
+                                            'mod_time': '2018-04-10 16:31:50',
+                                            'md5': 'a'*32
+                                    }})
         else:
             return ClientHandler.process_request(self, command, data)
 
