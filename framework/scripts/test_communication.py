@@ -5,6 +5,9 @@ from os import path
 import asyncore
 import threading
 import time
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 
 try:
     sys.path.append(path.dirname(sys.argv[0]) + '/../framework')
@@ -79,6 +82,21 @@ def test_send_file(thread, my_client, file_path):
     thread.stop()
 
 
+def test_cluster_client_requests(thread, my_client):
+    requests_list = [
+        ("req_sync_m_c", None, "Confirmation received: Starting sync from master")
+    ]
+
+    for req, data, expected_res in requests_list:
+        print("Testing request {}".format(req))
+        local_res = my_client.process_response(my_client.send_request(command = req, data = data))
+        if expected_res != local_res:
+            print("Request {} failed. Expected response: '{}', response: '{}'".format(req, expected_res, local_res))
+        else:
+            print("Request {} successfully completed".format(req))
+
+    thread.stop()
+
 #
 # Master threads
 #
@@ -134,6 +152,8 @@ class ClientTest(threading.Thread):
                     test_multiple_requests_from_client(self, self.name, self.client, n=self.test_size)
                 elif self.test == 'testf':
                     test_send_file(self, self.client, filepath)
+                elif self.test == 'testc':
+                    test_cluster_client_requests(self, self.client)
                 else:
                     print("T: No test selected")
 
@@ -224,6 +244,12 @@ def client_main(test_name, test_size, filepath):
     elif test_name == 'testf':
         client = ClientManager(c_config)
         thread_test = ClientTest(t_name='thread0', test_name='testf', filepath=filepath)
+        thread_test.setclient(client)
+        thread_test.start()
+        asyncore.loop(timeout=1, map=client.map)
+    elif test_name == 'testc':
+        client = ClientManager(c_config)
+        thread_test = ClientTest(t_name='thread0', test_name='testc')
         thread_test.setclient(client)
         thread_test.start()
         asyncore.loop(timeout=1, map=client.map)
