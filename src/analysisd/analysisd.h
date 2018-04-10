@@ -35,7 +35,7 @@ extern OSDecoderNode *osdecodernode_forpname;
 extern OSDecoderNode *osdecodernode_nopname;
 extern RuleNode *rulenode;
 
-// Read config
+// Com request thread dispatcher
 void * syscom_main(__attribute__((unused)) void * arg) ;
 size_t syscom_dispatch(char * command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
