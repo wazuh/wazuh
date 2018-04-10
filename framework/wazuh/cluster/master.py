@@ -57,6 +57,112 @@ def update_client_files_in_master(json_file, files_to_update):
         raise e
 
 
+def force_clients_to_start_sync(node_list=None):
+    nodes_response = {}
+
+    config_cluster = read_config()
+    if not config_cluster:
+        raise WazuhException(3000, "No config found")
+
+    # Get nodes
+    all_nodes = get_nodes()['items']
+
+    for node in all_nodes:
+        if node['type'] == 'master':
+            continue
+
+        if node_list and node['node'] not in node_list:
+            continue
+
+        if node['status'] == 'connected':
+
+            error, response = send_request( host=node['url'],
+                                    port=config_cluster["port"],
+                                    key=config_cluster['key'],
+                                    connection_timeout=100, #int(config_cluster['connection_timeout']),
+                                    socket_timeout=100, #int(config_cluster['socket_timeout']),
+                                    data="force_sync {0}".format('-'*(common.cluster_protocol_plain_size - len("force_sync ")))
+            )
+
+            nodes_response[node['node']] = response['data']
+        else:
+            nodes_response[node['node']] = 'Disconnected: {0}'.format(node['url'])
+
+    return nodes_response
+
+def req_file_status_to_clients():
+    config_cluster = read_config()
+    if not config_cluster:
+        raise WazuhException(3000, "No config found")
+
+    # Get master files
+    master_files = get_files_status('master')
+
+    # Get nodes
+    all_nodes = get_nodes()['items']
+
+    nodes_file = {}
+    for node in all_nodes:
+        if node['type'] == 'master':
+            continue
+
+        if node['status'] == 'connected':
+
+            error, response = send_request( host=node['url'],
+                                    port=config_cluster["port"],
+                                    key=config_cluster['key'],
+                                    connection_timeout=100, #int(config_cluster['connection_timeout']),
+                                    socket_timeout=100, #int(config_cluster['socket_timeout']),
+                                    data="file_status {0}".format('-'*(common.cluster_protocol_plain_size - len("file_status ")))
+            )
+
+            client_files_ko = compare_files(master_files, response['data'])
+            nodes_file[node['node']] = client_files_ko
+        else:
+            nodes_file[node['node']] = 'disconnected'
+
+    return nodes_file
+
+def process_files_from_client(data_received):
+    logging.info("[Master] [Data received]: Start.")
+
+    # Extract recevied data
+    logging.info("[Master] [Data received] [STEP 1]: Analyzing received files.")
+
+    master_files_from_client = {}
+    client_files = {}
+    for key in data_received:
+        if key == 'cluster_control.json':
+            json_file = json.loads(data_received['cluster_control.json']['data'])
+            master_files_from_client = json_file['master_files']
+            client_files_json = json_file['client_files']
+        else:
+            full_path_key = key.replace('files/', '/')
+            client_files[full_path_key] = data_received[key]
+
+    # Get master files
+    master_files = get_files_status('master')
+
+    # Compare
+    client_files_ko = compare_files(master_files, master_files_from_client)
+
+    logging.info("[Master] [Data received] [STEP 2]: Updating manager files.")
+    # Update files
+    update_client_files_in_master(client_files_json, client_files)
+
+    # Compress data: master files (only KO shared and missing)
+    logging.info("[Master] [Data received] [STEP 3]: Compressing KO files for client.")
+
+    master_files_paths = [item for item in client_files_ko['shared']]
+    master_files_paths.extend([item for item in client_files_ko['missing']])
+
+    compressed_data = compress_files('master', master_files_paths, client_files_ko)
+
+    logging.info("[Master] [Data received]: End. Sending KO files to client.")
+    # Send KO files
+    return compressed_data
+
+
 from wazuh.cluster.communication import Server, ServerHandler, Handler
 
 
