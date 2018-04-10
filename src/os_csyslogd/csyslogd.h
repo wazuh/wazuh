@@ -20,8 +20,10 @@
 /* Read syslog config */
 SyslogConfig **OS_ReadSyslogConf(int test_config, const char *cfgfile);
 cJSON *getCsyslogConfig(void);
-size_t csyscom_dispatch(const char *command, char *output);
-size_t csyscom_getconfig(const char * section, char * output);
+
+// Com request thread dispatcher
+size_t csyscom_dispatch(const char * command, char ** output);
+size_t csyscom_getconfig(const char * section, char ** output);
 void * csyscom_main(__attribute__((unused)) void * arg);
 
 /* Send alerts via syslog

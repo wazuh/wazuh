@@ -29,6 +29,8 @@ GeoIP *geoipdb;
 #endif
 
 int GlobalConf(const char *cfgfile);
+
+// Read config
 cJSON *getGlobalConfig(void);
 cJSON *getARManagerConfig(void);
 cJSON *getARCommandsConfig(void);

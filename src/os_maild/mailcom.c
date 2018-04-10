@@ -10,9 +10,10 @@
 
 #include <shared.h>
 #include "os_net/os_net.h"
+#include "wazuh_modules/wmodules.h"
 #include "maild.h"
 
-size_t mailcom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output) {
+size_t mailcom_dispatch(char * command, char ** output) {
 
     const char *rcv_comm = command;
     char *rcv_args = NULL;
@@ -26,35 +27,42 @@ size_t mailcom_dispatch(char *command, size_t length __attribute__ ((unused)), c
         // getconfig section
         if (!rcv_args){
             merror("MAILCOM getconfig needs arguments.");
-            strcpy(output, "err MAILCOM getconfig needs arguments");
-            return strlen(output);
+            *output = strdup("err MAILCOM getconfig needs arguments");
+            return strlen(*output);
         }
         return mailcom_getconfig(rcv_args, output);
 
     } else {
         merror("MAILCOM Unrecognized command '%s'.", rcv_comm);
-        strcpy(output, "err Unrecognized command");
-        return strlen(output);
+        *output = strdup("err Unrecognized command");
+        return strlen(*output);
     }
 }
 
-size_t mailcom_getconfig(const char * section, char * output) {
+size_t mailcom_getconfig(const char * section, char ** output) {
 
     cJSON *cfg;
+    char *json_str;
 
-    if (strcmp(section, "global") == 0){
+    if (strcmp(section, "email_global") == 0){
         if (cfg = getMailConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
     } else if (strcmp(section, "email_alerts") == 0){
         if (cfg = getMailAlertsConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
@@ -63,16 +71,16 @@ size_t mailcom_getconfig(const char * section, char * output) {
     }
 error:
     merror("At MAILCOM getconfig: Could not get '%s' section", section);
-    strcpy(output, "err Could not get requested section");
-    return strlen(output);
+    *output = strdup("err Could not get requested section");
+    return strlen(*output);
 }
 
 
 void * mailcom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
-    char buffer[OS_MAXSTR + 1];
-    char response[OS_MAXSTR + 1];
+    char *buffer = NULL;
+    char *response = NULL;
     ssize_t length;
     fd_set fdset;
 
@@ -109,9 +117,9 @@ void * mailcom_main(__attribute__((unused)) void * arg) {
             continue;
         }
 
-        switch (length = recv(peer, buffer, OS_MAXSTR, 0), length) {
+        switch (length = OS_RecvSecureTCP_Dynamic(peer, &buffer), length) {
         case -1:
-            merror("At mailcom_main(): recv(): %s", strerror(errno));
+            merror("At mailcom_main(): OS_RecvSecureTCP_Dynamic(): %s", strerror(errno));
             break;
 
         case 0:
@@ -119,12 +127,19 @@ void * mailcom_main(__attribute__((unused)) void * arg) {
             close(peer);
             break;
 
+        case OS_MAXLEN:
+            merror("Received message > %i", MAX_DYN_STR);
+            close(peer);
+            break;
+
         default:
             buffer[length] = '\0';
-            length = mailcom_dispatch(buffer, length, response);
-            send(peer, response, length, 0);
+            length = mailcom_dispatch(buffer, &response);
+            OS_SendSecureTCP(peer, length, response);
+            free(response);
             close(peer);
         }
+        free(buffer);
     }
 
     mdebug1("Local server thread finished.");

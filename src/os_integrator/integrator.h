@@ -23,9 +23,12 @@ void OS_IntegratorD(IntegratorConfig **integrator_config);
 
 extern IntegratorConfig **integrator_config;
 
+// Read config
 cJSON *getIntegratorConfig(void);
-size_t intgcom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output);
-size_t intgcom_getconfig(const char * section, char * output);
+
+// Com request thread dispatcher
+size_t intgcom_dispatch(char * command, char ** output);
+size_t intgcom_getconfig(const char * section, char ** output);
 void * intgcom_main(__attribute__((unused)) void * arg);
 
 #endif

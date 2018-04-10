@@ -61,11 +61,15 @@ typedef struct _MailMsg {
 
 /* Config function */
 int MailConf(int test_config, const char *cfgfile, MailConfig *Mail) __attribute__((nonnull));
+
+// Read config
 cJSON *getMailConfig(void);
 cJSON *getMailAlertsConfig(void);
+
+// Com request thread dispatcher
 void * mailcom_main(__attribute__((unused)) void * arg);
-size_t mailcom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output);
-size_t mailcom_getconfig(const char * section, char * output);
+size_t mailcom_dispatch(char * command, char ** output);
+size_t mailcom_getconfig(const char * section, char ** output);
 
 /* Receive the e-mail message */
 MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *mail, MailMsg **msg_sms) __attribute__((nonnull));

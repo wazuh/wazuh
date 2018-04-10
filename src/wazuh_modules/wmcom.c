@@ -14,7 +14,7 @@
 
 #ifndef WIN32
 
-size_t wmcom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output){
+size_t wmcom_dispatch(char * command, char ** output){
 
     char *rcv_comm = command;
     char *rcv_args = NULL;
@@ -28,35 +28,42 @@ size_t wmcom_dispatch(char *command, size_t length __attribute__ ((unused)), cha
         // getconfig section
         if (!rcv_args){
             merror("WMCOM getconfig needs arguments.");
-            strcpy(output, "err WMCOM getconfig needs arguments");
-            return strlen(output);
+            *output = strdup("err WMCOM getconfig needs arguments");
+            return strlen(*output);
         }
         return wmcom_getconfig(rcv_args, output);
 
     } else {
         merror("WMCOM Unrecognized command '%s'.", rcv_comm);
-        strcpy(output, "err Unrecognized command");
-        return strlen(output);
+        *output = strdup("err Unrecognized command");
+        return strlen(*output);
     }
 }
 
-size_t wmcom_getconfig(const char * section, char * output) {
+size_t wmcom_getconfig(const char * section, char ** output) {
 
     cJSON *cfg;
+    char *json_str;
 
     if (strcmp(section, "wmodules") == 0){
         if (cfg = getModulesConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
     } else if (strcmp(section, "internal_options") == 0){
         if (cfg = getModulesInternalOptions(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
@@ -65,15 +72,15 @@ size_t wmcom_getconfig(const char * section, char * output) {
     }
 error:
     merror("At WMCOM getconfig: Could not get '%s' section", section);
-    strcpy(output, "err Could not get requested section");
-    return strlen(output);
+    *output = strdup("err Could not get requested section");
+    return strlen(*output);
 }
 
 void * wmcom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
-    char buffer[OS_MAXSTR + 1];
-    char response[OS_MAXSTR + 1];
+    char *buffer = NULL;
+    char *response = NULL;
     ssize_t length;
     fd_set fdset;
 
@@ -110,9 +117,9 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
             continue;
         }
 
-        switch (length = recv(peer, buffer, OS_MAXSTR, 0), length) {
+        switch (length = OS_RecvSecureTCP_Dynamic(peer, &buffer), length) {
         case -1:
-            merror("At wmcom_main(): recv(): %s", strerror(errno));
+            merror("At wmcom_main(): OS_RecvSecureTCP_Dynamic(): %s", strerror(errno));
             break;
 
         case 0:
@@ -120,12 +127,18 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
             close(peer);
             break;
 
+        case OS_MAXLEN:
+            merror("Received message > %i", MAX_DYN_STR);
+            close(peer);
+            break;
+
         default:
-            buffer[length] = '\0';
-            length = wmcom_dispatch(buffer, length, response);
-            send(peer, response, length, 0);
+            length = wmcom_dispatch(buffer, &response);
+            OS_SendSecureTCP(peer, length, response);
+            free(response);
             close(peer);
         }
+        free(buffer);
     }
 
     mdebug1("Local server thread finished.");
