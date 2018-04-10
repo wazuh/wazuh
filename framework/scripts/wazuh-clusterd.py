@@ -14,11 +14,12 @@ try:
     import logging
     import ctypes
     import ctypes.util
+    import socket
     from signal import signal, SIGINT, SIGTERM
     from pwd import getpwnam
     from sys import argv, exit, path
     from os.path import dirname
-    from os import seteuid, setgid, getpid, kill
+    from os import seteuid, setgid, getpid, kill, unlink
 
     # Import framework
     try:
@@ -33,8 +34,8 @@ try:
         from wazuh.exception import WazuhException
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
         from wazuh.cluster.cluster import read_config, check_cluster_config
-        from wazuh.cluster.master import MasterManager, MasterKeepAliveThread
-        from wazuh.cluster.client import ClientManager, ClientIntervalThread
+        from wazuh.cluster.master import MasterManager, MasterKeepAliveThread, MasterInternalSocketHandler
+        from wazuh.cluster.client import ClientManager, ClientIntervalThread, ClientInternalSocketHandler
         from wazuh.cluster.communication import InternalSocket
 
     except Exception as e:
@@ -95,15 +96,20 @@ def signal_handler(n_signal, frame):
 # Internal Socket thread
 #
 class InternalSocketThread(threading.Thread):
-    def __init__(self):
+    def __init__(self, socket_name):
         threading.Thread.__init__(self)
         self.daemon = True
         self.manager = None
         self.running = True
         self.internal_socket = None
+        self.socket_name = socket_name
 
-    def setmanager(self, manager, socket_name):
-        self.internal_socket = InternalSocket(socket_name=socket_name, manager=manager)
+    def setmanager(self, manager, handle_type):
+        try:
+            self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
+        except:
+            print("[Transport-I] err initializing internal socket {}".format(e))
+            self.internal_socket = None
 
     def run(self):
         while self.running:
@@ -128,9 +134,9 @@ def master_main(cluster_configuration):
     ka_thread.start()
 
     # Internal socket
-    internal_socket_thread = InternalSocketThread()
+    internal_socket_thread = InternalSocketThread("c-internal")
     internal_socket_thread.start()
-    internal_socket_thread.setmanager(master, "c-internal")
+    internal_socket_thread.setmanager(master, MasterInternalSocketHandler)
 
     # Loop
     asyncore.loop(timeout=1, use_poll=False, map=master.map, count=None)
@@ -150,7 +156,7 @@ def client_main(cluster_configuration):
     interval_thread.start()
 
     # Internal socket
-    internal_socket_thread = InternalSocketThread()
+    internal_socket_thread = InternalSocketThread("c-internal")
     internal_socket_thread.start()
 
     # Loop
@@ -158,7 +164,7 @@ def client_main(cluster_configuration):
         client = ClientManager(cluster_config=cluster_configuration)
 
         interval_thread.setclient(client)
-        internal_socket_thread.setmanager(client, 'c-internal')
+        internal_socket_thread.setmanager(client, ClientInternalSocketHandler)
 
         asyncore.loop(timeout=1, use_poll=False, map=client.map, count=None)
 

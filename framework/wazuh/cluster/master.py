@@ -12,6 +12,7 @@ from wazuh.exception import WazuhException
 from wazuh import common
 
 
+
 def compare_files(good_files, check_files):
 
     missing_files = set(good_files.keys()) - set(check_files.keys())
@@ -133,3 +134,32 @@ class MasterKeepAliveThread(threading.Thread):
 
     def stop(self):
         self.running = False
+
+
+#
+# Internal socket
+#
+from wazuh.cluster.communication import InternalSocketHandler
+import json
+
+class MasterInternalSocketHandler(InternalSocketHandler):
+    def __init__(self, sock, manager, map):
+        InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
+
+    def process_request(self, command, data):
+        logging.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
+        serialized_response = ""
+
+        command_splitted = command.split('-',1)
+        command = command_splitted[0]
+        host = command_splitted[1]
+
+        if host == 'b':
+            response = list(self.manager.send_request_broadcast(command=command, data=data))
+            serialized_response = ['ok', json.dumps({node:data for node,data in response})]
+        else:
+            response = self.manager.send_request(client_name=host, command=command, data=data)
+            if response:
+                serialized_response = response.split(' ', 1)
+
+        return serialized_response

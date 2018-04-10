@@ -164,3 +164,24 @@ class ClientIntervalThread(threading.Thread):
 
     def stop(self):
         self.running = False
+
+
+
+#
+# Internal socket
+#
+from wazuh.cluster.communication import InternalSocketHandler
+
+class ClientInternalSocketHandler(InternalSocketHandler):
+    def __init__(self, sock, manager, map):
+        InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
+
+    def process_request(self, command, data):
+        logging.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
+        serialized_response = ""
+
+        response = self.manager.send_request(command=command, data=data).split(' ', 1)
+        if response:
+            serialized_response = response.split(' ', 1)
+
+        return serialized_response

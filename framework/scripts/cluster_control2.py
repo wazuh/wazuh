@@ -20,10 +20,9 @@ except Exception as e:
 # Main
 #
 if __name__ == '__main__':
-    node_type = argv[1]
 
     try:
-        message = argv[2]
+        message = argv[1]
     except:
         message = "echo test"
 

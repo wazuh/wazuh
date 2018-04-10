@@ -392,7 +392,7 @@ class Server(asyncore.dispatcher):
         response = None
 
         if client_name in self.clients:
-            response = self.clients[client_name].execute(command, payload)
+            response = self.clients[client_name].execute(command, data)
         else:
             print("Error: Trying to send and the client is not connected.")
 
@@ -456,22 +456,14 @@ class InternalSocketHandler(Handler):
         self.manager = manager
 
     def process_request(self, command, data):
-        logging.debug("[Transport-I] Forwarding request to cluster '{0}' - '{1}'".format(command, data))
-
-        response = None
-
-        # master manager
-        # ToDo ?
-
-        # client manager
-        response = self.manager.send_request(command = command, data=data).split(' ', 1)
-        return response
+        raise NotImplementedError
 
 
 class InternalSocket(asyncore.dispatcher):
 
-    def __init__(self, socket_name, manager, map = {}):
+    def __init__(self, socket_name, manager, handle_type, map = {}):
         asyncore.dispatcher.__init__(self, map=map)
+        self.handle_type = handle_type
         self.map = map
         self.socket_name = socket_name
         self.manager = manager
@@ -479,7 +471,7 @@ class InternalSocket(asyncore.dispatcher):
         self.__create_socket()
 
     def __create_socket(self):
-        print("[Transport-I]  Creating UDS socket...")
+        print("[Transport-I] Creating UDS socket...")
 
         # Make sure the socket does not already exist
         try:
@@ -504,7 +496,7 @@ class InternalSocket(asyncore.dispatcher):
         if pair is not None:
             sock, addr = pair
             print("[Transport-I] New connection in internal socket")
-            handler = InternalSocketHandler(sock=sock, manager=self.manager, map=self.map)
+            handler = self.handle_type(sock=sock, manager=self.manager, map=self.map)
 
 def send_to_internal_socket(socket_name, message):
     # Create a UDS socket
