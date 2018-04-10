@@ -124,7 +124,7 @@ class InternalSocketThread(threading.Thread):
 #
 def master_main(cluster_configuration):
     # ToDo: Add it in ossec.conf
-    cluster_configuration['ka_interval'] = 12  # seconds
+    cluster_configuration['ka_interval'] = 60  # seconds
 
     # Initiate master
     master = MasterManager(cluster_config=cluster_configuration)
@@ -149,7 +149,7 @@ def client_main(cluster_configuration):
     # ToDo: Add it in ossec.conf
     cluster_configuration['reconnect_time'] = 10  # seconds
     # ToDo: Get in the proper way
-    cluster_configuration['interval'] = 10  # seconds
+    cluster_configuration['interval'] = 120  # seconds
 
     # Create threads
     interval_thread = ClientIntervalThread()

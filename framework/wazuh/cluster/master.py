@@ -7,7 +7,7 @@ import logging
 import threading
 import time
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file
+from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files
 from wazuh.exception import WazuhException
 from wazuh import common
 
@@ -124,45 +124,6 @@ def req_file_status_to_clients():
 
     return nodes_file
 
-def process_files_from_client(data_received):
-    logging.info("[Master] [Data received]: Start.")
-
-    # Extract recevied data
-    logging.info("[Master] [Data received] [STEP 1]: Analyzing received files.")
-
-    master_files_from_client = {}
-    client_files = {}
-    for key in data_received:
-        if key == 'cluster_control.json':
-            json_file = json.loads(data_received['cluster_control.json']['data'])
-            master_files_from_client = json_file['master_files']
-            client_files_json = json_file['client_files']
-        else:
-            full_path_key = key.replace('files/', '/')
-            client_files[full_path_key] = data_received[key]
-
-    # Get master files
-    master_files = get_files_status('master')
-
-    # Compare
-    client_files_ko = compare_files(master_files, master_files_from_client)
-
-    logging.info("[Master] [Data received] [STEP 2]: Updating manager files.")
-    # Update files
-    update_client_files_in_master(client_files_json, client_files)
-
-    # Compress data: master files (only KO shared and missing)
-    logging.info("[Master] [Data received] [STEP 3]: Compressing KO files for client.")
-
-    master_files_paths = [item for item in client_files_ko['shared']]
-    master_files_paths.extend([item for item in client_files_ko['missing']])
-
-    compressed_data = compress_files('master', master_files_paths, client_files_ko)
-
-    logging.info("[Master] [Data received]: End. Sending KO files to client.")
-    # Send KO files
-    return compressed_data
-
 
 from wazuh.cluster.communication import Server, ServerHandler, Handler
 
@@ -171,6 +132,7 @@ class MasterManagerHandler(ServerHandler):
 
     def __init__(self, sock, server, map, addr=None):
         ServerHandler.__init__(self, sock, server, map, addr)
+        self.manager = server
 
     def process_request(self, command, data):
         logging.debug("[Master] Request received: '{0}'.".format(command))
@@ -180,6 +142,8 @@ class MasterManagerHandler(ServerHandler):
         elif command == 'req_sync_m_c':
             return 'ack', 'Starting sync from master'
         elif command == 'sync_c_m':
+            mcf_thread = MasterProcessClientFiles(self, self.get_client(), data)
+            mcf_thread.start()
             return 'ack', 'Sync: Thanks client, Im going to do it'  # ToDo
         else:
             return ServerHandler.process_request(self, command, data)
@@ -199,6 +163,59 @@ class MasterManagerHandler(ServerHandler):
             response_data = ServerHandler.process_response(response)
 
         return response_data
+
+    def process_files_from_client(self, client_name, data_received):
+        sync_result = False
+
+        logging.info("[Master] [Sync process c->m] [{0}]: Start.".format(client_name))
+
+        client_data = decompress_files(data_received)
+
+        # Extract recevied data
+        logging.info("[Master] [Sync process c->m] [{0}] [STEP 1]: Analyzing received files.".format(client_name))
+
+        master_files_from_client = {}
+        client_files = {}
+        for key in client_data:
+            if key == 'cluster_control.json':
+                json_file = json.loads(client_data['cluster_control.json']['data'])
+                master_files_from_client = json_file['master_files']
+                client_files_json = json_file['client_files']
+            else:
+                full_path_key = key.replace('files/', '/')
+                client_files[full_path_key] = client_data[key]
+
+        # Get master files
+        master_files = get_files_status('master')
+
+        # Compare
+        client_files_ko = compare_files(master_files, master_files_from_client)
+
+        logging.info("[Master] [Sync process c->m] [{0}] [STEP 2]: Updating manager files.".format(client_name))
+
+        # Update files
+        update_client_files_in_master(client_files_json, client_files)
+
+        # Compress data: master files (only KO shared and missing)
+        logging.info("[Master] [Sync process c->m] [{0}] [STEP 3]: Compressing KO files for client.".format(client_name))
+
+        master_files_paths = [item for item in client_files_ko['shared']]
+        master_files_paths.extend([item for item in client_files_ko['missing']])
+
+        compressed_data = compress_files('master', master_files_paths, client_files_ko)
+
+        logging.info("[Master] [Sync process c->m] [{0}]: End. Sending KO files to client.".format(client_name))
+
+        response = self.manager.send_request(client_name, 'sync_m_c', compressed_data)
+        processed_response = self.process_response(response)
+        if processed_response:
+            sync_result = True
+            logging.info("[Master] [Sync process m->c] [{0}] [STEP 3]: {1}".format(client_name, processed_response))
+        else:
+            logging.error("[Master] [Sync process m->c] [{0}] [STEP 3]: Client reported an error receiving files.".format(client_name))
+
+        # Send KO files
+        return sync_result
 
 
 class MasterManager(Server):
@@ -245,6 +262,27 @@ class MasterKeepAliveThread(threading.Thread):
     def stop(self):
         self.running = False
 
+
+class MasterProcessClientFiles(threading.Thread):
+
+    def __init__(self, manager_handler, client_name, data):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.running = True
+        self.manager_handler = manager_handler
+        self.client_name = client_name
+        self.data = data
+
+    def run(self):
+
+        while self.running:
+            logging.debug("[Master-FileThread] Started for {0}.".format(self.client_name))
+            self.manager_handler.process_files_from_client(self.client_name, self.data)
+            logging.debug("[Master-FileThread] Ended for {0}.".format(self.client_name))
+            self.stop()
+
+    def stop(self):
+        self.running = False
 
 #
 # Internal socket

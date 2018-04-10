@@ -286,7 +286,9 @@ class Handler(asyncore.dispatcher_with_send):
         try:
             return self.process_request(command, payload)
         except Exception as e:
-            error_msg = "Error processing command: {}".format(str(e))
+            error_msg = "Error processing command '{0}': {1}".format(command, str(e))
+
+            logging.debug("[Transport] {0}.".format(error_msg))
             return 'err ', error_msg
 
 
@@ -319,7 +321,7 @@ class Handler(asyncore.dispatcher_with_send):
             final_response = json.loads(payload)
         elif answer == 'err':
             final_response = None
-            logging.error("[Transport] Error received: {0}.".format(payload.decode()))
+            logging.debug("[Transport] Error received: {0}.".format(payload.decode()))
         else:
             final_response = None
             print("ERROR: Unknown answer: '{}'. Payload: '{}'.".format(answer, payload))
@@ -359,6 +361,9 @@ class ServerHandler(Handler):
         self.name = id  # TO DO: change self.name to self.id
         logging.info("[Transport-S] Node '{0}' connected.".format(id))
         return None
+
+    def get_client(self):
+        return self.name
 
 
 class Server(asyncore.dispatcher):
@@ -410,7 +415,7 @@ class Server(asyncore.dispatcher):
         response = None
 
         if client_name in self.clients:
-            response = self.clients[client_name]['handler'].execute(command, payload)
+            response = self.clients[client_name]['handler'].execute(command, data)
         else:
             print("Error: Trying to send and the client is not connected.")
 
