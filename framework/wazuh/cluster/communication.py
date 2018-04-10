@@ -104,7 +104,7 @@ class Handler(asyncore.dispatcher_with_send):
         """
 
         response = self.execute("file_open", "{} {}".format(self.name, file))
-        print("RESPONSE: {0}".format(response))
+        logging.debug("RESPONSE: {0}".format(response))
         # TO-DO remove ossec_path from sent filepath
         base_msg = "{} {} ".format(self.name,file).encode()
         chunk_size = max_msg_size - len(base_msg)
@@ -115,7 +115,7 @@ class Handler(asyncore.dispatcher_with_send):
             for chunk in iter(lambda: f.read(chunk_size), ''):
                 counter = counter + 1
                 response = self.execute("file_update", base_msg + chunk)
-                print("RESPONSE: {0}".format(response))
+                logging.debug("RESPONSE: {0}".format(response))
                 # for every chunk sent, sleep 0.1 s to prevent network from collapsing
                 #time.sleep(0.1)
 
@@ -324,7 +324,7 @@ class Handler(asyncore.dispatcher_with_send):
             logging.debug("[Transport] Error received: {0}.".format(payload.decode()))
         else:
             final_response = None
-            print("ERROR: Unknown answer: '{}'. Payload: '{}'.".format(answer, payload))
+            logging.error("ERROR: Unknown answer: '{}'. Payload: '{}'.".format(answer, payload))
 
         return final_response
 
@@ -344,7 +344,7 @@ class ServerHandler(Handler):
             self.server.remove_client(self.name)
             logging.info("[Transport-S] Node '{0}' disconnected.".format(self.name))
         else:
-            print("Connection closed.")
+            logging.info("Connection with {} closed.".format(self.name))
 
         Handler.handle_close(self)
 
@@ -418,7 +418,9 @@ class Server(asyncore.dispatcher):
         if client_name in self.clients:
             response = self.clients[client_name]['handler'].execute(command, data)
         else:
-            print("Error: Trying to send and the client is not connected.")
+            error_msg = "Error: Trying to send and the client is not connected."
+            logging.error(error_msg)
+            return error_msg
 
         return response
 
@@ -455,7 +457,7 @@ class ClientHandler(Handler):
     def handle_close(self):
         Handler.handle_close(self)
         self.my_connected = False
-        print("Client disconnected")
+        logging.info("Client disconnected")
 
 
     def send_request(self, command, data=None):
@@ -464,7 +466,9 @@ class ClientHandler(Handler):
         if self.my_connected:
             response = self.execute(command, data)
         else:
-            print("Error: Trying to send and the client is not connected.")
+            error_msg = "Error: Trying to send and the client is not connected."
+            logging.error(error_msg)
+            return error_msg
 
         return response
 
@@ -496,32 +500,32 @@ class InternalSocket(asyncore.dispatcher):
 
 
     def __create_socket(self):
-        print("[Transport-I] Creating UDS socket...")
+        logging.info("[Transport-I] Creating UDS socket...")
 
         # Make sure the socket does not already exist
         try:
             os.unlink(self.socket_address)
         except OSError:
             if os.path.exists(self.socket_address):
-                print('[Transport-I] err {} already exits'.format(self.socket_address))
+                logging.error('[Transport-I] err {} already exits'.format(self.socket_address))
                 raise
 
         self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.set_reuse_addr()
         try:
             self.bind(self.socket_address)
-            print("[Transport-I] Starting up on {}. Listening...".format(self.socket_address))
+            logging.info("[Transport-I] Starting up on {}. Listening...".format(self.socket_address))
             self.listen(5)
         except Exception as e:
             error_msg = "Cannot create UDS socket {}".format(e)
-            print('err ' + error_msg)
+            logging.error('err ' + error_msg)
 
 
     def handle_accept(self):
         pair = self.accept()
         if pair is not None:
             sock, addr = pair
-            print("[Transport-I] New connection in internal socket")
+            logging.debug("[Transport-I] New connection in internal socket")
             handler = self.handle_type(sock=sock, manager=self.manager, map=self.map)
 
 
@@ -541,15 +545,15 @@ class InternalSocketThread(threading.Thread):
         try:
             self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
         except:
-            print("[Transport-I] err initializing internal socket {}".format(e))
+            logging.error("[Transport-I] err initializing internal socket {}".format(e))
             self.internal_socket = None
 
     def run(self):
         while self.running:
             if self.internal_socket:
-                print("[Transport-I] Ready")
+                logging.debug("[Transport-I] Ready")
                 asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
-                print("[Transport-I] Disconnected")
+                logging.info("[Transport-I] Disconnected")
                 time.sleep(5)
 
 
@@ -557,24 +561,24 @@ def send_to_internal_socket(socket_name, message):
     # Create a UDS socket
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     socket_address = "{}/{}.sock".format("/var/ossec/queue", socket_name)
-    print("[Transport-I] Starting up on {}".format(socket_address))
+    logging.debug("[Transport-I] Starting up on {}".format(socket_address))
     response = ""
 
     # Connect to UDS socket
     try:
         sock.connect(socket_address)
     except Exception as e:
-        print('{}'.format(e))
+        logging.error('{}'.format(e))
         return response
 
     # Send message
-    print("[Transport-I] Sending request to SI: '{0}'.".format(message))
+    logging.info("[Transport-I] Sending request to SI: '{0}'.".format(message))
     message = message.split(" ", 1)
     cmd = message[0]
     data = message[1] if len(message) > 1 else None
     message_built = msgbuild(random.SystemRandom().randint(0, 2 ** 32 - 1), cmd, data)
     sock.sendall(message_built)
-    print("[Transport-I] Sent")
+    logging.debug("[Transport-I] Sent")
 
     # Receive response
     buf = ""
@@ -584,12 +588,12 @@ def send_to_internal_socket(socket_name, message):
             buf += sock.recv(buf_size)
             offset, counter, command, response = msgparse(buf)
 
-        print("[Transport-I] Received: answer: '{0}'. Data: '{1}'.".format(command, response))
+        logging.info("[Transport-I] Received: answer: '{0}'. Data: '{1}'.".format(command, response))
 
     except Exception as e:
-        print("[Transport-I] err {}".format(e))
+        logging.error("[Transport-I] err {}".format(e))
     finally:
-        print("[Transport-I] Closing socket...")
+        logging.info("[Transport-I] Closing socket...")
         sock.close()
 
     return response
