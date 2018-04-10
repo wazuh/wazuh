@@ -15,8 +15,9 @@ try:
     from wazuh import Wazuh
     from wazuh import common
     from wazuh.cluster import cluster
-    from wazuh.cluster.master import MasterManager
+    from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
     from wazuh.cluster.client import ClientManager
+    from wazuh.cluster.communication import InternalSocketThread
 except Exception as e:
     print("Error importing 'Wazuh' package: {0}".format(e))
     sys.exit(1)
@@ -198,6 +199,10 @@ def master_main(test_name, test_size):
 
     # Initiate master
     master = MasterManager(c_config)
+
+    internal_socket_thread = InternalSocketThread("c-internal")
+    internal_socket_thread.start()
+    internal_socket_thread.setmanager(master, MasterInternalSocketHandler)
 
     # Test threads
     if test_name == "test0": # just connect

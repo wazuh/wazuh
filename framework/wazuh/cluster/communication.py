@@ -493,6 +493,7 @@ class InternalSocket(asyncore.dispatcher):
         self.socket_address = "{}/{}.sock".format("/var/ossec/queue", self.socket_name)
         self.__create_socket()
 
+
     def __create_socket(self):
         print("[Transport-I] Creating UDS socket...")
 
@@ -514,12 +515,42 @@ class InternalSocket(asyncore.dispatcher):
             error_msg = "Cannot create UDS socket {}".format(e)
             print('err ' + error_msg)
 
+
     def handle_accept(self):
         pair = self.accept()
         if pair is not None:
             sock, addr = pair
             print("[Transport-I] New connection in internal socket")
             handler = self.handle_type(sock=sock, manager=self.manager, map=self.map)
+
+
+#
+# Internal Socket thread
+#
+class InternalSocketThread(threading.Thread):
+    def __init__(self, socket_name):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.manager = None
+        self.running = True
+        self.internal_socket = None
+        self.socket_name = socket_name
+
+    def setmanager(self, manager, handle_type):
+        try:
+            self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
+        except:
+            print("[Transport-I] err initializing internal socket {}".format(e))
+            self.internal_socket = None
+
+    def run(self):
+        while self.running:
+            if self.internal_socket:
+                print("[Transport-I] Ready")
+                asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
+                print("[Transport-I] Disconnected")
+                time.sleep(5)
+
 
 def send_to_internal_socket(socket_name, message):
     # Create a UDS socket

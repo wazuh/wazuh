@@ -36,7 +36,7 @@ try:
         from wazuh.cluster.cluster import read_config, check_cluster_config
         from wazuh.cluster.master import MasterManager, MasterKeepAliveThread, MasterInternalSocketHandler
         from wazuh.cluster.client import ClientManager, ClientIntervalThread, ClientInternalSocketHandler
-        from wazuh.cluster.communication import InternalSocket
+        from wazuh.cluster.communication import InternalSocketThread
 
     except Exception as e:
         print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -92,32 +92,6 @@ def signal_handler(n_signal, frame):
     if n_signal == SIGINT or n_signal == SIGTERM:
         clean_exit(reason="Signal [{0}-{1}] received.".format(n_signal, strsignal(n_signal)))
 
-#
-# Internal Socket thread
-#
-class InternalSocketThread(threading.Thread):
-    def __init__(self, socket_name):
-        threading.Thread.__init__(self)
-        self.daemon = True
-        self.manager = None
-        self.running = True
-        self.internal_socket = None
-        self.socket_name = socket_name
-
-    def setmanager(self, manager, handle_type):
-        try:
-            self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
-        except:
-            print("[Transport-I] err initializing internal socket {}".format(e))
-            self.internal_socket = None
-
-    def run(self):
-        while self.running:
-            if self.internal_socket:
-                print("[Transport-I] Ready")
-                asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
-                print("[Transport-I] Disconnected")
-                time.sleep(5)
 
 #
 # Master main
